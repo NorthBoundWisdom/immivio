@@ -130,6 +130,8 @@ struct Source final {
     std::atomic<uint64_t> standard_epoch{1};
     std::atomic<bool> standard_seeking{false};
     std::atomic<uint64_t> rendered{0}, skipped{0}, published{0}, acquired{0}, released{0};
+    std::atomic<uint64_t> color_allocations{0}, color_texture_bytes{0};
+    std::atomic<bool> reuse_ready_slots{true};
     std::atomic<uint64_t> seeks_started{0}, seeks_completed{0}, invalid_frames{0};
     // The last rejected ticket, so a source that never publishes can be diagnosed.
     std::atomic<uint64_t> invalid_flags{0}, invalid_frame_id{0};
@@ -414,6 +416,8 @@ struct Source final {
             {
                 char value[PROP_VALUE_MAX] = {};
                 if (__system_property_get("debug.vrpp.mpv.max_width", value) > 0) max_output_width.store(std::max(0, atoi(value)));
+                if (__system_property_get("debug.vrpp.mpv.pool", value) > 0)
+                    reuse_ready_slots.store(std::string(value) != "expand");
             }
             // Debug-only A/B of render options for GPU profiling, e.g.
             // adb shell setprop debug.vrpp.mpv.opts gpu-dumb-mode=yes,fbo-format=rgba8
@@ -619,6 +623,8 @@ struct Source final {
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, slot.color, 0);
         require(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE && glGetError() == GL_NO_ERROR,
                 "MPV shared RGBA8 slot allocation failed");
+        color_allocations.fetch_add(1);
+        color_texture_bytes.fetch_add(static_cast<uint64_t>(width) * height * 4);
     }
     void poll_retirements() {
         for (auto& slot : slots) if (slot.phase == Phase::retiring) {
@@ -761,7 +767,23 @@ struct Source final {
                     if (!closing.load()) {
                         // Only unclaimed ready images can be replaced. Acquired colors
                         // cannot be touched until the consumer-context fence completes.
-                        for (auto& slot : slots) if (slot.phase == Phase::free) { target = &slot; break; }
+                        if (standard_frames && reuse_ready_slots.load()) {
+                            // Reuse allocated storage before growing the 8K ring. Keep the newest
+                            // ready image available while its replacement renders. Merely finding
+                            // a never-used free slot first otherwise allocates all seven textures
+                            // when the consumer holds producer leases for ordinary playback.
+                            Slot* oldest_ready = nullptr;
+                            int ready_count = 0;
+                            for (auto& slot : slots) {
+                                if (slot.phase == Phase::free && slot.color && !target) target = &slot;
+                                if (slot.phase == Phase::ready) {
+                                    ++ready_count;
+                                    if (!oldest_ready || slot.token < oldest_ready->token) oldest_ready = &slot;
+                                }
+                            }
+                            if (!target && ready_count > 1) target = oldest_ready;
+                        }
+                        if (!target) for (auto& slot : slots) if (slot.phase == Phase::free) { target = &slot; break; }
                         if (!target) for (auto& slot : slots) if (slot.phase == Phase::ready && (!target || slot.token < target->token)) target = &slot;
                         if (target) {
                             if (target->fence) {
@@ -790,6 +812,7 @@ struct Source final {
                 const bool direct_render = !standard_frames && direct.load() && !dolby_profile5.load() && hardware_decoding.load();
                 if (direct_render) { out_width = 16; out_height = 8; } // MPV still selects and times the frame
                 if (target->color && (target->out_width != out_width || target->out_height != out_height)) {
+                    color_texture_bytes.fetch_sub(static_cast<uint64_t>(target->out_width) * target->out_height * 4);
                     glDeleteFramebuffers(1, &target->fbo); glDeleteTextures(1, &target->color); target->fbo = target->color = 0;
                 }
                 if (!target->color) { allocate(*target, out_width, out_height); target->out_width = out_width; target->out_height = out_height; }
@@ -901,6 +924,7 @@ struct Source final {
                     slot.fence = nullptr; glDeleteFramebuffers(1, &slot.fbo); glDeleteTextures(1, &slot.color);
                     slot.fbo = slot.color = 0; slot.phase = Phase::free; drop_image(slot);
                 }
+                color_texture_bytes.store(0);
             }
             if (glGetError() != GL_NO_ERROR) render_failed.store(true);
             if (!eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT)) render_failed.store(true);
@@ -1010,6 +1034,9 @@ struct Source final {
             ",\"render_error\":" + quote(render_error_copy) + ",\"done\":" + (done.load() ? "true" : "false") +
             ",\"render_failed\":" + (render_failed.load() ? "true" : "false") + ",\"closing\":" + (closing.load() ? "true" : "false") +
             ",\"rendered\":" + std::to_string(rendered.load()) + ",\"published\":" + std::to_string(published.load()) +
+            ",\"color_allocations\":" + std::to_string(color_allocations.load()) +
+            ",\"color_texture_bytes\":" + std::to_string(color_texture_bytes.load()) +
+            ",\"reuse_ready_slots\":" + (reuse_ready_slots.load() ? "true" : "false") +
             ",\"skipped\":" + std::to_string(skipped.load()) + ",\"acquired\":" + std::to_string(acquired.load()) +
             ",\"released\":" + std::to_string(released.load()) + ",\"held_slots\":" + std::to_string(held) +
             ",\"last_source_epoch\":" + std::to_string(last_epoch.load()) + ",\"epoch_floor\":" + std::to_string(epoch_floor.load()) +

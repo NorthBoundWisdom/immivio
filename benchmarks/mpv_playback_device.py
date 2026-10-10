@@ -29,6 +29,7 @@ def main():
     parser.add_argument("--controls", action="store_true", help="Also verify pause, seek, pinned pixel readback and resume")
     parser.add_argument("--transport", choices=("local", "http"), default="local")
     parser.add_argument("--mpv-log-level", choices=("no", "warn", "info", "debug"), help="Temporary Debug log-level A/B; restored on exit")
+    parser.add_argument("--producer-pool", choices=("reuse", "expand"), default="reuse", help="Temporary producer allocation policy A/B")
     args = parser.parse_args()
     if args.seconds < 5 or not args.original.is_file():
         parser.error("Need an existing original video and at least five measurement seconds")
@@ -51,12 +52,15 @@ def main():
     threading.Thread(target=server.serve_forever, daemon=True).start()
     port = server.server_address[1]
     previous_log = device.run("shell", "getprop", "debug.vrpp.mpv.log").strip()
+    previous_pool = device.run("shell", "getprop", "debug.vrpp.mpv.pool").strip()
     result["mpv_log_level"] = args.mpv_log_level or previous_log or "info"
+    result["producer_pool"] = args.producer_pool
     save = lambda: (args.output / "result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
     def scene_marker():
         lines = device.run("shell", "run-as", PACKAGE, "tail", "-n", "8", "files/diagnostics/events.jsonl", optional=True)
         return next((line for line in reversed(lines.splitlines()) if '"event":"app_started"' in line), "")
     try:
+        device.run("shell", "setprop", "debug.vrpp.mpv.pool", args.producer_pool)
         if args.mpv_log_level:
             device.run("shell", "setprop", "debug.vrpp.mpv.log", args.mpv_log_level)
         device.run("reverse", f"tcp:{port}", f"tcp:{port}")
@@ -93,6 +97,8 @@ def main():
                             timeout=120)
         if not first["diagnostic_2d"]:
             raise RuntimeError("Unexpected XR entry")
+        if first["native_status"]["max_output_width"] != 0 or first["native_status"]["frame_cap_fps"] != 0:
+            raise RuntimeError("Clear the player's output-width/frame-rate cap before measuring original playback")
         result["first_report"] = first
         result["memory_before"] = device.run("shell", "dumpsys", "meminfo", PACKAGE)
         deadline = time.monotonic() + args.seconds
@@ -121,6 +127,9 @@ def main():
             "producer_render_fps": (n1["rendered"]-n0["rendered"])/elapsed,
             "hwdec": n1["details"]["hwdec_current"], "format": b["media"]["format"],
             "bridge_before": n0.get("bridge"), "bridge_after": n1.get("bridge"),
+            "producer_color_bytes_before": n0.get("color_texture_bytes"),
+            "producer_color_bytes_after": n1.get("color_texture_bytes"),
+            "producer_color_allocations": n1.get("color_allocations"),
             "decoder_drops_before": n0["details"].get("decoder_frame_drop_count"),
             "decoder_drops_after": n1["details"].get("decoder_frame_drop_count")}
         result["memory_after"] = device.run("shell", "dumpsys", "meminfo", PACKAGE)
@@ -164,6 +173,7 @@ def main():
         device.run("reverse", "--remove", f"tcp:{port}", optional=True)
         if args.mpv_log_level:
             device.run("shell", "setprop", "debug.vrpp.mpv.log", previous_log or '""', optional=True)
+        device.run("shell", "setprop", "debug.vrpp.mpv.pool", previous_pool or '""', optional=True)
         server.shutdown(); server.server_close()
         result["http_requests"] = server.requests
         save()

@@ -34,16 +34,18 @@ Host tests and ELF/APK inspection do not prove passthrough visuals, audio synchr
 
 ## Ordinary playback performance
 
-Build and install a no-AI Debug APK, then run the same package with both bridge paths:
+Build and install a no-AI Debug APK, then compare the legacy settings with the optimized defaults in the same package:
 
 ```bash
-python3 benchmarks/mpv_playback_device.py --serial DEVICE --apk PLAYER.apk --original VIDEO.mp4 --borrow-color no --output artifacts/perf/copy
-python3 benchmarks/mpv_playback_device.py --serial DEVICE --apk PLAYER.apk --original VIDEO.mp4 --borrow-color yes --controls --output artifacts/perf/borrow
+python3 benchmarks/mpv_playback_device.py --serial DEVICE --apk PLAYER.apk --original VIDEO.mp4 --borrow-color no --producer-pool expand --mpv-log-level debug --output artifacts/perf/copy
+python3 benchmarks/mpv_playback_device.py --serial DEVICE --apk PLAYER.apk --original VIDEO.mp4 --borrow-color yes --producer-pool reuse --mpv-log-level info --controls --output artifacts/perf/borrow
 ```
 
 The tool copies the original into the debug app's private fixture directory and verifies SHA-256 before playback; no transcoding or resolution cap is applied. It waits for a fresh Godot scene startup, checks the installed APK hash, records distinct rendered transaction owner draws separately from engine FPS, captures bridge copy/allocation counters and Android memory reports, and closes playback. Standard-libmpv transaction IDs do not independently certify unique decoded source images or exact source PTS. `--controls` additionally tests pause, an exact-seek request to zero, pinned Godot shader/mask readback and resume. The Debug-only 2D activity and receiver require `android.permission.DUMP`; neither is available in Release. `--transport http` instead serves the unchanged original through a range-capable ADB loopback server for transport comparisons. `--mpv-log-level debug` temporarily restores the old verbose logging for an A/B run and restores the prior property on exit.
 
 Use several alternating runs and retain the raw JSON reports. Check `hwdec`, source dimensions and bridge counters before interpreting FPS. For example, the Android API 36 emulator's `c2.goldfish.hevc.decoder` rejects an 8192×4096 HEVC stream and mpv falls back to software decode. Such a run can verify texture ownership and eliminated copies, but cannot establish PICO hardware decoding throughput or XR compositor performance. Copy bytes describe explicit RGBA texture allocation, not total GPU/driver/process memory; borrowing can also change producer-ring occupancy. User videos, image readbacks and device reports stay in ignored `artifacts/` and are never committed.
+
+For attribution, change one flag at a time while keeping CPU/GPU configuration and the remaining flags equal. The producer pool switch applies only to the standard-libmpv backend; Release always reuses allocated storage. The benchmark restores the previous Debug log/pool properties and rejects a configured output-width or frame-rate cap.
 
 `test_ai_optional.gd` covers a plugin reporting AI disabled: ordinary playback and seeking must not request inference, saved automatic-depth settings must not reactivate it, live AI controls are disabled, and precomputed packed masks remain available. For a prepared Android toolchain, run plugin unit tests and assembly with `-PenableAi=false`, then inspect the AAR/APK for absent `libquest_rvm.so` and model directories. Also build the default AI configuration to check both sides of the switch when its external dependencies are available.
 
