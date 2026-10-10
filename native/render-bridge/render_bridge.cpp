@@ -1309,8 +1309,15 @@ Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_stats(JNIEnv* env, jclass
     try {
         std::lock_guard<std::mutex> guard(registry_mutex); auto& b = find(id);
         std::array<int, 4> phases{};
-        for (const auto& s : b.slots) phases[static_cast<size_t>(s.phase)]++;
+        uint64_t color_textures = 0;
+        for (const auto& s : b.slots) {
+            phases[static_cast<size_t>(s.phase)]++;
+            color_textures += s.color != 0;
+        }
         auto json = "{\"copies\":" + std::to_string(b.copies) + ",\"opaque_copies\":" + std::to_string(b.opaque_copies) +
+            ",\"borrow_color\":" + (b.borrow ? "true" : "false") +
+            ",\"color_texture_count\":" + std::to_string(color_textures) +
+            ",\"color_texture_bytes\":" + std::to_string(color_textures * b.width * b.height * 4) +
             ",\"opaque_initial_uploads\":" + std::to_string(b.opaque_uploads) + ",\"regular_alpha_uploads\":" + std::to_string(b.alpha_uploads) +
             ",\"input_stages\":" + std::to_string(b.input_stages) + ",\"copy_pending_polls\":" + std::to_string(b.copy_pending_polls) +
             ",\"retire_pending_polls\":" + std::to_string(b.retire_pending_polls) + ",\"slot_exhaustions\":" + std::to_string(b.slot_exhaustions) + ",\"borrowed_captures\":" + std::to_string(b.borrows) + ",\"decoder_captures\":" + std::to_string(b.decoder_captures) +

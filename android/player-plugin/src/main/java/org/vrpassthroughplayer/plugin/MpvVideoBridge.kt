@@ -454,9 +454,11 @@ internal class MpvVideoBridge(
                 session.renderer = RenderBridgeNative.create(width, height, session.dims[0], session.dims[1], session.stereo, session.topBottom)
                 if (session.alpha && session.vulkan && !debugZeroCopyDisabled)
                     session.zeroCopy = RenderBridgeNative.enableZeroCopy(session.renderer)
-                // Alpha keeps each captured MPV slot for the pair's life instead of copying 8K (~270MB
-                // of bus traffic per frame); MPV has spare slots for the frames in flight.
-                if (session.alpha && !debugBorrowDisabled)
+                // Ordinary playback also keeps the immutable MPV texture until Godot's last draw.
+                // Avoid a second full-resolution RGBA read/write (256 MiB per 8192x4096 frame).
+                // retire()/cleanup() release the producer through a consumer-context GPU fence;
+                // display pins, seeks and mode changes retain the same ownership rules as Alpha.
+                if ((session.alpha || (!session.inference && session.normalFastPath)) && !debugBorrowDisabled)
                     session.borrow = RenderBridgeNative.enableBorrowedColor(session.renderer)
                 if (session.roiEnabled && !debugRoiDisabled) session.roi = RoiController(RenderBridgeNative.fullInputRect(session.renderer),
                     session.dims[0], session.dims[1], eyeWidth, eyeHeight)
@@ -514,7 +516,7 @@ internal class MpvVideoBridge(
         val bytes = session.dims[0]*session.dims[1]*3*4
         val pair = session.copyingPair ?: error("Immutable copy descriptor missing")
         // Decoder images get a new texture each frame and always use zero-copy: no CPU planes.
-        val buffers = if (pair.has("hardware_buffer")) NO_PLANES else session.buffers.getOrPut(texture) {
+        val buffers = if (!session.inference || pair.has("hardware_buffer")) NO_PLANES else session.buffers.getOrPut(texture) {
             ByteBuffer.allocateDirect(bytes).order(ByteOrder.LITTLE_ENDIAN) to ByteBuffer.allocateDirect(bytes).order(ByteOrder.LITTLE_ENDIAN)
         }
         pair.put("color_texture_id", texture).put("consumer_copy_fence_ready", true)

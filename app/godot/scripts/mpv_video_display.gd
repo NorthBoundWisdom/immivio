@@ -1461,6 +1461,9 @@ func _on_debug_command(id: int, payload: String) -> void:
 	_debug_commands.append(command)
 	if _debug_commands.size() > 32:
 		_debug_commands.pop_front()
+	# Commands need an immediate receipt even if benchmark telemetry was just written.
+	# Closing stops periodic playback updates, so throttling here loses its final report.
+	_debug_next_report_us = 0
 	_write_debug_report()
 
 func _on_pixel_mask(id: int, payload: String) -> void:

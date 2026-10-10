@@ -32,6 +32,19 @@ Record the APK hash, device/vendor, model hash, input media contract and test sc
 
 Host tests and ELF/APK inspection do not prove passthrough visuals, audio synchronization, physical hand/controller interaction or sustained frame rate. PICO export success is not PICO hardware validation.
 
+## Ordinary playback performance
+
+Build and install a no-AI Debug APK, then run the same package with both bridge paths:
+
+```bash
+python3 benchmarks/mpv_playback_device.py --serial DEVICE --apk PLAYER.apk --original VIDEO.mp4 --borrow-color no --output artifacts/perf/copy
+python3 benchmarks/mpv_playback_device.py --serial DEVICE --apk PLAYER.apk --original VIDEO.mp4 --borrow-color yes --controls --output artifacts/perf/borrow
+```
+
+The tool copies the original into the debug app's private fixture directory and verifies SHA-256 before playback; no transcoding or resolution cap is applied. It waits for a fresh Godot scene startup, checks the installed APK hash, records distinct rendered transaction owner draws separately from engine FPS, captures bridge copy/allocation counters and Android memory reports, and closes playback. Standard-libmpv transaction IDs do not independently certify unique decoded source images or exact source PTS. `--controls` additionally tests pause, an exact-seek request to zero, pinned Godot shader/mask readback and resume. The Debug-only 2D activity and receiver require `android.permission.DUMP`; neither is available in Release. `--transport http` instead serves the unchanged original through a range-capable ADB loopback server for transport comparisons. `--mpv-log-level debug` temporarily restores the old verbose logging for an A/B run and restores the prior property on exit.
+
+Use several alternating runs and retain the raw JSON reports. Check `hwdec`, source dimensions and bridge counters before interpreting FPS. For example, the Android API 36 emulator's `c2.goldfish.hevc.decoder` rejects an 8192×4096 HEVC stream and mpv falls back to software decode. Such a run can verify texture ownership and eliminated copies, but cannot establish PICO hardware decoding throughput or XR compositor performance. Copy bytes describe explicit RGBA texture allocation, not total GPU/driver/process memory; borrowing can also change producer-ring occupancy. User videos, image readbacks and device reports stay in ignored `artifacts/` and are never committed.
+
 `test_ai_optional.gd` covers a plugin reporting AI disabled: ordinary playback and seeking must not request inference, saved automatic-depth settings must not reactivate it, live AI controls are disabled, and precomputed packed masks remain available. For a prepared Android toolchain, run plugin unit tests and assembly with `-PenableAi=false`, then inspect the AAR/APK for absent `libquest_rvm.so` and model directories. Also build the default AI configuration to check both sides of the switch when its external dependencies are available.
 
 The standard-libmpv base build is exercised with `python3 tools/build_player.py --vendor Quest --build-type Release`. It runs the JVM suite and verifies the exported APK's signature, ZIP alignment, ELF architecture/alignment, shared-library dependency closure and strong dynamic symbols against bundled libraries and Android API 29 system stubs. `python3 tools/test_build_player.py` exercises corrupt cached downloads and malicious ZIP paths/symlinks without network access. Standard playback-clock tickets are tested separately from exact source-frame tickets: they may display opaque video, but cannot authorize inferred Alpha/depth pairs. AI-specific photo conversion tests are skipped in model-free builds, with a separate test ensuring disabled depth queues no inference and retains no source lease.

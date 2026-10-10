@@ -433,7 +433,21 @@ struct Source final {
                 }
             }
 #endif
-            checked(mpv_request_log_messages(core, "debug"), "MPV source log subscription");
+            // Debug includes a message for every demuxer read/seek. Non-interleaved high-bitrate
+            // MP4s can produce large bursts of these, all forwarded to Android logcat
+            // on the control thread. Keep routine playback off that synchronous logging path.
+            const char* log_level = "warn";
+#ifndef NDEBUG
+            char requested_log_level[PROP_VALUE_MAX] = {};
+            log_level = "info"; // Retain decoder selection/fallback evidence in Debug builds.
+            if (__system_property_get("debug.vrpp.mpv.log", requested_log_level) > 0) {
+                const std::string requested = requested_log_level;
+                if (requested == "no" || requested == "fatal" || requested == "error" || requested == "warn" ||
+                    requested == "info" || requested == "v" || requested == "debug" || requested == "trace")
+                    log_level = requested_log_level;
+            }
+#endif
+            checked(mpv_request_log_messages(core, log_level), "MPV source log subscription");
             checked(mpv_initialize(core), "MPV source initialize");
             auto pgs_api = reinterpret_cast<uint32_t (*)()>(dlsym(RTLD_DEFAULT, "mpv_quest_pgs_api_version"));
             if (pgs_api && pgs_api() == QUEST_MPV_PGS_API_VERSION)

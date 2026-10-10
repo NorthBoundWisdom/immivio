@@ -148,7 +148,7 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                     command.put("uri", network).put("title", intent.getStringExtra("title") ?: "network")
                                 } else {
                                 val fixture = intent.getStringExtra("fixture") ?: "mp03_frame_identity"
-                                require(fixture in setOf("mp03_frame_identity", "mp05_person_still", "mp06_text_subtitles", "mp07_motion_4k", "mp08_8k_low", "mp08_8k_high", "mp08_8k_high_30", "mp08_8k_long", "mp08_4k", "depth_2d"))
+                                require(fixture in setOf("mp03_frame_identity", "mp05_person_still", "mp06_text_subtitles", "mp07_motion_4k", "mp08_8k_low", "mp08_8k_high", "mp08_8k_high_30", "mp08_8k_long", "mp08_4k", "depth_2d", "mpv_performance"))
                                 val directory = File(context.filesDir, "fixtures").apply { mkdirs() }
                                 val target = File(directory, "$fixture.${if (fixture == "mp06_text_subtitles") "mkv" else "mp4"}")
                                 if (fixture == "mp03_frame_identity") {
@@ -156,6 +156,7 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                 } else {
                                     // Local test fixtures are pushed explicitly, outside APK assets.
                                     val limit = when {
+                                        fixture == "mpv_performance" -> 8L * 1024 * 1024 * 1024 // Original local high-bitrate samples; debug/DUMP only.
                                         fixture == "mp08_8k_long" -> 1_500_000_000L // 4 min 8K, for windows of 60 s and more
                                         fixture.startsWith("mp08_") -> 500_000_000L
                                         fixture == "mp07_motion_4k" || fixture == "depth_2d" -> 50_000_000L
