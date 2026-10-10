@@ -5,7 +5,7 @@
         <provider android:name="org.vrpassthroughplayer.plugin.LocalAccessTestProvider"
             android:authorities="${applicationId}.accessfixture" android:exported="false" />
         <activity android:name="org.vrpassthroughplayer.plugin.MpvDiagnosticActivity"
-            android:exported="false" android:screenOrientation="landscape"
+            android:exported="true" android:permission="android.permission.DUMP" android:screenOrientation="landscape"
             android:configChanges="orientation|keyboardHidden|screenSize|smallestScreenSize|uiMode"
             android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
         <receiver android:name="org.vrpassthroughplayer.plugin.DebugDiagnosticsReceiver"
