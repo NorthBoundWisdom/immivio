@@ -31,13 +31,14 @@ internal object PhotoDepthInput {
         return Content(0, 0, WIDTH, HEIGHT)
     }
 
-    fun prepare(source: File): Input {
+    fun prepare(source: File, width: Int = WIDTH, height: Int = HEIGHT): Input {
+        require(width in 1..WIDTH && height in 1..HEIGHT)
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(source.path, bounds)
         require(bounds.outWidth > 0 && bounds.outHeight > 0) { "PHOTO_DECODE_FAILED" }
         // Retain at least 518 pixels on the longest edge before the final filtered resize.
         var sample = 1
-        while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= maxOf(WIDTH, HEIGHT)) sample *= 2
+        while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= maxOf(width, height)) sample *= 2
         val original = BitmapFactory.decodeFile(source.path, BitmapFactory.Options().apply { inSampleSize = sample }) ?: error("PHOTO_DECODE_FAILED")
         var upright = original
         try {
@@ -48,16 +49,16 @@ internal object PhotoDepthInput {
                 7 -> { setRotate(90f); postScale(1f, -1f) }; 8 -> setRotate(270f)
             } }
             upright = Bitmap.createBitmap(original, 0, 0, original.width, original.height, matrix, true)
-            val content = fit(upright.width, upright.height)
-            val input = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888)
+            val content = Content(0, 0, width, height)
+            val input = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
             try {
                 Canvas(input).apply {
                     drawColor(Color.BLACK)
                     drawBitmap(upright, null, Rect(content.x, content.y, content.x + content.width, content.y + content.height), Paint(Paint.FILTER_BITMAP_FLAG))
                 }
-                val pixels = IntArray(WIDTH * HEIGHT)
-                input.getPixels(pixels, 0, WIDTH, 0, 0, WIDTH, HEIGHT)
-                val rgb = ByteBuffer.allocateDirect(WIDTH * HEIGHT * 12).order(ByteOrder.LITTLE_ENDIAN)
+                val pixels = IntArray(width * height)
+                input.getPixels(pixels, 0, width, 0, 0, width, height)
+                val rgb = ByteBuffer.allocateDirect(width * height * 12).order(ByteOrder.LITTLE_ENDIAN)
                 for (shift in listOf(16, 8, 0)) for (pixel in pixels) rgb.putFloat(((pixel shr shift) and 255) / 255f)
                 rgb.rewind()
                 return Input(rgb, content)

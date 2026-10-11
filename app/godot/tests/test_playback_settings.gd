@@ -7,6 +7,10 @@ var failures: Array[String] = []
 
 class Host extends RefCounted:
 	var rates: Array = []
+	var alpha_fps: Array = []
+	func set_mpv_alpha_fps(fps: int) -> bool:
+		alpha_fps.append(fps)
+		return true
 	var accept := true
 	func set_mpv_speed(id: int, rate: float) -> bool:
 		if not accept: return false
@@ -143,6 +147,7 @@ func _run() -> void:
 	video._apply_geometry()
 	menu.refresh()
 	check(click(menu, Menu.PLAYBACK_SETTINGS) and not menu.text_snapshot().contains("Eye order"), "Mono playback settings hide eye order")
+	check(not menu._adjust_rows.has(454), "Flat video has no Alpha frame rate")
 	check(not reset_shown(menu, Menu.SPEED_RESET) and not click(menu, Menu.SPEED_RESET), "Default playback rate hides and disables reset")
 	for fraction in [0.0, 1.0]:
 		drag(menu, 453, fraction)
@@ -154,6 +159,20 @@ func _run() -> void:
 	check(not video.set_playback_speed(NAN) and not video.set_playback_speed(0) and not video.set_playback_speed(3.1), "Invalid rates are rejected")
 	host.accept = false
 	check(not video.set_playback_speed(2) and video.playback_speed == 1, "Rejected native change leaves displayed rate unchanged")
+	main.platform_plugin = host
+	video.geometry = 1
+	video._apply_geometry()
+	menu.refresh()
+	check(menu._adjust_rows.has(454) and menu._adjust_rows[454].label.text == "20 FPS", "VR180 playback settings show the Alpha frame rate at 20")
+	drag(menu, 454, 1.0)
+	check(host.alpha_fps.back() == 40 and main._menu_state().alpha_fps == 40 and menu._adjust_rows[454].label.text == "40 FPS", "Alpha frame rate reaches the bridge while dragging")
+	drag(menu, 454, 0.0)
+	var stored := ConfigFile.new()
+	check(host.alpha_fps.back() == 10 and stored.load(main.settings_path) == OK and stored.get_value("video", "alpha_fps") == 10, "Alpha frame rate persists on release at the 10 FPS minimum")
+	main._apply_alpha_fps(500)
+	check(host.alpha_fps.back() == 40, "Alpha frame rate is clamped to 40")
+	video.geometry = 0
+	video._apply_geometry()
 	video.stereo_sbs = true
 	menu.refresh()
 	check(menu._buttons.any(func(b): return b.node.get_children().any(func(n): return n is Label3D and n.text == "Eye order")), "Flat native stereo retains eye order")

@@ -57,6 +57,18 @@ func _run() -> void:
 		var half: Vector2 = pill._pill.mesh.size / 2
 		var pill_min := camera.unproject_position(pill.to_global(Vector3(-half.x, half.y, 0)))
 		var pill_max := camera.unproject_position(pill.to_global(Vector3(half.x, -half.y, 0)))
+		var footer_bounds: Array[Rect2] = []
+		for button in menu._buttons:
+			if button.target not in [menu.CLOSE_MENU, menu.FOLLOW, menu.TEMP_PASSTHROUGH]: continue
+			var rect: Rect2 = button.rect
+			var start := camera.unproject_position(menu.to_global(Vector3(rect.position.x,rect.end.y,0)))
+			var end := camera.unproject_position(menu.to_global(Vector3(rect.end.x,rect.position.y,0)))
+			footer_bounds.append(Rect2(start,end-start))
+		if menu._tooltip and menu._tooltip.visible:
+			var tip_half: Vector2 = menu._tooltip.mesh.size / 2
+			var start := camera.unproject_position(menu._tooltip.to_global(Vector3(-tip_half.x,tip_half.y,0)))
+			var end := camera.unproject_position(menu._tooltip.to_global(Vector3(tip_half.x,-tip_half.y,0)))
+			footer_bounds.append(Rect2(start,end-start))
 		var overflow := 0
 		for y in image.get_height():
 			for x in image.get_width():
@@ -64,6 +76,7 @@ func _run() -> void:
 					continue
 				if x >= pill_min.x and x <= pill_max.x and y >= pill_min.y and y <= pill_max.y:
 					continue
+				if footer_bounds.any(func(rect): return rect.has_point(Vector2(x,y))): continue
 				var pixel := image.get_pixel(x, y)
 				if minf(pixel.r, minf(pixel.g, pixel.b)) > 0.8: overflow += 1
 		overflow_pixels[str(section)] = overflow
@@ -117,6 +130,15 @@ func _run() -> void:
 	await RenderingServer.frame_post_draw
 	await RenderingServer.frame_post_draw
 	viewport.get_texture().get_image().save_png(output.path_join("playback_depth.png"))
+	# Requested but not running yet (cold model compile): the 3D icon carries a spinning ring.
+	state["depth_enabled"] = false
+	menu.update_pointer("left_hand", Vector3.ZERO, Vector3.ZERO, false)
+	menu.refresh()
+	await process_frame
+	await RenderingServer.frame_post_draw
+	await RenderingServer.frame_post_draw
+	if not menu._depth_busy or not menu._depth_busy.visible: push_error("Preparing 3D must show the busy ring")
+	viewport.get_texture().get_image().save_png(output.path_join("playback_depth_preparing.png"))
 	state.title = "Travel journal · VR180"
 	state.geometry = 1
 	state.stereo = true

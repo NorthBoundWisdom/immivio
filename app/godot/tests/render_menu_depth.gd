@@ -32,6 +32,7 @@ func power_pixels(image: Image, camera: Camera3D, pill: Node3D, charging: bool) 
 	var top_left := camera.unproject_position(pill._bolt.to_global(Vector3(-half.x, half.y, 0)))
 	var bottom_right := camera.unproject_position(pill._bolt.to_global(Vector3(half.x, -half.y, 0)))
 	var pixels := 0
+	check(top_left.x >= 0 and top_left.y >= 0 and bottom_right.x < image.get_width() and bottom_right.y < image.get_height(), "Power glyph fits depth fixture viewport")
 	for y in range(ceili(top_left.y), floori(bottom_right.y) + 1):
 		for x in range(ceili(top_left.x), floori(bottom_right.x) + 1):
 			var color := image.get_pixel(x, y)
@@ -48,6 +49,8 @@ func _run() -> void:
 	root.add_child(viewport)
 	var camera := Camera3D.new()
 	camera.position.z = 1.0
+	# Include the larger public footer without reducing its pixel density.
+	camera.position.y = -0.05
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 	camera.size = 1.0
 	viewport.add_child(camera)
@@ -88,8 +91,9 @@ func _run() -> void:
 	menu.device_status.refresh(true)
 	var occluder := MeshInstance3D.new()
 	occluder.mesh = BoxMesh.new()
-	occluder.mesh.size = Vector3(0.65, 0.65, 0.04)
+	occluder.mesh.size = Vector3(0.65, 0.95, 0.04)
 	occluder.position.z = 0.3
+	occluder.position.y = camera.position.y
 	var opaque := StandardMaterial3D.new()
 	opaque.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	opaque.albedo_color = Color(0.12, 0.7, 0.23)
@@ -103,6 +107,8 @@ func _run() -> void:
 		for x in range(115, 485):
 			if difference(front.get_pixel(x, y), model_only.get_pixel(x, y)) < 0.02: covered += 1
 	check(covered > 370 * 370 * 0.99, "Near model occludes panel, buttons, labels, icons, thumbnail and status pill")
+	var footer_pixel: Vector2i = camera.unproject_position(menu.device_status.global_position)
+	check(difference(front.get_pixelv(footer_pixel), model_only.get_pixelv(footer_pixel)) < 0.02, "Near model also occludes relocated footer status")
 	menu.visible = true
 	occluder.position.z = -0.3
 	var behind := await capture(viewport, "behind")

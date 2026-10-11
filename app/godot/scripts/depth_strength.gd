@@ -2,7 +2,7 @@ extends RefCounted
 ## Shared photo/video parallax scale. 1.0 preserves the original default; 2.0 is PTMediaServer's
 ## highest 2D->3D strength (its realtime menu offers 50..200%), which this player does not exceed.
 const MAX := 2.0
-const PHOTO_MAX := 1.0
+const PHOTO_MAX := 2.0 # stills match video; photo_limit_gradient keeps 200% hole fills clean
 const DEFAULT := 1.0
 const STEP := 0.01
 

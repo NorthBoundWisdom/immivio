@@ -15,6 +15,35 @@ class DlnaLibraryTest {
         """<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:BrowseResponse xmlns:u="urn:schemas-upnp-org:service:ContentDirectory:1"><u:Result>${escape(didl)}</u:Result><NumberReturned>$returned</NumberReturned><TotalMatches>$total</TotalMatches><UpdateID>$update</UpdateID></u:BrowseResponse></s:Body></s:Envelope>"""
     private val description = """<root><device><friendlyName>PT server</friendlyName><UDN>uuid:pt</UDN><serviceList><service><serviceType>urn:schemas-upnp-org:service:ContentDirectory:1</serviceType><controlURL>/control/cds</controlURL></service></serviceList></device></root>"""
 
+    @Test fun subtitlePrefixesMissingFromDidlDoNotBreakTheWholeDirectory() {
+        val body = """<container id="folder"><dc:title>Folder</dc:title></container>
+            <item id="with"><dc:title>Movie with subtitles</dc:title>
+                <res protocolInfo="http-get:*:video/mp4:*" pv:subtitleFileUri="/movie.ass" pv:subtitleFileType="ass">/movie.mp4</res>
+                <sec:CaptionInfoEx sec:type="srt">/movie.srt</sec:CaptionInfoEx></item>
+            <item id="without"><dc:title>Other movie</dc:title><res protocolInfo="http-get:*:video/mp4:*">/other.mp4</res></item>"""
+        val didl = """<?xml version="1.0" encoding="utf-8"?><DIDL-Lite xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/" xmlns:dc="http://purl.org/dc/elements/1.1/">$body</DIDL-Lite>"""
+        MediaServerClientTest.Fixture { _, _, _ -> MediaServerClientTest.Reply(body = soap(didl).toByteArray()) }.use { fixture ->
+            val entries = DlnaClient.browse(DlnaClient.Server("id", "test", fixture.url, fixture.url), "0")
+            assertEquals(3, entries.length())
+            val tracks = entries.getJSONObject(1).getJSONArray("subtitles")
+            assertEquals(2, tracks.length())
+            assertEquals(fixture.url + "/movie.srt", tracks.getJSONObject(0).getString("url"))
+            assertEquals(fixture.url + "/movie.ass", tracks.getJSONObject(1).getString("url"))
+        }
+    }
+
+    @Test fun captionNamespaceFallbackPreservesExplicitDeclarationsAndXmlValidation() {
+        val video = """<item id="1"><res protocolInfo="http-get:*:video/mp4:*">http://nas/movie.mp4</res>
+            <sec:CaptionInfoEx sec:type="srt">http://nas/movie.srt</sec:CaptionInfoEx></item>"""
+        val foreign = """<DIDL-Lite xmlns:sec="urn:other">$video</DIDL-Lite>"""
+        assertEquals(0, DlnaClient.didl(foreign).getJSONObject(0).getJSONArray("subtitles").length())
+        for (bad in listOf("<DIDL-Lite><unknown:caption/></DIDL-Lite>",
+            "<DIDL-Lite><item id=\"1\"><title>A & B</title></item></DIDL-Lite>",
+            "<DIDL-Lite/><DIDL-Lite/>", "text<DIDL-Lite/>",
+            "<!DOCTYPE DIDL-Lite [<!ENTITY x SYSTEM \"file:///private\">]><DIDL-Lite>&x;</DIDL-Lite>"))
+            assertThrows(Exception::class.java) { DlnaClient.didl(bad) }
+    }
+
     @Test fun manualLocationsValidateAndPreserveExplicitProxyPath() {
         assertEquals("http://192.168.2.10:8200", DlnaClient.address("192.168.2.10", "8200"))
         assertEquals("http://[::1]:8200", DlnaClient.address("::1", "8200"))

@@ -1,6 +1,6 @@
 extends SceneTree
 var failures: Array[String] = []
-var output := ProjectSettings.globalize_path("res://../../artifacts/compat-quality-20261007")
+var output := ProjectSettings.globalize_path("res://../../build/output/compat-quality-20261007")
 
 func _initialize() -> void: call_deferred("_run")
 func frame(viewport: SubViewport) -> Image:
@@ -10,6 +10,7 @@ func frame(viewport: SubViewport) -> Image:
 	return viewport.get_texture().get_image()
 
 func _run() -> void:
+	DirAccess.make_dir_recursive_absolute(output)
 	var viewport := SubViewport.new()
 	viewport.size = Vector2i(128,128)
 	viewport.transparent_bg = true

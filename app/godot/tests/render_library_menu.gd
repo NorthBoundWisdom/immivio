@@ -34,7 +34,7 @@ func _run() -> void:
 	var platform := Test.FakePlatform.new()
 	var menu := Menu.new()
 	menu.catalog = Catalog.new()
-	menu.settings_provider = func(): return {"profile": "320x320", "profiles": ["320x320", "384x216", "512x512"], "output_width": 0, "version": ProjectSettings.get_setting("application/config/version"), "display_quality_pending": true}
+	menu.settings_provider = func(): return {"profile": "320x320", "profiles": ["320x320", "384x216", "512x512"], "output_width": -1, "version": ProjectSettings.get_setting("application/config/version"), "display_quality_pending": true}
 	camera.add_child(menu)
 	menu.attach_platform(platform)
 	menu.storage_eject_requested.connect(func(volume): menu.finish_storage_release(volume.id))
@@ -72,6 +72,11 @@ func _run() -> void:
 		var image := viewport.get_texture().get_image()
 		# Bounds: the browser panel with the round actions and status pill under it, and the angled navigation column.
 		var corners: Array[Vector3] = [menu.to_global(Vector3(-0.6, 0.57, 0)), menu.to_global(Vector3(0.87, -0.76, 0))]
+		for button in menu._buttons:
+			if button.target not in [menu.CLOSE_MENU, menu.FOLLOW, menu.TEMP_PASSTHROUGH]: continue
+			var rect: Rect2 = button.rect
+			corners.append(menu.to_global(Vector3(rect.position.x,rect.end.y,0)))
+			corners.append(menu.to_global(Vector3(rect.end.x,rect.position.y,0)))
 		for corner in [Vector3(-0.22, 0.57, 0), Vector3(0.22, -0.57, 0), Vector3(-0.22, -0.57, 0), Vector3(0.22, 0.57, 0)]:
 			corners.append(menu._side.to_global(corner))
 		var top_left := Vector2(INF, INF)

@@ -4,7 +4,7 @@
 
 面向 Meta Quest 和 PICO 的独立 Android VR/MR 媒体播放器。使用 Godot OpenXR 构建界面，Kotlin 管理媒体与授权，libmpv/FFmpeg 解码，MNN OpenCL 执行人物抠像与深度推理。
 
-当前源码版本：**0.5.1**，Android versionCode **11**；另提供实验性的标准 OpenXR Android 导出目标。
+当前源码版本：**0.6.0**，Android versionCode **13**；另提供实验性的标准 OpenXR Android 导出目标。
 
 最低兼容目标为 **Quest 2、PICO Neo3**。源码和构建兼容不等于所有机型的性能、显示及交互均已实机验收。
 
@@ -22,7 +22,7 @@
 - 持久化时间点书签、最近播放源帧预览、分页浏览。
 - 手部/手柄可视化、锐度及平面屏幕调整。
 - VR 内账号管理和内嵌网页登录、速度优先与精确跳转。
-- 沉浸式图片展示、捏合横拖切图、相邻图片预加载和3D缓存；图片立体强度最高100%。
+- 沉浸式图片展示、捏合横拖切图、相邻图片预加载和3D缓存；图片立体强度最高200%。
 
 - 媒体服务器分区、筛选、详情和连续分页；收藏与外挂字幕取决于服务器能力，支持手动添加DLNA地址。
 - 图片距离/大小调整、按实际显示尺寸计算的2～8倍独立放大镜，以及按来源能力提供的文件管理。
@@ -51,7 +51,7 @@ $env:THRU3D_TOOL_ROOT = Join-Path $HOME '.cache/thru3d-toolchain'
 ./tools/Build-Player.ps1 -ToolRoot $env:THRU3D_TOOL_ROOT -UsePreparedModelAssets -XrVendor OpenXR
 ```
 
-输出在忽略的 `artifacts` 目录。自行生成的签名不一定可以覆盖已有发行版。Quest/PICO 分别使用对应厂商导出预设；标准 OpenXR 目标要求设备具备兼容运行时，PICO/通用打包检查不等同于真机验证。运行所需的 MIT 手部 glTF 网格随源码保留，AI 权重不入 Git。
+可重建输出放在忽略的 `build/output/`，短期数据放在 `tmp/`。正式发布归档、签名资料和个人备份使用持久目录，并始终排除于公开 Git。自行生成的签名不一定可以覆盖已有发行版。Quest/PICO 分别使用对应厂商导出预设；标准 OpenXR 目标要求设备具备兼容运行时，PICO/通用打包检查不等同于真机验证。运行所需的 MIT 手部 glTF 网格随源码保留，AI 权重不入 Git。
 
 ## 目录与操作
 
@@ -64,3 +64,11 @@ $env:THRU3D_TOOL_ROOT = Join-Path $HOME '.cache/thru3d-toolchain'
 项目原创源码采用 **GPL-3.0-only**，完整文本见 [LICENSE](LICENSE)。第三方组件及资源保留原许可；适用范围和二进制发行要求见 [许可说明](docs/LICENSING.md)。
 
 内嵌OpenList组件采用 **AGPL-3.0**；`cloud/openlist`包含Go适配源码，构建脚本和上游/依赖许可随源码保留。组合二进制发行还须履行适用的AGPL义务，详见许可说明。
+
+## 空间媒体与照片布局
+
+- HEIC/HEIF原生立体空间照片与iPhone MV-HEVC空间视频；空间视频可使用支持的人物透视路径，空间照片输出sRGB，不宣称原生HDR。
+- 两侧小图、照片墙和记忆碎片，异步加载反馈及布局记忆。
+- 普通平面照片人像透视、0～200%立体强度；原生立体/全景和多图总览不进入该人像路径。
+- 平面视频、单图/人像及菜单的会话内头显跟随，独立环境透视开关；不宣称永久空间锚点或整面照片墙随头锁定。
+- 视频双眼/左视角/右视角和逐片水平/垂直校正；单视角由双眼显示同一逻辑视角，不关闭另一块屏幕或改变头显IPD。

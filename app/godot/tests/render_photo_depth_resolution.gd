@@ -97,7 +97,7 @@ func _run() -> void:
 			var expected: float = -320.0 * zoom
 			results.append({"profile":"generated pair", "zoom":zoom, "shader_strength":strength,"display_disparity_px":left-right,"expected_px":expected})
 			if absf(left-right-expected)>1.0: failures.append("Generated pair changed eye order, cropping or was warped twice")
-	var output := ProjectSettings.globalize_path("res://../../artifacts/photo-depth-xz")
+	var output := ProjectSettings.globalize_path("res://../../build/output/photo-depth-xz")
 	DirAccess.make_dir_recursive_absolute(output)
 	var file := FileAccess.open(output.path_join("shader-resolution.json"), FileAccess.WRITE)
 	file.store_string(JSON.stringify({"checks": results, "failures": failures, "scope": "Desktop OpenGL real photo shader; fixed display size, forced eyes"}, "\t"))

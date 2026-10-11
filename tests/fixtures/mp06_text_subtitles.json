@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "file": "artifacts/fixtures/mp06_text_subtitles.mkv",
+  "file": "build/output/fixtures/mp06_text_subtitles.mkv",
   "sha256": "a7ab104057ec87ec586cedabf3ba582b4e7903b407499317c2563dac0aa0a1b7",
   "bytes": 201529,
   "streams": [

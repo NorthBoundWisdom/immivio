@@ -4,7 +4,7 @@ const Menu := preload("res://scripts/player_menu.gd")
 const Display := preload("res://scripts/xr_display.gd")
 var failures: Array[String] = []
 var checks := 0
-var output := ProjectSettings.globalize_path("res://../../artifacts/vr-alignment-20261010/alpha-menu")
+var output := ProjectSettings.globalize_path("res://../../build/output/vr-alignment-20261010/alpha-menu")
 
 func _initialize() -> void: _run.call_deferred()
 func check(ok: bool, message: String) -> void:

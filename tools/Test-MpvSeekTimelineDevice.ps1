@@ -1,5 +1,5 @@
-param([Parameter(Mandatory=$true)][string]$Serial, [string]$Apk='artifacts/quest3-player-slider-target-signed-debug.apk',
-    [string]$Output='artifacts/device/seek-timeline')
+param([Parameter(Mandatory=$true)][string]$Serial, [string]$Apk='build/output/quest3-player-slider-target-signed-debug.apk',
+    [string]$Output='build/output/device/seek-timeline')
 $ErrorActionPreference='Stop'
 $workspace=Split-Path -Parent $PSScriptRoot
 $directory=Join-Path $workspace $Output

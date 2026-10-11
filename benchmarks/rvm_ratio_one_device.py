@@ -72,10 +72,10 @@ def audit(directory):
     print(json.dumps(result), flush=True)
 
 def run():
-    output = ROOT / 'artifacts/rvm-ratio-one/device' / (datetime.now().strftime('%Y%m%d_%H%M%S') + '_' + uuid.uuid4().hex[:8])
+    output = ROOT / 'build/output/rvm-ratio-one/device' / (datetime.now().strftime('%Y%m%d_%H%M%S') + '_' + uuid.uuid4().hex[:8])
     output.mkdir(parents=True)
     remote = '/data/local/tmp/quest_ratio_one_' + uuid.uuid4().hex
-    build = read(ROOT / 'artifacts/ncnn-timestamp/build-verified.json')
+    build = read(ROOT / 'build/output/ncnn-timestamp/build-verified.json')
     elf = ROOT / 'build/ncnn-timestamp-android/rvm_timestamp'
     require(sha(elf) == build['elf_sha256'], 'Changed instrumented executable')
     shutil.copy2(elf, output / 'rvm_timestamp')

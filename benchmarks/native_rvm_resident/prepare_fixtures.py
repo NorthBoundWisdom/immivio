@@ -23,7 +23,7 @@ def main() -> None:
     parser.add_argument('--source-directory', type=Path)
     parser.add_argument('--output', type=Path)
     args = parser.parse_args()
-    source = args.source_directory or ROOT / "artifacts/rvm-ncnn-reference" / args.profile
+    source = args.source_directory or ROOT / "build/output/rvm-ncnn-reference" / args.profile
     model = args.model_directory or ROOT / "build/rvm" / args.profile
     profile = json.loads((model / "profile.json").read_text(encoding="utf-8"))
     destination = args.output or ROOT / "build/rvm-resident-fixtures" / args.profile

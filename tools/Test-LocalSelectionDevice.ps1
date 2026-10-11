@@ -5,15 +5,15 @@ $workspace=Split-Path -Parent $PSScriptRoot
 $adb=Join-Path $env:ANDROID_HOME 'platform-tools/adb.exe'
 $package='com.wapok.thru3d'
 $provider='org.vrpassthroughplayer.urifixture'
-$directory=Join-Path $workspace ('artifacts/device/'+(Get-Date -Format 'yyyyMMdd_HHmmss')+'_selection_'+[guid]::NewGuid().ToString('N'))
+$directory=Join-Path $workspace ('build/output/device/'+(Get-Date -Format 'yyyyMMdd_HHmmss')+'_selection_'+[guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $directory -Force | Out-Null
-$build=Get-Content "$workspace/artifacts/build_manifest.json" -Raw | ConvertFrom-Json
-Copy-Item "$workspace/artifacts/build_manifest.json" $directory
-if ((Get-FileHash "$workspace/artifacts/quest3-player-debug.apk" -Algorithm SHA256).Hash.ToLowerInvariant() -ne $build.apk_sha256) { throw 'Local APK differs' }
+$build=Get-Content "$workspace/build/output/build_manifest.json" -Raw | ConvertFrom-Json
+Copy-Item "$workspace/build/output/build_manifest.json" $directory
+if ((Get-FileHash "$workspace/build/output/quest3-player-debug.apk" -Algorithm SHA256).Hash.ToLowerInvariant() -ne $build.apk_sha256) { throw 'Local APK differs' }
 & $adb -s $Serial shell dumpsys power | Set-Content "$directory/power-before.txt"
 & $adb -s $Serial shell dumpsys battery | Set-Content "$directory/battery-before.txt"
 if ($Install) {
-    & $adb -s $Serial install -r "$workspace/artifacts/quest3-player-debug.apk" | Set-Content "$directory/install.txt"
+    & $adb -s $Serial install -r "$workspace/build/output/quest3-player-debug.apk" | Set-Content "$directory/install.txt"
     if ($LASTEXITCODE -ne 0) { throw 'Player install failed' }
     & $adb -s $Serial install -r "$workspace/android/uri-fixture/build/outputs/apk/debug/uri-fixture-debug.apk" | Set-Content "$directory/provider-install.txt"
     if ($LASTEXITCODE -ne 0) { throw 'Provider install failed' }

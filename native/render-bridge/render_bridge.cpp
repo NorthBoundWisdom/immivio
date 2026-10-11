@@ -18,6 +18,7 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include "../rvm/photo_depth.h"
 #include <unordered_map>
 #include <vector>
 
@@ -1035,8 +1036,18 @@ void photo_stereo(const unsigned char* rgba, int w, int h, const float* near, in
     image(slot.color, w, h);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
-    std::vector<float> right(near, near + static_cast<size_t>(mw) * mh);
-    bridge.upload_alpha(1, near, right.data());
+    // Limit the near map's falls for this strength (render_warp's own half shift, in model columns),
+    // so the unchanged hole fill cannot repeat the subject's contour outside it.
+    std::vector<float> limited(near, near + static_cast<size_t>(mw) * mh);
+    const float shift = 0.035f * strength;
+    const float half = shift > 0.f ? std::max(2.f, std::min(96.f, w * shift)) * 0.5f : 0.f;
+    const int cx = std::clamp(static_cast<int>(std::lround(rect[0] * mw)), 0, mw - 1);
+    const int cy = std::clamp(static_cast<int>(std::lround(rect[1] * mh)), 0, mh - 1);
+    const int cw = std::clamp(static_cast<int>(std::lround(rect[2] * mw)), 1, mw - cx);
+    const int ch = std::clamp(static_cast<int>(std::lround(rect[3] * mh)), 1, mh - cy);
+    quest::photo_limit_gradient(limited.data(), mw, mh, cx, cy, cw, ch, half * rect[2] * mw / w);
+    std::vector<float> right(limited);
+    bridge.upload_alpha(1, limited.data(), right.data());
     // Use render_warp directly: the video width cap is a realtime budget, not a still-photo cap.
     bridge.render_warp(slot, 0.035f * strength, 0.35f);
     glBindBuffer(GL_PIXEL_PACK_BUFFER, 0); glPixelStorei(GL_PACK_ALIGNMENT, 1);

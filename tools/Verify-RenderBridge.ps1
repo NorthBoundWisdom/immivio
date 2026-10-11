@@ -2,9 +2,9 @@ param([string]$ToolRoot = $(if ($env:THRU3D_TOOL_ROOT) { $env:THRU3D_TOOL_ROOT }
 $ErrorActionPreference = 'Stop'
 $workspace = Split-Path -Parent $PSScriptRoot
 . "$PSScriptRoot\environment\Activate-QuestEnvironment.ps1" -ToolRoot $ToolRoot
-$apk = if ($ApkPath) { $ApkPath } else { Join-Path $workspace 'artifacts\quest3-player-debug.apk' }
-$nativeDirectory = Join-Path $workspace 'artifacts\native'
-$logDirectory = Join-Path $workspace 'artifacts\logs'
+$apk = if ($ApkPath) { $ApkPath } else { Join-Path $workspace 'build\output\quest3-player-debug.apk' }
+$nativeDirectory = Join-Path $workspace 'build\output\native'
+$logDirectory = Join-Path $workspace 'build\output\logs'
 New-Item -ItemType Directory -Force -Path $nativeDirectory, $logDirectory | Out-Null
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $archive = [IO.Compression.ZipFile]::OpenRead($apk)
@@ -72,5 +72,5 @@ foreach ($variant in @('debug','release')) {
 @{ schema_version = 1; state = 'passed'; scope = 'APK packaging/ELF/DEX; device execution not inferred';
     apk_sha256 = (Get-FileHash -LiteralPath $apk -Algorithm SHA256).Hash.ToLowerInvariant(); jni_exports = 15;
     debug_only_receiver_input_checks = 'passed' } |
-    ConvertTo-Json | Set-Content (Join-Path $workspace 'artifacts\r02-build-check.json') -Encoding utf8
+    ConvertTo-Json | Set-Content (Join-Path $workspace 'build\output\r02-build-check.json') -Encoding utf8
 Write-Output 'R02 render bridge packaging checks passed.'

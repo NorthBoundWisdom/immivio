@@ -1,7 +1,7 @@
 extends SceneTree
 const Menu := preload("res://scripts/photo_menu.gd")
 const I18n := preload("res://scripts/i18n.gd")
-var output := ProjectSettings.globalize_path("res://../../artifacts/photo-adjustments-preview")
+var output := ProjectSettings.globalize_path("res://../../build/output/photo-adjustments-preview")
 var failures: Array[String] = []
 var viewport: SubViewport
 var camera: Camera3D
@@ -26,11 +26,19 @@ func snapshot(name: String, guard_text: bool = true) -> void:
 	var pill_half: Vector2 = pill._pill.mesh.size / 2
 	var pill_upper := camera.unproject_position(pill.to_global(Vector3(-pill_half.x, pill_half.y, 0)))
 	var pill_lower := camera.unproject_position(pill.to_global(Vector3(pill_half.x, -pill_half.y, 0)))
+	var footer_bounds: Array[Rect2] = []
+	for button in menu._buttons:
+		if button.target not in [menu.CLOSE_MENU, menu.FOLLOW, menu.TEMP_PASSTHROUGH]: continue
+		var rect: Rect2 = button.rect
+		var start := camera.unproject_position(menu.to_global(Vector3(rect.position.x,rect.end.y,0)))
+		var end := camera.unproject_position(menu.to_global(Vector3(rect.end.x,rect.position.y,0)))
+		footer_bounds.append(Rect2(start,end-start))
 	var overflow := 0
 	for y in image.get_height():
 		for x in image.get_width():
 			if x >= upper.x - 2 and x <= lower.x + 2 and y >= upper.y - 2 and y <= lower.y + 2: continue
 			if x >= pill_upper.x - 2 and x <= pill_lower.x + 2 and y >= pill_upper.y - 2 and y <= pill_lower.y + 2: continue
+			if footer_bounds.any(func(rect): return rect.has_point(Vector2(x,y))): continue
 			var color := image.get_pixel(x, y)
 			if minf(color.r, minf(color.g, color.b)) > 0.8: overflow += 1
 	if overflow > 0: failures.append("%s: %d white text pixels outside the panel" % [name, overflow])

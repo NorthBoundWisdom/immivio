@@ -19,6 +19,7 @@ internal class MediaSources(
     private val network = Executors.newSingleThreadExecutor { Thread(it, "QuestMediaNetwork") }
     private val cloudNetwork = Executors.newSingleThreadExecutor { Thread(it, "QuestCloudNetwork") }
     private val cloudBrowseRequests = CloudBrowseRequests()
+    private val photoDirectoryRequests = CloudBrowseRequests()
     private val local = LocalVideoLibrary(host, emit)
     @Volatile private var fileManagementEnabled = false
     fun setFileManagement(enabled: Boolean) {
@@ -114,6 +115,18 @@ internal class MediaSources(
         return id
     }
     fun cloudCancel(id: Int) = cloudBrowseRequests.cancel(id)
+    fun photoDirectoryPage(path: String, offset: Int, order: String): Int {
+        val id = nextId()
+        photoDirectoryRequests.submit(id, { cancellation ->
+            val result = try {
+                CloudLibrary.start(context() ?: error("Activity unavailable"))
+                CloudLibrary.browse(path, false, offset, cancellation, order).put("state", "ready")
+            } catch (_: Exception) { JSONObject().put("state", "error").put("error", "PHOTO_DIRECTORY_UNAVAILABLE") }
+            result.put("path", path).put("offset", offset).put("order", order).toString()
+        }, emit)
+        return id
+    }
+    fun photoDirectoryCancel(id: Int) = photoDirectoryRequests.cancel(id)
 
     fun cloudRemove(id: String): Int = run("cloud") {
         CloudLibrary.start(context() ?: error("Activity unavailable"))
@@ -236,7 +249,7 @@ internal class MediaSources(
         stopped = true
         CloudAccountChanges.unsubscribe(cloudAccountChanged)
         mediaServers.close()
-        cloudBrowseRequests.close()
+        cloudBrowseRequests.close(); photoDirectoryRequests.close()
         network.shutdownNow(); cloudNetwork.shutdownNow(); local.close()
         CloudLibrary.stopStreams()
         CloudWebDav.stop()

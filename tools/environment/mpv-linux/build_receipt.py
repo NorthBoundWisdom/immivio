@@ -54,7 +54,7 @@ def main():
     temp.write_text(json.dumps(record, indent=2)+'\n')
     temp.replace(RECEIPT)
     if action == 'finish':
-        (ROOT/'artifacts/mpv-source-build-receipt.json').write_bytes(RECEIPT.read_bytes())
+        (ROOT/'build/output/mpv-source-build-receipt.json').write_bytes(RECEIPT.read_bytes())
 
 
 if __name__ == '__main__':

@@ -3,7 +3,7 @@ const Photo := preload("res://scripts/photo_display.gd")
 var failures: Array[String] = []
 var checks := 0
 var viewport: SubViewport
-var output := ProjectSettings.globalize_path("res://../../artifacts/photo-immersive")
+var output := ProjectSettings.globalize_path("res://../../build/output/photo-immersive")
 
 func check(ok: bool, message: String) -> void:
 	checks += 1
@@ -137,6 +137,19 @@ func _run() -> void:
 	var magnified: Image = await frame()
 	check(photo.depth_enabled and photo.material.get_shader_parameter("photo_depth") and magnified.get_width() == 960,
 		"Converted photo still renders in 3D after whole-photo scale and pan")
+	photo.loading = true; photo.pending_index = 1; photo._requested_direction = 1
+	photo._show_placeholder(1, {"width":6000,"height":4000,"orientation":6})
+	photo._transition_time = photo.TRANSITION_SECONDS * .5; photo._update_transition()
+	var pending: Image = await frame()
+	pending.save_png(output.path_join("loading-midpoint.png"))
+	check(is_instance_valid(photo._departing) and photo._placeholder.position.x > photo.flat_pose.origin.x,
+		"Slow load renders an incoming placeholder during the selection slide")
+	photo.finish_transition()
+	pending = await frame(); pending.save_png(output.path_join("loading-portrait.png"))
+	var frost := pending.get_pixel(480,300)
+	check(frost.r > .02 and frost.r < .5 and frost.b > .2, "Frosted placeholder is visible and translucent over the environment")
+	check(is_equal_approx(photo._placeholder_size.x / photo._placeholder_size.y, 2.0 / 3.0), "Rendered placeholder has the EXIF-correct portrait aspect")
+	photo.loading = false; photo._restore_display()
 	photo.free(); viewport.free()
 	for failure in failures: push_error(failure)
 	print("Immersive photo render: %d checks, %d failures" % [checks, failures.size()])

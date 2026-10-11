@@ -6,7 +6,7 @@ var photo: Node3D
 var failures: Array[String] = []
 var checks := 0
 var measurements: Array = []
-var output := ProjectSettings.globalize_path("res://../../artifacts/photo-magnifier-scale")
+var output := ProjectSettings.globalize_path("res://../../build/output/photo-magnifier-scale")
 
 func check(ok: bool, message: String) -> void:
 	checks += 1

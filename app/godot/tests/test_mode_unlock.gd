@@ -19,7 +19,7 @@ func locks(menu: Node3D) -> int:
 
 func _run() -> void:
 	var main := Main.new()
-	main.settings_path = ProjectSettings.globalize_path("res://../../artifacts/vr-alignment-20261010/mode-unlock.cfg")
+	main.settings_path = ProjectSettings.globalize_path("res://../../build/output/vr-alignment-20261010/mode-unlock.cfg")
 	DirAccess.make_dir_recursive_absolute(main.settings_path.get_base_dir())
 	main.settings.save(main.settings_path)
 	root.add_child(main)

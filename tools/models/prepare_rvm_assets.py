@@ -114,7 +114,7 @@ def main() -> None:
         if key != f'{spec["width"]}x{spec["height"]}':
             raise ValueError("Invalid allowlist profile")
         current = argparse.Namespace(profile=ROOT / "build/rvm" / key,
-                                     report=ROOT / "artifacts/rvm-ncnn-reference" / key / "report.json", output=args.output)
+                                     report=ROOT / "build/output/rvm-ncnn-reference" / key / "report.json", output=args.output)
         bundle, descriptor = package_profile(current, key, shared)
         bundles.append(bundle)
         descriptors.append(descriptor)

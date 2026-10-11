@@ -3,8 +3,27 @@ $ErrorActionPreference = 'Stop'
 $workspace = Split-Path -Parent $PSScriptRoot
 . "$PSScriptRoot\environment\Activate-QuestEnvironment.ps1" -ToolRoot $ToolRoot
 $projectDirectory = Join-Path $workspace 'app\godot'
-$logDirectory = Join-Path $workspace 'artifacts\logs'
+New-Item -ItemType Directory -Path (Join-Path $workspace 'build/output') -Force | Out-Null
+& $env:GODOT_EXE --headless --xr-mode off --path $projectDirectory --quit-after 1800 --script res://tests/test_photo_portrait.gd 2>&1 | Tee-Object -FilePath (Join-Path $workspace 'build/output/photo-portrait-host.log')
+if ($LASTEXITCODE -ne 0 -or (Get-Content (Join-Path $workspace 'build/output/photo-portrait-host.log') -Raw) -match '(?m)^(SCRIPT ERROR:|ERROR:)') { throw 'Photo portrait regression failed.' }
+& $env:GODOT_EXE --xr-mode off --rendering-method gl_compatibility --rendering-driver opengl3 --path $projectDirectory --quit-after 1800 --script res://tests/render_photo_portrait.gd 2>&1 | Tee-Object -FilePath (Join-Path $workspace 'build/output/photo-portrait-render.log')
+if ($LASTEXITCODE -ne 0 -or (Get-Content (Join-Path $workspace 'build/output/photo-portrait-render.log') -Raw) -match '(?m)^(SCRIPT ERROR:|SHADER ERROR:|ERROR:)') { throw 'Photo portrait pixels failed.' }
+$logDirectory = Join-Path $workspace 'build\output\logs'
 New-Item -ItemType Directory -Path $logDirectory -Force | Out-Null
+& $env:GODOT_EXE --headless --xr-mode off --path $projectDirectory --quit-after 1800 --script res://tests/test_view_follow.gd 2>&1 | Tee-Object -FilePath (Join-Path $logDirectory 'view-follow-host.log')
+if ($LASTEXITCODE -ne 0 -or (Get-Content (Join-Path $logDirectory 'view-follow-host.log') -Raw) -match '(?m)^(SCRIPT ERROR:|SHADER ERROR:|ERROR:)') { throw 'View follow and session footer regression failed.' }
+& $env:GODOT_EXE --headless --xr-mode off --path $projectDirectory --quit-after 1800 --script res://tests/test_photo_layouts.gd 2>&1 | Tee-Object -FilePath (Join-Path $logDirectory 'photo-layouts-host.log')
+if ($LASTEXITCODE -ne 0 -or (Get-Content (Join-Path $logDirectory 'photo-layouts-host.log') -Raw) -match '(?m)^(SCRIPT ERROR:|ERROR:)') { throw 'Photo layout regression failed.' }
+& $env:GODOT_EXE --headless --xr-mode off --path $projectDirectory --quit-after 1800 --script res://tests/test_memory_swipe.gd 2>&1 | Tee-Object -FilePath (Join-Path $logDirectory 'memory-swipe-host.log')
+if ($LASTEXITCODE -ne 0 -or (Get-Content (Join-Path $logDirectory 'memory-swipe-host.log') -Raw) -match '(?m)^(SCRIPT ERROR:|ERROR:)') { throw 'Memory displacement swipe regression failed.' }
+& $env:GODOT_EXE --xr-mode off --rendering-method gl_compatibility --rendering-driver opengl3 --path $projectDirectory --quit-after 1800 --script res://tests/render_photo_layouts.gd 2>&1 | Tee-Object -FilePath (Join-Path $logDirectory 'photo-layouts-render.log')
+if ($LASTEXITCODE -ne 0 -or (Get-Content (Join-Path $logDirectory 'photo-layouts-render.log') -Raw) -match '(?m)^(SCRIPT ERROR:|SHADER ERROR:|ERROR:)') { throw 'Photo layout rendering failed.' }
+& $env:GODOT_EXE --headless --xr-mode off --path $projectDirectory --quit-after 1800 --script res://tests/test_spatial_photos.gd 2>&1 | Tee-Object -FilePath (Join-Path $logDirectory 'spatial-photos-host.log')
+if ($LASTEXITCODE -ne 0 -or (Get-Content (Join-Path $logDirectory 'spatial-photos-host.log') -Raw) -match '(?m)^(SCRIPT ERROR:|ERROR:)') { throw 'Spatial photo regression failed.' }
+& $env:GODOT_EXE --xr-mode off --rendering-method gl_compatibility --rendering-driver opengl3 --path $projectDirectory --quit-after 1800 --script res://tests/render_spatial_photos.gd 2>&1 | Tee-Object -FilePath (Join-Path $logDirectory 'spatial-photos-render.log')
+if ($LASTEXITCODE -ne 0 -or (Get-Content (Join-Path $logDirectory 'spatial-photos-render.log') -Raw) -match '(?m)^(SCRIPT ERROR:|SHADER ERROR:|ERROR:)') { throw 'Spatial eye/disparity rendering failed.' }
+& $env:GODOT_EXE --headless --xr-mode off --path $projectDirectory --quit-after 1800 --script res://tests/test_photo_loading.gd 2>&1 | Tee-Object -FilePath (Join-Path $logDirectory 'photo-loading-host.log')
+if ($LASTEXITCODE -ne 0 -or (Get-Content (Join-Path $logDirectory 'photo-loading-host.log') -Raw) -match '(?m)^(SCRIPT ERROR:|ERROR:)') { throw 'Photo loading feedback regression failed.' }
 & $env:GODOT_EXE --headless --xr-mode off --path $projectDirectory --quit-after 1800 --script res://tests/test_photo_depth_payload.gd 2>&1 | Tee-Object -FilePath (Join-Path $logDirectory 'photo-depth-payload.log')
 if ($LASTEXITCODE -ne 0 -or (Get-Content (Join-Path $logDirectory 'photo-depth-payload.log') -Raw) -match '(?m)^(SCRIPT ERROR:|ERROR:)') { throw 'Photo depth payload regression failed.' }
 & $env:GODOT_EXE --xr-mode off --rendering-method gl_compatibility --rendering-driver opengl3 --path $projectDirectory --quit-after 1800 --script res://tests/render_photo_depth_resolution.gd 2>&1 | Tee-Object -FilePath (Join-Path $logDirectory 'photo-depth-resolution.log')
@@ -103,6 +122,8 @@ if ($LASTEXITCODE -ne 0 -or (Get-Content (Join-Path $logDirectory 'in-app-accoun
 if ($LASTEXITCODE -ne 0 -or (Get-Content (Join-Path $logDirectory 'plex-accounts-host.log') -Raw) -match '(?m)^(SCRIPT ERROR:|ERROR:)') { throw 'Plex account UI regression failed.' }
 & $env:GODOT_EXE --headless --xr-mode off --path $projectDirectory --quit-after 1800 --script res://tests/test_media_naming.gd 2>&1 | Tee-Object -FilePath (Join-Path $logDirectory 'media-naming-host.log')
 if ($LASTEXITCODE -ne 0) { throw 'Media naming host regression failed.' }
+& $env:GODOT_EXE --headless --xr-mode off --path $projectDirectory --quit-after 1800 --script res://tests/test_spatial_videos.gd 2>&1 | Tee-Object -FilePath (Join-Path $logDirectory 'spatial-videos-host.log')
+if ($LASTEXITCODE -ne 0 -or (Get-Content (Join-Path $logDirectory 'spatial-videos-host.log') -Raw) -match '(?m)^(SCRIPT ERROR:|ERROR:)') { throw 'Spatial video layout regression failed.' }
 & $env:GODOT_EXE --headless --xr-mode off --path $projectDirectory --quit-after 1800 --script res://tests/test_playback_settings.gd 2>&1 | Tee-Object -FilePath (Join-Path $logDirectory 'playback-settings-host.log')
 if ($LASTEXITCODE -ne 0 -or (Get-Content (Join-Path $logDirectory 'playback-settings-host.log') -Raw) -match '(?m)^(SCRIPT ERROR:|SHADER ERROR:|ERROR:)') { throw 'Playback settings regression failed.' }
 # Alpha-packed fisheye files decoded by the MPV pair shader (desktop OpenGL).
@@ -140,7 +161,7 @@ if ($LASTEXITCODE -ne 0 -or (Get-Content (Join-Path $logDirectory 'photo-magnifi
 & $env:GODOT_EXE --xr-mode off --rendering-method gl_compatibility --rendering-driver opengl3 --path $projectDirectory --quit-after 3000 --script res://tests/test_background.gd 2>&1 | Tee-Object -FilePath (Join-Path $logDirectory 'background-test.log')
 if ($LASTEXITCODE -ne 0 -or (Get-Content (Join-Path $logDirectory 'background-test.log') -Raw) -match '(?m)^(SCRIPT ERROR:|SHADER ERROR:|ERROR:)') { throw 'Application background regression failed.' }
 if ($RenderPreview) {
-    $env:QUEST_PREVIEW_PATH = Join-Path $workspace 'artifacts\calibration-preview.png'
+    $env:QUEST_PREVIEW_PATH = Join-Path $workspace 'build\output\calibration-preview.png'
     $stdoutPath = Join-Path $logDirectory 'preview-render.log'
     $stderrPath = Join-Path $logDirectory 'preview-render-errors.log'
     $arguments = @('--xr-mode','off','--rendering-method','gl_compatibility','--rendering-driver','opengl3','--path',$projectDirectory,'--script','res://tests/render_calibration.gd')
@@ -151,7 +172,7 @@ if ($RenderPreview) {
     if ($renderLog -match '(?m)^(SCRIPT ERROR:|SHADER ERROR:|ERROR:)') { throw 'OpenGL preview reported errors.' }
     if (-not (Test-Path -LiteralPath $env:QUEST_PREVIEW_PATH)) { throw 'OpenGL preview did not produce an image.' }
     Write-Output "Preview: $env:QUEST_PREVIEW_PATH"
-    $env:QUEST_VIDEO_UV_PATH = Join-Path $workspace 'artifacts\video-uv-preview.png'
+    $env:QUEST_VIDEO_UV_PATH = Join-Path $workspace 'build\output\video-uv-preview.png'
     $uvStdout = Join-Path $logDirectory 'video-uv-render.log'
     $uvStderr = Join-Path $logDirectory 'video-uv-render-errors.log'
     $uvArguments = @('--xr-mode','off','--rendering-method','gl_compatibility','--rendering-driver','opengl3','--path',$projectDirectory,'--script','res://tests/render_video_uv.gd')
@@ -162,7 +183,7 @@ if ($RenderPreview) {
     if ($uvLog -match '(?m)^(SCRIPT ERROR:|SHADER ERROR:|ERROR:)') { throw 'C03 video UV render reported errors.' }
     if (-not (Test-Path -LiteralPath $env:QUEST_VIDEO_UV_PATH)) { throw 'C03 video UV render did not produce an image.' }
     Write-Output "Video UV preview: $env:QUEST_VIDEO_UV_PATH"
-    $env:QUEST_C04_ALPHA_PATH = Join-Path $workspace 'artifacts\c04-alpha-preview.png'
+    $env:QUEST_C04_ALPHA_PATH = Join-Path $workspace 'build\output\c04-alpha-preview.png'
     $alphaStdout = Join-Path $logDirectory 'c04-render.log'
     $alphaStderr = Join-Path $logDirectory 'c04-render-errors.log'
     $alphaArguments = @('--xr-mode','off','--rendering-method','gl_compatibility','--rendering-driver','opengl3','--path',$projectDirectory,'--script','res://tests/render_c04_alpha.gd')
@@ -173,7 +194,7 @@ if ($RenderPreview) {
     if ($alphaLog -match '(?m)^(SCRIPT ERROR:|SHADER ERROR:|ERROR:)') { throw 'C04 render reported errors.' }
     if (-not (Test-Path -LiteralPath $env:QUEST_C04_ALPHA_PATH)) { throw 'C04 render did not produce an image.' }
     Write-Output "C04 Alpha preview: $env:QUEST_C04_ALPHA_PATH"
-    $env:QUEST_R03_PAIR_PATH = Join-Path $workspace 'artifacts\r03-pair-render.json'
+    $env:QUEST_R03_PAIR_PATH = Join-Path $workspace 'build\output\r03-pair-render.json'
     $pairStdout = Join-Path $logDirectory 'r03-pair-render.log'
     $pairStderr = Join-Path $logDirectory 'r03-pair-render-errors.log'
     $pairArguments = @('--xr-mode','off','--rendering-method','gl_compatibility','--rendering-driver','opengl3','--path',$projectDirectory,'--script','res://tests/render_r03_pair.gd')

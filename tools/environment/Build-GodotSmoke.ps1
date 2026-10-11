@@ -2,7 +2,7 @@ param([string]$ToolRoot = $(if ($env:THRU3D_TOOL_ROOT) { $env:THRU3D_TOOL_ROOT }
 $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot\Activate-QuestEnvironment.ps1" -ToolRoot $ToolRoot
 $projectDirectory = Join-Path $ToolRoot 'build\godot-smoke'
-$artifactDirectory = Join-Path $ToolRoot 'artifacts'
+$artifactDirectory = Join-Path $ToolRoot 'build/output'
 $logDirectory = Join-Path $ToolRoot 'logs'
 foreach ($directory in @($projectDirectory, $artifactDirectory, $logDirectory)) {
     New-Item -ItemType Directory -Path $directory -Force | Out-Null

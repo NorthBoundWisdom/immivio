@@ -44,6 +44,12 @@ const SUBTITLE_POSITION := 292
 const PLAYBACK_SETTINGS := 470
 const ROTATION_RESET := 471
 const SPEED_RESET := 472
+const StereoView := preload("res://scripts/stereo_view.gd")
+const VIEWING_EYE := 480
+const EYE_SWAP := 483
+const ALIGNMENT_RESET := 484
+const ALIGNMENT_HORIZONTAL := 485
+const ALIGNMENT_VERTICAL := 486
 
 ## The bar already carries video mode, recenter, volume and subtitles, and Alpha resolution
 ## lives in the library's Settings: this panel keeps only what neither has.
@@ -51,9 +57,9 @@ const TABS := ["Playback", "Settings", "Info"]
 const OPERATIONS := [
 	["recent", "previous_video", "play", "next_video", "alpha", "projection", "stereo", "stop", "recenter", "mute", "subtitles",
 		"audio", "depth"],
-	["color_grade", "loop", "seek_mode", "eyes"],
+	["color_grade", "loop", "seek_mode", "stereo_view"],
 	["capabilities"]]
-const HEADINGS := ["Color grading", "Loop", "Video time positioning", "Eye order"]
+const HEADINGS := ["Color grading", "Loop", "Video time positioning", "Stereo viewing"]
 const SETTING_ICONS := ["settings", "loop", "history", "eyes"]
 const Surface := preload("res://scripts/media_surface.gd")
 ## Flat screen curve steps (the video's CURVES) and their names.
@@ -76,7 +82,8 @@ var section := 0:
 		var previous := section
 		section = value
 		if lift_panels and is_inside_tree() and (previous == 0) != (value == 0):
-			global_position.y += 0.45 if value != 0 else -0.45
+			global_position += global_basis.y * (0.45 if value != 0 else -0.45)
+			placement_changed.emit()
 var _state: Dictionary = {}
 var _status: Label3D
 var _info: Label3D
@@ -103,6 +110,9 @@ var _depth_sent := -1
 var _depth_fill: MeshInstance3D
 var _depth_knob: MeshInstance3D
 var _depth_label: Label3D
+## Comet arc around the bar's 3D icon while depth is requested but not yet running (cold model compile).
+var _depth_busy: MeshInstance3D
+static var _busy_shader: Shader
 var _subtitle_open := false
 var _subtitle_offset := 0
 var _subtitle_scroll := 0.0
@@ -164,8 +174,9 @@ func refresh_values() -> void:
 		return
 	_state = state_provider.call() if state_provider.is_valid() else {}
 	if not _adjustment.is_empty():
-		if _adjustment == "screen" and _settings_drawn != _settings_key():
+		if _adjustment in ["screen", "stereo_view"] and _settings_drawn != _settings_key():
 			_finish_adjustment()
+			if _adjustment == "stereo_view" and not _enabled("stereo_view"): _adjustment = ""
 			refresh()
 			return
 		_refresh_adjustments()
@@ -240,6 +251,7 @@ func _draw() -> void:
 	_depth_fill = null
 	_depth_knob = null
 	_depth_label = null
+	_depth_busy = null
 	_subtitle_ids = {}
 	_adjust_rows = {}
 	_preset_buttons = {}
@@ -281,10 +293,13 @@ func _draw_bar() -> void:
 	_round(102, "pause" if _pausable() else "play", Vector2(0, row), 0.095, _enabled("play"), true,
 		I18n.t("Pause" if _pausable() else "Play"))
 	_glyph(103, "next_video", Vector2(0.13, row), 0.08, _enabled("next_video"), I18n.t("Next video"))
-	# Both effects stay directly on the bar; unsupported source modes dim their buttons.
-	_glyph(104, "alpha", Vector2(0.23, row), 0.075, _enabled("alpha"), I18n.t("Passthrough"))
-	_glyph(112, "depth", Vector2(0.32, row), 0.075, _enabled("depth"), I18n.t("Auto 3D"))
-	_glyph(MODE, "view_mode", Vector2(0.41, row), 0.075, true, I18n.t("Video mode"))
+	var spatial := bool(_state.get("spatial_video", false))
+	if spatial: _close_depth_slider()
+	_glyph(104, "alpha", Vector2(0.26 if spatial else 0.23, row), 0.075, _enabled("alpha"), I18n.t("Passthrough"))
+	if not spatial:
+		_glyph(112, "depth", Vector2(0.32, row), 0.075, _enabled("depth"), I18n.t("Auto 3D"))
+		_depth_busy = _busy_ring(_buttons.back().node, 0.075)
+	_glyph(MODE, "view_mode", Vector2(0.38 if spatial else 0.41, row), 0.075, true, I18n.t("Video mode"))
 	_glyph(11, "settings", Vector2(0.5, row), 0.075, true, I18n.t("Settings"))
 	_seek_bar(-0.08)
 	# Floating actions above the bar.
@@ -403,7 +418,7 @@ func _scroll_subtitles(rows: int) -> void:
 		refresh()
 
 func _can_depth() -> bool:
-	return _state.get("has_video", false) and int(_state.get("geometry", 0)) == 0 and not _state.get("stereo", false)
+	return _state.get("has_video", false) and not _state.get("spatial_video", false) and int(_state.get("geometry", 0)) == 0 and not _state.get("stereo", false)
 
 func _toggle_depth_slider() -> void:
 	if not _can_depth(): return
@@ -616,6 +631,7 @@ func release_pointer(hand: String, _origin: Vector3, _direction: Vector3, _track
 
 func _bar_key() -> String:
 	return str([_state.get("clone_voice", false), _state.get("geometry", 0), _state.get("has_video", false),
+		_state.get("spatial_video", false),
 		_state.get("source_uri", ""), _subtitle_tracks(), _state.get("subtitle_track", 0), bookmarks.key(), _state.get("audio_options", []), _state.get("audio_track_id", -1),
 		_state.get("subtitle_distance", SubtitleDepth.DEFAULT), _state.get("subtitle_position", SubtitleDepth.DEFAULT_POSITION), _state.get("subtitle_direction", 0), _state.get("subtitle_size", 100), _state.get("subtitle_flat_position", 0)])
 
@@ -631,40 +647,53 @@ func _supports_half_layouts() -> bool:
 func _draw_modes() -> void:
 	_lit_modes = {}
 	var half_choices := _supports_half_layouts()
+	var fixed := bool(_state.get("spatial_video", false))
 	var lock: Dictionary = _state.get("mode_lock", {})
 	var locked := {}
-	if not lock.is_empty():
+	if not fixed and not lock.is_empty():
 		locked[MODE_PROJECTION + int(lock.geometry)] = true
 		locked[MODE_STEREO + (3 if lock.depth and not half_choices else [0, 1, 4, 5, 6][int(lock.layout)])] = true
-	var fisheye := int(_state.get("geometry", 0)) == 2
+	var fisheye := not fixed and int(_state.get("geometry", 0)) == 2
 	# The lens row sits under the layouts: the panel rises to clear the floating round buttons.
 	var top := 0.61 if fisheye else 0.47
 	if half_choices: top = 0.465 if fisheye else 0.365
 	# Fisheye adds a row of lens angles under the layouts.
 	var height := (0.33 if fisheye else 0.24) if half_choices else (0.5 if fisheye else 0.36)
 	var centre_y := (0.44 if fisheye else 0.385) if half_choices else top - (0.07 if fisheye else 0.0)
+	if fixed:
+		height += 0.08
+		centre_y += 0.04
 	var panel := _quad(Vector2(1.06, height), Vector3(0, centre_y, 0.001), Color(PANEL, 0.94), 10)
 	panel.material_override.set_shader_parameter("corner_radius", 0.04)
 	add_child(panel)
 	_decorations.append(panel)
-	var projection := int(_state.get("geometry", 0))
+	if fixed:
+		var badge := _label(I18n.t("Spatial video") + " · MV-HEVC", Vector3(-0.48, top + 0.185, 0.006), 19)
+		badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		badge.modulate = ACCENT
+		var reason := _label(I18n.t("Mode fixed"), Vector3(0.48, top + 0.185, 0.006), 17)
+		reason.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		reason.modulate = MUTED
+		var reason_width := ui_font().get_string_size(reason.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 17).x * reason.pixel_size
+		_icon("lock", Vector3(0.48 - reason_width - 0.025, top + 0.185, 0.006), 0.028, MUTED)
+	var projection := 0 if fixed else int(_state.get("geometry", 0))
 	var names := ["Flat", "180°", "Fisheye", "360°"]
 	var icons := ["screen", "dome", "fisheye", "panorama"]
 	var projection_order := [0, 1, 3, 2]
 	for column in projection_order.size():
 		var g: int = projection_order[column]
-		_mode_tile(MODE_PROJECTION + g, I18n.t(names[g]), icons[g], Vector2(-0.3 + column * 0.2, top + 0.075), projection == g)
-	var stereo: bool = _state.get("stereo", false)
+		_mode_tile(MODE_PROJECTION + g, I18n.t(names[g]), icons[g], Vector2(-0.3 + column * 0.2, top + 0.075), projection == g, not fixed)
+	var stereo: bool = fixed or _state.get("stereo", false)
 	var depth: bool = _state.get("depth_requested", false)
 	var tb: bool = stereo and _state.get("top_bottom", false)
 	var half_layout: bool = stereo and _state.get("stereo_half", false)
 	var layouts_y := top - (0.04 if half_choices else 0.09)
-	_mode_tile(MODE_STEREO, "2D", "screen", Vector2(-0.4, layouts_y), not stereo and not depth)
-	_mode_tile(MODE_STEREO + 1, I18n.t("3D SBS"), "stereo", Vector2(-0.2, layouts_y), stereo and not tb and not half_layout)
-	_mode_tile(MODE_STEREO + 4, I18n.t("3D TB"), "stacked", Vector2(0.2 if half_choices else 0, layouts_y), tb and not half_layout)
+	_mode_tile(MODE_STEREO, "2D", "screen", Vector2(-0.4, layouts_y), not stereo and not depth, not fixed)
+	_mode_tile(MODE_STEREO + 1, I18n.t("Native 3D" if fixed else "3D SBS"), "stereo", Vector2(-0.2, layouts_y), fixed or (stereo and not tb and not half_layout), not fixed)
+	_mode_tile(MODE_STEREO + 4, I18n.t("3D TB"), "stacked", Vector2(0.2 if half_choices else 0, layouts_y), not fixed and tb and not half_layout, not fixed)
 	if half_choices:
-		_mode_tile(MODE_STEREO + 5, I18n.t("Half SBS"), "stereo", Vector2(0, layouts_y), stereo and not tb and half_layout)
-		_mode_tile(MODE_STEREO + 6, I18n.t("Half TB"), "stacked", Vector2(0.4, layouts_y), tb and half_layout)
+		_mode_tile(MODE_STEREO + 5, I18n.t("Half SBS"), "stereo", Vector2(0, layouts_y), not fixed and stereo and not tb and half_layout, not fixed)
+		_mode_tile(MODE_STEREO + 6, I18n.t("Half TB"), "stacked", Vector2(0.4, layouts_y), not fixed and tb and half_layout, not fixed)
 	var controls_y := top - (0.15 if half_choices else 0.09)
 	# Photos retain their existing controls; video depth is on the bar, eye order in Settings.
 	if not half_choices:
@@ -685,7 +714,12 @@ func _mode_tile(target: int, text: String, icon: String, centre: Vector2, curren
 	_button(target, text, centre, Vector2(0.18, height), enabled, icon)
 	if current:
 		_buttons.back().base_color = SELECTED
-		_lit_modes[target] = true
+		if enabled:
+			_lit_modes[target] = true
+		else:
+			_buttons.back()["fixed_current"] = true
+			_buttons.back().node.get_child(0).modulate = _buttons.back().foreground
+			_buttons.back().node.get_child(1).material_override.albedo_color = ACCENT
 
 ## "More": picture, sound and info settings; the arrow returns to the bar.
 func _draw_panel() -> void:
@@ -697,7 +731,7 @@ func _draw_panel() -> void:
 	var shown_index := 0
 	for index in operations.size():
 		var operation: String = operations[index]
-		if operation == "eyes" and not _state.get("stereo", false): continue
+		if operation == "stereo_view" and not _state.get("stereo", false): continue
 		_button(100 + index, _caption(operation), Vector2(-0.36 if shown_index % 2 == 0 else 0.36,
 			0.17 - (shown_index / 2) * 0.145), Vector2(0.67, 0.12), _enabled(operation))
 		shown_index += 1
@@ -716,11 +750,25 @@ func _draw_panel() -> void:
 				value.text = ""
 				choices.field(node, choice, Vector2(0.015, -0.018), 0.5, 0.048)
 	if section == 1:
-		_adjustment_row(453, "playback_speed", "Playback speed", Vector3(0.25, 3.0, 0.05), -0.22)
-		_inline_reset(SPEED_RESET, "Restore 1×", "playback_speed", 1.0, -0.22)
-		_slider_tick(453, 1.0, "1×", -0.22)
+		var y := -0.19
+		_adjustment_row(453, "playback_speed", "Playback speed", Vector3(0.25, 3.0, 0.05), y)
+		_inline_reset(SPEED_RESET, "Restore 1×", "playback_speed", 1.0, y)
+		_slider_tick(453, 1.0, "1×", y)
+		if _enabled("alpha"):
+			y -= 0.09
+			_adjustment_row(454, "alpha_fps", "Alpha passthrough FPS limit", Vector3(10, 40, 1), y)
+			_slider_tick(454, 20, "20", y)
+			var hint := _label(I18n.t("Passthrough uses lots of GPU, so FPS may be lower"), Vector3(-0.66, y - 0.045, 0.004), 14)
+			hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+			hint.modulate = MUTED
+			y -= 0.03
+		y -= 0.09
+		var fps := _label(I18n.t("Show FPS"), Vector3(-0.66, y, 0.004), 20)
+		fps.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		choices.field(null, {"key": "show_fps", "value": _state.get("show_fps", false),
+			"choices": [{"value": false, "label": "Off"}, {"value": true, "label": "On"}]}, Vector2(0.33, y), 0.6, 0.065)
 		_refresh_adjustments()
-	_status = _label(_status_text(), Vector3(0, -0.435, 0.004), 18)
+	_status = _label(_status_text(), Vector3(0, -0.48, 0.004), 18)
 	_status.modulate = MUTED
 	if section == 2:
 		_info = _label(_info_text(), Vector3(0, -0.08, 0.004), 20)
@@ -728,7 +776,8 @@ func _draw_panel() -> void:
 
 func _settings_key() -> String:
 	return str([_state.get("source_uri", ""), _state.get("has_video", false),
-		_state.get("loop", false), _state.get("screen_curve", 0.0), _state.get("seek_mode", "speed"), _state.get("stereo", false), _state.get("geometry", 0)])
+		_state.get("loop", false), _state.get("screen_curve", 0.0), _state.get("seek_mode", "speed"), _state.get("stereo", false), _state.get("geometry", 0),
+		_state.get("show_fps", false), _state.get("viewing_eye", 0), _state.get("swap_eyes", false)])
 
 func _setting_choices(operation: String) -> Dictionary:
 	if not _enabled(operation): return {}
@@ -797,6 +846,10 @@ func _activate_hit(hit: Dictionary) -> void:
 		super._activate_hit(hit)
 
 func _activate(target: int) -> void:
+	if _activate_footer(target): return
+	if _state.get("spatial_video", false) and (target in range(MODE_PROJECTION, MODE_PROJECTION + 4) \
+		or target in [MODE_STEREO, MODE_STEREO + 1, MODE_STEREO + 3, MODE_STEREO + 4, MODE_STEREO + 5, MODE_STEREO + 6] \
+		or target in range(MODE_LENS, MODE_LENS + LENS_FOVS.size())): return
 	if choices.action(target): return
 	bookmarks.opened = false
 	if section == 0 and target == 111:
@@ -824,7 +877,7 @@ func _activate(target: int) -> void:
 	if not _adjustment.is_empty():
 		_activate_adjustment(target)
 		return
-	if section == 1 and target >= 100 and target < 100 + OPERATIONS[1].size() and OPERATIONS[1][target - 100] in ["color_grade"]:
+	if section == 1 and target >= 100 and target < 100 + OPERATIONS[1].size() and OPERATIONS[1][target - 100] in ["color_grade", "stereo_view"]:
 		if not _enabled(OPERATIONS[1][target - 100]): return
 		_adjustment = OPERATIONS[1][target - 100]
 		_grade_page = 0
@@ -917,6 +970,11 @@ func _activate(target: int) -> void:
 func _update_highlights() -> void:
 	super._update_highlights()
 	for button in _buttons:
+		if button.get("fixed_current", false):
+			button.node.material_override.set_shader_parameter("surface_color", SELECTED)
+	if _depth_busy:
+		_depth_busy.visible = _depth_preparing()
+	for button in _buttons:
 		if section == 0 and button.target == 110:
 			var active: bool = button.enabled and int(_state.get("subtitle_track", 0)) != 0
 			button.node.get_child(1).material_override.albedo_color = ACCENT if active else (button.foreground if button.enabled else MUTED)
@@ -933,17 +991,49 @@ func _update_highlights() -> void:
 			if button.enabled and not _hover.values().has(button.target) and choices.opened == "audio_track":
 				button.node.material_override.set_shader_parameter("surface_color", SELECTED)
 
+func _depth_preparing() -> bool:
+	return section == 0 and _enabled("depth") and _state.get("depth_requested", false) 		and not _state.get("depth_enabled", false) and str(_state.get("depth_error", "")).is_empty()
+
+## Rotating arc over a round icon; animated by the shader clock, so it costs no per-frame script.
+func _busy_ring(parent: Node3D, diameter: float) -> MeshInstance3D:
+	if not _busy_shader:
+		_busy_shader = Shader.new()
+		_busy_shader.code = """shader_type spatial;
+render_mode unshaded, depth_draw_never, cull_disabled;
+uniform vec4 tint : source_color;
+void fragment() {
+	vec2 p = UV * 2.0 - 1.0;
+	float r = length(p);
+	float lag = mod(atan(p.y, p.x) + TIME * 5.0, 6.2831853);
+	float ring = smoothstep(0.78, 0.83, r) * (1.0 - smoothstep(0.93, 0.98, r));
+	ALBEDO = tint.rgb;
+	ALPHA = tint.a * ring * clamp(1.0 - lag / 4.2, 0.0, 1.0);
+}"""
+	var node := MeshInstance3D.new()
+	var mesh := QuadMesh.new()
+	mesh.size = Vector2.ONE * diameter * 1.15
+	node.mesh = mesh
+	node.position = Vector3(0, 0, 0.005)
+	var material := ShaderMaterial.new()
+	material.shader = _busy_shader
+	material.set_shader_parameter("tint", ACCENT)
+	material.render_priority = 13
+	node.material_override = material
+	node.visible = false
+	parent.add_child(node)
+	return node
+
 func _enabled(operation: String) -> bool:
 	var has_video: bool = _state.get("has_video", false)
 	match operation:
 		"play", "loop", "stop": return has_video
 		"previous_video", "next_video": return has_video and _state.get("has_" + operation, false)
-		"alpha": return has_video and int(_state.get("geometry", 0)) in [1, 2]
-		"eyes": return has_video and _state.get("stereo", false)
+		"alpha": return has_video and (_state.get("spatial_video", false) or int(_state.get("geometry", 0)) in [1, 2])
+		"eyes", "stereo_view": return has_video and _state.get("stereo", false)
 		"volume_down", "volume_up", "mute": return has_video and _state.get("audio_available", false)
 		"audio": return has_video
 		"clone_voice": return has_video and _state.get("clone_voice", false)
-		"depth": return has_video and int(_state.get("geometry", 0)) == 0 and not _state.get("stereo", false)
+		"depth": return has_video and not _state.get("spatial_video", false) and int(_state.get("geometry", 0)) == 0 and not _state.get("stereo", false)
 		"depth_strength": return _can_depth()
 		"subtitles": return has_video
 		"capabilities": return _state.get("capabilities_available", false)
@@ -970,6 +1060,7 @@ func _caption_text(operation: String) -> String:
 		"seek_mode": return "Precise" if _state.get("seek_mode", "speed") == "exact" else "Speed"
 		"stop": return "Close video"
 		"stereo": return ("TB" if _state.get("top_bottom", false) else "SBS") if _state.get("stereo", false) else "2D"
+		"stereo_view": return StereoView.MODES[clampi(int(_state.get("viewing_eye", 0)), 0, 2)]
 		"eyes":
 			if _state.get("top_bottom", false): return "B / T" if _state.get("swap_eyes", false) else "T / B"
 			return "R / L" if _state.get("swap_eyes", false) else "L / R"
@@ -1066,6 +1157,9 @@ func _draw_adjustments() -> void:
 	if _adjustment == "screen":
 		_draw_screen_settings()
 		return
+	if _adjustment == "stereo_view":
+		_draw_stereo_view()
+		return
 	_set_backdrop(Vector2(1.55, 1.22))
 	_button(400, "", Vector2(-0.66, 0.51), Vector2(0.09, 0.065), true, "up")
 	_button(CLOSE, "", Vector2(0.66, 0.51), Vector2(0.09, 0.065), true, "close")
@@ -1082,6 +1176,32 @@ func _draw_adjustments() -> void:
 		for i in keys.size():
 			_adjustment_row(450 + i, keys[i], Grade.NAMES[keys[i]], Grade.limits(keys[i]), 0.16 - i * 0.105)
 		_button(440, I18n.t("Reset custom"), Vector2(0, -0.505), Vector2(0.4, 0.075))
+	_refresh_adjustments()
+
+func _draw_stereo_view() -> void:
+	_settings_drawn = _settings_key()
+	_set_backdrop(Vector2(1.55, 1.08))
+	_button(400, "", Vector2(-0.66, 0.43), Vector2(0.09, 0.065), true, "up")
+	_button(CLOSE, "", Vector2(0.66, 0.43), Vector2(0.09, 0.065), true, "close")
+	_label(I18n.t("Stereo viewing"), Vector3(0, 0.43, 0.004), 24)
+	_place_device_status(Vector2(0, -0.585))
+	var mode := int(_state.get("viewing_eye", 0))
+	for i in StereoView.MODES.size():
+		_button(VIEWING_EYE + i, I18n.t(StereoView.MODES[i]), Vector2(-0.46 + i * 0.46, 0.28), Vector2(0.42, 0.09), _enabled("stereo_view"))
+		if mode == i: _buttons.back().base_color = SELECTED
+	_button(EYE_SWAP, I18n.t("Swap eyes") + "  " + _caption("eyes"), Vector2(0, 0.14), Vector2(0.65, 0.08), _enabled("eyes"), "eyes")
+	var title := _label(I18n.t("Stereo alignment"), Vector3(-0.66, 0.015, 0.004), 20)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	title.modulate = MUTED
+	if mode == 0:
+		_adjustment_row(ALIGNMENT_HORIZONTAL, "stereo_horizontal", "Horizontal alignment", Vector3(-StereoView.LIMIT, StereoView.LIMIT, StereoView.STEP), -0.095)
+		_slider_tick(ALIGNMENT_HORIZONTAL, 0.0, "0", -0.095)
+		_adjustment_row(ALIGNMENT_VERTICAL, "stereo_vertical", "Vertical alignment", Vector3(-StereoView.LIMIT, StereoView.LIMIT, StereoView.STEP), -0.235)
+		_slider_tick(ALIGNMENT_VERTICAL, 0.0, "0", -0.235)
+		_button(ALIGNMENT_RESET, I18n.t("Reset alignment"), Vector2(0, -0.40), Vector2(0.42, 0.08), _enabled("stereo_view"))
+	else:
+		var hint := _label(I18n.t("Same view in both eyes"), Vector3(0, -0.17, 0.004), 21)
+		hint.modulate = MUTED
 	_refresh_adjustments()
 
 func _adjustment_row(target: int, key: String, title: String, span: Vector3, y: float) -> void:
@@ -1112,7 +1232,7 @@ func _refresh_adjustments() -> void:
 	for row in _adjust_rows.values():
 		var distance: bool = row.key in ["subtitle_distance", "screen_distance"]
 		var position: bool = row.key == "subtitle_position"
-		var defaults := {"screen_scale": 100.0, "screen_rotation": 0.0, "playback_speed": 1.0}
+		var defaults := {"screen_scale": 100.0, "screen_rotation": 0.0, "playback_speed": 1.0, "alpha_fps": 20.0, "stereo_horizontal": 0.0, "stereo_vertical": 0.0}
 		var value := float(_state.get(row.key, defaults[row.key])) if defaults.has(row.key) else (float(_state.get(row.key, 5.0 if row.key == "subtitle_distance" else Surface.SCREEN_DISTANCE)) if distance else (float(_state.get(row.key, SubtitleDepth.DEFAULT_POSITION)) if position else float(values.get(row.key, Grade.DEFAULTS[row.key]))))
 		var fraction := clampf((value - row.span.x) / (row.span.y - row.span.x), 0, 1)
 		if row.key == "subtitle_distance": fraction = SubtitleDepth.slider_fraction(value)
@@ -1120,6 +1240,8 @@ func _refresh_adjustments() -> void:
 		if row.key == "screen_scale": row.label.text = "%d%%" % roundi(value)
 		elif row.key == "screen_rotation": row.label.text = "%+.0f°" % value if value != 0 else "0°"
 		elif row.key == "playback_speed": row.label.text = "%.2f×" % value
+		elif row.key == "alpha_fps": row.label.text = "%d FPS" % roundi(value)
+		elif row.key in ["stereo_horizontal", "stereo_vertical"]: row.label.text = "%+.2f%%" % value if value != 0 else "0.00%"
 		row.fill.visible = fraction > 0
 		row.fill.mesh.size.x = maxf(0.001, fraction * 0.6)
 		row.fill.position.x = 0.03 + fraction * 0.3
@@ -1152,6 +1274,13 @@ func _activate_adjustment(target: int) -> void:
 		return
 	if target == 400:
 		_adjustment = ""
+	elif _adjustment == "stereo_view" and _enabled("stereo_view"):
+		if target >= VIEWING_EYE and target <= VIEWING_EYE + 2:
+			setting_requested.emit("viewing_eye", target - VIEWING_EYE)
+		elif target == EYE_SWAP:
+			action_requested.emit("eyes")
+		elif target == ALIGNMENT_RESET:
+			adjustment_requested.emit("stereo_reset", true)
 	elif _adjustment == "screen" and target == ROTATION_RESET:
 		adjustment_requested.emit("screen_rotation", 0.0)
 		adjustment_committed.emit()

@@ -42,7 +42,7 @@ func _initialize() -> void: call_deferred("_run")
 
 func _run() -> void:
 	I18n.use("en")
-	var directory := ProjectSettings.globalize_path("res://../../artifacts/audio-popup-host/" + str(Time.get_ticks_usec()))
+	var directory := ProjectSettings.globalize_path("res://../../build/output/audio-popup-host/" + str(Time.get_ticks_usec()))
 	var video := Video.new()
 	video.bookmark_store = Store.new(directory.path_join("bookmarks"))
 	root.add_child(video); video.set_process(false)

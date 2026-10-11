@@ -47,7 +47,7 @@ func _initialize() -> void:
 	call_deferred("_run")
 
 func _run() -> void:
-	test_path = ProjectSettings.globalize_path("res://../../artifacts/mode-memory-host/" + str(Time.get_ticks_usec()))
+	test_path = ProjectSettings.globalize_path("res://../../build/output/mode-memory-host/" + str(Time.get_ticks_usec()))
 	DirAccess.make_dir_recursive_absolute(test_path)
 	var uri := "content://local.documents/document/字幕%20VideoA"
 	var mode := {"geometry": 1, "stereo_sbs": true, "swap_eyes": true, "alpha_requested": true, "profile": "512x288"}
@@ -155,7 +155,7 @@ func _run() -> void:
 	before = video.mode_memory.sequence
 	video.set_alpha(false)
 	check(video.mode_memory.sequence == before, "Rejected source cannot overwrite its remembered settings")
-	# A file without a remembered mode: its name, then its shape, choose the mode.
+	# A file without a remembered mode: explicit markers win, ambiguous 2:1 stays flat.
 	host.next_id = 7
 	check(video.open_local("file:///v/show_RL_180.mp4", "show_RL_180.mp4") and host.calls.back()[2] == true
 		and video.geometry == 1 and video.swap_eyes and video._layout_pending == null, "Name markers reach native at open")
@@ -163,8 +163,23 @@ func _run() -> void:
 		"Unmarked name waits for the frame")
 	video.media.format = {"width": 8192, "height": 4096, "pixel_aspect": 1.0, "unapplied_rotation_degrees": 0}
 	video._complete_layout()
-	check(video.geometry == 1 and video.stereo_sbs and not video._pending_revision.is_empty() and video._layout_pending == null,
-		"Unmarked 2:1 becomes VR180 SBS with a new processing generation")
+	check(video.geometry == 0 and not video.stereo_sbs and video._pending_revision.is_empty() and video._layout_pending == null,
+		"Unmarked 2:1 stays flat mono without restarting processing")
+	for lock in [{"geometry": 0, "layout": 0, "depth": false, "fisheye_fov": 180},
+			{"geometry": 0, "layout": 0, "depth": true, "fisheye_fov": 180},
+			{"geometry": 1, "layout": 1, "depth": false, "fisheye_fov": 180},
+			{"geometry": 2, "layout": 4, "depth": false, "fisheye_fov": 200},
+			{"geometry": 3, "layout": 2, "depth": false, "fisheye_fov": 180}]:
+		video.load_mode_lock(lock)
+		video.auto_depth = lock.depth
+		check(video.open_local("file:///v/locked_%d.mp4" % lock.geometry, "locked_%d.mp4" % lock.geometry)
+			and video.current_lock() == lock and video._layout_pending == null, "Unmarked source opens with locked mode %d" % lock.geometry)
+		video.media.format = {"width": 8192, "height": 4096, "pixel_aspect": 1.0}
+		video._complete_layout()
+		check(video.current_lock() == lock and video.mode_lock == lock and video._pending_revision.is_empty(),
+			"First 2:1 frame preserves locked mode %d" % lock.geometry)
+	video.load_mode_lock({})
+	video.auto_depth = false
 	check(video.open_local("file:///v/clip_alpha.mp4", "clip_alpha.mp4") and host.calls.back()[4] == true and not video.packed_file,
 		"Alpha in the name opens with live Alpha")
 	var packed_uri := "file:///v/clip_LR_180_FISHEYE_F180_alpha.mp4"
@@ -175,6 +190,10 @@ func _run() -> void:
 	video.mode_memory.remember(packed_uri, {"geometry": 0, "stereo_sbs": false, "swap_eyes": false, "alpha_requested": false, "profile": "320x320"})
 	check(video.open_local(packed_uri, "clip_LR_180_FISHEYE_F180_alpha.mp4") and video.geometry == 0 and not video.stereo_sbs,
 		"The user's remembered mode wins over the name")
+	video.media.format = {"width": 8192, "height": 4096, "pixel_aspect": 1.0}
+	video._complete_layout()
+	check(video.geometry == 0 and not video.stereo_sbs and video._pending_revision.is_empty(),
+		"First 2:1 frame preserves the per-file choice over explicit VR naming")
 	video.queue_free()
 	await process_frame
 	var half_uri := "file:///v/half.webm"

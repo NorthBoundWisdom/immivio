@@ -33,6 +33,7 @@ func activate_desktop() -> void:
 		_activate(focus_index)
 
 func _activate(target: int) -> void:
+	if _activate_footer(target): return
 	if target == PLAYER:
 		dismiss()
 		player_requested.emit()

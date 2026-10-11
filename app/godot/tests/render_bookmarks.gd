@@ -6,7 +6,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	preload("res://scripts/i18n.gd").use("zh")
-	var output := ProjectSettings.globalize_path("res://../../artifacts/bookmarks-visuals")
+	var output := ProjectSettings.globalize_path("res://../../build/output/bookmarks-visuals")
 	DirAccess.make_dir_recursive_absolute(output)
 	var viewport := SubViewport.new()
 	viewport.size = Vector2i(1280, 1100)

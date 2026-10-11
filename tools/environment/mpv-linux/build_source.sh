@@ -4,7 +4,7 @@ set -euo pipefail
 repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)
 work=${THRU3D_MPV_WORK:-"$HOME/.cache/thru3d-mpv"}
 builder="$work/mpv-android/buildscripts"
-mkdir -p "$work/tmp" "$repo/artifacts/logs"
+mkdir -p "$work/tmp" "$repo/build/output/logs"
 export TMPDIR="$work/tmp"
 export PATH="$work/host-venv/bin:$PATH"
 export cores=${QUEST_MPV_CORES:-8}
@@ -15,7 +15,7 @@ exec 9>"$work/build-source.lock"
 flock -n 9 || { echo 'A source build already owns this environment' >&2; exit 3; }
 python3 "$repo/tools/environment/mpv-linux/prepare_sources.py"
 
-log="$repo/artifacts/logs/mpv-source-build-$(date -u +%Y%m%dT%H%M%SZ).log"
+log="$repo/build/output/logs/mpv-source-build-$(date -u +%Y%m%dT%H%M%SZ).log"
 options=(--arch arm64)
 if [[ "${1:-}" == '--mpv-only' ]]; then
     options+=(-n)

@@ -32,7 +32,7 @@ func source(layout: int) -> ImageTexture:
 	return ImageTexture.create_from_image(image)
 
 func _run() -> void:
-	if output.is_empty(): output = ProjectSettings.globalize_path("res://../../artifacts/vr-alignment-20261010")
+	if output.is_empty(): output = ProjectSettings.globalize_path("res://../../build/output/vr-alignment-20261010")
 	DirAccess.make_dir_recursive_absolute(output)
 	viewport = SubViewport.new(); viewport.size = Vector2i(257, 257); viewport.own_world_3d = true
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS; root.add_child(viewport)

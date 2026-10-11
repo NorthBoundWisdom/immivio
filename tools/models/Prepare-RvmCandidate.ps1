@@ -14,7 +14,7 @@ if ((Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash.ToLowerInvariant(
 $profiles = Get-Content (Join-Path $workspace 'models\manifest\rvm_profiles.json') -Raw | ConvertFrom-Json
 foreach ($entry in $profiles.profiles) {
     $profile = Join-Path $workspace "build\rvm\$($entry.key)"
-    $report = Join-Path $workspace "artifacts\rvm-ncnn-reference\$($entry.key)\report.json"
+    $report = Join-Path $workspace "build\output\rvm-ncnn-reference\$($entry.key)\report.json"
     if ($Regenerate -or -not (Test-Path -LiteralPath (Join-Path $profile 'rvm.ncnn.bin')) -or -not (Test-Path -LiteralPath $report)) {
         & $python "$PSScriptRoot\convert_rvm.py" --width $entry.width --height $entry.height --pnnx $pnnx --output $profile
         if ($LASTEXITCODE -ne 0) { throw "Full recurrent RVM conversion failed: $($entry.key)" }

@@ -5,7 +5,7 @@ import org.junit.Test
 
 class PhotoMediaTest {
     @Test fun mixedSourcesKeepPhotoKinds() {
-        for (name in listOf("photo.JPG", "portrait.jpeg", "alpha.png", "photo.webp?token=1#view")) {
+        for (name in listOf("photo.JPG", "portrait.jpeg", "alpha.png", "photo.webp?token=1#view", "spatial.HEIC", "camera.heif?token=1")) {
             assertTrue(name, MediaKinds.supported(name))
             assertEquals("image", MediaKinds.kind(name))
         }

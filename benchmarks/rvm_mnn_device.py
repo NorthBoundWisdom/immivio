@@ -8,7 +8,7 @@ through the APK paths). For each precision it:
     temporal flicker of the difference),
   * times the stereo call on synthetic input for every requested profile,
     sampling the kgsl GPU clock.
-Evidence goes to artifacts/rvm-mnn/device/<timestamp>/.
+Evidence goes to build/output/rvm-mnn/device/<timestamp>/.
 """
 import os
 from pathlib import Path
@@ -61,9 +61,9 @@ def main():
             raise RuntimeError(r.stderr or r.stdout)
         return r.stdout
 
-    out = ROOT / 'artifacts/rvm-mnn/device' / datetime.now().strftime('%Y%m%d_%H%M%S')
+    out = ROOT / 'build/output/rvm-mnn/device' / datetime.now().strftime('%Y%m%d_%H%M%S')
     out.mkdir(parents=True)
-    src = Path(glob.glob(str(ROOT / 'artifacts/device/20261004_164221_motion_*/mpv_motion_*'))[0])
+    src = Path(glob.glob(str(ROOT / 'build/output/device/20261004_164221_motion_*/mpv_motion_*'))[0])
     receipt = dict(exe_sha256=sha(EXE), model_sha256=sha(MODEL), frames=a.frames, source=str(src),
                    model_manifest=json.loads((MODEL.parent / 'manifest.json').read_text(encoding='utf-8')),
                    battery_before=adb('shell', 'dumpsys', 'battery'))
@@ -77,7 +77,7 @@ def main():
             adb('push', str(src / f'frame_{i}_{eye}_rgb.f32'), f'{REMOTE}/frames/')
     run = lambda args: adb('shell', f'cd {REMOTE} && LD_LIBRARY_PATH={REMOTE} ./rvm_mnn_test {args}', check=False)
     results = dict(sequence={}, timing=[])
-    refs = {eye: np.load(ROOT / f'artifacts/rvm-expert/ref_alpha_{eye}.npy')[:a.frames] for eye in ('left', 'right')}
+    refs = {eye: np.load(ROOT / f'build/output/rvm-expert/ref_alpha_{eye}.npy')[:a.frames] for eye in ('left', 'right')}
     for fp16 in (1, 0):
         text = run(f'rvm.mnn 512 512 {fp16} frames {a.frames} 0')
         (out / f'sequence_fp{16 if fp16 else 32}.txt').write_text(text, encoding='utf-8')

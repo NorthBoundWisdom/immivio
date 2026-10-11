@@ -7,11 +7,11 @@ if (-not $GodotExe) {
 }
 $workspace = Split-Path -Parent $PSScriptRoot
 $project = Join-Path $workspace 'app/godot'
-$logs = Join-Path $workspace 'artifacts/source-tests'
+$logs = Join-Path $workspace 'build/output/source-tests'
 New-Item -ItemType Directory -Path $logs -Force | Out-Null
 $previousAppData = $env:APPDATA
 $previousLocalAppData = $env:LOCALAPPDATA
-$sourceTestData = Join-Path $workspace 'artifacts/source-test-userdata'
+$sourceTestData = Join-Path $workspace 'build/output/source-test-userdata'
 New-Item -ItemType Directory -Path $sourceTestData -Force | Out-Null
 try {
 # Keep host test preferences and temporary user:// files away from real player data.
@@ -21,7 +21,7 @@ $env:LOCALAPPDATA = $sourceTestData
 & $GodotExe --headless --xr-mode off --path $project --editor --quit-after 600 2>&1 |
     Out-File (Join-Path $logs 'import.log') -Encoding utf8
 if ($LASTEXITCODE -ne 0 -or (Get-Content (Join-Path $logs 'import.log') -Raw) -match '(?m)^(SCRIPT ERROR:|SHADER ERROR:|ERROR:)') {
-    throw 'Godot source import failed; inspect artifacts/source-tests/import.log.'
+    throw 'Godot source import failed; inspect build/output/source-tests/import.log.'
 }
 foreach ($test in (Get-ChildItem -LiteralPath (Join-Path $project 'tests') -Filter 'test_*.gd' | Sort-Object Name)) {
     $log = Join-Path $logs ($test.BaseName + '.log')

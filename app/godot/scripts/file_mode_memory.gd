@@ -5,6 +5,7 @@ extends RefCounted
 const VERSION := 1
 const LIMIT := 128
 const MAX_BYTES := 262144
+const StereoView := preload("res://scripts/stereo_view.gd")
 const PROFILES := ["320x320", "384x216", "512x288", "384x384", "512x512", "256x144", "256x256"]
 var directory := "user://settings"
 var entries: Dictionary = {}
@@ -41,7 +42,7 @@ static func valid_mode(value: Variant) -> bool:
 	for name in ["top_bottom", "stereo_half"]:
 		if value.has(name) and not value[name] is bool:
 			return false
-	return true
+	return StereoView.valid(value)
 
 func _bank_path(bank: int) -> String:
 	return directory.path_join("file_modes_%d.json" % bank)

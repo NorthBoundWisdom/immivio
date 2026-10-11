@@ -4,7 +4,7 @@
 
 Standalone Android VR/MR media player for Meta Quest and PICO. Thru3D combines a Godot OpenXR interface, Android media access, a native libmpv renderer, and MNN inference for video matting and depth-based stereo rendering.
 
-Current source version: **0.5.1** (Android versionCode **11**). An experimental standard OpenXR Android export is also available.
+Current source version: **0.6.0** (Android versionCode **13**). An experimental standard OpenXR Android export is also available.
 
 Minimum compatibility targets are **Quest 2** and **PICO Neo3**. Source/build compatibility does not establish hardware performance or interaction acceptance on every device.
 
@@ -22,7 +22,7 @@ Minimum compatibility targets are **Quest 2** and **PICO Neo3**. Source/build co
 - Persistent timestamp bookmarks, source-frame previews for recent playback, and paged media navigation.
 - Rendered hands/controllers and display-quality controls, including sharpness and flat-screen adjustments.
 - VR-native account forms and in-app web login; speed-first and precise seek policies.
-- Immersive photo presentation, pinch-drag navigation, adjacent-photo preload and cached 3D conversion; photo stereo strength is capped at 100%.
+- Immersive photo presentation, pinch-drag navigation, adjacent-photo preload and cached 3D conversion; photo stereo strength is adjustable up to 200%.
 
 - Media-server sections, filters, details, continuation pages and capability-dependent favorites; manual DLNA endpoints and exposed external subtitles.
 - Photo distance/size controls and a separate 2–8× magnifier referenced to the displayed image; source-dependent file management.
@@ -81,7 +81,7 @@ $env:THRU3D_TOOL_ROOT = Join-Path $HOME '.cache/thru3d-toolchain'
 ./tools/Build-Player.ps1 -ToolRoot $env:THRU3D_TOOL_ROOT -UsePreparedModelAssets -XrVendor OpenXR
 ```
 
-Outputs are written under the ignored `artifacts` directory. A locally built application has your own signing identity. It cannot necessarily update an installed distribution signed by another key.
+Rebuildable outputs use `build/output/`; temporary data uses `tmp/`. Formal release archives and private signing material use persistent directories, all excluded from public Git. A locally built application has your own signing identity. It cannot necessarily update an installed distribution signed by another key.
 
 ## Controls
 
@@ -92,7 +92,7 @@ Open the VR menu with the left Menu button. Point a controller ray at a control 
 - Early source release; Android ARM64 builds use separate Quest, PICO and experimental standard OpenXR presets.
 - Quest 3 has been used during development. PICO packaging checks do not establish PICO hardware playback, passthrough or hand-tracking validation.
 - Matting quality, GPU support and sustained performance depend on the model, device and video. Host/packaging checks are not headset performance measurements.
-- AI depth operates on flat mono content; passthrough matting is limited to supported 180° projections.
+- AI depth operates on flat mono content; video matting is limited to supported sources, including the dedicated spatial-video path; photo portrait matting applies to selected ordinary flat photos.
 - Cloud/media-service adapters depend on third-party services and user authorization.
 
 Read [architecture](docs/ARCHITECTURE.md), [build](docs/BUILD.md), [models](docs/MODELS.md) and [testing](docs/TESTING.md) for implementation details. Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md).
@@ -102,3 +102,11 @@ Read [architecture](docs/ARCHITECTURE.md), [build](docs/BUILD.md), [models](docs
 Project-owned source is released under **GPL-3.0-only**. See [LICENSE](LICENSE) for the complete GNU GPL v3 text and [licensing scope](docs/LICENSING.md) for third-party code, models, assets and binary distribution requirements. Third-party components keep their existing licenses; this declaration does not relicense them or grant rights to excluded assets.
 
 The embedded OpenList component is **AGPL-3.0**; its adapter, pinned build recipe and upstream/dependency notices are included. Combined binary distribution must satisfy its applicable AGPL obligations as explained in the licensing scope.
+
+## Spatial media and photo layouts
+
+- Native stereo HEIC/HEIF spatial photos and iPhone MV-HEVC spatial video playback; spatial video can use the supported people-passthrough path. Spatial-photo output is sRGB, not a native HDR claim.
+- Side thumbnails, Photo Wall and Memory Fragments, with asynchronous loading feedback and remembered layouts.
+- Portrait passthrough for selected ordinary flat photos, with 0–200% stereo strength. Native stereo/panorama photos and overview grids are outside this portrait path.
+- Session-scoped head following for flat videos, single photos/portraits and menus; an independent environment-passthrough footer control. No permanent spatial-anchor or full-wall head-lock claim.
+- Stereo/left-view/right-view video display and per-video horizontal/vertical alignment. Both eyes display the selected logical view in single-view mode; it does not disable one panel or alter headset IPD.

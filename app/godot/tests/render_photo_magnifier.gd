@@ -5,7 +5,7 @@ var checks := 0
 var viewport: SubViewport
 var camera: Camera3D
 var photo: Node3D
-var output := ProjectSettings.globalize_path("res://../../artifacts/photo-magnifier-preview")
+var output := ProjectSettings.globalize_path("res://../../build/output/photo-magnifier-preview")
 
 func check(ok: bool, message: String) -> void:
 	checks += 1

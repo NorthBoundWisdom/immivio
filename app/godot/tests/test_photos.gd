@@ -261,18 +261,18 @@ func _run() -> void:
 	var y := Menu.DEPTH_SPAN.y
 	var controls: Node3D = main.photo_menu
 	controls.press_pointer("left_hand", controls.to_global(Vector3(Menu.DEPTH_X,y,1)), -controls.global_basis.z, true)
-	check(is_equal_approx(main.photo.depth_strength, 1.0) and is_equal_approx(main.photo.material.get_shader_parameter("depth_strength"),1.0)
-		and is_equal_approx(main.photo._detail_material.get_shader_parameter("depth_strength"),1.0), "Photo and detail shaders receive live 100% strength")
+	check(is_equal_approx(main.photo.depth_strength, 2.0) and is_equal_approx(main.photo.material.get_shader_parameter("depth_strength"),2.0)
+		and is_equal_approx(main.photo._detail_material.get_shader_parameter("depth_strength"),2.0), "Slider top gives photo and detail shaders live 200% strength")
 	check(host.inference == 1 and main.photo._depth_texture == original_texture and controls._depth_knob == original_knob, "Dragging reuses depth map and UI meshes")
 	controls.release_pointer("left_hand",Vector3.ZERO,Vector3.ZERO,false)
 	main._on_photo_action("photo_next")
 	await settle(main.photo); await process_frame
-	check(main.photo.index == 1 and main.photo.depth_requested and main.photo.depth_enabled and main.photo.depth_strength == 1.0 and host.inference == 2,
+	check(main.photo.index == 1 and main.photo.depth_requested and main.photo.depth_enabled and main.photo.depth_strength == 2.0 and host.inference == 2,
 		"Next photo retains 3D choice and strength, estimates the new image once")
 	main.photo.set_projection(3)
 	check(not main.photo.depth_enabled and main.photo.auto_depth, "Panorama temporarily bypasses 3D without clearing preference")
 	main.photo.set_projection(0)
-	check(main.photo.depth_enabled and main.photo.depth_strength == 1.0, "Returning to flat photo restores 3D")
+	check(main.photo.depth_enabled and main.photo.depth_strength == 2.0, "Returning to flat photo restores 3D")
 	main._on_depth_strength(0.0,true)
 	main._on_photo_action("photo_next")
 	await settle(main.photo); await process_frame
@@ -280,7 +280,7 @@ func _run() -> void:
 		"Manual Off applies to both media types and stays off on the next photo")
 	main._on_depth_strength(1.5,true); main._save_depth_strength()
 	var saved := ConfigFile.new(); saved.load(main.settings_path)
-	check(is_equal_approx(saved.get_value("photo","depth_strength"), 1.0) and saved.get_value("effects","auto_3d") and main.video.auto_depth,
+	check(is_equal_approx(saved.get_value("photo","depth_strength"), 1.5) and saved.get_value("effects","auto_3d") and main.video.auto_depth,
 		"Photo preference also enables following videos and saves independent photo strength")
 	main.photo.set_projection(3)
 	main._on_photo_action("lock_mode")
@@ -289,7 +289,7 @@ func _run() -> void:
 	var restored := Main.new()
 	restored.settings_path = main.settings_path
 	root.add_child(restored)
-	check(restored.video.auto_depth and restored.photo.auto_depth and is_equal_approx(restored.photo.depth_strength, 1.0) and restored.video.depth_strength == 1.0,
+	check(restored.video.auto_depth and restored.photo.auto_depth and is_equal_approx(restored.photo.depth_strength, 1.5) and restored.video.depth_strength == 1.0,
 		"Restart restores shared auto-3D choice and separate strengths")
 	check(restored.photo.mode_lock.geometry == 3 and restored.video.mode_lock.is_empty(), "Restart restores panorama photo lock without locking videos")
 	main._on_photo_action("lock_mode"); saved.load(main.settings_path)

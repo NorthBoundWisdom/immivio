@@ -14,7 +14,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--adb', default='adb')
 parser.add_argument('--serial', required=True)
 parser.add_argument('--apk', type=Path, default=Path('android/web-login-fixture/build/outputs/apk/debug/web-login-fixture-debug.apk'))
-parser.add_argument('--out', type=Path, default=Path('artifacts/web-login-viewport'))
+parser.add_argument('--out', type=Path, default=Path('build/output/web-login-viewport'))
 parser.add_argument('--vary-device-density', action='store_true', help='Emulator only: exercise actual display DPI and restore it afterward')
 args = parser.parse_args()
 adb = [args.adb, '-s', args.serial]

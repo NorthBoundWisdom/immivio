@@ -44,11 +44,14 @@ func _initialize() -> void:
 	check(Naming.complete({}, 5760, 5760) == {"geometry": full, "stereo": true, "top_bottom": true, "stereo_half": false, "swap": false}, "Large unmarked square is 360 top-bottom")
 	check(Naming.complete({}, 1080, 1080) == {"geometry": flat, "stereo": false, "top_bottom": false, "stereo_half": false, "swap": false}, "Small square stays flat 2D")
 	# Frame shape fills the rest.
-	check(Naming.complete({}, 8192, 4096) == {"geometry": half, "stereo": true, "top_bottom": false, "stereo_half": false, "swap": false}, "Unmarked 2:1 is VR180 SBS")
+	for width in [8000, 8192, 8320]:
+		check(Naming.complete({}, width, 4096) == {"geometry": flat, "stereo": false, "top_bottom": false, "stereo_half": false, "swap": false}, "Unmarked near-2:1 stays flat mono: %d" % width)
 	check(Naming.complete({}, 3840, 1080) == {"geometry": flat, "stereo": true, "top_bottom": false, "stereo_half": false, "swap": false}, "32:9 is a flat full-SBS film")
 	check(Naming.complete({}, 1920, 1080) == {"geometry": flat, "stereo": false, "top_bottom": false, "stereo_half": false, "swap": false}, "16:9 is flat 2D")
-	check(Naming.complete({"stereo": false}, 7680, 3840) == {"geometry": full, "stereo": false, "top_bottom": false, "stereo_half": false, "swap": false}, "Mono 2:1 is 360")
-	check(Naming.complete({"stereo": true, "swap": true}, 3840, 1920) == {"geometry": half, "stereo": true, "top_bottom": false, "stereo_half": false, "swap": true}, "RL at 2:1")
+	check(Naming.complete({"stereo": false}, 7680, 3840) == {"geometry": flat, "stereo": false, "top_bottom": false, "stereo_half": false, "swap": false}, "Mono 2:1 does not imply 360")
+	check(Naming.complete({"stereo": true, "swap": true}, 3840, 1920) == {"geometry": flat, "stereo": true, "top_bottom": false, "stereo_half": true, "swap": true}, "RL at 2:1 preserves eye order without asserting VR180")
+	check(Naming.complete(Naming.from_name("clip_180_SBS.mp4"), 8192, 4096) == {"geometry": half, "stereo": true, "top_bottom": false, "stereo_half": false, "swap": false}, "Explicit 180 SBS is preserved at 2:1")
+	check(Naming.complete({}, 8192, 4096, {"stereo_mode": "sbsl"}) == {"geometry": flat, "stereo": true, "top_bottom": false, "stereo_half": true, "swap": false}, "2:1 container SBS supplies stereo without asserting VR180")
 	check(Naming.complete({"geometry": full}, 4096, 2048) == {"geometry": full, "stereo": false, "top_bottom": false, "stereo_half": false, "swap": false}, "360 defaults mono")
 	check(Naming.complete({"geometry": fisheye}, 4000, 2000).stereo, "Fisheye defaults SBS")
 	for marker in ["HSBS", "Half-SBS", "3DH"]:

@@ -36,6 +36,7 @@ internal class CloudFailure(val reason: String = "cloud_unavailable") : IOExcept
     "cloud_store_unavailable" -> "Cloud account storage unavailable"
     "cloud_file_missing" -> "Cloud file or account not found"
     "cloud_file_changed" -> "Cloud file changed. Refresh the folder"
+    "cloud_file_ambiguous" -> "Duplicate cloud names. Rename in cloud storage"
     "cloud_folder_too_large" -> "Cloud folder too large"
     else -> "Cloud connection failed"
 })

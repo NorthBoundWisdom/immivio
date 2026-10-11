@@ -121,6 +121,9 @@ struct Source final {
     std::atomic<uint64_t> dimensions{0}, last_epoch{0}, epoch_floor{0};
     std::atomic<uint64_t> rendered{0}, skipped{0}, published{0}, acquired{0}, released{0};
     std::atomic<uint64_t> seeks_started{0}, seeks_completed{0}, invalid_frames{0};
+    // The last rejected ticket, so a source that never publishes can be diagnosed.
+    std::atomic<uint64_t> invalid_flags{0}, invalid_frame_id{0};
+    std::atomic<int64_t> invalid_pts_us{0};
     std::atomic<uint64_t> audio_commands_applied{0};
     // RVM sessions cap presented source frames (0 = every frame). Decimation uses
     // each frame's scheduled display time, before its full-size render.
@@ -178,6 +181,7 @@ struct Source final {
     std::string state = "opening", details = "{}", error, render_error;
     double pixel_aspect = 1.0; // status_mutex; output coordinates remain packed source pixels
     std::string stereo_mode; // status_mutex; MPV's demuxed stereo-in, never inferred from title
+    std::atomic<bool> hardware_decoding{false};
     std::thread control_thread, render_thread;
 
     Source(std::string file, bool hw, bool with_audio, int position,
@@ -356,6 +360,7 @@ struct Source final {
         if (mpv_get_property(core, "video-out-params/par", MPV_FORMAT_DOUBLE, &par) < 0 ||
             !std::isfinite(par) || par <= 0.0 || par > 16.0) par = 1.0;
         const auto stereo = property(core, "video-out-params/stereo-in");
+        hardware_decoding.store(property(core, "hwdec-current").find("mediacodec") == 0);
         { std::lock_guard<std::mutex> lock(status_mutex); pixel_aspect = par; stereo_mode = stereo; }
         const auto previous = dimensions.load();
         require(previous == 0 || previous == size, "MPV midstream size change requires a new format generation");
@@ -369,6 +374,7 @@ struct Source final {
             auto option = [&](const char* key, const char* value) { checked(mpv_set_option_string(core, key, value), key); };
             option("config", "no"); option("load-scripts", "no"); option("terminal", "no");
             option("vo", "libmpv"); option("hwdec", hardware ? "mediacodec" : "no"); option("hwdec-codecs", "all");
+            option("vd-lavc-spatial-video", "yes");
             // Godot restores the per-eye display aspect. MPV must fill the packed FBO;
             // letterboxing here would change the eye rectangles before the VR shader splits them.
             option("keepaspect", "no");
@@ -425,7 +431,11 @@ struct Source final {
             require(render_ready.load() && !render_failed.load(), "MPV shared renderer failed to initialize");
             renderer_ready_us.store(startup_us());
             if (!closing.load()) {
-                const std::string start = "start=" + std::to_string(start_ms / 1000.0);
+                // From the beginning, start precisely even in speed mode: an edit list can place the
+                // first keyframe before 0 (H.264 B-frame preroll). A keyframe start shows that preroll
+                // frame with a negative PTS, which is never published, and paused startup then waits
+                // forever. Later seeks pass explicit flags, so this per-file option affects only the start.
+                const std::string start = "start=" + std::to_string(start_ms / 1000.0) + (start_ms == 0 ? ",hr-seek=yes" : "");
                 const char* load[] = {"loadfile", path.c_str(), "replace", "-1", start.c_str(), nullptr};
                 checked(mpv_command(core, load), "MPV source loadfile");
                 load_submitted_us.store(startup_us());
@@ -608,7 +618,8 @@ struct Source final {
             checked(mpv_render_context_create(&renderer, core, params), "MPV shared render context create");
             mpv_render_context_set_update_callback(renderer, callback, this); render_ready.store(true);
             bool needs_frame = false;
-            int64_t last_kept_target_us = 0; // render thread only
+            int64_t last_target_us = 0; // render thread only
+            double owed_us = 0; // display time owed to the cap since the last kept frame
             uint64_t cadence_floor = 0;
             while (true) {
                 bool resolve_final = false;
@@ -642,7 +653,7 @@ struct Source final {
                 }
                 const int cap = max_fps.load();
                 if (cadence_reset.exchange(false) || cadence_floor != epoch_floor.load()) {
-                    last_kept_target_us = 0; cadence_floor = epoch_floor.load();
+                    last_target_us = 0; owed_us = 0; cadence_floor = epoch_floor.load();
                 }
                 bool stepping = false;
 #ifndef NDEBUG
@@ -660,18 +671,25 @@ struct Source final {
                         const bool ns = info.target_time > mpv_get_time_us(core) * 100;
                         cadence_target_ns.store(ns);
                         if (ns) info.target_time /= 1000;
-                        // Half a 60fps interval of tolerance keeps 59.94 -> 29.97 on
-                        // alternate frames; slower sources keep every frame.
-                        const int64_t period_us = 1000000 / cap, tolerance_us = 8000;
-                        if (last_kept_target_us > 0 && info.target_time > last_kept_target_us &&
-                            info.target_time - last_kept_target_us < period_us - tolerance_us) {
+                        // Each source interval adds owed display time; a frame is kept once a full
+                        // period is owed, so non-integer ratios alternate (30 -> 20 keeps 2 of 3).
+                        // The carried remainder stays under half a period: a source just slower
+                        // than an integer multiple (59.94 -> 30) never keeps an extra frame.
+                        const double period_us = 1e6 / cap;
+                        bool keep = last_target_us == 0;
+                        if (!keep) {
+                            owed_us += std::min(std::max<double>(info.target_time - last_target_us, 0.0), 2 * period_us);
+                            keep = owed_us >= period_us - 500;
+                        }
+                        last_target_us = info.target_time;
+                        if (!keep) {
                             needs_frame = false;
                             int skip = 1;
                             mpv_render_param dropped[] = {{MPV_RENDER_PARAM_SKIP_RENDERING, &skip}, {MPV_RENDER_PARAM_INVALID, nullptr}};
                             checked(mpv_render_context_render(renderer, dropped), "MPV cadence skip");
                             mpv_render_context_report_swap(renderer); cadence_skipped.fetch_add(1); continue;
                         }
-                        last_kept_target_us = info.target_time;
+                        owed_us = std::max(0.0, std::min(owed_us - period_us, period_us / 2 - 1000));
                     }
                 }
                 ActiveFlag rendering(render_in_progress);
@@ -715,7 +733,9 @@ struct Source final {
                     checked(mpv_render_context_render(renderer, dropped), "MPV bounded slot skip");
                     mpv_render_context_report_swap(renderer); skipped.fetch_add(1); continue;
                 }
-                const bool direct_render = direct.load() && !dolby_profile5.load();
+                // Software MV-HEVC has no AImage to export. Render its complete
+                // eye pair at full size, including when Alpha requested direct mode.
+                const bool direct_render = direct.load() && !dolby_profile5.load() && hardware_decoding.load();
                 if (direct_render) { out_width = 16; out_height = 8; } // MPV still selects and times the frame
                 if (target->color && (target->out_width != out_width || target->out_height != out_height)) {
                     glDeleteFramebuffers(1, &target->fbo); glDeleteTextures(1, &target->color); target->fbo = target->color = 0;
@@ -768,6 +788,9 @@ struct Source final {
                 const bool valid = (ticket.flags & required) == required && ticket.source_epoch > 0 &&
                     ticket.frame_id > 0 && ticket.media_pts_us >= 0 && ticket.media_pts_us <= std::numeric_limits<int64_t>::max()/1000;
                 std::lock_guard<std::mutex> lock(frames_mutex);
+                if (!valid && !closing.load()) {
+                    invalid_flags.store(ticket.flags); invalid_frame_id.store(ticket.frame_id); invalid_pts_us.store(ticket.media_pts_us);
+                }
                 if (!valid || closing.load()) { invalid_frames.fetch_add(!valid); target->phase = Phase::free; drop_image(*target); continue; }
                 // The EOF redraw names the last source frame. In direct mode it has no image of its own and
                 // is skipped below, so record it first: otherwise EOF never resolves and looping stalls.
@@ -855,6 +878,7 @@ struct Source final {
             ",\"frame_id\":" + std::to_string(t.frame_id) + ",\"pts_us\":" + std::to_string(t.media_pts_us) +
             ",\"source_epoch\":" + std::to_string(t.source_epoch) + ",\"render_sequence\":" + std::to_string(t.render_sequence) +
             ",\"source_flags\":" + std::to_string(t.flags) +
+            ",\"spatial_video\":" + std::string(t.flags & QUEST_MPV_SPATIAL_VIDEO ? "true" : "false") +
             ",\"width\":" + std::to_string(newest->image ? t.width : newest->out_width) +
             ",\"height\":" + std::to_string(newest->image ? t.height : newest->out_height) +
             ",\"source_width\":" + std::to_string(t.width) + ",\"source_height\":" + std::to_string(t.height) +
@@ -932,6 +956,8 @@ struct Source final {
             ",\"renderer_ready_us\":" + std::to_string(renderer_ready_us.load()) + ",\"load_submitted_us\":" + std::to_string(load_submitted_us.load()) +
             ",\"file_loaded_us\":" + std::to_string(file_loaded_us.load()) + ",\"first_published_us\":" + std::to_string(first_published_us.load()) + "}" +
             ",\"invalid_frames\":" + std::to_string(invalid_frames.load()) +
+            ",\"invalid_last\":{\"flags\":" + std::to_string(invalid_flags.load()) + ",\"frame_id\":" +
+            std::to_string(invalid_frame_id.load()) + ",\"pts_us\":" + std::to_string(invalid_pts_us.load()) + "}" +
             ",\"stale_seek_frames_discarded\":" + std::to_string(stale_seek_frames_discarded.load()) +
             ",\"audio_commands_applied\":" + std::to_string(audio_commands_applied.load()) +
             ",\"frame_cap_fps\":" + std::to_string(max_fps.load()) +

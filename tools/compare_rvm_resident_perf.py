@@ -20,11 +20,11 @@ def main():
     assert before['cases']==after['cases']==18 and before['profiles']==after['profiles']
     assert before['apk_sha256']!=after['apk_sha256']
     assert before['apk_sha256']==read(baseline/'build_manifest.json')['apk_sha256']
-    assert after['apk_sha256']==sha(ROOT/'artifacts/quest3-player-debug.apk')
+    assert after['apk_sha256']==sha(ROOT/'build/output/quest3-player-debug.apk')
     assert read(baseline/'fixture-lineage.json')==read(candidate/'fixture-lineage.json')
     # Verify raw baseline reports against the frozen prior checkpoint's hashes.
-    frozen=read(ROOT/'artifacts/checkpoints'/('rvm-quest-'+before['apk_sha256'][:8])/
-        'artifacts/rvm-quest-candidate-verification.json')
+    frozen=read(ROOT/'build/output/checkpoints'/('rvm-quest-'+before['apk_sha256'][:8])/
+        'build/output/rvm-quest-candidate-verification.json')
     rows=[]
     for key in after['profiles']:
         raw_before=baseline/('resident_'+key+'-report.json')
@@ -47,7 +47,7 @@ def main():
         independent_numeric_validation_passed=True,unchanged_fixture_lineage=True,rows=rows,
         scope='Four process_alpha_stereo samples per profile, same Quest static synthetic dataset; snapshots excluded from timer; no XR, video, thermal or sustained FPS claim',
         sustained_performance_verified=False,video_XR_verified=False)
-    output=ROOT/'artifacts/rvm-identity-performance-comparison.json'
+    output=ROOT/'build/output/rvm-identity-performance-comparison.json'
     output.write_text(json.dumps(record,indent=2)+'\n',encoding='utf-8')
     print(json.dumps(record,indent=2))
 

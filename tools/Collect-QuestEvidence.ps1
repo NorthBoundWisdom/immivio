@@ -20,11 +20,11 @@ $appId = 'com.wapok.thru3d'
 $model = (& $adb @adbArguments shell getprop ro.product.model | Out-String).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'Could not read device model.' }
 if ($model -notmatch '^Quest\s*3$') { throw "Expected Quest 3; observed model: $model. No installation performed." }
-$evidenceDirectory = Join-Path $workspace ('artifacts\device\' + (Get-Date -Format 'yyyyMMdd_HHmmss'))
+$evidenceDirectory = Join-Path $workspace ('build\output\device\' + (Get-Date -Format 'yyyyMMdd_HHmmss'))
 New-Item -ItemType Directory -Path $evidenceDirectory -Force | Out-Null
 & $adb @adbArguments shell getprop 2>&1 | Out-File (Join-Path $evidenceDirectory 'getprop.txt') -Encoding utf8
 if ($Install) {
-    & $adb @adbArguments install -r (Join-Path $workspace 'artifacts\quest3-player-debug.apk')
+    & $adb @adbArguments install -r (Join-Path $workspace 'build\output\quest3-player-debug.apk')
     if ($LASTEXITCODE -ne 0) { throw 'Quest APK install failed.' }
 }
 if ($Launch) {

@@ -66,8 +66,10 @@ internal object OpenListBackend {
         return Client(account.getString("mount"), account.getString("provider"))
     }
 
-    private class Client(private val mount: String, provider: String) : CloudClient {
+    internal class Client(private val mount: String, provider: String,
+        private val call: (String, String, JSONObject?) -> JSONObject = ::request) : CloudClient {
         override val canDelete = provider == CloudDrive.OPEN115
+        private val verifiedFolders = java.util.concurrent.ConcurrentHashMap<String, Long>()
         init { require(mount.matches(Regex("/[0-9a-f-]{36}"))) }
         private fun absolutePath(remote: String): String {
             require(remote.startsWith('/') && remote.split('/').none { it == "." || it == ".." || '\u0000' in it })
@@ -75,9 +77,21 @@ internal object OpenListBackend {
         }
         override fun page(path: String, offset: Int, refresh: Boolean): CloudPage {
             require(offset >= 0 && offset % CloudDrive.PAGE_SIZE == 0 && offset <= Int.MAX_VALUE - CloudDrive.PAGE_SIZE)
-            val data = if (canDelete) request("POST", "/list115", JSONObject().put("mount", mount).put("path", path)
+            absolutePath(path)
+            if (refresh && offset == 0) verifiedFolders.clear()
+            if (canDelete && path != "/" && verifiedFolders[path]?.let { it > System.nanoTime() } != true) {
+                // A path cannot select one of several same-name folders (or a file/folder pair).
+                val matches = list(path.substringBeforeLast('/').ifEmpty { "/" })
+                    .filter { it.name == path.substringAfterLast('/') }
+                if (matches.size > 1) throw CloudFailure("cloud_file_ambiguous")
+                if (matches.singleOrNull()?.folder != true) throw CloudFailure("cloud_file_missing")
+                // Reuse only this metadata check for the lifetime of the core's two-minute snapshot.
+                // Paging a deep folder must not enumerate every ancestor again for each page.
+                verifiedFolders[path] = System.nanoTime() + 120_000_000_000L
+            }
+            val data = if (canDelete) call("POST", "/list115", JSONObject().put("mount", mount).put("path", path)
                 .put("offset", offset).put("refresh", refresh && offset == 0)).getJSONObject("data")
-            else request("POST", "/list", JSONObject().put("path", absolutePath(path)).put("password", "")
+            else call("POST", "/list", JSONObject().put("path", absolutePath(path)).put("password", "")
                 .put("page", offset / CloudDrive.PAGE_SIZE + 1).put("per_page", CloudDrive.PAGE_SIZE)
                 .put("refresh", refresh && offset == 0)).getJSONObject("data")
             val items = data.optJSONArray("content") ?: org.json.JSONArray()
@@ -92,7 +106,10 @@ internal object OpenListBackend {
                     modified = if (canDelete) item.optLong("modified_ms", -1) else runCatching { java.time.OffsetDateTime.parse(item.optString("modified")).toInstant().toEpochMilli() }.getOrDefault(-1),
                     objectId = if (canDelete) item.getString("id") else child, canDelete = canDelete && item.optBoolean("can_delete"))
             }
-            if (files.map { it.name }.toSet().size != files.size) throw CloudFailure()
+            // 115 can contain different objects at the same path. Keep their metadata visible;
+            // object IDs still detect repeated provider rows, and find() rejects ambiguous paths.
+            val keys = files.map { if (canDelete) it.objectId else it.name }
+            if (keys.toSet().size != files.size) throw CloudFailure()
             return CloudPage(files, if (offset + items.length() < total) offset + items.length() else -1, total)
         }
         override fun list(path: String): List<CloudFile> {
@@ -101,15 +118,19 @@ internal object OpenListBackend {
             var offset = 0
             repeat(5000) {
                 val page = page(path, offset)
-                page.files.forEach { if (!seen.add(it.name)) throw CloudFailure() }
+                page.files.forEach { if (!seen.add(if (canDelete) it.objectId else it.name)) throw CloudFailure() }
                 files.addAll(page.files)
                 if (page.nextOffset < 0) return files
                 offset = page.nextOffset
             }
             throw CloudFailure("cloud_folder_too_large")
         }
-        override fun find(path: String) = list(path.substringBeforeLast('/').ifEmpty { "/" })
-            .firstOrNull { !it.folder && it.name == path.substringAfterLast('/') } ?: throw CloudFailure("cloud_file_missing")
+        override fun find(path: String): CloudFile {
+            val matches = list(path.substringBeforeLast('/').ifEmpty { "/" })
+                .filter { it.name == path.substringAfterLast('/') }
+            if (matches.size > 1) throw CloudFailure("cloud_file_ambiguous")
+            return matches.singleOrNull()?.takeIf { !it.folder } ?: throw CloudFailure("cloud_file_missing")
+        }
         override fun remove(path: String, file: CloudFile) {
             check(canDelete && file.canDelete && path != "/" && file.id == path)
             request("POST", "/remove115", JSONObject().put("mount", mount).put("path", path).put("id", file.objectId)
@@ -117,6 +138,8 @@ internal object OpenListBackend {
         }
         override fun resolve(file: CloudFile): CloudLink {
             require(!file.folder && file.size > 0)
+            // Sidecar audio/subtitles resolve listed objects directly, without going through find().
+            if (canDelete && find(file.id).objectId != file.objectId) throw CloudFailure("cloud_file_missing")
             val stream = Cloudcore.stream(absolutePath(file.id))
             val origin = URI(stream)
             return CloudLink(stream) { emptyMap() }.also { require(origin.host == "127.0.0.1" && origin.scheme == "http") }

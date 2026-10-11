@@ -219,3 +219,27 @@ func update(input: Dictionary, delta: float) -> Dictionary:
 	else:
 		_settled = 0
 	return event
+
+## Sweeps are displacement gestures. Finger articulation never arms this recognizer.
+static func sweep_sample(tracker: XRHandTracker, head: Transform3D, space: Transform3D, scale: float,
+		meta_aim: XRPositionalTracker = null, interaction: XRPositionalTracker = null) -> Dictionary:
+	if not is_optical(tracker) or not head.is_finite() or not space.is_finite() or not is_finite(scale) or scale <= 0: return {}
+	var palm := XRHandTracker.HAND_JOINT_PALM
+	if tracker.get_hand_joint_flags(palm) & POSITION_FLAGS != POSITION_FLAGS: return {}
+	var local := tracker.get_hand_joint_transform(palm).origin
+	if not local.is_finite(): return {}
+	var position := space * (local * scale)
+	var offset := head.basis.inverse() * (position - head.origin) / scale
+	var pinched := false; var blocked := false
+	var provider := "joints"
+	if meta_aim:
+		provider = "meta_aim"; pinched = meta_aim.get_input("index_pinch") == true
+		blocked = meta_aim.get_input("system_gesture") == true or meta_aim.get_input("menu_gesture") == true or meta_aim.get_input("menu_pressed") == true
+	elif is_hand_profile(interaction, true):
+		provider = "hand_profile"; pinched = interaction.get_input("trigger_click") == true
+	var thumb := XRHandTracker.HAND_JOINT_THUMB_TIP; var index := XRHandTracker.HAND_JOINT_INDEX_FINGER_TIP
+	if tracker.get_hand_joint_flags(thumb) & POSITION_FLAGS == POSITION_FLAGS and tracker.get_hand_joint_flags(index) & POSITION_FLAGS == POSITION_FLAGS:
+		pinched = pinched or tracker.get_hand_joint_transform(thumb).origin.distance_to(tracker.get_hand_joint_transform(index).origin) < 0.022
+	return {"tracked": true, "position": position, "provider": provider, "space": space,
+		"eligible": offset.z < -0.08 and offset.z > -1.2 and absf(offset.x) < 0.95 and offset.y > -0.85 and offset.y < 0.5,
+		"pinched": pinched, "blocked": blocked}

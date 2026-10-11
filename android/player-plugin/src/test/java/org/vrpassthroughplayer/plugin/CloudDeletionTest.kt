@@ -42,6 +42,23 @@ class CloudDeletionTest {
         assertTrue(CloudDeletion(client).run("/"+f.name, request(f), false, false).getBoolean("deleted"))
         assertEquals(1, client.writes); assertTrue(client.reads.all { it.third })
     }
+    @Test fun duplicateNamesAcrossPagesCannotPrepareOrDeleteEitherObject() {
+        val first = item("test.mp4", "1")
+        val client = Fake().apply {
+            folders["/"]!!.add(first)
+            for (i in 2..49) folders["/"]!!.add(item("test($i).mp4", "$i"))
+            folders["/"]!!.add(item("test.mp4", "50"))
+        }
+        for (inspect in listOf(false, true))
+            assertEquals("cloud_file_ambiguous", assertThrows(CloudFailure::class.java) {
+                CloudDeletion(client).run("/test.mp4", request(first), inspect, false)
+            }.reason)
+        assertThrows(CloudFailure::class.java) { CloudDeletion(client).run("/test.mp4", request(first), false, true) }
+        assertEquals(0, client.writes)
+        val unique = client.folders["/"]!![1]
+        assertTrue(CloudDeletion(client).run("/" + unique.name, request(unique), false, false).getBoolean("deleted"))
+        assertEquals(1, client.writes)
+    }
     @Test fun replacedPathAndChangedMetadataCannotDeleteAnotherFile() {
         val displayed = item("a.mp4", "9")
         val client = Fake().apply { folders["/"]!!.add(item("a.mp4", "10")) }

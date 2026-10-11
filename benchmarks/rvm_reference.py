@@ -55,7 +55,7 @@ def fixtures() -> dict[str, list[np.ndarray]]:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--output", type=Path, default=ROOT / "artifacts/rvm-reference")
+    parser.add_argument("--output", type=Path, default=ROOT / "build/output/rvm-reference")
     arguments = parser.parse_args()
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     model = ROOT / manifest["file"]

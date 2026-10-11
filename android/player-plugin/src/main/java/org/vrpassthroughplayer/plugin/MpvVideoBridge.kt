@@ -92,9 +92,13 @@ internal class MpvVideoBridge(
                              val producer: Long = 0L) // Borrowed MPV slot, released when this lease retires.
     private data class Alpha(val pair: JSONObject, val left: ByteBuffer, val right: ByteBuffer)
     /** depth: realtime 2D->3D on a mono source; its near map rides in the Alpha mask slot. Never with alpha. */
-    private class Session(val scope: MediaSessionGate.Scope, val host: Host, val stereo: Boolean,
+    private class Session(val scope: MediaSessionGate.Scope, val host: Host, private val requestedStereo: Boolean,
                           val profile: String, val alpha: Boolean, val vulkan: Boolean, val normalFastPath: Boolean,
-                          val depth: Boolean = false, val topBottom: Boolean = false) {
+                          private val requestedDepth: Boolean = false, private val requestedTopBottom: Boolean = false) {
+        @Volatile var spatial = false // the decoded source fixes its physical packing
+        val stereo get() = spatial || requestedStereo
+        val depth get() = requestedDepth && !spatial
+        val topBottom get() = requestedTopBottom && !spatial
         val id get() = scope.decoderId
         val lock = Any()
         val disposed = AtomicBoolean(false)
@@ -148,10 +152,21 @@ internal class MpvVideoBridge(
     fun supported() = !stopped && MpvSourceNative.supported()
     /** User setting: decoded color width cap for sources opened from now on (0 = source size). */
     @Volatile var outputWidthCap = 0
-    /** Alpha passthrough reads the source at 30fps: one RVM pair per presented frame. */
+    /** User setting: Alpha passthrough reads the source at this rate, one RVM pair per presented frame. */
+    @Volatile private var alphaFps = RVM_VIDEO_FPS
+    /** MPV's cadence cap is atomic and resets its decimation on change, so a running session follows at once. */
+    fun setAlphaFps(fps: Int): Boolean {
+        if (fps !in ALPHA_FPS_RANGE) return false
+        alphaFps = fps
+        sessions.values.filter { it.alpha && active(it) }.forEach { session ->
+            val handle = session.host.handle
+            if (handle > 0) runCatching { MpvSourceNative.setFrameCap(handle, frameCap(session)) }
+        }
+        return true
+    }
     private fun frameCap(session: Session) = if (BuildConfig.DEBUG && debugFrameCapOverride >= 0) debugFrameCapOverride
         // 2D->3D shows every frame with the latest depth map; only Alpha needs one result per frame.
-        else if (session.alpha) RVM_VIDEO_FPS else 0
+        else if (session.alpha) alphaFps else 0
     private fun active(session: Session) = !stopped && !session.disposed.get() && gate.accepts(session.id)
     private fun event(name: String, session: Session, json: JSONObject) {
         json.put("session_id", session.id).put("logical_session_id", session.scope.logicalSessionId)
@@ -424,6 +439,7 @@ internal class MpvVideoBridge(
         var releaseProducer = true
         try {
             check(source.getBoolean("source_ticket_valid") && source.getBoolean("producer_fence_ready") && source.getBoolean("owner_context_shared"))
+            if (source.optBoolean("spatial_video")) session.spatial = true
             val width = source.getInt("width"); val height = source.getInt("height")
             check(!session.stereo || (if (session.topBottom) height else width) % 2 == 0)
             val eyeWidth = if (session.stereo && !session.topBottom) width / 2 else width
@@ -801,7 +817,8 @@ internal class MpvVideoBridge(
         sessions.values.forEach { fail(it, "MPV_GL_CONTEXT_RECREATED", IllegalStateException("Owner context recreated")) }
     }
     companion object {
-        const val RVM_VIDEO_FPS = 30
+        const val RVM_VIDEO_FPS = 20
+        val ALPHA_FPS_RANGE = 10..40
         private val NO_PLANES: Pair<ByteBuffer, ByteBuffer> = ByteBuffer.allocateDirect(0) to ByteBuffer.allocateDirect(0)
     }
     fun shutdown() {

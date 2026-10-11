@@ -46,7 +46,7 @@
      } else {
          frame = vo_frame_ref(ctx->cur_frame);
          if (frame)
-@@ -402,6 +413,38 @@
+@@ -402,6 +413,40 @@
      if (!frame)
          frame = &dummy;
  
@@ -74,6 +74,8 @@
 +            quest->crop_y1 = image->params.crop.y1;
 +            quest->rotation_degrees = image->params.rotate;
 +            quest->mpv_image_format = image->imgfmt;
++            if (image->params.quest_spatial_video)
++                quest->flags |= QUEST_MPV_SPATIAL_VIDEO;
 +            double us = image->pts * 1e6;
 +            if (image->pts != MP_NOPTS_VALUE && isfinite(us) &&
 +                us > (double)INT64_MIN && us < (double)INT64_MAX) {
@@ -85,7 +87,7 @@
      mp_mutex_unlock(&ctx->lock);
  
      MP_STATS(ctx, "glcb-render");
-@@ -493,6 +536,11 @@
+@@ -493,6 +538,11 @@
      mp_mutex_lock(&ctx->lock);
      mp_assert(!ctx->next_frame);
      ctx->next_frame = vo_frame_ref(frame);
@@ -97,7 +99,7 @@
      ctx->expected_flip_count = ctx->flip_count + 1;
      ctx->redrawing = frame->redraw || !frame->current;
      mp_mutex_unlock(&ctx->lock);
-@@ -545,6 +593,7 @@
+@@ -545,6 +595,7 @@
      if (ctx->next_frame) {
          talloc_free(ctx->cur_frame);
          ctx->cur_frame = ctx->next_frame;
@@ -105,7 +107,7 @@
          ctx->next_frame = NULL;
          ctx->present_count += 2;
          mp_cond_signal(&ctx->video_wait);
-@@ -606,6 +655,8 @@
+@@ -606,6 +657,8 @@
      case VOCTRL_RESET:
          mp_mutex_lock(&ctx->lock);
          forget_frames(ctx, false);
@@ -114,7 +116,7 @@
          ctx->need_reset = true;
          mp_mutex_unlock(&ctx->lock);
          vo->want_redraw = true;
-@@ -755,3 +806,8 @@
+@@ -755,3 +808,8 @@
      .uninit = uninit,
      .priv_size = sizeof(struct vo_priv),
  };
@@ -247,7 +249,40 @@
                       struct mp_osd_res *osd);
 --- a/video/decode/vd_lavc.c
 +++ b/video/decode/vd_lavc.c
-@@ -212,6 +212,7 @@
+@@ -55,6 +55,7 @@
+ #include "video/out/vo.h"
+ 
+ #include "options/m_option.h"
++#include "quest_spatial_video.h"
+ 
+ static void init_avctx(struct mp_filter *vd);
+ static void uninit_avctx(struct mp_filter *vd);
+@@ -79,6 +80,7 @@
+ 
+ struct vd_lavc_params {
+     bool fast;
++    bool spatial_video;
+     int film_grain;
+     bool show_all;
+     int skip_loop_filter;
+@@ -108,6 +110,7 @@
+ const struct m_sub_options vd_lavc_conf = {
+     .opts = (const m_option_t[]){
+         {"vd-lavc-fast", OPT_BOOL(fast)},
++        {"vd-lavc-spatial-video", OPT_BOOL(spatial_video)},
+         {"vd-lavc-film-grain", OPT_CHOICE(film_grain,
+             {"auto", -1}, {"cpu", 0}, {"gpu", 1})},
+         {"vd-lavc-show-all", OPT_BOOL(show_all)},
+@@ -204,6 +207,8 @@
+     struct mp_codec_params *codec;
+     AVCodecContext *avctx;
+     AVFrame *pic;
++    bool quest_spatial;
++    struct quest_spatial_pair quest_pair;
+     AVPacket *avpkt;
+     bool use_hwdec;
+     struct hwdec_info hwdec; // valid only if use_hwdec==true
+@@ -212,6 +217,7 @@
      AVRational codec_timebase;
      enum AVDiscard skip_frame;
      bool flushing;
@@ -255,7 +290,38 @@
      struct lavc_state state;
      const char *decoder;
      bool hwdec_failed;
-@@ -901,7 +902,9 @@
+@@ -535,7 +541,7 @@
+             MP_VERBOSE(vd, "Not trying to use hardware decoding: codec %s is not "
+                     "on whitelist.\n", codec);
+             break;
+-        } else if (ctx->force_swdec) {
++        } else if (ctx->force_swdec || ctx->quest_spatial) {
+             MP_VERBOSE(vd, "Not trying to use hardware decoding: disallowed\n");
+             break;
+         } else {
+@@ -708,6 +714,10 @@
+     ctx->num_attempted_hwdecs = 0;
+     ctx->hwdec_notified = false;
+ 
++    m_config_cache_update(ctx->opts_cache);
++    ctx->quest_spatial = ctx->opts->spatial_video &&
++        quest_spatial_candidate(ctx->codec->lav_codecpar);
++    // MediaCodec exposes only the base layer, even when it succeeds.
+     select_and_set_hwdec(vd);
+ 
+     bool use_hwdec = ctx->use_hwdec;
+@@ -874,6 +884,10 @@
+     }
+ #endif
+ 
++    if (ctx->quest_spatial &&
++        av_opt_set(avctx, "view_ids", "-1", AV_OPT_SEARCH_CHILDREN) < 0)
++        goto error;
++
+     /* open it */
+     if (avcodec_open2(avctx, lavc_codec, NULL) < 0)
+         goto error;
+@@ -901,8 +915,11 @@
  {
      vd_ffmpeg_ctx *ctx = vd->priv;
  
@@ -264,9 +330,11 @@
 +    // send_packet clears this guard before starting a new decode cycle.
 +    if (ctx->avctx && avcodec_is_open(ctx->avctx) && !ctx->quest_mediacodec_drained)
          avcodec_flush_buffers(ctx->avctx);
++    quest_spatial_clear(&ctx->quest_pair);
      ctx->flushing = false;
      ctx->hwdec_request_reinit = false;
-@@ -939,6 +942,7 @@
+     // Wait for the first keyframe after reset to ensure the decoder state is
+@@ -939,6 +956,7 @@
      av_buffer_unref(&ctx->cached_hw_frames_ctx);
  
      avcodec_free_context(&ctx->avctx);
@@ -274,7 +342,7 @@
  
      av_buffer_unref(&ctx->hwdec_dev);
  
-@@ -1232,6 +1236,12 @@
+@@ -1232,6 +1250,12 @@
          return AVERROR_EOF;
  
      prepare_decoding(vd);
@@ -287,7 +355,7 @@
  
      if (ctx->wait_for_keyframe > 0 && pkt) {
          if (!pkt->keyframe && !ctx->intra_only) {
-@@ -1285,6 +1295,13 @@
+@@ -1285,6 +1309,13 @@
          return AVERROR_EOF;
  
      prepare_decoding(vd);
@@ -301,7 +369,7 @@
  
      // Re-send old packets (typically after a hwdec fallback during init).
      if (ctx->num_requeue_packets)
-@@ -1297,8 +1314,16 @@
+@@ -1297,8 +1328,16 @@
              // start over in case we get new packets at some point in the future.
              // This must take the delay queue into account, so avctx returns EOF
              // until the delay queue has been drained.
@@ -320,6 +388,34 @@
          } else if (ret == AVERROR(EAGAIN)) {
              // just retry after caller writes a packet
          } else {
+@@ -1308,6 +1347,17 @@
+     }
+ 
+     mp_codec_info_from_av(avctx, ctx->codec);
++    if (ctx->quest_spatial) {
++        int joined = quest_spatial_join(&ctx->quest_pair, ctx->pic);
++        if (joined < 0) {
++            MP_ERR(vd, "Invalid spatial video eye pair.\n");
++            av_frame_unref(ctx->pic);
++            quest_spatial_clear(&ctx->quest_pair);
++            mp_filter_internal_mark_failed(vd);
++            return joined;
++        }
++        if (!joined) return 0; // drain the other view before more input
++    }
+ 
+     // If something was decoded successfully, it must return a frame with valid
+     // data.
+@@ -1318,6 +1368,9 @@
+         av_frame_unref(ctx->pic);
+         return ret;
+     }
++
++    mpi->params.quest_spatial_video = ctx->quest_spatial;
++    if (ctx->quest_spatial) mpi->params.stereo3d = MP_STEREO3D_SBS2L;
+ 
+     if (mpi->imgfmt == IMGFMT_CUDA && !mpi->planes[0]) {
+         MP_ERR(vd, "CUDA frame without data. This is a FFmpeg bug.\n");
 --- a/video/out/hwdec/hwdec_aimagereader.c
 +++ b/video/out/hwdec/hwdec_aimagereader.c
 @@ -157,7 +157,8 @@
@@ -450,6 +546,53 @@
              DEF_FN(Uniform1i),
              DEF_FN(UniformMatrix2fv),
              DEF_FN(UniformMatrix3fv),
+--- a/video/mp_image.h
++++ b/video/mp_image.h
+@@ -47,6 +47,7 @@
+     enum mp_imgfmt hw_subfmt;   // underlying format for some hwaccel pixfmts
+     int w, h;                   // image dimensions
+     int p_w, p_h;               // define pixel aspect ratio (undefined: 0/0)
++    bool quest_spatial_video; // decoded, full-resolution left/right pair
+     bool force_window;          // fake image created by handle_force_window
+     struct pl_color_space color;
+     struct pl_color_repr repr;
+--- a/video/mp_image.c
++++ b/video/mp_image.c
+@@ -550,6 +550,7 @@
+     dst->params.vflip = src->params.vflip;
+     dst->params.rotate = src->params.rotate;
+     dst->params.stereo3d = src->params.stereo3d;
++    dst->params.quest_spatial_video = src->params.quest_spatial_video;
+     dst->params.p_w = src->params.p_w;
+     dst->params.p_h = src->params.p_h;
+     dst->params.color = src->params.color;
+@@ -881,6 +882,7 @@
+            p1->vflip == p2->vflip &&
+            p1->rotate == p2->rotate &&
+            p1->stereo3d == p2->stereo3d &&
++           p1->quest_spatial_video == p2->quest_spatial_video &&
+            mp_rect_equals(&p1->crop, &p2->crop);
+ }
+ 
+@@ -1134,6 +1136,7 @@
+     if (src->opaque_ref) {
+         struct mp_image_params *p = (void *)src->opaque_ref->data;
+         dst->params.stereo3d = p->stereo3d;
++        dst->params.quest_spatial_video = p->quest_spatial_video;
+         // Might be incorrect if colorspace changes.
+         dst->params.light = p->light;
+         dst->params.no_dovi = p->no_dovi;
+--- a/filters/f_decoder_wrapper.c
++++ b/filters/f_decoder_wrapper.c
+@@ -678,7 +678,7 @@
+     if (m.p_w <= 0 || m.p_h <= 0)
+         m.p_w = m.p_h = 1;
+ 
+-    m.stereo3d = p->codec->stereo_mode;
++    m.stereo3d = m.quest_spatial_video ? MP_STEREO3D_SBS2L : p->codec->stereo_mode;
+ 
+     if (!mp_rect_equals(&p->codec->crop, &(struct mp_rect){0})) {
+         struct mp_rect crop = p->codec->crop;
 --- /dev/null
 +++ b/video/quest_dovi_profile.h
 @@ -0,0 +1,21 @@
@@ -598,8 +741,144 @@
 +    }
 +}
 --- /dev/null
++++ b/video/decode/quest_spatial_video.h
+@@ -0,0 +1,133 @@
++/* Apple MV-HEVC stereo decoding helpers. LGPL-2.1-or-later, like mpv. */
++#ifndef QUEST_SPATIAL_VIDEO_H
++#define QUEST_SPATIAL_VIDEO_H
++#include <stdbool.h>
++#include <string.h>
++#include <libavcodec/avcodec.h>
++#include <libavutil/imgutils.h>
++#include <libavutil/intreadwrite.h>
++#include <libavutil/pixdesc.h>
++#include <libavutil/stereo3d.h>
++
++/* hvcC VPS: vps_max_layers_minus1 follows the first six payload bits.
++ * Bounds-check each array/NAL; multilayer alone also includes Dolby Vision. */
++static bool quest_spatial_multilayer(const uint8_t *data, int size)
++{
++    if (!data || size < 23 || data[0] != 1)
++        return false;
++    int offset = 23;
++    for (int array = 0; array < data[22]; array++) {
++        if (size - offset < 3)
++            return false;
++        int type = data[offset++] & 63;
++        int count = AV_RB16(data + offset);
++        offset += 2;
++        for (int nal = 0; nal < count; nal++) {
++            if (size - offset < 2)
++                return false;
++            int length = AV_RB16(data + offset);
++            offset += 2;
++            if (length > size - offset)
++                return false;
++            if (type == 32 && length >= 4 &&
++                (((data[offset + 2] & 3) << 4) | (data[offset + 3] >> 4)))
++                return true;
++            offset += length;
++        }
++    }
++    return false;
++}
++
++static bool quest_spatial_candidate(const AVCodecParameters *par)
++{
++    if (!par || par->codec_id != AV_CODEC_ID_HEVC ||
++        !quest_spatial_multilayer(par->extradata, par->extradata_size) ||
++        av_packet_side_data_get(par->coded_side_data, par->nb_coded_side_data,
++                                AV_PKT_DATA_DOVI_CONF))
++        return false;
++    if (par->profile == AV_PROFILE_HEVC_MULTIVIEW_MAIN)
++        return true;
++    const AVPacketSideData *sd = av_packet_side_data_get(
++        par->coded_side_data, par->nb_coded_side_data, AV_PKT_DATA_STEREO3D);
++    /* vexu identifies separate stereo views; ordinary SBS/TB is already packed. */
++    if (!sd || sd->size < sizeof(AVStereo3D))
++        return false;
++    const AVStereo3D *stereo = (const AVStereo3D *)sd->data;
++    return stereo->type == AV_STEREO3D_UNSPEC ||
++           stereo->type == AV_STEREO3D_FRAMESEQUENCE;
++}
++
++struct quest_spatial_pair {
++    AVFrame *eye[2];
++};
++
++static void quest_spatial_clear(struct quest_spatial_pair *pair)
++{
++    av_frame_free(&pair->eye[0]);
++    av_frame_free(&pair->eye[1]);
++}
++
++/* Return 0 until a complete pair, 1 with packed pixels in frame, <0 on failure.
++ * SEI view positions decide eye order; view 0 is the RIGHT eye in iPhone footage.
++ * Never join different PTS, retain one frame per eye, clear on every seek/reset. */
++static int quest_spatial_join(struct quest_spatial_pair *pair, AVFrame *frame)
++{
++    AVFrameSideData *sd = av_frame_get_side_data(frame, AV_FRAME_DATA_STEREO3D);
++    if (!sd || sd->size < sizeof(AVStereo3D) || frame->pts == AV_NOPTS_VALUE)
++        return AVERROR_INVALIDDATA;
++    const AVStereo3D *stereo = (const AVStereo3D *)sd->data;
++    AVStereo3D metadata = *stereo;
++    int eye = stereo->view == AV_STEREO3D_VIEW_LEFT ? 0 :
++              stereo->view == AV_STEREO3D_VIEW_RIGHT ? 1 : -1;
++    if (eye < 0)
++        return AVERROR_INVALIDDATA;
++    av_frame_free(&pair->eye[eye]);
++    pair->eye[eye] = av_frame_clone(frame);
++    if (!pair->eye[eye])
++        return AVERROR(ENOMEM);
++    av_frame_unref(frame);
++    AVFrame *left = pair->eye[0], *right = pair->eye[1];
++    if (!left || !right)
++        return 0;
++    if (left->pts != right->pts) {
++        av_frame_free(&pair->eye[left->pts < right->pts ? 0 : 1]);
++        return 0;
++    }
++    const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(left->format);
++    if (!desc || (desc->flags & (AV_PIX_FMT_FLAG_HWACCEL | AV_PIX_FMT_FLAG_PAL)) ||
++        left->width != right->width || left->height != right->height ||
++        left->format != right->format || left->width <= 0 || left->width > 4096 ||
++        left->height <= 0 || left->height > 4320 ||
++        (left->width % (1 << desc->log2_chroma_w)) ||
++        left->crop_left || left->crop_right || left->crop_top || left->crop_bottom ||
++        right->crop_left || right->crop_right || right->crop_top || right->crop_bottom)
++        return AVERROR_INVALIDDATA;
++    frame->format = left->format;
++    frame->width = left->width * 2;
++    frame->height = left->height;
++    int ret = av_frame_get_buffer(frame, 32);
++    if (ret < 0 || (ret = av_frame_copy_props(frame, left)) < 0)
++        return ret;
++    int offsets[4];
++    if ((ret = av_image_fill_linesizes(offsets, left->format, left->width)) < 0)
++        return ret;
++    uint8_t *right_planes[4] = {0};
++    for (int p = 0; p < 4; p++)
++        if (frame->data[p]) right_planes[p] = frame->data[p] + offsets[p];
++    av_image_copy(frame->data, frame->linesize, (const uint8_t **)left->data,
++                  left->linesize, left->format, left->width, left->height);
++    av_image_copy(right_planes, frame->linesize, (const uint8_t **)right->data,
++                  right->linesize, right->format, right->width, right->height);
++    av_frame_remove_side_data(frame, AV_FRAME_DATA_VIEW_ID);
++    av_frame_remove_side_data(frame, AV_FRAME_DATA_STEREO3D);
++    AVStereo3D *packed = av_stereo3d_create_side_data(frame);
++    if (!packed)
++        return AVERROR(ENOMEM);
++    *packed = metadata;
++    packed->type = AV_STEREO3D_SIDEBYSIDE;
++    packed->view = AV_STEREO3D_VIEW_PACKED;
++    packed->flags &= ~AV_STEREO3D_FLAG_INVERT;
++    quest_spatial_clear(pair);
++    return 1;
++}
++#endif
+--- /dev/null
 +++ b/include/mpv/quest_frame.h
-@@ -0,0 +1,67 @@
+@@ -0,0 +1,68 @@
 +/* Project-specific extension for the pinned mpv source build. */
 +#ifndef QUEST_MPV_SOURCE_FRAME_H
 +#define QUEST_MPV_SOURCE_FRAME_H
@@ -618,7 +897,8 @@
 +    QUEST_MPV_REDRAW = 1u << 2,
 +    QUEST_MPV_REPEAT = 1u << 3,
 +    QUEST_MPV_RENDER_VALID = 1u << 4,
-+    QUEST_MPV_DOVI_PROFILE5 = 1u << 5
++    QUEST_MPV_DOVI_PROFILE5 = 1u << 5,
++    QUEST_MPV_SPATIAL_VIDEO = 1u << 6
 +};
 +
 +/* Output from the SAME render transaction that selects and draws the vo_frame.

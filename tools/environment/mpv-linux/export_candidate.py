@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[3]
 WORK = Path(str(Path(os.environ.get('THRU3D_MPV_WORK', str(Path.home() / '.cache/thru3d-mpv')))))
 BUILDER = WORK/'mpv-android/buildscripts'
 TOOLCHAIN = WORK/'android-ndk-r30/toolchains/llvm/prebuilt/linux-x86_64/bin'
-DEST = Path(os.environ.get('THRU3D_MPV_EXPORT', str(ROOT / 'artifacts/mpv-source/arm64-v8a')))
+DEST = Path(os.environ.get('THRU3D_MPV_EXPORT', str(ROOT / 'build/output/mpv-source/arm64-v8a')))
 LIBS = ['libmpv.so', 'libavcodec.so', 'libavdevice.so', 'libavfilter.so',
         'libavformat.so', 'libavutil.so', 'libswresample.so', 'libswscale.so']
 

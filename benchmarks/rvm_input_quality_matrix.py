@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CASES = [('dense512_r1', 512, 512, 1., False), ('sparse512_r1', 512, 512, 1., True),
          ('dense512_r05', 512, 512, .5, False), ('dense1024_r05', 1024, 1024, .5, False),
          ('dense1024_r025', 1024, 1024, .25, False), ('dense384x432_r1', 384, 432, 1., False)]
-MOTION = ROOT / 'artifacts/device/20261004_132059_motion_4313561ab9854aa49af1faa86f8123f6'
+MOTION = ROOT / 'build/output/device/20261004_132059_motion_4313561ab9854aa49af1faa86f8123f6'
 
 def read(path):
     return json.loads(Path(path).read_text(encoding='utf-8-sig'))
@@ -142,7 +142,7 @@ def audit(directory):
     print(json.dumps(result), flush=True)
 
 def run():
-    output = ROOT / 'artifacts/rvm-input-matrix' / (datetime.now().strftime('%Y%m%d_%H%M%S')+'_'+uuid.uuid4().hex[:8])
+    output = ROOT / 'build/output/rvm-input-matrix' / (datetime.now().strftime('%Y%m%d_%H%M%S')+'_'+uuid.uuid4().hex[:8])
     output.mkdir(parents=True)
     fixture = read(ROOT / 'tests/fixtures/mp07_motion_4k.json')
     video = ROOT / fixture['file']

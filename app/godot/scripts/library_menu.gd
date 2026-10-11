@@ -46,8 +46,6 @@ const ABOUT_HOME := 36
 var _about_page := 0 # app, credits
 ## VR subtitle distances (metres); the text keeps its angular size at any distance.
 const SubtitleDepth := preload("res://scripts/subtitle_depth.gd")
-const OUTPUT_WIDTHS := [0, 5760, 4096]
-const OUTPUT_NAMES := ["Original resolution", "6K", "4K"]
 ## Language rows in About: each language named in itself.
 const LANGUAGE_NAMES := I18n.NAMES
 const VISIBLE_ROWS := 7
@@ -683,8 +681,10 @@ func _rebuild_rows() -> void:
 					[{"value": SeekPolicy.SPEED, "label": "Speed", "hint": "Faster jumps, less precise"},
 					{"value": SeekPolicy.EXACT, "label": "Precise", "hint": "Accurate jumps, may take longer"}], false,
 					"Faster jumps, less precise" if seek == SeekPolicy.SPEED else "Accurate jumps, may take longer"))
-				rows.append(_choice_row("Resolution", "output_width", int(settings.get("output_width", 0)),
-					[{"value": 0, "label": "Original size"}, {"value": 5760, "label": "6K"}, {"value": 4096, "label": "4K"}], true))
+				rows.append(_choice_row("Resolution", "output_width", int(settings.get("output_width", Quality.AUTO_OUTPUT)),
+					[{"value": Quality.AUTO_OUTPUT, "label": "Auto"}, {"value": 0, "label": "Original size"}, {"value": 5760, "label": "6K"}, {"value": 4096, "label": "4K"}], true))
+				rows.append({"title": I18n.t("Alpha passthrough FPS limit"), "key": "alpha_fps", "value": int(settings.get("alpha_fps", 20)),
+					"slider": true, "span": Vector3(10, 40, 1), "unit": " FPS", "hint": "Passthrough uses lots of GPU, so FPS may be lower"})
 			elif tab == GENERAL_TAB:
 				var languages: Array = []
 				for value in I18n.CHOICES: languages.append({"value": value, "label": LANGUAGE_NAMES[value]})
@@ -701,7 +701,7 @@ func _rebuild_rows() -> void:
 				rows.append({"title": I18n.t("Clear cache"), "detail": _bytes(cache.y) if cache.x > 0 else "", "icon": "check" if armed else "trash",
 					"selected": armed, "clear_cache": true, "empty": cache.x == 0})
 			elif tab == DISPLAY_TAB:
-				var quality_choices: Array = []
+				var quality_choices: Array = [{"value": Quality.AUTO, "label": "Auto"}]
 				for i in Quality.SCALES.size():
 					quality_choices.append({"value": i, "label": Quality.NAMES[i]})
 				rows.append(_choice_row("Display quality", "display_quality", int(settings.get("display_quality", Quality.DEFAULT)),
@@ -710,6 +710,8 @@ func _rebuild_rows() -> void:
 				for i in Quality.SHARPNESS.size():
 					sharpness_choices.append({"value": Quality.SHARPNESS[i], "label": Quality.SHARPNESS_NAMES[i]})
 				rows.append(_choice_row("Sharpness", "sharpness", float(settings.get("sharpness", Quality.DEFAULT_SHARPNESS)), sharpness_choices, true))
+				rows.append(_choice_row("Show FPS", "show_fps", bool(settings.get("show_fps", false)),
+					[{"value": false, "label": "Off"}, {"value": true, "label": "On"}]))
 			elif tab == SUBTITLES_TAB:
 				for key in ["subtitle_distance", "subtitle_direction", "subtitle_position"]:
 					if key == "subtitle_direction":
@@ -842,6 +844,11 @@ func _entry_row(entry: Dictionary) -> Dictionary:
 		row["cover"] = str(entry.cover)
 	return row
 
+func photo_directory_context() -> Dictionary:
+	if section == Section.CLOUD and not _cloud_stack.is_empty():
+		return {"path": _cloud_path(), "order": file_actions.cloud_order()}
+	return {}
+
 func image_queue() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	for row in (_recent_all_rows if section == Section.RECENT and not _recent_all_rows.is_empty() else rows):
@@ -887,7 +894,7 @@ var _confirm := ""
 var _cache_usage: Variant = null   # thumbnail and photo files/bytes, read on opening settings
 
 func _read_cache_usage() -> Vector2i:
-	var usage := Thumbnails.usage()
+	var usage := Thumbnails.usage() + preload("res://scripts/photo_preview_cache.gd").disk_usage()
 	if PlatformMethods.supports(platform, "photo_cache_usage"):
 		var photo_usage: Variant = JSON.parse_string(str(platform.photo_cache_usage()))
 		if photo_usage is Dictionary:
@@ -897,6 +904,7 @@ func _read_cache_usage() -> Vector2i:
 ## Video state changes arrive several times a second: redraw only when the Alpha profiles
 ## (current, compiling, cold) shown on the Alpha tab change.
 func _activate(target: int) -> void:
+	if _activate_footer(target): return
 	if file_actions.action(target): return
 	if choices.action(target): return
 	if account_panel.action(target): return
@@ -1060,6 +1068,7 @@ func _choose(row: Dictionary) -> void:
 		_confirm = ""
 		_cancel_covers()
 		Thumbnails.clear()
+		preload("res://scripts/photo_preview_cache.gd").clear_disk()
 		if PlatformMethods.supports(platform, "clear_photo_cache"): platform.clear_photo_cache()
 		_cache_usage = null
 		refresh()

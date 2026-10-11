@@ -6,10 +6,10 @@ $workspace = Split-Path -Parent $PSScriptRoot
 . "$PSScriptRoot\environment\Activate-QuestEnvironment.ps1"
 $adb = Join-Path $env:ANDROID_HOME 'platform-tools\adb.exe'
 $package = 'com.wapok.thru3d'
-$directory = Join-Path $workspace ('artifacts\device\' + (Get-Date -Format 'yyyyMMdd_HHmmss') + '_godot_owner_' + [guid]::NewGuid().ToString('N'))
+$directory = Join-Path $workspace ('build\output\device\' + (Get-Date -Format 'yyyyMMdd_HHmmss') + '_godot_owner_' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Force $directory | Out-Null
-$manifest = Get-Content "$workspace\artifacts\build_manifest.json" -Raw | ConvertFrom-Json
-Copy-Item "$workspace\artifacts\build_manifest.json" $directory
+$manifest = Get-Content "$workspace\build\output\build_manifest.json" -Raw | ConvertFrom-Json
+Copy-Item "$workspace\build\output\build_manifest.json" $directory
 $installedPath = ((& $adb -s $Serial shell pm path $package) | Where-Object { $_ -match '/base\.apk$' } | Select-Object -First 1) -replace '^package:', ''
 if (-not $installedPath -or $installedPath -notmatch '^/data/app/[A-Za-z0-9_=/+.~\-]+/base\.apk$') { throw 'Unexpected installed APK path' }
 $installedHash = ((& $adb -s $Serial shell sha256sum $installedPath) -split '\s+')[0]

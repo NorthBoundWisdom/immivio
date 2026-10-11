@@ -49,11 +49,24 @@ func _run() -> void:
 		var image := viewport.get_texture().get_image()
 		var top_left := camera.unproject_position(menu.to_global(Vector3(-0.775, 0.54, 0)))
 		var bottom_right := camera.unproject_position(menu.to_global(Vector3(0.775, -0.54, 0)))
+		var footer_bounds: Array[Rect2] = []
+		for button in menu._buttons:
+			if button.target not in [menu.CLOSE_MENU, menu.FOLLOW, menu.TEMP_PASSTHROUGH]: continue
+			var rect: Rect2 = button.rect
+			var start := camera.unproject_position(menu.to_global(Vector3(rect.position.x,rect.end.y,0)))
+			var end := camera.unproject_position(menu.to_global(Vector3(rect.end.x,rect.position.y,0)))
+			footer_bounds.append(Rect2(start,end-start))
+		var pill: Node3D = menu.device_status
+		var half: Vector2 = pill._pill.mesh.size / 2
+		var start := camera.unproject_position(pill.to_global(Vector3(-half.x,half.y,0)))
+		var end := camera.unproject_position(pill.to_global(Vector3(half.x,-half.y,0)))
+		footer_bounds.append(Rect2(start,end-start))
 		var overflow := 0
 		for y in image.get_height():
 			for x in image.get_width():
 				if x >= top_left.x and x <= bottom_right.x and y >= top_left.y and y <= bottom_right.y:
 					continue
+				if footer_bounds.any(func(rect): return rect.has_point(Vector2(x,y))): continue
 				var pixel := image.get_pixel(x, y)
 				if minf(pixel.r, minf(pixel.g, pixel.b)) > 0.8:
 					overflow += 1

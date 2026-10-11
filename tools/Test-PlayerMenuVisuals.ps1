@@ -2,7 +2,7 @@ param([string]$ToolRoot = $(if ($env:THRU3D_TOOL_ROOT) { $env:THRU3D_TOOL_ROOT }
 $ErrorActionPreference='Stop'
 $workspace=Split-Path -Parent $PSScriptRoot
 . "$PSScriptRoot/environment/Activate-QuestEnvironment.ps1" -ToolRoot $ToolRoot
-$output=Join-Path $workspace 'artifacts/ui-polish'
+$output=Join-Path $workspace 'build/output/ui-polish'
 $sourceHashes=@{}
 foreach ($file in Get-ChildItem "$workspace/app/godot/scripts","$workspace/app/godot/shaders","$workspace/app/godot/tests" -File) {
     $relative=[IO.Path]::GetRelativePath($workspace,$file.FullName).Replace('\','/')

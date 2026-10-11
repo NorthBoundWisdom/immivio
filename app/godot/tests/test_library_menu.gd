@@ -296,6 +296,10 @@ func _run() -> void:
 	check(menu.rows.any(func(row): return row.get("key", "") == "history" and row.value == true), "History is saved by default")
 	choose_setting(menu, "history", false)
 	check(settings_events.back() == ["history", false], "History can be switched off")
+	menu._activate(Menu.TAB_BASE + Menu.DISPLAY_TAB)
+	check(menu.rows.any(func(row): return row.get("key", "") == "show_fps" and row.value == false), "Display settings offer the FPS display, off by default")
+	choose_setting(menu, "show_fps", true)
+	check(settings_events.back() == ["show_fps", true], "FPS display can be switched on from Display settings")
 	menu._activate(Menu.TAB_BASE + Menu.SUBTITLES_TAB)
 	check(menu.rows.size() == 3 and menu.rows[0].slider and menu.rows[0].value == 5.0,
 		"Subtitle distance is a slider, 5 m by default")

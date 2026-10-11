@@ -4,12 +4,12 @@ $workspace = Split-Path -Parent $PSScriptRoot
 . "$PSScriptRoot/environment/Activate-QuestEnvironment.ps1"
 $adb = Join-Path $env:ANDROID_HOME 'platform-tools/adb.exe'
 $package = 'com.wapok.thru3d'
-$directory = Join-Path $workspace ('artifacts/device/' + (Get-Date -Format 'yyyyMMdd_HHmmss') + '_local_access_' + [guid]::NewGuid().ToString('N'))
+$directory = Join-Path $workspace ('build/output/device/' + (Get-Date -Format 'yyyyMMdd_HHmmss') + '_local_access_' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $directory -Force | Out-Null
-$build = Get-Content "$workspace/artifacts/build_manifest.json" -Raw | ConvertFrom-Json
-$apk = "$workspace/artifacts/quest3-player-debug.apk"
+$build = Get-Content "$workspace/build/output/build_manifest.json" -Raw | ConvertFrom-Json
+$apk = "$workspace/build/output/quest3-player-debug.apk"
 if ((Get-FileHash $apk -Algorithm SHA256).Hash.ToLowerInvariant() -ne $build.apk_sha256) { throw 'Candidate APK bytes differ from manifest' }
-Copy-Item "$workspace/artifacts/build_manifest.json" $directory
+Copy-Item "$workspace/build/output/build_manifest.json" $directory
 & $adb -s $Serial shell dumpsys power | Set-Content "$directory/power-before.txt"
 & $adb -s $Serial shell dumpsys battery | Set-Content "$directory/battery-before.txt"
 if ($Install) {

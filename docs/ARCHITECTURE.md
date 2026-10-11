@@ -8,7 +8,7 @@ Display geometry separates flat/180°/360° projection from mono/SBS layout and 
 
 The application includes persistent timestamp-only bookmarks (`bookmark_store`, `bookmark_menu`, `timeline_markers`), paged recent-file previews, cloud account/pagination handling, and input visuals. `input_visuals.gd` uses runtime render models when available and licensed glTF hand fallbacks. Seek keeps a presented frame until the target frame arrives; `seek_policy.gd` routes speed-first and precise positioning. No ratings, stars or bookmark editing are exposed.
 
-Photo presentation uses immersive screen geometry, adjacent-image preloading and a separate stereo cache. Flat-photo navigation uses a single-hand horizontal pinch drag followed by release; two-hand pinch zoom remains available. Photo stereo strength is capped at 100%, independently of video strength. `projected_subtitles.gd` and the shader include implement subtitles in the video projection.
+Photo presentation uses immersive screen geometry, adjacent-image preloading and a separate stereo cache. Flat-photo navigation uses a single-hand horizontal pinch drag followed by release; two-hand pinch zoom remains available. Photo stereo strength supports 0–200%, independently of video strength. Selected ordinary flat photos can prepare depth and person matting, with matched color/mask updates before switching the presented pair. `projected_subtitles.gd` and the shader include implement subtitles in the video projection.
 
 ## Android boundary
 

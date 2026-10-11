@@ -1,11 +1,21 @@
 extends Node3D
 
+signal session_control_requested(operation: String)
+signal placement_changed
+
 const PAGE_SIZE := 7
 const NONE := -1
 const PREVIOUS := -2
 const NEXT := -3
 const CLOSE := -4
 const MAX_RAY_METRES := 5.0
+const FOLLOW := -1001
+const TEMP_PASSTHROUGH := -1002
+const CLOSE_MENU := -1003
+const FOOTER_DIAMETER := 0.09
+const FOOTER_HIT_SIZE := 0.105
+const FOOTER_GAP := 0.025
+const STATUS_WIDTH := 0.30
 const SURFACE := preload("res://shaders/menu_surface.gdshader")
 const Icons := preload("res://scripts/menu_icons.gd")
 const I18n := preload("res://scripts/i18n.gd")
@@ -45,6 +55,9 @@ var _tips: Dictionary = {}
 var _tooltip: MeshInstance3D
 ## Battery and clock pill under the panel; kept across redraws.
 var device_status: Node3D
+var session_controls_provider: Callable
+var _footer_state := {}
+var _footer_centre := Vector2.ZERO
 
 func _ready() -> void:
 	position = Vector3(0, -0.03, -1.55)
@@ -88,7 +101,7 @@ func ray_hit(origin: Vector3, direction: Vector3) -> Dictionary:
 	var ray := direction.normalized()
 	var best := {}
 	for button in _buttons:
-		if not button.enabled or not button.node.visible:
+		if (not button.enabled and not button.get("hover_disabled", false)) or not button.node.visible:
 			continue
 		var inverse: Transform3D = button.node.global_transform.affine_inverse()
 		var start: Vector3 = inverse * origin
@@ -106,7 +119,7 @@ func ray_hit(origin: Vector3, direction: Vector3) -> Dictionary:
 		var distance := origin.distance_to(world)
 		if distance > MAX_RAY_METRES or (not best.is_empty() and distance >= float(best.distance)):
 			continue
-		best = {"target": button.target, "point": to_local(world), "distance": distance}
+		best = {"target": button.target, "point": to_local(world), "distance": distance, "enabled": button.enabled}
 	return best
 
 func update_pointer(hand: String, origin: Vector3, direction: Vector3, tracked: bool) -> void:
@@ -143,12 +156,29 @@ func press_pointer(hand: String, origin: Vector3, direction: Vector3, tracked: b
 	return true
 
 func _activate_hit(hit: Dictionary) -> void:
+	if not hit.get("enabled", true): return
+	if _activate_footer(int(hit.target)): return
 	_activate(int(hit.target))
+
+func _activate_footer(target: int) -> bool:
+	if target == CLOSE_MENU:
+		dismiss()
+		return true
+	if target not in [FOLLOW, TEMP_PASSTHROUGH]: return false
+	var state := _session_controls()
+	if target == FOLLOW:
+		session_control_requested.emit("follow")
+	elif state.get("passthrough_visible", false) and not state.get("alpha", false):
+		session_control_requested.emit("temporary_passthrough")
+	refresh_session_controls(true)
+	return true
 
 func _set_backdrop(size: Vector2, centre: Vector2 = Vector2.ZERO) -> void:
 	_backdrop.mesh.size = size
 	_backdrop.position = Vector3(centre.x, centre.y, 0)
 	_backdrop.material_override.set_shader_parameter("surface_size", size)
+	# All views, including modal/web/adjustment branches, get the same footer.
+	_place_device_status(Vector2(centre.x, centre.y - size.y * 0.5 - 0.085))
 
 func _clear_layout() -> void:
 	for button in _buttons:
@@ -161,6 +191,7 @@ func _clear_layout() -> void:
 		decoration.free()
 	_decorations.clear()
 	_tips.clear()
+	_footer_state.clear()
 	if _tooltip:
 		_tooltip.visible = false
 	_hover.clear()
@@ -204,8 +235,50 @@ func _glyph(target: int, icon: String, centre: Vector2, size: float, enabled: bo
 func _place_device_status(centre: Vector2) -> void:
 	if not device_status:
 		device_status = DeviceStatus.new()
+		device_status.minimum_width = STATUS_WIDTH
 		add_child(device_status)
-	device_status.position = Vector3(centre.x, centre.y, 0.002)
+	var bottom: float = _backdrop.position.y - _backdrop.mesh.size.y * 0.5
+	_footer_centre = Vector2(centre.x, minf(centre.y - 0.025, bottom - 0.085))
+	refresh_session_controls(true)
+
+func _session_controls() -> Dictionary:
+	return session_controls_provider.call() if session_controls_provider.is_valid() else {}
+
+func refresh_session_controls(force: bool = false) -> void:
+	if not device_status: return
+	var state := _session_controls()
+	if not force and state == _footer_state: return
+	_footer_state = state.duplicate()
+	for index in range(_buttons.size() - 1, -1, -1):
+		if _buttons[index].target in [CLOSE_MENU, FOLLOW, TEMP_PASSTHROUGH]:
+			_buttons[index].node.free()
+			_buttons.remove_at(index)
+	var show_passthrough: bool = state.get("passthrough_visible", false)
+	var count := 3 if show_passthrough else 2
+	var span := count * FOOTER_DIAMETER + (count - 1) * FOOTER_GAP
+	var width := span + FOOTER_GAP + STATUS_WIDTH
+	var left := _footer_centre.x - width * 0.5
+	device_status.position = Vector3(left + span + FOOTER_GAP + STATUS_WIDTH * 0.5, _footer_centre.y, 0.002)
+	_footer_button(CLOSE_MENU, "close", Vector2(left + FOOTER_DIAMETER * 0.5, _footer_centre.y),
+		false, true, I18n.t("Close menu"))
+	_footer_button(FOLLOW, "head_follow", Vector2(left + FOOTER_DIAMETER * 1.5 + FOOTER_GAP, _footer_centre.y),
+		state.get("follow", false), true, I18n.t("Disable follow" if state.get("follow", false) else "Enable follow"))
+	if show_passthrough:
+		var alpha: bool = state.get("alpha", false)
+		_footer_button(TEMP_PASSTHROUGH, "passthrough", Vector2(left + span - FOOTER_DIAMETER * 0.5, _footer_centre.y),
+			state.get("passthrough", false), not alpha, I18n.t("Cannot switch during person passthrough" if alpha else
+			("Disable temporary passthrough" if state.get("passthrough", false) else "Enable temporary passthrough")))
+	_update_highlights()
+
+func _footer_button(target: int, icon: String, centre: Vector2, active: bool, enabled: bool, tip: String) -> void:
+	_round(target, icon, centre, FOOTER_DIAMETER, enabled, active, tip)
+	var button: Dictionary = _buttons.back()
+	button.rect = Rect2(centre - Vector2.ONE * FOOTER_HIT_SIZE * 0.5, Vector2.ONE * FOOTER_HIT_SIZE)
+	button["hover_disabled"] = true
+	button["tip_below"] = true
+	if active:
+		var marker := _quad(Vector2(0.014, 0.004), Vector3(0, -0.032, 0.005), button.foreground if enabled else MUTED, 12)
+		button.node.add_child(marker)
 
 func _decoration(size: Vector2, centre: Vector2, color: Color) -> MeshInstance3D:
 	var node := _quad(size, Vector3(centre.x, centre.y, 0.003), color, 12)
@@ -292,7 +365,7 @@ func _update_highlights() -> void:
 	for button in _buttons:
 		var hovered: bool = button.enabled and _hover.values().has(button.target)
 		var color: Color = button.base_color
-		if not button.enabled: color = Color(0.085, 0.095, 0.115, button.base_color.a)
+		if not button.enabled: color = Color(0.26, 0.44, 0.38) if button.get("hover_disabled", false) and button.base_color == ACCENT else Color(0.085, 0.095, 0.115, button.base_color.a)
 		elif hovered: color = Color(0.67, 1.0, 0.86) if button.base_color == ACCENT else Color(0.23, 0.43, 0.38)
 		button.node.material_override.set_shader_parameter("surface_color", color)
 	_update_tooltip()
@@ -300,7 +373,7 @@ func _update_highlights() -> void:
 func _update_tooltip() -> void:
 	var shown := {}
 	for button in _buttons:
-		if button.enabled and _tips.has(button.target) and _hover.values().has(button.target):
+		if (button.enabled or button.get("hover_disabled", false)) and _tips.has(button.target) and _hover.values().has(button.target):
 			shown = button
 			break
 	if shown.is_empty():
@@ -319,7 +392,7 @@ func _update_tooltip() -> void:
 	_tooltip.mesh.size = size
 	_tooltip.material_override.set_shader_parameter("surface_size", size)
 	var rect: Rect2 = shown.rect
-	_tooltip.position = Vector3(rect.get_center().x, rect.end.y + 0.04, 0.012)
+	_tooltip.position = Vector3(rect.get_center().x, rect.position.y - 0.04 if shown.get("tip_below", false) else rect.end.y + 0.04, 0.012)
 	_tooltip.visible = true
 
 func _fit_title(title: String, suffix: String, width: float = 1.32, font_size: int = 26) -> String:

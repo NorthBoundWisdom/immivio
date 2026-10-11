@@ -1,5 +1,5 @@
-param([Parameter(Mandatory=$true)][string]$Serial, [string]$Apk='artifacts/quest3-player-seek-hold-signed-debug.apk',
-    [string]$Output='artifacts/device/seek-hold/run', [string[]]$Modes=@('normal','alpha','depth'),
+param([Parameter(Mandatory=$true)][string]$Serial, [string]$Apk='build/output/quest3-player-seek-hold-signed-debug.apk',
+    [string]$Output='build/output/device/seek-hold/run', [string[]]$Modes=@('normal','alpha','depth'),
     [string]$FixtureOverride='', [int]$Projection=-1)
 $ErrorActionPreference='Stop'
 $workspace=Split-Path -Parent $PSScriptRoot

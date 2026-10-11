@@ -83,9 +83,10 @@ static func _lens_fov(name: String) -> int:
 			best = choice
 	return best
 
-## Fills what the name left open from the frame size: 2:1 is VR180 side by side (as PTMediaServer
-## exposes unmarked 2:1 sources), 2:1 stated mono is 360, 3.2:1 and wider is a flat full-SBS film,
-## a large square frame (2880 px and up) is 360 top-bottom; stated top-bottom: square is 360.
+## Fills missing layout details from metadata and frame size. A 2:1 frame cannot distinguish
+## a flat video, mono 360 and VR180 SBS, so it never supplies a projection or stereo marker.
+## 3.2:1 and wider is a flat full-SBS film; a large square frame (2880 px and up) is 360
+## top-bottom; stated top-bottom: square is 360.
 static func complete(stated: Dictionary, width: int, height: int, format: Dictionary = {}, file_name: String = "") -> Dictionary:
 	stated = stated.duplicate()
 	# Generic "3D" says nothing about the packing axis. Container metadata fills that gap;
@@ -102,7 +103,6 @@ static func complete(stated: Dictionary, width: int, height: int, format: Dictio
 		# MPV uses sbs2/ab2 for container SBS/TB generally; the "2" is not proof
 		# of half-resolution packing. Compression is a separate user/name/shape choice.
 	var aspect := float(width) / maxf(1.0, float(height))
-	var half := absf(aspect - 2.0) <= 0.04
 	var square := absf(aspect - 1.0) <= 0.04
 	var geometry := int(stated.get("geometry", -1))
 	var stacked := bool(stated.get("top_bottom", false)) or (not stated.has("stereo") and square and width >= 2880 		and geometry != Geometry.Geometry.FISHEYE)
@@ -111,10 +111,6 @@ static func complete(stated: Dictionary, width: int, height: int, format: Dictio
 			geometry = Geometry.Geometry.EQUIRECT_360
 		elif stacked:
 			geometry = Geometry.Geometry.FLAT
-		elif half and stated.get("stereo", true):
-			geometry = Geometry.Geometry.HALF_EQUIRECT
-		elif half:
-			geometry = Geometry.Geometry.EQUIRECT_360
 		else:
 			geometry = Geometry.Geometry.FLAT
 	var stereo: bool

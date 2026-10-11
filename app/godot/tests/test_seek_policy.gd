@@ -66,7 +66,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	preload("res://scripts/i18n.gd").use("zh")
-	var directory := ProjectSettings.globalize_path("res://../../artifacts/seek-policy-host/" + str(Time.get_ticks_usec()))
+	var directory := ProjectSettings.globalize_path("res://../../build/output/seek-policy-host/" + str(Time.get_ticks_usec()))
 	DirAccess.make_dir_recursive_absolute(directory)
 	var bridge := Host.new()
 	var video := Video.new()
@@ -165,8 +165,8 @@ func _run() -> void:
 	library.settings_provider = func(): return {"seek_mode": video.seek_mode}
 	library.setting_changed.connect(main._on_setting_changed)
 	root.add_child(library); library.toggle(); library.set_process(false)
-	check(library.rows[0].key == "seek_mode" and library.rows[0].choices.size() == 2 and library.rows.size() == 2,
-		"Global settings group both seek choices into one row alongside one resolution field")
+	check(library.rows[0].key == "seek_mode" and library.rows[0].choices.size() == 2 and library.rows.filter(func(row): return row.get("key") == "seek_mode").size() == 1 and library.rows.filter(func(row): return row.get("key") == "output_width").size() == 1,
+		"Global settings keep one seek selector and one resolution selector alongside other settings")
 	choose(library, "seek_mode", Policy.SPEED)
 	check(video.seek_mode == Policy.SPEED and library.rows[0].value == Policy.SPEED and labels(library).contains("时间可能有偏差"),
 		"Global settings ray selection applies speed and explains the precision tradeoff")

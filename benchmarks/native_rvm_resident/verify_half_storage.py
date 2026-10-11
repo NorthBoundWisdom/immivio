@@ -88,7 +88,7 @@ def negatives(report, profile):
 
 
 def host(args):
-    output = ROOT/'artifacts/rvm-half-storage-host'/(datetime.now().strftime('%Y%m%d_%H%M%S')+'_'+uuid.uuid4().hex[:8])
+    output = ROOT/'build/output/rvm-half-storage-host'/(datetime.now().strftime('%Y%m%d_%H%M%S')+'_'+uuid.uuid4().hex[:8])
     output.mkdir(parents=True)
     executable = ROOT/'build/rvm-resident-host/Release/rvm_resident_oracle.exe'
     executable_hash = sha(executable)
@@ -120,7 +120,7 @@ def host(args):
         verifier_sha256=sha(Path(__file__)), android_execution_verified=False, quality_verified=False,
         sustained_fps_verified=False, scope='Windows NVIDIA Vulkan four-frame synthetic full-state candidate only')
     write(output/'verification.json', record)
-    write(ROOT/'artifacts/rvm-half-storage-host-verification.json', record)
+    write(ROOT/'build/output/rvm-half-storage-host-verification.json', record)
     print(str(output/'verification.json'))
     require(passed, 'Storage precision screen failed; preserve all profiles and bounds')
 
@@ -130,7 +130,7 @@ def device(args):
     result = read(directory/'result.json')
     require(result['state'] == 'collected_scoped_rvm_trace' and result['activity_launched'] is False and
         result['apk_sha256'] == result['installed_sha256'], 'Uncollected or wrong candidate')
-    require(result['apk_sha256'] == sha(ROOT/'artifacts/quest3-player-debug.apk'), 'Current APK differs')
+    require(result['apk_sha256'] == sha(ROOT/'build/output/quest3-player-debug.apk'), 'Current APK differs')
     require(read(directory/'build_manifest.json')['apk_sha256'] == result['apk_sha256'], 'Build lineage mismatch')
     cases, ids = [], set()
     for key in PROFILES:
@@ -178,7 +178,7 @@ def audit_host(args):
     record['host_timing_performance_comparison_valid'] = False
     record['host_timing_scope'] = 'Numerical validation only; host FP32 and FP16 jobs overlapped, no host speed comparison'
     write(args.directory/'verification-final.json', record)
-    write(ROOT/'artifacts/rvm-half-storage-host-verification.json', record)
+    write(ROOT/'build/output/rvm-half-storage-host-verification.json', record)
     print(record['state'])
 
 

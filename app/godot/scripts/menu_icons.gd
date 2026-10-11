@@ -2,6 +2,14 @@ extends RefCounted
 
 # Original vector glyphs, generated once and shared by both ray menus.
 const PATHS := {
+	"head_follow": '<path d="M4 5H17A2 2 0 0 1 19 7V13A2 2 0 0 1 17 15H14L12 12H9L7 15H4A2 2 0 0 1 2 13V7A2 2 0 0 1 4 5Z"/><path d="M16 18H20M15 16H14A3 3 0 0 0 14 22H16M19 16H20A3 3 0 0 1 20 22H18"/>',
+	"passthrough": '<path d="M3 8V3H8M16 3H21V8M21 16V21H16M8 21H3V16M4 12Q12 3 20 12Q12 21 4 12Z"/><circle cx="12" cy="12" r="2.5"/>',
+	"dice": '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="7" cy="7" r="1"/><circle cx="17" cy="7" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="7" cy="17" r="1"/><circle cx="17" cy="17" r="1"/>',
+	"photo_batch": '<path d="M3 9V21H15M7 4H17A2 2 0 0 1 19 6V11M7 4V17H11M9 11L12 8 15 11M22 17A5 5 0 1 1 20.5 13.5M22 12V16H18"/>',
+	"photo_layout": '<rect x="8" y="5" width="8" height="14"/><path d="M2 8H5V16H2ZM19 8H22V16H19Z"/>',
+	"photo_sides": '<rect x="8" y="4" width="8" height="16"/><path d="M2 8H5V16H2ZM19 8H22V16H19Z"/>',
+	"photo_wall": '<path d="M2 7L7 5V19L2 17ZM9 4H15V20H9ZM17 5L22 7V17L17 19Z"/>',
+	"memory": '<path d="M3 3L11 5 8 12 2 10ZM15 2L22 5 20 12 13 9ZM9 14L20 15 16 22 6 20Z"/>',
 	"heart": '<path d="M12 21L3.5 12.5C-2 6.5 5 0 12 6C19 0 26 6.5 20.5 12.5Z"/>',
 	"bookmark": '<path d="M6 3H18V21L12 17 6 21Z"/>',
 	"bookmark_add": '<path d="M5 3H14M5 3V21L11 17 17 21V13M17 3V11M13 7H21"/>',

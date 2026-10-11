@@ -115,7 +115,7 @@ func _refresh_slider(target: int, value: float) -> void:
 	slider.fill.position.x = slider.left + fraction * slider.width / 2
 	slider.fill.material_override.set_shader_parameter("surface_size", slider.fill.mesh.size)
 	slider.knob.position.x = slider.left + fraction * slider.width
-	slider.label.text = ("%.0f" % value if slider.unit == "%" else ("%+.0f" % value if slider.unit == "°" and value != 0 else ("%.0f" % value if slider.unit == "°" else "%.1f" % value))) + slider.unit
+	slider.label.text = ("%.0f" % value if slider.unit in ["%", " FPS"] else ("%+.0f" % value if slider.unit == "°" and value != 0 else ("%.0f" % value if slider.unit == "°" else "%.1f" % value))) + slider.unit
 
 func _preview_slider(point: Vector3) -> void:
 	var span: Vector3 = capture.item.span

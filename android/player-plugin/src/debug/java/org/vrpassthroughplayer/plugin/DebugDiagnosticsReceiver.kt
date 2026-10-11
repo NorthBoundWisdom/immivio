@@ -21,7 +21,9 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                 val report = JSONObject().put("request", request).put("action", intent.action)
                     .put("diagnostic_process", DiagnosticRequests.processId)
                 try {
-                    val id = if (intent.action in setOf("com.wapok.thru3d.DEBUG_LAUNCH", "com.wapok.thru3d.DEBUG_LAUNCH_2D")) {
+                    val id = if (intent.action == "com.wapok.thru3d.DEBUG_PHOTO_PORTRAIT") {
+                        PhotoPortraitProbe.request(context.applicationContext,request)
+                    } else if (intent.action in setOf("com.wapok.thru3d.DEBUG_LAUNCH", "com.wapok.thru3d.DEBUG_LAUNCH_2D")) {
                         // XR probes must enter through the normal VR launcher. Starting
                         // GodotApp directly produced focused views but no live head pose.
                         val launch = if (intent.action!!.endsWith("_2D")) {
