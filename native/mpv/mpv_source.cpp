@@ -684,23 +684,44 @@ struct Source final {
             uint64_t standard_sequence = 0;
             while (true) {
                 bool resolve_final = false;
+                bool final_resolved = false;
                 {
                     std::lock_guard<std::mutex> lock(frames_mutex); poll_retirements();
                     if (!core_eof.load() || final_ticket.source_epoch < epoch_floor.load()) final_ticket = {};
                     resolve_final = core_eof.load() && final_ticket.frame_id == 0;
+                    final_resolved = core_eof.load() && final_ticket.frame_id != 0;
                     if (closing.load() && (abandoned.load() || !consumer_holds())) break;
                 }
                 if (render_pending.exchange(false)) needs_frame |= (mpv_render_context_update(renderer) & MPV_RENDER_UPDATE_FRAME) != 0;
                 const bool forced = force_redraw.exchange(false);
                 needs_frame |= forced;
+                // Public render IDs name transactions, not decoded images. A further
+                // keep-open redraw would replace the terminal ID with a new one and
+                // prevent the consumer from completing EOF. Still service update()
+                // above; only an explicit redraw or a new epoch may replace this image.
+                if (standard_frames && final_resolved && !forced) {
+                    if (needs_frame && !seek_in_progress.load() && core_eof.load()) {
+                        // ADVANCED_CONTROL still requires acknowledging FRAME updates.
+                        // Consume a keep-open redraw without GPU work or a new ticket.
+                        int skip = 1;
+                        mpv_render_param retained[] = {{MPV_RENDER_PARAM_SKIP_RENDERING, &skip}, {MPV_RENDER_PARAM_INVALID, nullptr}};
+                        checked(mpv_render_context_render(renderer, retained), "MPV retained EOF update");
+                        mpv_render_context_report_swap(renderer); skipped.fetch_add(1);
+                    }
+                    needs_frame = false;
+                }
                 bool final_render = false;
-                if (resolve_final && !needs_frame) {
+                if ((resolve_final && (standard_frames || !needs_frame)) ||
+                    (standard_frames && final_resolved && forced)) {
                     mpv_render_frame_info info{};
                     checked(mpv_render_context_get_info(renderer, {MPV_RENDER_PARAM_NEXT_FRAME_INFO, &info}), "MPV EOF render queue");
                     // A core EOF does not identify the last FBO. Drain queued
-                    // frames first, then resolve the retained current image in
-                    // the same private render transaction used for normal frames.
-                    final_render = !(info.flags & MPV_RENDER_FRAME_INFO_PRESENT);
+                    // frames first, then resolve the retained current image. Public
+                    // REDRAW also sets PRESENT, but does not queue a new video image.
+                    // Recheck on every retry: GPU/slot backpressure must not lose the
+                    // terminal designation just because needs_frame remains set.
+                    final_render = !(info.flags & MPV_RENDER_FRAME_INFO_PRESENT) ||
+                        (standard_frames && (info.flags & MPV_RENDER_FRAME_INFO_REDRAW));
                     needs_frame = true;
                 }
                 const auto packed = dimensions.load();
