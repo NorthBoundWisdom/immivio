@@ -704,7 +704,7 @@ func _resolved_mode(target: int, info: Dictionary) -> Dictionary:
 
 func _requires_depth(target: int, info: Dictionary) -> bool:
 	var mode := _resolved_mode(target, info)
-	return auto_depth and not info.get("native_stereo", false) and platform != null and int(mode.geometry) == Geometry.Geometry.FLAT and not mode.stereo_sbs
+	return ai_available() and auto_depth and not info.get("native_stereo", false) and platform != null and int(mode.geometry) == Geometry.Geometry.FLAT and not mode.stereo_sbs
 
 func _prepare_display(result: Dictionary, job: Dictionary) -> void:
 	if result.has("error") or not _requires_depth(int(job.index), result.info):
@@ -771,7 +771,7 @@ func _accept(result: Dictionary, job: Dictionary) -> void:
 		_depth_texture = ImageTexture.create_from_image(_display_depth_data.image)
 		_depth_rect = _display_depth_data.rect
 		if _display_depth_data.has("stereo_image"): _stereo_texture = ImageTexture.create_from_image(_display_depth_data.stereo_image)
-		depth_requested = auto_depth; depth_enabled = auto_depth
+		depth_requested = ai_available() and auto_depth; depth_enabled = depth_requested
 	_display_info = result.info
 	_display_result = result if geometry == Geometry.Geometry.FLAT and result.image.get_data_size() <= CACHE_IMAGE_BYTES else {}
 	_prefetch_failed.erase(index)
@@ -1137,7 +1137,11 @@ func _update_inspect() -> void:
 	_detail_material.set_shader_parameter("detail_right", right)
 	_detail_material.set_shader_parameter("detail_up", right.cross(forward).normalized())
 
+func ai_available() -> bool:
+	return preload("res://scripts/ai_features.gd").available(platform)
+
 func set_depth(enabled: bool) -> bool:
+	if enabled and not ai_available(): return false
 	if not enabled and portrait_requested: set_portrait(false)
 	if enabled and (_metadata.get("native_stereo", false) or stereo_sbs or geometry != 0 or not platform or _display_request <= 0): return false
 	if enabled != depth_requested: _unlock_mode()
@@ -1319,7 +1323,7 @@ func snapshot() -> Dictionary:
 		"screen_distance": screen_distance, "screen_scale": screen_scale,
 		"portrait_requested": portrait_requested, "portrait_enabled": portrait_enabled, "portrait_available": can_portrait(), "portrait_error": portrait_error,
 		"depth_requested": depth_requested, "depth_enabled": depth_enabled,
-		"depth_available": platform != null and not _metadata.get("native_stereo", false), "native_stereo": _metadata.get("native_stereo", false), "depth_strength": depth_strength, "depth_error": depth_error,
+		"depth_available": ai_available() and platform != null and not _metadata.get("native_stereo", false), "native_stereo": _metadata.get("native_stereo", false), "depth_strength": depth_strength, "depth_error": depth_error,
 		"stereo_strategy":_display_depth_data.get("strategy", "inverse_shader"), "stereo_ready":_stereo_texture != null,
 		"render_strength":_display_depth_data.get("strength", depth_strength),
 		"source_size": "%d × %d" % [int(_size.x), int(_size.y)], "error": error, "screen_curve": screen_curve}
@@ -1406,7 +1410,7 @@ func _exit_tree() -> void:
 
 func can_portrait() -> bool:
 	var selected: bool = gallery.mode in [Gallery.Layout.SINGLE, Gallery.Layout.SIDES] or (gallery.focus == index and gallery.progress >= 1 and not gallery.returning)
-	return selected and not loading and _texture != null and geometry == 0 and not stereo_sbs \
+	return ai_available() and selected and not loading and _texture != null and geometry == 0 and not stereo_sbs \
 		and not _metadata.get("native_stereo",false) and _display_request > 0 \
 		and Methods.supports(platform,"prepare_photo_3d") and Methods.supports(platform,"prepare_photo_portrait")
 

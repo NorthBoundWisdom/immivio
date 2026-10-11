@@ -1,4 +1,4 @@
-param([string]$ToolRoot = $(if ($env:THRU3D_TOOL_ROOT) { $env:THRU3D_TOOL_ROOT } else { Join-Path ([Environment]::GetFolderPath('UserProfile')) '.cache\thru3d-toolchain' }))
+param([string]$ToolRoot = $(if ($env:THRU3D_TOOL_ROOT) { $env:THRU3D_TOOL_ROOT } else { Join-Path ([Environment]::GetFolderPath('UserProfile')) '.cache\thru3d-toolchain' }), [switch]$WithoutAI)
 $ErrorActionPreference = 'Stop'
 $env:JAVA_HOME = Join-Path $ToolRoot 'jdk/jdk-17.0.20.1+1'
 $env:ANDROID_HOME = Join-Path $ToolRoot 'android-sdk'
@@ -21,7 +21,9 @@ if (-not $env:GODOT_EXE) {
 $toolPaths = @((Join-Path $env:JAVA_HOME 'bin'), (Join-Path $env:ANDROID_HOME 'platform-tools'),
     (Join-Path $env:ANDROID_HOME 'cmdline-tools/latest/bin'), (Join-Path $env:ANDROID_HOME 'cmake/3.31.6/bin'))
 if (Test-Path -LiteralPath $env:QUEST_NCNN_TOOLS) { $toolPaths += $env:QUEST_NCNN_TOOLS }
-foreach ($path in @($env:JAVA_HOME, $env:ANDROID_HOME, $env:ANDROID_NDK_HOME, $env:QUEST_NCNN_ROOT, $env:GODOT_EXE, $env:QUEST_MNN_SOURCE, $env:QUEST_MNN_LIB)) {
+$requiredPaths = @($env:JAVA_HOME, $env:ANDROID_HOME, $env:ANDROID_NDK_HOME, $env:GODOT_EXE)
+if (-not $WithoutAI) { $requiredPaths += @($env:QUEST_NCNN_ROOT, $env:QUEST_MNN_SOURCE, $env:QUEST_MNN_LIB) }
+foreach ($path in $requiredPaths) {
     if (-not (Test-Path -LiteralPath $path)) { throw "Missing tool/dependency: $path. See docs/BUILD.md." }
 }
 foreach ($path in @($env:GRADLE_USER_HOME, $env:ANDROID_USER_HOME, $env:TEMP)) { New-Item -ItemType Directory -Path $path -Force | Out-Null }

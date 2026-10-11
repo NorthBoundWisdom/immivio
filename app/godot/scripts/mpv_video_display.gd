@@ -186,7 +186,11 @@ func _ready() -> void:
 
 # First use of an Alpha profile compiles/tunes GPU kernels; start it before playback.
 var rvm_warmup := {}
+func ai_available() -> bool:
+	return preload("res://scripts/ai_features.gd").available(platform)
+
 func _warm_rvm() -> void:
+	if not ai_available(): return
 	if local_uri.is_empty(): return
 	# JNISingleton.has_method() does not see Java plugin methods; test doubles never set this singleton.
 	if OS.get_name() == "Android" and Engine.has_singleton("QuestPlayer"):
@@ -447,7 +451,7 @@ func open_local(uri: String, title: String, start_ms: int = 0, restore_mode: boo
 			if not stated.has("geometry") or not stated.has("stereo") or (geometry in [Geometry.Geometry.FLAT, Geometry.Geometry.FISHEYE] and not stated.has("stereo_half")):
 				_layout_pending = stated
 	# Videos start as normal playback unless the name asks for live Alpha.
-	alpha_requested = alpha or (restore_mode and bool(stated.get("alpha", false)) and not packed_file)
+	alpha_requested = ai_available() and (alpha or (restore_mode and bool(stated.get("alpha", false)) and not packed_file))
 	_thumb_tries = 0
 	_thumbnail_result = {}
 	_thumb_after_ms = -1
@@ -455,7 +459,7 @@ func open_local(uri: String, title: String, start_ms: int = 0, restore_mode: boo
 		_thumb_after_ms = 0
 	local_uri = uri
 	_warm_rvm()
-	if auto_depth and OS.get_name() == "Android" and Engine.has_singleton("QuestPlayer"):
+	if ai_available() and auto_depth and OS.get_name() == "Android" and Engine.has_singleton("QuestPlayer"):
 		Engine.get_singleton("QuestPlayer").warm_depth()
 	display_name = title
 	_bookmark_metadata = metadata.duplicate(true)
@@ -469,7 +473,7 @@ func open_local(uri: String, title: String, start_ms: int = 0, restore_mode: boo
 		var source := FileAccess.open(uri.trim_prefix("file://").uri_decode(), FileAccess.READ)
 		if source: _bookmark_metadata.size = source.get_length()
 	_bookmark_resolve()
-	depth_requested = auto_depth and geometry == Geometry.Geometry.FLAT and not stereo_sbs and not alpha_requested
+	depth_requested = ai_available() and auto_depth and geometry == Geometry.Geometry.FLAT and not stereo_sbs and not alpha_requested
 	_last_seek_mode = SeekPolicy.normalize(seek_mode)
 	var id: int = platform.open_mpv_video(uri, maxi(start_ms, 0), stereo_sbs, profile, alpha_requested, true, depth_requested,
 		stereo_sbs and top_bottom, SeekPolicy.normalize(seek_mode) == SeekPolicy.EXACT)
@@ -563,7 +567,7 @@ func _resume(uri: String) -> int:
 
 func _record_history(force: bool = false) -> void:
 	if not history_enabled or not _remember_file or not media.accepts(media.session_id) or media.last_pair.is_empty() \
-		or not media.last_pair.get("source_pts_verified", false) or not panel.visible:
+		or not preload("res://scripts/pair_texture_binding.gd").timing_valid(media.last_pair) or not panel.visible:
 		return
 	var pair: Dictionary = media.last_pair
 	if int(pair.get("session_id", 0)) != media.session_id or int(pair.get("generation", 0)) != media.generation:
@@ -584,6 +588,9 @@ func _record_history(force: bool = false) -> void:
 		Log.record("recent_file_save_failed", {"error": recent_files.last_error})
 
 func _request_revision(position_ms: int = -1, mode: String = "") -> void:
+	if not ai_available():
+		alpha_requested = false
+		depth_requested = false
 	if not platform or not media.accepts(media.session_id):
 		return
 	_pending_revision = {"stereo": stereo_sbs, "alpha": alpha_requested, "profile": profile, "position_ms": position_ms,
@@ -694,6 +701,7 @@ func has_active_presentation() -> bool:
 		or _waiting_first or not _pending_revision.is_empty()
 
 func set_alpha(enabled: bool) -> bool:
+	if enabled and not packed_file and not ai_available(): return false
 	if packed_file:
 		packed_alpha = enabled
 		_apply_packed()
@@ -710,6 +718,7 @@ func set_alpha(enabled: bool) -> bool:
 ## 2D->3D for mono sources; switching it on ends Alpha.
 func set_depth(enabled: bool) -> bool:
 	if is_spatial_video(): return false
+	if enabled and not ai_available(): return false
 	if enabled and (stereo_sbs or geometry != Geometry.Geometry.FLAT):
 		return false
 	if enabled != depth_requested: _unlock_mode()
@@ -866,7 +875,7 @@ func bookmark_snapshot() -> Dictionary:
 	if not bookmark_seekable() or _waiting_first or control.pending or control.in_flight > 0 \
 		or not _pending_revision.is_empty() or _is_frozen() or not panel or not panel.visible: return {}
 	var pair: Dictionary = _binding.ticket
-	if not pair.get("source_pts_verified", false) or int(pair.get("session_id", -1)) != media.session_id \
+	if not preload("res://scripts/pair_texture_binding.gd").timing_valid(pair) or int(pair.get("session_id", -1)) != media.session_id \
 		or int(pair.get("generation", -1)) != media.generation or int(pair.get("pts_us", -1)) < 0: return {}
 	var time := int(pair.pts_us) / 1000
 	if time >= control.duration_ms: return {}
@@ -1061,7 +1070,7 @@ func set_stereo_layout(layout: int) -> void:
 	var old_depth := depth_requested
 	if stereo_sbs:
 		depth_requested = false
-	elif auto_depth and geometry == Geometry.Geometry.FLAT:
+	elif ai_available() and auto_depth and geometry == Geometry.Geometry.FLAT:
 		depth_requested = true
 		alpha_requested = false
 	_remember_mode()
@@ -1106,7 +1115,7 @@ func set_projection(value: int) -> void:
 	if not stereo and alpha_requested:
 		alpha_requested = false
 		revise = true
-	if geometry == Geometry.Geometry.FLAT and not stereo_sbs and auto_depth and not depth_requested:
+	if geometry == Geometry.Geometry.FLAT and not stereo_sbs and ai_available() and auto_depth and not depth_requested:
 		depth_requested = true
 		revise = true
 	if revise:
@@ -1212,7 +1221,7 @@ func _complete_layout() -> void:
 		var revise := bool(chosen.stereo) != stereo_sbs or tb != top_bottom
 		stereo_sbs = chosen.stereo
 		top_bottom = tb
-		var wanted := auto_depth and geometry == Geometry.Geometry.FLAT and not stereo_sbs and not alpha_requested
+		var wanted := ai_available() and auto_depth and geometry == Geometry.Geometry.FLAT and not stereo_sbs and not alpha_requested
 		revise = revise or depth_requested != wanted
 		depth_requested = wanted
 		if revise: _request_revision()
@@ -1546,7 +1555,7 @@ func layout_snapshot() -> Dictionary:
 	playback["seek_mode"] = SeekPolicy.normalize(seek_mode)
 	playback["active_seek_mode"] = _last_seek_mode
 	playback["bookmark_seek_mode"] = SeekPolicy.bookmark_override(bookmark_seek_mode)
-	playback["source_frame_pts_verified"] = not media.last_pair.is_empty()
+	playback["source_frame_pts_verified"] = media.last_pair.get("source_pts_verified", false)
 	return {"geometry": ["flat", "half_equirect_180", "fisheye_180", "equirect_360"][geometry], "stereo_sbs": stereo_sbs,
 		"viewing_eye": viewing_eye, "stereo_horizontal": stereo_horizontal, "stereo_vertical": stereo_vertical,
 		"top_bottom": stereo_sbs and top_bottom, "stereo_half": stereo_sbs and stereo_half, "fisheye_fov": fisheye_fov,

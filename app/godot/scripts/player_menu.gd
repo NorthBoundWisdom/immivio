@@ -418,7 +418,7 @@ func _scroll_subtitles(rows: int) -> void:
 		refresh()
 
 func _can_depth() -> bool:
-	return _state.get("has_video", false) and not _state.get("spatial_video", false) and int(_state.get("geometry", 0)) == 0 and not _state.get("stereo", false)
+	return _state.get("ai_enabled", true) and _state.get("has_video", false) and not _state.get("spatial_video", false) and int(_state.get("geometry", 0)) == 0 and not _state.get("stereo", false)
 
 func _toggle_depth_slider() -> void:
 	if not _can_depth(): return
@@ -1028,12 +1028,12 @@ func _enabled(operation: String) -> bool:
 	match operation:
 		"play", "loop", "stop": return has_video
 		"previous_video", "next_video": return has_video and _state.get("has_" + operation, false)
-		"alpha": return has_video and (_state.get("spatial_video", false) or int(_state.get("geometry", 0)) in [1, 2])
+		"alpha": return (_state.get("ai_enabled", true) or _state.get("packed_file", false)) and has_video and (_state.get("spatial_video", false) or int(_state.get("geometry", 0)) in [1, 2])
 		"eyes", "stereo_view": return has_video and _state.get("stereo", false)
 		"volume_down", "volume_up", "mute": return has_video and _state.get("audio_available", false)
 		"audio": return has_video
 		"clone_voice": return has_video and _state.get("clone_voice", false)
-		"depth": return has_video and not _state.get("spatial_video", false) and int(_state.get("geometry", 0)) == 0 and not _state.get("stereo", false)
+		"depth": return _state.get("ai_enabled", true) and has_video and not _state.get("spatial_video", false) and int(_state.get("geometry", 0)) == 0 and not _state.get("stereo", false)
 		"depth_strength": return _can_depth()
 		"subtitles": return has_video
 		"capabilities": return _state.get("capabilities_available", false)

@@ -4,7 +4,7 @@ import android.content.res.AssetManager
 import java.nio.ByteBuffer
 
 internal object RvmNative {
-    val unavailable: String? = try {
+    val unavailable: String? = if (!BuildConfig.ENABLE_AI) "AI_DISABLED" else try {
         System.loadLibrary("quest_rvm")
         null
     } catch (error: LinkageError) { error.javaClass.simpleName }

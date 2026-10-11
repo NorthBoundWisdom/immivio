@@ -3,19 +3,25 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
+def enableAi = providers.gradleProperty('enableAi').map { it.toBoolean() }.getOrElse(true)
+def standardMpv = providers.gradleProperty('standardMpv').map { it.toBoolean() }.getOrElse(false)
+if (standardMpv && enableAi) { throw new GradleException('Standard libmpv requires -PenableAi=false.') }
 def ncnnRoot = providers.gradleProperty('ncnnDir').orElse(providers.environmentVariable('QUEST_NCNN_ROOT'))
-if (!ncnnRoot.isPresent()) { throw new GradleException('Pass -PncnnDir=<ncnn arm64 root> or activate the Quest environment.') }
+if (enableAi && !ncnnRoot.isPresent()) { throw new GradleException('Pass -PncnnDir=<ncnn arm64 root> or activate the Quest environment.') }
 def mnnSource = providers.gradleProperty('mnnSource').orElse(providers.environmentVariable('QUEST_MNN_SOURCE'))
 def mnnLib = providers.gradleProperty('mnnLib').orElse(providers.environmentVariable('QUEST_MNN_LIB'))
-if (!mnnSource.isPresent() || !mnnLib.isPresent()) { throw new GradleException('Activate the Quest environment (QUEST_MNN_SOURCE/QUEST_MNN_LIB).') }
+if (enableAi && (!mnnSource.isPresent() || !mnnLib.isPresent())) { throw new GradleException('Activate the Quest environment (QUEST_MNN_SOURCE/QUEST_MNN_LIB).') }
 
 // Keep the full numerical oracles on disk for device diagnostics, but never
 // include them in a normal player APK (including ordinary Debug builds).
 def includeDiagnostics = providers.gradleProperty('includeDiagnostics').map { it.toBoolean() }.getOrElse(false)
+if (!enableAi && includeDiagnostics) { throw new GradleException('AI diagnostics require -PenableAi=true.') }
 def playerAssets = layout.buildDirectory.dir('playerAssets')
 def stagePlayerAssets = tasks.register('stagePlayerAssets', Sync) {
+    inputs.property('enableAi', enableAi)
     from('src/main/assets')
     into(playerAssets)
+    if (!enableAi) { exclude 'rvm/**', 'rvm-mnn/**', 'depth-mnn/**' }
     if (!includeDiagnostics) {
         exclude 'rvm/reference/**', 'rvm/**/*.bin', 'rvm/**/*.param', 'rvm-mnn/rvm_quality.mnn'
     }
@@ -25,7 +31,7 @@ android {
     namespace 'org.vrpassthroughplayer.plugin'
     compileSdk 36
     buildToolsVersion '36.1.0'
-    ndkVersion '29.0.14206865'
+    ndkVersion providers.gradleProperty('androidNdkVersion').getOrElse('29.0.14206865')
     buildFeatures { buildConfig true }
     sourceSets.main.assets.setSrcDirs([playerAssets])
     sourceSets.main.assets.srcDir '../../third_party'
@@ -33,16 +39,27 @@ android {
     defaultConfig {
         minSdk 29
         buildConfigField 'boolean', 'INCLUDE_DIAGNOSTIC_MODELS', includeDiagnostics.toString()
+        buildConfigField 'boolean', 'ENABLE_AI', enableAi.toString()
         ndk { abiFilters 'arm64-v8a' }
         externalNativeBuild {
-            cmake { arguments "-Dncnn_DIR=${ncnnRoot.get().replace('\\', '/')}/lib/cmake/ncnn", '-DANDROID_STL=c++_shared',
-                "-DQUEST_DIAGNOSTIC_MODELS=${includeDiagnostics ? 'ON' : 'OFF'}",
-                "-DMNN_SOURCE=${mnnSource.get().replace('\\', '/')}", "-DMNN_LIB=${mnnLib.get().replace('\\', '/')}" }
+            cmake {
+                arguments '-DANDROID_STL=c++_shared', "-DQUEST_ENABLE_AI=${enableAi ? 'ON' : 'OFF'}",
+                    "-DQUEST_STANDARD_MPV=${standardMpv ? 'ON' : 'OFF'}",
+                    "-DQUEST_DIAGNOSTIC_MODELS=${includeDiagnostics ? 'ON' : 'OFF'}"
+                if (enableAi) {
+                    arguments "-Dncnn_DIR=${ncnnRoot.get().replace('\\', '/')}/lib/cmake/ncnn",
+                        "-DMNN_SOURCE=${mnnSource.get().replace('\\', '/')}", "-DMNN_LIB=${mnnLib.get().replace('\\', '/')}"
+                }
+            }
         }
     }
-    externalNativeBuild { cmake { path '../../native/rvm/CMakeLists.txt'; version '3.31.6' } }
+    externalNativeBuild { cmake { path '../../native/rvm/CMakeLists.txt'; version providers.gradleProperty('androidCmakeVersion').getOrElse('3.31.6') } }
     // The Godot APK provides the matching NDK C++ shared runtime.
     packagingOptions { jniLibs { excludes += ['**/libc++_shared.so'] } }
+    if (!enableAi) {
+        // Also exclude stale libraries left in jniLibs by an earlier AI build.
+        packagingOptions { jniLibs { excludes += ['**/libquest_rvm.so', '**/libMNN*.so', '**/libncnn.so'] } }
+    }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17

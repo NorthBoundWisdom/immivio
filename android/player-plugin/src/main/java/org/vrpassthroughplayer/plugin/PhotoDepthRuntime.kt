@@ -23,6 +23,7 @@ internal object PhotoDepthRuntime {
     }
 
     fun release() {
+        if (!BuildConfig.ENABLE_AI) return
         val worker = DepthWorker.handler
         val version = activity.incrementAndGet()
         worker.removeCallbacks(idle)

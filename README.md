@@ -31,7 +31,7 @@ Minimum compatibility targets are **Quest 2** and **PICO Neo3**. Source/build co
 
 This repository contains application source, build scripts, third-party source pins/patches, and tests. Model weights, compiled dependencies, signing keys, personal media and development records are excluded.
 
-**A fresh clone does not yet build an APK without external dependencies and the exact runtime models.** The default matting model is a project-modified, distilled RVM model. Its weights are not hosted in this source release; the upstream RVM checkpoint is not a drop-in replacement. See [model requirements](docs/MODELS.md) before starting an Android build. This source snapshot is not presented as a complete corresponding-source offer for an existing APK.
+**AI is optional at build time.** The model-free Python workflow prepares verified non-AI dependencies automatically; supply the host toolchain described in [BUILD.md](docs/BUILD.md). It retains ordinary video/photo playback, existing stereo videos, text subtitles and media browsing. Standard mpv has additional capability limits, including unavailable PGS bitmap subtitles and unverified source-frame PTS; see the [build-mode comparison](docs/BUILD.md#build-modes-and-compatibility). The default AI build uses a project-modified, distilled RVM model. Its weights are not hosted in this source release; the upstream RVM checkpoint is not a drop-in replacement. See [model requirements](docs/MODELS.md) before starting an AI-enabled Android build. This source snapshot is not presented as a complete corresponding-source offer for an existing APK.
 
 The desktop Godot tests and native depth-stabilizer test can run without model weights or an Android toolchain.
 
@@ -69,7 +69,15 @@ $env:GODOT_EXE = (Get-Command godot).Source
 ./tools/Test-Source.ps1
 ```
 
-For Android, prepare the pinned toolchain and externally supplied, version-matched models as described in [BUILD.md](docs/BUILD.md):
+For Android, prepare the toolchain described in [BUILD.md](docs/BUILD.md). AI-enabled builds additionally require externally supplied, version-matched models.
+
+For an Android base player without AI, prepare Godot Android templates, Go, a JDK and the Android SDK, then use the portable entry point. It verifies/downloads standard mpv libraries and builds the OpenList AAR from source:
+
+```sh
+python3 tools/build_player.py --vendor Quest --build-type Release
+```
+
+Use `--vendor Pico` or `--vendor OpenXR` for the other Android targets. The following is the retained AI-enabled workflow:
 
 ```powershell
 $env:THRU3D_TOOL_ROOT = Join-Path $HOME '.cache/thru3d-toolchain'

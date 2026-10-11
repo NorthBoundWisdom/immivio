@@ -6,7 +6,7 @@ import java.nio.file.Files
 
 class MediaDeletePolicyTest {
     @Test fun rejectsEscapesRootsDirectoriesAndNonMedia() {
-        val root = Files.createTempDirectory("media-delete-policy").toFile()
+        val root = Files.createTempDirectory("media-delete-policy").toFile().canonicalFile
         try {
             val file = root.resolve("video.mp4").apply { writeText("fixture") }
             assertEquals(file, MediaDeletePolicy.local(file, listOf(root)))
