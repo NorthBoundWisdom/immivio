@@ -176,6 +176,7 @@ internal class MpvVideoBridge(
     @Synchronized fun open(uri: String, startMs: Int, stereo: Boolean, profile: String,
                            alpha: Boolean, vulkan: Boolean, hardware: Boolean = true, audio: Boolean = true,
                            depth: Boolean = false, topBottom: Boolean = false, exactSeek: Boolean = false): Int {
+        if (!BuildConfig.ENABLE_AI && (alpha || depth)) return -1
         if (!supported() || sessions.size >= 2 || startMs < 0 || profile !in RvmProfiles.keys || (depth && (alpha || stereo)) ||
             Uri.parse(uri).scheme !in setOf("content", "file", "smb", "cloud", "medialib", "http", "https")) return -1
         val id = gate.begin(); if (id <= 0) return -1
@@ -263,6 +264,7 @@ internal class MpvVideoBridge(
     /** Returns a new processing generation without reopening the MPV media/audio core. */
     @Synchronized fun revise(id: Int, stereo: Boolean, alpha: Boolean, profile: String, positionMs: Int = -1,
                              depth: Boolean = false, topBottom: Boolean = false, exactSeek: Boolean = false): Int {
+        if (!BuildConfig.ENABLE_AI && (alpha || depth)) return -1
         val old = sessions[id] ?: return -1
         if (!active(old) || sessions.size >= 2 || profile !in RvmProfiles.keys || (depth && (alpha || stereo))) return -1
         val host = old.host
@@ -486,6 +488,7 @@ internal class MpvVideoBridge(
             val rect = plan?.rect?.map { it.toDouble() }
                 ?: if (sourceAspect > inputAspect) { val h = inputAspect/sourceAspect; listOf(0.0, (1-h)*0.5, 1.0, h) }
                 else { val w = sourceAspect/inputAspect; listOf((1-w)*0.5, 0.0, w, 1.0) }
+            // Preserve native timing provenance: public render tickets are not exact source PTS.
             source.put("producer_color_texture_id", source.getInt("color_texture_id"))
                 .put("mpv_source_handle", session.host.handle)
                 .put("godot_context_shared", true)
@@ -493,7 +496,6 @@ internal class MpvVideoBridge(
                 .put("session_id", session.id).put("logical_session_id", session.scope.logicalSessionId).put("generation", session.scope.generation)
                 .put("input_width", session.dims[0]).put("input_height", session.dims[1]).put("profile_key", session.profile)
                 .put("input_layout", "float32_CHW_RGB_0_1").put("model_content_rect", JSONArray(rect)).put("stereo_sbs", session.stereo).put("top_bottom", session.topBottom)
-                .put("source_pts_verified", true).put("source_ticket_origin", "private_same_mpv_render_transaction")
                 .put("alpha_requested", session.alpha).put("depth_requested", session.depth).put("immutable_color_frame", true)
             if (plan != null) source.put("roi_window_id", plan.windowId).put("roi_scout", plan.scout).put("roi_zoomed", plan.zoomed)
             session.copying = ticket to token; session.copyingPair = source

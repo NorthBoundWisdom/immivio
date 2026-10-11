@@ -99,6 +99,14 @@ func _free_wrappers() -> void:
 	color_rid = RID()
 	alpha_rid = RID()
 
+## Public libmpv supplies a playback-clock estimate only. Permit it for opaque base
+## playback; AI pairs still require exact decoded-image timing from the private API.
+static func timing_valid(pair: Dictionary) -> bool:
+	if pair.get("source_pts_verified", false): return true
+	return pair.get("source_ticket_origin", "") == "standard_libmpv_render" \
+		and pair.get("source_ticket_valid", false) and not pair.get("alpha_requested", true) \
+		and not pair.get("depth_requested", true) and not pair.get("inference_ran", true)
+
 static func _valid(pair: Dictionary) -> bool:
 	for key in ["session_id", "logical_session_id", "generation", "frame_id", "pts_us", "format_revision",
 		"effect_revision", "model_generation", "slot_token", "color_texture_id", "alpha_texture_id",
@@ -106,7 +114,7 @@ static func _valid(pair: Dictionary) -> bool:
 		"rotation_degrees", "model_content_rect", "stereo_sbs", "alpha_slot_token", "alpha_frame_id", "alpha_pts_us"]:
 		if not pair.has(key):
 			return false
-	if not pair.get("source_pts_verified", false) or not pair.get("immutable_color_frame", false) \
+	if not timing_valid(pair) or not pair.get("immutable_color_frame", false) \
 		or not pair.get("pair_identity_verified", false) or not pair.get("alpha_fence_ready", false) \
 		or not pair.get("alpha_gpu_uploaded", false) or pair.get("alpha_texture_format") != "GL_R8_numeric":
 		return false

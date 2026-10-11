@@ -31,6 +31,10 @@
 void quest_mpv_initialize_android(JNIEnv*, jobject);
 
 namespace {
+#ifndef QUEST_STANDARD_MPV
+#define QUEST_STANDARD_MPV 0
+#endif
+constexpr bool standard_frames = QUEST_STANDARD_MPV;
 void require(bool ok, const char* action) { if (!ok) throw std::runtime_error(action); }
 void checked(int result, const char* action) {
     if (result < 0) throw std::runtime_error(std::string(action) + ": " + mpv_error_string(result));
@@ -71,6 +75,7 @@ struct ActiveFlag {
     ~ActiveFlag() { flag.store(false); }
 };
 bool extension_available() {
+    if (standard_frames) return true;
     auto version = reinterpret_cast<uint32_t (*)()>(dlsym(RTLD_DEFAULT, "mpv_quest_source_frame_api_version"));
     return version && version() == QUEST_MPV_SOURCE_FRAME_API_VERSION;
 }
@@ -119,6 +124,11 @@ struct Source final {
     std::atomic<bool> seek_in_progress{false}, render_in_progress{false};
     std::atomic<uint64_t> stale_seek_frames_discarded{0};
     std::atomic<uint64_t> dimensions{0}, last_epoch{0}, epoch_floor{0};
+    // Public libmpv exposes the playback clock, not an exact decoded-image PTS.
+    // Standard tickets identify immutable render transactions and never claim source PTS verification.
+    std::atomic<int64_t> playback_pts_us{0};
+    std::atomic<uint64_t> standard_epoch{1};
+    std::atomic<bool> standard_seeking{false};
     std::atomic<uint64_t> rendered{0}, skipped{0}, published{0}, acquired{0}, released{0};
     std::atomic<uint64_t> seeks_started{0}, seeks_completed{0}, invalid_frames{0};
     // The last rejected ticket, so a source that never publishes can be diagnosed.
@@ -250,6 +260,11 @@ struct Source final {
         // All property reads happen before taking the status lock.
         const auto codec = property(core, "video-codec"), hwdec = property(core, "hwdec-current");
         const auto position = property(core, "time-pos"), duration = property(core, "duration");
+        if (standard_frames && !position.empty()) {
+            const double seconds = std::strtod(position.c_str(), nullptr);
+            if (std::isfinite(seconds) && seconds >= 0 && seconds < 2147483.647)
+                playback_pts_us.store(static_cast<int64_t>(seconds * 1000000));
+        }
         const auto seekable = property(core, "seekable"), partial = property(core, "partially-seekable");
         const auto file_size = property(core, "file-size");
         const auto matrix = property(core, "video-params/colormatrix"), range = property(core, "video-params/colorlevels");
@@ -306,7 +321,8 @@ struct Source final {
         const auto json = "{\"codec\":" + quote(codec) + ",\"hwdec_current\":" + quote(hwdec) +
             ",\"dolby_vision_profile\":" + quote(property(core, "current-tracks/video/dolby-vision-profile")) +
             ",\"dolby_profile5\":" + (dolby_profile5.load() ? "true" : "false") +
-            ",\"dolby_color_path\":" + quote(dolby_profile5.load() ? "GPU_RPU_RGBA16F_PQ_to_SDR" : "existing") +
+            ",\"dolby_color_path\":" + quote(dolby_profile5.load() ?
+                (standard_frames ? "standard_libmpv_GPU_color_unverified" : "GPU_RPU_RGBA16F_PQ_to_SDR") : "existing") +
             ",\"dolby_rendered_frames\":" + std::to_string(dolby_frames.load()) +
             ",\"position_seconds\":" + quote(position) + ",\"duration_seconds\":" + quote(duration) +
             ",\"seekable\":" + quote(seekable) + ",\"partially_seekable\":" + quote(partial) + ",\"file_size\":" + quote(file_size) +
@@ -495,6 +511,11 @@ struct Source final {
                     if (closing.load()) break;
                     require(!render_in_progress.load() && !render_failed.load(), "MPV seek renderer did not quiesce");
                     awaiting_seek_event = true; core_eof.store(false);
+                    if (standard_frames) {
+                        standard_seeking.store(true);
+                        standard_epoch.store(epoch_floor.load());
+                        playback_pts_us.store(seek * 1000);
+                    }
                     __android_log_print(ANDROID_LOG_INFO, "QuestMpvSource", "Seek request %lld ms; epoch=%llu floor=%llu mode=%s",
                         static_cast<long long>(seek), static_cast<unsigned long long>(last_epoch.load()),
                         static_cast<unsigned long long>(epoch_floor.load()), seek_exact ? "exact" : "speed");
@@ -545,6 +566,10 @@ struct Source final {
                     format_deadline = std::chrono::steady_clock::now() + std::chrono::seconds(15);
                 }
                 else if (event->event_id == MPV_EVENT_VIDEO_RECONFIG) format(core);
+                else if (event->event_id == MPV_EVENT_PLAYBACK_RESTART && standard_frames) {
+                    standard_seeking.store(false);
+                    render_pending.store(true); wake.notify_all();
+                }
                 else if (event->event_id == MPV_EVENT_SEEK) { awaiting_seek_event = false; core_eof.store(false); }
                 else if (event->event_id == MPV_EVENT_END_FILE) {
                     const auto* end = static_cast<const mpv_event_end_file*>(event->data);
@@ -621,6 +646,7 @@ struct Source final {
             int64_t last_target_us = 0; // render thread only
             double owed_us = 0; // display time owed to the cap since the last kept frame
             uint64_t cadence_floor = 0;
+            uint64_t standard_sequence = 0;
             while (true) {
                 bool resolve_final = false;
                 {
@@ -650,6 +676,18 @@ struct Source final {
                 if (seek_in_progress.load()) {
                     std::unique_lock<std::mutex> lock(wait_mutex);
                     wake.wait_for(lock, std::chrono::milliseconds(2)); continue;
+                }
+                if (standard_frames && standard_seeking.load()) {
+                    mpv_render_frame_info info{};
+                    checked(mpv_render_context_get_info(renderer, {MPV_RENDER_PARAM_NEXT_FRAME_INFO, &info}), "MPV seek frame info");
+                    // Serve public render updates while seeking, but do not relabel a retained
+                    // old redraw as the new generation. Rendering the new frame may itself be
+                    // needed before mpv sends PLAYBACK_RESTART in advanced-control mode.
+                    if (!(info.flags & MPV_RENDER_FRAME_INFO_PRESENT) || (info.flags & MPV_RENDER_FRAME_INFO_REDRAW)) {
+                        std::unique_lock<std::mutex> lock(wait_mutex);
+                        wake.wait_for(lock, std::chrono::milliseconds(2)); continue;
+                    }
+                    standard_seeking.store(false);
                 }
                 const int cap = max_fps.load();
                 if (cadence_reset.exchange(false) || cadence_floor != epoch_floor.load()) {
@@ -695,7 +733,7 @@ struct Source final {
                 ActiveFlag rendering(render_in_progress);
                 // Close the race between the first check and announcing the
                 // transaction. Ordinary client APIs never run under this flag.
-                if (seek_in_progress.load()) continue;
+                if (seek_in_progress.load() || (standard_frames && standard_seeking.load())) continue;
                 const int width = static_cast<int>(packed >> 32), height = static_cast<int>(packed & 0xffffffffu);
                 int out_width = width, out_height = height;
                 const int width_cap = max_output_width.load();
@@ -735,7 +773,7 @@ struct Source final {
                 }
                 // Software MV-HEVC has no AImage to export. Render its complete
                 // eye pair at full size, including when Alpha requested direct mode.
-                const bool direct_render = direct.load() && !dolby_profile5.load() && hardware_decoding.load();
+                const bool direct_render = !standard_frames && direct.load() && !dolby_profile5.load() && hardware_decoding.load();
                 if (direct_render) { out_width = 16; out_height = 8; } // MPV still selects and times the frame
                 if (target->color && (target->out_width != out_width || target->out_height != out_height)) {
                     glDeleteFramebuffers(1, &target->fbo); glDeleteTextures(1, &target->color); target->fbo = target->color = 0;
@@ -745,12 +783,21 @@ struct Source final {
                 mpv_opengl_fbo fbo{static_cast<int>(target->fbo), out_width, out_height, GL_RGBA8}; int flip = 0;
                 quest_mpv_export exported{}; exported.struct_size = sizeof(exported);
                 mpv_render_param frame[] = {{MPV_RENDER_PARAM_OPENGL_FBO, &fbo}, {MPV_RENDER_PARAM_FLIP_Y, &flip},
-                    {MPV_RENDER_PARAM_QUEST_SOURCE_FRAME, &ticket},
+                    {standard_frames ? MPV_RENDER_PARAM_INVALID : MPV_RENDER_PARAM_QUEST_SOURCE_FRAME, &ticket},
                     {direct_render ? MPV_RENDER_PARAM_QUEST_EXPORT : MPV_RENDER_PARAM_INVALID, &exported},
                     {MPV_RENDER_PARAM_INVALID, nullptr}};
                 const int render_result = mpv_render_context_render(renderer, frame);
                 mpv_render_context_report_swap(renderer);
-                if (ticket.flags & QUEST_MPV_DOVI_PROFILE5) {
+                if (standard_frames && render_result >= 0) {
+                    ticket.flags = QUEST_MPV_HAS_IMAGE | QUEST_MPV_PTS_VALID | QUEST_MPV_RENDER_VALID;
+                    ticket.frame_id = ++standard_sequence;
+                    ticket.render_sequence = standard_sequence;
+                    ticket.source_epoch = standard_epoch.load();
+                    ticket.media_pts_us = playback_pts_us.load();
+                    ticket.width = width; ticket.height = height;
+                    ticket.crop_x1 = width; ticket.crop_y1 = height;
+                    if (dolby_profile5.load()) dolby_frames.fetch_add(1);
+                } else if (ticket.flags & QUEST_MPV_DOVI_PROFILE5) {
                     dolby_profile5.store(true);
                     if (!dolby_color_ready.load() || (direct_render && !exported.exported)) {
                         // The same-frame flag also covers streams without a
@@ -781,7 +828,7 @@ struct Source final {
                     continue;
                 }
                 checked(render_result, "MPV immutable color render"); rendered.fetch_add(1);
-                require(!dolby_profile5.load() || !(ticket.flags & QUEST_MPV_HAS_IMAGE) ||
+                require(standard_frames || !dolby_profile5.load() || !(ticket.flags & QUEST_MPV_HAS_IMAGE) ||
                         (ticket.flags & QUEST_MPV_DOVI_PROFILE5),
                         "Dolby Vision Profile 5 frame is missing conversion metadata");
                 const uint64_t required = QUEST_MPV_HAS_IMAGE | QUEST_MPV_PTS_VALID | QUEST_MPV_RENDER_VALID;
@@ -891,7 +938,9 @@ struct Source final {
             (newest->image ? ",\"hardware_buffer\":" + std::to_string(static_cast<int64_t>(reinterpret_cast<uintptr_t>(newest->buffer))) +
                 ",\"buffer_width\":" + std::to_string(newest->buffer_width) + ",\"buffer_height\":" + std::to_string(newest->buffer_height) : std::string()) +
             ",\"owner_context_shared\":true,\"producer_fence_ready\":true," +
-            "\"source_ticket_valid\":true,\"immutable_color_frame\":true,\"coords\":\"top-left; MPV FLIP_Y=0\"}";
+            "\"source_ticket_valid\":true,\"source_pts_verified\":" + (standard_frames ? "false" : "true") +
+            ",\"source_ticket_origin\":" + quote(standard_frames ? "standard_libmpv_render" : "private_same_mpv_render_transaction") +
+            ",\"immutable_color_frame\":true,\"coords\":\"top-left; MPV FLIP_Y=0\"}";
     }
     bool release_frame(uint64_t token) {
         owner(); std::lock_guard<std::mutex> lock(frames_mutex);

@@ -1,4 +1,4 @@
-param([string]$ToolRoot = $(if ($env:THRU3D_TOOL_ROOT) { $env:THRU3D_TOOL_ROOT } else { Join-Path ([Environment]::GetFolderPath('UserProfile')) '.cache\thru3d-toolchain' }), [switch]$Force)
+param([string]$ToolRoot = $(if ($env:THRU3D_TOOL_ROOT) { $env:THRU3D_TOOL_ROOT } else { Join-Path ([Environment]::GetFolderPath('UserProfile')) '.cache\thru3d-toolchain' }), [switch]$Force, [switch]$WithoutAI)
 $ErrorActionPreference = 'Stop'
 # All callers, including Test-CloudCore and other chat builds, share one output.
 $coreBuildMutex = [Threading.Mutex]::new($false, 'Local\VRPassthroughPlayer-OpenList')
@@ -32,7 +32,7 @@ Fetch-Verified 'https://go.dev/dl/go1.27.1.windows-amd64.zip' (Join-Path $cache 
 if (!(Test-Path "$cache\go\bin\go.exe")) { Expand-Archive "$cache\go.zip" $cache }
 Fetch-Verified "https://codeload.github.com/OpenListTeam/OpenList/zip/$revision" (Join-Path $cache 'openlist.zip') '7276424f72a2a5b78ec754a9559bdee25d4e32610b2d9321f17496e31768bad7'
 if (!(Test-Path $source)) { Expand-Archive "$cache\openlist.zip" $cache }
-. "$PSScriptRoot\Activate-QuestEnvironment.ps1" -ToolRoot $ToolRoot
+. "$PSScriptRoot\Activate-QuestEnvironment.ps1" -ToolRoot $ToolRoot -WithoutAI:$WithoutAI
 $env:PATH = "$cache\go\bin;$cache\gobin;$env:PATH"
 $env:GOROOT = "$cache\go"
 $env:GOPATH = "$cache\gopath"

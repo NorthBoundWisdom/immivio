@@ -1553,6 +1553,7 @@ func _menu_state() -> Dictionary:
 	var result := {"has_video": not video.local_uri.is_empty() and video.media.accepts(video.media.session_id),
 		"has_previous_video": not _adjacent_video(-1).is_empty(), "has_next_video": not _adjacent_video(1).is_empty(),
 		"playing": video.requested_play, "playback_state": video.media.state,
+		"ai_enabled": video.ai_available(), "packed_file": video.packed_file,
 		"alpha_requested": video.alpha_wanted(), "alpha_enabled": video.alpha_enabled,
 		"loop": video.loop_enabled, "stereo": video.stereo_sbs, "swap_eyes": video.swap_eyes,
 		"viewing_eye": video.viewing_eye, "stereo_horizontal": video.stereo_horizontal, "stereo_vertical": video.stereo_vertical,

@@ -227,6 +227,7 @@ internal class ControlledVideoBridge(
 
     @Synchronized fun open(uri: String, startMs: Int, stereo: Boolean, profile: String, probe: Boolean,
                            rvmProbe: Boolean = false, vulkan: Boolean = true, display: Boolean = false, replaceId: Int = 0): Int {
+        if (rvmProbe && !BuildConfig.ENABLE_AI) return -1
         if (profile !in RvmProfiles.keys || startMs < 0 || Uri.parse(uri).scheme !in setOf("content", "file")) return -1
         if (sessions.size >= 2) return -1
         val id = if (replaceId > 0) gate.replace(replaceId) else gate.begin()

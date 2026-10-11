@@ -21,6 +21,14 @@ func distance_origin(menu: Node3D, fraction: float) -> Vector3:
 func _initialize() -> void:
 	call_deferred("_run")
 
+func subtitle_slider_point(menu: Node3D, fraction: float) -> Vector3:
+	for target in menu.choices.sliders:
+		if menu.choices.targets[target].key == "subtitle_distance":
+			var slider: Dictionary = menu.choices.sliders[target]
+			var centre: Vector3 = menu.to_local(slider.node.global_position)
+			return menu.to_global(Vector3(centre.x + slider.left + slider.width * fraction, centre.y, 1))
+	return Vector3.ZERO
+
 func _run() -> void:
 	grade.adjust("exposure", 0.75)
 	var saved := grade.snapshot()

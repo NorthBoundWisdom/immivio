@@ -4,6 +4,8 @@ import java.io.File
 import java.nio.file.Files
 import org.junit.Assert.*
 import org.junit.Test
+import org.junit.Assume.assumeTrue
+import org.junit.Assume.assumeFalse
 
 class PhotoPreloadTest {
     private fun bridge() = PhotoBridge({ null }, { it }, {}, emit = { _, _, _ -> })
@@ -61,6 +63,7 @@ class PhotoPreloadTest {
     }
 
     @Test fun promotionJoinsQueuedConversionAndCancellationKeepsItsFileLeased() {
+        assumeTrue(BuildConfig.ENABLE_AI)
         val root = Files.createTempDirectory("vrpp-photo-depth-promotion").toFile()
         val work = mutableListOf<Runnable>()
         fun queuedBridge() = PhotoBridge({ null }, { it }, {}, postDepth = { task, _ -> work.add(task) }, emit = { _, _, _ -> })
@@ -86,6 +89,7 @@ class PhotoPreloadTest {
     }
 
     @Test fun strengthUpdatesJoinWorkAndClosedPromotionCannotDeleteAnActiveSource() {
+        assumeTrue(BuildConfig.ENABLE_AI)
         val root = Files.createTempDirectory("vrpp-photo-depth-strength").toFile()
         val work = mutableListOf<Runnable>()
         val foreground = PhotoBridge({ null }, { it }, {}, postDepth = { task, _ -> work.add(task) }, emit = { _, _, _ -> })
@@ -104,6 +108,7 @@ class PhotoPreloadTest {
     }
 
     @Test fun backgroundCancellationDoesNotCancelForegroundWorkOnTheSameBridge() {
+        assumeTrue(BuildConfig.ENABLE_AI)
         val root = Files.createTempDirectory("vrpp-photo-depth-priority").toFile()
         val work = mutableListOf<Runnable>()
         val priorities = mutableListOf<Boolean>()
@@ -125,5 +130,20 @@ class PhotoPreloadTest {
             assertTrue(foreground.depth(2, .8f, true))
             assertEquals("Activation promotes the existing background work", 3, work.size)
         } finally { foreground.close(); work.forEach { it.run() }; root.deleteRecursively() }
+    }
+    @Test fun disabledDepthDoesNotQueueInferenceOrRetainItsSource() {
+        assumeFalse(BuildConfig.ENABLE_AI)
+        val root = Files.createTempDirectory("vrpp-photo-no-ai").toFile().canonicalFile
+        val work = mutableListOf<Runnable>()
+        val foreground = PhotoBridge({ null }, { it }, {}, postDepth = { task, _ -> work.add(task) }, emit = { _, _, _ -> })
+        try {
+            val image = source(root, 11)
+            assertTrue(foreground.adopt(11, image))
+            assertFalse(foreground.depth(11, 1f, true))
+            assertTrue(work.isEmpty())
+            assertTrue(image.isFile)
+            foreground.release(11)
+            assertFalse(image.exists())
+        } finally { foreground.close(); root.deleteRecursively() }
     }
 }

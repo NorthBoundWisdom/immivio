@@ -249,6 +249,7 @@ internal class PhotoBridge(
     /** One inference per photo on the shared model thread, using the independent photo model.
      * Color stays at source display resolution; only content contributes to depth normalization. */
     fun depth(id: Int, strength: Float = 1f, stereo: Boolean = false, background: Boolean = preload): Boolean {
+        if (!BuildConfig.ENABLE_AI) return false
         if (!strength.isFinite() || strength !in 0f..2f) return false
         val job = synchronized(PhotoCache.lock) {
             if (closed) return false
