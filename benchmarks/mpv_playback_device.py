@@ -63,7 +63,8 @@ def main():
     parser.add_argument("--warmup-seconds", type=float, default=5, help="Steady-playback warmup before sampling")
     parser.add_argument("--stress-pin", action="store_true", help="With --controls, keep pixel textures pinned while playback advances")
     parser.add_argument("--gpu-frames", type=int, choices=range(0, 8), default=2, help="Producer GPU work budget; 0 restores legacy unbounded submission")
-    parser.add_argument("--expect-eof", action="store_true", help="Require a retained final pair after a short synthetic clip")
+    parser.add_argument("--expect-eof", action="store_true", help="Require a stable retained final pair after playback ends")
+    parser.add_argument("--replay-after-eof", action="store_true", help="After settled EOF, require playback to restart in a new generation")
     args = parser.parse_args()
     if args.seconds < 5 or args.warmup_seconds < 0 or args.start_ms < 0 or not args.original.is_file():
         parser.error("Need an existing original, at least five measurement seconds and nonnegative warmup/start")
@@ -71,6 +72,8 @@ def main():
         parser.error("--stress-pin requires --controls")
     if args.expect_eof and args.controls:
         parser.error("Use --expect-eof separately from --controls")
+    if args.replay_after_eof and not args.expect_eof:
+        parser.error("--replay-after-eof requires --expect-eof")
     with device_lock(args.serial):
         measure(args)
 
@@ -168,9 +171,18 @@ def measure(args):
             raise RuntimeError("Playback entry differs from the requested case")
         result["capabilities_at_first_frame"] = device.read("capabilities_latest.json")
         if args.entry == "xr":
-            xr = (result["capabilities_at_first_frame"] or {}).get("xr", {})
-            if not xr.get("initialized") or not xr.get("viewport_use_xr") or xr.get("preview"):
-                raise RuntimeError("Normal XR runtime did not initialize")
+            deadline = time.monotonic() + 15
+            while True:
+                capabilities = result["capabilities_at_first_frame"] or {}
+                xr = capabilities.get("xr", {})
+                if (xr.get("initialized") and xr.get("viewport_use_xr") and not xr.get("preview")
+                        and capabilities.get("captured_unix_seconds", 0) >= json.loads(marker)["unix_seconds"] - 1):
+                    break
+                if time.monotonic() >= deadline:
+                    raise RuntimeError("Normal XR runtime did not initialize with a fresh capability snapshot")
+                # The diagnostic file can be observed between truncation and write.
+                time.sleep(.2)
+                result["capabilities_at_first_frame"] = device.read("capabilities_latest.json")
         if first["native_status"]["max_output_width"] != 0 or first["native_status"]["frame_cap_fps"] != 0:
             raise RuntimeError("Clear the player's output-width/frame-rate cap before measuring original playback")
         if "max_gpu_frames" in first["native_status"] and first["native_status"]["max_gpu_frames"] != args.gpu_frames:
@@ -240,7 +252,31 @@ def measure(args):
         if args.expect_eof:
             if not (b["media"]["state"] == "ended" and n1.get("eof_source_resolved") and n1.get("eof_pair_post_draw")):
                 raise RuntimeError("EOF did not retain and draw the final opaque pair")
+            # A transient matching ticket is insufficient: keep-open must settle,
+            # retaining the drawn image without repeatedly rendering it into new IDs.
+            terminal = samples[-3:]
+            if not all(s["media"]["state"] == "ended" and s["native_status"].get("eof_pair_post_draw") for s in terminal):
+                raise RuntimeError("Need three fresh completed EOF observations")
+            identities = {(s["native_status"]["rendered"], s["native_status"]["published"],
+                           s["media"]["presentation_identity"]["frame_id"],
+                           s["media"]["presentation_identity"]["slot_token"]) for s in terminal}
+            if len(identities) != 1:
+                raise RuntimeError("EOF is still rendering or replacing its retained pair")
             result["eof_retained"] = True
+            result["eof_rendering_settled"] = True
+            if args.replay_after_eof:
+                generation = b["media"]["generation"]
+                epoch = b["media"]["presentation_identity"]["source_epoch"]
+                rec = device.request("replay-eof", "playing", enabled=True)
+                replayed = device.wait("replay-eof", rec, lambda r: r["media"]["state"] == "playing"
+                    and r["media"]["generation"] > generation
+                    and r["media"]["presentation_identity"]["source_epoch"] > epoch
+                    and r["native_status"].get("unique_post_draw_frames", 0) >= 3
+                    and not r["native_status"].get("eof_source_resolved")
+                    and 0 <= float(r["native_status"].get("details", {}).get("position_seconds") or -1) < 10)
+                result["eof_replay"] = {"state": "passed", "ended_generation": generation,
+                    "replay_generation": replayed["media"]["generation"],
+                    "source_epoch": replayed["media"]["presentation_identity"]["source_epoch"]}
         if args.controls:
             rec = device.request("pause", "playing", enabled=False)
             paused = device.wait("pause", rec, lambda r: r["native_status"].get("details", {}).get("paused") == "yes")
