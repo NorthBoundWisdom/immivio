@@ -140,6 +140,7 @@ struct Source final {
     // The last rejected ticket, so a source that never publishes can be diagnosed.
     std::atomic<uint64_t> invalid_flags{0}, invalid_frame_id{0};
     std::atomic<int64_t> invalid_pts_us{0};
+    std::atomic<int64_t> seek_requested_at_us{-1}, seek_event_at_us{-1}, seek_restart_at_us{-1}, seek_render_at_us{-1};
     std::atomic<uint64_t> audio_commands_applied{0};
     // RVM sessions cap presented source frames (0 = every frame). Decimation uses
     // each frame's scheduled display time, before its full-size render.
@@ -530,6 +531,8 @@ struct Source final {
                     next_snapshot = std::chrono::steady_clock::now();
                 }
                 if (seek >= 0) {
+                    seek_requested_at_us.store(startup_us());
+                    seek_event_at_us.store(-1); seek_restart_at_us.store(-1); seek_render_at_us.store(-1);
                     // Flush cannot invalidate a MediaCodec surface while the
                     // worker is mapping that surface. The worker still serves
                     // advanced-control update tasks while new renders wait.
@@ -600,10 +603,16 @@ struct Source final {
                 }
                 else if (event->event_id == MPV_EVENT_VIDEO_RECONFIG) format(core);
                 else if (event->event_id == MPV_EVENT_PLAYBACK_RESTART && standard_frames) {
+                    int64_t unset = -1;
+                    if (seek_requested_at_us.load() >= 0) seek_restart_at_us.compare_exchange_strong(unset, startup_us());
                     standard_seeking.store(false);
                     render_pending.store(true); wake.notify_all();
                 }
-                else if (event->event_id == MPV_EVENT_SEEK) { awaiting_seek_event = false; core_eof.store(false); }
+                else if (event->event_id == MPV_EVENT_SEEK) {
+                    int64_t unset = -1;
+                    if (seek_requested_at_us.load() >= 0) seek_event_at_us.compare_exchange_strong(unset, startup_us());
+                    awaiting_seek_event = false; core_eof.store(false);
+                }
                 else if (event->event_id == MPV_EVENT_END_FILE) {
                     const auto* end = static_cast<const mpv_event_end_file*>(event->data);
                     if (end->error < 0) throw std::runtime_error(std::string("MPV playback: ") + mpv_error_string(end->error));
@@ -925,6 +934,9 @@ struct Source final {
                     continue;
                 }
                 checked(render_result, "MPV immutable color render"); rendered.fetch_add(1);
+                if (seek_requested_at_us.load() >= 0 && ticket.source_epoch >= epoch_floor.load()) {
+                    int64_t unset = -1; seek_render_at_us.compare_exchange_strong(unset, startup_us());
+                }
                 require(standard_frames || !dolby_profile5.load() || !(ticket.flags & QUEST_MPV_HAS_IMAGE) ||
                         (ticket.flags & QUEST_MPV_DOVI_PROFILE5),
                         "Dolby Vision Profile 5 frame is missing conversion metadata");
@@ -1095,6 +1107,10 @@ struct Source final {
             ",\"render_failed\":" + (render_failed.load() ? "true" : "false") + ",\"closing\":" + (closing.load() ? "true" : "false") +
             ",\"rendered\":" + std::to_string(rendered.load()) + ",\"published\":" + std::to_string(published.load()) +
             ",\"render_call_count\":" + std::to_string(render_call_count.load()) +
+            ",\"seek_requested_at_us\":" + std::to_string(seek_requested_at_us.load()) +
+            ",\"seek_event_at_us\":" + std::to_string(seek_event_at_us.load()) +
+            ",\"seek_restart_at_us\":" + std::to_string(seek_restart_at_us.load()) +
+            ",\"seek_render_at_us\":" + std::to_string(seek_render_at_us.load()) +
             ",\"render_call_us\":" + std::to_string(render_call_us.load()) +
             ",\"render_call_max_us\":" + std::to_string(render_call_max_us.load()) +
             ",\"max_gpu_frames\":" + std::to_string(standard_frames ? max_gpu_frames.load() : 0) +

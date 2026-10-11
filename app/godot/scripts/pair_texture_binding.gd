@@ -5,6 +5,8 @@ extends RefCounted
 
 const PAIR_SHADER := preload("res://shaders/video_rvm_pair.gdshader")
 const DECODER_SHADER := preload("res://shaders/video_rvm_pair_oes.gdshader")
+const OPAQUE_SHADER := preload("res://shaders/video_opaque_pair.gdshader")
+var opaque := false # Display opts in only for ordinary, non-packed, non-inferred RGBA.
 
 var material: ShaderMaterial
 var color_rid := RID()
@@ -36,7 +38,9 @@ func bind(target: ShaderMaterial, pair: Dictionary) -> bool:
 	if (not decoder and not color_rid.is_valid()) or not alpha_rid.is_valid():
 		_free_wrappers()
 		return false
-	_use_shader(target, DECODER_SHADER if decoder else PAIR_SHADER)
+	var ordinary: bool = opaque and not warped and not pair.get("alpha_requested", true) \
+		and not pair.get("depth_requested", true) and not pair.get("inference_ran", true) and not pair.get("depth_ran", false)
+	_use_shader(target, DECODER_SHADER if decoder else (OPAQUE_SHADER if ordinary else PAIR_SHADER))
 	var rect: Array = pair.model_content_rect
 	material = target
 	ticket = pair.duplicate(true)

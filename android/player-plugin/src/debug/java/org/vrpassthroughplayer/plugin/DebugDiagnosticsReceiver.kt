@@ -142,7 +142,16 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                 require(projection in 0..3)
                                 command.put("projection", projection)
                                 val network = intent.getStringExtra("uri")
-                                if (network != null) {
+                                val localPath = intent.getStringExtra("local_path")
+                                if (localPath != null) {
+                                    // Debug/DUMP-only: measure an existing shared-storage original
+                                    // without copying private customer media into fixture storage.
+                                    require(network == null)
+                                    val root = android.os.Environment.getExternalStorageDirectory().canonicalFile
+                                    val target = File(localPath).canonicalFile
+                                    require(target.path.startsWith(root.path + File.separator) && target.isFile && target.canRead())
+                                    command.put("uri", android.net.Uri.fromFile(target).toString()).put("title", target.name)
+                                } else if (network != null) {
                                     // Library network sources (DLNA http, SMB) through the same open path.
                                     require(network.startsWith("http://") || network.startsWith("https://") || network.startsWith("smb://"))
                                     command.put("uri", network).put("title", intent.getStringExtra("title") ?: "network")

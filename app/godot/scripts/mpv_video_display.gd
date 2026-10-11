@@ -205,7 +205,7 @@ static func _thumbnail_source(uri: String) -> bool:
 	return not ModeMemory.key_for(uri).is_empty()
 
 func _maybe_capture_thumbnail() -> void:
-	if _thumb_after_ms < 0 or _thumbnail_busy or _pixel_busy or _waiting_first or not _pending_revision.is_empty() \
+	if _debug_benchmark or _thumb_after_ms < 0 or _thumbnail_busy or _pixel_busy or _waiting_first or not _pending_revision.is_empty() \
 		or media.state not in ["playing", "paused", "ended"] or not _binding.material or media.last_pair.is_empty():
 		return
 	if int(media.last_pair.get("pts_us", 0)) / 1000 < _thumb_after_ms:
@@ -455,7 +455,7 @@ func open_local(uri: String, title: String, start_ms: int = 0, restore_mode: boo
 	_thumb_tries = 0
 	_thumbnail_result = {}
 	_thumb_after_ms = -1
-	if _thumbnail_source(uri) and Thumbnails.texture(uri) == null:
+	if not _debug_benchmark and _thumbnail_source(uri) and Thumbnails.texture(uri) == null:
 		_thumb_after_ms = 0
 	local_uri = uri
 	_warm_rvm()
@@ -1263,6 +1263,9 @@ func _present_pending() -> void:
 	if not claimed is Dictionary:
 		return
 	_unbind()
+	_binding.opaque = not alpha_requested and not depth_requested and not packed_file \
+		and not claimed.get("alpha_requested", false) and not claimed.get("depth_requested", false) \
+		and not claimed.get("inference_ran", false) and not claimed.get("depth_ran", false)
 	if not _binding.bind(material, claimed):
 		platform.detach_mpv_pair(media.session_id, int(claimed.slot_token))
 		picker_error = "Complete video frame could not be bound"
@@ -1563,6 +1566,7 @@ func layout_snapshot() -> Dictionary:
 	playback["source_frame_pts_verified"] = media.last_pair.get("source_pts_verified", false)
 	return {"geometry": ["flat", "half_equirect_180", "fisheye_180", "equirect_360"][geometry], "stereo_sbs": stereo_sbs,
 		"viewing_eye": viewing_eye, "stereo_horizontal": stereo_horizontal, "stereo_vertical": stereo_vertical,
+		"opaque_rendering": material != null and material.shader == Binding.OPAQUE_SHADER,
 		"top_bottom": stereo_sbs and top_bottom, "stereo_half": stereo_sbs and stereo_half, "fisheye_fov": fisheye_fov,
 		"alpha_requested": alpha_requested, "alpha_enabled": alpha_enabled, "profile": profile,
 		"depth_requested": depth_requested, "depth_enabled": depth_enabled, "depth_strength": depth_strength, "auto_depth": auto_depth,
