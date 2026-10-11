@@ -1,6 +1,6 @@
 """Measure production playback on an Android device/emulator using original video bytes.
 
-Requires a no-AI Debug APK. Uses the 2D Godot entry, not the XR compositor.
+Requires a no-AI Debug APK. Supports the 2D diagnostic or normal XR entry.
 Defaults to a hash-verified local file. Optional ADB loopback HTTP is not a Wi-Fi test.
 """
 import argparse
@@ -49,6 +49,8 @@ def main():
     parser.add_argument("--original", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--seconds", type=int, default=30)
+    parser.add_argument("--start-ms", type=int, default=0, help="Initial playback position, e.g. a bounded real-media EOF regression")
+    parser.add_argument("--entry", choices=("2d", "xr"), default="2d", help="Normal headset VR launcher or diagnostic 2D activity")
     parser.add_argument("--borrow-color", choices=("yes", "no"), default="yes")
     parser.add_argument("--controls", action="store_true", help="Also verify pause, seek, pinned pixel readback and resume")
     parser.add_argument("--transport", choices=("local", "http"), default="local")
@@ -63,8 +65,8 @@ def main():
     parser.add_argument("--gpu-frames", type=int, choices=range(0, 8), default=2, help="Producer GPU work budget; 0 restores legacy unbounded submission")
     parser.add_argument("--expect-eof", action="store_true", help="Require a retained final pair after a short synthetic clip")
     args = parser.parse_args()
-    if args.seconds < 5 or args.warmup_seconds < 0 or not args.original.is_file():
-        parser.error("Need an existing original video and at least five measurement seconds")
+    if args.seconds < 5 or args.warmup_seconds < 0 or args.start_ms < 0 or not args.original.is_file():
+        parser.error("Need an existing original, at least five measurement seconds and nonnegative warmup/start")
     if args.stress_pin and not args.controls:
         parser.error("--stress-pin requires --controls")
     if args.expect_eof and args.controls:
@@ -86,7 +88,8 @@ def measure(args):
             raise RuntimeError("Installed APK differs from --apk")
     result = {"state": "running", "apk_sha256": installed_sha, "serial": args.serial,
               "borrow_color_requested": args.borrow_color == "yes", "samples": [],
-              "scope": "Distinct libmpv render transactions drawn by the Godot 2D owner; "
+              "entry": args.entry,
+              "scope": "Distinct libmpv render transactions drawn by the Godot " + args.entry + " owner; "
                        "not independently verified unique decoded images, compositor scanout or exact video PTS. "
                        "Original bytes, no resize/reencode. Emulator results do not prove headset throughput.",
               "source": {"path": str(args.original.resolve()), "size": args.original.stat().st_size, "transport": args.transport},
@@ -103,6 +106,7 @@ def measure(args):
     result["mpv_log_level"] = args.mpv_log_level or previous_log or "info"
     result["producer_pool"] = args.producer_pool
     result["mpv_options"] = args.mpv_options if args.mpv_options is not None else previous_options
+    result["start_ms"] = args.start_ms
     result["stereo_sbs"] = args.stereo
     result["projection"] = args.projection
     result["opaque_fast"] = args.opaque_fast
@@ -111,7 +115,10 @@ def measure(args):
     result["gpu_frames"] = args.gpu_frames
     save = lambda: (args.output / "result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
     def scene_marker():
-        lines = device.run("shell", "run-as", PACKAGE, "tail", "-n", "8", "files/diagnostics/events.jsonl", optional=True)
+        # XR startup emits more than eight events immediately after app_started.
+        # Filter before tailing so a completed fast startup cannot disappear.
+        command = "grep '\"event\":\"app_started\"' files/diagnostics/events.jsonl | tail -n 1"
+        lines = device.run("shell", "run-as", PACKAGE, "sh", "-c", shlex.quote(command), optional=True)
         return next((line for line in reversed(lines.splitlines()) if '"event":"app_started"' in line), "")
     try:
         set_property("debug.vrpp.mpv.pool", args.producer_pool)
@@ -142,19 +149,28 @@ def measure(args):
             source_args = {"uri": f"http://127.0.0.1:{port}/sample.mp4", "title": "playback_performance"}
         device.run("shell", "input", "keyevent", "KEYCODE_WAKEUP")
         # Direct shell launch avoids Android 16's background receiver launch restriction.
-        # This Debug-only entry is protected by android.permission.DUMP.
-        device.run("shell", "am", "start", "-n", PACKAGE + "/org.vrpassthroughplayer.plugin.MpvDiagnosticActivity")
+        # The diagnostic 2D activity is Debug-only and protected by android.permission.DUMP.
+        if args.entry == "xr":
+            device.run("shell", "am", "start", "-n", PACKAGE + "/com.godot.game.GodotAppLauncher",
+                       "-a", "android.intent.action.MAIN", "-c", "org.khronos.openxr.intent.category.IMMERSIVE_HMD")
+        else:
+            device.run("shell", "am", "start", "-n", PACKAGE + "/org.vrpassthroughplayer.plugin.MpvDiagnosticActivity")
         deadline = time.monotonic() + 60
         while not (marker := scene_marker()) or marker == previous_scene:
             if time.monotonic() >= deadline:
                 raise TimeoutError("Godot scene did not finish startup")
             time.sleep(.5)
         receipt = device.request("open", "open", **source_args, benchmark=True, enabled=False, stereo=args.stereo,
-                                 profile="320x320", projection=args.projection, borrow_color=args.borrow_color == "yes")
+                                 profile="320x320", projection=args.projection, position_ms=args.start_ms, borrow_color=args.borrow_color == "yes")
         first = device.wait("open", receipt, lambda r: r["native_status"].get("unique_post_draw_frames", 0) >= (1 if args.expect_eof else 3),
                             timeout=120)
-        if not first["diagnostic_2d"]:
-            raise RuntimeError("Unexpected XR entry")
+        if bool(first["diagnostic_2d"]) != (args.entry == "2d"):
+            raise RuntimeError("Playback entry differs from the requested case")
+        result["capabilities_at_first_frame"] = device.read("capabilities_latest.json")
+        if args.entry == "xr":
+            xr = (result["capabilities_at_first_frame"] or {}).get("xr", {})
+            if not xr.get("initialized") or not xr.get("viewport_use_xr") or xr.get("preview"):
+                raise RuntimeError("Normal XR runtime did not initialize")
         if first["native_status"]["max_output_width"] != 0 or first["native_status"]["frame_cap_fps"] != 0:
             raise RuntimeError("Clear the player's output-width/frame-rate cap before measuring original playback")
         if "max_gpu_frames" in first["native_status"] and first["native_status"]["max_gpu_frames"] != args.gpu_frames:
@@ -167,6 +183,7 @@ def measure(args):
         result["memory_before"] = device.run("shell", "dumpsys", "meminfo", PACKAGE)
         deadline = time.monotonic() + args.seconds
         previous = None
+        last_fresh = time.monotonic()
         while time.monotonic() < deadline:
             report = device.read(f"mpv_player_{receipt['id']}.json")
             if report and report["sample_monotonic_us"] != previous:
@@ -179,8 +196,11 @@ def measure(args):
                 if report["media"]["session_id"] != first["media"]["session_id"]:
                     raise RuntimeError("Playback session changed during measurement")
                 previous = report["sample_monotonic_us"]
+                last_fresh = time.monotonic()
                 result["samples"].append(report)
                 save()
+            if time.monotonic() - last_fresh > 10:
+                raise RuntimeError("Playback telemetry stopped; check headset focus and app lifecycle")
             time.sleep(1)
         samples = result["samples"]
         if len(samples) < 3:
