@@ -6,6 +6,7 @@ const PREVIOUS := -2
 const NEXT := -3
 const CLOSE := -4
 const MAX_RAY_METRES := 5.0
+var max_ray_metres := MAX_RAY_METRES
 const SURFACE := preload("res://shaders/menu_surface.gdshader")
 const Icons := preload("res://scripts/menu_icons.gd")
 const I18n := preload("res://scripts/i18n.gd")
@@ -104,7 +105,7 @@ func ray_hit(origin: Vector3, direction: Vector3) -> Dictionary:
 			continue
 		var world: Vector3 = button.node.global_transform * Vector3(local.x, local.y, 0)
 		var distance := origin.distance_to(world)
-		if distance > MAX_RAY_METRES or (not best.is_empty() and distance >= float(best.distance)):
+		if distance > max_ray_metres or (not best.is_empty() and distance >= float(best.distance)):
 			continue
 		best = {"target": button.target, "point": to_local(world), "distance": distance}
 	return best
@@ -119,7 +120,7 @@ func update_pointer(hand: String, origin: Vector3, direction: Vector3, tracked: 
 	pointer.line.visible = valid
 	pointer.dot.visible = not hit.is_empty()
 	if valid:
-		var endpoint: Vector3 = to_global(hit.point) if not hit.is_empty() else origin + direction.normalized() * MAX_RAY_METRES
+		var endpoint: Vector3 = to_global(hit.point) if not hit.is_empty() else origin + direction.normalized() * max_ray_metres
 		var mesh: ImmediateMesh = pointer.line.mesh
 		mesh.clear_surfaces()
 		mesh.surface_begin(Mesh.PRIMITIVE_LINES)

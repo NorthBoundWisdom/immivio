@@ -63,8 +63,8 @@ func _run() -> void:
 			var size: Vector2 = video._flat.size
 			menu.toggle() if not menu.visible else menu.refresh()
 			main.test_ray = [eye, Vector3.FORWARD]
-			main._on_pointer_button("trigger_click", "right_hand")
-			check(not menu.visible and main._grab.get("hid_menu", false), "%s screen press closes controls" % mode)
+			main._on_pointer_button("grip_click", "right_hand")
+			check(not menu.visible and main._grab.get("action", "") == "grip_click", "%s grip closes controls" % mode)
 			main._update_flat_grab_stick(Vector2(0, 1), Vector2.ZERO, 0.4)
 			check(video.screen_scale == 1.0, "Other hand cannot scale held screen")
 			main._update_flat_grab_stick(Vector2.ZERO, Vector2(0, 1), 0.4)
@@ -74,7 +74,7 @@ func _run() -> void:
 			check(video._flat.size.is_equal_approx(size * grown), "%s presented frame preserves size" % mode)
 			main._update_flat_grab_stick(Vector2.ZERO, Vector2(0, -1), 0.4)
 			check(is_equal_approx(video.screen_scale, 1), "%s down shrinks symmetrically" % mode)
-			main._on_pointer_release("trigger_click", "right_hand")
+			main._on_pointer_release("grip_click", "right_hand")
 			check(main._grab.is_empty() and not menu.visible, "Release finishes without reopening controls")
 			for corner in [0, 1]:
 				video.set_screen_scale(1)
@@ -87,7 +87,7 @@ func _run() -> void:
 				main.test_ray = [eye, (video.panel.to_global(Vector3(video.screen_corner(corner).x * 1.5, video.screen_corner(corner).y * 1.5, 0)) - eye).normalized()]
 				main._update_grab()
 				check(video.screen_scale > 1 and video.screen_distance == 2, "%s corner grows without moving distance" % mode)
-				main._on_pointer_release("trigger_click", "right_hand")
+				main._on_pointer_release("grip_click", "right_hand")
 			video.set_screen_scale(1)
 			main._grab = {"hand": "right_hand", "moved": false}
 			menu.toggle()

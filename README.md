@@ -93,7 +93,7 @@ Outputs are written under the ignored `artifacts` directory. A locally built app
 
 ## Controls
 
-Open the VR menu with the left Menu button. Point a controller ray at a control and press that controller's trigger. Libraries, settings, list popups and photo menus use thumbsticks only for scrolling. The ordinary video control bar allows seek, volume and immersive zoom shortcuts; pointer capture suppresses them, with a return-to-center gate after capture or lists close. Hand pointing/pinching is also supported. Desktop input is intended for development previews.
+Hold a controller grip to move the canvas (or drag a corner to resize it). Tap the trigger outside controls to show or hide the playback bar at the canvas centre; the trigger also selects controls and drags sliders. Open the VR menu with the left Menu button. Point a controller ray at a control and press that controller's trigger. Libraries, settings, list popups and photo menus use thumbsticks only for scrolling. The ordinary video control bar allows seek, volume and immersive zoom shortcuts; pointer capture suppresses them, with a return-to-center gate after capture or lists close. Hand pointing/pinching is also supported. Desktop input is intended for development previews.
 
 ## Status and limitations
 

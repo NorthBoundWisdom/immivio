@@ -2,7 +2,7 @@
 
 ## Application and interaction
 
-`app/godot/scenes/main.tscn` and `scripts/main.gd` own application state. Godot OpenXR supplies tracking and the vendor-specific passthrough interface. GDScript menus use controller rays/triggers and hand pointing/pinching. Libraries, settings, list popups and photo menus reserve thumbsticks for scrolling. The ordinary video control bar permits seek, volume and immersive zoom shortcuts. Pointer capture suppresses shortcuts; leaving a list or ending capture requires the stick to return to center before reactivation.
+`app/godot/scenes/main.tscn` and `scripts/main.gd` own application state. Godot OpenXR supplies tracking and the vendor-specific passthrough interface. GDScript menus use controller rays/triggers and hand pointing/pinching. Controller grip owns canvas movement/resizing, while an outside trigger tap toggles controls without dragging or pausing. The timeline is anchored to the canvas centre (content-forward in immersive projections), independently of head yaw; popups stay in the same canvas frame. Optical-hand content gestures retain their existing ownership. Libraries, settings, list popups and photo menus reserve thumbsticks for scrolling. The ordinary video control bar permits seek, volume and immersive zoom shortcuts. Pointer capture suppresses shortcuts; leaving a list or ending capture requires the stick to return to center before reactivation.
 
 Display geometry separates flat/180°/360° projection from mono/SBS layout and eye order. Menu pages, per-file preferences and localization are independent of the Android media backend. The desktop path is a development preview and mock backend, not an equivalent Android/XR playback implementation.
 

@@ -19,6 +19,7 @@ const PhotoHandGestures := preload("res://scripts/photo_hand_gestures.gd")
 const PhotoPalmSwipe := preload("res://scripts/photo_palm_swipe.gd")
 const ImageInfo := preload("res://scripts/image_info.gd")
 const PlayerMenu := preload("res://scripts/player_menu.gd")
+const MediaSurface := preload("res://scripts/media_surface.gd")
 const I18n := preload("res://scripts/i18n.gd")
 const PlatformMethods := preload("res://scripts/platform_methods.gd")
 const Background := preload("res://scripts/app_background.gd")
@@ -366,7 +367,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				_request_controlled_probe()
 
 # Menus are ray + trigger only. A list row clicks on release unless the ray dragged to scroll.
-# Outside the menus a trigger tap shows/hides the controls; held and moved, it drags the picture.
+# Controller grip moves the picture; trigger taps toggle controls or select UI.
+# Optical-hand pinches retain their existing content gestures.
 func _on_controller_release(action: String, hand: String = "") -> void:
 	if not _controller_allowed(hand): return
 	_on_pointer_release(action, hand)
@@ -375,16 +377,22 @@ func _on_pointer_release(action: String, hand: String) -> void:
 	if action == "trigger_click" and _inspect_blocked.has(hand):
 		_inspect_blocked.erase(hand)
 		return
-	if action == "trigger_click" and _ray(hand) == null:
+	if action in ["trigger_click", "grip_click"] and _ray(hand) == null:
 		_cancel_pointer(hand)
 		return
-	if action == "trigger_click" and not _grab.is_empty() and _grab.hand == hand:
+	if action == "trigger_click" and _trigger_taps.has(hand):
+		var tap: Dictionary = _trigger_taps[hand]
+		_trigger_taps.erase(hand)
+		if tap.uri == _viewer().local_uri and tap.photo == photo_active:
+			_toggle_player_menu()
+		return
+	if not _grab.is_empty() and _grab.hand == hand and action == _grab.get("action", "trigger_click"):
 		var grab := _grab
 		_grab = {}
 		_viewer().set_corner_hover(-1)
 		if grab.moved and not grab.has("inspect") and _viewer().geometry == Geometry.Geometry.FLAT:
 			_save_screen()
-		if not grab.moved:
+		if action == "trigger_click" and not grab.moved:
 			if player_menu.visible:
 				player_menu.dismiss()
 			elif not grab.get("hid_menu", false):
@@ -416,24 +424,31 @@ func _on_pointer_button(action: String, hand: String) -> void:
 		_toggle_player_menu()
 		return
 	var menu := _active_menu()
+	if action == "grip_click":
+		if not _viewer().local_uri.is_empty() and _ray(hand) != null \
+			and (menu == null or (menu == player_menu and not menu.has_pointer_capture())):
+			_trigger_taps.clear()
+			if menu == player_menu: menu.dismiss()
+			_begin_grab(hand, "grip_click")
+		return
+	if action == "trigger_click" and _grab.get("action", "") == "grip_click": return
 	if menu:
 		match action:
 			"trigger_click":
-				# Beside the player controls a tap hides them and a drag moves the picture.
+				# An outside trigger tap dismisses controls without moving the picture.
 				if not _update_menu_pointer(hand, true) and menu == player_menu:
 					var ray: Variant = _ray(hand)
 					# A slider owned by the other hand rejects this press; it is not a screen drag.
 					if ray != null and menu.ray_hit(ray[0], ray[1]).is_empty():
-						_begin_grab(hand)
+						_begin_picture_press(hand)
 			"by_button": menu.dismiss()
 		return
 	if photo_active:
 		match action:
 			"trigger_click":
 				if photo.local_uri.is_empty(): _show_recent_menu()
-				else: _begin_grab(hand)
+				else: _begin_picture_press(hand)
 			"ax_button": _show_recent_menu()
-			"grip_click": _toggle_photo_inspect(hand)
 			"primary_click":
 				if hand == "left_hand": photo.cycle_projection()
 				else: _reset_picture()
@@ -443,11 +458,9 @@ func _on_pointer_button(action: String, hand: String) -> void:
 			if _viewer().local_uri.is_empty():
 				_show_recent_menu()
 			else:
-				_begin_grab(hand)
+				_begin_picture_press(hand)
 		"ax_button":
 			_show_recent_menu()
-		"grip_click":
-			video.toggle_play()
 		"primary_click":
 			if hand == "left_hand":
 				video.cycle_projection()
@@ -480,6 +493,7 @@ func _process(delta: float) -> void:
 			_place_screen()
 	_update_photo_inspect()
 	_update_grab()
+	_update_player_menu_anchor()
 	var right := _stick(right_controller)
 	var left := _stick(left_controller)
 	_update_corner_hover()
@@ -638,6 +652,7 @@ func _dispatch_hand_input(inputs: Dictionary, _delta: float = 1.0 / 72.0) -> voi
 
 func _cancel_pointer(hand: String) -> void:
 	_inspect_blocked.erase(hand)
+	_trigger_taps.erase(hand)
 	if not _grab.is_empty() and _grab.hand == hand:
 		if _grab.moved and not _grab.has("inspect") and _viewer().geometry == Geometry.Geometry.FLAT: _save_screen()
 		_grab = {}
@@ -648,6 +663,7 @@ func _cancel_pointer(hand: String) -> void:
 
 func _on_input_session_changed() -> void:
 	if _input_focused(): return
+	_trigger_taps.clear()
 	photo_hands.cancel()
 	photo_swipe.cancel()
 	for hand in hand_pointers:
@@ -675,15 +691,23 @@ static func _input_pose_tracked(tracker: XRPositionalTracker, pose_name: String)
 
 # --- dragging the picture -------------------------------------------------------------------
 
-const GRAB_START := 0.035   # radians the ray turns before a trigger press becomes a drag
+const GRAB_START := 0.035   # radians the ray turns before a grip/pinch becomes a drag
 const MOUSE_TURN := 0.004   # radians per pixel in the desktop preview
 const ZOOM_SPEED := 0.6     # sphere radii per second at full deflection
 const PUSH_SPEED := 1.5     # metres per second the held flat screen moves at full deflection
 const SCALE_SPEED := 0.8    # exponential size change per second; up enlarges, down shrinks
 const STICK_DEADZONE := 0.2
-## Trigger held outside the menus: hand, start/last ray angles (yaw, pitch), moved; a press on a
+## Grip (or optical pinch) held outside menus: action, hand, ray angles, moved; a press on a
 ## flat screen corner adds resize = {corner, start_length, start_scale}.
 var _grab := {}
+var _trigger_taps := {}
+
+func _begin_picture_press(hand: String) -> void:
+	if _ray(hand) == null: return
+	if hand_pointers.has(hand) and hand_pointers[hand].source == "hand":
+		_begin_grab(hand, "trigger_click")
+	else:
+		_trigger_taps[hand] = {"uri": _viewer().local_uri, "photo": photo_active}
 
 func _update_flat_grab_stick(left: Vector2, right: Vector2, delta: float) -> void:
 	if _active_menu() or _grab.is_empty() or _grab.has("resize") or _grab.has("inspect") or _viewer().geometry != Geometry.Geometry.FLAT:
@@ -725,7 +749,7 @@ func _update_corner_hover() -> void:
 					break
 	_viewer().set_corner_hover(corner)
 
-func _begin_grab(hand: String) -> void:
+func _begin_grab(hand: String, action: String = "grip_click") -> void:
 	if not _grab.is_empty() or (photo_active and photo.inspect): return
 	var ray: Variant = _ray(hand)
 	if ray == null:
@@ -733,7 +757,7 @@ func _begin_grab(hand: String) -> void:
 			player_menu.dismiss()
 		return
 	var angles := _ray_angles(ray[1])
-	_grab = {"hand": hand, "start": angles, "last": angles, "moved": false}
+	_grab = {"hand": hand, "action": action, "start": angles, "last": angles, "moved": false}
 	if _is_photo_hand(hand):
 		_grab["tap_only"] = true
 		return
@@ -1046,9 +1070,8 @@ func _on_photo_action(operation: String) -> void:
 
 var _screen_uri := ""
 
-## The flat screen and the menus are placed in front of the eyes (yaw only) when a video opens,
-## a menu is shown or the view is recentered, and stay put while the head moves. The player
-## controls float below the line of sight, over the lower edge of the screen.
+## Place the flat screen on open/recenter and the library on show. Playback
+## controls instead use the canvas/content frame, independently of head yaw.
 func _view_pose(distance: float, drop: float) -> Variant:
 	if not is_instance_valid(_viewer().view_camera) or not _viewer().view_camera.is_inside_tree():
 		return null # host tests and desktop preview without an XR camera
@@ -1066,8 +1089,27 @@ func _place_screen() -> void:
 			_viewer()._apply_geometry()
 
 func _place_menu(menu: Node3D) -> void:
+	if menu == player_menu and not _viewer().local_uri.is_empty() \
+		and is_instance_valid(_viewer().get("panel")) and _viewer().panel.visible:
+		player_menu.lift_panels = true
+		player_menu.panel_lift = 0.0 if photo_active else PlayerMenu.BAR_SEEK_Y
+		player_menu.max_ray_metres = MediaSurface.DISTANCE_LIMITS.y + 1.0
+		var pose: Transform3D
+		if _viewer().geometry == Geometry.Geometry.FLAT:
+			pose = _viewer().subtitle_transform()
+		else:
+			# An immersive sphere is centred on the eyes; its forward direction
+			# defines the picture centre, independently of the current head yaw.
+			pose = Transform3D(_viewer().subtitle_transform().basis, _eye())
+			pose.origin -= pose.basis.z * 1.4
+		var bar_offset: float = -player_menu.panel_lift if player_menu.section == 0 else 0.0
+		menu.global_transform = pose * Transform3D(Basis.IDENTITY, Vector3(0, bar_offset, 0.025))
+		return
 	var drop := (0.45 if player_menu.section == 0 else 0.0) if menu == player_menu else 0.05
-	if menu == player_menu: player_menu.lift_panels = true
+	if menu == player_menu:
+		player_menu.lift_panels = true
+		player_menu.panel_lift = 0.45
+		player_menu.max_ray_metres = player_menu.MAX_RAY_METRES
 	var pose: Variant = _view_pose(1.4, drop)
 	if pose == null:
 		menu.transform = Transform3D(Basis.IDENTITY, Vector3(0, 1.6 - drop, -1.55))
@@ -1082,7 +1124,15 @@ func _active_menu() -> Node3D:
 		return player_menu
 	return null
 
+func _update_player_menu_anchor() -> void:
+	# Keep controls attached when projection/distance/content changes. Freeze
+	# the plane during a captured slider drag so its target cannot move away.
+	if player_menu and _active_menu() == player_menu and not player_menu.has_pointer_capture() \
+		and not _viewer().local_uri.is_empty() and is_instance_valid(_viewer().get("panel")) and _viewer().panel.visible:
+		_place_menu(player_menu)
+
 func _toggle_player_menu() -> void:
+	_trigger_taps.clear()
 	if photo_active and photo.inspect:
 		_close_photo_inspect()
 		return
@@ -1092,6 +1142,7 @@ func _toggle_player_menu() -> void:
 		_show_player_menu()
 
 func _show_player_menu() -> void:
+	_trigger_taps.clear()
 	if recent_menu:
 		recent_menu.dismiss()
 	if player_menu and not player_menu.visible:
@@ -1100,12 +1151,25 @@ func _show_player_menu() -> void:
 		player_menu.toggle()
 
 func _show_recent_menu() -> void:
+	_trigger_taps.clear()
 	if photo_active and photo.inspect: _close_photo_inspect(false)
 	if player_menu:
 		player_menu.dismiss()
 	if recent_menu and not recent_menu.visible:
 		_place_menu(recent_menu)
 		recent_menu.toggle()
+
+func _canvas_controls_snapshot() -> Dictionary:
+	var viewer := _viewer()
+	if not viewer or not is_instance_valid(viewer.get("panel")) or not player_menu: return {}
+	var centre: Vector3 = viewer.panel.global_position
+	var normal: Vector3 = viewer.subtitle_transform().basis.z
+	var timeline: Vector3 = player_menu.to_global(Vector3(0, PlayerMenu.BAR_SEEK_Y, 0))
+	return {"grab_action": "grip_click", "controls_action": "trigger_click",
+		"grab_hand": str(_grab.get("hand", "")), "menu_visible": player_menu.visible,
+		"canvas_origin": [centre.x, centre.y, centre.z], "canvas_normal": [normal.x, normal.y, normal.z],
+		"timeline_centre": [timeline.x, timeline.y, timeline.z], "menu_section": player_menu.section,
+		"scope": "Application pose/input state; physical button presses are not independently certified"}
 
 func _restore_seek_settings() -> void:
 	video.seek_mode = video.SeekPolicy.normalize(settings.get_value("video", "seek_mode", video.SeekPolicy.SPEED))
