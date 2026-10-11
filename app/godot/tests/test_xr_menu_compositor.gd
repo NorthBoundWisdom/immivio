@@ -37,6 +37,23 @@ func _run() -> void:
 	check(font.has_char("播".unicode_at(0)) and font.has_char("A".unicode_at(0)), "CJK and Latin glyph coverage remains available")
 	var fallback: Font = font.fallbacks[0]
 	check(fallback.multichannel_signed_distance_field, "Fallback text uses the same distance-field rendering")
+	menu.xr_surface = null
+	menu.scale = Vector3(.75, 2.0/3.0, 1)
+	mapping.pose = Surface.capture_pose(menu)
+	menu.xr_surface = mapping
+	point = menu.to_global(Vector3(.3, 0, 0))
+	hit = menu.ray_hit(origin, point-origin)
+	check(hit.get("target") == 42 and menu.to_global(hit.get("point", Vector3.ZERO)).distance_to(point) < .0001, "Nonuniform panel resizing keeps compositor ray targets aligned")
+	check(mapping.pose.basis.get_scale().is_equal_approx(Vector3.ONE), "Native quad/camera stay unscaled while capturing resized UI")
+	var compositor := Surface.new(); root.add_child(compositor)
+	compositor.active_menu = menu; compositor._update_bounds()
+	check(compositor.content_bounds.has_point(Vector2((point-mapping.pose.origin).dot(mapping.pose.basis.x), (point-mapping.pose.origin).dot(mapping.pose.basis.y))), "Capture bounds include physically scaled controls")
+	var pointer := menu._pointer("right_hand")
+	compositor.native_supported = true
+	compositor._tag(pointer.line); compositor._tag(pointer.dot)
+	check(pointer.line.layers & Surface.UI_LAYER == 0 and pointer.line.layers & 1 != 0, "Laser stays in the scene and cannot flatten into a panel projection stripe")
+	check(pointer.dot.layers & Surface.UI_LAYER != 0, "Panel reticle remains visible in the native UI layer")
+	compositor.free()
 	menu.xr_surface = null; mapping.free(); menu.free()
 	for failure in failures: push_error(failure)
 	print("XR menu composition mapping/font checks: ", "passed" if failures.is_empty() else failures)

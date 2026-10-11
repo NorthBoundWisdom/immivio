@@ -372,6 +372,7 @@ func _pointer(hand: String) -> Dictionary:
 	var color := Color(0.15, 0.9, 1.0) if hand == "left_hand" else Color(1.0, 0.65, 0.15)
 	var line := MeshInstance3D.new()
 	line.set_meta("xr_ui_pointer", true)
+	line.set_meta("xr_ui_scene_ray", true)
 	line.mesh = ImmediateMesh.new()
 	line.material_override = _material(color, 14, true)
 	add_child(line)

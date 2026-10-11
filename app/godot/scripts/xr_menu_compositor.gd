@@ -119,7 +119,7 @@ func _process(_delta: float) -> void:
 		_update_bounds()
 		_bounds_due = Time.get_ticks_msec() + 100
 	var centre := surface_rect.get_center()
-	layer.global_transform = active_menu.global_transform * Transform3D(Basis.IDENTITY, Vector3(centre.x, centre.y, 0))
+	layer.global_transform = capture_pose(active_menu) * Transform3D(Basis.IDENTITY, Vector3(centre.x, centre.y, 0))
 	camera.global_transform = layer.global_transform * Transform3D(Basis.IDENTITY, Vector3(0, 0, 1))
 	camera.size = surface_rect.size.y
 	layer.quad_size = surface_rect.size if native_supported else Vector2.ONE * .001
@@ -160,7 +160,11 @@ func _tag(node: GeometryInstance3D) -> void:
 	var id := node.get_instance_id()
 	if not _original_layers.has(id):
 		_original_layers[id] = {"node": weakref(node), "layers": node.layers}
-	# Keep the physical pointing ray outside the quad visible in the scene too.
+	# A 3D ray flattened by the orthographic camera becomes a projection stripe.
+	# Only its reticle belongs in the UI texture; keep the ray in the main scene.
+	if node.get_meta("xr_ui_scene_ray", false):
+		node.layers = int(_original_layers[id].layers) & ~UI_LAYER
+		return
 	node.layers = UI_LAYER | (int(_original_layers[id].layers) if not native_supported or node.get_meta("xr_ui_pointer", false) else 0)
 
 func _tag_tree(node: Node) -> void:
@@ -181,9 +185,13 @@ func _visual_bounds(node: Node, inverse: Transform3D, result: Array) -> void:
 				else: result[0] = result[0].expand(point)
 		_visual_bounds(child, inverse, result)
 
+## Capture scaled UI geometry in metres with an unscaled camera/native quad.
+static func capture_pose(menu: Node3D) -> Transform3D:
+	return menu.global_transform.orthonormalized()
+
 func _update_bounds() -> void:
 	var result: Array = []
-	_visual_bounds(active_menu, active_menu.global_transform.affine_inverse(), result)
+	_visual_bounds(active_menu, capture_pose(active_menu).affine_inverse(), result)
 	var bounds: Rect2 = result[0] if not result.is_empty() else Rect2(-.6, -.2, 1.2, .5)
 	bounds = bounds.grow(.04)
 	var low := (bounds.position * 10).floor() / 10
@@ -216,15 +224,20 @@ func map_ray(menu: Node3D, origin: Vector3, direction: Vector3) -> Dictionary:
 	return project_ray(layer.global_transform, layer.quad_size, origin, direction)
 
 func snapshot() -> Dictionary:
+	var projected_rays := 0
+	for item in _original_layers.values():
+		var node: Object = item.node.get_ref()
+		if is_instance_valid(node) and node.get_meta("xr_ui_scene_ray", false) and node.layers & UI_LAYER != 0: projected_rays += 1
 	var font: Font = active_menu.ui_font() if is_instance_valid(active_menu) else null
 	var session_ready: bool = not _session_state.is_valid() or _session_state.call() in ["session_focussed", "session_visible"]
 	return {"native_supported": native_supported, "active": native_supported and session_ready and active_menu != null and layer != null and layer.visible,
-		"session_ready": session_ready, "presentation": _bridge_status,
+		"session_ready": session_ready, "presentation": _bridge_status, "projected_ray_count": projected_rays,
 		"surface_available": _surface != null, "texture_id": _texture_id, "capture_frames": _capture_frames,
 		"viewport_size": [viewport.size.x, viewport.size.y] if viewport else [],
 		"main_msaa_3d": head.get_viewport().msaa_3d if is_instance_valid(head) else 0,
 		"ui_only_cull_mask": camera.cull_mask if camera else 0,
 		"ui_draw_calls": viewport.get_render_info(Viewport.RENDER_INFO_TYPE_VISIBLE, Viewport.RENDER_INFO_DRAW_CALLS_IN_FRAME) if viewport else 0,
+		"quad_scale": [layer.global_basis.x.length(), layer.global_basis.y.length()] if layer else [],
 		"pixels_per_metre": CAPTURE_SIZE.x / surface_rect.size.x if surface_rect.size.x > 0 else 0,
 		"font_msdf": bool(font.get("multichannel_signed_distance_field")) if font else false,
 		"mode": "native_alpha_quad_overlay" if native_supported else "scene_fallback"}

@@ -103,6 +103,14 @@ func _apply_geometry() -> void:
 	material.set_shader_parameter("fisheye_fov", float(fisheye_fov))
 	material.set_shader_parameter("swap_eyes", swap_eyes)
 
+## Preserve world position while removing pitch/roll from a placement frame.
+static func upright_pose(pose: Transform3D) -> Transform3D:
+	var forward := -pose.basis.z
+	forward.y = 0.0
+	if forward.length_squared() <= .0001: forward = Vector3.UP.cross(pose.basis.x)
+	forward = forward.normalized() if forward.length_squared() > .0001 else Vector3.FORWARD
+	return Transform3D(Basis.looking_at(forward, Vector3.UP), pose.origin)
+
 ## Placement updates do not rebuild meshes or change decoding/projection parameters.
 func set_flat_world_pose(pose: Transform3D) -> void:
 	flat_pose = global_transform.affine_inverse() * pose

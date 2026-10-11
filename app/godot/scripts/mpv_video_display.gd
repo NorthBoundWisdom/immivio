@@ -1537,6 +1537,9 @@ func _pixel_aspect() -> float:
 	return float(media.format.get("pixel_aspect", 1.0))
 
 func _apply_flat_pose() -> void:
+	# Every flat-video placement path (drag, follow, restore and presented frames)
+	# shares this constraint. Explicit picture rotation stays within this plane.
+	flat_pose = global_transform.affine_inverse() * upright_pose(global_transform * flat_pose)
 	super._apply_flat_pose()
 	if caption and caption.visible: _place_caption()
 	_sync_subtitle_surface()

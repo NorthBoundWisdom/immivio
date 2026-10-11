@@ -38,6 +38,9 @@ const LENS_FOVS := [180, 190, 200, 220]
 ## Timeline width: the slim bar while watching, the full width in the expanded panel.
 const BAR_SEEK := 0.82
 const BAR_SEEK_Y := -0.08
+const PANEL_SCALE := Vector3(0.75, 2.0 / 3.0, 1.0)
+const IMMERSIVE_DISTANCE := 1.4
+const IMMERSIVE_DROP := 0.28
 const SUBTITLE_ROW := 300
 const SUBTITLE_UP := 290
 const SUBTITLE_DOWN := 291
@@ -800,6 +803,7 @@ func _setting_choices(operation: String) -> Dictionary:
 
 func _ready() -> void:
 	super()
+	scale = PANEL_SCALE
 	choices.changed.connect(func(key, value): setting_requested.emit(key, value))
 	choices.previewed.connect(func(key, value): adjustment_requested.emit(key, value))
 

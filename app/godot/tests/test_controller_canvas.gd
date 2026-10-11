@@ -54,10 +54,12 @@ func _run() -> void:
 	var timeline := menu.to_global(Vector3(0, Menu.BAR_SEEK_Y, 0))
 	check((timeline - camera.global_position).normalized().is_equal_approx((centre.origin - camera.global_position).normalized()),
 		"Timeline centre visually overlays relocated canvas, not head forward")
-	check(menu.global_basis.y.is_equal_approx(Vector3.UP) and absf(menu.global_basis.z.y) < .00001,
+	check(menu.global_basis.y.normalized().is_equal_approx(Vector3.UP) and absf(menu.global_basis.z.y) < .00001,
 		"Controls are vertical relative to the floor despite head/canvas tilt")
 	var horizontal_eye := camera.global_position - centre.origin; horizontal_eye.y = 0
 	check(menu.global_basis.z.is_equal_approx(horizontal_eye.normalized()), "Controls face the eye horizontally")
+	check(is_equal_approx(menu._backdrop.mesh.size.x * menu._backdrop.global_basis.x.length(), .87)
+		and is_equal_approx(menu._backdrop.mesh.size.y * menu._backdrop.global_basis.y.length(), .34 * 2.0/3.0), "Visible playback backdrop measures 3/4 width and 2/3 height")
 	var stable_pose := menu.global_transform
 	camera.rotation.z = .2; camera.position.x += .02
 	main._update_player_menu_anchor()
@@ -128,8 +130,17 @@ func _run() -> void:
 	video.geometry = 1; video.view_yaw = .6; video.view_pitch = .1
 	video._apply_geometry()
 	main._update_player_menu_anchor()
-	var forward := -video.subtitle_transform().basis.z
-	check((menu.to_global(Vector3(0, Menu.BAR_SEEK_Y, 0)) - camera.global_position).normalized().is_equal_approx(forward), "Immersive controls align with picture centre, not current head yaw")
+	var content := video.subtitle_transform().basis.orthonormalized()
+	var in_content := content.inverse() * (menu.to_global(Vector3(0, Menu.BAR_SEEK_Y, 0)) - camera.global_position)
+	check(in_content.is_equal_approx(Vector3(0, -Menu.IMMERSIVE_DROP, -Menu.IMMERSIVE_DISTANCE)), "Immersive timeline sits below the content/reset gaze centre")
+	check(menu.global_basis.orthonormalized().is_equal_approx(content), "Immersive controls are perpendicular to the reset/content gaze")
+	check(is_equal_approx(menu.global_basis.x.length(), .75) and is_equal_approx(menu.global_basis.y.length(), 2.0/3.0), "Playback panel has the requested width/height ratios")
+	stable_pose = menu.global_transform
+	camera.rotation.x += .4; camera.rotation.z += .3
+	main._update_player_menu_anchor()
+	check(menu.global_transform.is_equal_approx(stable_pose), "Immersive controls do not chase later head tilt")
+	video.reset_view(); main._update_player_menu_anchor()
+	check(menu.global_basis.z.is_equal_approx(camera.global_basis.z), "Immersive reset aligns the control plane with current gaze, including pitch")
 	stable_pose = menu.global_transform
 	camera.position += Vector3(.03, .01, -.02)
 	main._update_player_menu_anchor()
@@ -138,11 +149,11 @@ func _run() -> void:
 	video.geometry = 0; video.flat_pose = Transform3D(Basis.IDENTITY, camera.global_position + Vector3.UP * 2)
 	video._apply_geometry(); main._place_menu(menu)
 	timeline = menu.to_global(Vector3(0, Menu.BAR_SEEK_Y, 0))
-	check(menu.global_basis.is_finite() and menu.global_basis.y.is_equal_approx(Vector3.UP),
+	check(menu.global_basis.is_finite() and menu.global_basis.y.normalized().is_equal_approx(Vector3.UP),
 		"An overhead canvas retains a finite upright control plane")
 	video.flat_pose.origin = camera.global_position
 	video._apply_geometry(); main._place_menu(menu)
-	check(menu.global_basis.y.is_equal_approx(Vector3.UP), "Coincident eye/canvas cannot inherit tilted content axes")
+	check(menu.global_basis.y.normalized().is_equal_approx(Vector3.UP), "Coincident eye/canvas cannot inherit tilted content axes")
 	# Non-playback reset must stay at eye height and horizontal viewing distance.
 	video.local_uri = ""; menu.visible = false; library.visible = true
 	for yaw in [-2.4, -.7, 0.0, 1.9]:

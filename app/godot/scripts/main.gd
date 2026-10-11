@@ -1264,12 +1264,7 @@ func _head_pose() -> Variant:
 ## Menus use world up and the horizontal head direction. Looking straight up or
 ## down uses the head's right axis to avoid an undefined horizontal forward.
 static func _upright_pose(head: Transform3D) -> Transform3D:
-	var forward := -head.basis.z
-	forward.y = 0.0
-	if forward.length_squared() <= .0001:
-		forward = Vector3.UP.cross(head.basis.x)
-	forward = forward.normalized() if forward.length_squared() > .0001 else Vector3.FORWARD
-	return Transform3D(Basis.looking_at(forward, Vector3.UP), head.origin)
+	return MediaSurface.upright_pose(head)
 
 ## Reset/open placement uses horizontal distance and a world-vertical drop.
 func _view_pose(distance: float, drop: float) -> Variant:
@@ -1315,6 +1310,8 @@ func _update_view_follow() -> void:
 	var menu_head := _upright_pose(head)
 	for menu in [recent_menu, video_menu, photo_menu]:
 		if not menu or not menu.visible: continue
+		# Immersive controls belong to the reset/content sphere, even in follow mode.
+		if menu == player_menu and _viewer().geometry != Geometry.Geometry.FLAT: continue
 		var pose: Variant = view_follow.pose(_menu_key(menu), menu_head)
 		if pose == null:
 			view_follow.capture(_menu_key(menu), menu_head, menu.global_transform)
@@ -1326,40 +1323,38 @@ func _update_view_follow() -> void:
 
 func _place_menu(menu: Node3D) -> void:
 	# A temporary tracking loss must not relocate menus to a world-origin fallback.
-	if not display.preview and _head_pose() == null: return
+	var head: Variant = _head_pose()
+	if not display.preview and head == null: return
+	var ui_scale := PlayerMenu.PANEL_SCALE if menu is PlayerMenu else Vector3.ONE
 	if menu == player_menu and not _viewer().local_uri.is_empty() \
 		and is_instance_valid(_viewer().get("panel")) and _viewer().panel.visible:
 		player_menu.lift_panels = true
 		player_menu.panel_lift = 0.0 if photo_active else PlayerMenu.BAR_SEEK_Y
 		player_menu.max_ray_metres = MediaSurface.DISTANCE_LIMITS.y + 1.0
 		var pose: Transform3D
+		var eye := _eye()
 		if _viewer().geometry == Geometry.Geometry.FLAT:
 			pose = _viewer().subtitle_transform()
+			var toward_eye := eye - pose.origin
+			var horizontal := Vector3(toward_eye.x, 0, toward_eye.z)
+			var facing: Basis = _upright_pose(head).basis if head != null else Basis.IDENTITY
+			if horizontal.length_squared() > .0001:
+				facing = Basis.looking_at(-horizontal.normalized(), Vector3.UP)
+			if toward_eye.length() > 0.1:
+				var normal := toward_eye.normalized()
+				# Native overlays keep readable distance; scene fallback needs clearance.
+				var canvas_normal := pose.basis.z.normalized()
+				var clearance := .025 + absf(canvas_normal.dot(facing.x)) * .9 * ui_scale.x + absf(canvas_normal.dot(facing.y)) * 1.1 * ui_scale.y
+				var offset := clearance / maxf(.1, absf(canvas_normal.dot(normal)))
+				if is_instance_valid(menu_compositor) and menu_compositor.native_supported:
+					offset = maxf(.025, toward_eye.length() - 1.4)
+				pose.origin += normal * minf(offset, maxf(.025, toward_eye.length() - .4))
+			pose.basis = facing
 		else:
-			# An immersive sphere is centred on the eyes; its forward direction
-			# defines the picture centre, independently of the current head yaw.
-			pose = Transform3D(_viewer().subtitle_transform().basis, _eye())
-			pose.origin -= pose.basis.z * 1.4
-		var eye := _eye()
-		var toward_eye := eye - pose.origin
-		var horizontal := Vector3(toward_eye.x, 0, toward_eye.z)
-		var head: Variant = _head_pose()
-		var facing: Basis = _upright_pose(head).basis if head != null else Basis.IDENTITY
-		if horizontal.length_squared() > .0001:
-			facing = Basis.looking_at(-horizontal.normalized(), Vector3.UP)
-		if toward_eye.length() > 0.1:
-			var normal := toward_eye.normalized()
-			# Keep the whole viewer-facing panel in front of the video plane.
-			# Moving along the eye/centre ray preserves apparent canvas alignment.
-			var canvas_normal := pose.basis.z.normalized()
-			var clearance := .025 + absf(canvas_normal.dot(facing.x)) * .9 + absf(canvas_normal.dot(facing.y)) * 1.1
-			var offset := clearance / maxf(.1, absf(canvas_normal.dot(normal)))
-			if is_instance_valid(menu_compositor) and menu_compositor.native_supported:
-				# Keep the canvas-centre direction while maintaining readable UI
-				# angular size for distant screens. Native overlays need no hole.
-				offset = maxf(.025, toward_eye.length() - 1.4)
-			pose.origin += normal * minf(offset, maxf(.025, toward_eye.length() - .4))
-		pose.basis = facing
+			# Use the reset/content gaze, including pitch, but never later head tilt.
+			pose = Transform3D(_viewer().subtitle_transform().basis.orthonormalized(), eye)
+			pose.origin += pose.basis * Vector3(0, -PlayerMenu.IMMERSIVE_DROP, -PlayerMenu.IMMERSIVE_DISTANCE)
+		pose.basis *= Basis.from_scale(ui_scale)
 		var bar_offset: float = -player_menu.panel_lift if player_menu.section == 0 else 0.0
 		menu.global_transform = pose * Transform3D(Basis.IDENTITY, Vector3(0, bar_offset, 0))
 		_player_menu_anchor_key = _canvas_menu_anchor_key()
@@ -1371,12 +1366,11 @@ func _place_menu(menu: Node3D) -> void:
 		player_menu.lift_panels = true
 		player_menu.panel_lift = 0.45
 		player_menu.max_ray_metres = player_menu.MAX_RAY_METRES
-	var head: Variant = _head_pose()
 	var pose: Variant = _view_pose(1.4, drop)
 	if pose == null:
-		menu.transform = Transform3D(Basis.IDENTITY, Vector3(0, 1.6 - drop, -1.55))
+		menu.transform = Transform3D(Basis.from_scale(ui_scale), Vector3(0, 1.6 - drop, -1.55))
 	else:
-		# Menu rows stay horizontal even when the head is pitched or rolled.
+		pose.basis *= Basis.from_scale(ui_scale)
 		menu.global_transform = pose
 		view_follow.capture(_menu_key(menu), _upright_pose(head), pose)
 
@@ -1389,7 +1383,7 @@ func _active_menu() -> Node3D:
 
 func _update_player_menu_anchor() -> void:
 	# Explicit head-follow owns menu placement, including captured interactions.
-	if view_follow.enabled: return
+	if view_follow.enabled and _viewer().geometry == Geometry.Geometry.FLAT: return
 	# Keep controls attached when projection/distance/content changes. Freeze
 	# the plane during a captured slider drag so its target cannot move away.
 	if player_menu and _active_menu() == player_menu and not player_menu.has_pointer_capture() \
@@ -1440,6 +1434,7 @@ func _canvas_controls_snapshot() -> Dictionary:
 	var normal: Vector3 = viewer.subtitle_transform().basis.z
 	var timeline: Vector3 = player_menu.to_global(Vector3(0, PlayerMenu.BAR_SEEK_Y, 0))
 	var toward_eye := (_eye() - timeline).normalized()
+	var content_offset: Vector3 = viewer.subtitle_transform().basis.orthonormalized().inverse() * (timeline - _eye())
 	var view_normal: Vector3 = viewer.view_camera.global_basis.z.normalized() if is_instance_valid(viewer.view_camera) else toward_eye
 	return {"grab_action": "grip_click", "controls_action": "trigger_click",
 		"grab_hand": str(_grab.get("hand", "")), "menu_visible": player_menu.visible,
@@ -1449,6 +1444,10 @@ func _canvas_controls_snapshot() -> Dictionary:
 		"menu_facing_eye_dot": player_menu.global_basis.z.normalized().dot(toward_eye),
 		"menu_facing_view_dot": player_menu.global_basis.z.normalized().dot(view_normal),
 		"menu_world_up_dot": player_menu.global_basis.y.normalized().dot(Vector3.UP),
+		"menu_scale": [player_menu.global_basis.x.length(), player_menu.global_basis.y.length()],
+		"menu_facing_content_dot": player_menu.global_basis.z.normalized().dot(normal.normalized()),
+		"canvas_normal_up_dot": viewer.panel.global_basis.z.normalized().dot(Vector3.UP),
+		"timeline_content_offset": [content_offset.x, content_offset.y, content_offset.z],
 		"ui_compositor": menu_compositor.snapshot() if is_instance_valid(menu_compositor) else {},
 		"canvas_horizontal_up_dot": viewer.panel.global_basis.x.normalized().dot(Vector3.UP),
 		"scope": "Application pose/input state; physical button presses are not independently certified"}

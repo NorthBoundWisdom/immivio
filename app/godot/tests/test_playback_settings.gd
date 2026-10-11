@@ -77,7 +77,7 @@ func _run() -> void:
 	root.add_child(camera)
 	video.view_camera = camera
 	main._place_menu(menu)
-	check(menu.global_basis.is_equal_approx(Basis.IDENTITY), "Below-eye menu remains upright")
+	check(menu.global_basis.orthonormalized().is_equal_approx(Basis.IDENTITY), "Below-eye menu remains upright")
 	var top_width := camera.unproject_position(menu.to_global(Vector3(0.5, 1, 0))).x - camera.unproject_position(menu.to_global(Vector3(-0.5, 1, 0))).x
 	var bottom_width := camera.unproject_position(menu.to_global(Vector3(0.5, 0, 0))).x - camera.unproject_position(menu.to_global(Vector3(-0.5, 0, 0))).x
 	check(is_equal_approx(top_width, bottom_width), "Upper popup rows are not compressed by menu tilt")

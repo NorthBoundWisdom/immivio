@@ -125,7 +125,7 @@ func _run() -> void:
 	check((Main._upright_pose(main.xr_camera.global_transform).affine_inverse() * main.recent_menu.global_transform).is_equal_approx(menu_local), "Library follows horizontal head direction/translation while retaining its upright pose")
 	main._on_library_chosen("file:///follow/first_2D.mp4", "first_2D.mp4")
 	main._place_screen()
-	check(placement(main, main.video).is_equal_approx(Transform3D(Basis.IDENTITY, Vector3(0,0,-main.video.screen_distance))), "Opening first media in follow uses current full gaze")
+	check(placement(main, main.video).origin.is_equal_approx(Vector3(0,0,-main.video.screen_distance)) and absf(main.video.panel.global_basis.z.y) < .00001, "Opening flat video follows gaze position with a world-vertical screen")
 	main._turn_picture(.25, -.15)
 	main._push_screen(.6)
 	main.video.set_screen_scale(1.4); main.video.set_screen_curve(.7); main.video.set_screen_rotation(25)
@@ -144,7 +144,7 @@ func _run() -> void:
 		Transform3D(Basis.from_euler(Vector3(-1.55,-.5,-.8)),Vector3(-3,1,-4))]:
 		main.xr_camera.transform = pose
 		main._update_view_follow()
-		check(placement(main, main.video).is_equal_approx(screen_local), "Screen follows complete pose without recapturing offset")
+		check(placement(main, main.video).origin.is_equal_approx(screen_local.origin) and absf(main.video.panel.global_basis.z.y) < .00001, "Video position follows the head while its screen remains world-vertical")
 		check((main.video.subtitle_transform().affine_inverse() * main.video.caption.global_transform).is_equal_approx(caption_local), "Flat text subtitle follows its screen")
 		check(main.video._subtitle_surface.global_transform.is_equal_approx(main.video.subtitle_transform()), "Rotated content's separate subtitle surface follows")
 		check(main.video.screen_scale == scale and main.video.screen_curve == .7 and main.video.screen_rotation == 25, "Head movement preserves size/curve/content rotation")
@@ -152,7 +152,7 @@ func _run() -> void:
 	var before := placement(main, main.video)
 	main._show_player_menu()
 	check(placement(main, main.video).is_equal_approx(before), "Menu summons do not move screen")
-	check(main.video_menu.global_basis.y.is_equal_approx(Vector3.UP), "Player summon remains vertical with head tilt and roll")
+	check(main.video_menu.global_basis.y.normalized().is_equal_approx(Vector3.UP), "Player summon remains vertical with head tilt and roll")
 	footer_check(main.video_menu, "Player bar")
 	for section in [1,2]:
 		main.video_menu.section = section; main.video_menu.refresh()
@@ -162,7 +162,7 @@ func _run() -> void:
 	main.video_menu.section = 1; main.video_menu.refresh()
 	main._update_view_follow()
 	var lifted_local: Transform3D = Main._upright_pose(main.xr_camera.global_transform).affine_inverse() * main.video_menu.global_transform
-	check(lifted_local.origin.is_equal_approx(bar_local.origin + Vector3(0,main.video_menu.panel_lift,0)), "Settings lift follows menu up axis while lying and is retained in follow")
+	check(lifted_local.origin.is_equal_approx(bar_local.origin + Vector3(0,main.video_menu.panel_lift * main.video_menu.PANEL_SCALE.y,0)), "Settings lift follows menu up axis while lying and is retained in follow")
 	main.video_menu.section = 0; main.video_menu.refresh()
 	main._update_view_follow()
 	check((Main._upright_pose(main.xr_camera.global_transform).affine_inverse() * main.video_menu.global_transform).is_equal_approx(bar_local), "Returning to playback restores local menu position")
@@ -171,8 +171,8 @@ func _run() -> void:
 	var captured_screen := placement(main,main.video)
 	main.xr_camera.rotate_z(.2); main._update_view_follow(); main._update_player_menu_anchor()
 	check((Main._upright_pose(main.xr_camera.global_transform).affine_inverse() * main.video_menu.global_transform).is_equal_approx(captured_menu)
-		and placement(main,main.video).is_equal_approx(captured_screen), "Timeline capture keeps strict menu/screen follow during head movement")
-	check(main.video_menu.global_basis.y.is_equal_approx(Vector3.UP), "Follow cannot tilt a captured playback panel")
+		and placement(main,main.video).origin.is_equal_approx(captured_screen.origin) and absf(main.video.panel.global_basis.z.y) < .00001, "Timeline capture keeps strict menu/screen follow during head movement")
+	check(main.video_menu.global_basis.y.normalized().is_equal_approx(Vector3.UP), "Follow cannot tilt a captured playback panel")
 	main.video_menu._seek_hand = ""
 	main._recenter()
 	check(placement(main, main.video).origin.is_equal_approx(Vector3(0,0,-main.video.screen_distance)) and main.view_follow.enabled,
@@ -181,13 +181,13 @@ func _run() -> void:
 	screen_local = placement(main, main.video)
 	main._on_library_chosen("file:///follow/next_2D.mp4", "next_2D.mp4")
 	main._place_screen()
-	check(main.view_follow.enabled and placement(main, main.video).is_equal_approx(screen_local), "Changing flat media preserves follow pose")
+	check(main.view_follow.enabled and placement(main, main.video).origin.is_equal_approx(screen_local.origin) and absf(main.video.panel.global_basis.z.y) < .00001, "Changing flat media preserves follow pose")
 	main.video.set_projection(3)
 	var sphere_basis: Basis = main.video.panel.global_basis
 	main.xr_camera.rotate_y(.4); main._update_view_follow(); main.video._process(0)
 	check(main.view_follow.enabled and main.video.panel.global_basis.is_equal_approx(sphere_basis), "Immersive media is not head-locked, mode stays on")
 	main.video.set_projection(0); main._update_view_follow()
-	check(placement(main, main.video).is_equal_approx(screen_local), "Returning flat resumes saved local pose")
+	check(placement(main, main.video).origin.is_equal_approx(screen_local.origin) and absf(main.video.panel.global_basis.z.y) < .00001, "Returning flat restores saved position with upright orientation")
 	main._on_session_control("temporary_passthrough")
 	main._on_menu_action("stop")
 	main._show_recent_menu()

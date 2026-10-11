@@ -107,6 +107,17 @@ func _run() -> void:
 			menu.release_pointer("right_hand", Vector3.ZERO, Vector3.ZERO, true)
 			check(is_equal_approx(video.screen_distance, 2), "2m slider restores default distance")
 			menu.dismiss()
+	# Translation/dragging may move the screen vertically, but not tilt its plane.
+	video.global_transform = Transform3D(Basis.from_euler(Vector3(.2, .4, -.1)), Vector3(.1, .2, .3))
+	var tilted := Transform3D(Basis.from_euler(Vector3(.5, .7, .3)), eye + Vector3(0, 0, -2))
+	video.set_flat_world_pose(tilted)
+	check(absf(video.panel.global_basis.z.y) < .00001 and video.panel.global_position.is_equal_approx(tilted.origin), "Flat-video constraint is in world space and preserves position")
+	video.set_screen_rotation(25)
+	check(absf(video.panel.global_basis.z.y) < .00001 and video.screen_rotation == 25, "Explicit picture rotation stays inside the vertical screen plane")
+	var height := video.panel.global_position.y
+	main._turn_picture(.15, .2)
+	check(absf(video.panel.global_basis.z.y) < .00001 and not is_equal_approx(video.panel.global_position.y, height), "Grip pitch moves the screen up/down without leaning it")
+	video.global_transform = Transform3D.IDENTITY; video.set_screen_rotation(0)
 	main._grab = {"hand": "right_hand", "moved": false}
 	main._update_flat_grab_stick(Vector2.ZERO, Vector2(0, 1), 10)
 	check(video.screen_scale == video.SCALE_LIMITS.y, "Upper scale limit")
