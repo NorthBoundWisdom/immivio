@@ -422,7 +422,9 @@ struct Source final {
             auto option = [&](const char* key, const char* value) { checked(mpv_set_option_string(core, key, value), key); };
             option("config", "no"); option("load-scripts", "no"); option("terminal", "no");
             option("vo", "libmpv"); option("hwdec", hardware ? "mediacodec" : "no"); option("hwdec-codecs", "all");
-            option("vd-lavc-spatial-video", "yes");
+            // This opt-in belongs to the project mpv/FFmpeg patches. Public
+            // libmpv rejects it before initialization, even for ordinary files.
+            if (!standard_frames) option("vd-lavc-spatial-video", "yes");
             // Godot restores the per-eye display aspect. MPV must fill the packed FBO;
             // letterboxing here would change the eye rectangles before the VR shader splits them.
             option("keepaspect", "no");
