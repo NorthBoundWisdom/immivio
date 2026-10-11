@@ -5,16 +5,40 @@ Defaults to a hash-verified local file. Optional ADB loopback HTTP is not a Wi-F
 """
 import argparse
 import base64
+from contextlib import contextmanager
 import hashlib
 import json
+import os
 from pathlib import Path
 import statistics
+import shlex
 import subprocess
 import threading
 import time
 
 from mpv_seek_strategy_device import Device, PACKAGE
 from mpv_startup_device import MediaServer
+
+
+@contextmanager
+def device_lock(serial):
+    root = Path(__file__).resolve().parents[1] / ".cache"
+    root.mkdir(exist_ok=True)
+    key = hashlib.sha256(serial.encode()).hexdigest()[:16]
+    with (root / f"playback-{key}.lock").open("a+b") as lock:
+        try:
+            if os.name == "nt":
+                import msvcrt
+                if lock.seek(0, 2) == 0:
+                    lock.write(b"0"); lock.flush()
+                lock.seek(0)
+                msvcrt.locking(lock.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as error:
+            raise RuntimeError("Another playback probe owns this device") from error
+        yield
 
 
 def main():
@@ -30,11 +54,31 @@ def main():
     parser.add_argument("--transport", choices=("local", "http"), default="local")
     parser.add_argument("--mpv-log-level", choices=("no", "warn", "info", "debug"), help="Temporary Debug log-level A/B; restored on exit")
     parser.add_argument("--producer-pool", choices=("reuse", "expand"), default="reuse", help="Temporary producer allocation policy A/B")
+    parser.add_argument("--mpv-options", help="Temporary Debug mpv options, e.g. opengl-pbo=yes; restored on exit")
+    parser.add_argument("--stereo", action="store_true", help="Use the production SBS layout for packed stereo media")
+    parser.add_argument("--projection", type=int, choices=(0, 1, 2, 3), default=0)
+    parser.add_argument("--opaque-fast", choices=("yes", "no"), default="yes", help="Cached borrowed-color handoff A/B")
+    parser.add_argument("--warmup-seconds", type=float, default=5, help="Steady-playback warmup before sampling")
+    parser.add_argument("--stress-pin", action="store_true", help="With --controls, keep pixel textures pinned while playback advances")
+    parser.add_argument("--gpu-frames", type=int, choices=range(0, 8), default=2, help="Producer GPU work budget; 0 restores legacy unbounded submission")
+    parser.add_argument("--expect-eof", action="store_true", help="Require a retained final pair after a short synthetic clip")
     args = parser.parse_args()
-    if args.seconds < 5 or not args.original.is_file():
+    if args.seconds < 5 or args.warmup_seconds < 0 or not args.original.is_file():
         parser.error("Need an existing original video and at least five measurement seconds")
+    if args.stress_pin and not args.controls:
+        parser.error("--stress-pin requires --controls")
+    if args.expect_eof and args.controls:
+        parser.error("Use --expect-eof separately from --controls")
+    with device_lock(args.serial):
+        measure(args)
+
+
+def measure(args):
     args.output.mkdir(parents=True, exist_ok=True)
     device = Device(args.adb, args.serial, args.output)
+    def set_property(name, value, *, optional=False):
+        # adb shell reconstructs a shell command; keep option values a single literal argument.
+        device.run("shell", "setprop", name, shlex.quote(value), optional=optional)
     installed = device.run("shell", "pm", "path", PACKAGE).strip().removeprefix("package:")
     installed_sha = device.run("shell", "sha256sum", installed).split()[0]
     with args.apk.open("rb") as apk:
@@ -53,16 +97,30 @@ def main():
     port = server.server_address[1]
     previous_log = device.run("shell", "getprop", "debug.vrpp.mpv.log").strip()
     previous_pool = device.run("shell", "getprop", "debug.vrpp.mpv.pool").strip()
+    previous_options = device.run("shell", "getprop", "debug.vrpp.mpv.opts").strip()
+    previous_opaque = device.run("shell", "getprop", "debug.vrpp.bridge.opaque_fast").strip()
+    previous_gpu = device.run("shell", "getprop", "debug.vrpp.mpv.gpu_frames").strip()
     result["mpv_log_level"] = args.mpv_log_level or previous_log or "info"
     result["producer_pool"] = args.producer_pool
+    result["mpv_options"] = args.mpv_options if args.mpv_options is not None else previous_options
+    result["stereo_sbs"] = args.stereo
+    result["projection"] = args.projection
+    result["opaque_fast"] = args.opaque_fast
+    result["warmup_seconds"] = args.warmup_seconds
+    result["stress_pin"] = args.stress_pin
+    result["gpu_frames"] = args.gpu_frames
     save = lambda: (args.output / "result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
     def scene_marker():
         lines = device.run("shell", "run-as", PACKAGE, "tail", "-n", "8", "files/diagnostics/events.jsonl", optional=True)
         return next((line for line in reversed(lines.splitlines()) if '"event":"app_started"' in line), "")
     try:
-        device.run("shell", "setprop", "debug.vrpp.mpv.pool", args.producer_pool)
+        set_property("debug.vrpp.mpv.pool", args.producer_pool)
+        set_property("debug.vrpp.bridge.opaque_fast", args.opaque_fast)
+        set_property("debug.vrpp.mpv.gpu_frames", str(args.gpu_frames))
+        if args.mpv_options is not None:
+            set_property("debug.vrpp.mpv.opts", args.mpv_options)
         if args.mpv_log_level:
-            device.run("shell", "setprop", "debug.vrpp.mpv.log", args.mpv_log_level)
+            set_property("debug.vrpp.mpv.log", args.mpv_log_level)
         device.run("reverse", f"tcp:{port}", f"tcp:{port}")
         previous_scene = scene_marker()
         device.run("shell", "am", "force-stop", PACKAGE)
@@ -91,21 +149,31 @@ def main():
             if time.monotonic() >= deadline:
                 raise TimeoutError("Godot scene did not finish startup")
             time.sleep(.5)
-        receipt = device.request("open", "open", **source_args, benchmark=True, enabled=False, stereo=False,
-                                 profile="320x320", projection=0, borrow_color=args.borrow_color == "yes")
-        first = device.wait("open", receipt, lambda r: r["native_status"].get("unique_post_draw_frames", 0) >= 3,
+        receipt = device.request("open", "open", **source_args, benchmark=True, enabled=False, stereo=args.stereo,
+                                 profile="320x320", projection=args.projection, borrow_color=args.borrow_color == "yes")
+        first = device.wait("open", receipt, lambda r: r["native_status"].get("unique_post_draw_frames", 0) >= (1 if args.expect_eof else 3),
                             timeout=120)
         if not first["diagnostic_2d"]:
             raise RuntimeError("Unexpected XR entry")
         if first["native_status"]["max_output_width"] != 0 or first["native_status"]["frame_cap_fps"] != 0:
             raise RuntimeError("Clear the player's output-width/frame-rate cap before measuring original playback")
+        if "max_gpu_frames" in first["native_status"] and first["native_status"]["max_gpu_frames"] != args.gpu_frames:
+            raise RuntimeError("Producer GPU budget differs from the requested case")
+        active_fast = first["native_status"].get("bridge", {}).get("opaque_state_fast")
+        if active_fast is not None and active_fast != (args.opaque_fast == "yes"):
+            raise RuntimeError("Opaque handoff setting differs from the requested case")
         result["first_report"] = first
+        time.sleep(args.warmup_seconds)
         result["memory_before"] = device.run("shell", "dumpsys", "meminfo", PACKAGE)
         deadline = time.monotonic() + args.seconds
         previous = None
         while time.monotonic() < deadline:
             report = device.read(f"mpv_player_{receipt['id']}.json")
             if report and report["sample_monotonic_us"] != previous:
+                if report["request_id"] != receipt["id"] or sum(c["request_key"] == receipt["request"] for c in report["commands"]) != 1:
+                    raise RuntimeError("Playback report belongs to a different request")
+                if previous is not None and report["sample_monotonic_us"] < previous:
+                    raise RuntimeError("App monotonic clock reset during measurement")
                 if report["media"]["state"] == "failed":
                     raise RuntimeError("Playback failed: " + str(report["native_status"]))
                 if report["media"]["session_id"] != first["media"]["session_id"]:
@@ -120,6 +188,14 @@ def main():
         a, b = samples[0], samples[-1]
         elapsed = (b["sample_monotonic_us"]-a["sample_monotonic_us"])/1e6
         n0, n1 = a["native_status"], b["native_status"]
+        bypasses = n1.get("bridge", {}).get("opaque_state_bypasses", 0)
+        if args.opaque_fast == "no" and bypasses:
+            raise RuntimeError("Opaque handoff fast path was enabled during the disabled case")
+        def mean_delta(before, after, total, count):
+            if total not in before or total not in after or count not in before or count not in after:
+                return None
+            calls = after[count]-before[count]
+            return (after[total]-before[total])/calls if calls > 0 else None
         result["summary"] = {"elapsed_seconds": elapsed,
             "distinct_render_owner_fps": (n1["unique_post_draw_frames"]-n0["unique_post_draw_frames"])/elapsed,
             "engine_draw_fps": (b["engine_drawn_frames"]-a["engine_drawn_frames"])/elapsed,
@@ -130,21 +206,43 @@ def main():
             "producer_color_bytes_before": n0.get("color_texture_bytes"),
             "producer_color_bytes_after": n1.get("color_texture_bytes"),
             "producer_color_allocations": n1.get("color_allocations"),
+            "render_call_mean_us": mean_delta(n0, n1, "render_call_us", "render_call_count"),
+            "gpu_pending_peak": n1.get("gpu_pending_peak"),
+            "gpu_backpressure_skipped_before": n0.get("gpu_backpressure_skipped"),
+            "gpu_backpressure_skipped_after": n1.get("gpu_backpressure_skipped"),
+            "capture_to_ready_mean_us": mean_delta(n0, n1, "capture_to_ready_us", "capture_ready_count"),
+            "bridge_capture_mean_us": mean_delta(n0.get("bridge", {}), n1.get("bridge", {}), "capture_cpu_us", "capture_calls"),
             "decoder_drops_before": n0["details"].get("decoder_frame_drop_count"),
-            "decoder_drops_after": n1["details"].get("decoder_frame_drop_count")}
+            "decoder_drops_after": n1["details"].get("decoder_frame_drop_count"),
+            "vo_drops_before": n0["details"].get("vo_frame_drop_count"),
+            "vo_drops_after": n1["details"].get("vo_frame_drop_count")}
         result["memory_after"] = device.run("shell", "dumpsys", "meminfo", PACKAGE)
+        if args.expect_eof:
+            if not (b["media"]["state"] == "ended" and n1.get("eof_source_resolved") and n1.get("eof_pair_post_draw")):
+                raise RuntimeError("EOF did not retain and draw the final opaque pair")
+            result["eof_retained"] = True
         if args.controls:
             rec = device.request("pause", "playing", enabled=False)
             paused = device.wait("pause", rec, lambda r: r["native_status"].get("details", {}).get("paused") == "yes")
             generation = paused["media"]["generation"]
             rec = device.request("pixels", "pixels")
-            pixels = device.wait("pixels", rec, lambda r: r["pixel_probe"].get("state") in ("captured", "failed"), timeout=90)
+            pixel_request = rec["id"]
+            if args.stress_pin:
+                rec = device.request("play-during-pin", "playing", enabled=True)
+            pixels = device.wait("pixels", rec, lambda r: r["pixel_probe"].get("request_id") == pixel_request
+                                and r["pixel_probe"].get("state") in ("captured", "failed"), timeout=90)
             probe = pixels["pixel_probe"]
             if probe["state"] != "captured" or not probe["native_pin_released"] or not probe["wrappers_detached"]:
                 raise RuntimeError("Pinned pixel capture failed: " + str(probe))
+            advanced = pixels["native_status"]["rendered"]-paused["native_status"]["rendered"]
+            if args.stress_pin and advanced <= 0:
+                raise RuntimeError("No producer progression during pinned capture; stress check inconclusive")
             for name in [i["file"] for i in probe["images"]] + [probe["mask_reference"]["mask_file"]]:
                 data = device.run("shell", "run-as", PACKAGE, "base64", "files/diagnostics/" + name)
                 (args.output / name).write_bytes(base64.b64decode(data))
+            if args.stress_pin:
+                rec = device.request("pause-after-pin", "playing", enabled=False)
+                device.wait("pause-after-pin", rec, lambda r: r["native_status"].get("details", {}).get("paused") == "yes")
             rec = device.request("seek-zero", "seek", position_ms=0, seek_mode="exact")
             sought = device.wait("seek-zero", rec, lambda r: r["media"]["generation"] > generation
                                 and r["layout"]["playback_control"]["state"] == "idle"
@@ -155,6 +253,7 @@ def main():
             resumed = device.wait("resume", rec, lambda r: r["native_status"].get("unique_post_draw_frames", 0) > before + 3)
             result["controls"] = {"state": "passed", "pause_generation": generation,
                 "seek_generation": sought["media"]["generation"], "pixel_capture": probe["state"],
+                "producer_renders_during_pin": advanced,
                 "resume_unique_frames": resumed["native_status"]["unique_post_draw_frames"]}
         result["state"] = "measured"
         print(json.dumps(result["summary"], indent=2), flush=True)
@@ -172,8 +271,12 @@ def main():
                 result["state"] = "failed"
         device.run("reverse", "--remove", f"tcp:{port}", optional=True)
         if args.mpv_log_level:
-            device.run("shell", "setprop", "debug.vrpp.mpv.log", previous_log or '""', optional=True)
-        device.run("shell", "setprop", "debug.vrpp.mpv.pool", previous_pool or '""', optional=True)
+            set_property("debug.vrpp.mpv.log", previous_log, optional=True)
+        if args.mpv_options is not None:
+            set_property("debug.vrpp.mpv.opts", previous_options, optional=True)
+        set_property("debug.vrpp.mpv.pool", previous_pool, optional=True)
+        set_property("debug.vrpp.bridge.opaque_fast", previous_opaque, optional=True)
+        set_property("debug.vrpp.mpv.gpu_frames", previous_gpu, optional=True)
         server.shutdown(); server.server_close()
         result["http_requests"] = server.requests
         save()

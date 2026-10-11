@@ -120,6 +120,10 @@ internal class MpvVideoBridge(
         var zeroCopy = false // GL thread: the bridge stages inputs into AHardwareBuffers shared with MNN
         var borrow = false // GL thread: pairs show the MPV slot itself; no 8K copy per captured frame
         var copyingProducer = 0L // GL thread: producer lease held by the slot being staged
+        var captureStartedNs = 0L
+        var captureReadyCount = 0L
+        var captureReadyUs = 0L
+        var captureReadyMaxUs = 0L
         var renderer = 0L // GL only under lock
         var owner: EGLContext? = null
         var copying: Pair<DecodedFrameGate.Ticket, Long>? = null
@@ -394,6 +398,11 @@ internal class MpvVideoBridge(
                         session.pendingSource = source
                         session.deferredCopies++
                     }
+                    // Cached opaque borrowing can be ready immediately: no copy or upload was
+                    // submitted. Offer that pair in this draw instead of waiting another tick.
+                    if (!session.inference && session.normalFastPath) {
+                        finishCopy(session); finishUploads(session)
+                    }
                 }
                 if (System.nanoTime() >= session.host.nextStatusNs) {
                     session.host.nextStatusNs = System.nanoTime()+250_000_000L
@@ -417,6 +426,9 @@ internal class MpvVideoBridge(
                     event("mpv_state", session, status.put("alpha_requested", session.alpha).put("depth_requested", session.depth)
                         .put("startup_bridge", JSONObject(session.host.startup as Map<*, *>))
                         .put("captured_frames", session.captured)
+                        .put("capture_ready_count", session.captureReadyCount)
+                        .put("capture_to_ready_us", session.captureReadyUs)
+                        .put("capture_to_ready_max_us", session.captureReadyMaxUs)
                         .put("display_claims", session.display.heldClaims()).put("post_draw_frames", session.ownerDraws)
                         .put("unique_post_draw_frames", session.uniquePostDrawFrames).put("rvm_model_created", session.model != null)
                         .put("rvm_model_ready", session.model?.isReady() == true)
@@ -437,6 +449,7 @@ internal class MpvVideoBridge(
         }
     }
     private fun capture(session: Session, source: JSONObject): Boolean {
+        session.captureStartedNs = System.nanoTime()
         val producer = source.getLong("producer_token")
         var releaseProducer = true
         try {
@@ -512,6 +525,10 @@ internal class MpvVideoBridge(
     private fun finishCopy(session: Session) {
         val copying = session.copying ?: return
         if (!RenderBridgeNative.ready(session.renderer, copying.second)) return
+        val readyUs = (System.nanoTime() - session.captureStartedNs) / 1000
+        session.captureReadyCount++
+        session.captureReadyUs += readyUs
+        session.captureReadyMaxUs = maxOf(session.captureReadyMaxUs, readyUs)
         val texture = RenderBridgeNative.texture(session.renderer, copying.second)
         val bytes = session.dims[0]*session.dims[1]*3*4
         val pair = session.copyingPair ?: error("Immutable copy descriptor missing")
@@ -650,6 +667,7 @@ internal class MpvVideoBridge(
                     report.put("pair", pair).put("state", "ready")
                 } catch (failure: Throwable) {
                     report.put("state", "failed").put("error", failure.message)
+                    if (BuildConfig.DEBUG) android.util.Log.w("QuestMpvFreeze", "Frame freeze failed", failure)
                 } finally {
                     session.display.unpin(token); freezePending.set(false)
                     release(session, token)

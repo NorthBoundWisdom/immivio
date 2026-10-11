@@ -47,6 +47,17 @@ Use several alternating runs and retain the raw JSON reports. Check `hwdec`, sou
 
 For attribution, change one flag at a time while keeping CPU/GPU configuration and the remaining flags equal. The producer pool switch applies only to the standard-libmpv backend; Release always reuses allocated storage. The benchmark restores the previous Debug log/pool properties and rejects a configured output-width or frame-rate cap.
 
+To isolate cached opaque handoff on an SBS VR180 original, run these cases sequentially with the same APK and device configuration:
+
+```bash
+python3 benchmarks/mpv_playback_device.py --serial DEVICE --apk PLAYER.apk --original VIDEO.mp4 --stereo --projection 2 --mpv-options opengl-pbo=no --opaque-fast no --gpu-frames 2 --output artifacts/perf/handoff-off
+python3 benchmarks/mpv_playback_device.py --serial DEVICE --apk PLAYER.apk --original VIDEO.mp4 --stereo --projection 2 --mpv-options opengl-pbo=no --opaque-fast yes --gpu-frames 2 --controls --stress-pin --output artifacts/perf/handoff-on
+```
+
+`--warmup-seconds` defaults to five. `--stress-pin` resumes playback while shader readbacks hold their texture leases, requires producer renders to advance, then re-pauses before the seek test. Compare opaque and mask-enabled readbacks for each eye and rotation; SBS eyes need not match each other. `--expect-eof` separately checks a retained final pair with a short synthetic clip. Use `--mpv-options hwdec=no,opengl-pbo=no` to isolate that regression from emulator hardware-decoder startup. PBO settings are diagnostic overrides, not a production default change.
+
+The probe takes a nonblocking per-device lock (use the same canonical serial), validates report request/session/clock identity, and restores all modified Debug properties on exit. Do not run other device probes or Godot exports against that device concurrently. A run with a playback failure, request overlap or wrong active setting is invalid for comparisons. `bridge_capture_mean_us` and `capture_to_ready_mean_us` measure CPU wall-clock capture and handoff intervals; reducing them does not establish a decoded-frame FPS increase, especially with software 8K decoding.
+
 `test_ai_optional.gd` covers a plugin reporting AI disabled: ordinary playback and seeking must not request inference, saved automatic-depth settings must not reactivate it, live AI controls are disabled, and precomputed packed masks remain available. For a prepared Android toolchain, run plugin unit tests and assembly with `-PenableAi=false`, then inspect the AAR/APK for absent `libquest_rvm.so` and model directories. Also build the default AI configuration to check both sides of the switch when its external dependencies are available.
 
 The standard-libmpv base build is exercised with `python3 tools/build_player.py --vendor Quest --build-type Release`. It runs the JVM suite and verifies the exported APK's signature, ZIP alignment, ELF architecture/alignment, shared-library dependency closure and strong dynamic symbols against bundled libraries and Android API 29 system stubs. `python3 tools/test_build_player.py` exercises corrupt cached downloads and malicious ZIP paths/symlinks without network access. Standard playback-clock tickets are tested separately from exact source-frame tickets: they may display opaque video, but cannot authorize inferred Alpha/depth pairs. AI-specific photo conversion tests are skipped in model-free builds, with a separate test ensuring disabled depth queues no inference and retains no source lease.
