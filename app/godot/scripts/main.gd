@@ -71,6 +71,7 @@ var fps_overlay: Label3D
 var stick_controls := StickControls.new()
 var recent_menu: Node3D
 var player_menu: Node3D
+var menu_compositor: Node3D
 var settings := ConfigFile.new()
 var settings_path := SETTINGS_PATH
 var background: Node
@@ -143,6 +144,7 @@ func _ready() -> void:
 	low_end_gpu = Quality.is_low_end_gpu(gpu_adapter)
 	display.render_scale = Quality.render_scale(display_quality, low_end_gpu)
 	display.msaa_3d = Quality.MSAA[Quality.resolve(display_quality, low_end_gpu)]
+	display.flat_msaa_3d = Quality.FLAT_MSAA[Quality.resolve(display_quality, low_end_gpu)]
 	display.configure(get_viewport(), world.environment, XRServer.find_interface("OpenXR"), desktop)
 	input_visuals = InputVisuals.new()
 	input_visuals.name = "InputVisuals"
@@ -253,6 +255,10 @@ func _ready() -> void:
 	photo_menu.recent_requested.connect(_show_recent_menu)
 	_connect_session_controls(photo_menu)
 	add_child(photo_menu)
+	menu_compositor = preload("res://scripts/xr_menu_compositor.gd").new()
+	add_child(menu_compositor)
+	menu_compositor.configure([recent_menu, video_menu, photo_menu], camera,
+		not display.preview and display.xr != null and display.xr.is_initialized(), func(): return display.session_state)
 	background = Background.new()
 	background.choice = str(settings.get_value("appearance", "background", "belfast"))
 	background.custom_path = str(settings.get_value("appearance", "custom_path", ""))
@@ -536,6 +542,8 @@ func _process(delta: float) -> void:
 	if _gallery_save_after > 0 and Time.get_ticks_msec() >= _gallery_save_after:
 		_gallery_save_after = 0; _save_photo_adjustments()
 	_update_hand_input(delta)
+	if video and is_instance_valid(_viewer().get("panel")):
+		display.set_flat_surface_visible(_viewer().panel.visible and _viewer().geometry == Geometry.Geometry.FLAT)
 	if not _head_placed and _head_tracked():
 		_head_placed = true
 		if not view_follow.enabled: _recenter()
@@ -1237,10 +1245,12 @@ var _player_menu_anchor_eye := Vector3.ZERO
 
 func _canvas_menu_anchor_key() -> Array:
 	var viewer := _viewer()
-	# The immersive sphere follows head translation, but its content orientation
-	# is stable. Do not continually rotate the controls with head tracking noise.
+	# Content supplies the centre; the head supplies the view plane. Immersive
+	# translation is handled separately and slider capture freezes the transform.
 	var pose: Variant = viewer.panel.global_transform if viewer.geometry == Geometry.Geometry.FLAT else viewer.subtitle_transform().basis
-	return [viewer.local_uri, viewer.geometry, pose, player_menu.section, photo_active]
+	var head_basis: Basis = viewer.view_camera.global_basis.orthonormalized() if is_instance_valid(viewer.view_camera) else Basis.IDENTITY
+	return [viewer.local_uri, viewer.geometry, pose, player_menu.section, photo_active, head_basis,
+		menu_compositor.native_supported if is_instance_valid(menu_compositor) else false]
 
 ## Standard screens stay upright; menus and following screens use the full head pose.
 func _head_pose() -> Variant:
@@ -1332,11 +1342,19 @@ func _place_menu(menu: Node3D) -> void:
 			var normal := toward_eye.normalized()
 			var up := Vector3.UP if absf(normal.dot(Vector3.UP)) < .98 else Vector3.FORWARD
 			var facing := Basis.looking_at(-normal, up)
+			if is_instance_valid(_viewer().view_camera):
+				# Looking at the canvas centre and the current gaze are different
+				# directions. Controls must be parallel to the actual view plane.
+				facing = _viewer().view_camera.global_basis.orthonormalized()
 			# Keep the whole viewer-facing panel in front of the video plane.
 			# Moving along the eye/centre ray preserves apparent canvas alignment.
 			var canvas_normal := pose.basis.z.normalized()
 			var clearance := .025 + absf(canvas_normal.dot(facing.x)) * .9 + absf(canvas_normal.dot(facing.y)) * 1.1
 			var offset := clearance / maxf(.1, absf(canvas_normal.dot(normal)))
+			if is_instance_valid(menu_compositor) and menu_compositor.native_supported:
+				# Keep the canvas-centre direction while maintaining readable UI
+				# angular size for distant screens. Native overlays need no hole.
+				offset = maxf(.025, toward_eye.length() - 1.4)
 			pose.origin += normal * minf(offset, maxf(.025, toward_eye.length() - .4))
 			pose.basis = facing
 		var bar_offset: float = -player_menu.panel_lift if player_menu.section == 0 else 0.0
@@ -1354,6 +1372,7 @@ func _place_menu(menu: Node3D) -> void:
 	if pose == null:
 		menu.transform = Transform3D(Basis.IDENTITY, Vector3(0, 1.6 - drop, -1.55))
 	else:
+		# Menus open parallel to the view, including its pitch.
 		menu.global_transform = pose
 		view_follow.capture(_menu_key(menu), head, pose)
 
@@ -1415,12 +1434,15 @@ func _canvas_controls_snapshot() -> Dictionary:
 	var normal: Vector3 = viewer.subtitle_transform().basis.z
 	var timeline: Vector3 = player_menu.to_global(Vector3(0, PlayerMenu.BAR_SEEK_Y, 0))
 	var toward_eye := (_eye() - timeline).normalized()
+	var view_normal: Vector3 = viewer.view_camera.global_basis.z.normalized() if is_instance_valid(viewer.view_camera) else toward_eye
 	return {"grab_action": "grip_click", "controls_action": "trigger_click",
 		"grab_hand": str(_grab.get("hand", "")), "menu_visible": player_menu.visible,
 		"canvas_origin": [centre.x, centre.y, centre.z], "canvas_normal": [normal.x, normal.y, normal.z],
 		"timeline_centre": [timeline.x, timeline.y, timeline.z], "menu_section": player_menu.section,
 		"menu_normal": [player_menu.global_basis.z.x, player_menu.global_basis.z.y, player_menu.global_basis.z.z],
 		"menu_facing_eye_dot": player_menu.global_basis.z.normalized().dot(toward_eye),
+		"menu_facing_view_dot": player_menu.global_basis.z.normalized().dot(view_normal),
+		"ui_compositor": menu_compositor.snapshot() if is_instance_valid(menu_compositor) else {},
 		"canvas_horizontal_up_dot": viewer.panel.global_basis.x.normalized().dot(Vector3.UP),
 		"scope": "Application pose/input state; physical button presses are not independently certified"}
 

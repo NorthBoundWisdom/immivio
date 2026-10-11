@@ -29,7 +29,8 @@ func _run() -> void:
 	video.requested_play = true
 	var camera := Camera3D.new()
 	root.add_child(camera); camera.position = Vector3(0, 1.6, 0)
-	camera.rotation.y = 1.2 # The viewer is looking away from the relocated canvas.
+	camera.rotation.y = .12 # Canvas is off-centre: eye-to-centre is not gaze direction.
+	camera.rotation.x = -.15
 	video.view_camera = camera
 	video.flat_pose = Transform3D(Basis(Vector3.UP, -.6) * Basis(Vector3.RIGHT, .2), Vector3(1.2, 2.1, -2.4))
 	video.screen_rotation = 20
@@ -52,13 +53,14 @@ func _run() -> void:
 	var timeline := menu.to_global(Vector3(0, Menu.BAR_SEEK_Y, 0))
 	check((timeline - camera.global_position).normalized().is_equal_approx((centre.origin - camera.global_position).normalized()),
 		"Timeline centre visually overlays relocated canvas, not head forward")
-	check(menu.global_basis.z.dot((camera.global_position - timeline).normalized()) > .99999,
-		"Controls face the eyes rather than inheriting an oblique canvas plane")
-	check(absf(menu.global_basis.x.dot(Vector3.UP)) < .00001, "Control rows stay level without head/image roll")
+	check(menu.global_basis.z.dot(camera.global_basis.z) > .99999,
+		"Controls are perpendicular to the actual gaze, including pitch")
+	check(absf(menu.global_basis.x.dot(camera.global_basis.y)) < .00001, "Control rows stay level in the current view")
 	var stable_pose := menu.global_transform
 	camera.rotation.z = .2; camera.position.x += .02
 	main._update_player_menu_anchor()
-	check(menu.global_transform.is_equal_approx(stable_pose), "Small head motion does not continually rotate or reposition flat controls")
+	check(menu.global_basis.is_equal_approx(camera.global_basis) and not menu.global_basis.is_equal_approx(stable_pose.basis),
+		"Idle controls stay parallel to the view when the head orientation changes")
 	menu.section = 1
 	main._update_player_menu_anchor()
 	check((menu.global_position - camera.global_position).normalized().is_equal_approx((centre.origin - camera.global_position).normalized()),
@@ -109,10 +111,11 @@ func _run() -> void:
 	main._on_pointer_button("grip_click", "left_hand")
 	check(main._grab.is_empty() and menu.visible, "Grip cannot steal a captured slider")
 	var captured_pose := menu.global_transform
+	camera.rotation.x += .2
 	video.flat_pose.origin.x += .3
 	video._apply_geometry()
 	main._update_player_menu_anchor()
-	check(menu.global_transform.is_equal_approx(captured_pose), "Captured slider plane stays fixed when the canvas changes")
+	check(menu.global_transform.is_equal_approx(captured_pose), "Captured slider plane stays fixed when the canvas or gaze changes")
 	main._on_pointer_release("trigger_click", "right_hand")
 	check(not menu.has_pointer_capture(), "Trigger release ends slider capture")
 	main._update_player_menu_anchor()
@@ -131,8 +134,8 @@ func _run() -> void:
 	video.geometry = 0; video.flat_pose = Transform3D(Basis.IDENTITY, camera.global_position + Vector3.UP * 2)
 	video._apply_geometry(); main._place_menu(menu)
 	timeline = menu.to_global(Vector3(0, Menu.BAR_SEEK_Y, 0))
-	check(menu.global_basis.is_finite() and menu.global_basis.z.dot((camera.global_position - timeline).normalized()) > .99999,
-		"An overhead canvas has a finite viewer-facing control basis")
+	check(menu.global_basis.is_finite() and menu.global_basis.z.dot(camera.global_basis.z) > .99999,
+		"An overhead canvas still uses the view plane rather than tilting controls backwards")
 	menu.free(); library.free(); camera.free(); main.free(); video.free()
 	for failure in failures: push_error(failure)
 	print("Controller canvas: %d checks, %d failures" % [checks, failures.size()])

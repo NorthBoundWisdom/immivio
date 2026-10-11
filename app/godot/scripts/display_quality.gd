@@ -7,6 +7,7 @@ const AUTO := -1
 const DEFAULT := AUTO
 const TIER_DEFAULT := 1
 const MSAA := [Viewport.MSAA_2X, Viewport.MSAA_2X, Viewport.MSAA_4X]
+const FLAT_MSAA := [Viewport.MSAA_2X, Viewport.MSAA_4X, Viewport.MSAA_4X]
 const SHARPNESS := [0.0, 0.2, 0.4, 0.6]
 const SHARPNESS_NAMES := ["Off", "Low", "Medium", "High"]
 const DEFAULT_SHARPNESS := 0.2
