@@ -142,6 +142,7 @@ func _ready() -> void:
 	if gpu_adapter.is_empty(): gpu_adapter = RenderingServer.get_video_adapter_name()
 	low_end_gpu = Quality.is_low_end_gpu(gpu_adapter)
 	display.render_scale = Quality.render_scale(display_quality, low_end_gpu)
+	display.msaa_3d = Quality.MSAA[Quality.resolve(display_quality, low_end_gpu)]
 	display.configure(get_viewport(), world.environment, XRServer.find_interface("OpenXR"), desktop)
 	input_visuals = InputVisuals.new()
 	input_visuals.name = "InputVisuals"
@@ -1231,6 +1232,15 @@ func _on_photo_action(operation: String) -> void:
 			if operation.begins_with("photo_index_"): photo.select_image(int(operation.trim_prefix("photo_index_")))
 
 var _screen_uri := ""
+var _player_menu_anchor_key: Array = []
+var _player_menu_anchor_eye := Vector3.ZERO
+
+func _canvas_menu_anchor_key() -> Array:
+	var viewer := _viewer()
+	# The immersive sphere follows head translation, but its content orientation
+	# is stable. Do not continually rotate the controls with head tracking noise.
+	var pose: Variant = viewer.panel.global_transform if viewer.geometry == Geometry.Geometry.FLAT else viewer.subtitle_transform().basis
+	return [viewer.local_uri, viewer.geometry, pose, player_menu.section, photo_active]
 
 ## Standard screens stay upright; menus and following screens use the full head pose.
 func _head_pose() -> Variant:
@@ -1316,8 +1326,23 @@ func _place_menu(menu: Node3D) -> void:
 			# defines the picture centre, independently of the current head yaw.
 			pose = Transform3D(_viewer().subtitle_transform().basis, _eye())
 			pose.origin -= pose.basis.z * 1.4
+		var eye := _eye()
+		var toward_eye := eye - pose.origin
+		if toward_eye.length() > 0.1:
+			var normal := toward_eye.normalized()
+			var up := Vector3.UP if absf(normal.dot(Vector3.UP)) < .98 else Vector3.FORWARD
+			var facing := Basis.looking_at(-normal, up)
+			# Keep the whole viewer-facing panel in front of the video plane.
+			# Moving along the eye/centre ray preserves apparent canvas alignment.
+			var canvas_normal := pose.basis.z.normalized()
+			var clearance := .025 + absf(canvas_normal.dot(facing.x)) * .9 + absf(canvas_normal.dot(facing.y)) * 1.1
+			var offset := clearance / maxf(.1, absf(canvas_normal.dot(normal)))
+			pose.origin += normal * minf(offset, maxf(.025, toward_eye.length() - .4))
+			pose.basis = facing
 		var bar_offset: float = -player_menu.panel_lift if player_menu.section == 0 else 0.0
-		menu.global_transform = pose * Transform3D(Basis.IDENTITY, Vector3(0, bar_offset, 0.025))
+		menu.global_transform = pose * Transform3D(Basis.IDENTITY, Vector3(0, bar_offset, 0))
+		_player_menu_anchor_key = _canvas_menu_anchor_key()
+		_player_menu_anchor_eye = eye
 		return
 	var drop := (0.45 if player_menu.section == 0 else 0.0) if menu == player_menu else 0.05
 	if menu == player_menu:
@@ -1344,7 +1369,12 @@ func _update_player_menu_anchor() -> void:
 	# the plane during a captured slider drag so its target cannot move away.
 	if player_menu and _active_menu() == player_menu and not player_menu.has_pointer_capture() \
 		and not _viewer().local_uri.is_empty() and is_instance_valid(_viewer().get("panel")) and _viewer().panel.visible:
-		_place_menu(player_menu)
+		if _canvas_menu_anchor_key() != _player_menu_anchor_key:
+			_place_menu(player_menu)
+		elif _viewer().geometry != Geometry.Geometry.FLAT:
+			var eye := _eye()
+			player_menu.global_position += eye - _player_menu_anchor_eye
+			_player_menu_anchor_eye = eye
 
 func _toggle_player_menu() -> void:
 	_trigger_taps.clear()
@@ -1384,10 +1414,14 @@ func _canvas_controls_snapshot() -> Dictionary:
 	var centre: Vector3 = viewer.panel.global_position
 	var normal: Vector3 = viewer.subtitle_transform().basis.z
 	var timeline: Vector3 = player_menu.to_global(Vector3(0, PlayerMenu.BAR_SEEK_Y, 0))
+	var toward_eye := (_eye() - timeline).normalized()
 	return {"grab_action": "grip_click", "controls_action": "trigger_click",
 		"grab_hand": str(_grab.get("hand", "")), "menu_visible": player_menu.visible,
 		"canvas_origin": [centre.x, centre.y, centre.z], "canvas_normal": [normal.x, normal.y, normal.z],
 		"timeline_centre": [timeline.x, timeline.y, timeline.z], "menu_section": player_menu.section,
+		"menu_normal": [player_menu.global_basis.z.x, player_menu.global_basis.z.y, player_menu.global_basis.z.z],
+		"menu_facing_eye_dot": player_menu.global_basis.z.normalized().dot(toward_eye),
+		"canvas_horizontal_up_dot": viewer.panel.global_basis.x.normalized().dot(Vector3.UP),
 		"scope": "Application pose/input state; physical button presses are not independently certified"}
 
 func _restore_seek_settings() -> void:

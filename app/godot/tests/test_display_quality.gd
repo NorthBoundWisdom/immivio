@@ -34,6 +34,8 @@ func _run() -> void:
 	var main := Main.new()
 	main.settings_path = path
 	root.add_child(main)
+	check(main.get_viewport().msaa_3d == Viewport.MSAA_2X and main.display.capabilities().viewport_msaa_3d == Viewport.MSAA_2X,
+		"Default eye-buffer geometry uses 2x MSAA and reports the active viewport setting")
 	main.recent_menu.section = main.recent_menu.Section.SETTINGS
 	main.recent_menu.tab = main.recent_menu.DISPLAY_TAB
 	main.recent_menu.refresh()
@@ -45,6 +47,7 @@ func _run() -> void:
 	check(not bool(ProjectSettings.get_setting("xr/openxr/extensions/meta/dynamic_resolution", true)), "Runtime cannot silently lower chosen video/menu render quality")
 	check(main.display.capabilities().meta_dynamic_resolution_enabled == false and main.display.capabilities().render_target_size_scope == "allocated_eye_buffer", "Diagnostics distinguish allocated buffers from dynamic render regions")
 	check(main.display.render_scale == 1.1, "Quality keeps current XR targets until restart")
+	check(main.get_viewport().msaa_3d == Viewport.MSAA_2X, "MSAA quality also waits for restart")
 	check(main._library_settings().display_quality_pending, "Pending quality is visible")
 	check(main.video.sharpness == 0.4 and main.photo.sharpness == 0.4, "Sharpness applies to both media types")
 	check(main.photo._detail_material.get_shader_parameter("sharpness") == 0.4, "Photo magnifier matches")
@@ -64,6 +67,7 @@ func _run() -> void:
 	main.settings_path = path
 	root.add_child(main)
 	check(main.display.render_scale == 1.25, "Restart applies saved quality globally")
+	check(main.get_viewport().msaa_3d == Viewport.MSAA_4X, "High quality applies 4x geometry MSAA after restart")
 	check(not main._library_settings().display_quality_pending, "Restart clears pending label")
 	check(not main.low_end_gpu and main.video.sharpness == 0.0, "Desktop renderer is not low end and keeps the saved sharpness")
 	main.platform_plugin = host

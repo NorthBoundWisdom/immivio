@@ -6,6 +6,7 @@ const SCALES := [1.0, 1.1, 1.25]
 const AUTO := -1
 const DEFAULT := AUTO
 const TIER_DEFAULT := 1
+const MSAA := [Viewport.MSAA_2X, Viewport.MSAA_2X, Viewport.MSAA_4X]
 const SHARPNESS := [0.0, 0.2, 0.4, 0.6]
 const SHARPNESS_NAMES := ["Off", "Low", "Medium", "High"]
 const DEFAULT_SHARPNESS := 0.2
@@ -23,9 +24,11 @@ static func load_quality(settings: ConfigFile) -> int:
 		return 0 if scale <= 1.0 else (1 if scale < 1.2 else 2)
 	return DEFAULT
 
+static func resolve(choice: int, low_end: bool) -> int:
+	return (0 if low_end else TIER_DEFAULT) if choice == AUTO else clampi(choice, 0, SCALES.size() - 1)
+
 static func render_scale(choice: int, low_end: bool) -> float:
-	if choice == AUTO: return SCALES[0 if low_end else TIER_DEFAULT]
-	return SCALES[clampi(choice, 0, SCALES.size() - 1)]
+	return SCALES[resolve(choice, low_end)]
 
 ## Adreno 6xx and older (XR2 Gen1 / XR2+) are low end; 7xx (XR2 Gen2) and unknown GPUs are not.
 static func is_low_end_gpu(adapter: String) -> bool:

@@ -11,6 +11,7 @@ var applied_passthrough := false
 var session_state := "uninitialized"
 var error_code := ""
 var render_scale := 1.0
+var msaa_3d := Viewport.MSAA_2X
 var scenery: Sky
 var scenery_rotation := Vector3.ZERO
 
@@ -26,6 +27,9 @@ func configure(target_viewport: Viewport, target_environment: Environment, inter
 	environment = target_environment
 	xr = interface
 	preview = desktop_preview
+	# Smooth geometry silhouettes in the eye buffers, including the video quad.
+	# Source-video sharpening cannot antialias the mesh boundary.
+	viewport.msaa_3d = msaa_3d
 	_set_background(false)
 	if preview:
 		session_state = "desktop_preview"
@@ -140,6 +144,7 @@ func capabilities() -> Dictionary:
 		"performance_levels": performance_levels,
 		"foveation_level": foveation_level,
 		"render_scale": render_scale,
+		"viewport_msaa_3d": viewport.msaa_3d if viewport else Viewport.MSAA_DISABLED,
 		# Vendors can shrink the actual render region without changing the allocated eye buffers.
 		"meta_dynamic_resolution_enabled": bool(ProjectSettings.get_setting("xr/openxr/extensions/meta/dynamic_resolution", true)),
 		"render_target_size_scope": "allocated_eye_buffer",

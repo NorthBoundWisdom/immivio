@@ -19,15 +19,20 @@ internal class PairDisplayGate(private val scope: MediaSessionGate.Scope, privat
     var ackCount = 0L; private set
     var detachCount = 0L; private set
     var replacedCount = 0L; private set
+    var rejectedCount = 0L; private set
+    var clockCorrections = 0L; private set
 
     private fun accepts(id: FramePairGate.Identity) = alive && id.decoderId == scope.decoderId &&
         id.logicalSessionId == scope.logicalSessionId && id.generation == scope.generation &&
-        id.slotToken > 0 && id.frameId >= frame && id.ptsUs >= pts && id.formatRevision > 0 &&
+        id.slotToken > 0 && id.frameId >= frame && id.ptsUs >= 0 &&
+        (id.playbackClockEstimate || id.ptsUs >= pts) && id.formatRevision > 0 &&
         id.effectRevision > 0 && id.modelGeneration > 0
 
     /** Retire the returned token. A rejected input returns its own token. */
     fun offer(id: FramePairGate.Identity): Long? {
-        if (!accepts(id) || claims.containsKey(id.slotToken) || ready.any { it.slotToken == id.slotToken }) return id.slotToken
+        if (!accepts(id) || claims.containsKey(id.slotToken) || ready.any { it.slotToken == id.slotToken }) {
+            rejectedCount++; return id.slotToken
+        }
         val obsolete = if (ready.size >= depth) ready.removeFirst().slotToken else null
         if (obsolete != null) replacedCount++
         ready.addLast(id)
@@ -43,6 +48,10 @@ internal class PairDisplayGate(private val scope: MediaSessionGate.Scope, privat
     fun acknowledge(token: Long): Boolean {
         val id = claims[token] ?: return false
         if (!accepts(id) || token in acknowledged) return false
+        // Public libmpv supplies a playback-clock estimate. After a keyframe
+        // seek it can correct backwards from the requested time to the landed
+        // time. Transaction/frame ordering still prevents stale presentation.
+        if (id.playbackClockEstimate && id.ptsUs < pts) clockCorrections++
         frame = id.frameId; pts = id.ptsUs; acknowledged.add(token); ackCount++
         return true
     }
