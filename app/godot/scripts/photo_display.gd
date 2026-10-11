@@ -1410,7 +1410,7 @@ func _exit_tree() -> void:
 
 func can_portrait() -> bool:
 	var selected: bool = gallery.mode in [Gallery.Layout.SINGLE, Gallery.Layout.SIDES] or (gallery.focus == index and gallery.progress >= 1 and not gallery.returning)
-	return selected and not loading and _texture != null and geometry == 0 and not stereo_sbs \
+	return ai_available() and selected and not loading and _texture != null and geometry == 0 and not stereo_sbs \
 		and not _metadata.get("native_stereo",false) and _display_request > 0 \
 		and Methods.supports(platform,"prepare_photo_3d") and Methods.supports(platform,"prepare_photo_portrait")
 

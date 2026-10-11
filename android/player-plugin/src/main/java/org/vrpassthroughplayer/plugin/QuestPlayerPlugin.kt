@@ -94,12 +94,12 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     }
     @UsedByGodot fun cancel_photo(id: Int) { photos.cancel(id); photoPreloads.cancel(id) }
     @UsedByGodot fun release_photo(id: Int) { photos.release(id); photoPreloads.release(id) }
-    @UsedByGodot fun prepare_photo_portrait(id: Int, token: Int, strength: Double): Boolean = !closed.get() && photos.portrait(id,token,strength.toFloat())
+    @UsedByGodot fun prepare_photo_portrait(id: Int, token: Int, strength: Double): Boolean = BuildConfig.ENABLE_AI && !closed.get() && photos.portrait(id,token,strength.toFloat())
     @UsedByGodot fun cancel_photo_portrait(token: Int) = photos.cancelPortrait(token)
-    @UsedByGodot fun prepare_photo_depth(id: Int): Boolean = !closed.get() && photos.depth(id)
-    @UsedByGodot fun prepare_preloaded_photo_depth(id: Int): Boolean = !closed.get() && (photoPreloads.depth(id) || photos.depth(id,background=true))
-    @UsedByGodot fun prepare_photo_3d(id: Int, strength: Double): Boolean = !closed.get() && photos.depth(id,strength.toFloat(),true)
-    @UsedByGodot fun prepare_preloaded_photo_3d(id: Int, strength: Double): Boolean = !closed.get() && (photoPreloads.depth(id,strength.toFloat(),true) || photos.depth(id,strength.toFloat(),true,true))
+    @UsedByGodot fun prepare_photo_depth(id: Int): Boolean = BuildConfig.ENABLE_AI && !closed.get() && photos.depth(id)
+    @UsedByGodot fun prepare_preloaded_photo_depth(id: Int): Boolean = BuildConfig.ENABLE_AI && !closed.get() && (photoPreloads.depth(id) || photos.depth(id,background=true))
+    @UsedByGodot fun prepare_photo_3d(id: Int, strength: Double): Boolean = BuildConfig.ENABLE_AI && !closed.get() && photos.depth(id,strength.toFloat(),true)
+    @UsedByGodot fun prepare_preloaded_photo_3d(id: Int, strength: Double): Boolean = BuildConfig.ENABLE_AI && !closed.get() && (photoPreloads.depth(id,strength.toFloat(),true) || photos.depth(id,strength.toFloat(),true,true))
     @UsedByGodot fun cancel_preloaded_photo_depth() { photoPreloads.cancelBackgroundDepth(); photos.cancelBackgroundDepth() }
     @UsedByGodot fun update_photo_3d_strength(strength: Double) { photos.updateDepthStrength(strength.toFloat()); photoPreloads.updateDepthStrength(strength.toFloat()) }
     @UsedByGodot fun release_photo_depth_runtime() { photos.cancelDepth(); photoPreloads.cancelDepth(); PhotoDepthRuntime.release() }

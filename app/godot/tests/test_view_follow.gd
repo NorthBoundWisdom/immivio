@@ -158,14 +158,14 @@ func _run() -> void:
 	main.video_menu.section = 1; main.video_menu.refresh()
 	main._update_view_follow()
 	var lifted_local: Transform3D = main.xr_camera.global_transform.affine_inverse() * main.video_menu.global_transform
-	check(lifted_local.origin.is_equal_approx(bar_local.origin + Vector3(0,.45,0)), "Settings lift follows menu up axis while lying and is retained in follow")
+	check(lifted_local.origin.is_equal_approx(bar_local.origin + Vector3(0,main.video_menu.panel_lift,0)), "Settings lift follows menu up axis while lying and is retained in follow")
 	main.video_menu.section = 0; main.video_menu.refresh()
 	main._update_view_follow()
 	check((main.xr_camera.global_transform.affine_inverse() * main.video_menu.global_transform).is_equal_approx(bar_local), "Returning to playback restores local menu position")
 	main.video_menu._seek_hand = "left_hand"
 	var captured_menu: Transform3D = main.xr_camera.global_transform.affine_inverse() * main.video_menu.global_transform
 	var captured_screen := placement(main,main.video)
-	main.xr_camera.rotate_z(.2); main._update_view_follow()
+	main.xr_camera.rotate_z(.2); main._update_view_follow(); main._update_player_menu_anchor()
 	check((main.xr_camera.global_transform.affine_inverse() * main.video_menu.global_transform).is_equal_approx(captured_menu)
 		and placement(main,main.video).is_equal_approx(captured_screen), "Timeline capture keeps strict menu/screen follow during head movement")
 	main.video_menu._seek_hand = ""

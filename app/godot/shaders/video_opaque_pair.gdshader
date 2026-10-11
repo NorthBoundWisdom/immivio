@@ -24,9 +24,9 @@ void vertex() {
 }
 
 void fragment() {
-	vec2 shown_uv = eye_uv(UV, media_direction);
+	vec2 shown_uv = aligned_eye_uv(eye_uv(UV, media_direction));
 	vec2 local_uv = raw_eye_uv(shown_uv);
-	int eye = stereo_sbs ? (swap_eyes ? 1 - eye_index : eye_index) : 0;
+	int eye = source_eye();
 	vec2 eye_size = view_size();
 	vec2 p = clamp(local_uv, vec2(0.5) / eye_size, vec2(1.0) - vec2(0.5) / eye_size);
 	if (stereo_sbs && top_bottom) { p.y = (p.y + float(eye)) * 0.5; }
@@ -43,7 +43,7 @@ void fragment() {
 			texture(color_texture, clamp(p + vec2(step_uv.x, 0.0), lo, hi)).rgb,
 			texture(color_texture, clamp(p - vec2(step_uv.x, 0.0), lo, hi)).rgb);
 	}
-	ALBEDO = outside_lens(media_direction) ? vec3(0.0) : color_grade(rgb);
+	ALBEDO = (outside_lens(media_direction) || outside_alignment(shown_uv)) ? vec3(0.0) : color_grade(rgb);
 	if (!separate_subtitles) {
 		if (subtitle_enabled) {
 			vec4 caption = projected_caption(media_direction, eye_index);

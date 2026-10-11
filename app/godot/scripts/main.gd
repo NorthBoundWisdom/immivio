@@ -1361,6 +1361,8 @@ func _place_menu(menu: Node3D) -> void:
 		menu.global_transform = pose * Transform3D(Basis.IDENTITY, Vector3(0, bar_offset, 0))
 		_player_menu_anchor_key = _canvas_menu_anchor_key()
 		_player_menu_anchor_eye = eye
+		var head: Variant = _head_pose()
+		if head != null: view_follow.capture(_menu_key(menu), head, menu.global_transform)
 		return
 	var drop := (0.45 if player_menu.section == 0 else 0.0) if menu == player_menu else 0.05
 	if menu == player_menu:
@@ -1384,6 +1386,8 @@ func _active_menu() -> Node3D:
 	return null
 
 func _update_player_menu_anchor() -> void:
+	# Explicit head-follow owns menu placement, including captured interactions.
+	if view_follow.enabled: return
 	# Keep controls attached when projection/distance/content changes. Freeze
 	# the plane during a captured slider drag so its target cannot move away.
 	if player_menu and _active_menu() == player_menu and not player_menu.has_pointer_capture() \

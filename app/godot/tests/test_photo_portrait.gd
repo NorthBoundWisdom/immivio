@@ -11,6 +11,8 @@ class Host extends RefCounted:
 	var cancelled := []
 	var depth_requests := []
 	var fail_depth := false
+	var ai := true
+	func ai_enabled() -> bool: return ai
 	func prepare_photo_portrait(id: int, token: int, strength: float) -> bool:
 		requests.append({"id":id,"token":token,"strength":strength}); return true
 	func cancel_photo_portrait(token: int) -> void: cancelled.append(token)
@@ -42,6 +44,9 @@ func _run() -> void:
 	check(not photo.can_portrait(), "Unselected wall overview cannot start a multi-photo portrait effect")
 	photo.gallery.activate(0); photo.gallery._process(1)
 	check(photo.can_portrait() and not photo.depth_requested, "A selected ordinary photo can enter portrait without manually enabling 3D")
+	host.ai = false
+	check(not photo.can_portrait() and not photo.set_portrait(true) and host.requests.is_empty(), "Model-free build rejects portrait even when the native API exists")
+	host.ai = true
 	app.photo_menu.toggle()
 	var button: Dictionary = app.photo_menu._buttons.filter(func(b):return b.target == app.photo_menu.PHOTO_PORTRAIT)[0]
 	check(button.enabled, "The photo portrait control is available before any 3D conversion")

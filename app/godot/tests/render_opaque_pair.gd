@@ -65,6 +65,36 @@ func _run() -> void:
 							var a := actual.get_pixelv(xy); var b := reference.get_pixelv(xy)
 							if maxf(absf(a.r-b.r), maxf(absf(a.g-b.g), absf(a.b-b.b))) > 1.0/255.0 or a.a < .99:
 								failures.append("Opaque parity: rotation=%d stereo=%s eye=%d sharpness=%s captions=%s" % [rotation, stereo, eye, clarity, captions])
+	# Upstream stereo viewing/alignment must work on the opaque fast path too.
+	for selected in [0, 1, 2]:
+		for swap in [false, true]:
+			for vertical in [false, true]:
+				for eye in [0, 1]:
+					for material in [old, fast]:
+						material.set_shader_parameter("rotation_degrees", 0)
+						material.set_shader_parameter("stereo_sbs", true)
+						material.set_shader_parameter("test_eye", eye)
+						material.set_shader_parameter("viewing_eye", selected)
+						material.set_shader_parameter("swap_eyes", swap)
+						material.set_shader_parameter("top_bottom", vertical)
+						material.set_shader_parameter("stereo_offset", Vector2(.08, .06))
+						material.set_shader_parameter("bitmap_subtitle_enabled", false)
+					quad.material_override = old
+					await RenderingServer.frame_post_draw; await RenderingServer.frame_post_draw
+					var expected := viewport.get_texture().get_image()
+					quad.material_override = fast
+					await RenderingServer.frame_post_draw; await RenderingServer.frame_post_draw
+					var observed := viewport.get_texture().get_image()
+					for point in [Vector2i(0, 0), Vector2i(17, 29), Vector2i(32, 32), Vector2i(63, 63)]:
+						checks += 1
+						var a := expected.get_pixelv(point); var b := observed.get_pixelv(point)
+						if maxf(absf(a.r-b.r), maxf(absf(a.g-b.g), absf(a.b-b.b))) > 1.0/255.0:
+							failures.append("Opaque stereo viewing/alignment differs from reference")
+	for material in [old, fast]:
+		material.set_shader_parameter("viewing_eye", 0)
+		material.set_shader_parameter("swap_eyes", false)
+		material.set_shader_parameter("top_bottom", false)
+		material.set_shader_parameter("stereo_offset", Vector2.ZERO)
 	# Exercise the real native-handle binding too, without any video decoder.
 	await process_frame
 	var binding := preload("res://scripts/pair_texture_binding.gd").new()

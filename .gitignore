@@ -53,3 +53,4 @@ credentials/
 signing-identities.json
 thru3d-signing.json
 .freecm
+.DS_Store
