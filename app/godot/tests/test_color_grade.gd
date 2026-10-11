@@ -13,6 +13,14 @@ func check(ok: bool, message: String) -> void:
 func _initialize() -> void:
 	call_deferred("_run")
 
+func subtitle_slider_point(menu: Node3D, fraction: float) -> Vector3:
+	for target in menu.choices.sliders:
+		if menu.choices.targets[target].key == "subtitle_distance":
+			var slider: Dictionary = menu.choices.sliders[target]
+			var centre: Vector3 = menu.to_local(slider.node.global_position)
+			return menu.to_global(Vector3(centre.x + slider.left + slider.width * fraction, centre.y, 1))
+	return Vector3.ZERO
+
 func _run() -> void:
 	grade.adjust("exposure", 0.75)
 	var saved := grade.snapshot()
@@ -58,24 +66,27 @@ func _run() -> void:
 		elif key == "grade_reset": grade.reset_custom()
 		else: grade.adjust(key, value))
 	menu.adjustment_committed.connect(func(): commits += 1)
+	menu.setting_requested.connect(func(key: String, value: Variant):
+		if key == "subtitle_distance":
+			distance = value
+			commits += 1)
 	root.add_child(menu)
 	menu.toggle()
-	menu.section = 1
-	menu._activate(100 + Menu.OPERATIONS[1].find("subtitle_distance"))
-	check(menu._adjustment == "subtitle_distance", "Playback setting opens distance editor")
-	menu.press_pointer("right", menu.to_global(Vector3(0.63, 0.17, 1)), -menu.global_basis.z, true)
+	menu._activate(110)
+	check(menu._subtitle_open and menu.choices.sliders.keys().any(func(target): return menu.choices.targets[target].key == "subtitle_distance"), "Subtitle popup exposes distance editor")
+	menu.press_pointer("right", subtitle_slider_point(menu, 1), -menu.global_basis.z, true)
 	check(distance == 10 and commits == 0, "Ray press previews subtitle depth")
-	menu.update_pointer("left", menu.to_global(Vector3(0.03, 0.17, 1)), -menu.global_basis.z, true)
+	menu.update_pointer("left", subtitle_slider_point(menu, 0), -menu.global_basis.z, true)
 	check(distance == 10, "Other hand cannot move active slider")
 	menu.release_pointer("right", Vector3.ZERO, Vector3.ZERO, true)
-	check(commits == 1 and menu._adjust_hand.is_empty(), "Release saves and ends drag")
-	menu.press_pointer("right", menu.to_global(Vector3(0.03, 0.17, 1)), -menu.global_basis.z, true)
+	check(commits == 1 and not menu.has_pointer_capture(), "Release saves and ends drag")
+	menu.press_pointer("right", subtitle_slider_point(menu, 0), -menu.global_basis.z, true)
 	check(is_equal_approx(distance, 0.1), "Distance slider reaches near endpoint")
 	menu.release_pointer("right", Vector3.ZERO, Vector3.ZERO, true)
-	menu.press_pointer("right", menu.to_global(Vector3(0.33, 0.17, 1)), -menu.global_basis.z, true)
+	menu.press_pointer("right", subtitle_slider_point(menu, 0.5), -menu.global_basis.z, true)
 	check(absf(distance - 5.05) < 0.06, "Slider midpoint maps linearly to metres")
 	menu.release_pointer("right", Vector3.ZERO, Vector3.ZERO, true)
-	menu._activate(400)
+	menu._activate(Menu.PLAYBACK_SETTINGS)
 	menu._activate(100 + Menu.OPERATIONS[1].find("color_grade"))
 	menu._activate(411)
 	check(grade.preset == "Warm", "Preset selection")

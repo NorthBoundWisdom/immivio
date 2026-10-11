@@ -31,7 +31,7 @@
 
 公开仓库包含应用源码、必要资源、构建与模型修改脚本、第三方来源和测试。模型权重、编译依赖、签名密钥、个人媒体和研发记录不进入 Git。
 
-**全新克隆尚不能在缺少外部工具链和匹配模型时直接生成 APK。** 当前默认抠像模型是本项目修改并蒸馏的 RVM；本次源码发布没有托管其权重，上游 checkpoint 不能直接替代。具体文件、SHA256、导入方式和复现边界见 [模型说明](docs/MODELS.md)。本快照不宣称已经完成现有 APK 的完整对应源码交付。
+**AI 功能可在构建时关闭。** 无 AI 的 Python 构建流程会自动准备并校验非 AI 依赖，本机工具链要求见 [构建说明](docs/BUILD.md)。基础视频/图片播放、已有立体视频、文本字幕及媒体浏览仍可使用。标准 mpv 还有其他能力边界，例如不支持 PGS 位图字幕，不能验证精确源帧 PTS；详见 [构建模式对照](docs/BUILD.md#build-modes-and-compatibility)。默认 AI 构建仍需要本项目修改并蒸馏的 RVM；本次源码发布没有托管其权重，上游 checkpoint 不能直接替代。具体文件、SHA256、导入方式和复现边界见 [模型说明](docs/MODELS.md)。本快照不宣称已经完成现有 APK 的完整对应源码交付。
 
 不依赖模型和 Android SDK 的源码检查：
 
@@ -41,7 +41,15 @@ $env:GODOT_EXE = (Get-Command godot).Source
 ./tools/Test-Source.ps1
 ```
 
-Android 构建需先完成 [环境准备](docs/BUILD.md)，再导入自行取得且有权使用的版本匹配模型：
+Android 构建需先完成 [环境准备](docs/BUILD.md)。AI 构建另需导入自行取得且有权使用的版本匹配模型。
+
+基础播放器可以不带 AI 构建；准备好 Godot Android 模板、Go、JDK 和 Android SDK 后，跨平台入口会校验并获取标准 mpv 库、从源码构建 OpenList AAR：
+
+```sh
+python3 tools/build_player.py --vendor Quest --build-type Release
+```
+
+`--vendor Pico`、`--vendor OpenXR` 选择其他 Android 目标。以下为保留的 AI 构建流程：
 
 ```powershell
 $env:THRU3D_TOOL_ROOT = Join-Path $HOME '.cache/thru3d-toolchain'

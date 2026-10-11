@@ -111,6 +111,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     init { DiagnosticRequests.attach(this) }
 
     override fun getPluginName() = "QuestPlayer"
+    @UsedByGodot fun ai_enabled(): Boolean = BuildConfig.ENABLE_AI
 
     /** Use the engine host's process restart/termination path so XR is created afresh. */
     @UsedByGodot fun finish_app(restart: Boolean) {

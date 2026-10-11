@@ -491,7 +491,7 @@ func _resolved_mode(target: int, info: Dictionary) -> Dictionary:
 
 func _requires_depth(target: int, info: Dictionary) -> bool:
 	var mode := _resolved_mode(target, info)
-	return auto_depth and platform != null and int(mode.geometry) == Geometry.Geometry.FLAT and not mode.stereo_sbs
+	return ai_available() and auto_depth and platform != null and int(mode.geometry) == Geometry.Geometry.FLAT and not mode.stereo_sbs
 
 func _prepare_display(result: Dictionary, job: Dictionary) -> void:
 	if result.has("error") or not _requires_depth(int(job.index), result.info):
@@ -554,7 +554,7 @@ func _accept(result: Dictionary, job: Dictionary) -> void:
 		_depth_texture = ImageTexture.create_from_image(_display_depth_data.image)
 		_depth_rect = _display_depth_data.rect
 		if _display_depth_data.has("stereo_image"): _stereo_texture = ImageTexture.create_from_image(_display_depth_data.stereo_image)
-		depth_requested = auto_depth; depth_enabled = auto_depth
+		depth_requested = ai_available() and auto_depth; depth_enabled = depth_requested
 	_display_info = result.info
 	_display_result = result if geometry == Geometry.Geometry.FLAT and result.image.get_data().size() <= CACHE_IMAGE_BYTES else {}
 	_prefetch_failed.erase(index)
@@ -877,7 +877,11 @@ func _update_inspect() -> void:
 	_detail_material.set_shader_parameter("detail_right", right)
 	_detail_material.set_shader_parameter("detail_up", right.cross(forward).normalized())
 
+func ai_available() -> bool:
+	return preload("res://scripts/ai_features.gd").available(platform)
+
 func set_depth(enabled: bool) -> bool:
+	if enabled and not ai_available(): return false
 	if enabled and (stereo_sbs or geometry != 0 or not platform or _display_request <= 0): return false
 	if enabled != depth_requested: _unlock_mode()
 	auto_depth = enabled
@@ -1041,7 +1045,7 @@ func snapshot() -> Dictionary:
 		"inspect": inspect, "zoom": magnification, "inspect_magnification": inspect_magnification,
 		"screen_distance": screen_distance, "screen_scale": screen_scale,
 		"depth_requested": depth_requested, "depth_enabled": depth_enabled,
-		"depth_available": platform != null, "depth_strength": depth_strength, "depth_error": depth_error,
+		"depth_available": ai_available() and platform != null, "depth_strength": depth_strength, "depth_error": depth_error,
 		"stereo_strategy":_display_depth_data.get("strategy", "inverse_shader"), "stereo_ready":_stereo_texture != null,
 		"render_strength":_display_depth_data.get("strength", depth_strength),
 		"source_size": "%d × %d" % [int(_size.x), int(_size.y)], "error": error, "screen_curve": screen_curve}

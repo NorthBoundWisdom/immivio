@@ -8,8 +8,13 @@ param([string]$ToolRoot = $(if ($env:THRU3D_TOOL_ROOT) { $env:THRU3D_TOOL_ROOT }
     # Dedicated device diagnostics only; normal Debug APKs contain no test media/oracles.
     [switch]$IncludeDiagnostics,
     # Version-matched assets imported with tools/Import-ModelAssets.ps1.
-    [switch]$UsePreparedModelAssets)
+    [switch]$UsePreparedModelAssets,
+    # Base playback without inference libraries or model assets.
+    [switch]$WithoutAI)
 $ErrorActionPreference = 'Stop'
+if ($WithoutAI -and ($IncludeDiagnostics -or $UsePreparedModelAssets)) { throw '-WithoutAI cannot be combined with model/AI diagnostic options.' }
+if ($WithoutAI -and -not $PSBoundParameters.ContainsKey('MpvCandidate')) { $MpvCandidate = 'OfficialRelease' }
+if ($MpvCandidate -eq 'OfficialRelease' -and -not $WithoutAI) { throw 'Official mpv is supported only with -WithoutAI.' }
 if (-not $ApkName) {
     $ApkName = if ($BuildType -eq 'Release') {
         switch ($XrVendor) {
@@ -54,7 +59,7 @@ try {
         try { $buildLockHeld = $buildMutex.WaitOne() }
         catch [Threading.AbandonedMutexException] { $buildLockHeld = $true }
     }
-. "$PSScriptRoot\environment\Activate-QuestEnvironment.ps1" -ToolRoot $ToolRoot
+. "$PSScriptRoot\environment\Activate-QuestEnvironment.ps1" -ToolRoot $ToolRoot -WithoutAI:$WithoutAI
 # Bouncy Castle contains newer-JDK multi-release entries. It has no Android support
 # library references to rewrite; old Jetifier must leave this pure Java jar alone.
 [Environment]::SetEnvironmentVariable('ORG_GRADLE_PROJECT_android.jetifier.ignorelist',
@@ -75,7 +80,9 @@ $logDirectory = Join-Path $artifactDirectory 'logs'
 New-Item -ItemType Directory -Path $logDirectory -Force | Out-Null
 $engineVersion = (& $env:GODOT_EXE --headless --version 2>&1 | Out-String).Trim()
 if ($engineVersion -ne '4.7.2.stable.official.ed1daf0bf') { throw "Godot differs from the locked version: $engineVersion" }
-if ($UsePreparedModelAssets) {
+if ($WithoutAI) {
+    Write-Output 'Building base player without AI libraries/models.'
+} elseif ($UsePreparedModelAssets) {
     if ($IncludeDiagnostics) { throw 'Prepared runtime assets do not include full diagnostics.' }
     & "$workspace/tools/Import-ModelAssets.ps1" -VerifyOnly
 } else {
@@ -96,10 +103,10 @@ if (-not (Test-Path -LiteralPath $godotApi)) {
         [IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $godotApi, $false)
     } finally { $archive.Dispose() }
 }
-& "$PSScriptRoot\environment\Prepare-OpenList.ps1" -ToolRoot $ToolRoot
+& "$PSScriptRoot\environment\Prepare-OpenList.ps1" -ToolRoot $ToolRoot -WithoutAI:$WithoutAI
 # A cold Gradle daemon prints an SDK XML warning on stderr; only the exit code decides.
 $ErrorActionPreference = 'Continue'
-& "$workspace\android\gradlew.bat" -p "$workspace\android" "-PgodotAarPath=$godotApi" "-PincludeDiagnostics=$($IncludeDiagnostics.IsPresent.ToString().ToLowerInvariant())" :player-plugin:assembleDebug :player-plugin:assembleRelease $(if ($SkipUnitTests) { @() } else { @(':player-plugin:testDebugUnitTest') }) --console=plain 2>&1 | Out-File (Join-Path $logDirectory 'plugin-build.log') -Encoding utf8
+& "$workspace\android\gradlew.bat" -p "$workspace\android" "-PgodotAarPath=$godotApi" "-PenableAi=$((-not $WithoutAI).ToString().ToLowerInvariant())" "-PstandardMpv=$(($MpvCandidate -eq 'OfficialRelease').ToString().ToLowerInvariant())" "-PincludeDiagnostics=$($IncludeDiagnostics.IsPresent.ToString().ToLowerInvariant())" :player-plugin:assembleDebug :player-plugin:assembleRelease $(if ($SkipUnitTests) { @() } else { @(':player-plugin:testDebugUnitTest') }) --console=plain 2>&1 | Out-File (Join-Path $logDirectory 'plugin-build.log') -Encoding utf8
 $ErrorActionPreference = 'Stop'
 if ($LASTEXITCODE -ne 0) { throw 'Android plugin build failed; inspect artifacts/logs/plugin-build.log.' }
 $pluginDirectory = Join-Path $projectDirectory 'addons\quest_player\bin'
@@ -301,58 +308,70 @@ try {
             throw 'Normal player APK contains diagnostic media or numerical oracles.'
         }
     }
-    $rvmBundlePath = Join-Path $workspace 'android\player-plugin\src\main\assets\rvm\bundle_manifest.json'
-    $rvmBundle = Get-Content $rvmBundlePath -Raw | ConvertFrom-Json
-    $packagedRvmAssets = @($rvmBundle.assets | Where-Object { $IncludeDiagnostics -or $_.path -eq 'rvm/RVM_GPL-3.0.txt' })
-    foreach ($asset in $packagedRvmAssets) {
-        $entry = $apkArchive.GetEntry('assets/' + $asset.path)
-        if (-not $entry -or $entry.Length -ne $asset.bytes) { throw "Missing or wrong size RVM asset: $($asset.path)" }
-        $stream = $entry.Open()
-        $sha = [Security.Cryptography.SHA256]::Create()
-        try { $hash = (Convert-HexString ($sha.ComputeHash($stream))).ToLowerInvariant() }
-        finally { $stream.Dispose(); $sha.Dispose() }
-        if ($hash -ne $asset.sha256) { throw "Wrong hash for packaged RVM asset: $($asset.path)" }
+    $requiredModels = @()
+    $packagedRvmAssets = @()
+    $rvmBundle = $null
+    if (-not $WithoutAI) {
+        $rvmBundlePath = Join-Path $workspace 'android\player-plugin\src\main\assets\rvm\bundle_manifest.json'
+        $rvmBundle = Get-Content $rvmBundlePath -Raw | ConvertFrom-Json
+        $packagedRvmAssets = @($rvmBundle.assets | Where-Object { $IncludeDiagnostics -or $_.path -eq 'rvm/RVM_GPL-3.0.txt' })
+        foreach ($asset in $packagedRvmAssets) {
+            $entry = $apkArchive.GetEntry('assets/' + $asset.path)
+            if (-not $entry -or $entry.Length -ne $asset.bytes) { throw "Missing or wrong size RVM asset: $($asset.path)" }
+            $stream = $entry.Open()
+            $sha = [Security.Cryptography.SHA256]::Create()
+            try { $hash = (Convert-HexString ($sha.ComputeHash($stream))).ToLowerInvariant() }
+            finally { $stream.Dispose(); $sha.Dispose() }
+            if ($hash -ne $asset.sha256) { throw "Wrong hash for packaged RVM asset: $($asset.path)" }
+        }
+        if (-not $IncludeDiagnostics -and ($apkArchive.Entries | Where-Object { $_.FullName -match '^assets/rvm/.*\.(bin|param)$' -or $_.FullName -eq 'assets/rvm-mnn/rvm_quality.mnn' })) {
+            throw 'Normal player APK contains unused diagnostic/quality models.'
+        }
+        $mnnManifest = Get-Content (Join-Path $projectDirectory '..\..\android\player-plugin\src\main\assets\rvm-mnn\manifest.json') -Raw | ConvertFrom-Json
+        $depthManifest = Get-Content (Join-Path $projectDirectory '..\..\android\player-plugin\src\main\assets\depth-mnn\manifest.json') -Raw | ConvertFrom-Json
+        $photoDepthManifest = Get-Content (Join-Path $workspace 'android\player-plugin\src\main\assets\depth-mnn\photo_manifest.json') -Raw | ConvertFrom-Json
+        if ($photoDepthManifest.width -ne 518 -or $photoDepthManifest.height -ne 518 -or $photoDepthManifest.usage -ne 'photo') { throw 'Photo depth model profile differs.' }
+        $requiredModels = @(@('rvm-mnn/rvm.mnn', $mnnManifest.mnn_sha256), @('depth-mnn/depth.mnn', $depthManifest.mnn_sha256), @('depth-mnn/photo_depth.mnn', $photoDepthManifest.mnn_sha256))
+        if ($IncludeDiagnostics) { $requiredModels += ,@('rvm-mnn/rvm_quality.mnn', $mnnManifest.quality_mnn_sha256) }
+        foreach ($model in $requiredModels) {
+            $entry = $apkArchive.GetEntry('assets/' + $model[0])
+            if (-not $entry) { throw "APK is missing playback model $($model[0])" }
+            $modelStream = $entry.Open()
+            $modelSha = [Security.Cryptography.SHA256]::Create()
+            try { $modelHash = (Convert-HexString ($modelSha.ComputeHash($modelStream))).ToLowerInvariant() }
+            finally { $modelStream.Dispose(); $modelSha.Dispose() }
+            if ($modelHash -ne $model[1]) { throw "APK playback model hash differs: $($model[0])" }
+        }
+    } elseif ($apkArchive.Entries | Where-Object { $_.FullName -match '^assets/(rvm|rvm-mnn|depth-mnn)/|^lib/.*/lib(quest_rvm|MNN[^/]*|ncnn)\.so$' }) {
+        throw 'Base player APK contains AI assets/libraries.'
     }
-    if (-not $IncludeDiagnostics -and ($apkArchive.Entries | Where-Object { $_.FullName -match '^assets/rvm/.*\.(bin|param)$' -or $_.FullName -eq 'assets/rvm-mnn/rvm_quality.mnn' })) {
-        throw 'Normal player APK contains unused diagnostic/quality models.'
+    if (-not $apkArchive.GetEntry('lib/arm64-v8a/libquest_media.so')) { throw 'APK is missing the base file-management JNI library.' }
+    if (-not $WithoutAI) {
+        $nativeEntry = $apkArchive.GetEntry('lib/arm64-v8a/libquest_rvm.so')
+        if (-not $nativeEntry) { throw 'APK is missing the RVM JNI library.' }
+        $nativeEvidenceDirectory = Join-Path $artifactDirectory 'native'
+        New-Item -ItemType Directory -Path $nativeEvidenceDirectory -Force | Out-Null
+        $rvmLibrary = Join-Path $nativeEvidenceDirectory 'libquest_rvm.so'
+        [IO.Compression.ZipFileExtensions]::ExtractToFile($nativeEntry, $rvmLibrary, $true)
     }
-    $mnnManifest = Get-Content (Join-Path $projectDirectory '..\..\android\player-plugin\src\main\assets\rvm-mnn\manifest.json') -Raw | ConvertFrom-Json
-    $depthManifest = Get-Content (Join-Path $projectDirectory '..\..\android\player-plugin\src\main\assets\depth-mnn\manifest.json') -Raw | ConvertFrom-Json
-    $photoDepthManifest = Get-Content (Join-Path $workspace 'android\player-plugin\src\main\assets\depth-mnn\photo_manifest.json') -Raw | ConvertFrom-Json
-    if ($photoDepthManifest.width -ne 518 -or $photoDepthManifest.height -ne 518 -or $photoDepthManifest.usage -ne 'photo') { throw 'Photo depth model profile differs.' }
-    $requiredModels = @(@('rvm-mnn/rvm.mnn', $mnnManifest.mnn_sha256), @('depth-mnn/depth.mnn', $depthManifest.mnn_sha256), @('depth-mnn/photo_depth.mnn', $photoDepthManifest.mnn_sha256))
-    if ($IncludeDiagnostics) { $requiredModels += ,@('rvm-mnn/rvm_quality.mnn', $mnnManifest.quality_mnn_sha256) }
-    foreach ($model in $requiredModels) {
-        $entry = $apkArchive.GetEntry('assets/' + $model[0])
-        if (-not $entry) { throw "APK is missing playback model $($model[0])" }
-        $modelStream = $entry.Open()
-        $modelSha = [Security.Cryptography.SHA256]::Create()
-        try { $modelHash = (Convert-HexString ($modelSha.ComputeHash($modelStream))).ToLowerInvariant() }
-        finally { $modelStream.Dispose(); $modelSha.Dispose() }
-        if ($modelHash -ne $model[1]) { throw "APK playback model hash differs: $($model[0])" }
-    }
-    $nativeEntry = $apkArchive.GetEntry('lib/arm64-v8a/libquest_rvm.so')
-    if (-not $nativeEntry) { throw 'APK is missing the RVM JNI library.' }
-    $nativeEvidenceDirectory = Join-Path $artifactDirectory 'native'
-    New-Item -ItemType Directory -Path $nativeEvidenceDirectory -Force | Out-Null
-    $rvmLibrary = Join-Path $nativeEvidenceDirectory 'libquest_rvm.so'
-    [IO.Compression.ZipFileExtensions]::ExtractToFile($nativeEntry, $rvmLibrary, $true)
 } finally { $apkArchive.Dispose() }
-& "$env:ANDROID_NDK_HOME\toolchains\llvm\prebuilt\windows-x86_64\bin\llvm-readelf.exe" -h -d -l $rvmLibrary 2>&1 | Out-File (Join-Path $logDirectory 'rvm-elf.log') -Encoding utf8
-if ($LASTEXITCODE -ne 0) { throw 'RVM ELF inspection failed.' }
-$elfText = Get-Content (Join-Path $logDirectory 'rvm-elf.log') -Raw
-if ($elfText -notmatch 'Machine:\s+AArch64') { throw 'RVM JNI is not AArch64.' }
-$loadSegments = @($elfText -split "`n" | Where-Object { $_ -match '^\s*LOAD\s' })
-if ($loadSegments.Count -eq 0 -or @($loadSegments | Where-Object { $_ -notmatch '0x4000\s*$' }).Count -gt 0) { throw 'RVM ELF LOAD segment is not 16 KB aligned.' }
-& "$env:ANDROID_NDK_HOME\toolchains\llvm\prebuilt\windows-x86_64\bin\llvm-nm.exe" -D $rvmLibrary 2>&1 | Out-File (Join-Path $logDirectory 'rvm-symbols.log') -Encoding utf8
-if ($LASTEXITCODE -ne 0) { throw 'RVM JNI symbol inspection failed.' }
-$symbols = Get-Content (Join-Path $logDirectory 'rvm-symbols.log') -Raw
-foreach ($symbol in @('Java_org_vrpassthroughplayer_plugin_RvmNative_runBenchmark','Java_org_vrpassthroughplayer_plugin_RvmNative_setGeneration',
-    'Java_org_vrpassthroughplayer_plugin_RvmNative_runtimeCapabilities','Java_org_vrpassthroughplayer_plugin_RvmNative_prepareRuntime',
-    'Java_org_vrpassthroughplayer_plugin_RvmNative_processRuntime','Java_org_vrpassthroughplayer_plugin_RvmNative_resetRuntime',
-    'Java_org_vrpassthroughplayer_plugin_RvmNative_closeRuntime',
-    'Java_org_vrpassthroughplayer_plugin_DepthNative_createPhoto','Java_org_vrpassthroughplayer_plugin_DepthNative_processPhoto')) {
-    if (-not $symbols.Contains($symbol)) { throw "Missing native JNI symbol: $symbol" }
+if (-not $WithoutAI) {
+    & "$env:ANDROID_NDK_HOME\toolchains\llvm\prebuilt\windows-x86_64\bin\llvm-readelf.exe" -h -d -l $rvmLibrary 2>&1 | Out-File (Join-Path $logDirectory 'rvm-elf.log') -Encoding utf8
+    if ($LASTEXITCODE -ne 0) { throw 'RVM ELF inspection failed.' }
+    $elfText = Get-Content (Join-Path $logDirectory 'rvm-elf.log') -Raw
+    if ($elfText -notmatch 'Machine:\s+AArch64') { throw 'RVM JNI is not AArch64.' }
+    $loadSegments = @($elfText -split "`n" | Where-Object { $_ -match '^\s*LOAD\s' })
+    if ($loadSegments.Count -eq 0 -or @($loadSegments | Where-Object { $_ -notmatch '0x4000\s*$' }).Count -gt 0) { throw 'RVM ELF LOAD segment is not 16 KB aligned.' }
+    & "$env:ANDROID_NDK_HOME\toolchains\llvm\prebuilt\windows-x86_64\bin\llvm-nm.exe" -D $rvmLibrary 2>&1 | Out-File (Join-Path $logDirectory 'rvm-symbols.log') -Encoding utf8
+    if ($LASTEXITCODE -ne 0) { throw 'RVM JNI symbol inspection failed.' }
+    $symbols = Get-Content (Join-Path $logDirectory 'rvm-symbols.log') -Raw
+    foreach ($symbol in @('Java_org_vrpassthroughplayer_plugin_RvmNative_runBenchmark','Java_org_vrpassthroughplayer_plugin_RvmNative_setGeneration',
+        'Java_org_vrpassthroughplayer_plugin_RvmNative_runtimeCapabilities','Java_org_vrpassthroughplayer_plugin_RvmNative_prepareRuntime',
+        'Java_org_vrpassthroughplayer_plugin_RvmNative_processRuntime','Java_org_vrpassthroughplayer_plugin_RvmNative_resetRuntime',
+        'Java_org_vrpassthroughplayer_plugin_RvmNative_closeRuntime',
+        'Java_org_vrpassthroughplayer_plugin_DepthNative_createPhoto','Java_org_vrpassthroughplayer_plugin_DepthNative_processPhoto')) {
+        if (-not $symbols.Contains($symbol)) { throw "Missing native JNI symbol: $symbol" }
+    }
 }
 & "$env:ANDROID_HOME\cmdline-tools\latest\bin\apkanalyzer.bat" dex packages --defined-only $apkPath 2>&1 | Out-File (Join-Path $logDirectory 'apk-dex-packages.log') -Encoding utf8
 if ($LASTEXITCODE -ne 0) { throw 'APK DEX inspection failed.' }
@@ -423,10 +442,11 @@ $buildManifest = [ordered]@{
     passthrough_display = 'not_verified'
     video_implemented = $true
     video_device_validation = 'not_verified'
-    media_backend = 'Android libmpv private SourceFrame source; Godot player UI wired; device display/audio validation pending'
+    media_backend = if ($MpvCandidate -eq 'OfficialRelease') { 'Android standard libmpv render API; playback-clock estimates, no exact source PTS' } else { 'Android libmpv private SourceFrame source; device display/audio validation pending' }
     diagnostic_assets_included = $IncludeDiagnostics.IsPresent
     playback_models = @($requiredModels | ForEach-Object { $_[0] })
-    automatic_rvm_profile = '320x320'
+    ai_enabled = -not $WithoutAI
+    automatic_rvm_profile = if ($WithoutAI) { $null } else { '320x320' }
     calibration_fixture_sha256 = $fixtureHash
     media_dex_inspection = 'passed'
     subtitle_implemented = $true
@@ -470,21 +490,21 @@ $buildManifest = [ordered]@{
     alpha_mask_imported_sha256 = $maskImportedHash
     video_geometries = @('flat', 'half_equirect_180', 'fisheye_180')
     rvm_benchmark_implemented = $IncludeDiagnostics.IsPresent
-    rvm_model_bundled = $true
+    rvm_model_bundled = -not $WithoutAI
     rvm_model_param_sha256 = if ($IncludeDiagnostics) { $rvmBundle.param_sha256 } else { $null }
     rvm_model_bin_sha256 = if ($IncludeDiagnostics) { $rvmBundle.bin_sha256 } else { $null }
     rvm_assets = $packagedRvmAssets.Count
     rvm_profiles = @($rvmBundle.profiles | Where-Object { $IncludeDiagnostics -or $_.key -eq '320x320' } | ForEach-Object { $_.key })
     rvm_profile_param_sha256 = @($rvmBundle.profiles | Where-Object { $IncludeDiagnostics } | ForEach-Object { @{ profile = $_.key; sha256 = $_.param_sha256 } })
-    rvm_runtime_bridge_implemented = $true
+    rvm_runtime_bridge_implemented = -not $WithoutAI
     rvm_runtime_bridge_device_execution = 'not_verified'
-    rvm_jni_elf_symbols_checks = 'passed'
+    rvm_jni_elf_symbols_checks = if ($WithoutAI) { 'not_built' } else { 'passed' }
     rvm_device_execution = 'not_verified'
     rvm_implemented = $false
     controlled_decode_implemented = $true
-    video_rvm_probe_implemented = $true
+    video_rvm_probe_implemented = -not $WithoutAI
     video_rvm_probe_device_execution = 'not_verified_for_this_build'
-    video_rvm_alpha_gpu_upload = $true
+    video_rvm_alpha_gpu_upload = -not $WithoutAI
     video_rvm_alpha_gpu_device_execution = 'not_verified_for_this_build'
     video_rvm_pair_presented = $false
     playback_target_backend = 'libmpv_android; migration in progress'
@@ -494,7 +514,7 @@ $buildManifest = [ordered]@{
     mpv_core_device_execution = 'not_verified_for_this_build'
     mpv_gpu_device_execution = 'not_verified_for_this_build'
     mpv_gpu_rvm_integrated = $false
-    mpv_gpu_rvm_integration_code_present = $true
+    mpv_gpu_rvm_integration_code_present = -not $WithoutAI
     mpv_godot_display_device_verified = $false
     mpv_audio_device_verified = $false
     controlled_decode_device_execution = 'not_verified_for_this_build'

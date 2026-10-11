@@ -4,7 +4,7 @@ import org.junit.Test
 import java.nio.file.Files
 class DeleteTreeTest {
     @Test fun includesHiddenNonMediaAndDetectsChangedContents() {
-        val root = Files.createTempDirectory("tree-delete-plan").toFile()
+        val root = Files.createTempDirectory("tree-delete-plan").toFile().canonicalFile
         try {
             root.resolve("a.mp4").writeText("video")
             root.resolve("a.srt").writeText("subtitle")

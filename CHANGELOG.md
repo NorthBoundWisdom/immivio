@@ -4,6 +4,13 @@
 
 Newest first, following product release milestones. Some development/source snapshots contained features before their product release. Original APK identifiers `0.2` and `0.4` are retained; `0.4` was also called `0.4.0` in release notes. Availability depends on device, server and media capabilities.
 
+## Unreleased
+
+- Added an optional model-free build that excludes AI runtimes/assets and disables live inference controls while preserving ordinary playback and precomputed stereo/masks.
+- Added a verified standard-libmpv backend and portable Android build entry point; documented its source-timing, PGS and Dolby metadata limits separately from the project mpv backend.
+- Added Windows/macOS CI for model-free PICO, Quest and OpenXR Android packages, with dependency caches, package verification and optional isolated signing.
+- Updated the color-grading regression to exercise subtitle distance through the current subtitle popup.
+
 ## 0.5.1 — 2026-10-11
 
 - Added Plex phone/computer pairing, library browsing and original-file playback, with improved LAN connection selection.
