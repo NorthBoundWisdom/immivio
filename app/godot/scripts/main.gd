@@ -1172,7 +1172,7 @@ func _canvas_controls_snapshot() -> Dictionary:
 		"scope": "Application pose/input state; physical button presses are not independently certified"}
 
 func _restore_seek_settings() -> void:
-	video.seek_mode = video.SeekPolicy.normalize(settings.get_value("video", "seek_mode", video.SeekPolicy.SPEED))
+	video.seek_mode = video.SeekPolicy.normalize(settings.get_value("video", "seek_mode", video.SeekPolicy.DEFAULT))
 	video.bookmark_seek_mode = video.SeekPolicy.bookmark_override(settings.get_value("video", "bookmark_seek_mode", video.SeekPolicy.GLOBAL))
 
 func _library_settings() -> Dictionary:
