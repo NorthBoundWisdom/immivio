@@ -5,7 +5,7 @@ package org.vrpassthroughplayer.plugin
 internal class FramePairGate(private val scope: MediaSessionGate.Scope) {
     data class Identity(val decoderId: Int, val logicalSessionId: Int, val generation: Int,
         val frameId: Long, val ptsUs: Long, val formatRevision: Int, val effectRevision: Long,
-        val modelGeneration: Long, val slotToken: Long)
+        val modelGeneration: Long, val slotToken: Long, val playbackClockEstimate: Boolean = false)
     private var alive = true
     private var format = 1
     private var effect = 1L
@@ -39,7 +39,7 @@ internal class FramePairGate(private val scope: MediaSessionGate.Scope) {
     @Synchronized fun accepts(id: Identity): Boolean = alive && id.decoderId == scope.decoderId &&
         id.logicalSessionId == scope.logicalSessionId && id.generation == scope.generation &&
         id.formatRevision == format && id.effectRevision == effect && id.modelGeneration == model &&
-        id.slotToken > 0 && id.frameId >= presentedFrame && id.ptsUs >= presentedPts
+        !id.playbackClockEstimate && id.slotToken > 0 && id.frameId >= presentedFrame && id.ptsUs >= presentedPts
 
     @Synchronized fun matchesRuntime(id: Identity, logicalSession: Long, modelGeneration: Long,
         frameId: Long, ptsUs: Long): Boolean = accepts(id) && logicalSession == id.logicalSessionId.toLong() &&

@@ -59,6 +59,8 @@ internal class MpvVideoBridge(
         !debugZeroCopyDisabled
     private var audioFocus: MpvAudioFocus? = null // worker only
     @Volatile private var audioFocusState = "none"
+    private val lifecyclePauses = AtomicInteger(0)
+    private val audioFocusInterruptions = AtomicInteger(0)
 
     private inner class Host(val uri: String, val startMs: Int, val hardware: Boolean, val audio: Boolean, val exactStart: Boolean) {
         private val openNs = System.nanoTime()
@@ -138,6 +140,8 @@ internal class MpvVideoBridge(
         var captured = 0L
         var ownerDraws = 0L
         var uniquePostDrawFrames = 0L
+        var lastUniquePostDrawNs = 0L
+        var maxUniquePostDrawGapNs = 0L
         var lastPostDrawFrame = -1L
         var lastPostDrawEpoch = -1L
         var drawnToken = 0L
@@ -324,6 +328,7 @@ internal class MpvVideoBridge(
             }
             if (needsAudio && audioFocus == null) context()?.let { app ->
                 audioFocus = MpvAudioFocus(app) { change ->
+                    if (change != MpvAudioFocusGate.Change.GAIN) audioFocusInterruptions.incrementAndGet()
                     // Stop as soon as loss arrives; waiting for RVM work to
                     // finish must not keep audio playing over another app.
                     if (change != MpvAudioFocusGate.Change.GAIN) hosts.filter { !stopped && !it.closing && it.audioEnabled && it.audioAvailable }.forEach {
@@ -360,6 +365,10 @@ internal class MpvVideoBridge(
                             val frame = pair.getLong("frame_id")
                             val epoch = pair.getLong("source_epoch")
                             if (frame != session.lastPostDrawFrame || epoch != session.lastPostDrawEpoch) {
+                                val now = System.nanoTime()
+                                if (session.lastUniquePostDrawNs > 0L)
+                                    session.maxUniquePostDrawGapNs = maxOf(session.maxUniquePostDrawGapNs, now-session.lastUniquePostDrawNs)
+                                session.lastUniquePostDrawNs = now
                                 session.uniquePostDrawFrames++
                                 session.lastPostDrawFrame = frame
                                 session.lastPostDrawEpoch = epoch
@@ -416,10 +425,16 @@ internal class MpvVideoBridge(
                         .put("capture_to_ready_max_us", session.captureReadyMaxUs)
                         .put("display_claims", session.display.heldClaims()).put("post_draw_frames", session.ownerDraws)
                         .put("unique_post_draw_frames", session.uniquePostDrawFrames).put("rvm_model_created", session.model != null)
+                        .put("display_rejected_pairs", session.display.rejectedCount)
+                        .put("display_clock_corrections", session.display.clockCorrections)
+                        .put("post_draw_gap_max_us", session.maxUniquePostDrawGapNs / 1000L)
                         .put("rvm_model_ready", session.model?.isReady() == true)
                         .put("producer_copy_deferred", session.deferredCopies).put("producer_copy_pending", session.pendingSource != null)
                         .put("eof_pair_post_draw", session.end.complete()).put("eof_presented_slot", session.end.completedSlot())
-                        .put("audio_focus", audioFocusState))
+                        .put("audio_focus", audioFocusState).put("foreground", foreground)
+                        .put("requested_play", session.host.playing)
+                        .put("lifecycle_pauses", lifecyclePauses.get())
+                        .put("audio_focus_interruptions", audioFocusInterruptions.get()))
                     if (status.optString("state") == "failed" || status.optBoolean("render_failed"))
                         error(status.optString("error") + " " + status.optString("render_error"))
                 }
@@ -594,7 +609,11 @@ internal class MpvVideoBridge(
     }
     private fun identity(pair: JSONObject) = FramePairGate.Identity(pair.getInt("session_id"), pair.getInt("logical_session_id"),
         pair.getInt("generation"), pair.getLong("frame_id"), pair.getLong("pts_us"), pair.getInt("format_revision"),
-        pair.getLong("effect_revision"), pair.getLong("model_generation"), pair.getLong("slot_token"))
+        pair.getLong("effect_revision"), pair.getLong("model_generation"), pair.getLong("slot_token"),
+        playbackClockEstimate = !pair.optBoolean("source_pts_verified", true) &&
+            pair.optString("source_ticket_origin") == "standard_libmpv_render" && pair.optBoolean("source_ticket_valid") &&
+            !pair.optBoolean("alpha_requested", true) && !pair.optBoolean("depth_requested", true) &&
+            !pair.optBoolean("inference_ran", true) && !pair.optBoolean("depth_ran"))
     fun setDepthView(id: Int, shift: Double, convergence: Double): Boolean {
         val session = sessions[id] ?: return false
         if (!session.depth || shift !in 0.0..0.2 || convergence !in 0.0..1.0) return false
@@ -812,6 +831,7 @@ internal class MpvVideoBridge(
     }
     fun close(id: Int) { sessions[id]?.let { gate.invalidate(id); dispose(it, true) } }
     fun pause() {
+        lifecyclePauses.incrementAndGet()
         foreground = false; hosts.forEach { if (it.handle > 0) MpvSourceNative.setPlaying(it.handle, false) }
         refreshPlayback()
     }

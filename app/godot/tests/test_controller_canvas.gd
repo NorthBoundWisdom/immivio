@@ -49,10 +49,24 @@ func _run() -> void:
 	main._on_pointer_release("trigger_click", "right_hand")
 	check(menu.visible, "Trigger tap opens controls on release")
 	var centre := video.subtitle_transform()
-	check(menu.to_global(Vector3(0, Menu.BAR_SEEK_Y, 0)).is_equal_approx(centre.origin + centre.basis.z * .025), "Timeline centre overlays relocated canvas, not head forward")
-	check(menu.global_basis.is_equal_approx(centre.basis), "Controls follow canvas facing without image roll")
+	var timeline := menu.to_global(Vector3(0, Menu.BAR_SEEK_Y, 0))
+	check((timeline - camera.global_position).normalized().is_equal_approx((centre.origin - camera.global_position).normalized()),
+		"Timeline centre visually overlays relocated canvas, not head forward")
+	check(menu.global_basis.z.dot((camera.global_position - timeline).normalized()) > .99999,
+		"Controls face the eyes rather than inheriting an oblique canvas plane")
+	check(absf(menu.global_basis.x.dot(Vector3.UP)) < .00001, "Control rows stay level without head/image roll")
+	var stable_pose := menu.global_transform
+	camera.rotation.z = .2; camera.position.x += .02
+	main._update_player_menu_anchor()
+	check(menu.global_transform.is_equal_approx(stable_pose), "Small head motion does not continually rotate or reposition flat controls")
 	menu.section = 1
-	check(menu.global_position.is_equal_approx(centre.origin + centre.basis.z * .025), "Expanded settings remain centred on canvas")
+	main._update_player_menu_anchor()
+	check((menu.global_position - camera.global_position).normalized().is_equal_approx((centre.origin - camera.global_position).normalized()),
+		"Expanded settings remain visually centred on canvas")
+	var clear := true
+	for corner in [Vector3(-.8, -.5, 0), Vector3(.8, -.5, 0), Vector3(-.8, .9, 0), Vector3(.8, .9, 0)]:
+		clear = clear and (menu.to_global(corner) - centre.origin).dot(centre.basis.z) > 0.0
+	check(clear, "Oblique canvas cannot depth-clip the viewer-facing controls")
 	menu.section = 0
 	main.test_ray = [camera.global_position, (video.panel.global_position - camera.global_position).normalized()]
 	main._on_pointer_button("grip_click", "right_hand")
@@ -102,12 +116,23 @@ func _run() -> void:
 	main._on_pointer_release("trigger_click", "right_hand")
 	check(not menu.has_pointer_capture(), "Trigger release ends slider capture")
 	main._update_player_menu_anchor()
-	check(menu.to_global(Vector3(0, Menu.BAR_SEEK_Y, 0)).is_equal_approx(video.panel.global_position + video.subtitle_transform().basis.z * .025), "Released controls reattach to the changed canvas")
+	check((menu.to_global(Vector3(0, Menu.BAR_SEEK_Y, 0)) - camera.global_position).normalized().is_equal_approx(
+		(video.panel.global_position - camera.global_position).normalized()), "Released controls reattach to the changed canvas centre in view")
 	video.geometry = 1; video.view_yaw = .6; video.view_pitch = .1
 	video._apply_geometry()
 	main._update_player_menu_anchor()
 	var forward := -video.subtitle_transform().basis.z
-	check((menu.to_global(Vector3(0, Menu.BAR_SEEK_Y, -.025)) - camera.global_position).normalized().is_equal_approx(forward), "Immersive controls align with picture centre, not current head yaw")
+	check((menu.to_global(Vector3(0, Menu.BAR_SEEK_Y, 0)) - camera.global_position).normalized().is_equal_approx(forward), "Immersive controls align with picture centre, not current head yaw")
+	stable_pose = menu.global_transform
+	camera.position += Vector3(.03, .01, -.02)
+	main._update_player_menu_anchor()
+	check(menu.global_basis.is_equal_approx(stable_pose.basis) and menu.global_position.is_equal_approx(stable_pose.origin + Vector3(.03, .01, -.02)),
+		"Immersive head translation preserves content direction and stable menu orientation")
+	video.geometry = 0; video.flat_pose = Transform3D(Basis.IDENTITY, camera.global_position + Vector3.UP * 2)
+	video._apply_geometry(); main._place_menu(menu)
+	timeline = menu.to_global(Vector3(0, Menu.BAR_SEEK_Y, 0))
+	check(menu.global_basis.is_finite() and menu.global_basis.z.dot((camera.global_position - timeline).normalized()) > .99999,
+		"An overhead canvas has a finite viewer-facing control basis")
 	menu.free(); library.free(); camera.free(); main.free(); video.free()
 	for failure in failures: push_error(failure)
 	print("Controller canvas: %d checks, %d failures" % [checks, failures.size()])

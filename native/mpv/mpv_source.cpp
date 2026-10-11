@@ -146,6 +146,7 @@ struct Source final {
 #ifndef NDEBUG
     std::atomic<bool> debug_seek_trace{false};
     std::atomic<bool> seek_trace_subscribed{false};
+    int64_t debug_seek_tail_us = 250000;
     std::mutex seek_trace_mutex;
     quest::SeekTrace seek_trace;
 #endif
@@ -324,6 +325,16 @@ struct Source final {
             ",\"canvas_width\":" + std::to_string(pgs_image.canvas_width) + ",\"canvas_height\":" + std::to_string(pgs_image.canvas_height) + "}";
         const auto observed_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
         const auto eof = property(core, "eof-reached");
+#ifndef NDEBUG
+        if (debug_seek_trace) {
+            const double clock_seconds = position.empty() ? -1.0 : std::strtod(position.c_str(), nullptr);
+            const int64_t clock_position = std::isfinite(clock_seconds) && clock_seconds >= 0 && clock_seconds < 2147483.647 ?
+                static_cast<int64_t>(clock_seconds * 1000000) : -1;
+            std::lock_guard<std::mutex> lock(seek_trace_mutex);
+            seek_trace.clock(startup_us(), clock_position,
+                audio_pts == "null" ? -1 : std::strtoll(audio_pts.c_str(), nullptr, 10), paused == "yes");
+        }
+#endif
         const auto subtitle_json = "{\"sequence\":" + std::to_string(++subtitle_sequence) +
             ",\"command_id\":" + std::to_string(subtitle_command_applied) + ",\"track_id\":" + quote(subtitle_id) +
             ",\"text\":" + quote(subtitle_text) + ",\"start_seconds\":" + quote(subtitle_start) +
@@ -435,6 +446,8 @@ struct Source final {
                     max_gpu_frames.store(std::max(0, atoi(value)));
                 if (__system_property_get("debug.vrpp.mpv.seek_trace", value) > 0)
                     debug_seek_trace = std::string(value) == "1";
+                if (__system_property_get("debug.vrpp.mpv.seek_tail_ms", value) > 0)
+                    debug_seek_tail_us = static_cast<int64_t>(std::clamp(atoi(value), 250, 5000)) * 1000;
             }
             // Debug-only A/B of render options for GPU profiling, e.g.
             // adb shell setprop debug.vrpp.mpv.opts gpu-dumb-mode=yes,fbo-format=rgba8
@@ -498,7 +511,7 @@ struct Source final {
                         if (seek_trace.started >= 0 && seek_trace.finished < 0 && startup_us() - seek_trace.started >= 12800000) {
                             seek_trace.finished = startup_us(); seek_trace.timed_out = true;
                         }
-                        restore = seek_trace_subscribed.load() && seek_trace.finished >= 0 && startup_us() > seek_trace.finished + 250000;
+                        restore = seek_trace_subscribed.load() && seek_trace.finished >= 0 && startup_us() > seek_trace.finished + seek_trace.tail_us;
                     }
                     if (restore) {
                         checked(mpv_request_log_messages(core, log_level), "MPV restore numeric seek trace subscription");
@@ -557,7 +570,7 @@ struct Source final {
 #ifndef NDEBUG
                     if (debug_seek_trace) {
                         { std::lock_guard<std::mutex> lock(seek_trace_mutex);
-                            seek_trace = {}; seek_trace.started = startup_us(); }
+                            seek_trace = {}; seek_trace.started = startup_us(); seek_trace.tail_us = debug_seek_tail_us; }
                         checked(mpv_request_log_messages(core, "trace"), "MPV numeric seek trace subscription");
                         seek_trace_subscribed.store(true);
                     }
@@ -941,6 +954,17 @@ struct Source final {
                     {direct_render ? MPV_RENDER_PARAM_QUEST_EXPORT : MPV_RENDER_PARAM_INVALID, &exported},
                     {MPV_RENDER_PARAM_INVALID, nullptr}};
                 const auto render_started = std::chrono::steady_clock::now();
+#ifndef NDEBUG
+                mpv_render_frame_info trace_info{};
+                const bool trace_render = debug_seek_trace.load() && seek_trace_subscribed.load();
+                if (trace_render) {
+                    checked(mpv_render_context_get_info(renderer, {MPV_RENDER_PARAM_NEXT_FRAME_INFO, &trace_info}), "MPV diagnostic render frame info");
+                    const auto clock_us = mpv_get_time_us(core);
+                    const auto target_us = trace_info.target_time > clock_us * 100 ? trace_info.target_time / 1000 : trace_info.target_time;
+                    std::lock_guard<std::mutex> lock(seek_trace_mutex);
+                    seek_trace.render_start(startup_us(), trace_info.target_time > 0 ? target_us - clock_us : 0);
+                }
+#endif
                 if (seek_requested_at_us.load() >= 0 && standard_epoch.load() >= epoch_floor.load()) {
                     int64_t unset = -1; seek_render_started_at_us.compare_exchange_strong(unset, startup_us());
                 }
@@ -949,6 +973,13 @@ struct Source final {
                     std::chrono::steady_clock::now() - render_started).count());
                 render_call_count.fetch_add(1); render_call_us.fetch_add(render_us);
                 render_call_max_us.store(std::max(render_call_max_us.load(), render_us));
+#ifndef NDEBUG
+                if (trace_render) {
+                    std::lock_guard<std::mutex> lock(seek_trace_mutex);
+                    seek_trace.render_done(startup_us(), render_us, trace_info.flags & MPV_RENDER_FRAME_INFO_PRESENT,
+                        trace_info.flags & MPV_RENDER_FRAME_INFO_REDRAW);
+                }
+#endif
                 mpv_render_context_report_swap(renderer);
                 if (standard_frames && render_result >= 0) {
                     ticket.flags = QUEST_MPV_HAS_IMAGE | QUEST_MPV_PTS_VALID | QUEST_MPV_RENDER_VALID;
@@ -1079,6 +1110,11 @@ struct Source final {
         glDeleteSync(newest->fence); newest->fence = nullptr;
         require(glIsTexture(newest->color), "MPV shared texture is invisible in Godot context");
         newest->phase = Phase::acquired; last_acquired_token = newest->token; acquired.fetch_add(1);
+#ifndef NDEBUG
+        if (debug_seek_trace && seek_trace_subscribed) {
+            std::lock_guard<std::mutex> trace_lock(seek_trace_mutex); seek_trace.acquire(startup_us());
+        }
+#endif
         if (seek_requested_at_us.load() >= 0) {
             int64_t unset = -1; seek_acquired_at_us.compare_exchange_strong(unset, startup_us());
         }

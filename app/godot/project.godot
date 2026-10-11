@@ -20,6 +20,7 @@ enabled=PackedStringArray("res://addons/quest_player/plugin.cfg")
 [rendering]
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+anti_aliasing/quality/msaa_3d=1
 textures/vram_compression/import_etc2_astc=true
 environment/defaults/default_clear_color=Color(0.035, 0.045, 0.06, 1)
 

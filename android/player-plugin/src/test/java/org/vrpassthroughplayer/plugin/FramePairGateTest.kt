@@ -53,4 +53,10 @@ class FramePairGateTest {
         assertFalse(gate.presented(old))
         assertFalse(gate.accepts(newer.copy(ptsUs = 1100)))
     }
+    @Test fun playbackClockEstimateCannotAuthorizeInferencePairs() {
+        val gate = FramePairGate(scope)
+        val id = gate.identify(ticket(), 42)!!.copy(playbackClockEstimate=true)
+        assertFalse(gate.accepts(id)); assertFalse(gate.presented(id))
+        assertFalse(gate.matchesRuntime(id, 3, 1, 10, 1000))
+    }
 }
