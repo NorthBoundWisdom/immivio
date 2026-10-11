@@ -13,6 +13,7 @@ signal adjustment_committed
 signal depth_strength_committed
 
 const SEEK := 200
+const SeekPolicy := preload("res://scripts/seek_policy.gd")
 const BookmarkMenu := preload("res://scripts/bookmark_menu.gd")
 var bookmarks := BookmarkMenu.new(self)
 const ChoiceFields := preload("res://scripts/choice_fields.gd")
@@ -60,7 +61,7 @@ const OPERATIONS := [
 		"audio", "depth"],
 	["color_grade", "loop", "seek_mode", "stereo_view"],
 	["capabilities"]]
-const HEADINGS := ["Color grading", "Loop", "Video time positioning", "Stereo viewing"]
+const HEADINGS := ["Color grading", "Loop", "Seek mode", "Stereo viewing"]
 const SETTING_ICONS := ["settings", "loop", "history", "eyes"]
 const Surface := preload("res://scripts/media_surface.gd")
 ## Flat screen curve steps (the video's CURVES) and their names.
@@ -785,9 +786,7 @@ func _setting_choices(operation: String) -> Dictionary:
 	if not _enabled(operation): return {}
 	match operation:
 		"seek_mode":
-			return {"key": "seek_mode", "value": _state.get("seek_mode", "speed"), "choices": [
-				{"value": "speed", "label": "Speed", "hint": "Faster jumps, less precise"},
-				{"value": "exact", "label": "Precise", "hint": "Accurate jumps, may take longer"}]}
+			return {"key": "seek_mode", "value": _state.get("seek_mode", SeekPolicy.DEFAULT), "choices": SeekPolicy.choices()}
 		"loop":
 			return {"key": "loop", "value": _state.get("loop", false), "choices": [{"value": false, "label": "Off"}, {"value": true, "label": "On"}]}
 		"screen_curve":
@@ -1059,7 +1058,7 @@ func _caption_text(operation: String) -> String:
 		"previous_video": return "Previous video"
 		"next_video": return "Next video"
 		"loop": return "On" if _state.get("loop", false) else "Off"
-		"seek_mode": return "Precise" if _state.get("seek_mode", "speed") == "exact" else "Speed"
+		"seek_mode": return SeekPolicy.caption(_state.get("seek_mode", SeekPolicy.DEFAULT))
 		"stop": return "Close video"
 		"stereo": return ("TB" if _state.get("top_bottom", false) else "SBS") if _state.get("stereo", false) else "2D"
 		"stereo_view": return StereoView.MODES[clampi(int(_state.get("viewing_eye", 0)), 0, 2)]

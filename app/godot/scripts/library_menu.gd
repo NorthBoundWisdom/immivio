@@ -676,10 +676,8 @@ func _rebuild_rows() -> void:
 		Section.SETTINGS:
 			var settings: Dictionary = settings_provider.call() if settings_provider.is_valid() else {}
 			if tab == VIDEO_TAB:
-				var seek: String = SeekPolicy.normalize(settings.get("seek_mode", SeekPolicy.SPEED))
-				rows.append(_choice_row("Video time positioning", "seek_mode", seek,
-					[{"value": SeekPolicy.SPEED, "label": "Speed", "hint": "Faster jumps, less precise"},
-					{"value": SeekPolicy.EXACT, "label": "Precise", "hint": "Accurate jumps, may take longer"}], false,
+				var seek: String = SeekPolicy.normalize(settings.get("seek_mode", SeekPolicy.DEFAULT))
+				rows.append(_choice_row("Seek mode", "seek_mode", seek, SeekPolicy.choices(), false,
 					"Faster jumps, less precise" if seek == SeekPolicy.SPEED else "Accurate jumps, may take longer"))
 				rows.append(_choice_row("Resolution", "output_width", int(settings.get("output_width", Quality.AUTO_OUTPUT)),
 					[{"value": Quality.AUTO_OUTPUT, "label": "Auto"}, {"value": 0, "label": "Original size"}, {"value": 5760, "label": "6K"}, {"value": 4096, "label": "4K"}], true))
