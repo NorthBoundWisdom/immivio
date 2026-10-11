@@ -1,9 +1,9 @@
 param(
     [Parameter(Mandatory=$true)][string]$Serial,
     [Parameter(Mandatory=$true)][string]$Probe,
-    [string]$Inputs = 'artifacts/photo-depth-fix/xz',
+    [string]$Inputs = 'build/output/photo-depth-fix/xz',
     [string[]]$Samples = @('index-20_1','index-35_1','index-50_1'),
-    [string]$Output = 'artifacts/photo-depth-fix/device'
+    [string]$Output = 'build/output/photo-depth-fix/device'
 )
 $ErrorActionPreference = 'Stop'
 $workspace = Split-Path -Parent $PSScriptRoot

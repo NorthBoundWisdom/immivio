@@ -47,7 +47,7 @@ $buildMutex = [Threading.Mutex]::new($false, 'Local\VRPassthroughPlayer-Build')
 $buildLockHeld = $false
 $originalExportPresets = $null
 $originalSigningEnvironment = @{}
-foreach ($key in @('GODOT_ANDROID_KEYSTORE_RELEASE_PATH','GODOT_ANDROID_KEYSTORE_RELEASE_USER','GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD','ORG_GRADLE_PROJECT_android.jetifier.ignorelist')) {
+foreach ($key in @('GODOT_ANDROID_KEYSTORE_DEBUG_PATH','GODOT_ANDROID_KEYSTORE_DEBUG_USER','GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD','GODOT_ANDROID_KEYSTORE_RELEASE_PATH','GODOT_ANDROID_KEYSTORE_RELEASE_USER','GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD','ORG_GRADLE_PROJECT_android.jetifier.ignorelist')) {
     $originalSigningEnvironment[$key] = [Environment]::GetEnvironmentVariable($key, 'Process')
 }
 $exportPresetsPath = Join-Path $workspace 'app\godot\export_presets.cfg'
@@ -67,6 +67,8 @@ try {
 if ($BuildType -eq 'Release') {
     if ($IncludeDiagnostics) { throw 'Distribution Release builds cannot include diagnostic models/media.' }
     & "$PSScriptRoot\environment\Prepare-ReleaseSigning.ps1" -ToolRoot $ToolRoot
+} else {
+    & "$PSScriptRoot\environment\Prepare-DebugSigning.ps1" -ToolRoot $ToolRoot
 }
 $projectDirectory = Join-Path $workspace 'app\godot'
 $appVersion = [regex]::Match((Get-Content (Join-Path $projectDirectory 'project.godot') -Raw), '(?m)^config/version="([^"]+)"').Groups[1].Value
@@ -75,7 +77,7 @@ if ($IncludeDiagnostics) {
     $diagnosticPresets = [Text.Encoding]::UTF8.GetString($originalExportPresets).Replace('exclude_filter="tests/*,media/*"', 'exclude_filter="tests/*"').Replace('include_filter="i18n/*.json,', 'include_filter="media/*.mp4,i18n/*.json,')
     [IO.File]::WriteAllText($exportPresetsPath, $diagnosticPresets, [Text.UTF8Encoding]::new($false))
 }
-$artifactDirectory = Join-Path $workspace 'artifacts'
+$artifactDirectory = Join-Path $workspace 'build/output'
 $logDirectory = Join-Path $artifactDirectory 'logs'
 New-Item -ItemType Directory -Path $logDirectory -Force | Out-Null
 $engineVersion = (& $env:GODOT_EXE --headless --version 2>&1 | Out-String).Trim()
@@ -108,7 +110,7 @@ if (-not (Test-Path -LiteralPath $godotApi)) {
 $ErrorActionPreference = 'Continue'
 & "$workspace\android\gradlew.bat" -p "$workspace\android" "-PgodotAarPath=$godotApi" "-PenableAi=$((-not $WithoutAI).ToString().ToLowerInvariant())" "-PstandardMpv=$(($MpvCandidate -eq 'OfficialRelease').ToString().ToLowerInvariant())" "-PincludeDiagnostics=$($IncludeDiagnostics.IsPresent.ToString().ToLowerInvariant())" :player-plugin:assembleDebug :player-plugin:assembleRelease $(if ($SkipUnitTests) { @() } else { @(':player-plugin:testDebugUnitTest') }) --console=plain 2>&1 | Out-File (Join-Path $logDirectory 'plugin-build.log') -Encoding utf8
 $ErrorActionPreference = 'Stop'
-if ($LASTEXITCODE -ne 0) { throw 'Android plugin build failed; inspect artifacts/logs/plugin-build.log.' }
+if ($LASTEXITCODE -ne 0) { throw 'Android plugin build failed; inspect build/output/logs/plugin-build.log.' }
 $pluginDirectory = Join-Path $projectDirectory 'addons\quest_player\bin'
 New-Item -ItemType Directory -Path $pluginDirectory -Force | Out-Null
 foreach ($variant in @('debug','release')) {
@@ -122,7 +124,7 @@ if (-not (Test-Path -LiteralPath $vendorsDirectory)) {
 # With this fixed Godot/Vendors pair, immediate --import exit crashes on a fresh
 # extension scan. Let the editor finish its background metadata work before exit.
 & $env:GODOT_EXE --headless --xr-mode off --path $projectDirectory --editor --quit-after 600 2>&1 | Out-File (Join-Path $logDirectory 'godot-import.log') -Encoding utf8
-if ($LASTEXITCODE -ne 0) { throw 'Godot import failed; inspect artifacts/logs/godot-import.log.' }
+if ($LASTEXITCODE -ne 0) { throw 'Godot import failed; inspect build/output/logs/godot-import.log.' }
 if ((Get-Content (Join-Path $logDirectory 'godot-import.log') -Raw) -match '(?m)^(SCRIPT ERROR:|SHADER ERROR:|ERROR:)') { throw 'Godot import reported errors.' }
 $apkPath = Join-Path $artifactDirectory $ApkName
 $exportArguments = @('--headless','--xr-mode','off','--path',$projectDirectory)
@@ -141,14 +143,15 @@ if (-not $androidBuildText.Contains($osgiExclusion)) {
     [IO.File]::WriteAllText($androidBuildScript, $androidBuildText, [Text.UTF8Encoding]::new($false))
 }
 $exportArguments += @($(if ($BuildType -eq 'Release') { '--export-release' } else { '--export-debug' }),$exportPreset,$apkPath)
-& $env:GODOT_EXE @exportArguments 2>&1 | Out-File (Join-Path $logDirectory 'godot-export.log') -Encoding utf8
+& $env:GODOT_EXE @exportArguments 2>&1 | ForEach-Object {
+    $safeLine = [string]$_
+    foreach ($secret in @($env:GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD,$env:GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD)) {
+        if ($secret) { $safeLine = $safeLine.Replace($secret,'<redacted>') }
+    }
+    $safeLine
+} | Out-File (Join-Path $logDirectory 'godot-export.log') -Encoding utf8
 $exportExitCode = $LASTEXITCODE
-if ($BuildType -eq 'Release' -and $env:GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD) {
-    $exportLogPath = Join-Path $logDirectory 'godot-export.log'
-    $redactedExportLog = [IO.File]::ReadAllText($exportLogPath).Replace($env:GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD, '<redacted>')
-    [IO.File]::WriteAllText($exportLogPath, $redactedExportLog, [Text.UTF8Encoding]::new($false))
-}
-if ($exportExitCode -ne 0) { throw 'APK export failed; inspect artifacts/logs/godot-export.log.' }
+if ($exportExitCode -ne 0) { throw 'APK export failed; inspect build/output/logs/godot-export.log.' }
 if ((Get-Content (Join-Path $logDirectory 'godot-export.log') -Raw) -match '(?m)^(SCRIPT ERROR:|SHADER ERROR:|ERROR:)') { throw 'Godot export reported errors.' }
 & "$env:ANDROID_HOME\build-tools\36.1.0\apksigner.bat" verify --verbose $apkPath 2>&1 | Out-File (Join-Path $logDirectory 'apk-signature.log') -Encoding utf8
 if ($LASTEXITCODE -ne 0) { throw 'APK signature validation failed.' }
@@ -522,6 +525,21 @@ $buildManifest = [ordered]@{
     controlled_color_slots = 3
     controlled_frame_source = 'MediaCodec output BufferInfo PTS + one released Surface buffer + exact timestamp comparison'
     render_bridge_jni_elf_dex_checks = 'passed'
+}
+if ($BuildType -eq 'Release') {
+    $platformName = switch ($XrVendor) { 'Pico' { 'PICO' } 'OpenXR' { 'OpenXR' } default { 'QUEST' } }
+    if ($appVersion -notmatch '^[0-9A-Za-z][0-9A-Za-z._-]*$') { throw 'Unsafe release version path.' }
+    $releaseDate = Get-Date -Format 'yyyyMMdd'
+    $releaseDirectory = Join-Path $workspace ("releases/$appVersion/$releaseDate/" + $buildManifest.apk_sha256.Substring(0,12))
+    New-Item -ItemType Directory -Path $releaseDirectory -Force | Out-Null
+    $releaseApk = Join-Path $releaseDirectory "Thru3D-$platformName-$appVersion-release-$releaseDate.apk"
+    if (Test-Path -LiteralPath $releaseApk) {
+        if ((Get-FileHash -LiteralPath $releaseApk).Hash.ToLowerInvariant() -ne $buildManifest.apk_sha256) { throw 'Permanent release archive already contains different bytes.' }
+    } else { Copy-Item -LiteralPath $apkPath -Destination $releaseApk }
+    if ((Get-FileHash -LiteralPath $releaseApk).Hash.ToLowerInvariant() -ne $buildManifest.apk_sha256) { throw 'Permanent release archive copy differs.' }
+    $buildManifest['release_archive'] = $releaseApk
+    $buildManifest | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $releaseDirectory 'build.json') -Encoding utf8
+    Write-Output "Archived release: $releaseApk"
 }
 $buildManifest | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $artifactDirectory 'build_manifest.json') -Encoding utf8
 $buildManifest | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $artifactDirectory ($ApkName.Replace('.apk', '.build.json'))) -Encoding utf8

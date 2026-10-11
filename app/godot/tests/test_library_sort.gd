@@ -77,6 +77,20 @@ func _run() -> void:
 	check(menu.file_actions.order() == "name_desc" and titles(menu.rows)[0] == "Folder10", "Unsupported DLNA order cannot change saved selection")
 	menu._dlna_stack = [{"id":"nested","title":"Nested"}]; menu.refresh()
 	check(titles(menu.rows)[0] == "Folder10", "DLNA nested containers inherit the saved name direction")
+	var filename_cases := ["test.mp4", "test(2).mp4", "test（2）.mp4", "test (2).mp4", "test[2].mp4", "q.mp4"]
+	var filename_entries: Array = []
+	for i in filename_cases.size():
+		filename_entries.append({"id":str(i),"title":filename_cases[i],"container":false,"uri":"http://nas/%d.mp4" % i})
+	for source in [Menu.Section.DLNA, Menu.Section.CLOUD]:
+		menu.section = source
+		menu._dlna_entries = filename_entries; menu._cloud_entries = filename_entries
+		for direction in ["name_asc", "name_desc"]:
+			menu.file_actions.load({str(source):direction}); menu.refresh()
+			check(menu.rows.size() == filename_cases.size(), "Similar filenames remain visible in DLNA and cloud rows")
+			for name in filename_cases:
+				check(titles(menu.rows).has(name), "Half-width/full-width parentheses and original filename survive UI sorting")
+	menu.section = Menu.Section.DLNA
+	menu._dlna_entries = [{"title":"Movie10","uri":"http://nas/10.mp4"},{"id":"10","title":"Folder10","container":true}]
 	menu.file_actions.load(saved_orders); menu.refresh()
 	check(menu.file_actions.order() == "name_desc", "Reloaded settings restore the DLNA choice")
 	menu.file_actions.load({str(Menu.Section.DLNA):"size_desc"}); menu.refresh()

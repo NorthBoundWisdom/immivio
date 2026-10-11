@@ -11,6 +11,26 @@ Newest first, following product release milestones. Some development/source snap
 - Added Windows/macOS CI for model-free PICO, Quest and OpenXR Android packages, with dependency caches, package verification and optional isolated signing.
 - Updated the color-grading regression to exercise subtitle distance through the current subtitle popup.
 
+## 0.6.0 — 2026-10-11
+
+- Added native stereo HEIC/HEIF spatial photos and iPhone MOV/MV-HEVC spatial-video decoding, including supported person-Alpha passthrough. Output is sRGB; compatibility and performance depend on media and device.
+- Added side thumbnails, grouped Photo Wall and randomized Memory Fragments, with hand-driven overview browsing, expand/return placement and remembered layouts.
+- Improved large-photo loading feedback, asynchronous switching and stable photo placement.
+- Added one-button 3D/person preparation for selected ordinary flat photos, with 0%–200% depth strength and synchronized color/mask updates. Native stereo, panoramas and photo overviews retain their own presentation.
+- Added session-scoped head following for flat video, individual/portrait photos and menus; it starts disabled at launch.
+- Added a temporary environment-passthrough footer control, independent of media mode; person-Alpha playback keeps passthrough enabled.
+- Added stereo/left-eye/right-eye video views and saved per-video horizontal/vertical alignment corrections (±5%, 0.05% steps). Monocular views display the selected logical eye to both headset eyes.
+- Simplified menu closing/back controls, stopped treating every 2:1 video as VR180, and locked native spatial-video format to prevent repeated depth conversion.
+- Updated portable signing validation and public-source export boundaries: caller-owned keys and identity metadata remain private, missing/mismatched keys stop packaging, and export state uses persistent storage.
+
+## 0.5.2 — 2026-10-11
+
+- Added live 10–40 FPS person-Alpha processing controls (default 20) and an optional video/engine FPS overlay; actual throughput depends on device, media and load.
+- Added device-dependent automatic quality defaults while preserving saved manual overrides.
+- Fixed H.264 startup stalls/exits and cleaned stray photo-3D edges around hair, faces and arms.
+- Raised photo 3D strength to 200% and added animated preparation feedback.
+- Fixed DLNA directories with external subtitle metadata and 115 directory failures caused by duplicate names; ambiguous names now request renaming.
+
 ## 0.5.1 — 2026-10-11
 
 - Added Plex phone/computer pairing, library browsing and original-file playback, with improved LAN connection selection.

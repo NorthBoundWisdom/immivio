@@ -6,7 +6,7 @@ from pathlib import Path
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[2]
-OUT = ROOT / "artifacts/subtitle-formats"
+OUT = ROOT / "build/output/subtitle-formats"
 ASS = """[Script Info]
 ScriptType: v4.00+
 PlayResX: 640

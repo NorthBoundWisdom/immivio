@@ -73,7 +73,7 @@ $env:GODOT_EXE = (Get-Command godot).Source
 
 ## AI workflow: pinned toolchain
 
-The versions/hashes used by this source snapshot are in `tools/environment/toolchain.lock.json`, the Gradle wrapper, and third-party source locks. The application build checks Godot `4.7.2.stable.official.ed1daf0bf`; use its corresponding Android templates and Godot OpenXR Vendors `5.1.0`. Android plugin configuration uses Java 17, compile SDK 36, build-tools 36.1.0, NDK 29.0.14206865 and CMake 3.31.6. The 0.2.1 Quest export uses min SDK 32 / target SDK 34; PICO and experimental standard OpenXR use 29 / 36. The separately built mpv dependency uses its own locked Linux NDK r30. Do not silently mix these toolchains.
+The versions/hashes used by this source snapshot are in `tools/environment/toolchain.lock.json`, the Gradle wrapper, and third-party source locks. The application build checks Godot `4.7.2.stable.official.ed1daf0bf`; use its corresponding Android templates and Godot OpenXR Vendors `5.1.0`. Android plugin configuration uses Java 17, compile SDK 36, build-tools 36.1.0, NDK 29.0.14206865 and CMake 3.31.6. The current Quest export uses min SDK 32 / target SDK 34; PICO and experimental standard OpenXR use 29 / 36. The separately built mpv dependency uses its own locked Linux NDK r30. Do not silently mix these toolchains.
 
 Set your own paths:
 
@@ -156,7 +156,7 @@ The build creates/validates the Kotlin plugin AARs, imports/exports Godot, check
 
 Compatibility targets start at Quest 2 and PICO Neo3. PICO/OpenXR retain min SDK 29 for older Android devices; Quest retains 32/34. Version 0.3.1 packaging checks preserve the legacy-storage flag and existing read/all-files declarations. Android 10 uses the runtime read grant with legacy storage; newer Android versions use the separate all-files access path.
 
-Release builds use `-BuildType Release`. `Prepare-ReleaseSigning.ps1` creates your own reusable local signing key under ignored build outputs. Back it up privately. No distribution key, password or original user's settings are provided in this repository.
+Release builds use `-BuildType Release`. `Prepare-ReleaseSigning.ps1` validates your persistent PKCS12 identity. Missing, damaged or mismatched keys stop the normal build; it does not create a replacement or fall back to a Debug identity. Back up your own signing material separately. No distribution key, password or original user's settings are provided in this repository.
 
 Distribution filenames identify platforms as `QUEST`, `PICO` and `OpenXR`, retaining the version and requested build date; for example `Thru3D-QUEST-0.3.1-release-20261009.apk`. Internal export-preset names and older debug fixture filenames can retain their existing names.
 
@@ -167,3 +167,14 @@ Model conversion additionally uses ONNX Runtime, NumPy, ONNX simplification, Pil
 ## OpenList Android core
 
 Build-Player invokes tools/environment/Prepare-OpenList.ps1. It downloads checksum-pinned OpenList and Go archives, applies the recorded encrypted Storage.Addition tag, and binds the local cloud/openlist adapter as an arm64 AAR using the fixed gomobile revision and 16KiB linker alignment. The generated AAR is exported alongside the Kotlin plugin. Only its private JNI management API and loopback media router are enabled. Test-CloudCore.ps1 uses a local synthetic WebDAV server to check encryption, original-file ranges and fresh-process persistence without personal accounts.
+
+
+## Portable signing
+
+Use your own standard PKCS12 keystores in the persistent `keystore/signing/` directory. Keep aliases and public certificate/file SHA-256 fingerprints in `signing-identities.json` (schema_version 1, debug/release entries with keystore, alias, certificate_sha256 and keystore_sha256). Exported source does not contain official private keys or their backups.
+
+Provide the ordinary password through `THRU3D_SIGNING_PASSWORD` or the signing helper prompt. Windows processes can also read the current user/system setting of that variable; macOS and Linux use their normal process environment and JAVA_HOME/PATH. Signing has no Windows credential-store dependency and never generates replacement keys during a normal build.
+
+`build/` and `tmp/` are disposable. Keep signing material, unique source inputs and permanent backups outside them.
+
+All public builds use caller-owned keys and identity metadata. No official signing identity, encrypted key archive, password or personal backup is included. Keep unique inputs and backups outside disposable build/tmp directories.

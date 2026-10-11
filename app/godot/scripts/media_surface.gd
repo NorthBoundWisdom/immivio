@@ -73,7 +73,7 @@ func _apply_geometry() -> void:
 		if geometry != Geometry.Geometry.FLAT:
 			reset_view()
 	if geometry == Geometry.Geometry.FLAT:
-		panel.transform = flat_pose * Transform3D(Basis(Vector3.FORWARD, deg_to_rad(screen_rotation)), Vector3.ZERO)
+		_apply_flat_pose()
 		var dimensions := _source_size()
 		var aspect := dimensions.x / maxf(1.0, dimensions.y) \
 			/ (2.0 if stereo_sbs and not top_bottom else 1.0) * (2.0 if stereo_sbs and top_bottom else 1.0)
@@ -102,6 +102,14 @@ func _apply_geometry() -> void:
 	material.set_shader_parameter("stereo_half", stereo_sbs and stereo_half)
 	material.set_shader_parameter("fisheye_fov", float(fisheye_fov))
 	material.set_shader_parameter("swap_eyes", swap_eyes)
+
+## Placement updates do not rebuild meshes or change decoding/projection parameters.
+func set_flat_world_pose(pose: Transform3D) -> void:
+	flat_pose = global_transform.affine_inverse() * pose
+	if geometry == Geometry.Geometry.FLAT: _apply_flat_pose()
+
+func _apply_flat_pose() -> void:
+	panel.transform = flat_pose * Transform3D(Basis(Vector3.FORWARD, deg_to_rad(screen_rotation)), Vector3.ZERO)
 
 func _screen_dimensions(aspect: float) -> Vector2:
 	return Vector2(minf(1.9, aspect), minf(1.9, aspect) / aspect)

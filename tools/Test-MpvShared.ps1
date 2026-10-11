@@ -5,15 +5,15 @@ $workspace = Split-Path -Parent $PSScriptRoot
 . "$PSScriptRoot\environment\Activate-QuestEnvironment.ps1"
 $adb = Join-Path $env:ANDROID_HOME 'platform-tools\adb.exe'
 $package = 'com.wapok.thru3d'
-$apk = Join-Path $workspace 'artifacts\quest3-player-debug.apk'
-$manifest = Get-Content (Join-Path $workspace 'artifacts\build_manifest.json') -Raw | ConvertFrom-Json
+$apk = Join-Path $workspace 'build\output\quest3-player-debug.apk'
+$manifest = Get-Content (Join-Path $workspace 'build\output\build_manifest.json') -Raw | ConvertFrom-Json
 $apkHash = (Get-FileHash -LiteralPath $apk -Algorithm SHA256).Hash.ToLowerInvariant()
 if ($manifest.apk_sha256 -ne $apkHash -or $manifest.mpv_debug_candidate -ne 'SourceFrame') { throw 'Build manifest/candidate differs from the APK.' }
 $kind = $Diagnostic.ToLowerInvariant()
 $request = $kind + '_' + [guid]::NewGuid().ToString('N')
-$directory = Join-Path $workspace ('artifacts\device\' + (Get-Date -Format 'yyyyMMdd_HHmmss') + '_' + $request)
+$directory = Join-Path $workspace ('build\output\device\' + (Get-Date -Format 'yyyyMMdd_HHmmss') + '_' + $request)
 New-Item -ItemType Directory -Force -Path $directory | Out-Null
-Copy-Item -LiteralPath (Join-Path $workspace 'artifacts\build_manifest.json') -Destination $directory
+Copy-Item -LiteralPath (Join-Path $workspace 'build\output\build_manifest.json') -Destination $directory
 if ($Install) {
     & $adb -s $Serial shell am force-stop $package
     & $adb -s $Serial install -r $apk

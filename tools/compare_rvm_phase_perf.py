@@ -23,11 +23,11 @@ def main():
     old = read(baseline/'rvm-verified.json'); new = read(candidate/'rvm-verified.json')
     assert old['cases'] == new['cases'] == 18 and old['profiles'] == new['profiles']
     assert old['apk_sha256'] != new['apk_sha256']
-    assert new['apk_sha256'] == sha(ROOT/'artifacts/quest3-player-debug.apk')
-    frozen = read(ROOT/'artifacts/checkpoints'/('rvm-quest-'+old['apk_sha256'][:8])/
-                  'artifacts/rvm-quest-candidate-verification.json')
+    assert new['apk_sha256'] == sha(ROOT/'build/output/quest3-player-debug.apk')
+    frozen = read(ROOT/'build/output/checkpoints'/('rvm-quest-'+old['apk_sha256'][:8])/
+                  'build/output/rvm-quest-candidate-verification.json')
     assert read(baseline/'fixture-lineage.json') == read(candidate/'fixture-lineage.json')
-    gate = read(ROOT/'artifacts/rvm-standalone-build-check/verification.json')
+    gate = read(ROOT/'build/output/rvm-standalone-build-check/verification.json')
     assert gate['apk_sha256'] == new['apk_sha256']
     assert gate['debug_rvm_native_optimization'] == 'O2' and gate['debug_rvm_fast_math'] is False
     rows = []; raw_hashes = {}
@@ -56,7 +56,7 @@ def main():
         candidate_raw_sha256=raw_hashes,unchanged_fixture_lineage=True,
         scope='Four synthetic stereo calls per profile including first call; snapshots excluded; submit_wait is CPU wall time, not GPU timestamps. Baseline has no phase instrumentation. Model/FP32/identity Tile unchanged; wrapper O2 plus optional timing are the candidate changes.',
         real_motion_quality_verified=False,sustained_performance_verified=False,video_XR_verified=False)
-    (ROOT/'artifacts/rvm-phase-performance-comparison.json').write_text(json.dumps(record,indent=2)+'\n',encoding='utf-8')
+    (ROOT/'build/output/rvm-phase-performance-comparison.json').write_text(json.dumps(record,indent=2)+'\n',encoding='utf-8')
     print(json.dumps(record,indent=2))
 
 if __name__ == '__main__': main()

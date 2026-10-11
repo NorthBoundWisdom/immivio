@@ -29,7 +29,7 @@ def main():
     p.add_argument("--apk", type=Path)
     args = p.parse_args()
     key = "dovi_" + uuid.uuid4().hex
-    output = ROOT / "artifacts/dovi-player/device" / (args.name + "_" + key)
+    output = ROOT / "build/output/dovi-player/device" / (args.name + "_" + key)
     output.mkdir(parents=True)
     name = "dovi_profile5.mkv" if args.profile5 else "regression" + args.fixture.suffix.lower()
     remote = "/data/local/tmp/" + key + args.fixture.suffix.lower()

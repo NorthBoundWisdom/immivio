@@ -2,7 +2,7 @@ $ErrorActionPreference='Stop'
 $workspace=Split-Path -Parent $PSScriptRoot
 . "$PSScriptRoot/environment/Activate-QuestEnvironment.ps1"
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-$directory=Join-Path $workspace 'artifacts/rvm-standalone-build-check'
+$directory=Join-Path $workspace 'build/output/rvm-standalone-build-check'
 New-Item -ItemType Directory -Path $directory -Force | Out-Null
 $symbol='Java_org_vrpassthroughplayer_plugin_RvmResidentValidationNative_run'
 # Read generated compilation rules, rather than inferring optimization from CMake.
@@ -33,7 +33,7 @@ foreach ($variant in @('debug','release')) {
     $halfPresent=(Get-Content "$directory/$variant-symbols.txt" -Raw).Contains($symbol+'HalfStorage')
     if ($halfPresent -ne ($variant -eq 'debug')) { throw 'FP16 diagnostic native entry leaked into Release or is absent' }
 }
-$apk="$workspace/artifacts/quest3-player-debug.apk"
+$apk="$workspace/build/output/quest3-player-debug.apk"
 & "$env:ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer.bat" dex code --class org.vrpassthroughplayer.plugin.RvmResidentValidationNative --method 'run(Landroid/content/res/AssetManager;Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;' $apk | Set-Content "$directory/native-binding.txt"
 if ($LASTEXITCODE -ne 0) { throw 'Resident APK JNI class/method differs' }
 & "$env:ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer.bat" dex code --class org.vrpassthroughplayer.plugin.RvmResidentValidationNative --method 'runHalfStorage(Landroid/content/res/AssetManager;Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;' $apk | Set-Content "$directory/half-native-binding.txt"

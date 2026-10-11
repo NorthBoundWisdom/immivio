@@ -21,7 +21,9 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                 val report = JSONObject().put("request", request).put("action", intent.action)
                     .put("diagnostic_process", DiagnosticRequests.processId)
                 try {
-                    val id = if (intent.action in setOf("com.wapok.thru3d.DEBUG_LAUNCH", "com.wapok.thru3d.DEBUG_LAUNCH_2D")) {
+                    val id = if (intent.action == "com.wapok.thru3d.DEBUG_PHOTO_PORTRAIT") {
+                        PhotoPortraitProbe.request(context.applicationContext,request)
+                    } else if (intent.action in setOf("com.wapok.thru3d.DEBUG_LAUNCH", "com.wapok.thru3d.DEBUG_LAUNCH_2D")) {
                         // XR probes must enter through the normal VR launcher. Starting
                         // GodotApp directly produced focused views but no live head pose.
                         val launch = if (intent.action!!.endsWith("_2D")) {
@@ -125,7 +127,7 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                             }
                             if (operation == "seek_policy_ui") {
                                 val step = intent.getStringExtra("step")
-                                require(step in setOf("global_speed", "global_exact", "bookmark_global", "bookmark_speed", "bookmark_exact", "bookmark_add", "bookmark_seek", "bookmark_delete"))
+                                require(step in setOf("global_speed", "global_exact", "recenter", "bookmark_global", "bookmark_speed", "bookmark_exact", "bookmark_add", "bookmark_seek", "bookmark_delete"))
                                 val marker = intent.getStringExtra("marker_id").orEmpty()
                                 require(marker.isEmpty() || marker.matches(Regex("[a-f0-9]{32}")))
                                 command.put("step", step).put("marker_id", marker)
@@ -140,13 +142,22 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                 require(projection in 0..3)
                                 command.put("projection", projection)
                                 val network = intent.getStringExtra("uri")
-                                if (network != null) {
+                                val localPath = intent.getStringExtra("local_path")
+                                if (localPath != null) {
+                                    // Debug/DUMP-only: measure an existing shared-storage original
+                                    // without copying private customer media into fixture storage.
+                                    require(network == null)
+                                    val root = android.os.Environment.getExternalStorageDirectory().canonicalFile
+                                    val target = File(localPath).canonicalFile
+                                    require(target.path.startsWith(root.path + File.separator) && target.isFile && target.canRead())
+                                    command.put("uri", android.net.Uri.fromFile(target).toString()).put("title", target.name)
+                                } else if (network != null) {
                                     // Library network sources (DLNA http, SMB) through the same open path.
                                     require(network.startsWith("http://") || network.startsWith("https://") || network.startsWith("smb://"))
                                     command.put("uri", network).put("title", intent.getStringExtra("title") ?: "network")
                                 } else {
                                 val fixture = intent.getStringExtra("fixture") ?: "mp03_frame_identity"
-                                require(fixture in setOf("mp03_frame_identity", "mp05_person_still", "mp06_text_subtitles", "mp07_motion_4k", "mp08_8k_low", "mp08_8k_high", "mp08_8k_high_30", "mp08_8k_long", "mp08_4k", "depth_2d"))
+                                require(fixture in setOf("mp03_frame_identity", "mp05_person_still", "mp06_text_subtitles", "mp07_motion_4k", "mp08_8k_low", "mp08_8k_high", "mp08_8k_high_30", "mp08_8k_long", "mp08_4k", "depth_2d", "mpv_performance"))
                                 val directory = File(context.filesDir, "fixtures").apply { mkdirs() }
                                 val target = File(directory, "$fixture.${if (fixture == "mp06_text_subtitles") "mkv" else "mp4"}")
                                 if (fixture == "mp03_frame_identity") {
@@ -154,6 +165,7 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                 } else {
                                     // Local test fixtures are pushed explicitly, outside APK assets.
                                     val limit = when {
+                                        fixture == "mpv_performance" -> 8L * 1024 * 1024 * 1024 // Original local high-bitrate samples; debug/DUMP only.
                                         fixture == "mp08_8k_long" -> 1_500_000_000L // 4 min 8K, for windows of 60 s and more
                                         fixture.startsWith("mp08_") -> 500_000_000L
                                         fixture == "mp07_motion_4k" || fixture == "depth_2d" -> 50_000_000L

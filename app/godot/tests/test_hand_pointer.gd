@@ -310,8 +310,8 @@ func _run() -> void:
 	library.free()
 	player.free()
 	for failure in failures: push_error(failure)
-	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://../../artifacts/hand-input"))
-	FileAccess.open("res://../../artifacts/hand-input/verification.json", FileAccess.WRITE).store_string(JSON.stringify({"checks": checks, "failures": failures, "physical_tracking": "not_verified"}, "\t"))
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://../../build/output/hand-input"))
+	FileAccess.open("res://../../build/output/hand-input/verification.json", FileAccess.WRITE).store_string(JSON.stringify({"checks": checks, "failures": failures, "physical_tracking": "not_verified"}, "\t"))
 	print("Hand pointer checks: %s (%d)" % ["passed" if failures.is_empty() else "FAILED", checks])
 	quit(0 if failures.is_empty() else 1)
 

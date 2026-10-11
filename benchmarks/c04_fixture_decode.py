@@ -51,7 +51,7 @@ def main() -> None:
               'ffmpeg':subprocess.check_output([args.ffmpeg,'-version'],text=True).splitlines()[0],
               'note':'4:2:0 and H264 introduce edge loss; report worst error without treating it as shader error',
               'android_execution':'not_run'}
-    target = ROOT/'artifacts/c04-fixture-decode.json'
+    target = ROOT/'build/output/c04-fixture-decode.json'
     target.write_text(json.dumps(result,indent=2)+'\n')
     print(json.dumps(result,indent=2))
 

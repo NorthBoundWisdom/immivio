@@ -48,6 +48,21 @@ func tap(menu: Node3D, target: int) -> void:
 func clear_pending(video: Node3D) -> void:
 	video.control.reject(); video._pending_revision.clear(); video._waiting_first = false
 
+func drag_timeline(menu: Node3D, video: Node3D, bridge: Host, exact: bool) -> void:
+	video.control.observe(5000, 60000)
+	menu.refresh_values()
+	var before := bridge.revisions.size()
+	var direction: Vector3 = -menu.global_basis.z
+	var start: Vector3 = menu.to_global(Vector3(-menu.BAR_SEEK / 4, menu.BAR_SEEK_Y, 1))
+	var end: Vector3 = menu.to_global(Vector3(menu.BAR_SEEK / 4, menu.BAR_SEEK_Y, 1))
+	check(menu.press_pointer("left_hand", start, direction, true), "Timeline trigger begins a drag")
+	menu.update_pointer("left_hand", end, direction, true)
+	check(bridge.revisions.size() == before and menu._seek_preview == 45000, "Dragging previews the final time without decoding intermediate positions")
+	menu.release_pointer("left_hand", end, direction, true)
+	check(bridge.revisions.size() == before + 1 and bridge.revisions.back() == [7, 45000, exact],
+		"Timeline release uses %s policy" % ("exact" if exact else "default fast"))
+	clear_pending(video)
+
 func labels(menu: Node) -> String:
 	return "\n".join(menu.find_children("*", "Label3D", true, false).map(func(label): return label.text))
 
@@ -66,7 +81,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	preload("res://scripts/i18n.gd").use("zh")
-	var directory := ProjectSettings.globalize_path("res://../../artifacts/seek-policy-host/" + str(Time.get_ticks_usec()))
+	var directory := ProjectSettings.globalize_path("res://../../build/output/seek-policy-host/" + str(Time.get_ticks_usec()))
 	DirAccess.make_dir_recursive_absolute(directory)
 	var bridge := Host.new()
 	var video := Video.new()
@@ -76,16 +91,24 @@ func _run() -> void:
 	var main := Main.new()
 	main.video = video; main.settings_path = directory.path_join("settings.cfg")
 	main._restore_seek_settings()
-	check(video.seek_mode == Policy.SPEED and video.bookmark_seek_mode == Policy.GLOBAL, "New and existing empty settings default to speed and inherited bookmark mode")
+	check(Policy.DEFAULT == Policy.SPEED and video.seek_mode == Policy.DEFAULT and video.bookmark_seek_mode == Policy.GLOBAL,
+		"New and existing empty settings default to fast seek and inherited bookmark mode")
 	check(Policy.normalize(null) == Policy.SPEED and Policy.normalize(17) == Policy.SPEED and Policy.normalize("bad") == Policy.SPEED,
 		"Invalid stored global settings fall back to speed")
 	check(Policy.bookmark_override("bad") == Policy.GLOBAL, "Invalid bookmark override inherits global")
 	var uri := "https://fixture.example/mock.mp4"
 	video.open_local(uri, "Movie", 12000, false)
 	check(bridge.opens.back() == [uri, 12000, false], "Initial and resumed opening propagate keyframe mode to Android")
+	var timeline := Player.new()
+	timeline.state_provider = func(): return {"has_video": true, "duration_ms": 60000, "position_ms": video.control.display_position_ms()}
+	timeline.seek_requested.connect(main._on_menu_seek)
+	root.add_child(timeline); timeline.toggle(); timeline.set_process(false)
+	drag_timeline(timeline, video, bridge, false)
 	main._on_setting_changed("seek_mode", Policy.EXACT)
 	video.open_local(uri, "Movie", 12000, false)
 	check(bridge.opens.back() == [uri, 12000, true], "Precise preference propagates to initial/resumed opening")
+	drag_timeline(timeline, video, bridge, true)
+	timeline.free()
 	video.control.observe(5000, 60000)
 	video.seek_relative(10000)
 	check(bridge.revisions.back() == [7, 15000, true], "Forward shortcut uses precise preference")
@@ -148,7 +171,7 @@ func _run() -> void:
 	tap(player, player.BookmarkMenu.MODE_GLOBAL)
 	main._on_setting_changed("seek_mode", Policy.SPEED)
 	player.refresh_values()
-	check(video.bookmark_seek_mode == Policy.GLOBAL and player._tips[player.BookmarkMenu.MODE_GLOBAL].contains("速度"), "Open inherited list reflects the changed global setting")
+	check(video.bookmark_seek_mode == Policy.GLOBAL and player._tips[player.BookmarkMenu.MODE_GLOBAL].contains("快速跳转"), "Open inherited list reflects the changed global setting")
 	var point := origin(player, player.BookmarkMenu.MODE_EXACT)
 	player.press_pointer("left_hand", point, -player.global_basis.z, true)
 	check(player.has_pointer_capture() and not player.allows_playback_sticks(), "Mode selector captures input and blocks playback shortcuts")
@@ -158,18 +181,23 @@ func _run() -> void:
 	check(video.bookmark_seek_mode == Policy.GLOBAL, "Cancelled selector leaves precision unchanged")
 	player.bookmarks.opened = false; player.section = 1; player.refresh()
 	choose(player, "seek_mode", Policy.EXACT)
-	check(video.seek_mode == Policy.EXACT and labels(player).contains("视频时间定位") and labels(player).contains("精确"),
+	check(video.seek_mode == Policy.EXACT and labels(player).contains("跳转方式") and labels(player).contains("精确跳转"),
 		"Playback settings switch the shared global preference with user-facing labels")
 	var library := Library.new()
 	library.section = Library.Section.SETTINGS; library.tab = Library.VIDEO_TAB
 	library.settings_provider = func(): return {"seek_mode": video.seek_mode}
 	library.setting_changed.connect(main._on_setting_changed)
 	root.add_child(library); library.toggle(); library.set_process(false)
-	check(library.rows[0].key == "seek_mode" and library.rows[0].choices.size() == 2 and library.rows.size() == 2,
-		"Global settings group both seek choices into one row alongside one resolution field")
+	check(library.rows[0].key == "seek_mode" and library.rows[0].choices.size() == 2 and library.rows.filter(func(row): return row.get("key") == "seek_mode").size() == 1 and library.rows.filter(func(row): return row.get("key") == "output_width").size() == 1,
+		"Global settings keep one seek selector and one resolution selector alongside other settings")
 	choose(library, "seek_mode", Policy.SPEED)
-	check(video.seek_mode == Policy.SPEED and library.rows[0].value == Policy.SPEED and labels(library).contains("时间可能有偏差"),
+	check(video.seek_mode == Policy.SPEED and library.rows[0].value == Policy.SPEED and labels(library).contains("快速跳转") and labels(library).contains("时间可能有偏差"),
 		"Global settings ray selection applies speed and explains the precision tradeoff")
+	var fast_saved := ConfigFile.new()
+	check(fast_saved.load(main.settings_path) == OK, "Fast seek selection is saved")
+	main.settings = fast_saved; video.seek_mode = Policy.EXACT
+	main._restore_seek_settings()
+	check(video.seek_mode == Policy.SPEED, "Restart restores the fast mode selected through settings")
 
 	clear_pending(video)
 	video.control.observe(1000, 60000)

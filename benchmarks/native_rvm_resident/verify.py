@@ -64,7 +64,7 @@ def main() -> None:
     parser.add_argument("--oracle", type=Path, default=ROOT / "build/rvm-resident-host/Release/rvm_resident_oracle.exe")
     args = parser.parse_args()
     executable = args.oracle.resolve()
-    output = ROOT / "artifacts/rvm-resident-host" / (datetime.now().strftime("%Y%m%d_%H%M%S")+"_"+uuid.uuid4().hex[:8])
+    output = ROOT / "build/output/rvm-resident-host" / (datetime.now().strftime("%Y%m%d_%H%M%S")+"_"+uuid.uuid4().hex[:8])
     output.mkdir(parents=True)
     source_paths = ["native/rvm/rvm_backend.cpp", "native/rvm/rvm_backend.h", "native/rvm/rvm_channel_mean.cpp",
                     "native/rvm/rvm_resident_validation.cpp", "native/rvm/rvm_resident_validation.h",
@@ -145,7 +145,7 @@ def main() -> None:
               "android_execution_verified": False, "real_motion_quality_verified": False,
               "internal_ncnn_transfer_traffic_measured": False, "quest_performance_verified": False}
     (output / "verification.json").write_text(json.dumps(record, indent=2)+"\n", encoding="utf-8")
-    (ROOT / "artifacts/rvm-resident-host-verification.json").write_text(json.dumps(record, indent=2)+"\n", encoding="utf-8")
+    (ROOT / "build/output/rvm-resident-host-verification.json").write_text(json.dumps(record, indent=2)+"\n", encoding="utf-8")
     print(str(output / "verification.json"))
 
 

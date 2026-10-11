@@ -175,5 +175,5 @@ if __name__ == '__main__':
         audit(args.verify)
     else:
         assert args.traces
-        output = args.output or ROOT / 'artifacts/r08-color-reference' / (datetime.now().strftime('%Y%m%d_%H%M%S')+'_'+uuid.uuid4().hex[:8])
+        output = args.output or ROOT / 'build/output/r08-color-reference' / (datetime.now().strftime('%Y%m%d_%H%M%S')+'_'+uuid.uuid4().hex[:8])
         run(args.traces, output)

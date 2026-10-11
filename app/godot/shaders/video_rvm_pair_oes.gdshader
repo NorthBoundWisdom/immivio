@@ -94,9 +94,10 @@ void vertex() {
 
 void fragment() {
 	vec2 shown_uv = eye_uv(UV, media_direction);
+	shown_uv = aligned_eye_uv(shown_uv);
 	if (depth_enabled && !stereo_sbs) { shown_uv = depth_parallax(shown_uv, eye_index); }
 	vec2 local_uv = raw_eye_uv(shown_uv);
-	int eye = stereo_sbs ? (swap_eyes ? 1 - eye_index : eye_index) : 0;
+	int eye = source_eye();
 	vec2 eye_size = view_size();
 	vec2 color_p = clamp(local_uv, vec2(0.5) / eye_size, vec2(1.0) - vec2(0.5) / eye_size);
 	if (stereo_sbs && top_bottom) { color_p.y = (color_p.y + float(eye)) * 0.5; }
@@ -133,6 +134,8 @@ void fragment() {
 	} else {
 		ALPHA = alpha_enabled && !depth_enabled ? (outside ? 0.0 : clamp(texture(alpha_texture, alpha_p).r, 0.0, 1.0)) : 1.0;
 	}
+	// Crop correction borders rather than stretching an edge or reading the other eye.
+	if (outside_alignment(shown_uv)) { ALBEDO = vec3(0.0); ALPHA = alpha_enabled || packed_alpha ? 0.0 : 1.0; }
 	if (!separate_subtitles) {
 	vec4 composed = caption_composite(ALBEDO, ALPHA, projected_caption(media_direction, eye_index));
 	composed = caption_composite(composed.rgb, composed.a, bitmap_caption(raw_eye_uv(eye_uv(UV, media_direction))));

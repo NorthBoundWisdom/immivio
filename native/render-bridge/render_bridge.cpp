@@ -18,6 +18,7 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include "../rvm/photo_depth.h"
 #include <unordered_map>
 #include <vector>
 
@@ -28,6 +29,25 @@ void check_gl(const char* operation) {
     char message[160];
     std::snprintf(message, sizeof(message), "%s: GL error 0x%04x", operation, error);
     throw std::runtime_error(message);
+}
+// Godot and this bridge share a context, hence also a GL error queue. Attribute errors
+// at the interop boundary: report inherited errors separately, then check our own work.
+// A stale engine/probe error must not turn a no-op borrowed capture into a copy failure.
+thread_local uint64_t owner_gl_errors = 0;
+thread_local GLenum owner_gl_last_error = GL_NO_ERROR;
+void isolate_owner_errors() {
+    for (int i = 0; i < 8; ++i) {
+        const auto error = glGetError();
+        if (error == GL_NO_ERROR) return;
+        if (error == GL_CONTEXT_LOST_KHR) throw std::runtime_error("Render bridge GL context lost");
+        ++owner_gl_errors; owner_gl_last_error = error;
+#ifndef NDEBUG
+        if (owner_gl_errors <= 4 || (owner_gl_errors & (owner_gl_errors - 1)) == 0)
+            __android_log_print(ANDROID_LOG_WARN, "QuestGlOwner", "Inherited owner GL error 0x%04x (count=%llu)",
+                error, static_cast<unsigned long long>(owner_gl_errors));
+#endif
+    }
+    throw std::runtime_error("Render bridge owner GL error queue did not clear");
 }
 // Touch only private objects and unit zero; restore Godot's actual GL state.
 struct State final {
@@ -41,6 +61,7 @@ struct State final {
         GL_POLYGON_OFFSET_FILL}};
     std::array<GLboolean, toggles.size()> enabled;
     State() {
+        isolate_owner_errors();
         glGetIntegerv(GL_CURRENT_PROGRAM, &program); glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &vao);
         glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &draw_fbo); glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &read_fbo);
         glGetIntegerv(GL_ACTIVE_TEXTURE, &active); glActiveTexture(GL_TEXTURE0);
@@ -76,6 +97,16 @@ struct State final {
         glPixelStorei(GL_UNPACK_IMAGE_HEIGHT, unpack_image_height); glPixelStorei(GL_UNPACK_SKIP_IMAGES, unpack_skip_images);
         glActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_2D, tex2d); glBindTexture(GL_TEXTURE_EXTERNAL_OES, oes);
         glBindSampler(0, sampler); glActiveTexture(active);
+    }
+};
+struct CaptureTiming final {
+    uint64_t &calls, &total_us, &max_us;
+    const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+    CaptureTiming(uint64_t& count, uint64_t& total, uint64_t& maximum) : calls(count), total_us(total), max_us(maximum) {}
+    ~CaptureTiming() {
+        const auto us = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - start).count());
+        ++calls; total_us += us; max_us = std::max(max_us, us);
     }
 };
 constexpr const char* vertex = R"(#version 300 es
@@ -507,6 +538,9 @@ struct Bridge final {
     bool zero_copy = false;
     bool borrow = false; // capture_texture keeps the producer texture instead of copying it
     uint64_t borrows = 0, decoder_captures = 0;
+    bool opaque_state_fast = true;
+    uint64_t opaque_state_bypasses = 0, capture_state_saves = 0;
+    uint64_t capture_calls = 0, capture_cpu_us = 0, capture_cpu_max_us = 0;
     std::array<SharedImage, 2> zc_scout_out; // one scout runs at a time; read on the CPU right after
     uint64_t zero_copy_commits = 0;
     // 2D->3D stereo (mono sources only): see warp_common.
@@ -531,6 +565,11 @@ struct Bridge final {
     }
     void allocate() {
         current(); State state;
+#ifndef NDEBUG
+        char fast[PROP_VALUE_MAX] = {};
+        if (__system_property_get("debug.vrpp.bridge.opaque_fast", fast) > 0)
+            opaque_state_fast = std::string(fast) != "no";
+#endif
         GLint maximum = 0; glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maximum);
         if (width > maximum || height > maximum) throw std::runtime_error("Source exceeds GL texture limit");
         copy = program(copy_fragment); copy_2d = program(copy_2d_fragment); scale = program(scale_fragment);
@@ -541,11 +580,6 @@ struct Bridge final {
         glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         image(small, input_width, input_height);
-        const GLsizeiptr bytes = static_cast<GLsizeiptr>(input_width) * input_height * 4;
-        for (auto& slot : slots) {
-            glGenBuffers(2, slot.pbo.data());
-            for (auto pbo : slot.pbo) { glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo); glBufferData(GL_PIXEL_PACK_BUFFER, bytes, nullptr, GL_STREAM_READ); }
-        }
         const float source_aspect = eye_width() / eye_height();
         const float input_aspect = static_cast<float>(input_width) / input_height;
         if (source_aspect > input_aspect) { content_rect[3] = input_aspect / source_aspect; content_rect[1] = (1.f-content_rect[3])*0.5f; }
@@ -623,13 +657,28 @@ struct Bridge final {
     }
     jlong capture_texture(GLuint source, jlong token, bool inputs, bool opaque = false,
                           const float* window = nullptr, bool scout = false) {
-        current(); State state;
+        current(); CaptureTiming timing(capture_calls, capture_cpu_us, capture_cpu_max_us);
+        isolate_owner_errors();
         if (!source || !glIsTexture(source)) throw std::runtime_error("Shared MPV color texture unavailable");
         Slot* free = nullptr;
         for (auto& slot : slots) {
             if (slot.phase == Phase::free && !free) free = &slot;
         }
         if (!free) { slot_exhaustions++; return 0; }
+        if (opaque_state_fast && borrow && opaque && !inputs && !scout && free->opaque_cached) {
+            check_gl("Borrowed opaque handoff");
+            // No texture upload, draw, framebuffer or pixel-store mutation: both the immutable
+            // producer color and this slot's cached opaque mask are already available. Avoid
+            // dozens of synchronous GL state queries/restores on the Godot owner thread.
+            // The caller has acquired a signalled producer fence, and retirement has completed
+            // every earlier use of this mask. With no GPU commands to submit, another capture
+            // fence would only delay handoff. Producer leases and retirement fences still apply.
+            free->alpha_valid = true; free->opaque_pending = true; free->scout_staged = false;
+            free->borrowed = source; ++borrows; ++opaque_copies; ++opaque_state_bypasses;
+            free->token = token; free->phase = Phase::held;
+            return token;
+        }
+        State state; ++capture_state_saves;
         free->alpha_valid = false;
         free->opaque_pending = opaque;
         if (borrow) {
@@ -721,7 +770,14 @@ struct Bridge final {
         glUniform2f(glGetUniformLocation(prog, "footprint"), 1.f / input_width / rect[2], 1.f / input_height / rect[3]);
         return prog;
     }
-    void stage_inputs(Slot& slot, const float* rect, const std::array<GLuint, 2>& pbos) {
+    void stage_inputs(Slot& slot, const float* rect, std::array<GLuint, 2>& pbos) {
+        if (!pbos[0]) {
+            // Ordinary opaque playback never stages inference inputs. Allocate
+            // these buffers only when a real input capture first needs them.
+            glGenBuffers(2, pbos.data());
+            const GLsizeiptr bytes = static_cast<GLsizeiptr>(input_width) * input_height * 4;
+            for (auto pbo : pbos) { glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo); glBufferData(GL_PIXEL_PACK_BUFFER, bytes, nullptr, GL_STREAM_READ); }
+        }
         input_stages++;
         target(small, input_width, input_height);
         const GLuint prog = bind_scale(slot, rect);
@@ -1035,8 +1091,18 @@ void photo_stereo(const unsigned char* rgba, int w, int h, const float* near, in
     image(slot.color, w, h);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
-    std::vector<float> right(near, near + static_cast<size_t>(mw) * mh);
-    bridge.upload_alpha(1, near, right.data());
+    // Limit the near map's falls for this strength (render_warp's own half shift, in model columns),
+    // so the unchanged hole fill cannot repeat the subject's contour outside it.
+    std::vector<float> limited(near, near + static_cast<size_t>(mw) * mh);
+    const float shift = 0.035f * strength;
+    const float half = shift > 0.f ? std::max(2.f, std::min(96.f, w * shift)) * 0.5f : 0.f;
+    const int cx = std::clamp(static_cast<int>(std::lround(rect[0] * mw)), 0, mw - 1);
+    const int cy = std::clamp(static_cast<int>(std::lround(rect[1] * mh)), 0, mh - 1);
+    const int cw = std::clamp(static_cast<int>(std::lround(rect[2] * mw)), 1, mw - cx);
+    const int ch = std::clamp(static_cast<int>(std::lround(rect[3] * mh)), 1, mh - cy);
+    quest::photo_limit_gradient(limited.data(), mw, mh, cx, cy, cw, ch, half * rect[2] * mw / w);
+    std::vector<float> right(limited);
+    bridge.upload_alpha(1, limited.data(), right.data());
     // Use render_warp directly: the video width cap is a realtime budget, not a still-photo cap.
     bridge.render_warp(slot, 0.035f * strength, 0.35f);
     glBindBuffer(GL_PIXEL_PACK_BUFFER, 0); glPixelStorei(GL_PACK_ALIGNMENT, 1);
@@ -1298,8 +1364,23 @@ Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_stats(JNIEnv* env, jclass
     try {
         std::lock_guard<std::mutex> guard(registry_mutex); auto& b = find(id);
         std::array<int, 4> phases{};
-        for (const auto& s : b.slots) phases[static_cast<size_t>(s.phase)]++;
+        uint64_t color_textures = 0;
+        for (const auto& s : b.slots) {
+            phases[static_cast<size_t>(s.phase)]++;
+            color_textures += s.color != 0;
+        }
         auto json = "{\"copies\":" + std::to_string(b.copies) + ",\"opaque_copies\":" + std::to_string(b.opaque_copies) +
+            ",\"opaque_state_bypasses\":" + std::to_string(b.opaque_state_bypasses) +
+            ",\"opaque_state_fast\":" + (b.opaque_state_fast ? "true" : "false") +
+            ",\"capture_state_saves\":" + std::to_string(b.capture_state_saves) +
+            ",\"capture_calls\":" + std::to_string(b.capture_calls) +
+            ",\"capture_cpu_us\":" + std::to_string(b.capture_cpu_us) +
+            ",\"capture_cpu_max_us\":" + std::to_string(b.capture_cpu_max_us) +
+            ",\"owner_gl_errors\":" + std::to_string(owner_gl_errors) +
+            ",\"owner_gl_last_error\":" + std::to_string(owner_gl_last_error) +
+            ",\"borrow_color\":" + (b.borrow ? "true" : "false") +
+            ",\"color_texture_count\":" + std::to_string(color_textures) +
+            ",\"color_texture_bytes\":" + std::to_string(color_textures * b.width * b.height * 4) +
             ",\"opaque_initial_uploads\":" + std::to_string(b.opaque_uploads) + ",\"regular_alpha_uploads\":" + std::to_string(b.alpha_uploads) +
             ",\"input_stages\":" + std::to_string(b.input_stages) + ",\"copy_pending_polls\":" + std::to_string(b.copy_pending_polls) +
             ",\"retire_pending_polls\":" + std::to_string(b.retire_pending_polls) + ",\"slot_exhaustions\":" + std::to_string(b.slot_exhaustions) + ",\"borrowed_captures\":" + std::to_string(b.borrows) + ",\"decoder_captures\":" + std::to_string(b.decoder_captures) +

@@ -4,9 +4,9 @@ $workspace = Split-Path -Parent $PSScriptRoot
 . "$PSScriptRoot/environment/Activate-QuestEnvironment.ps1"
 $adb = Join-Path $env:ANDROID_HOME 'platform-tools/adb.exe'
 $package = 'com.wapok.thru3d'
-$directory = Join-Path $workspace ('artifacts/device/' + (Get-Date -Format 'yyyyMMdd_HHmmss') + '_depth_strength')
+$directory = Join-Path $workspace ('build/output/device/' + (Get-Date -Format 'yyyyMMdd_HHmmss') + '_depth_strength')
 New-Item -ItemType Directory -Force $directory | Out-Null
-$build = Get-Content "$workspace/artifacts/build_manifest.json" -Raw | ConvertFrom-Json
+$build = Get-Content "$workspace/build/output/build_manifest.json" -Raw | ConvertFrom-Json
 $installed = ((& $adb -s $Serial shell pm path $package) | Select-Object -First 1) -replace '^package:', ''
 if ($installed -notmatch '^/data/app/[A-Za-z0-9_=/+.~\-]+/base\.apk$') { throw 'Installed APK unavailable' }
 $hash = ((& $adb -s $Serial shell sha256sum $installed) -split '\s+')[0]

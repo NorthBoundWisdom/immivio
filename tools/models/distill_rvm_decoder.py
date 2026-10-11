@@ -6,7 +6,7 @@ run in PyTorch through onnx2torch on CUDA (a separate training virtual environme
 
   data   decode 8-frame 30fps sequences of one eye from local VR videos, crop windows
          like the player's ROI (full eye, windows around the teacher's people, random),
-         resize to 320x320 and store uint8 (artifacts/rvm-distill/<name>.npy).
+         resize to 320x320 and store uint8 (build/output/rvm-distill/<name>.npy).
          User-supplied exclusion windows are left out of training.
   train  recurrent unroll from zero states (as the player starts a window), L1 + gradient
          loss on Alpha against the teacher; the backbone and the untouched decoder stages
@@ -26,7 +26,7 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[2]
 TEACHER = ROOT / 'build/rvm/mnn/rvm.fused.u8.onnx'
-OUT = ROOT / 'artifacts/rvm-distill'
+OUT = ROOT / 'build/output/rvm-distill'
 FFMPEG = os.environ.get('THRU3D_FFMPEG', 'ffmpeg')
 VIDEOS = ROOT
 MASTER = 1024

@@ -7,7 +7,7 @@ func _initialize() -> void:
 	call_deferred("_run")
 
 func _run() -> void:
-	var output := ProjectSettings.globalize_path("res://../../artifacts/seek-policy/visuals")
+	var output := ProjectSettings.globalize_path("res://../../build/output/seek-policy/visuals")
 	DirAccess.make_dir_recursive_absolute(output)
 	var viewport := SubViewport.new()
 	viewport.size = Vector2i(1400, 1100); viewport.own_world_3d = true

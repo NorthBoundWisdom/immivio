@@ -4,7 +4,7 @@ const Menu := preload("res://scripts/photo_menu.gd")
 var failures: Array[String] = []
 var viewport: SubViewport
 var photo: Node3D
-var output := ProjectSettings.globalize_path("res://../../artifacts/photo-preview")
+var output := ProjectSettings.globalize_path("res://../../build/output/photo-preview")
 
 class DepthHost extends RefCounted:
 	func release_photo(_id: int) -> void: pass
@@ -107,16 +107,15 @@ func _run() -> void:
 			centres.append(sum / maxi(1,count))
 		disparities.append(centres[0] - centres[1])
 	if absf(disparities[0]) > 1: failures.append("Off must eliminate eye disparity")
-	# Photos are capped at 100%; both 200% and 400% inputs preserve that output.
-	for i in range(1, 3):
+	# Photos reach 200% like video; a 400% input is clamped to the 200% output.
+	for i in range(1, 4):
 		if disparities[i] <= maxf(2, disparities[i-1] * 1.5): failures.append("Strength must visibly increase eye disparity: " + str(disparities))
-	for i in [3,4]:
-		if absf(disparities[i] - disparities[2]) > 1: failures.append("Above-maximum strength must preserve the 100% output")
-	print("Photo rendered disparity at 0/50/100% and clamped 200/400% inputs: " + str(disparities))
+	if absf(disparities[4] - disparities[3]) > 1: failures.append("Above-maximum strength must preserve the 200% output")
+	print("Photo rendered disparity at 0/50/100/200% and clamped 400% inputs: " + str(disparities))
 	photo.set_depth(false); photo.platform = null
 	# Exercise full-size downloaded JPG in the real shader, with the current app UI.
 	var fixture := OS.get_environment("QUEST_PHOTO_FIXTURE")
-	if fixture.is_empty(): fixture = ProjectSettings.globalize_path("res://../../artifacts/test-media/panoramas/sunset_forest.jpg")
+	if fixture.is_empty(): fixture = ProjectSettings.globalize_path("res://../../build/output/test-media/panoramas/sunset_forest.jpg")
 	if not FileAccess.file_exists(fixture):
 		viewport.queue_free(); await process_frame
 		for failure in failures: push_error(failure)

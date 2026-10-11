@@ -3,11 +3,11 @@
 $ErrorActionPreference = 'Stop'
 $workspace = Split-Path -Parent $PSScriptRoot
 . "$PSScriptRoot\environment\Activate-QuestEnvironment.ps1" -ToolRoot $ToolRoot
-$apk = if ($ApkPath) { $ApkPath } else { Join-Path $workspace 'artifacts\quest3-player-debug.apk' }
+$apk = if ($ApkPath) { $ApkPath } else { Join-Path $workspace 'build\output\quest3-player-debug.apk' }
 $manifestFile = if ($Candidate -eq 'SourceFrame') { 'source-build.json' } else { 'manifest.json' }
 $manifest = Get-Content (Join-Path $workspace ('third_party\mpv\' + $manifestFile)) -Raw | ConvertFrom-Json
 $expected = @($manifest.packaged_libraries) + @('libquest_mpv.so')
-$destination = Join-Path $workspace 'artifacts\native\mpv'
+$destination = Join-Path $workspace 'build\output\native\mpv'
 New-Item -ItemType Directory -Force -Path $destination | Out-Null
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $zip = [IO.Compression.ZipFile]::OpenRead($apk)
@@ -53,5 +53,5 @@ foreach ($variant in @('debug','release')) {
 @{ schema_version = 1; state = 'passed'; candidate = $Candidate; libraries = $expected; debug_only = $false;
     apk_sha256 = (Get-FileHash -LiteralPath $apk -Algorithm SHA256).Hash.ToLowerInvariant();
     scope = 'Pinned bytes/ARM64/16KB/Debug/Release dependency packaging only; device execution separate' } |
-    ConvertTo-Json -Depth 4 | Set-Content (Join-Path $workspace 'artifacts\mpv-build-check.json') -Encoding utf8
+    ConvertTo-Json -Depth 4 | Set-Content (Join-Path $workspace 'build\output\mpv-build-check.json') -Encoding utf8
 Write-Output 'MPV development candidate packaging checks passed.'

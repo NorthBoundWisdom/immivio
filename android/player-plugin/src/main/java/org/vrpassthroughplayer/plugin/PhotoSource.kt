@@ -3,7 +3,7 @@ package org.vrpassthroughplayer.plugin
 import java.io.File
 
 /** One owner plus any in-flight worker leases; cancellation cannot unlink a worker's input. */
-internal class PhotoSource(val file: File) {
+internal class PhotoSource(val file: File, val nativeStereo: Boolean = false) {
     private var references = 1
     @Synchronized fun retain(): PhotoSource {
         check(references > 0)

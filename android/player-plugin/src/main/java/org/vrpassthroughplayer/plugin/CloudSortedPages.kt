@@ -20,7 +20,10 @@ internal class CloudSortedPages(private val now: () -> Long = { System.nanoTime(
                 if (Thread.currentThread().isInterrupted) throw CloudFailure()
                 val page = client.page(path, cursor, refresh && cursor == 0)
                 if (page.total > MAX_FILES || files.size + page.files.size > MAX_FILES) throw CloudFailure("Folder too large to sort; use source order")
-                page.files.forEach { if (!seen.add((if (it.folder) "d" else "f") + it.id)) throw CloudFailure() }
+                page.files.forEach {
+                    val identity = if (client.canDelete) it.objectId else it.id
+                    if (!seen.add((if (it.folder) "d" else "f") + identity)) throw CloudFailure()
+                }
                 files.addAll(page.files)
                 if (page.nextOffset < 0) break
                 if (page.nextOffset <= cursor) throw CloudFailure()

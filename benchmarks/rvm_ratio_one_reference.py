@@ -14,8 +14,8 @@ from onnx import helper, TensorProto
 import onnxruntime as ort
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / 'artifacts/rvm-ratio-one/reference'
-MOTION = ROOT / 'artifacts/device/20261004_132059_motion_4313561ab9854aa49af1faa86f8123f6'
+OUT = ROOT / 'build/output/rvm-ratio-one/reference'
+MOTION = ROOT / 'build/output/device/20261004_132059_motion_4313561ab9854aa49af1faa86f8123f6'
 NAMES = ['fgr', 'pha', 'r1o', 'r2o', 'r3o', 'r4o', '753', '754']
 
 def read(path):
@@ -55,7 +55,7 @@ def main():
             colors, old_masks, new_masks = [], [], []
             for eye in ['left', 'right']:
                 if scenario == 'synthetic':
-                    path = ROOT / 'artifacts/rvm-ratio-one/host/512x512' / f'{eye}_{index}.npz'
+                    path = ROOT / 'build/output/rvm-ratio-one/host/512x512' / f'{eye}_{index}.npz'
                     with np.load(path, allow_pickle=False) as item:
                         src = item['src']
                 else:

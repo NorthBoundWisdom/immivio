@@ -13,7 +13,8 @@ TARGETS = ("video/out/vo_libmpv.c", "video/out/gpu/libmpv_gpu.c",
            "video/out/gpu/video.c", "video/out/gpu/video.h",
            "video/decode/vd_lavc.c", "video/out/hwdec/hwdec_aimagereader.c", "audio/out/buffer.c",
            "video/out/gpu/hwdec.h", "video/out/gpu/shader_cache.c",
-           "video/out/gpu/shader_cache.h", "video/out/opengl/common.c")
+           "video/out/gpu/shader_cache.h", "video/out/opengl/common.c",
+           "video/mp_image.h", "video/mp_image.c", "filters/f_decoder_wrapper.c")
 
 
 def replace_once(text, old, new):
@@ -270,6 +271,8 @@ void gl_video_screenshot(struct gl_video *p, struct vo_frame *frame,
 ''')
     from dovi_patch import apply_mpv_dovi
     apply_mpv_dovi(edited, replace_once)
+    from spatial_patch import apply_mpv_spatial
+    apply_mpv_spatial(edited, replace_once)
     header = (ROOT/"native/mpv/include/mpv/quest_frame.h").read_text(encoding="utf-8")
     edited["include/mpv/quest_frame.h"] = header
     output = ROOT/"native/mpv/patches/0001-quest-source-frame.patch"
@@ -289,7 +292,7 @@ void gl_video_screenshot(struct gl_video *p, struct vo_frame *frame,
         "private_header_sha256": hashlib.sha256(header.encode()).hexdigest(),
         "api_version": 2, "state": "source_patch_generated; build_and_device_validation_pending"
     }
-    (output.parent/"source-frame-manifest.json").write_text(json.dumps(record,indent=2)+"\n",encoding="utf-8")
+    (output.parent/"source-frame-manifest.json").write_text(json.dumps(record,indent=2)+"\n",encoding="utf-8",newline="\n")
     print(json.dumps(record,indent=2))
 
 

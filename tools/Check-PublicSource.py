@@ -6,8 +6,8 @@ from pathlib import Path, PurePosixPath
 import re
 import subprocess
 
-FORBIDDEN_PARTS = {'.git', '.cache', '.venv', '.godot', '.gradle', '.cxx', '__pycache__', 'prompt', 'artifacts'}
-FORBIDDEN_SUFFIXES = {'.onnx', '.mnn', '.pt', '.pth', '.ckpt', '.safetensors', '.bin', '.param', '.apk', '.aar', '.so', '.keystore', '.jks', '.p12', '.pfx', '.hdr', '.log'}
+FORBIDDEN_PARTS = {'.git', '.cache', '.venv', '.godot', '.gradle', '.cxx', '__pycache__', 'prompt', 'artifacts', 'build', 'tmp', 'backups', 'keystore', 'releases', 'credentials', 'research'}
+FORBIDDEN_SUFFIXES = {'.onnx', '.mnn', '.pt', '.pth', '.ckpt', '.safetensors', '.bin', '.param', '.apk', '.aar', '.so', '.keystore', '.jks', '.p12', '.pfx', '.hdr', '.log', '.zip', '.7z', '.rar', '.key', '.pem'}
 # MIT-licensed glTF mesh buffers, not inference weights. Only these exact bytes qualify.
 HAND_BUFFER_PINS = {
     'app/godot/models/hands/LeftHandHumanoid.bin': '05f96e5aae870c8f2fde8a1fea337b060c7fde3e659b124a5ed979f0ffa1222a',
@@ -17,6 +17,7 @@ PATTERNS = {
     'private machine path': re.compile(r'(?i)(?:[CG]:[/\\]+(?:Users[/\\]+dennis|devtools|GIT|code[/\\]+VRPassthroughPlayer)|/mnt/' + r'g/|/opt/' + r'quest-mpv)'),
     'GitHub credential': re.compile(r'\b(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{50,})\b'),
     'AWS access key': re.compile(r'\b(?:AKIA|ASIA)[A-Z0-9]{16}\b'),
+    'hardcoded signing password': re.compile(r'''(?im)(?:THRU3D_SIGNING_PASSWORD|GODOT_ANDROID_KEYSTORE_(?:DEBUG|RELEASE)_PASSWORD)\s*(?:=|:)\s*['"][^'"\r\n]+['"]|-(?:storepass|keypass)\s+['"][^'"$\r\n]+['"]'''),
     'private signing key': re.compile(r'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----'),
     'private handover link': re.compile(r'(?i)(?:HANDOVER_\d{8}|docs/(?:store|archive|branding)/)'),
 }
@@ -31,12 +32,16 @@ def check_files(files):
         approved_mesh = name in HAND_BUFFER_PINS
         if approved_mesh and (len(data) != 38584 or hashlib.sha256(data).hexdigest() != HAND_BUFFER_PINS[name]):
             errors.append(f'{name}: hand mesh differs from reviewed MIT asset')
-        if FORBIDDEN_PARTS.intersection(path.parts) or (path.suffix.lower() in FORBIDDEN_SUFFIXES and not approved_mesh):
+        if FORBIDDEN_PARTS.intersection(part.lower() for part in path.parts) or (path.suffix.lower() in FORBIDDEN_SUFFIXES and not approved_mesh):
             errors.append(f'{name}: excluded directory or binary asset')
         if name.startswith(tuple('docs/' + item + '/' for item in ('store', 'branding', 'archive'))) or name.startswith('tools/record_'):
             errors.append(f'{name}: private development or promotion content')
         if name.endswith('store_capture_debug.gd') or 'local.properties' == path.name:
             errors.append(f'{name}: local-only configuration/tool')
+        if path.name.lower() in {'signing-identities.json', 'thru3d-signing.json', '.env'}:
+            errors.append(f'{name}: excluded signing identity or local credential configuration')
+        if path.name.lower().startswith(('readme', 'changelog')) and name not in {'README.md', 'README.zh-CN.md', 'CHANGELOG.md', 'CHANGELOG.zh-CN.md', 'third_party/README.md'}:
+            errors.append(f'{name}: internal documentation excluded')
         if len(data) > 25 * 1024 * 1024:
             errors.append(f'{name}: unexpected file over 25 MiB')
         try:

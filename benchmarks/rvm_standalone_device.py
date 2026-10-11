@@ -109,11 +109,11 @@ def verify_trace(result,receipts,reports,profiles,device_hashes):
 
 def verify(directory):
     result=read(directory/'result.json')
-    assert result['apk_sha256']==sha(ROOT/'artifacts/quest3-player-debug.apk')
+    assert result['apk_sha256']==sha(ROOT/'build/output/quest3-player-debug.apk')
     assert read(directory/'build_manifest.json')['apk_sha256']==result['apk_sha256']
     manifests=read(directory/'fixture-lineage.json')
     profiles={}; hashes={}
-    with zipfile.ZipFile(ROOT/'artifacts/quest3-player-debug.apk') as apk:
+    with zipfile.ZipFile(ROOT/'build/output/quest3-player-debug.apk') as apk:
         for key in PROFILES:
             manifest,profile=lineage(key)
             assert manifests[key]==manifest

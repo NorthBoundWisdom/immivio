@@ -15,7 +15,7 @@ func aligned(viewer: Node3D) -> bool:
 
 func _run() -> void:
 	var main := Main.new()
-	var directory := ProjectSettings.globalize_path("res://../../artifacts/vr-alignment-20261010/lifecycle")
+	var directory := ProjectSettings.globalize_path("res://../../build/output/vr-alignment-20261010/lifecycle")
 	DirAccess.make_dir_recursive_absolute(directory)
 	main.settings_path = directory.path_join("settings.cfg"); main.settings.save(main.settings_path)
 	root.add_child(main); main.set_process(false); main.video.set_process(false); main.photo.set_process(false)
@@ -33,12 +33,14 @@ func _run() -> void:
 		main.video.turn_view(0.2,-0.1); main.video.zoom_view(0.3)
 		await main._recenter()
 		check(aligned(main.video) and main.video.view_yaw == 0 and main.video.view_pitch == 0 and main.video.view_zoom == 0,"Application recenter removes old offsets "+name)
-	# Files without naming markers can enter VR only after the first format event.
+	# An ambiguous 2:1 frame stays flat; an explicit projection change aligns the current gaze.
 	main.video.open_local("file:///alignment/unnamed.mp4","unnamed.mp4")
 	main.video.media.format = {"width":8192,"height":4096,"pixel_aspect":1.0}
 	head.rotation = Vector3(-0.17,0.9,0)
 	main.video._complete_layout()
-	check(main.video.geometry==1 and aligned(main.video),"First-frame projection detection aligns current gaze")
+	check(main.video.geometry == 0 and not main.video.stereo_sbs,"First 2:1 frame does not infer VR180 SBS")
+	main.video.set_projection(1)
+	check(aligned(main.video),"Explicit VR180 transition aligns current gaze")
 	# The shared fix also applies to panorama photos and keeps their detail window coherent.
 	main.photo_active = true; main.player_menu = main.photo_menu
 	main.photo.local_uri = "file:///alignment/panorama.jpg"

@@ -59,6 +59,8 @@ internal class MpvVideoBridge(
         !debugZeroCopyDisabled
     private var audioFocus: MpvAudioFocus? = null // worker only
     @Volatile private var audioFocusState = "none"
+    private val lifecyclePauses = AtomicInteger(0)
+    private val audioFocusInterruptions = AtomicInteger(0)
 
     private inner class Host(val uri: String, val startMs: Int, val hardware: Boolean, val audio: Boolean, val exactStart: Boolean) {
         private val openNs = System.nanoTime()
@@ -92,9 +94,13 @@ internal class MpvVideoBridge(
                              val producer: Long = 0L) // Borrowed MPV slot, released when this lease retires.
     private data class Alpha(val pair: JSONObject, val left: ByteBuffer, val right: ByteBuffer)
     /** depth: realtime 2D->3D on a mono source; its near map rides in the Alpha mask slot. Never with alpha. */
-    private class Session(val scope: MediaSessionGate.Scope, val host: Host, val stereo: Boolean,
+    private class Session(val scope: MediaSessionGate.Scope, val host: Host, private val requestedStereo: Boolean,
                           val profile: String, val alpha: Boolean, val vulkan: Boolean, val normalFastPath: Boolean,
-                          val depth: Boolean = false, val topBottom: Boolean = false) {
+                          private val requestedDepth: Boolean = false, private val requestedTopBottom: Boolean = false) {
+        @Volatile var spatial = false // the decoded source fixes its physical packing
+        val stereo get() = spatial || requestedStereo
+        val depth get() = requestedDepth && !spatial
+        val topBottom get() = requestedTopBottom && !spatial
         val id get() = scope.decoderId
         val lock = Any()
         val disposed = AtomicBoolean(false)
@@ -116,6 +122,10 @@ internal class MpvVideoBridge(
         var zeroCopy = false // GL thread: the bridge stages inputs into AHardwareBuffers shared with MNN
         var borrow = false // GL thread: pairs show the MPV slot itself; no 8K copy per captured frame
         var copyingProducer = 0L // GL thread: producer lease held by the slot being staged
+        var captureStartedNs = 0L
+        var captureReadyCount = 0L
+        var captureReadyUs = 0L
+        var captureReadyMaxUs = 0L
         var renderer = 0L // GL only under lock
         var owner: EGLContext? = null
         var copying: Pair<DecodedFrameGate.Ticket, Long>? = null
@@ -134,6 +144,8 @@ internal class MpvVideoBridge(
         var captured = 0L
         var ownerDraws = 0L
         var uniquePostDrawFrames = 0L
+        var lastUniquePostDrawNs = 0L
+        var maxUniquePostDrawGapNs = 0L
         var lastPostDrawFrame = -1L
         var lastPostDrawEpoch = -1L
         var drawnToken = 0L
@@ -148,10 +160,21 @@ internal class MpvVideoBridge(
     fun supported() = !stopped && MpvSourceNative.supported()
     /** User setting: decoded color width cap for sources opened from now on (0 = source size). */
     @Volatile var outputWidthCap = 0
-    /** Alpha passthrough reads the source at 30fps: one RVM pair per presented frame. */
+    /** User setting: Alpha passthrough reads the source at this rate, one RVM pair per presented frame. */
+    @Volatile private var alphaFps = RVM_VIDEO_FPS
+    /** MPV's cadence cap is atomic and resets its decimation on change, so a running session follows at once. */
+    fun setAlphaFps(fps: Int): Boolean {
+        if (fps !in ALPHA_FPS_RANGE) return false
+        alphaFps = fps
+        sessions.values.filter { it.alpha && active(it) }.forEach { session ->
+            val handle = session.host.handle
+            if (handle > 0) runCatching { MpvSourceNative.setFrameCap(handle, frameCap(session)) }
+        }
+        return true
+    }
     private fun frameCap(session: Session) = if (BuildConfig.DEBUG && debugFrameCapOverride >= 0) debugFrameCapOverride
         // 2D->3D shows every frame with the latest depth map; only Alpha needs one result per frame.
-        else if (session.alpha) RVM_VIDEO_FPS else 0
+        else if (session.alpha) alphaFps else 0
     private fun active(session: Session) = !stopped && !session.disposed.get() && gate.accepts(session.id)
     private fun event(name: String, session: Session, json: JSONObject) {
         json.put("session_id", session.id).put("logical_session_id", session.scope.logicalSessionId)
@@ -320,6 +343,7 @@ internal class MpvVideoBridge(
             }
             if (needsAudio && audioFocus == null) context()?.let { app ->
                 audioFocus = MpvAudioFocus(app) { change ->
+                    if (change != MpvAudioFocusGate.Change.GAIN) audioFocusInterruptions.incrementAndGet()
                     // Stop as soon as loss arrives; waiting for RVM work to
                     // finish must not keep audio playing over another app.
                     if (change != MpvAudioFocusGate.Change.GAIN) hosts.filter { !stopped && !it.closing && it.audioEnabled && it.audioAvailable }.forEach {
@@ -356,6 +380,10 @@ internal class MpvVideoBridge(
                             val frame = pair.getLong("frame_id")
                             val epoch = pair.getLong("source_epoch")
                             if (frame != session.lastPostDrawFrame || epoch != session.lastPostDrawEpoch) {
+                                val now = System.nanoTime()
+                                if (session.lastUniquePostDrawNs > 0L)
+                                    session.maxUniquePostDrawGapNs = maxOf(session.maxUniquePostDrawGapNs, now-session.lastUniquePostDrawNs)
+                                session.lastUniquePostDrawNs = now
                                 session.uniquePostDrawFrames++
                                 session.lastPostDrawFrame = frame
                                 session.lastPostDrawEpoch = epoch
@@ -378,6 +406,11 @@ internal class MpvVideoBridge(
                     if (source != null && !capture(session, source)) {
                         session.pendingSource = source
                         session.deferredCopies++
+                    }
+                    // Cached opaque borrowing can be ready immediately: no copy or upload was
+                    // submitted. Offer that pair in this draw instead of waiting another tick.
+                    if (!session.inference && session.normalFastPath) {
+                        finishCopy(session); finishUploads(session)
                     }
                 }
                 if (System.nanoTime() >= session.host.nextStatusNs) {
@@ -402,12 +435,21 @@ internal class MpvVideoBridge(
                     event("mpv_state", session, status.put("alpha_requested", session.alpha).put("depth_requested", session.depth)
                         .put("startup_bridge", JSONObject(session.host.startup as Map<*, *>))
                         .put("captured_frames", session.captured)
+                        .put("capture_ready_count", session.captureReadyCount)
+                        .put("capture_to_ready_us", session.captureReadyUs)
+                        .put("capture_to_ready_max_us", session.captureReadyMaxUs)
                         .put("display_claims", session.display.heldClaims()).put("post_draw_frames", session.ownerDraws)
                         .put("unique_post_draw_frames", session.uniquePostDrawFrames).put("rvm_model_created", session.model != null)
+                        .put("display_rejected_pairs", session.display.rejectedCount)
+                        .put("display_clock_corrections", session.display.clockCorrections)
+                        .put("post_draw_gap_max_us", session.maxUniquePostDrawGapNs / 1000L)
                         .put("rvm_model_ready", session.model?.isReady() == true)
                         .put("producer_copy_deferred", session.deferredCopies).put("producer_copy_pending", session.pendingSource != null)
                         .put("eof_pair_post_draw", session.end.complete()).put("eof_presented_slot", session.end.completedSlot())
-                        .put("audio_focus", audioFocusState))
+                        .put("audio_focus", audioFocusState).put("foreground", foreground)
+                        .put("requested_play", session.host.playing)
+                        .put("lifecycle_pauses", lifecyclePauses.get())
+                        .put("audio_focus_interruptions", audioFocusInterruptions.get()))
                     if (status.optString("state") == "failed" || status.optBoolean("render_failed"))
                         error(status.optString("error") + " " + status.optString("render_error"))
                 }
@@ -422,10 +464,12 @@ internal class MpvVideoBridge(
         }
     }
     private fun capture(session: Session, source: JSONObject): Boolean {
+        session.captureStartedNs = System.nanoTime()
         val producer = source.getLong("producer_token")
         var releaseProducer = true
         try {
             check(source.getBoolean("source_ticket_valid") && source.getBoolean("producer_fence_ready") && source.getBoolean("owner_context_shared"))
+            if (source.optBoolean("spatial_video")) session.spatial = true
             val width = source.getInt("width"); val height = source.getInt("height")
             check(!session.stereo || (if (session.topBottom) height else width) % 2 == 0)
             val eyeWidth = if (session.stereo && !session.topBottom) width / 2 else width
@@ -438,9 +482,11 @@ internal class MpvVideoBridge(
                 session.renderer = RenderBridgeNative.create(width, height, session.dims[0], session.dims[1], session.stereo, session.topBottom)
                 if (session.alpha && session.vulkan && !debugZeroCopyDisabled)
                     session.zeroCopy = RenderBridgeNative.enableZeroCopy(session.renderer)
-                // Alpha keeps each captured MPV slot for the pair's life instead of copying 8K (~270MB
-                // of bus traffic per frame); MPV has spare slots for the frames in flight.
-                if (session.alpha && !debugBorrowDisabled)
+                // Ordinary playback also keeps the immutable MPV texture until Godot's last draw.
+                // Avoid a second full-resolution RGBA read/write (256 MiB per 8192x4096 frame).
+                // retire()/cleanup() release the producer through a consumer-context GPU fence;
+                // display pins, seeks and mode changes retain the same ownership rules as Alpha.
+                if ((session.alpha || (!session.inference && session.normalFastPath)) && !debugBorrowDisabled)
                     session.borrow = RenderBridgeNative.enableBorrowedColor(session.renderer)
                 if (session.roiEnabled && !debugRoiDisabled) session.roi = RoiController(RenderBridgeNative.fullInputRect(session.renderer),
                     session.dims[0], session.dims[1], eyeWidth, eyeHeight)
@@ -494,11 +540,15 @@ internal class MpvVideoBridge(
     private fun finishCopy(session: Session) {
         val copying = session.copying ?: return
         if (!RenderBridgeNative.ready(session.renderer, copying.second)) return
+        val readyUs = (System.nanoTime() - session.captureStartedNs) / 1000
+        session.captureReadyCount++
+        session.captureReadyUs += readyUs
+        session.captureReadyMaxUs = maxOf(session.captureReadyMaxUs, readyUs)
         val texture = RenderBridgeNative.texture(session.renderer, copying.second)
         val bytes = session.dims[0]*session.dims[1]*3*4
         val pair = session.copyingPair ?: error("Immutable copy descriptor missing")
         // Decoder images get a new texture each frame and always use zero-copy: no CPU planes.
-        val buffers = if (pair.has("hardware_buffer")) NO_PLANES else session.buffers.getOrPut(texture) {
+        val buffers = if (!session.inference || pair.has("hardware_buffer")) NO_PLANES else session.buffers.getOrPut(texture) {
             ByteBuffer.allocateDirect(bytes).order(ByteOrder.LITTLE_ENDIAN) to ByteBuffer.allocateDirect(bytes).order(ByteOrder.LITTLE_ENDIAN)
         }
         pair.put("color_texture_id", texture).put("consumer_copy_fence_ready", true)
@@ -575,7 +625,11 @@ internal class MpvVideoBridge(
     }
     private fun identity(pair: JSONObject) = FramePairGate.Identity(pair.getInt("session_id"), pair.getInt("logical_session_id"),
         pair.getInt("generation"), pair.getLong("frame_id"), pair.getLong("pts_us"), pair.getInt("format_revision"),
-        pair.getLong("effect_revision"), pair.getLong("model_generation"), pair.getLong("slot_token"))
+        pair.getLong("effect_revision"), pair.getLong("model_generation"), pair.getLong("slot_token"),
+        playbackClockEstimate = !pair.optBoolean("source_pts_verified", true) &&
+            pair.optString("source_ticket_origin") == "standard_libmpv_render" && pair.optBoolean("source_ticket_valid") &&
+            !pair.optBoolean("alpha_requested", true) && !pair.optBoolean("depth_requested", true) &&
+            !pair.optBoolean("inference_ran", true) && !pair.optBoolean("depth_ran"))
     fun setDepthView(id: Int, shift: Double, convergence: Double): Boolean {
         val session = sessions[id] ?: return false
         if (!session.depth || shift !in 0.0..0.2 || convergence !in 0.0..1.0) return false
@@ -632,6 +686,7 @@ internal class MpvVideoBridge(
                     report.put("pair", pair).put("state", "ready")
                 } catch (failure: Throwable) {
                     report.put("state", "failed").put("error", failure.message)
+                    if (BuildConfig.DEBUG) android.util.Log.w("QuestMpvFreeze", "Frame freeze failed", failure)
                 } finally {
                     session.display.unpin(token); freezePending.set(false)
                     release(session, token)
@@ -792,6 +847,7 @@ internal class MpvVideoBridge(
     }
     fun close(id: Int) { sessions[id]?.let { gate.invalidate(id); dispose(it, true) } }
     fun pause() {
+        lifecyclePauses.incrementAndGet()
         foreground = false; hosts.forEach { if (it.handle > 0) MpvSourceNative.setPlaying(it.handle, false) }
         refreshPlayback()
     }
@@ -803,7 +859,8 @@ internal class MpvVideoBridge(
         sessions.values.forEach { fail(it, "MPV_GL_CONTEXT_RECREATED", IllegalStateException("Owner context recreated")) }
     }
     companion object {
-        const val RVM_VIDEO_FPS = 30
+        const val RVM_VIDEO_FPS = 20
+        val ALPHA_FPS_RANGE = 10..40
         private val NO_PLANES: Pair<ByteBuffer, ByteBuffer> = ByteBuffer.allocateDirect(0) to ByteBuffer.allocateDirect(0)
     }
     fun shutdown() {

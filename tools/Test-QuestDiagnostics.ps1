@@ -12,9 +12,9 @@ $model = (& $adb -s $Serial shell getprop ro.product.model | Out-String).Trim()
 if ($model -notmatch '^Quest\s*3$') { throw "Expected authorized Quest3: $model" }
 if (-not $Rvm -and -not $Controlled -and -not $RvmVideo -and -not $Mpv -and -not $MpvGpu -and -not $MpvSource) { throw 'Choose a diagnostic mode including -MpvSource.' }
 if ($Controlled -and $RvmVideo) { throw 'Run -Controlled and -RvmVideo in separate evidence runs.' }
-$directory = Join-Path $workspace ('artifacts\device\' + (Get-Date -Format 'yyyyMMdd_HHmmss') + '_automatic')
+$directory = Join-Path $workspace ('build\output\device\' + (Get-Date -Format 'yyyyMMdd_HHmmss') + '_automatic')
 New-Item -ItemType Directory -Force -Path $directory | Out-Null
-$build = Get-Content (Join-Path $workspace 'artifacts\build_manifest.json') -Raw | ConvertFrom-Json
+$build = Get-Content (Join-Path $workspace 'build\output\build_manifest.json') -Raw | ConvertFrom-Json
 if ($MpvSource -and -not $build.mpv_source_frame_extension) { throw 'Install a SourceFrame Debug build for -MpvSource.' }
 $packagePaths = @(& $adb -s $Serial shell pm path $app)
 if ($LASTEXITCODE -ne 0 -or $packagePaths.Count -ne 1 -or $packagePaths[0] -notmatch '^package:(/data/app/.+/base\.apk)$') { throw 'Expected one installed base APK.' }

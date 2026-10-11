@@ -10,15 +10,19 @@ internal class CloudDeletion(private val client: CloudClient, private val author
         var offset = 0
         val seen = HashSet<String>()
         var count = 0
+        var found: CloudFile? = null
         while (true) {
             val page = client.page(parent, offset, offset == 0)
             for (file in page.files) {
                 check(seen.add(file.objectId)) { "Cloud file changed. Refresh the folder" }
-                if (file.name == name) return file
+                if (file.name == name) {
+                    if (found != null) throw CloudFailure("cloud_file_ambiguous")
+                    found = file
+                }
             }
             count += page.files.size
             check(count <= DeleteTree.LIMIT && (page.nextOffset < 0 || page.nextOffset > offset)) { "Cloud folder too large" }
-            if (page.nextOffset < 0) return null
+            if (page.nextOffset < 0) return found
             offset = page.nextOffset
         }
     }

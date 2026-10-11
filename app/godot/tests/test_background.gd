@@ -7,7 +7,7 @@ class SupportedDisplay extends XrDisplay:
 var checks := 0
 var failures: Array[String] = []
 var folder := "user://background_test_%d" % Time.get_ticks_usec()
-var output := ProjectSettings.globalize_path("res://../../artifacts/background-preview")
+var output := ProjectSettings.globalize_path("res://../../build/output/background-preview")
 
 func check(value: bool, message: String) -> void:
 	checks += 1

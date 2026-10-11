@@ -19,7 +19,9 @@ internal object RenderBridgeNative {
     @JvmStatic external fun capture(handle: Long, transform: FloatArray): Long
     /** MPV shared RGBA8, canonical top rows. Retain the producer lease through this GPU copy. */
     @JvmStatic external fun captureTexture(handle: Long, texture: Int, stageInputs: Boolean): Long
-    /** Constant per-slot opaque R8 shares the color-copy fence; no inference readback. */
+    /** Constant per-slot opaque R8; no inference readback. With borrowed color the caller must
+     * first acquire the producer's completed fence and retain its lease through retirement.
+     * A cached mask then needs no GPU capture commands or additional capture fence. */
     @JvmStatic external fun captureOpaqueTexture(handle: Long, texture: Int): Long
     @JvmStatic external fun stats(handle: Long): String
     @JvmStatic external fun ready(handle: Long, token: Long): Boolean

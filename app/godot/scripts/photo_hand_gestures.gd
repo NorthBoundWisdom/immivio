@@ -30,6 +30,7 @@ func update(inputs: Dictionary, enabled: bool, zoom: float,
 		head_basis: Basis, scale: float, content_epoch: int) -> Dictionary:
 	var consumed: Array = owners.keys()
 	var actions: Array[Dictionary] = []
+	var preview := 0.0
 	if content_epoch != epoch:
 		cancel()
 		epoch = content_epoch
@@ -86,6 +87,8 @@ func update(inputs: Dictionary, enabled: bool, zoom: float,
 			var offset: Vector3 = Vector3.ZERO if start == null or point == null else basis.inverse() * (point - start) / world_scale
 			if offset.length() >= MOVE_METRES: moved = true
 			last = point
+			if sample.get("down", false) and absf(offset.x) > maxf(absf(offset.y), absf(offset.z)) * 1.5:
+				preview = offset.x
 			if sample.get("released", false):
 				if not moved: actions.append({"operation": "tap"})
 				elif absf(offset.x) >= SWIPE_METRES and absf(offset.x) > maxf(absf(offset.y), absf(offset.z)) * 1.5:
@@ -93,4 +96,4 @@ func update(inputs: Dictionary, enabled: bool, zoom: float,
 				cancel()
 	for side in HANDS:
 		if not inputs.get(side, {}).get("down", false): owners.erase(side)
-	return {"consumed": consumed, "actions": actions}
+	return {"consumed": consumed, "actions": actions, "preview": preview}

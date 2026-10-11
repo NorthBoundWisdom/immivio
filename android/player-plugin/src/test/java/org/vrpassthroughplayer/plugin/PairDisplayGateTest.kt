@@ -50,4 +50,17 @@ class PairDisplayGateTest {
         gate.close(); assertFalse(gate.pin(1)); assertTrue(gate.owns(1)); assertTrue(gate.unpin(1))
         assertFalse(gate.owns(1)); assertEquals(0, gate.heldClaims()); assertFalse(gate.unpin(1))
     }
+    @Test fun keyframePlaybackClockCorrectionDoesNotFreezeNewTransactions() {
+        val gate = PairDisplayGate(scope)
+        val first = pair(1).copy(ptsUs=10_000_000, playbackClockEstimate=true)
+        gate.offer(first); gate.claim(1); assertTrue(gate.acknowledge(1)); gate.detach(1)
+        for (frame in 2L..121L) {
+            val next = pair(frame).copy(ptsUs=8_000_000+(frame-2)*16_667, playbackClockEstimate=true)
+            assertNull(gate.offer(next)); assertNotNull(gate.claim(frame)); assertTrue(gate.acknowledge(frame)); gate.detach(frame)
+        }
+        assertEquals(121L, gate.ackCount); assertEquals(1L, gate.clockCorrections); assertEquals(0L, gate.rejectedCount)
+        assertEquals(122L, gate.offer(pair(122, 1).copy(playbackClockEstimate=true)))
+        assertEquals(123L, gate.offer(pair(123).copy(ptsUs=-1, playbackClockEstimate=true)))
+        assertEquals(124L, gate.offer(pair(124).copy(generation=3, playbackClockEstimate=true)))
+    }
 }

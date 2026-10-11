@@ -82,10 +82,11 @@ func draw() -> void:
 	menu.add_child(panel); menu._decorations.append(panel)
 	menu._label(menu.I18n.t("Bookmarks") + " · " + str(entries.size()), Vector3(-0.05, 0.778, 0.01), 21)
 	menu._glyph(CLOSE, "close", Vector2(0.355, 0.778), 0.065, true, menu.I18n.t("Close"))
-	menu._label(menu.I18n.t("Video time positioning"), Vector3(0, 0.718, 0.01), 14).modulate = menu.MUTED
+	menu._label(menu.I18n.t("Seek mode"), Vector3(0, 0.718, 0.01), 14).modulate = menu.MUTED
 	var choice := SeekPolicy.bookmark_override(menu._state.get("bookmark_seek_mode", SeekPolicy.GLOBAL))
 	for option in [[MODE_GLOBAL, SeekPolicy.GLOBAL, "Follow global", -0.225, 0.27],
-		[MODE_SPEED, SeekPolicy.SPEED, "Speed", 0.035, 0.2], [MODE_EXACT, SeekPolicy.EXACT, "Precise", 0.26, 0.2]]:
+		[MODE_SPEED, SeekPolicy.SPEED, SeekPolicy.caption(SeekPolicy.SPEED), 0.035, 0.2],
+		[MODE_EXACT, SeekPolicy.EXACT, SeekPolicy.caption(SeekPolicy.EXACT), 0.26, 0.2]]:
 		var target: int = option[0]
 		menu._button(target, menu.I18n.t(option[2]), Vector2(option[3], 0.669), Vector2(option[4], 0.054))
 		menu._buttons.back().base_color = menu.SELECTED if choice == option[1] else menu.TILE

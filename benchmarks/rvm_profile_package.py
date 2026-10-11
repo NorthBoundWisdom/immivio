@@ -34,7 +34,7 @@ def main() -> None:
     reports = []
     for profile in manifest["profiles"]:
         key = profile["key"]
-        report = json.loads((ROOT / "artifacts/rvm-ncnn-reference" / key / "report.json").read_text(encoding="utf-8"))
+        report = json.loads((ROOT / "build/output/rvm-ncnn-reference" / key / "report.json").read_text(encoding="utf-8"))
         assert all(report[field] == "passed" for field in ["numerical", "eye_isolation", "reset"])
         for asset_name, digest_name in [("param_asset", "param_sha256"), ("bin_asset", "bin_sha256")]:
             path = directory / profile[asset_name].removeprefix("rvm/")
@@ -52,7 +52,7 @@ def main() -> None:
     result = {"schema_version": 1, "state": "passed", "scope": "Host package/oracle integrity; not native/device execution",
               "assets": len(manifest["assets"]), "bytes": sum(item["bytes"] for item in manifest["assets"]),
               "unique_weights": len(weights), "unique_graphs": len(graphs), "profiles": reports}
-    destination = ROOT / "artifacts/rvm-profile-package.json"
+    destination = ROOT / "build/output/rvm-profile-package.json"
     destination.write_text(json.dumps(result, indent=2), encoding="utf-8")
     print(json.dumps(result, indent=2))
 

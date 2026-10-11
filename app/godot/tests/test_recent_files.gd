@@ -54,7 +54,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	preload("res://scripts/i18n.gd").use("en") # text checks are written in English
-	directory = ProjectSettings.globalize_path("res://../../artifacts/recent-files-host/" + str(Time.get_ticks_usec()))
+	directory = ProjectSettings.globalize_path("res://../../build/output/recent-files-host/" + str(Time.get_ticks_usec()))
 	DirAccess.make_dir_recursive_absolute(directory)
 	var a := "content://local/document/字幕%20A"
 	var b := "file:///local/b.mp4"

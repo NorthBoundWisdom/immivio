@@ -192,7 +192,7 @@ internal object DlnaClient {
                 text.toIntOrNull()?.takeIf { it >= 0 } ?: error("DLNA server unavailable")
             }
             val result = value("Result") ?: error("DLNA server unavailable")
-            val doc = result.takeIf { it.isNotEmpty() }?.let(::parse)
+            val doc = result.takeIf { it.isNotEmpty() }?.let(::parseDidl)
             val ids = ArrayList<String>()
             for (tag in listOf("container", "item")) {
                 val nodes = doc?.getElementsByTagNameNS("*", tag) ?: continue
@@ -204,7 +204,7 @@ internal object DlnaClient {
     }
 
     /** DIDL-Lite -> entries {id, title, container, uri?, size?, duration_ms?, width?, height?}. */
-    fun didl(xml: String, base: String = ""): JSONArray = didl(parse(xml), base)
+    fun didl(xml: String, base: String = ""): JSONArray = didl(parseDidl(xml), base)
 
     private fun didl(doc: Document, base: String): JSONArray {
         val out = JSONArray()
@@ -347,6 +347,26 @@ internal object DlnaClient {
         return if (nodes.length == 0) null else nodes.item(0).textContent.trim()
     }
     private fun escape(text: String) = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    private fun parseDidl(xml: String): Document {
+        // Some servers emit these caption extensions without declaring their prefixes.
+        // Inherited defaults repair only the known SEC/PV prefixes; explicit declarations win.
+        // Keep namespace-aware parsing and all XML/entity checks for everything else.
+        val body = xml.removePrefix("\uFEFF").trimStart().replaceFirst(Regex("^<\\?xml\\s[^?]*\\?>"), "")
+        val doc = parse("""<compat xmlns:sec="$SEC" xmlns:pv="$PV">$body</compat>""")
+        val children = doc.documentElement.childNodes
+        var roots = 0
+        for (i in 0 until children.length) {
+            val node = children.item(i)
+            if (node is Element) {
+                require(node.localName == "DIDL-Lite") { "Invalid DIDL document" }
+                roots++
+            } else if (node.nodeType == org.w3c.dom.Node.TEXT_NODE) {
+                require(node.textContent.isBlank()) { "Invalid DIDL document" }
+            }
+        }
+        require(roots == 1) { "Invalid DIDL document" }
+        return doc
+    }
     private fun parse(xml: String) = DocumentBuilderFactory.newInstance().apply {
         isNamespaceAware = true
         // Device descriptions come from the LAN: never resolve external entities. Android's parser

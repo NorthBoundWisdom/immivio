@@ -18,6 +18,8 @@ const POLL_MS := 1000
 var status_provider: Callable
 ## -> {"hour", "minute"}; tests pin the clock.
 var clock_provider: Callable = Time.get_time_dict_from_system
+## Reserve the footer's information slot so battery/clock changes cannot move controls.
+var minimum_width := 0.0
 var _status: Dictionary = {}
 var _polled_ms := -POLL_MS
 var _shown := ""
@@ -82,7 +84,7 @@ func refresh(force: bool = false) -> void:
 	var bolt_slot := ICON * 0.55 if _bolt.visible else 0.0
 	var gap := 0.008 if has_battery else 0.0
 	var content := battery_slot + bolt_slot + gap + text_width
-	_pill.mesh.size = Vector2(content + HEIGHT * 0.8, HEIGHT)
+	_pill.mesh.size = Vector2(maxf(minimum_width, content + HEIGHT * 0.8), HEIGHT)
 	_pill.material_override.set_shader_parameter("surface_size", _pill.mesh.size)
 	var left := -content / 2
 	_battery.position = Vector3(left + battery_slot / 2, 0, 0.002)

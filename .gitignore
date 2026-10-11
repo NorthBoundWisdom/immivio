@@ -40,4 +40,17 @@ local.properties
 /android/player-plugin/src/main/jniLibs/
 /android/player-plugin/src/debug/jniLibs/
 /models/source/
+
+tmp/
+keystore/
+backups/
+releases/
+credentials/
+*.zip
+*.7z
+*.key
+*.pem
+signing-identities.json
+thru3d-signing.json
 .freecm
+.DS_Store

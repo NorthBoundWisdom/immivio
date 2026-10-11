@@ -5,8 +5,8 @@
   "source_lock_sha256": "7036a7bf793e00607d7b65f3c4c98428a3004d3584423116d91fe0b4c22273cd",
   "builder_revision": "fdf74f6830c47dbaa8a22ac79726e8303f1db5af",
   "mpv_revision": "0b7ed670f7c353dd3dd4f8ae0fc788a181a15aa6",
-  "patch_sha256": "1bda3569dca1920897f3fe645e5e6f16a93037474e917a17708e8ff627139cf3",
-  "private_header_sha256": "0e74daa61c9f083dfaf4a0ea21f969b305e4b104f76d73b572a2ca2b25ce8e0c",
+  "patch_sha256": "15e449a7251b14c3e99bd1e2d5d3f49d3ee8db65fc1555dbe3fa0696c8760541",
+  "private_header_sha256": "1775dac61c07b88ec7bed1fe594889b7323582ae0a26dbcf143bb343617275a1",
   "api_version": 2,
   "ndk": "30.0.16248370",
   "android_api": 23,
@@ -52,9 +52,9 @@
   "libraries": [
     {
       "name": "libmpv.so",
-      "sha256": "0004c41c360cd7eafd4c1a5ee330803ae449f1156d9ef3fdea40824d72f0475b",
-      "bytes": 8261384,
-      "built_sha256": "558a9e9e4594d4aef5e7d5a943b579da586931f9723a653ca0ce81910262e254",
+      "sha256": "d1e0c3c79d55c93e338ebf5c5abca823241eb48f424dd5deac646be555404686",
+      "bytes": 8263512,
+      "built_sha256": "04b2e376d4ab4f0e98d326596f887744541fcebd7646d0a6a12def9f02849552",
       "needed": [
         "libm.so",
         "libz.so",
@@ -164,7 +164,7 @@
     }
   ],
   "host_packages_sha256": "0d42dd4ec021254111a439214a2681bf37ca44ba2af04a9d97af479f2bd1dd33",
-  "build_receipt_sha256": "0b01a1952d42a7b27b3d12027523710be59bc5f4ae7a5ee847b25d1734a2cabd",
+  "build_receipt_sha256": "1af189ab7cf1886b33a93f536eed83ada8f5b80881c67e33f969345d82ef82f6",
   "meson": "1.11.0",
   "ninja": "1.11.1",
   "cxx_runtime_policy": "Use the existing Godot/project libc++_shared; do not package a duplicate; device compatibility pending",

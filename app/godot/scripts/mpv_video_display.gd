@@ -9,15 +9,20 @@ const Thumbnails := preload("res://scripts/thumbnail_cache.gd")
 const Binding := preload("res://scripts/pair_texture_binding.gd")
 const PlaybackControl := preload("res://scripts/playback_control.gd")
 const SeekPolicy := preload("res://scripts/seek_policy.gd")
-var seek_mode := SeekPolicy.SPEED
+var seek_mode := SeekPolicy.DEFAULT
 var bookmark_seek_mode := SeekPolicy.GLOBAL
-var _last_seek_mode := SeekPolicy.SPEED
+var _last_seek_mode := SeekPolicy.DEFAULT
 const Log := preload("res://scripts/diagnostic_log.gd")
 const PixelProbe := preload("res://scripts/mpv_pixel_probe.gd")
 const SubtitleState := preload("res://scripts/mpv_subtitle_state.gd")
 const BitmapSubtitles := preload("res://scripts/bitmap_subtitles.gd")
 var bitmap_subtitles := BitmapSubtitles.new()
 const ModeMemory := preload("res://scripts/file_mode_memory.gd")
+const StereoView := preload("res://scripts/stereo_view.gd")
+var viewing_eye := 0 # 0 binocular; 1/2 duplicate the logical left/right view after eye swap.
+var stereo_horizontal := 0.0
+var stereo_vertical := 0.0
+var _stereo_view_dirty := false
 const RecentFiles := preload("res://scripts/recent_files.gd")
 const BookmarkStore := preload("res://scripts/bookmark_store.gd")
 var bookmark_store := BookmarkStore.new()
@@ -32,6 +37,7 @@ const AUTOMATIC_PROFILE := "320x320"
 const PROFILES := ["320x320", "384x216", "512x288", "384x384", "512x512", "256x144", "256x256"]
 
 var media := State.new()
+var _spatial_video := false # Source type survives seek/effect session generations.
 var control := PlaybackControl.new()
 var platform: Object
 var alpha_encoding := 1
@@ -199,7 +205,7 @@ static func _thumbnail_source(uri: String) -> bool:
 	return not ModeMemory.key_for(uri).is_empty()
 
 func _maybe_capture_thumbnail() -> void:
-	if _thumb_after_ms < 0 or _thumbnail_busy or _pixel_busy or _waiting_first or not _pending_revision.is_empty() \
+	if _debug_benchmark or _thumb_after_ms < 0 or _thumbnail_busy or _pixel_busy or _waiting_first or not _pending_revision.is_empty() \
 		or media.state not in ["playing", "paused", "ended"] or not _binding.material or media.last_pair.is_empty():
 		return
 	if int(media.last_pair.get("pts_us", 0)) / 1000 < _thumb_after_ms:
@@ -422,6 +428,9 @@ func open_local(uri: String, title: String, start_ms: int = 0, restore_mode: boo
 			stereo_half = stereo_sbs and bool(saved.get("stereo_half", false))
 			fisheye_fov = int(saved.get("fisheye_fov", 180)) if int(saved.get("fisheye_fov", 180)) in FISHEYE_FOVS else 180
 			swap_eyes = bool(saved.swap_eyes)
+			viewing_eye = int(saved.get("viewing_eye", 0))
+			stereo_horizontal = float(saved.get("stereo_horizontal", 0.0))
+			stereo_vertical = float(saved.get("stereo_vertical", 0.0))
 			depth_requested = bool(saved.get("depth_requested", false)) and not stereo_sbs
 		elif not mode_lock.is_empty() and not stated.has("geometry") and not stated.has("stereo"):
 			geometry = int(mode_lock.geometry)
@@ -446,7 +455,7 @@ func open_local(uri: String, title: String, start_ms: int = 0, restore_mode: boo
 	_thumb_tries = 0
 	_thumbnail_result = {}
 	_thumb_after_ms = -1
-	if _thumbnail_source(uri) and Thumbnails.texture(uri) == null:
+	if not _debug_benchmark and _thumbnail_source(uri) and Thumbnails.texture(uri) == null:
 		_thumb_after_ms = 0
 	local_uri = uri
 	_warm_rvm()
@@ -508,6 +517,13 @@ func _unbind() -> void:
 		caption.visible = false
 
 func close_video() -> void:
+	commit_stereo_view()
+	viewing_eye = 0
+	stereo_horizontal = 0.0
+	stereo_vertical = 0.0
+	_apply_stereo_view()
+	_spatial_video = false
+	media.format.erase("spatial_video")
 	_bookmark_scope_sequence += 1
 	_bookmark_media_id = ""
 	_bookmark_metadata.clear()
@@ -701,6 +717,7 @@ func set_alpha(enabled: bool) -> bool:
 
 ## 2D->3D for mono sources; switching it on ends Alpha.
 func set_depth(enabled: bool) -> bool:
+	if is_spatial_video(): return false
 	if enabled and not ai_available(): return false
 	if enabled and (stereo_sbs or geometry != Geometry.Geometry.FLAT):
 		return false
@@ -739,6 +756,7 @@ func cycle_depth_strength() -> void:
 	set_depth_strength(DEPTH_STRENGTHS[(DEPTH_STRENGTHS.find(depth_strength) + 1) % DEPTH_STRENGTHS.size()])
 
 func set_depth_strength(value: float) -> bool:
+	if is_spatial_video(): return false
 	var strength := DepthStrength.clamp_value(value)
 	if strength > 0.0 and (stereo_sbs or geometry != 0 or local_uri.is_empty() or media.state == "closed"): return false
 	if strength > 0.0: depth_strength = strength
@@ -997,12 +1015,23 @@ func seek_relative(delta_ms: int) -> bool:
 	_request_revision(control.target_ms)
 	return true
 
+## A decoded source type, retained until the file is closed.
+func is_spatial_video() -> bool:
+	return _spatial_video
+
+func mode_action_allowed(operation: String) -> bool:
+	if not is_spatial_video(): return true
+	return operation not in ["stereo", "projection", "lock_mode", "depth", "depth_strength"] \
+		and not operation.begins_with("stereo_") and not operation.begins_with("projection_") \
+		and not operation.begins_with("fov_")
+
 ## The current projection and layout as a lock.
 func current_lock() -> Dictionary:
 	return {"geometry": geometry, "layout": stereo_layout(), "depth": depth_requested and not stereo_sbs, "fisheye_fov": fisheye_fov}
 
 ## Locks the current mode, or unlocks when it is the locked one.
 func toggle_mode_lock() -> void:
+	if is_spatial_video(): return
 	var current := current_lock()
 	mode_lock = {} if mode_lock == current else current
 	mode_lock_changed.emit(mode_lock.duplicate())
@@ -1029,6 +1058,7 @@ func toggle_stereo() -> void:
 
 ## 0 mono, 1 full SBS, 2 full TB, 3 half SBS, 4 half TB.
 func set_stereo_layout(layout: int) -> void:
+	if is_spatial_video(): return
 	if layout < 0 or layout > 4 or layout == stereo_layout():
 		return
 	_unlock_mode()
@@ -1052,6 +1082,7 @@ func stereo_layout() -> int:
 	return 0 if not stereo_sbs else ((4 if top_bottom else 3) if stereo_half else (2 if top_bottom else 1))
 
 func set_fisheye_fov(value: int) -> void:
+	if is_spatial_video(): return
 	if not value in FISHEYE_FOVS or value == fisheye_fov:
 		return
 	_unlock_mode()
@@ -1064,6 +1095,7 @@ func cycle_projection() -> void:
 	set_projection((geometry + 1) % 4)
 
 func set_projection(value: int) -> void:
+	if is_spatial_video(): return
 	if value < 0 or value > 3:
 		return
 	if value != geometry: _unlock_mode()
@@ -1128,8 +1160,55 @@ func toggle_eye_order() -> bool:
 	changed.emit()
 	return true
 
+func set_viewing_eye(value: int) -> bool:
+	if not stereo_sbs or value not in [0, 1, 2]: return false
+	viewing_eye = value
+	_apply_stereo_view()
+	_remember_mode()
+	changed.emit()
+	return true
+
+func set_stereo_alignment(key: String, value: float) -> bool:
+	if not stereo_sbs or viewing_eye != 0 or not is_finite(value): return false
+	if key not in ["stereo_horizontal", "stereo_vertical"]: return false
+	set(key, clampf(snappedf(value, StereoView.STEP), -StereoView.LIMIT, StereoView.LIMIT))
+	_stereo_view_dirty = true
+	_apply_stereo_view()
+	return true
+
+func reset_stereo_alignment() -> void:
+	stereo_horizontal = 0.0
+	stereo_vertical = 0.0
+	_stereo_view_dirty = true
+	_apply_stereo_view()
+	commit_stereo_view()
+	changed.emit()
+
+func commit_stereo_view() -> void:
+	if not _stereo_view_dirty: return
+	_stereo_view_dirty = false
+	_remember_mode()
+
+func _apply_stereo_view() -> void:
+	if not material: return
+	# Native stereo only: mono and generated 2D->3D never inherit these corrections.
+	material.set_shader_parameter("viewing_eye", viewing_eye if stereo_sbs else 0)
+	material.set_shader_parameter("stereo_offset", Vector2(stereo_horizontal, stereo_vertical) * 0.01 if stereo_sbs else Vector2.ZERO)
+
 ## The file name left the projection or the layout open: the frame's shape decides (once).
 func _complete_layout() -> void:
+	if bool(media.format.get("spatial_video", false)): _spatial_video = true
+	if is_spatial_video():
+		_layout_pending = null
+		var revise := not stereo_sbs or top_bottom or depth_requested
+		geometry = Geometry.Geometry.FLAT
+		stereo_sbs = true
+		top_bottom = false
+		stereo_half = false
+		depth_requested = false
+		if revise: _request_revision()
+		_apply_geometry()
+		return
 	if _layout_pending == null:
 		return
 	var chosen := Naming.complete(_layout_pending, int(media.format.width), int(media.format.height), media.format, _layout_basename)
@@ -1162,6 +1241,7 @@ func _remember_mode() -> void:
 	if not _remember_file or not media.accepts(media.session_id):
 		return
 	var mode := {"geometry": geometry, "stereo_sbs": stereo_sbs, "swap_eyes": swap_eyes,
+		"viewing_eye": viewing_eye, "stereo_horizontal": stereo_horizontal, "stereo_vertical": stereo_vertical,
 		"alpha_requested": alpha_requested, "profile": profile, "depth_requested": depth_requested,
 		"top_bottom": stereo_sbs and top_bottom, "stereo_half": stereo_sbs and stereo_half, "fisheye_fov": fisheye_fov}
 	if mode_memory.remember(local_uri, mode) and not mode_memory.save():
@@ -1183,6 +1263,9 @@ func _present_pending() -> void:
 	if not claimed is Dictionary:
 		return
 	_unbind()
+	_binding.opaque = not alpha_requested and not depth_requested and not packed_file \
+		and not claimed.get("alpha_requested", false) and not claimed.get("depth_requested", false) \
+		and not claimed.get("inference_ran", false) and not claimed.get("depth_ran", false)
 	if not _binding.bind(material, claimed):
 		platform.detach_mpv_pair(media.session_id, int(claimed.slot_token))
 		picker_error = "Complete video frame could not be bound"
@@ -1195,7 +1278,9 @@ func _present_pending() -> void:
 	media.effect_revision = int(claimed.effect_revision)
 	media.frame_counter += 1
 	var par := float(claimed.get("pixel_aspect", 1.0))
+	_spatial_video = _spatial_video or bool(claimed.get("spatial_video", false))
 	media.format = {"width": int(claimed.width), "height": int(claimed.height),
+		"spatial_video": _spatial_video,
 		"pixel_aspect": par if is_finite(par) and par > 0.0 and par <= 16.0 else 1.0,
 		"stereo_mode": str(claimed.get("stereo_mode", "")), "unapplied_rotation_degrees": 0}
 	_rvm_alpha = bool(claimed.alpha_requested) and bool(claimed.inference_ran)
@@ -1294,9 +1379,15 @@ func _on_released(id: int, _payload: String) -> void:
 func _reopen_after_context_loss(uri: String, title: String, position_ms: int, remember_file: bool) -> void:
 	# Retain live user choices even if the last disk save failed.
 	var persisted := _file_permission_persisted
+	var eye := viewing_eye
+	var alignment := Vector2(stereo_horizontal, stereo_vertical)
 	if open_local(uri, title, position_ms, false, alpha_requested):
 		_remember_file = remember_file
 		_file_permission_persisted = persisted
+		viewing_eye = eye
+		stereo_horizontal = alignment.x
+		stereo_vertical = alignment.y
+		_apply_stereo_view()
 
 func _on_debug_command(id: int, payload: String) -> void:
 	var command: Variant = JSON.parse_string(payload)
@@ -1373,6 +1464,9 @@ func _on_debug_command(id: int, payload: String) -> void:
 	_debug_commands.append(command)
 	if _debug_commands.size() > 32:
 		_debug_commands.pop_front()
+	# Commands need an immediate receipt even if benchmark telemetry was just written.
+	# Closing stops periodic playback updates, so throttling here loses its final report.
+	_debug_next_report_us = 0
 	_write_debug_report()
 
 func _on_pixel_mask(id: int, payload: String) -> void:
@@ -1409,6 +1503,8 @@ func _write_debug_report() -> void:
 				"thumb_x": menu._thumb.position.x, "bar_width": menu.BAR_SEEK,
 				"duration_ms": int(menu._state.get("duration_ms", -1))}
 	var report := {"schema_version": 1, "request_id": _debug_request, "commands": _debug_commands,
+		"picker_error": picker_error,
+		"canvas_controls": host._canvas_controls_snapshot() if host and host.has_method("_canvas_controls_snapshot") else {},
 		"seek_policy_ui": host.seek_policy_probe_result if host and host.get("seek_policy_probe_result") is Dictionary else {},
 		"open_trace": _open_trace.duplicate(true),
 		"media": media.snapshot(), "layout": layout_snapshot(), "pairs": _debug_pairs,
@@ -1440,8 +1536,14 @@ func _sync_subtitle_surface() -> void:
 func _pixel_aspect() -> float:
 	return float(media.format.get("pixel_aspect", 1.0))
 
+func _apply_flat_pose() -> void:
+	super._apply_flat_pose()
+	if caption and caption.visible: _place_caption()
+	_sync_subtitle_surface()
+
 func _apply_geometry() -> void:
 	super._apply_geometry()
+	_apply_stereo_view()
 	if geometry != Geometry.Geometry.FLAT:
 		bitmap_subtitles.clear(material)
 		if _subtitle_surface: _subtitle_surface.visible = false
@@ -1463,6 +1565,8 @@ func layout_snapshot() -> Dictionary:
 	playback["bookmark_seek_mode"] = SeekPolicy.bookmark_override(bookmark_seek_mode)
 	playback["source_frame_pts_verified"] = media.last_pair.get("source_pts_verified", false)
 	return {"geometry": ["flat", "half_equirect_180", "fisheye_180", "equirect_360"][geometry], "stereo_sbs": stereo_sbs,
+		"viewing_eye": viewing_eye, "stereo_horizontal": stereo_horizontal, "stereo_vertical": stereo_vertical,
+		"opaque_rendering": material != null and material.shader == Binding.OPAQUE_SHADER,
 		"top_bottom": stereo_sbs and top_bottom, "stereo_half": stereo_sbs and stereo_half, "fisheye_fov": fisheye_fov,
 		"alpha_requested": alpha_requested, "alpha_enabled": alpha_enabled, "profile": profile,
 		"depth_requested": depth_requested, "depth_enabled": depth_enabled, "depth_strength": depth_strength, "auto_depth": auto_depth,

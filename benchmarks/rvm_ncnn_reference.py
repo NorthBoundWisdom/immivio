@@ -77,7 +77,7 @@ class NcnnRvm:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--profile", type=Path, default=ROOT / "build/rvm/256x144")
-    parser.add_argument("--output", type=Path, default=ROOT / "artifacts/rvm-ncnn-reference/256x144")
+    parser.add_argument("--output", type=Path, default=ROOT / "build/output/rvm-ncnn-reference/256x144")
     args = parser.parse_args()
     profile = json.loads((args.profile / "profile.json").read_text(encoding="utf-8"))
     for filename, key in [("rvm.ncnn.param", "ncnn_param_sha256"), ("rvm.ncnn.bin", "ncnn_bin_sha256")]:

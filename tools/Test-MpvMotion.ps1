@@ -6,14 +6,14 @@ $workspace=Split-Path -Parent $PSScriptRoot
 $adb=Join-Path $env:ANDROID_HOME 'platform-tools/adb.exe'
 $package='com.wapok.thru3d'
 $key='motion_'+[guid]::NewGuid().ToString('N')
-$directory=Join-Path $workspace ('artifacts/device/'+(Get-Date -Format 'yyyyMMdd_HHmmss')+'_'+$key)
+$directory=Join-Path $workspace ('build/output/device/'+(Get-Date -Format 'yyyyMMdd_HHmmss')+'_'+$key)
 New-Item -ItemType Directory -Force $directory | Out-Null
 $remote="/data/local/tmp/$key.mp4"
-$build=Get-Content "$workspace/artifacts/build_manifest.json" -Raw | ConvertFrom-Json
+$build=Get-Content "$workspace/build/output/build_manifest.json" -Raw | ConvertFrom-Json
 $fixture=Get-Content "$workspace/tests/fixtures/mp07_motion_4k.json" -Raw | ConvertFrom-Json
 $source=Join-Path $workspace $fixture.file
 if ((Get-FileHash $source -Algorithm SHA256).Hash.ToLowerInvariant() -ne $fixture.sha256) { throw 'Motion fixture differs from lock' }
-Copy-Item "$workspace/artifacts/build_manifest.json" $directory
+Copy-Item "$workspace/build/output/build_manifest.json" $directory
 Copy-Item $PSCommandPath "$directory/acquisition-script.ps1"
 Copy-Item "$workspace/benchmarks/mpv_motion_probe.py" "$directory/acquisition-verifier.py"
 function Read-Json([string]$name) {
@@ -24,7 +24,7 @@ function Read-Json([string]$name) {
 try {
     & $adb -s $Serial shell am force-stop $package
     if ($Install) {
-        & $adb -s $Serial install -r "$workspace/artifacts/quest3-player-debug.apk" | Set-Content "$directory/install.txt"
+        & $adb -s $Serial install -r "$workspace/build/output/quest3-player-debug.apk" | Set-Content "$directory/install.txt"
         if ($LASTEXITCODE -ne 0) { throw 'APK installation failed' }
     }
     $path=((& $adb -s $Serial shell pm path $package | Select-String '/base.apk$' | Select-Object -First 1).ToString()) -replace '^package:',''

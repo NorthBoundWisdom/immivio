@@ -110,7 +110,7 @@ func _run() -> void:
 	origin.free()
 	main.free()
 	menu.free()
-	var output := ProjectSettings.globalize_path("res://../../artifacts/recent-pointer-host")
+	var output := ProjectSettings.globalize_path("res://../../build/output/recent-pointer-host")
 	DirAccess.make_dir_recursive_absolute(output)
 	FileAccess.open(output.path_join("verification.json"), FileAccess.WRITE).store_string(JSON.stringify({"state": "passed" if failures.is_empty() else "failed", "checks": checks, "failures": failures,
 		"scope": "Production menu geometry/render state and real Godot XRController3D/Main dispatch using synthetic trackers; physical Quest pointing unverified"}, "\t"))

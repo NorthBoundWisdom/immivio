@@ -5,6 +5,11 @@ static func tap(menu: Node3D, target: int) -> bool:
 		if button.target != target or not button.enabled or not button.node.visible: continue
 		var origin: Vector3 = button.node.global_position + button.node.global_basis.z
 		var direction: Vector3 = -button.node.global_basis.z
+		if menu.xr_surface and menu.xr_surface.native_supported and menu.xr_surface.active_menu == menu:
+			var pose: Transform3D = menu.xr_surface.layer.global_transform
+			var local: Vector3 = pose.affine_inverse() * button.node.global_position
+			origin = pose * Vector3(local.x, local.y, 1)
+			direction = -pose.basis.z
 		if not menu.press_pointer("left_hand", origin, direction, true): return false
 		menu.release_pointer("left_hand", origin, direction, true)
 		return true
@@ -12,7 +17,11 @@ static func tap(menu: Node3D, target: int) -> bool:
 
 func run(host: Node, step: String, marker_id: String) -> Dictionary:
 	var result := {"step": step, "accepted": false, "scope": "Actual production ray-menu software route on Quest; no physical controller injection"}
-	if step in ["global_speed", "global_exact"]:
+	if step == "recenter":
+		host._show_player_menu()
+		host.player_menu.section = 0; host.player_menu.refresh()
+		result.accepted = tap(host.player_menu, 108)
+	elif step in ["global_speed", "global_exact"]:
 		host._show_recent_menu()
 		var library: Node3D = host.recent_menu
 		library.section = library.Section.SETTINGS; library.tab = library.VIDEO_TAB; library.refresh()

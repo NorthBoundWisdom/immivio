@@ -11,7 +11,7 @@ func check(ok: bool, message: String) -> void:
 	checks += 1
 	if not ok: failures.append(message)
 func _initialize() -> void:
-	var directory := ProjectSettings.globalize_path("res://../../artifacts/file-editing-memory/" + str(Time.get_ticks_usec()))
+	var directory := ProjectSettings.globalize_path("res://../../build/output/file-editing-memory/" + str(Time.get_ticks_usec()))
 	var old := "file:///storage/test/old.mp4"
 	var new := "file:///storage/test/new.mp4"
 	var recent := preload("res://scripts/recent_files.gd").new(directory)

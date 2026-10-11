@@ -20,6 +20,12 @@ const PHOTO_PAGE_NEXT := 411
 const PHOTO_BACKGROUND := 412
 const PHOTO_ADJUST := 413
 const PHOTO_ADJUST_BACK := 414
+const PHOTO_LAYOUT := 415
+const PHOTO_RETURN := 416
+const PHOTO_SHUFFLE := 417
+const PHOTO_PORTRAIT := 418
+const PHOTO_LAYOUT_BASE := 470
+var _layout_open := false
 const Photo := preload("res://scripts/photo_display.gd")
 const PHOTO_THUMB := 420
 var queue_provider: Callable
@@ -32,12 +38,13 @@ func _depth_maximum() -> float:
 func _reset_navigation() -> void:
 	super._reset_navigation()
 	_gallery_open = false
+	_layout_open = false
 
 func refresh_values() -> void:
 	if not visible: return
 	var latest: Dictionary = state_provider.call() if state_provider.is_valid() else {}
 	if _adjustment == "photo_view":
-		var layout_changed: bool = latest.get("geometry", 0) != _state.get("geometry", 0) or latest.get("has_image", false) != _state.get("has_image", false)
+		var layout_changed: bool = latest.get("geometry", 0) != _state.get("geometry", 0) or latest.get("has_image", false) != _state.get("has_image", false) or latest.get("layout", 0) != _state.get("layout", 0) or (int(latest.get("gallery_focus", -1)) < 0) != (int(_state.get("gallery_focus", -1)) < 0)
 		_state = latest
 		if layout_changed:
 			_finish_adjustment()
@@ -49,7 +56,7 @@ func refresh_values() -> void:
 	if latest != _state:
 		var old_layout := _state.duplicate()
 		var new_layout := latest.duplicate()
-		for key in ["depth_strength", "depth_requested", "depth_enabled", "depth_error", "stereo_strategy", "stereo_ready", "render_strength"]:
+		for key in ["depth_strength", "depth_requested", "depth_enabled", "depth_error", "stereo_strategy", "stereo_ready", "render_strength", "portrait_enabled"]:
 			old_layout.erase(key); new_layout.erase(key)
 		_state = latest
 		if old_layout != new_layout:
@@ -73,23 +80,37 @@ func _draw_bar() -> void:
 	_title = _label(_fit_title(str(_state.get("title", "")), "", 0.9, 15), Vector3(0, 0.1, 0.004), 15)
 	_title.modulate = MUTED
 	var has: bool = _state.get("has_image", false)
+	var portrait: bool = _state.get("portrait_requested",false)
+	var groups: bool = int(_state.get("layout", 0)) == 2 and int(_state.get("gallery_focus", -1)) < 0
+	var swapping: bool = _state.get("gallery_swapping", false)
 	_glyph(PHOTO_GALLERY, "images", Vector2(-0.5, 0.025), 0.075, _state.get("count", 0) > 0, I18n.t("Images"))
-	_glyph(PHOTO_INSPECT, "zoom", Vector2(-0.39, 0.025), 0.075, has, _inspect_tip())
+	_glyph(PHOTO_INSPECT, "zoom", Vector2(-0.39, 0.025), 0.075, has and not portrait, _inspect_tip())
 	_glyph(PHOTO_ADJUST, "adjust", Vector2(-0.28, 0.025), 0.075, has, I18n.t("Adjust image"))
-	_glyph(PHOTO_PREVIOUS, "previous", Vector2(-0.14, 0.025), 0.085, _state.get("can_previous", false), I18n.t("Previous image"))
+	_glyph(PHOTO_PREVIOUS, "previous", Vector2(-0.14, 0.025), 0.085, _state.get("can_previous", false) and not swapping, I18n.t("Previous group" if groups else "Previous image"))
 	_label("%d / %d" % [maxi(0, int(_state.get("index", -1)) + 1), int(_state.get("count", 0))], Vector3(0, 0.025, 0.004), 18)
-	_glyph(PHOTO_NEXT, "next", Vector2(0.14, 0.025), 0.085, _state.get("can_next", false), I18n.t("Next image"))
+	_glyph(PHOTO_NEXT, "next", Vector2(0.14, 0.025), 0.085, _state.get("can_next", false) and not swapping, I18n.t("Next group" if groups else "Next image"))
+	_glyph(PHOTO_PORTRAIT, "alpha", Vector2(0.23, 0.025), 0.075, portrait or _state.get("portrait_available",false), I18n.t("Exit portrait" if portrait else "Portrait passthrough"))
 	if int(_state.get("geometry", 0)) == 0:
 		_glyph(PHOTO_DEPTH, "depth", Vector2(DEPTH_X, 0.025), 0.075, _can_depth(), I18n.t("Auto 3D"))
-	_glyph(MODE, "view_mode", Vector2(0.41, 0.025), 0.075, has, I18n.t("Image mode"))
+	_glyph(MODE, "view_mode", Vector2(0.41, 0.025), 0.075, has and not portrait, I18n.t("Image mode"))
 	_glyph(11, "settings", Vector2(0.5, 0.025), 0.075, has, I18n.t("Settings"))
 	_status = _label(_photo_status(), Vector3(0, -0.075, 0.004), 15)
 	_status.modulate = MUTED
 	_round(107, "close", Vector2(-0.14, 0.215), 0.08, has or _state.get("loading", false), false, I18n.t("Close image"))
 	_round(100, "folder", Vector2(0, 0.215), 0.08, true, false, I18n.t("Library"))
 	_round(108, "recenter", Vector2(0.14, 0.215), 0.08, true, false, I18n.t("Recenter"))
+	var layout := clampi(int(_state.get("layout", 0)), 0, 3)
+	_round(PHOTO_LAYOUT, ["image", "photo_sides", "photo_wall", "memory"][layout], Vector2(-0.30, 0.215), 0.08, has and not portrait, false, I18n.t("Photo layout"))
+	var caption := _label(I18n.t("Portrait passthrough" if portrait else Photo.Gallery.NAMES[layout]), Vector3(-0.30, 0.15, 0.004), 12)
+	caption.modulate = MUTED
+	if layout in [2,3] and not portrait and not _depth_open and int(_state.get("gallery_focus", -1)) < 0:
+		_round(PHOTO_SHUFFLE, "photo_batch" if layout == 2 else "dice", Vector2(0.30, 0.215), 0.08, has and not swapping, false, I18n.t("Next group" if layout == 2 else "Shuffle memories"))
+	if portrait or int(_state.get("gallery_focus", -1)) >= 0:
+		_round(PHOTO_RETURN, "up", Vector2(-0.44, 0.215), 0.08, true, false, I18n.t("Back"))
 	_place_device_status(Vector2(0, -0.175))
-	if _mode_open:
+	if _layout_open:
+		_draw_layouts()
+	elif _mode_open:
 		_draw_modes()
 		for button in _buttons:
 			if button.target == MODE_STEREO + 3: button.enabled = bool(button.enabled) and _state.get("depth_available", false)
@@ -98,10 +119,26 @@ func _draw_bar() -> void:
 	elif _depth_open:
 		_draw_depth()
 
+func _draw_layouts() -> void:
+	var icons := ["image", "photo_sides", "photo_wall", "memory"]
+	for i in 4:
+		_button(PHOTO_LAYOUT_BASE + i, I18n.t(Photo.Gallery.NAMES[i]), Vector2(-0.435 + i * 0.29, 0.46), Vector2(0.275, 0.13), true, icons[i])
+		if i == int(_state.get("layout", 0)):
+			_buttons.back().base_color = SELECTED
+			_icon("check", Vector3(0.105, 0.040, 0.006), 0.028, ACCENT, _buttons.back().node)
+
 func _draw_adjustments() -> void:
 	if _adjustment != "photo_view":
 		super._draw_adjustments()
 		return
+	if int(_state.get("layout", 0)) in [2, 3] and int(_state.get("gallery_focus", -1)) < 0:
+		_set_backdrop(Vector2(1.55, 0.50))
+		_button(PHOTO_ADJUST_BACK, "", Vector2(-0.66, 0.19), Vector2(0.09, 0.065), true, "up")
+		_button(CLOSE, "", Vector2(0.66, 0.19), Vector2(0.09, 0.065), true, "close")
+		_label(I18n.t(Photo.Gallery.NAMES[int(_state.layout)]), Vector3(0, 0.19, 0.004), 24)
+		_adjustment_row(450, "gallery_scale", "Image size", Vector3(Photo.Gallery.SCALE_LIMITS.x, Photo.Gallery.SCALE_LIMITS.y, 0.05), 0.02)
+		_adjustment_row(451, "gallery_distance", "Distance", Vector3(Photo.Gallery.DISTANCE_LIMITS.x, Photo.Gallery.DISTANCE_LIMITS.y, 0.1), -0.125)
+		_refresh_adjustments(); return
 	_set_backdrop(Vector2(1.55, 0.64))
 	_button(PHOTO_ADJUST_BACK, "", Vector2(-0.66, 0.25), Vector2(0.09, 0.065), true, "up")
 	_button(CLOSE, "", Vector2(0.66, 0.25), Vector2(0.09, 0.065), true, "close")
@@ -110,7 +147,7 @@ func _draw_adjustments() -> void:
 	_adjustment_row(451, "screen_scale", "Image size", Vector3(Photo.PHOTO_SCALE_LIMITS.x, Photo.PHOTO_SCALE_LIMITS.y, 0.1), -0.045)
 	_adjustment_row(452, "inspect_magnification", "Magnification", Vector3(Photo.INSPECT_LIMITS.x, Photo.INSPECT_LIMITS.y, 0.1), -0.19)
 	for target in _adjust_rows:
-		var enabled: bool = _state.get("has_image", false) and (target == 452 or int(_state.get("geometry", 0)) == 0)
+		var enabled: bool = _state.get("has_image", false) and (target != 452 or not _state.get("portrait_requested",false)) and (target == 452 or int(_state.get("geometry", 0)) == 0)
 		for button in _buttons:
 			if button.target == target: button.enabled = enabled
 		var row: Dictionary = _adjust_rows[target]
@@ -125,10 +162,10 @@ func _refresh_adjustments() -> void:
 		super._refresh_adjustments()
 		return
 	for row in _adjust_rows.values():
-		var fallback := Photo.DEFAULT_DISTANCE if row.key == "screen_distance" else (1.0 if row.key == "screen_scale" else Photo.DEFAULT_MAGNIFICATION)
+		var fallback := Photo.DEFAULT_DISTANCE if row.key in ["screen_distance", "gallery_distance"] else (1.0 if row.key == "screen_scale" else Photo.DEFAULT_MAGNIFICATION)
 		var value := float(_state.get(row.key, fallback))
 		var fraction := clampf((value - row.span.x) / (row.span.y - row.span.x), 0.0, 1.0)
-		row.label.text = "%.1f m" % value if row.key == "screen_distance" else ("%d%%" % roundi(value * 100) if row.key == "screen_scale" else "%.1f×" % value)
+		row.label.text = "%.1f m" % value if row.key in ["screen_distance", "gallery_distance"] else ("%d%%" % roundi(value * 100) if row.key in ["screen_scale", "gallery_scale"] else "%.1f×" % value)
 		row.fill.visible = fraction > 0
 		row.fill.mesh.size.x = maxf(0.001, fraction * 0.6)
 		row.fill.position.x = 0.03 + fraction * 0.3
@@ -142,7 +179,7 @@ func _draw_panel() -> void:
 	_button(PHOTO_STRENGTH, I18n.t("3D depth") + "  " + _depth_caption(), Vector2(-0.26, 0.035), Vector2(0.49, 0.105), _can_depth(), "depth")
 	var names := ["Off", "Slight", "Medium", "Full"]
 	var curve := [0.0, 0.35, 0.7, 1.0].find(float(_state.get("screen_curve", 0)))
-	_button(PHOTO_CURVE, I18n.t("Screen curve") + "  " + I18n.t(names[maxi(0, curve)]), Vector2(0.26, 0.035), Vector2(0.49, 0.105), int(_state.get("geometry", 0)) == 0, "screen")
+	_button(PHOTO_CURVE, I18n.t("Screen curve") + "  " + I18n.t(names[maxi(0, curve)]), Vector2(0.26, 0.035), Vector2(0.49, 0.105), int(_state.get("geometry", 0)) == 0 and not _state.get("portrait_requested",false), "screen")
 	_button(PHOTO_BACKGROUND, I18n.t("Use as background"), Vector2(0, -0.10), Vector2(0.56, 0.08), _state.get("can_background", false), "image")
 	_status = _label(_photo_status(), Vector3(0, -0.19, 0.004), 15)
 	_status.modulate = MUTED
@@ -184,6 +221,22 @@ func stick_scroll(amount: float, delta: float) -> void:
 var _scroll_after := 0
 
 func _activate(target: int) -> void:
+	if _activate_footer(target): return
+	if target >= PHOTO_LAYOUT_BASE and target < PHOTO_LAYOUT_BASE + 4:
+		_layout_open = false
+		action_requested.emit("photo_layout_%d" % (target - PHOTO_LAYOUT_BASE))
+		refresh(); return
+	if target == PHOTO_LAYOUT:
+		_layout_open = not _layout_open; _gallery_open = false; _mode_open = false; _close_depth_slider()
+		refresh(); return
+	if target == PHOTO_PORTRAIT:
+		_layout_open = false; _gallery_open = false; _mode_open = false; _close_depth_slider()
+		action_requested.emit("photo_portrait"); refresh(); return
+	if target == PHOTO_SHUFFLE:
+		action_requested.emit("photo_shuffle"); refresh(); return
+	if target == PHOTO_RETURN:
+		action_requested.emit("photo_return"); refresh(); return
+	_layout_open = false
 	if _adjustment == "photo_view":
 		_finish_adjustment()
 		if target == CLOSE:
@@ -240,6 +293,12 @@ func _inspect_tip() -> String:
 	return I18n.t("Inspect") + "  %.1f×" % float(_state.get("inspect_magnification", Photo.DEFAULT_MAGNIFICATION))
 
 func _photo_status() -> String:
+	if not str(_state.get("portrait_error", "")).is_empty(): return I18n.t(str(_state.portrait_error))
+	if _state.get("portrait_requested",false):
+		if _state.get("portrait_enabled",false) and not is_equal_approx(float(_state.get("render_strength",-1)),float(_state.get("depth_strength",1))): return I18n.t("Preparing 3D")
+		return I18n.t("Portrait passthrough" if _state.get("portrait_enabled",false) else "Preparing portrait")
+	if _state.get("directory_loading", false): return I18n.t("Loading images")
+	if not str(_state.get("directory_error", "")).is_empty(): return I18n.t(str(_state.directory_error))
 	if _state.get("loading", false): return I18n.t("Preparing 3D" if _state.get("preparing_depth", false) else "Loading image")
 	if not str(_state.get("error", "")).is_empty(): return I18n.t(str(_state.error))
 	if not str(_state.get("depth_error", "")).is_empty(): return I18n.t(str(_state.depth_error))
@@ -252,3 +311,5 @@ func _update_highlights() -> void:
 	for button in _buttons:
 		if (button.target == PHOTO_INSPECT and _state.get("inspect", false)) or (button.target == PHOTO_DEPTH and _state.get("depth_requested", false)):
 			button.node.material_override.set_shader_parameter("surface_color", SELECTED)
+		if button.target == PHOTO_PORTRAIT and button.enabled and _state.get("portrait_requested",false) and not _hover.values().has(button.target):
+			button.node.material_override.set_shader_parameter("surface_color", Color(0.16, 0.31, 0.27))

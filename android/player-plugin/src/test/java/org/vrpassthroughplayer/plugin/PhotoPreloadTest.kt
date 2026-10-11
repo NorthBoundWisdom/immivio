@@ -31,6 +31,21 @@ class PhotoPreloadTest {
         } finally { foreground.close(); background.close(); root.deleteRecursively() }
     }
 
+    @Test fun nativeStereoCannotEnterDepthInferenceAfterPromotion() {
+        val root = Files.createTempDirectory("vrpp-native-stereo").toFile()
+        val work = mutableListOf<Runnable>()
+        fun queuedBridge() = PhotoBridge({ null }, { it }, {}, postDepth = { task, _ -> work.add(task) }, emit = { _, _, _ -> })
+        val foreground = queuedBridge(); val background = queuedBridge()
+        try {
+            val next = source(root, 12)
+            assertTrue(background.adopt(12, next, nativeStereo=true))
+            assertFalse(background.depth(12))
+            assertTrue(background.promoteTo(12, foreground))
+            assertFalse(foreground.depth(12, 1f, true))
+            assertTrue("Native stereo never enqueues model work", work.isEmpty())
+        } finally { foreground.close(); background.close(); root.deleteRecursively() }
+    }
+
     @Test fun cancelledAndClosedCacheEntriesCannotBeActivated() {
         val root = Files.createTempDirectory("vrpp-photo-cancel").toFile()
         val background = bridge()

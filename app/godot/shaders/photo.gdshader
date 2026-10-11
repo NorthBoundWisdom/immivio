@@ -4,6 +4,10 @@ uniform sampler2D photo_texture : source_color, filter_linear_mipmap, repeat_dis
 uniform sampler2D depth_texture : filter_linear, repeat_disable;
 uniform sampler2D stereo_texture : source_color, filter_linear_mipmap, repeat_disable;
 uniform bool photo_stereo = false;
+uniform bool portrait_enabled = false;
+uniform sampler2D portrait_texture : filter_linear_mipmap, repeat_disable;
+uniform bool native_stereo = false;
+uniform float spatial_disparity = 0.0;
 uniform vec2 generated_size = vec2(1.0);
 #include "res://shaders/video_coordinates.gdshaderinc"
 #include "res://shaders/sharpness.gdshaderinc"
@@ -22,6 +26,8 @@ uniform vec4 depth_rect = vec4(0.0, 0.0, 1.0, 1.0);
 uniform int test_eye = -1;
 uniform vec2 edge_feather = vec2(0.0);
 uniform float presentation_opacity = 1.0;
+uniform int target_state = 0;
+uniform vec2 target_width = vec2(0.008);
 
 vec4 photo_color(vec2 p) {
 	if (photo_stereo) {
@@ -54,6 +60,10 @@ void fragment() {
 		}
 	}
 	if (video_geometry == 3 && !stereo_sbs) { shown = (shown - pano_rect.xy) / pano_rect.zw; }
+	if (native_stereo && stereo_sbs && !top_bottom && video_geometry == 0) {
+		int source_eye = swap_eyes ? 1 - eye_index : eye_index;
+		shown.x += (source_eye == 0 ? 0.5 : -0.5) * spatial_disparity;
+	}
 	bool outside = any(lessThan(shown, vec2(0.0))) || any(greaterThan(shown, vec2(1.0))) || outside_lens(direction);
 	vec4 color = photo_color(shown);
 	if (sharpness > 0.0) {
@@ -68,8 +78,20 @@ void fragment() {
 	ALPHA = outside ? 1.0 : color.a;
 	if (video_geometry == 0 && any(greaterThan(edge_feather, vec2(0.0)))) {
 		// Surface UV is per eye, independent of packed SBS/TB and depth reprojection.
-		vec2 fade = smoothstep(vec2(0.0), max(edge_feather, vec2(0.00001)), min(UV, vec2(1.0) - UV));
+		vec2 fade = smoothstep(vec2(0.0), max(edge_feather, vec2(0.00001)), min(native_stereo ? shown : UV, vec2(1.0) - (native_stereo ? shown : UV)));
 		ALPHA = outside ? 0.0 : color.a * fade.x * fade.y;
+	}
+	if (portrait_enabled) {
+		vec2 mask_uv = clamp(color_uv(shown), vec2(0.5) / generated_size, vec2(1.0) - vec2(0.5) / generated_size);
+		mask_uv.x = (mask_uv.x + float(eye_index)) * 0.5;
+		ALPHA *= outside ? 0.0 : smoothstep(0.02, 0.98, texture(portrait_texture, mask_uv).r);
+	}
+	if (video_geometry == 0 && !detail_projection && !portrait_enabled && target_state > 0) {
+		vec2 edge = min(UV, vec2(1.0) - UV);
+		if (edge.x < target_width.x || edge.y < target_width.y) {
+			ALBEDO = target_state == 2 ? vec3(1.0, 0.88, 0.55) : vec3(0.15, 0.95, 1.0);
+			ALPHA = 1.0;
+		}
 	}
 	ALPHA *= presentation_opacity;
 }
