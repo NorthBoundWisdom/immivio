@@ -32,6 +32,8 @@ Record the APK hash, device/vendor, model hash, input media contract and test sc
 
 Host tests and ELF/APK inspection do not prove passthrough visuals, audio synchronization, physical hand/controller interaction or sustained frame rate. PICO export success is not PICO hardware validation.
 
+`test_controller_canvas.gd` exercises controller grip movement, trigger tap/slider ownership, cancellation, relocated/rotated canvas alignment, projection changes and the maximum flat-screen interaction distance. `test_flat_screen_controls.gd` also covers grip-driven resizing across stereo/depth layouts. Device pose reports can confirm menu alignment and XR playback; physical button feel still needs manual headset feedback.
+
 ## Ordinary playback performance
 
 Build and install a no-AI Debug APK, then compare the legacy settings with the optimized defaults in the same package:

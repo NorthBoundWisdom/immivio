@@ -36,6 +36,7 @@ const DEPTH_SPAN := Vector2(0.2, 0.44)
 const LENS_FOVS := [180, 190, 200, 220]
 ## Timeline width: the slim bar while watching, the full width in the expanded panel.
 const BAR_SEEK := 0.82
+const BAR_SEEK_Y := -0.08
 const SUBTITLE_ROW := 300
 const SUBTITLE_UP := 290
 const SUBTITLE_DOWN := 291
@@ -77,12 +78,13 @@ var _adjust_rows := {}
 var _preset_buttons := {}
 var state_provider: Callable
 var lift_panels := false
+var panel_lift := 0.45
 var section := 0:
 	set(value):
 		var previous := section
 		section = value
 		if lift_panels and is_inside_tree() and (previous == 0) != (value == 0):
-			global_position += global_basis.y * (0.45 if value != 0 else -0.45)
+			global_position += global_basis.y * (panel_lift if value != 0 else -panel_lift)
 			placement_changed.emit()
 var _state: Dictionary = {}
 var _status: Label3D
@@ -301,7 +303,7 @@ func _draw_bar() -> void:
 		_depth_busy = _busy_ring(_buttons.back().node, 0.075)
 	_glyph(MODE, "view_mode", Vector2(0.38 if spatial else 0.41, row), 0.075, true, I18n.t("Video mode"))
 	_glyph(11, "settings", Vector2(0.5, row), 0.075, true, I18n.t("Settings"))
-	_seek_bar(-0.08)
+	_seek_bar(BAR_SEEK_Y)
 	# Floating actions above the bar.
 	_round(107, "close", Vector2(-0.14, 0.215), 0.08, _enabled("stop"), false, I18n.t("Close video"))
 	_round(100, "folder", Vector2(0, 0.215), 0.08, true, false, I18n.t("Library"))
