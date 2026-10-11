@@ -273,7 +273,7 @@ func _draw_bar() -> void:
 	_set_backdrop(Vector2(1.16, 0.34), Vector2(0, -0.025))
 	_backdrop.material_override.set_shader_parameter("surface_color", Color(PANEL, 0.86))
 	_backdrop.material_override.set_shader_parameter("corner_radius", 0.05)
-	_title = _label(_fit_title(str(_state.get("title", "")) if _state.get("has_video", false) else "", "", 0.9, 15), Vector3(0, 0.1, 0.004), 15)
+	_title = _label(_fit_title(str(_state.get("title", "")) if _state.get("has_video", false) else "", "", 0.9, 18), Vector3(0, 0.1, 0.004), 18)
 	_title.modulate = MUTED
 	var row := 0.025
 	_glyph(109, _sound_icon(), Vector2(VOLUME_X, row), 0.075, _enabled("mute"), I18n.t("Sound"))
@@ -762,9 +762,9 @@ func _seek_bar(y: float) -> void:
 	_thumb = _decoration(Vector2(0.023, 0.023), Vector2(0, y), Color.WHITE)
 	_progress.material_override.render_priority = 13
 	_thumb.material_override.render_priority = 14
-	_elapsed = _label("", Vector3(-BAR_SEEK / 2 - 0.035, y, 0.004), 16)
+	_elapsed = _label("", Vector3(-BAR_SEEK / 2 - 0.035, y, 0.004), 18)
 	_elapsed.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_duration = _label("", Vector3(BAR_SEEK / 2 + 0.035, y, 0.004), 16)
+	_duration = _label("", Vector3(BAR_SEEK / 2 + 0.035, y, 0.004), 18)
 	_duration.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_refresh_progress()
 

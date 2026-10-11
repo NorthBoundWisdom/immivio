@@ -83,5 +83,6 @@ static func texture(key: String) -> Texture2D:
 		var svg := '<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24"><g fill="none" stroke="white" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">%s</g></svg>' % PATHS.get(key, PATHS.info)
 		if image.load_svg_from_string(svg) != OK:
 			return null
+		image.generate_mipmaps()
 		_textures[key] = ImageTexture.create_from_image(image)
 	return _textures[key]

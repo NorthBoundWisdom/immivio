@@ -97,7 +97,7 @@ Hold a controller grip to move the canvas (or drag a corner to resize it). Tap t
 
 Timeline dragging defaults to **Fast seek**, starting near a keyframe for a quicker response. Choose **Settings → Video → Seek mode → Exact seek** when landing at the requested time matters more than latency. The choice is saved across restarts and is also available in playback settings. Dragging previews the target; releasing the trigger submits one seek. Bookmarks can follow this setting or select their own precision.
 
-Playback controls stay visually aligned with the canvas centre and face the viewer when shown. Small head movements do not continually rotate flat-screen controls. Display quality includes geometry antialiasing; the High preset uses a higher level, applied after restarting the app.
+Playback controls stay aligned with the canvas-centre direction at a readable distance. Their plane follows the current view while idle, and stays fixed during a slider drag. Supported headsets display menus through a native high-resolution XR overlay with scalable text. Display quality also controls video geometry antialiasing; Enhanced uses stronger antialiasing for flat-screen edges while keeping immersive playback lighter.
 
 ## Status and limitations
 

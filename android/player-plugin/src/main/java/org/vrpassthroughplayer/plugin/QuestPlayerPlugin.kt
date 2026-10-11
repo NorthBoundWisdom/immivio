@@ -360,7 +360,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     override fun onGLDrawFrame(gl: GL10?) {
         if (EGL14.eglGetCurrentContext() == EGL14.EGL_NO_CONTEXT) return
         repeat(16) { controlledRenderTasks.poll()?.run() ?: return@repeat }
-        if (!closed.get()) { media.draw(); controlled.draw(); mpv.draw() }
+        if (!closed.get()) { media.draw(); controlled.draw(); mpv.draw(); XrUiSurfaceBridge.draw() }
     }
 
     @UsedByGodot
@@ -408,6 +408,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     }
 
     override fun onGLSurfaceCreated(gl: GL10?, config: EGLConfig?) {
+        XrUiSurfaceBridge.contextCreated()
         media.contextCreated()
         controlled.contextCreated()
         mpv.contextCreated()

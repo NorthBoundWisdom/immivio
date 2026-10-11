@@ -12,6 +12,7 @@ var session_state := "uninitialized"
 var error_code := ""
 var render_scale := 1.0
 var msaa_3d := Viewport.MSAA_2X
+var flat_msaa_3d := Viewport.MSAA_4X
 var scenery: Sky
 var scenery_rotation := Vector3.ZERO
 
@@ -57,6 +58,11 @@ func configure(target_viewport: Viewport, target_environment: Environment, inter
 
 func supports_passthrough() -> bool:
 	return not preview and xr != null and xr.is_initialized() and XRInterface.XR_ENV_BLEND_MODE_ALPHA_BLEND in xr.get_supported_environment_blend_modes()
+
+func set_flat_surface_visible(flat_visible: bool) -> void:
+	if not viewport: return
+	var desired: int = flat_msaa_3d if flat_visible else msaa_3d
+	if viewport.msaa_3d != desired: viewport.msaa_3d = desired
 
 func set_passthrough(enabled: bool) -> bool:
 	if enabled and not supports_passthrough():

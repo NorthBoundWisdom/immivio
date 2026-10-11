@@ -7,6 +7,7 @@ const NEXT := -3
 const CLOSE := -4
 const MAX_RAY_METRES := 5.0
 var max_ray_metres := MAX_RAY_METRES
+var xr_surface: Node
 const SURFACE := preload("res://shaders/menu_surface.gdshader")
 const Icons := preload("res://scripts/menu_icons.gd")
 const I18n := preload("res://scripts/i18n.gd")
@@ -26,7 +27,17 @@ static func _make_font() -> Font:
 	elif I18n.language == "ja":
 		names = ["Noto Sans CJK JP", "Noto Sans JP", "Yu Gothic", "Meiryo", "Hiragino Sans"]
 	font.font_names = PackedStringArray(names + ["sans-serif"])
-	font.fallbacks = [ThemeDB.fallback_font]
+	font.multichannel_signed_distance_field = true
+	font.msdf_size = 96
+	font.msdf_pixel_range = 8
+	font.generate_mipmaps = true
+	var fallback := ThemeDB.fallback_font.duplicate() as Font
+	if fallback is FontFile:
+		fallback.multichannel_signed_distance_field = true
+		fallback.msdf_size = 96
+		fallback.msdf_pixel_range = 8
+		fallback.generate_mipmaps = true
+	font.fallbacks = [fallback]
 	return font
 
 static func ui_font() -> Font:
@@ -86,6 +97,11 @@ func _draw() -> void:
 func ray_hit(origin: Vector3, direction: Vector3) -> Dictionary:
 	if not visible or not origin.is_finite() or not direction.is_finite() or direction.length_squared() < 0.000001:
 		return {}
+	var mapped := {}
+	if xr_surface and xr_surface.native_supported and xr_surface.active_menu == self:
+		mapped = xr_surface.map_ray(self, origin, direction)
+		if mapped.is_empty() or float(mapped.distance) > max_ray_metres: return {}
+		origin = mapped.origin; direction = mapped.direction
 	var ray := direction.normalized()
 	var best := {}
 	for button in _buttons:
@@ -108,6 +124,9 @@ func ray_hit(origin: Vector3, direction: Vector3) -> Dictionary:
 		if distance > max_ray_metres or (not best.is_empty() and distance >= float(best.distance)):
 			continue
 		best = {"target": button.target, "point": to_local(world), "distance": distance}
+	if not best.is_empty() and not mapped.is_empty():
+		best.point = to_local(mapped.point)
+		best.distance = mapped.distance
 	return best
 
 func update_pointer(hand: String, origin: Vector3, direction: Vector3, tracked: bool) -> void:
@@ -152,6 +171,7 @@ func _set_backdrop(size: Vector2, centre: Vector2 = Vector2.ZERO) -> void:
 	_backdrop.material_override.set_shader_parameter("surface_size", size)
 
 func _clear_layout() -> void:
+	if xr_surface: xr_surface.invalidate()
 	for button in _buttons:
 		button.node.free()
 	_buttons.clear()
@@ -223,6 +243,7 @@ func _icon(key: String, location: Vector3, size: float, color: Color, parent: No
 	var material := _material(color, 12)
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	material.albedo_texture = Icons.texture(key)
+	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 	node.material_override = material
 	parent.add_child(node)
 	if parent == self: _decorations.append(node)
@@ -262,6 +283,7 @@ func _label(text: String, location: Vector3, size: int, parent: Node = self) -> 
 	label.language = I18n.language
 	label.font_size = size
 	label.pixel_size = 0.0012
+	label.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	label.position = location
 	label.no_depth_test = false
 	label.render_priority = 12
@@ -276,10 +298,12 @@ func _pointer(hand: String) -> Dictionary:
 		return _pointers[hand]
 	var color := Color(0.15, 0.9, 1.0) if hand == "left_hand" else Color(1.0, 0.65, 0.15)
 	var line := MeshInstance3D.new()
+	line.set_meta("xr_ui_pointer", true)
 	line.mesh = ImmediateMesh.new()
 	line.material_override = _material(color, 14, true)
 	add_child(line)
 	var dot := MeshInstance3D.new()
+	dot.set_meta("xr_ui_pointer", true)
 	var sphere := SphereMesh.new()
 	sphere.radius = 0.009
 	sphere.height = 0.018

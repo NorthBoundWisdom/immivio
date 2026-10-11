@@ -1,5 +1,5 @@
 shader_type spatial;
-// Keep UI layer ordering, but let nearer controllers/hands occlude the surface.
+// Scene fallback keeps depth occlusion; native UI capture uses the same ordering.
 render_mode unshaded, cull_disabled, depth_draw_never, blend_mix;
 
 uniform vec4 surface_color : source_color = vec4(0.07, 0.08, 0.10, 0.97);

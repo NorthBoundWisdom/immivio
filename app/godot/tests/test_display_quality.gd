@@ -20,6 +20,10 @@ func _run() -> void:
 	root.add_child(main)
 	check(main.get_viewport().msaa_3d == Viewport.MSAA_2X and main.display.capabilities().viewport_msaa_3d == Viewport.MSAA_2X,
 		"Default eye-buffer geometry uses 2x MSAA and reports the active viewport setting")
+	main.display.set_flat_surface_visible(true)
+	check(main.get_viewport().msaa_3d == Viewport.MSAA_4X, "Enhanced flat screens use 4x MSAA for rectangular edges")
+	main.display.set_flat_surface_visible(false)
+	check(main.get_viewport().msaa_3d == Viewport.MSAA_2X, "Immersive playback restores the lighter default MSAA")
 	main.recent_menu.section = main.recent_menu.Section.SETTINGS
 	main.recent_menu.tab = main.recent_menu.DISPLAY_TAB
 	main.recent_menu.refresh()

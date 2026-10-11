@@ -3,6 +3,7 @@ extends RefCounted
 const NAMES := ["Standard", "Enhanced", "High"]
 const SCALES := [1.0, 1.1, 1.25]
 const MSAA := [Viewport.MSAA_2X, Viewport.MSAA_2X, Viewport.MSAA_4X]
+const FLAT_MSAA := [Viewport.MSAA_2X, Viewport.MSAA_4X, Viewport.MSAA_4X]
 const DEFAULT := 1
 const SHARPNESS := [0.0, 0.2, 0.4, 0.6]
 const SHARPNESS_NAMES := ["Off", "Low", "Medium", "High"]
