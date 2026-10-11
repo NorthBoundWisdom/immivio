@@ -130,6 +130,10 @@ struct Source final {
     std::atomic<uint64_t> standard_epoch{1};
     std::atomic<bool> standard_seeking{false};
     std::atomic<uint64_t> rendered{0}, skipped{0}, published{0}, acquired{0}, released{0};
+    std::atomic<uint64_t> render_call_count{0}, render_call_us{0}, render_call_max_us{0};
+    std::atomic<bool> playback_paused{true};
+    std::atomic<int> max_gpu_frames{2};
+    std::atomic<uint64_t> gpu_pending_peak{0}, gpu_backpressure_skipped{0}, gpu_backpressure_waits{0};
     std::atomic<uint64_t> color_allocations{0}, color_texture_bytes{0};
     std::atomic<bool> reuse_ready_slots{true};
     std::atomic<uint64_t> seeks_started{0}, seeks_completed{0}, invalid_frames{0};
@@ -267,12 +271,14 @@ struct Source final {
         const auto file_size = property(core, "file-size");
         const auto matrix = property(core, "video-params/colormatrix"), range = property(core, "video-params/colorlevels");
         const auto transfer = property(core, "video-params/gamma"), paused = property(core, "pause");
+        if (!paused.empty()) playback_paused.store(paused == "yes");
         const auto audio_codec = property(core, "audio-codec"), ao = property(core, "current-ao");
         const auto audio_pts = audio_position(core), aid = property(core, "current-tracks/audio/id");
         const auto volume = property(core, "volume"), mute = property(core, "mute");
         const auto rate = property(core, "audio-params/samplerate"), channels = property(core, "audio-params/channel-count");
         const auto avsync = property(core, "avsync"), cache_pause = property(core, "paused-for-cache");
         const auto decoder_drops = property(core, "decoder-frame-drop-count");
+        const auto vo_drops = property(core, "frame-drop-count");
         std::string tracks_json = "["; std::vector<int64_t> track_ids;
         std::string subtitles_json = "["; std::vector<int64_t> subtitle_ids;
         OwnedNode tracks;
@@ -334,6 +340,7 @@ struct Source final {
             ",\"playback_speed\":" + quote(property(core, "speed")) + ",\"volume\":" + quote(volume) + ",\"mute\":" + quote(mute) + ",\"audio_samplerate\":" + quote(rate) +
             ",\"audio_channels\":" + quote(channels) + ",\"avsync_seconds\":" + quote(avsync) +
             ",\"paused_for_cache\":" + quote(cache_pause) + ",\"decoder_frame_drop_count\":" + quote(decoder_drops) +
+            ",\"vo_frame_drop_count\":" + quote(vo_drops) +
             ",\"snapshot_sequence\":" + std::to_string(++snapshot_sequence) +
             ",\"observed_monotonic_ns\":" + std::to_string(observed_ns) +
             ",\"clock_observation_scope\":\"MPV_audio_pts_including_AO_delay;_not_same_render_source_ticket_or_Godot_presentation\",\"eof_reached\":" + quote(eof) + "}";
@@ -412,6 +419,8 @@ struct Source final {
                 if (__system_property_get("debug.vrpp.mpv.max_width", value) > 0) max_output_width.store(std::max(0, atoi(value)));
                 if (__system_property_get("debug.vrpp.mpv.pool", value) > 0)
                     reuse_ready_slots.store(std::string(value) != "expand");
+                if (__system_property_get("debug.vrpp.mpv.gpu_frames", value) > 0)
+                    max_gpu_frames.store(std::max(0, atoi(value)));
             }
             // Debug-only A/B of render options for GPU profiling, e.g.
             // adb shell setprop debug.vrpp.mpv.opts gpu-dumb-mode=yes,fbo-format=rgba8
@@ -491,7 +500,10 @@ struct Source final {
                         subtitle_id = desired_subtitle_id; subtitle_command = desired_subtitle_command;
                     }
                 }
-                if (set_play && !play) checked(mpv_set_property_string(core, "pause", "yes"), "MPV source pause before audio");
+                if (set_play && !play) {
+                    checked(mpv_set_property_string(core, "pause", "yes"), "MPV source pause before audio");
+                    playback_paused.store(true);
+                }
                 if (set_speed) checked(mpv_set_property(core, "speed", MPV_FORMAT_DOUBLE, &speed), "MPV playback speed");
                 if (set_audio) {
                     const auto selected = audio_id < 0 ? "auto" : (audio_id == 0 ? "no" : std::to_string(audio_id));
@@ -534,7 +546,10 @@ struct Source final {
                     checked(mpv_command(core, command), "MPV source seek");
                     seeks_completed.fetch_add(1);
                 }
-                if (set_play && play) checked(mpv_set_property_string(core, "pause", "no"), "MPV source play");
+                if (set_play && play) {
+                    checked(mpv_set_property_string(core, "pause", "no"), "MPV source play");
+                    playback_paused.store(false);
+                }
 #ifndef NDEBUG
                 if (set_step) {
                     int paused = 0;
@@ -744,9 +759,21 @@ struct Source final {
                     out_height = std::max(2, static_cast<int>(std::lround(static_cast<double>(height) * out_width / width)) & ~1);
                 }
                 Slot* target = nullptr;
+                const int gpu_limit = standard_frames ? max_gpu_frames.load() : 0;
+                int gpu_pending = 0;
+                std::array<bool, std::tuple_size<decltype(slots)>::value> gpu_ready{};
                 {
                     std::lock_guard<std::mutex> lock(frames_mutex);
-                    if (!closing.load()) {
+                    if (gpu_limit > 0) {
+                        for (size_t i = 0; i < slots.size(); ++i) if (slots[i].phase == Phase::ready) {
+                            const auto result = slots[i].fence ? glClientWaitSync(slots[i].fence, 0, 0) : GL_ALREADY_SIGNALED;
+                            require(result != GL_WAIT_FAILED, "MPV producer fence polling failed");
+                            gpu_ready[i] = result == GL_ALREADY_SIGNALED || result == GL_CONDITION_SATISFIED;
+                            gpu_pending += !gpu_ready[i];
+                        }
+                        gpu_pending_peak.store(std::max(gpu_pending_peak.load(), static_cast<uint64_t>(gpu_pending)));
+                    }
+                    if (!closing.load() && (gpu_limit == 0 || gpu_pending < gpu_limit)) {
                         // Only unclaimed ready images can be replaced. Acquired colors
                         // cannot be touched until the consumer-context fence completes.
                         if (standard_frames && reuse_ready_slots.load()) {
@@ -758,7 +785,7 @@ struct Source final {
                             int ready_count = 0;
                             for (auto& slot : slots) {
                                 if (slot.phase == Phase::free && slot.color && !target) target = &slot;
-                                if (slot.phase == Phase::ready) {
+                                if (slot.phase == Phase::ready && (gpu_limit == 0 || gpu_ready[&slot - slots.data()])) {
                                     ++ready_count;
                                     if (!oldest_ready || slot.token < oldest_ready->token) oldest_ready = &slot;
                                 }
@@ -766,7 +793,8 @@ struct Source final {
                             if (!target && ready_count > 1) target = oldest_ready;
                         }
                         if (!target) for (auto& slot : slots) if (slot.phase == Phase::free) { target = &slot; break; }
-                        if (!target) for (auto& slot : slots) if (slot.phase == Phase::ready && (!target || slot.token < target->token)) target = &slot;
+                        if (!target) for (auto& slot : slots) if (slot.phase == Phase::ready &&
+                            (gpu_limit == 0 || gpu_ready[&slot - slots.data()]) && (!target || slot.token < target->token)) target = &slot;
                         if (target) {
                             if (target->fence) {
                                 // An unclaimed direct image is only read by MPV's own render: let it finish.
@@ -780,10 +808,16 @@ struct Source final {
                 }
                 needs_frame = false;
                 if (!target) {
-                    if (final_render) {
+                    if (final_render || (standard_frames && (playback_paused.load() || forced))) {
+                        // A paused seek/redraw can be the only frame that will arrive. Keep it
+                        // pending until storage is ready instead of dropping it and stalling.
+                        needs_frame = true;
+                        if (forced) force_redraw.store(true);
+                        if (gpu_pending > 0) gpu_backpressure_waits.fetch_add(1);
                         std::unique_lock<std::mutex> lock(wait_mutex);
                         wake.wait_for(lock, std::chrono::milliseconds(2)); continue;
                     }
+                    if (gpu_pending > 0) gpu_backpressure_skipped.fetch_add(1);
                     int skip = 1;
                     mpv_render_param dropped[] = {{MPV_RENDER_PARAM_SKIP_RENDERING, &skip}, {MPV_RENDER_PARAM_INVALID, nullptr}};
                     checked(mpv_render_context_render(renderer, dropped), "MPV bounded slot skip");
@@ -803,7 +837,12 @@ struct Source final {
                     {standard_frames ? MPV_RENDER_PARAM_INVALID : MPV_RENDER_PARAM_QUEST_SOURCE_FRAME, &ticket},
                     {direct_render ? MPV_RENDER_PARAM_QUEST_EXPORT : MPV_RENDER_PARAM_INVALID, &exported},
                     {MPV_RENDER_PARAM_INVALID, nullptr}};
+                const auto render_started = std::chrono::steady_clock::now();
                 const int render_result = mpv_render_context_render(renderer, frame);
+                const auto render_us = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(
+                    std::chrono::steady_clock::now() - render_started).count());
+                render_call_count.fetch_add(1); render_call_us.fetch_add(render_us);
+                render_call_max_us.store(std::max(render_call_max_us.load(), render_us));
                 mpv_render_context_report_swap(renderer);
                 if (standard_frames && render_result >= 0) {
                     ticket.flags = QUEST_MPV_HAS_IMAGE | QUEST_MPV_PTS_VALID | QUEST_MPV_RENDER_VALID;
@@ -1010,6 +1049,13 @@ struct Source final {
             ",\"render_error\":" + quote(render_error_copy) + ",\"done\":" + (done.load() ? "true" : "false") +
             ",\"render_failed\":" + (render_failed.load() ? "true" : "false") + ",\"closing\":" + (closing.load() ? "true" : "false") +
             ",\"rendered\":" + std::to_string(rendered.load()) + ",\"published\":" + std::to_string(published.load()) +
+            ",\"render_call_count\":" + std::to_string(render_call_count.load()) +
+            ",\"render_call_us\":" + std::to_string(render_call_us.load()) +
+            ",\"render_call_max_us\":" + std::to_string(render_call_max_us.load()) +
+            ",\"max_gpu_frames\":" + std::to_string(standard_frames ? max_gpu_frames.load() : 0) +
+            ",\"gpu_pending_peak\":" + std::to_string(gpu_pending_peak.load()) +
+            ",\"gpu_backpressure_skipped\":" + std::to_string(gpu_backpressure_skipped.load()) +
+            ",\"gpu_backpressure_waits\":" + std::to_string(gpu_backpressure_waits.load()) +
             ",\"color_allocations\":" + std::to_string(color_allocations.load()) +
             ",\"color_texture_bytes\":" + std::to_string(color_texture_bytes.load()) +
             ",\"reuse_ready_slots\":" + (reuse_ready_slots.load() ? "true" : "false") +

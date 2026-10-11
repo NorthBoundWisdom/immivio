@@ -1412,6 +1412,7 @@ func _write_debug_report() -> void:
 				"thumb_x": menu._thumb.position.x, "bar_width": menu.BAR_SEEK,
 				"duration_ms": int(menu._state.get("duration_ms", -1))}
 	var report := {"schema_version": 1, "request_id": _debug_request, "commands": _debug_commands,
+		"picker_error": picker_error,
 		"seek_policy_ui": host.seek_policy_probe_result if host and host.get("seek_policy_probe_result") is Dictionary else {},
 		"open_trace": _open_trace.duplicate(true),
 		"media": media.snapshot(), "layout": layout_snapshot(), "pairs": _debug_pairs,
