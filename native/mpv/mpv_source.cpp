@@ -27,6 +27,9 @@
 #include <vector>
 #include "json_quote.h"
 #include "pgs_bitmap.h"
+#ifndef NDEBUG
+#include "seek_trace.h"
+#endif
 
 void quest_mpv_initialize_android(JNIEnv*, jobject);
 
@@ -138,6 +141,14 @@ struct Source final {
     std::atomic<bool> reuse_ready_slots{true};
     std::atomic<uint64_t> seeks_started{0}, seeks_completed{0}, invalid_frames{0};
     std::atomic<int64_t> seek_requested_at_us{-1}, seek_event_at_us{-1}, seek_restart_at_us{-1}, seek_render_at_us{-1};
+    std::atomic<int64_t> seek_quiesced_at_us{-1}, seek_command_returned_at_us{-1}, seek_frame_available_at_us{-1};
+    std::atomic<int64_t> seek_render_started_at_us{-1}, seek_published_at_us{-1}, seek_acquired_at_us{-1};
+#ifndef NDEBUG
+    std::atomic<bool> debug_seek_trace{false};
+    std::atomic<bool> seek_trace_subscribed{false};
+    std::mutex seek_trace_mutex;
+    quest::SeekTrace seek_trace;
+#endif
     std::atomic<uint64_t> audio_commands_applied{0};
     // RVM sessions cap presented source frames (0 = every frame). Decimation uses
     // each frame's scheduled display time, before its full-size render.
@@ -177,7 +188,7 @@ struct Source final {
     uint64_t token_sequence = 0, last_acquired_token = 0; // guarded by frames_mutex
     uint64_t last_acquired_id = 0, last_acquired_epoch = 0;
     quest_mpv_source_frame final_ticket{}; // frames_mutex; resolved by a retained render after core EOF
-    bool awaiting_seek_event = false; // control thread only
+    std::atomic<bool> awaiting_seek_event{false};
     bool desired_play = false, playing_dirty = false;
     double desired_speed = 1.0; bool speed_dirty = false; // commands_mutex; last request wins
 #ifndef NDEBUG
@@ -422,6 +433,8 @@ struct Source final {
                     reuse_ready_slots.store(std::string(value) != "expand");
                 if (__system_property_get("debug.vrpp.mpv.gpu_frames", value) > 0)
                     max_gpu_frames.store(std::max(0, atoi(value)));
+                if (__system_property_get("debug.vrpp.mpv.seek_trace", value) > 0)
+                    debug_seek_trace = std::string(value) == "1";
             }
             // Debug-only A/B of render options for GPU profiling, e.g.
             // adb shell setprop debug.vrpp.mpv.opts gpu-dumb-mode=yes,fbo-format=rgba8
@@ -478,6 +491,21 @@ struct Source final {
             auto format_deadline = std::chrono::steady_clock::time_point::max();
             auto next_snapshot = std::chrono::steady_clock::now();
             while (!closing.load() && !render_failed.load()) {
+#ifndef NDEBUG
+                if (debug_seek_trace) {
+                    bool restore = false;
+                    { std::lock_guard<std::mutex> lock(seek_trace_mutex);
+                        if (seek_trace.started >= 0 && seek_trace.finished < 0 && startup_us() - seek_trace.started >= 12800000) {
+                            seek_trace.finished = startup_us(); seek_trace.timed_out = true;
+                        }
+                        restore = seek_trace_subscribed.load() && seek_trace.finished >= 0 && startup_us() > seek_trace.finished + 250000;
+                    }
+                    if (restore) {
+                        checked(mpv_request_log_messages(core, log_level), "MPV restore numeric seek trace subscription");
+                        seek_trace_subscribed.store(false);
+                    }
+                }
+#endif
                 dolby_color_mode(core);
                 bool set_play = false, play = false, set_audio = false, muted = false, set_subtitle = false, seek_exact = true, set_speed = false;
                 double speed = 1.0;
@@ -521,18 +549,29 @@ struct Source final {
                     next_snapshot = std::chrono::steady_clock::now();
                 }
                 if (seek >= 0) {
+                    ActiveFlag seeking(seek_in_progress);
                     seek_requested_at_us.store(startup_us());
                     seek_event_at_us.store(-1); seek_restart_at_us.store(-1); seek_render_at_us.store(-1);
+                    seek_quiesced_at_us.store(-1); seek_command_returned_at_us.store(-1); seek_frame_available_at_us.store(-1);
+                    seek_render_started_at_us.store(-1); seek_published_at_us.store(-1); seek_acquired_at_us.store(-1);
+#ifndef NDEBUG
+                    if (debug_seek_trace) {
+                        { std::lock_guard<std::mutex> lock(seek_trace_mutex);
+                            seek_trace = {}; seek_trace.started = startup_us(); }
+                        checked(mpv_request_log_messages(core, "trace"), "MPV numeric seek trace subscription");
+                        seek_trace_subscribed.store(true);
+                    }
+#endif
                     // Flush cannot invalidate a MediaCodec surface while the
                     // worker is mapping that surface. The worker still serves
                     // advanced-control update tasks while new renders wait.
-                    ActiveFlag seeking(seek_in_progress);
                     const auto idle_deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
                     while (render_in_progress.load() && !closing.load() && !render_failed.load() &&
                            std::chrono::steady_clock::now() < idle_deadline)
                         std::this_thread::sleep_for(std::chrono::milliseconds(1));
                     if (closing.load()) break;
                     require(!render_in_progress.load() && !render_failed.load(), "MPV seek renderer did not quiesce");
+                    seek_quiesced_at_us.store(startup_us());
                     awaiting_seek_event = true; core_eof.store(false);
                     if (standard_frames) {
                         standard_seeking.store(true);
@@ -547,6 +586,7 @@ struct Source final {
                     const auto seconds = std::to_string(seek / 1000.0);
                     const char* command[] = {"seek", seconds.c_str(), seek_exact ? "absolute+exact" : "absolute+keyframes", nullptr};
                     checked(mpv_command(core, command), "MPV source seek");
+                    seek_command_returned_at_us.store(startup_us());
                     seeks_completed.fetch_add(1);
                 }
                 if (set_play && play) {
@@ -568,9 +608,20 @@ struct Source final {
                 require(event != nullptr, "MPV source event unavailable");
                 if (event->event_id == MPV_EVENT_LOG_MESSAGE) {
                     const auto* log = static_cast<const mpv_event_log_message*>(event->data);
+#ifndef NDEBUG
+                    if (debug_seek_trace) {
+                        std::lock_guard<std::mutex> lock(seek_trace_mutex);
+                        seek_trace.consume(log->prefix, log->text, startup_us());
+                        // In this opt-in mode raw MPV messages never reach logcat.
+                    } else
+#endif
                     __android_log_print(ANDROID_LOG_INFO, "QuestMpvSource", "[%s] %s", log->prefix, log->text);
                 } else if (event->event_id == MPV_EVENT_PROPERTY_CHANGE && event->reply_userdata == 41) {
                     next_snapshot = std::chrono::steady_clock::now();
+#ifndef NDEBUG
+                } else if (event->event_id == MPV_EVENT_QUEUE_OVERFLOW && debug_seek_trace) {
+                    std::lock_guard<std::mutex> lock(seek_trace_mutex); ++seek_trace.queue_overflows;
+#endif
                 } else if (event->event_id == MPV_EVENT_FILE_LOADED) {
                     if (!loaded && audio) for (const auto& [location, title] : audio_files) {
                         // "auto": listed for the user, never selected over the video's own audio.
@@ -593,8 +644,19 @@ struct Source final {
                 }
                 else if (event->event_id == MPV_EVENT_VIDEO_RECONFIG) format(core);
                 else if (event->event_id == MPV_EVENT_PLAYBACK_RESTART && standard_frames) {
+                    // A previous restart can already be queued when the client
+                    // submits a seek. It cannot release the new epoch's gate.
+                    if (awaiting_seek_event.load()) continue;
                     int64_t unset = -1;
                     if (seek_requested_at_us.load() >= 0) seek_restart_at_us.compare_exchange_strong(unset, startup_us());
+#ifndef NDEBUG
+                    if (debug_seek_trace) {
+                        { std::lock_guard<std::mutex> lock(seek_trace_mutex);
+                            if (seek_trace.started >= 0 && seek_trace.finished < 0) seek_trace.finished = startup_us(); }
+                        // Changing the level destroys MPV's pending log buffer.
+                        // Keep it subscribed through the bounded numeric tail.
+                    }
+#endif
                     standard_seeking.store(false);
                     render_pending.store(true); wake.notify_all();
                 }
@@ -732,6 +794,14 @@ struct Source final {
                     wake.wait_for(lock, std::chrono::milliseconds(2)); continue;
                 }
                 if (standard_frames && standard_seeking.load()) {
+                    // mpv_command("seek") queues work on the core. An already
+                    // queued PRESENT frame can still belong to the old epoch
+                    // until the core has emitted SEEK. It is not necessarily
+                    // marked REDRAW, so frame-info alone cannot identify it.
+                    if (awaiting_seek_event.load()) {
+                        std::unique_lock<std::mutex> lock(wait_mutex);
+                        wake.wait_for(lock, std::chrono::milliseconds(2)); continue;
+                    }
                     mpv_render_frame_info info{};
                     checked(mpv_render_context_get_info(renderer, {MPV_RENDER_PARAM_NEXT_FRAME_INFO, &info}), "MPV seek frame info");
                     // Serve public render updates while seeking, but do not relabel a retained
@@ -742,6 +812,9 @@ struct Source final {
                         wake.wait_for(lock, std::chrono::milliseconds(2)); continue;
                     }
                     standard_seeking.store(false);
+                }
+                if (seek_requested_at_us.load() >= 0) {
+                    int64_t unset = -1; seek_frame_available_at_us.compare_exchange_strong(unset, startup_us());
                 }
                 const int cap = max_fps.load();
                 if (cadence_reset.exchange(false) || cadence_floor != epoch_floor.load()) {
@@ -868,6 +941,9 @@ struct Source final {
                     {direct_render ? MPV_RENDER_PARAM_QUEST_EXPORT : MPV_RENDER_PARAM_INVALID, &exported},
                     {MPV_RENDER_PARAM_INVALID, nullptr}};
                 const auto render_started = std::chrono::steady_clock::now();
+                if (seek_requested_at_us.load() >= 0 && standard_epoch.load() >= epoch_floor.load()) {
+                    int64_t unset = -1; seek_render_started_at_us.compare_exchange_strong(unset, startup_us());
+                }
                 const int render_result = mpv_render_context_render(renderer, frame);
                 const auto render_us = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(
                     std::chrono::steady_clock::now() - render_started).count());
@@ -951,6 +1027,9 @@ struct Source final {
                 require(target->fence != nullptr && glGetError() == GL_NO_ERROR, "MPV producer completion fence failed");
                 glFlush(); target->ticket = ticket; target->token = ++token_sequence; target->allow_repeat = forced;
                 target->phase = Phase::ready; published.fetch_add(1);
+                if (seek_requested_at_us.load() >= 0 && ticket.source_epoch >= epoch_floor.load()) {
+                    int64_t unset = -1; seek_published_at_us.compare_exchange_strong(unset, startup_us());
+                }
                 int64_t unset = -1; first_published_us.compare_exchange_strong(unset, startup_us());
             }
         } catch (const std::exception& failure) {
@@ -1000,6 +1079,9 @@ struct Source final {
         glDeleteSync(newest->fence); newest->fence = nullptr;
         require(glIsTexture(newest->color), "MPV shared texture is invisible in Godot context");
         newest->phase = Phase::acquired; last_acquired_token = newest->token; acquired.fetch_add(1);
+        if (seek_requested_at_us.load() >= 0) {
+            int64_t unset = -1; seek_acquired_at_us.compare_exchange_strong(unset, startup_us());
+        }
 #ifndef NDEBUG
         if ((last_acquired_id != newest->ticket.frame_id || last_acquired_epoch != newest->ticket.source_epoch) &&
             debug_step_active.exchange(false)) debug_step_images.fetch_add(1);
@@ -1078,6 +1160,14 @@ struct Source final {
                     ",\"render_sequence\":" + std::to_string(final_ticket.render_sequence) + "}";
             for (auto& slot : slots) { held += slot.phase == Phase::acquired; retiring += slot.phase == Phase::retiring; }
         }
+        std::string trace = "null";
+        bool trace_drained = true;
+#ifndef NDEBUG
+        if (debug_seek_trace) {
+            std::lock_guard<std::mutex> lock(seek_trace_mutex); trace = seek_trace.json();
+            trace_drained = seek_trace.finished >= 0 && !seek_trace_subscribed.load();
+        }
+#endif
         return "{\"backend\":\"Android_libmpv\",\"state\":" + quote(state_copy) + ",\"error\":" + quote(error_copy) +
             ",\"render_error\":" + quote(render_error_copy) + ",\"done\":" + (done.load() ? "true" : "false") +
             ",\"render_failed\":" + (render_failed.load() ? "true" : "false") + ",\"closing\":" + (closing.load() ? "true" : "false") +
@@ -1087,6 +1177,14 @@ struct Source final {
             ",\"seek_event_at_us\":" + std::to_string(seek_event_at_us.load()) +
             ",\"seek_restart_at_us\":" + std::to_string(seek_restart_at_us.load()) +
             ",\"seek_render_at_us\":" + std::to_string(seek_render_at_us.load()) +
+            ",\"seek_quiesced_at_us\":" + std::to_string(seek_quiesced_at_us.load()) +
+            ",\"seek_command_returned_at_us\":" + std::to_string(seek_command_returned_at_us.load()) +
+            ",\"seek_frame_available_at_us\":" + std::to_string(seek_frame_available_at_us.load()) +
+            ",\"seek_render_started_at_us\":" + std::to_string(seek_render_started_at_us.load()) +
+            ",\"seek_published_at_us\":" + std::to_string(seek_published_at_us.load()) +
+            ",\"seek_acquired_at_us\":" + std::to_string(seek_acquired_at_us.load()) +
+            ",\"seek_trace\":" + trace +
+            ",\"seek_trace_drained\":" + (trace_drained ? "true" : "false") +
             ",\"render_call_us\":" + std::to_string(render_call_us.load()) +
             ",\"render_call_max_us\":" + std::to_string(render_call_max_us.load()) +
             ",\"max_gpu_frames\":" + std::to_string(standard_frames ? max_gpu_frames.load() : 0) +

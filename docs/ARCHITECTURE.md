@@ -46,6 +46,8 @@ Bridge entry points record pre-existing shared-context GL errors separately befo
 
 Source diagnostics also expose session-relative timestamps for seek submission, the first seek event, playback restart and the first render in the new epoch. A newly bound seek frame and resumed continuous playback are separate milestones; measure both before attributing seek latency to storage or decoding.
 
+The standard renderer waits for the core's `SEEK` event before accepting a new-epoch `PRESENT` frame. Submitting the public seek command only queues core work: a previously queued old frame may still have `PRESENT` without `REDRAW`. A restart queued before the seek event cannot release this gate. Update callbacks remain serviced while waiting, and the first new frame may render before the matching playback restart.
+
 Routine mpv logging is `warn` in Release and `info` in Debug. Per-read/per-seek debug messages otherwise flood Android logcat on non-interleaved MP4s. For a bounded Debug investigation, `adb shell setprop debug.vrpp.mpv.log debug` restores verbose playback logging; clear that property afterwards. Decoder selection/fallback remains visible in Debug and in playback status.
 
 The normal matting backend uses MNN OpenCL with four recurrent states for each eye. ROI decisions are in Kotlin's `RoiController`; the default source snapshot uses the internal 320×320 fast profile. No model/resolution selector is exposed in the normal UI. ncnn/reference paths are retained for dedicated diagnostics; normal playback has no automatic CPU fallback.

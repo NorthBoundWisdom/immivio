@@ -55,6 +55,15 @@ godot --path app/godot --rendering-method gl_compatibility --script res://tests/
 
 This requires a real graphics context, compares numeric colour/alpha samples and native-handle binding, and saves no images. `THRU3D_OPAQUE_REPORT` optionally selects a numeric JSON report destination. Headless host tests do not establish GPU parity or headset performance.
 
+For numerical seek attribution, set `debug.vrpp.mpv.seek_trace=1` before opening a Debug source, then restore the previous property after measurement. Each seek temporarily subscribes to MPV trace messages, suppresses raw MPV logcat output, and reduces recognized demux/MediaCodec messages to numeric timestamps, PTS, byte totals and bounded 100 ms buckets. At playback restart or a 12.8-second timeout, allow another 250 ms to reduce the numeric log tail before restoring the subscription level. MPV's event and log queues are separate, and changing the level destroys the pending log buffer. Wait for `seek_trace_drained` before recording totals and reject a timeout or nonzero `queue_overflows`. Counts include this bounded log tail, not solely the first target image. Message formats follow the pinned upstream sources; absent counters are unavailable evidence, not zero decoder work. Receipt timestamps can lag decoder operations and are not GPU timestamps.
+
+Native seek phases distinguish renderer quiescence, command return, core seek notification, new-frame availability, render entry/return, publication and consumer acquisition. For standard-libmpv runs, verify `seek_event_at_us <= seek_frame_available_at_us <= seek_render_started_at_us`; frame info alone cannot certify the new epoch before the seek event. Keep explicit decoded-PTS verification separate from standard playback-clock estimates. The log reducer is exercised with synthetic strings only:
+
+```bash
+c++ -std=c++17 -Wall -Wextra -Werror native/mpv/tests/seek_trace_test.cpp -o /tmp/thru3d-seek-trace-test
+/tmp/thru3d-seek-trace-test
+```
+
 Use several alternating runs and retain the raw JSON reports. Check `hwdec`, source dimensions and bridge counters before interpreting FPS. For example, the Android API 36 emulator's `c2.goldfish.hevc.decoder` rejects an 8192×4096 HEVC stream and mpv falls back to software decode. Such a run can verify texture ownership and eliminated copies, but cannot establish PICO hardware decoding throughput or XR compositor performance. Copy bytes describe explicit RGBA texture allocation, not total GPU/driver/process memory; borrowing can also change producer-ring occupancy. Producer/source readbacks require media whose permissions allow them. User videos, image readbacks and device reports stay in ignored `artifacts/` and are never committed.
 
 For attribution, change one flag at a time while keeping CPU/GPU configuration and the remaining flags equal. The producer pool switch applies only to the standard-libmpv backend; Release always reuses allocated storage. The benchmark restores the previous Debug log/pool properties and rejects a configured output-width or frame-rate cap.
