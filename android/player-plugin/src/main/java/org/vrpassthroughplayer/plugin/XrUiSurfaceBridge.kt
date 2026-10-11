@@ -7,14 +7,12 @@ import android.opengl.EGLDisplay
 import android.opengl.EGLSurface
 import android.opengl.GLES30
 import android.view.Surface
-import androidx.annotation.Keep
 import org.json.JSONObject
 import java.util.concurrent.atomic.AtomicInteger
 
 /** GPU-only UI texture presentation into an OpenXR-owned Android Surface.
  * Godot keeps its ordinary viewport/texture ownership; XR owns the Surface.
  * JavaClassWrapper can pass the Surface without exposing a native pointer. */
-@Keep
 object XrUiSurfaceBridge {
     private data class Frame(val texture: Int, val width: Int, val height: Int, val generation: Int)
     private val generation = AtomicInteger(0)
