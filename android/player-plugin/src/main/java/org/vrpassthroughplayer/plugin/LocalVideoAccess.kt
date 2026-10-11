@@ -89,7 +89,14 @@ internal class LocalVideoAccess(private val context: () -> Context?, private val
                     val host = context()
                     val uri = Uri.parse(text)
                     val lost = host != null && uri.scheme == "content" && !runCatching { mayReadProvider(host, uri) }.getOrDefault(false)
-                    finish(id, request, "error", if (lost) "LOCAL_DOCUMENT_PERMISSION_LOST" else "LOCAL_DOCUMENT_MISSING")
+                    // A provider can report FileNotFoundException when offline. Only an
+                    // authorized, successful empty query confirms a deleted document.
+                    val missing = !lost && host != null && uri.scheme == "content" && runCatching {
+                        host.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null, request.cancellation)
+                            ?.use { !it.moveToFirst() } == true
+                    }.getOrDefault(false)
+                    finish(id, request, "error", if (lost) "LOCAL_DOCUMENT_PERMISSION_LOST" else "LOCAL_DOCUMENT_MISSING",
+                        missingConfirmed = missing)
                 }
                 catch (_: OperationCanceledException) { finish(id, request, "error", "LOCAL_DOCUMENT_CANCELLED") }
                 catch (_: Exception) { finish(id, request, "error", "LOCAL_DOCUMENT_UNREADABLE") }
@@ -109,12 +116,13 @@ internal class LocalVideoAccess(private val context: () -> Context?, private val
         return info.exported && (info.readPermission == null || host.checkSelfPermission(info.readPermission) == PackageManager.PERMISSION_GRANTED)
     }
 
-    private fun finish(id: Int, request: Request, state: String, error: String = "", persisted: Boolean = false, displayName: String = "Local video") {
+    private fun finish(id: Int, request: Request, state: String, error: String = "", persisted: Boolean = false, displayName: String = "Local video", missingConfirmed: Boolean = false) {
         if (!request.finished.compareAndSet(false, true)) return
         main.removeCallbacks(request.timeout)
         requests.remove(id)
         if (!closed.get()) emit(id, JSONObject().put("uri", request.uri).put("state", state)
-            .put("error", error).put("persisted_permission", persisted).put("display_name", displayName).toString())
+            .put("error", error).put("persisted_permission", persisted).put("display_name", displayName)
+            .put("missing_confirmed", missingConfirmed).toString())
     }
 
     fun cancel(id: Int) {

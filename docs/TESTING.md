@@ -12,6 +12,8 @@ The public checker examines tracked files for excluded binary types, credentials
 
 `Test-Source.ps1` runs the Godot GDScript host suite without activating the Android toolchain. It includes localization, media-library/menu interaction, controller/hand logic, projection/eye-order, preferences and image/depth handling. An OpenXR loader can be absent during headless tests; XR/device behavior is not part of their result.
 
+`test_recent_scan.gd` covers startup cleanup of deleted local files/folders, persisted removals, escaped Unicode paths, confirmed missing documents, unavailable volumes, permission loss, timeouts, bounded busy retries, stale callbacks and shutdown cancellation. Startup scans video/photo history asynchronously; network sources and unconfirmed provider failures retain their entries. These checks use generated placeholder files only and never decode or capture media.
+
 The native depth stabilizer can also be tested with a C++17 compiler:
 
 ```bash

@@ -293,6 +293,12 @@ func _ready() -> void:
 		"diagnostics_visible": status_label.visible, "calibration_visible": calibration_board.visible,
 		"menu_selection": "controller_ray_trigger_or_hand_pinch"})
 	Log.record("app_started", {"version": ProjectSettings.get_setting("application/config/version"), "os": OS.get_name()})
+	var recent_scan := preload("res://scripts/recent_scan.gd").new()
+	add_child(recent_scan)
+	recent_scan.changed.connect(func():
+		_update_thumbnail_protection()
+		if recent_menu.section == recent_menu.Section.RECENT: recent_menu.refresh())
+	recent_scan.start(video.recent_files, platform_plugin)
 	# Source distribution: private capture automation is excluded.
 
 ## Desktop preview: dragging with the mouse moves the picture, the wheel zooms immersive views.
