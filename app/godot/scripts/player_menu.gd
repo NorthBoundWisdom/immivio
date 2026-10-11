@@ -38,6 +38,7 @@ const LENS_FOVS := [180, 190, 200, 220]
 ## Timeline width: the slim bar while watching, the full width in the expanded panel.
 const BAR_SEEK := 0.82
 const BAR_SEEK_Y := -0.08
+const CAPTURE_ENVELOPE := Rect2(-.82, -.72, 1.64, 1.44)
 const PANEL_SCALE := Vector3(0.75, 2.0 / 3.0, 1.0)
 const IMMERSIVE_DISTANCE := 1.4
 const IMMERSIVE_DROP := 0.28
@@ -124,6 +125,10 @@ var _subtitle_offset := 0
 var _subtitle_scroll := 0.0
 var _subtitle_source := ""
 var _subtitle_ids: Dictionary = {}
+
+func capture_envelope() -> Rect2:
+	# Reserve the whole ordinary page family before the transport bar first opens.
+	return CAPTURE_ENVELOPE
 
 func has_pointer_capture() -> bool:
 	return not choices.capture.is_empty() or not bookmarks.capture.is_empty() or not _seek_hand.is_empty() or not _volume_hand.is_empty() \

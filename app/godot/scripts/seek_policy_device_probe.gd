@@ -1,6 +1,10 @@
 extends RefCounted
 ## Debug-only caller: exercise production ray/trigger methods on the real device.
 static func tap(menu: Node3D, target: int) -> bool:
+	# Exercise the pixels the headset is displaying, not an unpresented page.
+	for frame in 120:
+		if not menu.xr_surface or not menu.xr_surface.native_supported or menu.xr_surface.is_layout_presented(menu): break
+		await menu.get_tree().process_frame
 	for button in menu._buttons:
 		if button.target != target or not button.enabled or not button.node.visible: continue
 		var origin: Vector3 = button.node.global_position + button.node.global_basis.z
@@ -17,10 +21,16 @@ static func tap(menu: Node3D, target: int) -> bool:
 
 func run(host: Node, step: String, marker_id: String) -> Dictionary:
 	var result := {"step": step, "accepted": false, "scope": "Actual production ray-menu software route on Quest; no physical controller injection"}
-	if step == "recenter":
+	if step == "ui_reset_stats":
+		host.menu_compositor.reset_metrics(); result.accepted = true
+	elif step in ["player_settings", "player_playback", "player_screen", "player_bar"]:
+		host._show_player_menu()
+		var target: int = {"player_settings": 11, "player_playback": host.player_menu.PLAYBACK_SETTINGS, "player_screen": 11, "player_bar": 10}[step]
+		result.accepted = await tap(host.player_menu, target)
+	elif step == "recenter":
 		host._show_player_menu()
 		host.player_menu.section = 0; host.player_menu.refresh()
-		result.accepted = tap(host.player_menu, 108)
+		result.accepted = await tap(host.player_menu, 108)
 	elif step in ["global_speed", "global_exact"]:
 		host._show_recent_menu()
 		var library: Node3D = host.recent_menu
@@ -29,25 +39,25 @@ func run(host: Node, step: String, marker_id: String) -> Dictionary:
 		for target in library.choices.targets:
 			var item: Dictionary = library.choices.targets[target]
 			if item.get("kind") == "choose" and item.get("key") == "seek_mode" and item.value == mode:
-				result.accepted = tap(library, target); break
+				result.accepted = await tap(library, target); break
 	elif step in ["bookmark_global", "bookmark_speed", "bookmark_exact", "bookmark_add", "bookmark_seek", "bookmark_delete"]:
 		host._show_player_menu()
 		var menu: Node3D = host.player_menu
 		menu.section = 0; menu.refresh()
 		if step == "bookmark_add":
-			result.accepted = tap(menu, menu.BookmarkMenu.ADD)
+			result.accepted = await tap(menu, menu.BookmarkMenu.ADD)
 			result.marker = host.video.bookmark_last_added.duplicate(true)
 		else:
 			menu.bookmarks.opened = true; menu.bookmarks.subset.clear(); menu.bookmarks.offset = 0; menu.refresh()
 			if step.begins_with("bookmark_") and step.trim_prefix("bookmark_") in ["global", "speed", "exact"]:
 				var mode := step.trim_prefix("bookmark_")
 				var target: int = {"global": menu.BookmarkMenu.MODE_GLOBAL, "speed": menu.BookmarkMenu.MODE_SPEED, "exact": menu.BookmarkMenu.MODE_EXACT}[mode]
-				result.accepted = tap(menu, target)
+				result.accepted = await tap(menu, target)
 			else:
 				for target in menu.bookmarks.targets:
 					var item: Dictionary = menu.bookmarks.targets[target]
 					if item.get("id", "") == marker_id and item.get("kind") == ("seek" if step == "bookmark_seek" else "delete"):
-						result.accepted = tap(menu, target); break
+						result.accepted = await tap(menu, target); break
 	result.global_mode = host.video.seek_mode
 	result.bookmark_mode = host.video.bookmark_seek_mode
 	result.bookmarks = host.video.bookmarks_snapshot().get("bookmarks", []).duplicate(true)

@@ -127,7 +127,7 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                             }
                             if (operation == "seek_policy_ui") {
                                 val step = intent.getStringExtra("step")
-                                require(step in setOf("global_speed", "global_exact", "recenter", "bookmark_global", "bookmark_speed", "bookmark_exact", "bookmark_add", "bookmark_seek", "bookmark_delete"))
+                                require(step in setOf("global_speed", "global_exact", "recenter", "ui_reset_stats", "player_settings", "player_playback", "player_screen", "player_bar", "bookmark_global", "bookmark_speed", "bookmark_exact", "bookmark_add", "bookmark_seek", "bookmark_delete"))
                                 val marker = intent.getStringExtra("marker_id").orEmpty()
                                 require(marker.isEmpty() || marker.matches(Regex("[a-f0-9]{32}")))
                                 command.put("step", step).put("marker_id", marker)

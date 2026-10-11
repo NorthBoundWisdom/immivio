@@ -1249,7 +1249,7 @@ func _canvas_menu_anchor_key() -> Array:
 	# Immersive translation is handled separately; capture freezes the plane.
 	var pose: Variant = viewer.panel.global_transform if viewer.geometry == Geometry.Geometry.FLAT else viewer.subtitle_transform().basis
 	return [viewer.local_uri, viewer.geometry, pose, player_menu.section, photo_active,
-		menu_compositor.native_supported if is_instance_valid(menu_compositor) else false]
+		menu_compositor.native_placement_available() if is_instance_valid(menu_compositor) else false]
 
 ## Full tracked pose is retained for media follow; menu placement filters tilt.
 func _head_pose() -> Variant:
@@ -1346,7 +1346,7 @@ func _place_menu(menu: Node3D) -> void:
 				var canvas_normal := pose.basis.z.normalized()
 				var clearance := .025 + absf(canvas_normal.dot(facing.x)) * .9 * ui_scale.x + absf(canvas_normal.dot(facing.y)) * 1.1 * ui_scale.y
 				var offset := clearance / maxf(.1, absf(canvas_normal.dot(normal)))
-				if is_instance_valid(menu_compositor) and menu_compositor.native_supported:
+				if is_instance_valid(menu_compositor) and menu_compositor.native_placement_available():
 					offset = maxf(.025, toward_eye.length() - 1.4)
 				pose.origin += normal * minf(offset, maxf(.025, toward_eye.length() - .4))
 			pose.basis = facing
@@ -1439,7 +1439,7 @@ func _canvas_controls_snapshot() -> Dictionary:
 	return {"grab_action": "grip_click", "controls_action": "trigger_click",
 		"grab_hand": str(_grab.get("hand", "")), "menu_visible": player_menu.visible,
 		"canvas_origin": [centre.x, centre.y, centre.z], "canvas_normal": [normal.x, normal.y, normal.z],
-		"timeline_centre": [timeline.x, timeline.y, timeline.z], "menu_section": player_menu.section,
+		"timeline_centre": [timeline.x, timeline.y, timeline.z], "menu_section": player_menu.section, "menu_page": player_menu._adjustment,
 		"menu_normal": [player_menu.global_basis.z.x, player_menu.global_basis.z.y, player_menu.global_basis.z.z],
 		"menu_facing_eye_dot": player_menu.global_basis.z.normalized().dot(toward_eye),
 		"menu_facing_view_dot": player_menu.global_basis.z.normalized().dot(view_normal),
@@ -2122,7 +2122,7 @@ func _on_display_debug_command(_id: int, payload: String) -> void:
 	var operation := str(command.get("operation", ""))
 	if operation == "seek_policy_ui" and OS.is_debug_build():
 		var probe := preload("res://scripts/seek_policy_device_probe.gd").new()
-		seek_policy_probe_result = probe.run(self, str(command.step), str(command.get("marker_id", "")))
+		seek_policy_probe_result = await probe.run(self, str(command.step), str(command.get("marker_id", "")))
 		seek_policy_probe_result.request_key = str(command.request_key)
 		video._write_debug_report()
 	elif operation in ["display_quality", "sharpness"]:

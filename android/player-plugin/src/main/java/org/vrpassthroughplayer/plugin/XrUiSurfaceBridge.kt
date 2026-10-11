@@ -14,13 +14,14 @@ import java.util.concurrent.atomic.AtomicInteger
  * Godot keeps its ordinary viewport/texture ownership; XR owns the Surface.
  * JavaClassWrapper can pass the Surface without exposing a native pointer. */
 object XrUiSurfaceBridge {
-    private data class Frame(val texture: Int, val width: Int, val height: Int, val generation: Int)
+    private data class Frame(val texture: Int, val width: Int, val height: Int, val generation: Int, val serial: Long)
     private val generation = AtomicInteger(0)
     private val revision = AtomicInteger(0)
     @Volatile private var requestedSurface: Surface? = null
     @Volatile private var frame: Frame? = null
     @Volatile private var enabled = false
     @Volatile private var presentedRevision = -1
+    @Volatile private var presentedSerial = -1L
     @Volatile private var blits = 0L
     @Volatile private var copyCpuUs = 0L
     @Volatile private var copyMaxUs = 0L
@@ -35,22 +36,23 @@ object XrUiSurfaceBridge {
     @JvmStatic fun attachSurface(surface: Surface?) {
         if (surface === requestedSurface) return
         requestedSurface = surface; frame = null; enabled = false
-        presentedRevision = -1; failure = ""; revision.incrementAndGet()
+        presentedRevision = -1; presentedSerial = -1; failure = ""; revision.incrementAndGet()
     }
-    @JvmStatic fun submitTexture(texture: Int, width: Int, height: Int, sourceGeneration: Int) {
+    @JvmStatic fun submitTexture(texture: Int, width: Int, height: Int, sourceGeneration: Int, serial: Long) {
         if (texture <= 0 || width !in 1..4096 || height !in 1..4096 || sourceGeneration != generation.get()) return
-        frame = Frame(texture, width, height, sourceGeneration)
+        frame = Frame(texture, width, height, sourceGeneration, serial)
     }
     @JvmStatic fun setEnabled(value: Boolean) { enabled = value }
     @JvmStatic fun status(): String = JSONObject().put("generation", generation.get())
         .put("ready", presentedRevision == revision.get() && presentedRevision >= 0 && requestedSurface?.isValid == true)
         .put("enabled", enabled).put("surface", requestedSurface != null).put("frame_texture", frame?.texture ?: 0)
+        .put("presented_serial", presentedSerial)
         .put("copy_cpu_us", copyCpuUs).put("copy_max_us", copyMaxUs)
         .put("blits", blits).put("error", failure).put("cpu_readback", false).toString()
 
     /** Render-thread context notification; never delete names owned by a lost context. */
     fun contextCreated() {
-        enabled = false; frame = null; presentedRevision = -1
+        enabled = false; frame = null; presentedRevision = -1; presentedSerial = -1
         generation.incrementAndGet()
         if (window != EGL14.EGL_NO_SURFACE && display != EGL14.EGL_NO_DISPLAY) EGL14.eglDestroySurface(display, window)
         window = EGL14.EGL_NO_SURFACE; display = EGL14.EGL_NO_DISPLAY; context = EGL14.EGL_NO_CONTEXT
@@ -114,7 +116,7 @@ object XrUiSurfaceBridge {
             check(EGL14.eglSwapBuffers(display, window)) { "UI_EGL_SWAP" }
             val elapsed = (System.nanoTime() - started) / 1000L
             copyCpuUs += elapsed; copyMaxUs = maxOf(copyMaxUs, elapsed)
-            blits++; presentedRevision = serial; failure = ""
+            blits++; presentedRevision = serial; presentedSerial = source.serial; failure = ""
         } catch (error: Exception) {
             failure = error.message?.takeIf { it.startsWith("UI_") } ?: "UI_SURFACE_PRESENT_FAILED"
             presentedRevision = -1

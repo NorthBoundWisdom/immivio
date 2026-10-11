@@ -4,6 +4,32 @@ extends Node3D
 const UI_LAYER := 1 << 19
 const CAPTURE_SIZE := Vector2i(3072, 2048)
 
+## Metadata follows the GPU copy acknowledgement, never a newly requested layout.
+class PresentationQueue extends RefCounted:
+	var serial := 0
+	var committed := -1
+	var pending := {}
+	func stage(metadata: Dictionary) -> int:
+		serial += 1
+		pending[serial] = metadata.duplicate()
+		while pending.size() > 4: pending.erase(pending.keys()[0])
+		return serial
+	func take(acknowledged: int) -> Dictionary:
+		if acknowledged <= committed or not pending.has(acknowledged): return {}
+		var result: Dictionary = pending[acknowledged]
+		committed = acknowledged
+		for key in pending.keys():
+			if int(key) <= acknowledged: pending.erase(key)
+		return result
+	func reset() -> void:
+		pending.clear(); committed = serial
+
+var warmup: Node
+var presentations := PresentationQueue.new()
+var presented := {}
+var _rect_changes := 0
+var _last_frame_us := 0
+var _frame_gap_max_us := 0
 var menus: Array = []
 var head: Camera3D
 var layer: OpenXRCompositionLayerQuad
@@ -51,6 +77,8 @@ func configure(values: Array, view_camera: Camera3D, xr_enabled: bool, session_s
 	# transform notification before get_global_transform() is available.
 	head.get_parent().add_child(layer)
 	_configured = true
+	warmup = preload("res://scripts/ui_warmup.gd").new()
+	add_child(warmup)
 	process_priority = 50 # Update after menu layout, poses and pointer feedback.
 	get_tree().node_added.connect(_node_added)
 	get_tree().node_removed.connect(_node_removed)
@@ -81,26 +109,29 @@ func _create_capture() -> void:
 		_tag_tree(menu)
 
 func _process(_delta: float) -> void:
-	if not _configured: return
-	if not layer.is_natively_supported(): return
+	if not _configured or not layer.is_natively_supported(): return
 	if _session_state.is_valid() and _session_state.call() not in ["session_focussed", "session_visible"]:
 		_bridge.setEnabled(false)
 		if viewport: viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
+		presentations.reset(); presented.clear(); _last_frame_us = 0
+		layer.quad_size = Vector2.ONE * .001
 		_set_native_ready(false)
 		return
+	var now := Time.get_ticks_usec()
+	if _last_frame_us > 0: _frame_gap_max_us = maxi(_frame_gap_max_us, now - _last_frame_us)
+	_last_frame_us = now
 	if not viewport: _create_capture()
 	var current_surface: Object = layer.get_android_surface()
 	var generation: int = _bridge.contextGeneration()
 	if current_surface != _surface or generation != _generation:
 		_surface = current_surface; _generation = generation
 		_texture_id = 0; _capture_frames = 0
+		presentations.reset(); presented.clear()
 		_bridge.attachSurface(_surface)
 	_bridge_status = JSON.parse_string(_bridge.status())
-	_set_native_ready(bool(_bridge_status.get("ready", false)) and _surface != null)
-	if _surface != null and _capture_frames >= 2:
-		if _texture_id == 0:
-			_texture_id = RenderingServer.texture_get_native_handle(RenderingServer.viewport_get_texture(viewport.get_viewport_rid()))
-		_bridge.submitTexture(_texture_id, CAPTURE_SIZE.x, CAPTURE_SIZE.y, _generation)
+	var acknowledged := presentations.take(int(_bridge_status.get("presented_serial", -1)))
+	if not acknowledged.is_empty(): presented = acknowledged
+	_set_native_ready(bool(_bridge_status.get("ready", false)) and not presented.is_empty() and _surface != null)
 	var shown: Node3D
 	for menu in menus:
 		if is_instance_valid(menu) and menu.is_visible_in_tree():
@@ -109,24 +140,50 @@ func _process(_delta: float) -> void:
 		active_menu = shown; content_bounds = Rect2(); _bounds_due = 0
 		_clear_frames = 2 if not shown else 0
 	if not active_menu:
-		# Keep the Android swapchain registered; stop GPU copies while hidden.
 		viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS if _clear_frames > 0 else SubViewport.UPDATE_DISABLED
 		_bridge.setEnabled(_clear_frames > 0)
+		if _clear_frames > 0: _submit_capture({"visible": false})
 		_clear_frames = maxi(0, _clear_frames - 1)
 		layer.quad_size = Vector2.ONE * .001
 		return
 	if Time.get_ticks_msec() >= _bounds_due:
 		_update_bounds()
 		_bounds_due = Time.get_ticks_msec() + 100
+	var capture := capture_pose(active_menu)
 	var centre := surface_rect.get_center()
-	layer.global_transform = capture_pose(active_menu) * Transform3D(Basis.IDENTITY, Vector3(centre.x, centre.y, 0))
-	camera.global_transform = layer.global_transform * Transform3D(Basis.IDENTITY, Vector3(0, 0, 1))
+	# The capture camera can change now. The native quad must keep the previous
+	# projection until its corresponding pixels have actually been copied.
+	camera.global_transform = capture * Transform3D(Basis.IDENTITY, Vector3(centre.x, centre.y, 1))
 	camera.size = surface_rect.size.y
-	layer.quad_size = surface_rect.size if native_supported else Vector2.ONE * .001
+	_apply_presented_layer()
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	_capture_frames += 1
 	_bridge.setEnabled(true)
+	_submit_capture({"visible": true, "menu_id": active_menu.get_instance_id(),
+		"layout_revision": active_menu.layout_revision, "pose": capture, "rect": surface_rect})
 	layer.visible = true
+
+func _submit_capture(metadata: Dictionary) -> void:
+	_capture_frames += 1
+	if _surface == null or _capture_frames < 2: return
+	if _texture_id == 0:
+		_texture_id = RenderingServer.texture_get_native_handle(RenderingServer.viewport_get_texture(viewport.get_viewport_rid()))
+	if _texture_id <= 0: return
+	var serial := presentations.stage(metadata)
+	_bridge.submitTexture(_texture_id, CAPTURE_SIZE.x, CAPTURE_SIZE.y, _generation, serial)
+
+static func presented_pose(metadata: Dictionary, menu: Node3D) -> Transform3D:
+	return capture_pose(menu) if metadata.layout_revision == menu.layout_revision else metadata.pose
+
+func _apply_presented_layer() -> void:
+	if not native_supported or not presented.get("visible", false) or presented.get("menu_id") != active_menu.get_instance_id():
+		layer.quad_size = Vector2.ONE * .001
+		return
+	# Rigid head/canvas motion is safe with the same layout. A page transition
+	# retains its old pose as well as its old projection until the new image arrives.
+	var pose := presented_pose(presented, active_menu)
+	var rect: Rect2 = presented.rect
+	layer.global_transform = pose * Transform3D(Basis.IDENTITY, Vector3(rect.get_center().x, rect.get_center().y, 0))
+	layer.quad_size = rect.size
 
 func _set_native_ready(value: bool) -> void:
 	if native_supported == value: return
@@ -193,9 +250,15 @@ func _update_bounds() -> void:
 	var result: Array = []
 	_visual_bounds(active_menu, capture_pose(active_menu).affine_inverse(), result)
 	var bounds: Rect2 = result[0] if not result.is_empty() else Rect2(-.6, -.2, 1.2, .5)
+	var envelope: Rect2 = active_menu.capture_envelope()
+	if envelope.has_area():
+		var local_to_capture := capture_pose(active_menu).affine_inverse() * active_menu.global_transform
+		for corner in [envelope.position, Vector2(envelope.end.x, envelope.position.y), envelope.end, Vector2(envelope.position.x, envelope.end.y)]:
+			var point: Vector3 = local_to_capture * Vector3(corner.x, corner.y, 0)
+			bounds = bounds.expand(Vector2(point.x, point.y))
 	bounds = bounds.grow(.04)
-	var low := (bounds.position * 10).floor() / 10
-	var high := (bounds.end * 10).ceil() / 10
+	var low := ((bounds.position + Vector2.ONE * .00001) * 50).floor() / 50
+	var high := ((bounds.end - Vector2.ONE * .00001) * 50).ceil() / 50
 	bounds = Rect2(low, high - low)
 	# Grow while a menu is open so hover/tooltips do not repeatedly shrink and
 	# reallocate the XR swapchain. New menu openings start with fresh bounds.
@@ -204,7 +267,9 @@ func _update_bounds() -> void:
 	var aspect := float(CAPTURE_SIZE.x) / CAPTURE_SIZE.y
 	var height := maxf(content_bounds.size.y, content_bounds.size.x / aspect)
 	var physical_size := Vector2(height * aspect, height)
-	surface_rect = Rect2(content_bounds.get_center() - physical_size / 2, physical_size)
+	var next_rect := Rect2(content_bounds.get_center() - physical_size / 2, physical_size)
+	if next_rect != surface_rect: _rect_changes += 1
+	surface_rect = next_rect
 
 ## Map a physical ray through the flat compositor surface into the orthographic
 ## camera used for existing controls, including angled library side columns.
@@ -219,8 +284,20 @@ static func project_ray(pose: Transform3D, size: Vector2, origin: Vector3, direc
 	return {"origin": pose * Vector3(point.x, point.y, 1), "direction": -pose.basis.z.normalized(),
 		"point": pose * Vector3(point.x, point.y, 0), "distance": origin.distance_to(pose * Vector3(point.x, point.y, 0))}
 
+func is_layout_presented(menu: Node3D) -> bool:
+	return native_supported and menu == active_menu and presented.get("menu_id") == menu.get_instance_id() and presented.get("layout_revision") == menu.layout_revision
+
+func native_placement_available() -> bool:
+	# Placement policy follows capability, not the first image's acknowledgement.
+	# Otherwise the first menu jumps from scene clearance to overlay distance.
+	return _configured and layer != null and layer.is_natively_supported() and str(_bridge_status.get("error", "")).is_empty()
+
+func reset_metrics() -> void:
+	_frame_gap_max_us = 0; _rect_changes = 0; _last_frame_us = 0
+
 func map_ray(menu: Node3D, origin: Vector3, direction: Vector3) -> Dictionary:
 	if not native_supported or menu != active_menu or not layer.visible: return {}
+	if not is_layout_presented(menu): return {}
 	return project_ray(layer.global_transform, layer.quad_size, origin, direction)
 
 func snapshot() -> Dictionary:
@@ -232,6 +309,12 @@ func snapshot() -> Dictionary:
 	var session_ready: bool = not _session_state.is_valid() or _session_state.call() in ["session_focussed", "session_visible"]
 	return {"native_supported": native_supported, "active": native_supported and session_ready and active_menu != null and layer != null and layer.visible,
 		"session_ready": session_ready, "presentation": _bridge_status, "projected_ray_count": projected_rays,
+		"warmup": warmup.snapshot() if is_instance_valid(warmup) else {},
+		"capture_serial": presentations.serial, "presented_serial": presentations.committed,
+		"capture_rect": [surface_rect.position.x, surface_rect.position.y, surface_rect.size.x, surface_rect.size.y],
+		"rect_changes": _rect_changes, "ui_frame_gap_max_us": _frame_gap_max_us,
+		"layout_revision": active_menu.layout_revision if active_menu else -1,
+		"presented_layout_revision": presented.get("layout_revision", -1),
 		"surface_available": _surface != null, "texture_id": _texture_id, "capture_frames": _capture_frames,
 		"viewport_size": [viewport.size.x, viewport.size.y] if viewport else [],
 		"main_msaa_3d": head.get_viewport().msaa_3d if is_instance_valid(head) else 0,

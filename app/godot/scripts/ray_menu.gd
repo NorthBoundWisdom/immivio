@@ -18,6 +18,7 @@ const FOOTER_GAP := 0.025
 const STATUS_WIDTH := 0.30
 var max_ray_metres := MAX_RAY_METRES
 var xr_surface: Node
+var layout_revision := 0
 const SURFACE := preload("res://shaders/menu_surface.gdshader")
 const Icons := preload("res://scripts/menu_icons.gd")
 const I18n := preload("res://scripts/i18n.gd")
@@ -91,6 +92,9 @@ func dismiss() -> void:
 	for pointer in _pointers.values():
 		pointer.line.visible = false
 		pointer.dot.visible = false
+
+func capture_envelope() -> Rect2:
+	return Rect2()
 
 func _reset_navigation() -> void:
 	pass
@@ -201,6 +205,7 @@ func _set_backdrop(size: Vector2, centre: Vector2 = Vector2.ZERO) -> void:
 	_place_device_status(Vector2(centre.x, centre.y - size.y * 0.5 - 0.085))
 
 func _clear_layout() -> void:
+	layout_revision += 1
 	if xr_surface: xr_surface.invalidate()
 	for button in _buttons:
 		button.node.free()
