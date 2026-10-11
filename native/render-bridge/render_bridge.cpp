@@ -579,11 +579,6 @@ struct Bridge final {
         glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         image(small, input_width, input_height);
-        const GLsizeiptr bytes = static_cast<GLsizeiptr>(input_width) * input_height * 4;
-        for (auto& slot : slots) {
-            glGenBuffers(2, slot.pbo.data());
-            for (auto pbo : slot.pbo) { glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo); glBufferData(GL_PIXEL_PACK_BUFFER, bytes, nullptr, GL_STREAM_READ); }
-        }
         const float source_aspect = eye_width() / eye_height();
         const float input_aspect = static_cast<float>(input_width) / input_height;
         if (source_aspect > input_aspect) { content_rect[3] = input_aspect / source_aspect; content_rect[1] = (1.f-content_rect[3])*0.5f; }
@@ -774,7 +769,14 @@ struct Bridge final {
         glUniform2f(glGetUniformLocation(prog, "footprint"), 1.f / input_width / rect[2], 1.f / input_height / rect[3]);
         return prog;
     }
-    void stage_inputs(Slot& slot, const float* rect, const std::array<GLuint, 2>& pbos) {
+    void stage_inputs(Slot& slot, const float* rect, std::array<GLuint, 2>& pbos) {
+        if (!pbos[0]) {
+            // Ordinary opaque playback never stages inference inputs. Allocate
+            // these buffers only when a real input capture first needs them.
+            glGenBuffers(2, pbos.data());
+            const GLsizeiptr bytes = static_cast<GLsizeiptr>(input_width) * input_height * 4;
+            for (auto pbo : pbos) { glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo); glBufferData(GL_PIXEL_PACK_BUFFER, bytes, nullptr, GL_STREAM_READ); }
+        }
         input_stages++;
         target(small, input_width, input_height);
         const GLuint prog = bind_scale(slot, rect);
