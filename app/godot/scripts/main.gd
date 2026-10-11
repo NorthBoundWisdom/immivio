@@ -1245,14 +1245,13 @@ var _player_menu_anchor_eye := Vector3.ZERO
 
 func _canvas_menu_anchor_key() -> Array:
 	var viewer := _viewer()
-	# Content supplies the centre; the head supplies the view plane. Immersive
-	# translation is handled separately and slider capture freezes the transform.
+	# Content owns placement. Head pitch/roll/yaw must not rotate idle controls.
+	# Immersive translation is handled separately; capture freezes the plane.
 	var pose: Variant = viewer.panel.global_transform if viewer.geometry == Geometry.Geometry.FLAT else viewer.subtitle_transform().basis
-	var head_basis: Basis = viewer.view_camera.global_basis.orthonormalized() if is_instance_valid(viewer.view_camera) else Basis.IDENTITY
-	return [viewer.local_uri, viewer.geometry, pose, player_menu.section, photo_active, head_basis,
+	return [viewer.local_uri, viewer.geometry, pose, player_menu.section, photo_active,
 		menu_compositor.native_supported if is_instance_valid(menu_compositor) else false]
 
-## Standard screens stay upright; menus and following screens use the full head pose.
+## Full tracked pose is retained for media follow; menu placement filters tilt.
 func _head_pose() -> Variant:
 	var camera: Camera3D = xr_camera
 	if not is_instance_valid(camera) and (video or photo): camera = _viewer().view_camera
@@ -1262,19 +1261,21 @@ func _head_pose() -> Variant:
 	if not pose.is_finite(): return null
 	return Transform3D(pose.basis.orthonormalized(), pose.origin)
 
-## Place the flat screen on open/recenter and the library on show. Playback
-## controls instead use the canvas/content frame, independently of head yaw.
-func _view_pose(distance: float, drop: float) -> Variant:
-	if not is_instance_valid(_viewer().view_camera) or not _viewer().view_camera.is_inside_tree():
-		return null # host tests and desktop preview without an XR camera
-	var head: Transform3D = _viewer().view_camera.global_transform
-	var forward: Vector3 = -head.basis.z
+## Menus use world up and the horizontal head direction. Looking straight up or
+## down uses the head's right axis to avoid an undefined horizontal forward.
+static func _upright_pose(head: Transform3D) -> Transform3D:
+	var forward := -head.basis.z
 	forward.y = 0.0
-	if forward.length() <= 0.01:
-		# At the zenith/nadir the head's right axis still defines a horizontal heading.
+	if forward.length_squared() <= .0001:
 		forward = Vector3.UP.cross(head.basis.x)
-	forward = forward.normalized() if forward.length() > 0.01 else Vector3.FORWARD
-	return Transform3D(Basis(Vector3.UP, atan2(-forward.x, -forward.z)), head.origin + forward * distance + Vector3(0, -drop, 0))
+	forward = forward.normalized() if forward.length_squared() > .0001 else Vector3.FORWARD
+	return Transform3D(Basis.looking_at(forward, Vector3.UP), head.origin)
+
+## Reset/open placement uses horizontal distance and a world-vertical drop.
+func _view_pose(distance: float, drop: float) -> Variant:
+	var head: Variant = _head_pose()
+	if head == null: return null
+	return _upright_pose(head) * Transform3D(Basis.IDENTITY, Vector3(0, -drop, -distance))
 
 func _place_screen(recenter: bool = false) -> void:
 	var head: Variant = _head_pose()
@@ -1311,11 +1312,12 @@ func _update_view_follow() -> void:
 	if not view_follow.enabled: return
 	var head: Variant = _head_pose()
 	if head == null: return
+	var menu_head := _upright_pose(head)
 	for menu in [recent_menu, video_menu, photo_menu]:
 		if not menu or not menu.visible: continue
-		var pose: Variant = view_follow.pose(_menu_key(menu), head)
+		var pose: Variant = view_follow.pose(_menu_key(menu), menu_head)
 		if pose == null:
-			view_follow.capture(_menu_key(menu), head, menu.global_transform)
+			view_follow.capture(_menu_key(menu), menu_head, menu.global_transform)
 		else:
 			menu.global_transform = pose
 	var surface := _viewer() if video or photo else null
@@ -1323,6 +1325,8 @@ func _update_view_follow() -> void:
 		surface.set_flat_world_pose(_follow_screen_pose(surface, head))
 
 func _place_menu(menu: Node3D) -> void:
+	# A temporary tracking loss must not relocate menus to a world-origin fallback.
+	if not display.preview and _head_pose() == null: return
 	if menu == player_menu and not _viewer().local_uri.is_empty() \
 		and is_instance_valid(_viewer().get("panel")) and _viewer().panel.visible:
 		player_menu.lift_panels = true
@@ -1338,14 +1342,13 @@ func _place_menu(menu: Node3D) -> void:
 			pose.origin -= pose.basis.z * 1.4
 		var eye := _eye()
 		var toward_eye := eye - pose.origin
+		var horizontal := Vector3(toward_eye.x, 0, toward_eye.z)
+		var head: Variant = _head_pose()
+		var facing: Basis = _upright_pose(head).basis if head != null else Basis.IDENTITY
+		if horizontal.length_squared() > .0001:
+			facing = Basis.looking_at(-horizontal.normalized(), Vector3.UP)
 		if toward_eye.length() > 0.1:
 			var normal := toward_eye.normalized()
-			var up := Vector3.UP if absf(normal.dot(Vector3.UP)) < .98 else Vector3.FORWARD
-			var facing := Basis.looking_at(-normal, up)
-			if is_instance_valid(_viewer().view_camera):
-				# Looking at the canvas centre and the current gaze are different
-				# directions. Controls must be parallel to the actual view plane.
-				facing = _viewer().view_camera.global_basis.orthonormalized()
 			# Keep the whole viewer-facing panel in front of the video plane.
 			# Moving along the eye/centre ray preserves apparent canvas alignment.
 			var canvas_normal := pose.basis.z.normalized()
@@ -1356,13 +1359,12 @@ func _place_menu(menu: Node3D) -> void:
 				# angular size for distant screens. Native overlays need no hole.
 				offset = maxf(.025, toward_eye.length() - 1.4)
 			pose.origin += normal * minf(offset, maxf(.025, toward_eye.length() - .4))
-			pose.basis = facing
+		pose.basis = facing
 		var bar_offset: float = -player_menu.panel_lift if player_menu.section == 0 else 0.0
 		menu.global_transform = pose * Transform3D(Basis.IDENTITY, Vector3(0, bar_offset, 0))
 		_player_menu_anchor_key = _canvas_menu_anchor_key()
 		_player_menu_anchor_eye = eye
-		var head: Variant = _head_pose()
-		if head != null: view_follow.capture(_menu_key(menu), head, menu.global_transform)
+		if head != null: view_follow.capture(_menu_key(menu), _upright_pose(head), menu.global_transform)
 		return
 	var drop := (0.45 if player_menu.section == 0 else 0.0) if menu == player_menu else 0.05
 	if menu == player_menu:
@@ -1370,13 +1372,13 @@ func _place_menu(menu: Node3D) -> void:
 		player_menu.panel_lift = 0.45
 		player_menu.max_ray_metres = player_menu.MAX_RAY_METRES
 	var head: Variant = _head_pose()
-	var pose: Variant = head * Transform3D(Basis.IDENTITY, Vector3(0, -drop, -1.4)) if head != null else null
+	var pose: Variant = _view_pose(1.4, drop)
 	if pose == null:
 		menu.transform = Transform3D(Basis.IDENTITY, Vector3(0, 1.6 - drop, -1.55))
 	else:
-		# Menus open parallel to the view, including its pitch.
+		# Menu rows stay horizontal even when the head is pitched or rolled.
 		menu.global_transform = pose
-		view_follow.capture(_menu_key(menu), head, pose)
+		view_follow.capture(_menu_key(menu), _upright_pose(head), pose)
 
 func _active_menu() -> Node3D:
 	if recent_menu and recent_menu.visible:
@@ -1446,6 +1448,7 @@ func _canvas_controls_snapshot() -> Dictionary:
 		"menu_normal": [player_menu.global_basis.z.x, player_menu.global_basis.z.y, player_menu.global_basis.z.z],
 		"menu_facing_eye_dot": player_menu.global_basis.z.normalized().dot(toward_eye),
 		"menu_facing_view_dot": player_menu.global_basis.z.normalized().dot(view_normal),
+		"menu_world_up_dot": player_menu.global_basis.y.normalized().dot(Vector3.UP),
 		"ui_compositor": menu_compositor.snapshot() if is_instance_valid(menu_compositor) else {},
 		"canvas_horizontal_up_dot": viewer.panel.global_basis.x.normalized().dot(Vector3.UP),
 		"scope": "Application pose/input state; physical button presses are not independently certified"}
@@ -1882,7 +1885,7 @@ func _connect_session_controls(menu: Node3D) -> void:
 
 func _on_menu_placement_changed(menu: Node3D) -> void:
 	var head: Variant = _head_pose()
-	if head != null: view_follow.capture(_menu_key(menu), head, menu.global_transform)
+	if head != null: view_follow.capture(_menu_key(menu), _upright_pose(head), menu.global_transform)
 
 func _person_passthrough() -> bool:
 	if photo_active and photo: return photo.portrait_requested or photo.portrait_enabled
@@ -1915,7 +1918,7 @@ func _on_session_control(operation: String) -> void:
 		var head: Variant = _head_pose()
 		if view_follow.enabled and head != null:
 			for menu in [recent_menu, video_menu, photo_menu]:
-				if menu and menu.visible: view_follow.capture(_menu_key(menu), head, menu.global_transform)
+				if menu and menu.visible: view_follow.capture(_menu_key(menu), _upright_pose(head), menu.global_transform)
 			var surface := _viewer()
 			if _flat_followable(surface) and not surface.local_uri.is_empty():
 				var local: Vector3 = head.affine_inverse() * (surface.global_transform * surface.flat_pose).origin

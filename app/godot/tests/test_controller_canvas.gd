@@ -22,6 +22,7 @@ func _run() -> void:
 	var video := Video.new()
 	root.add_child(video); video.set_process(false)
 	main.video = video
+	main.display.preview = true
 	video.local_uri = "file:///canvas.mp4"
 	video.media.begin(1); video.media.state = "playing"
 	video.media.format = {"width": 1920, "height": 1080}
@@ -53,14 +54,17 @@ func _run() -> void:
 	var timeline := menu.to_global(Vector3(0, Menu.BAR_SEEK_Y, 0))
 	check((timeline - camera.global_position).normalized().is_equal_approx((centre.origin - camera.global_position).normalized()),
 		"Timeline centre visually overlays relocated canvas, not head forward")
-	check(menu.global_basis.z.dot(camera.global_basis.z) > .99999,
-		"Controls are perpendicular to the actual gaze, including pitch")
-	check(absf(menu.global_basis.x.dot(camera.global_basis.y)) < .00001, "Control rows stay level in the current view")
+	check(menu.global_basis.y.is_equal_approx(Vector3.UP) and absf(menu.global_basis.z.y) < .00001,
+		"Controls are vertical relative to the floor despite head/canvas tilt")
+	var horizontal_eye := camera.global_position - centre.origin; horizontal_eye.y = 0
+	check(menu.global_basis.z.is_equal_approx(horizontal_eye.normalized()), "Controls face the eye horizontally")
 	var stable_pose := menu.global_transform
 	camera.rotation.z = .2; camera.position.x += .02
 	main._update_player_menu_anchor()
-	check(menu.global_basis.is_equal_approx(camera.global_basis) and not menu.global_basis.is_equal_approx(stable_pose.basis),
-		"Idle controls stay parallel to the view when the head orientation changes")
+	check(menu.global_transform.is_equal_approx(stable_pose), "Idle controls ignore head roll and translation")
+	camera.rotation.x = .8; camera.rotation.y += .6
+	main._update_player_menu_anchor()
+	check(menu.global_transform.is_equal_approx(stable_pose), "Head pitch and yaw cannot rotate controls away from their canvas")
 	menu.section = 1
 	main._update_player_menu_anchor()
 	check((menu.global_position - camera.global_position).normalized().is_equal_approx((centre.origin - camera.global_position).normalized()),
@@ -134,8 +138,27 @@ func _run() -> void:
 	video.geometry = 0; video.flat_pose = Transform3D(Basis.IDENTITY, camera.global_position + Vector3.UP * 2)
 	video._apply_geometry(); main._place_menu(menu)
 	timeline = menu.to_global(Vector3(0, Menu.BAR_SEEK_Y, 0))
-	check(menu.global_basis.is_finite() and menu.global_basis.z.dot(camera.global_basis.z) > .99999,
-		"An overhead canvas still uses the view plane rather than tilting controls backwards")
+	check(menu.global_basis.is_finite() and menu.global_basis.y.is_equal_approx(Vector3.UP),
+		"An overhead canvas retains a finite upright control plane")
+	video.flat_pose.origin = camera.global_position
+	video._apply_geometry(); main._place_menu(menu)
+	check(menu.global_basis.y.is_equal_approx(Vector3.UP), "Coincident eye/canvas cannot inherit tilted content axes")
+	# Non-playback reset must stay at eye height and horizontal viewing distance.
+	video.local_uri = ""; menu.visible = false; library.visible = true
+	for yaw in [-2.4, -.7, 0.0, 1.9]:
+		for pitch in [-1.2, .9]:
+			camera.rotation = Vector3(pitch, yaw, .65)
+			main._recenter()
+			var delta := library.global_position - camera.global_position
+			check(library.global_basis.y.is_equal_approx(Vector3.UP), "Library reset filters head pitch and roll")
+			check(is_equal_approx(delta.y, -.05) and absf(Vector2(delta.x, delta.z).length() - 1.4) < .0001,
+				"Library reset uses fixed horizontal distance and eye-relative height")
+			check(delta.normalized().dot(-camera.global_basis.z) > 0, "Library reset chooses the current horizontal direction")
+	for pitch in [-PI / 2, PI / 2]:
+		camera.rotation = Vector3(pitch, .7, .8)
+		main._recenter()
+		check(library.global_transform.is_finite() and library.global_basis.y.is_equal_approx(Vector3.UP),
+			"Vertical gaze has a finite upright reset heading")
 	menu.free(); library.free(); camera.free(); main.free(); video.free()
 	for failure in failures: push_error(failure)
 	print("Controller canvas: %d checks, %d failures" % [checks, failures.size()])

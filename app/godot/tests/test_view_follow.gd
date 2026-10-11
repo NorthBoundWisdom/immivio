@@ -115,10 +115,14 @@ func _run() -> void:
 	check(not main.temporary_passthrough and not main.display.applied_passthrough, "Temporary passthrough disables independently")
 	click(main.recent_menu, Menu.FOLLOW)
 	check(main.view_follow.enabled and not main.temporary_passthrough, "Follow can enable without media/background coupling")
-	var menu_local: Transform3D = main.xr_camera.global_transform.affine_inverse() * main.recent_menu.global_transform
+	var upright_library := main.recent_menu.global_transform
+	main.xr_camera.rotation.x += .8; main.xr_camera.rotation.z += .4
+	main._update_view_follow()
+	check(main.recent_menu.global_transform.is_equal_approx(upright_library), "Pitch and roll cannot move or tilt a following library")
+	var menu_local: Transform3D = Main._upright_pose(main.xr_camera.global_transform).affine_inverse() * main.recent_menu.global_transform
 	main.xr_camera.transform = Transform3D(Basis.from_euler(Vector3(1.55, .4, .6)), Vector3(1, .4, 2))
 	main._update_view_follow()
-	check((main.xr_camera.global_transform.affine_inverse() * main.recent_menu.global_transform).is_equal_approx(menu_local), "Library follows lying head with roll and translation")
+	check((Main._upright_pose(main.xr_camera.global_transform).affine_inverse() * main.recent_menu.global_transform).is_equal_approx(menu_local), "Library follows horizontal head direction/translation while retaining its upright pose")
 	main._on_library_chosen("file:///follow/first_2D.mp4", "first_2D.mp4")
 	main._place_screen()
 	check(placement(main, main.video).is_equal_approx(Transform3D(Basis.IDENTITY, Vector3(0,0,-main.video.screen_distance))), "Opening first media in follow uses current full gaze")
@@ -148,26 +152,27 @@ func _run() -> void:
 	var before := placement(main, main.video)
 	main._show_player_menu()
 	check(placement(main, main.video).is_equal_approx(before), "Menu summons do not move screen")
-	check(main.video_menu.global_basis.is_equal_approx(main.xr_camera.global_basis), "Player summon includes head tilt and roll")
+	check(main.video_menu.global_basis.y.is_equal_approx(Vector3.UP), "Player summon remains vertical with head tilt and roll")
 	footer_check(main.video_menu, "Player bar")
 	for section in [1,2]:
 		main.video_menu.section = section; main.video_menu.refresh()
 		footer_check(main.video_menu, "Player section " + str(section))
 	main.video_menu.section = 0; main.video_menu.refresh()
-	var bar_local: Transform3D = main.xr_camera.global_transform.affine_inverse() * main.video_menu.global_transform
+	var bar_local: Transform3D = Main._upright_pose(main.xr_camera.global_transform).affine_inverse() * main.video_menu.global_transform
 	main.video_menu.section = 1; main.video_menu.refresh()
 	main._update_view_follow()
-	var lifted_local: Transform3D = main.xr_camera.global_transform.affine_inverse() * main.video_menu.global_transform
+	var lifted_local: Transform3D = Main._upright_pose(main.xr_camera.global_transform).affine_inverse() * main.video_menu.global_transform
 	check(lifted_local.origin.is_equal_approx(bar_local.origin + Vector3(0,main.video_menu.panel_lift,0)), "Settings lift follows menu up axis while lying and is retained in follow")
 	main.video_menu.section = 0; main.video_menu.refresh()
 	main._update_view_follow()
-	check((main.xr_camera.global_transform.affine_inverse() * main.video_menu.global_transform).is_equal_approx(bar_local), "Returning to playback restores local menu position")
+	check((Main._upright_pose(main.xr_camera.global_transform).affine_inverse() * main.video_menu.global_transform).is_equal_approx(bar_local), "Returning to playback restores local menu position")
 	main.video_menu._seek_hand = "left_hand"
-	var captured_menu: Transform3D = main.xr_camera.global_transform.affine_inverse() * main.video_menu.global_transform
+	var captured_menu: Transform3D = Main._upright_pose(main.xr_camera.global_transform).affine_inverse() * main.video_menu.global_transform
 	var captured_screen := placement(main,main.video)
 	main.xr_camera.rotate_z(.2); main._update_view_follow(); main._update_player_menu_anchor()
-	check((main.xr_camera.global_transform.affine_inverse() * main.video_menu.global_transform).is_equal_approx(captured_menu)
+	check((Main._upright_pose(main.xr_camera.global_transform).affine_inverse() * main.video_menu.global_transform).is_equal_approx(captured_menu)
 		and placement(main,main.video).is_equal_approx(captured_screen), "Timeline capture keeps strict menu/screen follow during head movement")
+	check(main.video_menu.global_basis.y.is_equal_approx(Vector3.UP), "Follow cannot tilt a captured playback panel")
 	main.video_menu._seek_hand = ""
 	main._recenter()
 	check(placement(main, main.video).origin.is_equal_approx(Vector3(0,0,-main.video.screen_distance)) and main.view_follow.enabled,
@@ -232,10 +237,10 @@ func _run() -> void:
 	if not main.view_follow.enabled: main._on_session_control("follow")
 	main.display.preview = false; main.tracked = false
 	var frozen: Transform3D = main.recent_menu.global_transform
-	main.xr_camera.position += Vector3(4,0,0); main._update_view_follow()
+	main.xr_camera.position += Vector3(4,0,0); main._update_view_follow(); main._recenter()
 	check(main.recent_menu.global_transform.is_equal_approx(frozen), "Invalid head tracking does not recapture or move panels")
 	main.tracked = true
-	var recovered: Variant = main.view_follow.pose(main._menu_key(main.recent_menu), main._head_pose())
+	var recovered: Variant = main.view_follow.pose(main._menu_key(main.recent_menu), Main._upright_pose(main._head_pose()))
 	main._on_system_recentered()
 	check(main.recent_menu.global_transform.is_equal_approx(recovered), "System recenter/tracking recovery retains local pose")
 	main.display.preview = true
@@ -247,7 +252,7 @@ func _run() -> void:
 	main._recenter()
 	check(main.video.flat_pose.basis.y.is_equal_approx(Vector3.UP), "Standard recenter returns upright theater screen")
 	main._show_recent_menu()
-	check(main.recent_menu.global_basis.is_equal_approx(main.xr_camera.global_basis), "Standard menus still summon with full head pose")
+	check(main.recent_menu.global_basis.y.is_equal_approx(Vector3.UP), "Standard menus summon upright with horizontal head direction")
 	main.recent_menu.refresh()
 	var control_position: Vector3 = button(main.recent_menu, Menu.FOLLOW).node.position
 	main.recent_menu.device_status.status_provider = func(): return {"level":100,"charging":true,"clock24":false}
