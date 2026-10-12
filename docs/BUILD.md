@@ -44,7 +44,7 @@ Direct Gradle builds retain `enableAi=true` and `standardMpv=false` by default. 
 
 The standard backend never invents private source-frame or Dolby metadata and cannot authorize AI pairs. Its rendering counters describe render transactions, not independently verified unique decoded images. `standardMpv=true` with `enableAi=true` is rejected by Gradle and CMake.
 
-Model-free builds, host/JVM tests and package integrity checks are exercised by CI. A successful model-free job does not validate the AI-enabled build: that regression still requires the original model/runtime dependencies and the documented AI workflow. Device playback, Dolby color correctness, PGS output and XR behavior need matching device evidence for each applicable backend.
+Model-free builds, host/JVM tests and package integrity checks are exercised by CI. A successful model-free job does not validate the AI-enabled build: that regression still requires the selected model/runtime dependencies and the documented AI workflow. Device playback, Dolby color correctness, PGS output and XR behavior need matching device evidence for each applicable backend.
 
 ## Windows/macOS CI
 
@@ -122,7 +122,7 @@ The committed source-build receipt records reference library bytes. A different 
 
 ## Runtime models and APK
 
-AI is enabled by default. Obtain the matching runtime models separately as explained in [MODELS.md](MODELS.md). The initial source release does not host the distilled matting weights.
+AI is enabled by default. Prepare/import a selected model pack as explained in [MODELS.md](MODELS.md). RVM conversion defaults to public upstream weights; the historical student remains optional and is not hosted. Custom packs use `Import-ModelAssets.ps1 -Manifest PATH` and `Build-Player.ps1 -UsePreparedModelAssets -ModelManifest PATH`.
 
 For a base player without AI, use:
 
@@ -160,7 +160,7 @@ Release builds use `-BuildType Release`. `Prepare-ReleaseSigning.ps1` validates 
 
 Distribution filenames identify platforms as `QUEST`, `PICO` and `OpenXR`, retaining the version and requested build date; for example `Thru3D-QUEST-0.3.1-release-20261009.apk`. Internal export-preset names and older debug fixture filenames can retain their existing names.
 
-The historical full conversion/diagnostic path remains available without `-UsePreparedModelAssets`, but requires upstream/reference models, the pinned project student, converter tools and generated numerical oracles. It is not the minimal build path and does not fetch the missing student automatically.
+The historical full conversion/diagnostic path remains available without `-UsePreparedModelAssets`. It defaults to `-RvmVariant upstream` and requires upstream/reference models, converter tools, both prepared depth models and generated numerical oracles. `-RvmVariant distilled` additionally requires the pinned project student. It is not the minimal build path and does not fetch the missing student automatically. AI-enabled Gradle staging validates the selected pack through Python 3.11+ (`THRU3D_PYTHON` overrides the interpreter).
 
 Model conversion additionally uses ONNX Runtime, NumPy, ONNX simplification, Pillow/OpenCV and the matching MNN converter/Python bindings; distillation uses PyTorch and onnx2torch. These tools belong in separate local environments. The small model-tools requirements lock covers reference conversion packages, not every optional training/analysis tool.
 

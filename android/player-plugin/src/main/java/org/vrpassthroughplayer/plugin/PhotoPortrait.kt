@@ -24,8 +24,11 @@ internal object PhotoPortrait {
     fun prepare(context: Context, source: File, strength: Float, token: Int, check: () -> Unit): JSONObject {
         val nearFile = File(source.parentFile,"depth.bin")
         val depth = JSONObject(File(source.parentFile,"depth.json").readText())
-        require(depth.optString("photo_cache") == "da2-518-stretch-v1" && nearFile.length() == 518L*518*4)
-        val directory = File(source.parentFile,"portrait").apply { mkdirs() }
+        val depthModel = BundledModels.resolve(context.assets, ModelTask.PHOTO_DEPTH)
+        val mattingModel = BundledModels.resolve(context.assets, ModelTask.MATTING)
+        require(depth.optString("photo_cache") == "da2-518-stretch-v1" && depth.optString("model_sha256") == depthModel.sha256 && nearFile.length() == 518L*518*4)
+        val modelKey = mattingModel.sha256 + "-" + depthModel.sha256
+        val directory = File(source.parentFile,"portrait-$modelKey").apply { mkdirs() }
         val sourceMask = File(directory,"mask.png")
         if (!sourceMask.isFile) {
             check()
@@ -36,7 +39,7 @@ internal object PhotoPortrait {
             secondRgb.put(rgb.duplicate()); secondRgb.rewind()
             RvmNative.configureGpu(RvmWarmup.cacheDirectory(context).absolutePath,true)
             val runtime = ModelPreparationGate.run {
-                check(); RvmRuntime.prepare(context.assets,true,"512x512",token.toLong(),1)
+                check(); ModelRuntimeFactory.matting(context.assets,"512x512",token.toLong(),1)
             }
             runtime.use {
                 check()
@@ -79,7 +82,7 @@ internal object PhotoPortrait {
         near.put(nearFile.readBytes()); near.rewind()
         val rect = depth.getJSONArray("rect")
         // Same oriented dimensions, gradient limits, convergence and disocclusion as colour.
-        val pair = PhotoStereo.prepare(sourceMask,near,FloatArray(4) { rect.getDouble(it).toFloat() },strength,token)
+        val pair = PhotoStereo.prepare(sourceMask,near,FloatArray(4) { rect.getDouble(it).toFloat() },strength,token,modelKey)
         require(pair.getInt("stereo_width") == w && pair.getInt("stereo_height") == h)
         val raw = File(pair.getString("stereo_path"))
         if (target.length() != w.toLong()*h) {

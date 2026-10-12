@@ -22,9 +22,10 @@ internal object PhotoStereo {
         return maxOf(1,(width*ratio).toInt()) to maxOf(1,(height*ratio).toInt())
     }
 
-    fun prepare(source: File, near: ByteBuffer, rect: FloatArray, strength: Float, generation: Int): JSONObject {
+    fun prepare(source: File, near: ByteBuffer, rect: FloatArray, strength: Float, generation: Int, modelKey: String = "legacy"): JSONObject {
         require(strength.isFinite() && strength in 0f..2f)
-        val prefix = "stereo-${(strength*100).roundToInt()}-"
+        require(modelKey.matches(Regex("[a-zA-Z0-9_-]+")))
+        val prefix = "stereo-$modelKey-${(strength*100).roundToInt()}-"
         // Raw RGBA pair named with its size: a hit is checked by length, with nothing to decode.
         source.parentFile?.listFiles()?.firstOrNull { it.name.startsWith(prefix) && it.extension == "rgba" }?.let { cached ->
             val size = Regex("""-(\d+)x(\d+)$""").find(cached.nameWithoutExtension)?.groupValues

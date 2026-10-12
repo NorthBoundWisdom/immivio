@@ -276,11 +276,14 @@ internal class PhotoBridge(
                 checkDepth()
                 val app = context() ?: error("PHOTO_UNAVAILABLE")
                 val w = PhotoDepthInput.WIDTH; val h = PhotoDepthInput.HEIGHT
+                val model = BundledModels.resolve(app.assets, ModelTask.PHOTO_DEPTH)
                 val near = ByteBuffer.allocateDirect(w * h * 4).order(ByteOrder.LITTLE_ENDIAN)
                 val target = File(source.parentFile, "depth.bin")
                 val metadata = File(source.parentFile, "depth.json")
                 val cached = if (target.length() == w.toLong()*h*4 && metadata.isFile)
-                    runCatching { JSONObject(metadata.readText()).takeIf { it.optString("photo_cache") == "da2-518-stretch-v1" } }.getOrNull() else null
+                    runCatching { JSONObject(metadata.readText()).takeIf {
+                        it.optString("photo_cache") == "da2-518-stretch-v1" && it.optString("model_sha256") == model.sha256
+                    } }.getOrNull() else null
                 val result: JSONObject
                 if (cached != null) {
                     near.put(target.readBytes()); near.rewind()
@@ -307,6 +310,7 @@ internal class PhotoBridge(
                     near.rewind(); val bytes = ByteArray(near.remaining()); near.get(bytes); near.rewind()
                     target.writeBytes(bytes)
                     result.put("path",target.path).put("width",w).put("height",h).put("photo_cache","da2-518-stretch-v1")
+                        .put("model_id",model.id).put("model_sha256",model.sha256)
                         .put("rect",org.json.JSONArray(listOf(content.x.toDouble()/w,content.y.toDouble()/h,content.width.toDouble()/w,content.height.toDouble()/h)))
                     metadata.writeText(result.toString())
                 }
@@ -315,7 +319,7 @@ internal class PhotoBridge(
                     stage(id,"stereo")
                     val stereoStarted = System.nanoTime()
                     val rect = result.getJSONArray("rect")
-                    val pair = PhotoStereo.prepare(source,near,FloatArray(4) { rect.getDouble(it).toFloat() },job.strength,id)
+                    val pair = PhotoStereo.prepare(source,near,FloatArray(4) { rect.getDouble(it).toFloat() },job.strength,id,model.sha256)
                     pair.keys().forEach { key -> result.put(key,pair.get(key)) }
                     result.put("stereo_total_ms",(System.nanoTime()-stereoStarted)/1_000_000.0)
                 }

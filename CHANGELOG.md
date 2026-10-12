@@ -6,6 +6,9 @@ Newest first, following product release milestones. Some development/source snap
 
 ## Unreleased
 
+- Add build-selected model packs with adapter/runtime contracts and size/SHA256 verification for public and custom weights; default RVM conversion to public upstream weights while retaining the historical distilled variant.
+- Separate matting session use behind an interface, include model fingerprints in photo effect caches, and exclude model-pack metadata from no-AI builds.
+
 - Added an optional model-free build that excludes AI runtimes/assets and disables live inference controls while preserving ordinary playback and precomputed stereo/masks.
 - Added a verified standard-libmpv backend and portable Android build entry point; documented its source-timing, PGS and Dolby metadata limits separately from the project mpv backend.
 - Added Windows/macOS CI for model-free PICO, Quest and OpenXR Android packages, with dependency caches, package verification and optional isolated signing.

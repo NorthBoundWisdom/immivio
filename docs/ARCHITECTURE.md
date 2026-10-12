@@ -62,6 +62,8 @@ The normal matting backend uses MNN OpenCL with four recurrent states for each e
 
 The independent depth backend processes flat mono videos/photos using Depth Anything V2 Small. `depth_stabilizer` limits temporal variation before Godot renders depth-based stereo. Depth updates and display frames have distinct timing; a rendered-frame rate is not an inference rate.
 
+Model selection is a build input, independent of the media session and frame gates. A versioned `ai-models/manifest.json` maps matting, video depth and photo depth to their adapter contracts. `tools/model_assets.py` verifies complete source packs before importing; `ModelRepository` validates the installed contract and verifies model bytes lazily on a worker. Public upstream and private/distilled weights keep separate identities and hashes while using the same compatible adapters. `MattingRuntime` is the session interface used by the video effect queue; MNN remains the only production inference engine in this phase. Fixed adapter asset paths are normalized during import. Runtime model downloads and hot switching are not implemented. See [model packs](MODELS.md#model-pack-and-adapter-boundaries).
+
 ## Build boundaries
 
 The Godot export plugin references the separately built Kotlin AAR and Maven dependencies. The matching Godot template provides one engine. Each Android export preset enables one vendor loader. Models, SDK/addon binaries and native libraries are prepared outside Git and checked during packaging.

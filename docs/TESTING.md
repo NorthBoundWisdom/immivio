@@ -4,11 +4,14 @@
 
 ```powershell
 python tools/Check-PublicSource.py
+python tools/test_model_assets.py
 $env:GODOT_EXE = (Get-Command godot).Source
 ./tools/Test-Source.ps1
 ```
 
 The public checker examines tracked files for excluded binary types, credentials and private paths. It is a publication boundary check, not a substitute for a full security review.
+
+`test_model_assets.py` uses synthetic bytes to check public/custom model identities, path normalization, hash corruption, complete validation before replacing an existing pack, contract/runtime rejection and conversion provenance. JVM `ModelRepositoryTest` checks lazy hash verification, failure recovery and rejection before model bytes are opened. Neither suite proves numerical model compatibility. Real AI builds still need matching models, the patched MNN runtime and device validation.
 
 `Test-Source.ps1` runs the Godot GDScript host suite without activating the Android toolchain. It includes localization, media-library/menu interaction, controller/hand logic, projection/eye-order, preferences and image/depth handling. An OpenXR loader can be absent during headless tests; XR/device behavior is not part of their result.
 

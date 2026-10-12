@@ -9,11 +9,15 @@ param([string]$ToolRoot = $(if ($env:THRU3D_TOOL_ROOT) { $env:THRU3D_TOOL_ROOT }
     [switch]$IncludeDiagnostics,
     # Version-matched assets imported with tools/Import-ModelAssets.ps1.
     [switch]$UsePreparedModelAssets,
+    # Explicit public/custom pack manifest; weights remain external to Git.
+    [string]$ModelManifest,
+    [ValidateSet('upstream','distilled')][string]$RvmVariant = 'upstream',
     # Base playback without inference libraries or model assets.
     [switch]$WithoutAI)
 $ErrorActionPreference = 'Stop'
-if ($WithoutAI -and ($IncludeDiagnostics -or $UsePreparedModelAssets)) { throw '-WithoutAI cannot be combined with model/AI diagnostic options.' }
+if ($WithoutAI -and ($IncludeDiagnostics -or $UsePreparedModelAssets -or $ModelManifest)) { throw '-WithoutAI cannot be combined with model/AI diagnostic options.' }
 if ($WithoutAI -and -not $PSBoundParameters.ContainsKey('MpvCandidate')) { $MpvCandidate = 'OfficialRelease' }
+if ($ModelManifest -and -not $UsePreparedModelAssets) { throw '-ModelManifest requires -UsePreparedModelAssets.' }
 if ($MpvCandidate -eq 'OfficialRelease' -and -not $WithoutAI) { throw 'Official mpv is supported only with -WithoutAI.' }
 if (-not $ApkName) {
     $ApkName = if ($BuildType -eq 'Release') {
@@ -86,9 +90,14 @@ if ($WithoutAI) {
     Write-Output 'Building base player without AI libraries/models.'
 } elseif ($UsePreparedModelAssets) {
     if ($IncludeDiagnostics) { throw 'Prepared runtime assets do not include full diagnostics.' }
-    & "$workspace/tools/Import-ModelAssets.ps1" -VerifyOnly
+    & "$workspace/tools/Import-ModelAssets.ps1" -VerifyOnly -Manifest $ModelManifest
 } else {
-    & "$workspace\tools\models\Prepare-RvmCandidate.ps1" -ToolRoot $ToolRoot
+    & "$workspace\tools\models\Prepare-RvmCandidate.ps1" -ToolRoot $ToolRoot -Variant $RvmVariant
+    $python = Join-Path $workspace '.venv\Scripts\python.exe'
+    $modelAssetRoot = Join-Path $workspace 'android/player-plugin/src/main/assets'
+    & $python "$workspace/tools/model_assets.py" --from-directory $modelAssetRoot --record-converted $RvmVariant
+    if ($LASTEXITCODE -ne 0) { throw 'Runtime model pack metadata could not be recorded. Prepare both depth models first.' }
+    # Conversion output manifests/oracles stay intact for dedicated diagnostics.
 }
 & "$workspace\tools\environment\Prepare-MpvAndroid.ps1" -ToolRoot $ToolRoot -Candidate $MpvCandidate
 
@@ -330,11 +339,13 @@ try {
         if (-not $IncludeDiagnostics -and ($apkArchive.Entries | Where-Object { $_.FullName -match '^assets/rvm/.*\.(bin|param)$' -or $_.FullName -eq 'assets/rvm-mnn/rvm_quality.mnn' })) {
             throw 'Normal player APK contains unused diagnostic/quality models.'
         }
+        if (-not $apkArchive.GetEntry('assets/ai-models/manifest.json')) { throw 'APK is missing the selected model pack contract.' }
         $mnnManifest = Get-Content (Join-Path $projectDirectory '..\..\android\player-plugin\src\main\assets\rvm-mnn\manifest.json') -Raw | ConvertFrom-Json
         $depthManifest = Get-Content (Join-Path $projectDirectory '..\..\android\player-plugin\src\main\assets\depth-mnn\manifest.json') -Raw | ConvertFrom-Json
         $photoDepthManifest = Get-Content (Join-Path $workspace 'android\player-plugin\src\main\assets\depth-mnn\photo_manifest.json') -Raw | ConvertFrom-Json
         if ($photoDepthManifest.width -ne 518 -or $photoDepthManifest.height -ne 518 -or $photoDepthManifest.usage -ne 'photo') { throw 'Photo depth model profile differs.' }
         $requiredModels = @(@('rvm-mnn/rvm.mnn', $mnnManifest.mnn_sha256), @('depth-mnn/depth.mnn', $depthManifest.mnn_sha256), @('depth-mnn/photo_depth.mnn', $photoDepthManifest.mnn_sha256))
+        $requiredModels += ,@('ai-models/manifest.json', (Get-FileHash -LiteralPath (Join-Path $workspace 'android/player-plugin/src/main/assets/ai-models/manifest.json') -Algorithm SHA256).Hash.ToLowerInvariant())
         if ($IncludeDiagnostics) { $requiredModels += ,@('rvm-mnn/rvm_quality.mnn', $mnnManifest.quality_mnn_sha256) }
         foreach ($model in $requiredModels) {
             $entry = $apkArchive.GetEntry('assets/' + $model[0])
@@ -345,7 +356,7 @@ try {
             finally { $modelStream.Dispose(); $modelSha.Dispose() }
             if ($modelHash -ne $model[1]) { throw "APK playback model hash differs: $($model[0])" }
         }
-    } elseif ($apkArchive.Entries | Where-Object { $_.FullName -match '^assets/(rvm|rvm-mnn|depth-mnn)/|^lib/.*/lib(quest_rvm|MNN[^/]*|ncnn)\.so$' }) {
+    } elseif ($apkArchive.Entries | Where-Object { $_.FullName -match '^assets/(rvm|rvm-mnn|depth-mnn|ai-models)/|^lib/.*/lib(quest_rvm|MNN[^/]*|ncnn)\.so$' }) {
         throw 'Base player APK contains AI assets/libraries.'
     }
     if (-not $apkArchive.GetEntry('lib/arm64-v8a/libquest_media.so')) { throw 'APK is missing the base file-management JNI library.' }

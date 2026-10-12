@@ -115,6 +115,7 @@ def host_tests(godot):
     player.run([sys.executable, player.ROOT/'tools/Check-PublicSource.py'])
     player.run([sys.executable, player.ROOT/'tools/test_build_player.py'])
     player.run([sys.executable, player.ROOT/'tools/test_ci_android.py'])
+    player.run([sys.executable, player.ROOT/'tools/test_model_assets.py'])
     logs = player.ROOT/'artifacts/source-tests'
     logs.mkdir(parents=True, exist_ok=True)
     env = os.environ.copy()

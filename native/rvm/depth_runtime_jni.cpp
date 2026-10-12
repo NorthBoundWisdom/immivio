@@ -104,7 +104,7 @@ std::string cache_path(AAsset* model, const std::string& directory, bool photo =
     char tag[17];
     snprintf(tag, sizeof(tag), "%016llx", static_cast<unsigned long long>(hash));
     // Tuned kernels belong to one memory mode: each mode keeps its own cache.
-    return directory + "/mnn_depth_fp16_" + tag + "_m" + std::to_string(gpu_mode(photo)) + ".cache";
+    return directory + "/mnn_depth_fp16_vrpp1_" + tag + "_m" + std::to_string(gpu_mode(photo)) + ".cache";
 }
 
 struct Depth final {
@@ -150,7 +150,7 @@ struct Depth final {
         out = net->getSessionOutput(session, "depth");
         require(src && out && src->channel() == 3 && src->width() > 0 && src->height() > 0, "Depth model I/O differs");
         width = src->width(); height = src->height();
-        require(out->width() == width && out->height() == height, "Depth output size differs from its input");
+        require(out->channel() == 1 && out->width() == width && out->height() == height, "Depth output shape differs from its contract");
         src_host.reset(new MNN::Tensor(src, MNN::Tensor::CAFFE));
         out_host.reset(new MNN::Tensor(out, MNN::Tensor::CAFFE));
         std::memset(src_host->host<float>(), 0, src_host->size());
@@ -235,7 +235,7 @@ float* direct(JNIEnv* env, jobject buffer, size_t floats) {
 } // namespace
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_org_vrpassthroughplayer_plugin_DepthNative_cachePath(JNIEnv* env, jclass, jobject assets, jstring directory) {
+Java_org_vrpassthroughplayer_plugin_DepthNative_modelCachePath(JNIEnv* env, jclass, jobject assets, jstring directory) {
     try {
         const auto model = open_model(env, assets);
         return env->NewStringUTF(cache_path(model.get(), text(env, directory)).c_str());
@@ -243,11 +243,12 @@ Java_org_vrpassthroughplayer_plugin_DepthNative_cachePath(JNIEnv* env, jclass, j
 }
 
 extern "C" JNIEXPORT jlong JNICALL
-Java_org_vrpassthroughplayer_plugin_DepthNative_create(JNIEnv* env, jclass, jobject assets, jstring directory) {
+Java_org_vrpassthroughplayer_plugin_DepthNative_createModel(JNIEnv* env, jclass, jobject assets, jstring directory) {
     try {
         const auto model = open_model(env, assets);
         auto depth = std::make_shared<Depth>(AAsset_getBuffer(model.get()), static_cast<size_t>(AAsset_getLength64(model.get())),
                                              cache_path(model.get(), text(env, directory)));
+        require(depth->width == 252 && depth->height == 140, "Video depth model shape differs");
         std::lock_guard<std::mutex> guard(registry_mutex);
         const jlong handle = next_handle++;
         registry.emplace_back(handle, std::move(depth));
@@ -267,7 +268,7 @@ Java_org_vrpassthroughplayer_plugin_DepthNative_describe(JNIEnv* env, jclass, jl
 }
 
 extern "C" JNIEXPORT jlong JNICALL
-Java_org_vrpassthroughplayer_plugin_DepthNative_createPhoto(JNIEnv* env, jclass, jobject assets, jstring directory) {
+Java_org_vrpassthroughplayer_plugin_DepthNative_createPhotoModel(JNIEnv* env, jclass, jobject assets, jstring directory) {
     try {
         const auto model = open_model(env, assets, kPhotoModelAsset);
         auto depth = std::make_shared<Depth>(AAsset_getBuffer(model.get()), static_cast<size_t>(AAsset_getLength64(model.get())),

@@ -19,6 +19,7 @@ internal object RvmWarmup {
         val app = context.applicationContext
         RvmWorkers.prepare.post {
             try {
+                BundledModels.resolve(app.assets, ModelTask.MATTING)
                 RvmNative.configureGpu(cacheDirectory(app).absolutePath, true)
                 // Caches are named after model bytes; keep only the models shipped in this build.
                 val keep = models.map { File(RvmNative.gpuCachePath(app.assets, profile, it)) }.toSet()

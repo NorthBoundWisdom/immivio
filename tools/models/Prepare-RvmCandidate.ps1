@@ -1,4 +1,4 @@
-param([string]$ToolRoot = $(if ($env:THRU3D_TOOL_ROOT) { $env:THRU3D_TOOL_ROOT } else { Join-Path ([Environment]::GetFolderPath('UserProfile')) '.cache\thru3d-toolchain' }), [switch]$Regenerate)
+param([string]$ToolRoot = $(if ($env:THRU3D_TOOL_ROOT) { $env:THRU3D_TOOL_ROOT } else { Join-Path ([Environment]::GetFolderPath('UserProfile')) '.cache\thru3d-toolchain' }), [switch]$Regenerate, [ValidateSet('upstream','distilled')][string]$Variant = 'upstream')
 $ErrorActionPreference = 'Stop'
 $workspace = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 . "$workspace\tools\environment\Activate-QuestEnvironment.ps1" -ToolRoot $ToolRoot
@@ -26,5 +26,7 @@ foreach ($entry in $profiles.profiles) {
 if ($LASTEXITCODE -ne 0) { throw 'Verified RVM assets could not be prepared.' }
 & $python "$workspace\benchmarks\rvm_profile_package.py"
 if ($LASTEXITCODE -ne 0) { throw 'RVM profile/oracle package integrity failed.' }
-& $python "$PSScriptRoot\prepare_rvm_mnn.py"
+& $python "$PSScriptRoot\specialize_rvm_ratio_one.py"
+if ($LASTEXITCODE -ne 0) { throw 'Public upstream RVM specialization failed.' }
+& $python "$PSScriptRoot\prepare_rvm_mnn.py" --variant $Variant $(if ($Regenerate) { @('--regenerate') } else { @() })
 if ($LASTEXITCODE -ne 0) { throw 'MNN OpenCL RVM model could not be prepared.' }

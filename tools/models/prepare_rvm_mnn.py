@@ -17,6 +17,7 @@ NC4HW4 inputs (--keepInputFormat=0), which drops the layout conversions that MNN
 otherwise inserts around every Concat/Interp. Quest 3, 320x320 FP16: 37.8 -> 29.3 ms
 per stereo pair, closer to ORT FP32 than the unfused graph.
 """
+import argparse
 import os
 from pathlib import Path
 import hashlib
@@ -148,11 +149,16 @@ def install():
 
 
 def main():
-    import sys
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--variant', choices=('upstream', 'distilled'), default='upstream')
+    parser.add_argument('--regenerate', action='store_true')
+    args = parser.parse_args()
     current = OUT / 'manifest.json'
-    if '--regenerate' not in sys.argv and current.is_file() and (OUT / 'rvm.mnn').is_file():
-        install()
-        return
+    if not args.regenerate and current.is_file() and (OUT / 'rvm.mnn').is_file():
+        cached = json.loads(current.read_text(encoding='utf-8'))
+        if cached.get('variant', 'distilled') == args.variant:
+            install()
+            return
     OUT.mkdir(parents=True, exist_ok=True)
     model = prune_fgr(onnx.load(SOURCE))
     onnx.checker.check_model(model)
@@ -180,31 +186,37 @@ def main():
     # Shipped graphs additionally move HardSwish into the convolutions; only the player's MNN fork
     # (tools/mnn/patch_mnn_vrpp.py) computes it, so the ORT checks above use unmarked graphs.
     #   rvm_quality.mnn  the fused upstream network (Alpha quality option)
-    #   rvm.mnn          the distilled narrow-decoder student (default; models/manifest/rvm_student.json),
+    #   rvm.mnn          the build-selected upstream graph or distilled student,
     #                    scored by benchmarks/rvm_layer_profile/rvm_bandwidth_sim.py, not by equality
     marked = OUT / 'rvm.fused.hswish.u8.onnx'
     marked_model, marked_fusion = fuse_rvm_graph.build(split=True, fold='scale', source=u8, conv_hardswish=True, rgba=True)
     fusion['conv_hardswish'] = marked_fusion['conv_hardswish']
     onnx.save(marked_model, marked)
     convert(marked, OUT / 'rvm_quality.mnn')
-    student_manifest = json.loads(STUDENT_MANIFEST.read_text(encoding='utf-8'))
-    student = ROOT / student_manifest['file']
-    if sha(student) != student_manifest['sha256']:
-        raise SystemExit('Distilled RVM student hash differs from models/manifest/rvm_student.json')
-    graph = fuse_rvm_graph.Graph(onnx.load(student))
-    fuse_rvm_graph.rgba_input(graph)
-    student_hswish = fuse_rvm_graph.mark_conv_hardswish(graph)
-    fuse_rvm_graph.prune_unused(graph)
-    student_marked = OUT / 'rvm.student.hswish.u8.onnx'
-    onnx.save(graph.model, student_marked)
-    convert(student_marked, OUT / 'rvm.mnn')
+    student_record = None
+    if args.variant == 'upstream':
+        # Same public upstream weights and GPU graph; no student checkpoint is read.
+        (OUT / 'rvm.mnn').write_bytes((OUT / 'rvm_quality.mnn').read_bytes())
+    else:
+        student_manifest = json.loads(STUDENT_MANIFEST.read_text(encoding='utf-8'))
+        student = ROOT / student_manifest['file']
+        if sha(student) != student_manifest['sha256']:
+            raise SystemExit('Distilled RVM student hash differs from models/manifest/rvm_student.json')
+        graph = fuse_rvm_graph.Graph(onnx.load(student))
+        fuse_rvm_graph.rgba_input(graph)
+        student_hswish = fuse_rvm_graph.mark_conv_hardswish(graph)
+        fuse_rvm_graph.prune_unused(graph)
+        student_marked = OUT / 'rvm.student.hswish.u8.onnx'
+        onnx.save(graph.model, student_marked)
+        convert(student_marked, OUT / 'rvm.mnn')
+        student_record = dict(manifest='models/manifest/rvm_student.json', sha256=student_manifest['sha256'],
+                              conv_hardswish=student_hswish, marked_onnx_sha256=sha(student_marked))
     target = OUT / 'rvm.mnn'
-    manifest = dict(schema_version=4, backend='MNN 3.6.1 OpenCL', source_onnx=str(SOURCE.relative_to(ROOT)),
+    manifest = dict(schema_version=4, variant=args.variant, backend='MNN 3.6.1 OpenCL', source_onnx=str(SOURCE.relative_to(ROOT)),
                     source_sha256=sha(SOURCE), pruned_onnx_sha256=sha(pruned), u8_onnx_sha256=sha(u8),
                     fused_onnx_sha256=sha(fused), marked_onnx_sha256=sha(marked), mnn_sha256=sha(target),
                     quality_mnn_sha256=sha(OUT / 'rvm_quality.mnn'),
-                    student=dict(manifest='models/manifest/rvm_student.json', sha256=student_manifest['sha256'],
-                                 conv_hardswish=student_hswish, marked_onnx_sha256=sha(student_marked)),
+                    student=student_record,
                     mnn_runtime='MNN 3.6.1 + tools/mnn/patch_mnn_vrpp.py (convolutions named *__hswish apply HardSwish)', fusion=fusion, fused_vs_u8_max_abs=fused_checks,
                     converter_flags=['--keepInputFormat=0'],
                     input_src_range='0..255 (graph multiplies by 1/255)', input_channels='RGBA (4th ignored)',

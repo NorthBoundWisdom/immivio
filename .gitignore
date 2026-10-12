@@ -37,6 +37,7 @@ local.properties
 /android/player-plugin/src/main/assets/rvm/
 /android/player-plugin/src/main/assets/rvm-mnn/
 /android/player-plugin/src/main/assets/depth-mnn/
+/android/player-plugin/src/main/assets/ai-models/
 /android/player-plugin/src/main/jniLibs/
 /android/player-plugin/src/debug/jniLibs/
 /models/source/

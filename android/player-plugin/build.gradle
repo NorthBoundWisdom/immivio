@@ -16,12 +16,29 @@ if (enableAi && (!mnnSource.isPresent() || !mnnLib.isPresent())) { throw new Gra
 // include them in a normal player APK (including ordinary Debug builds).
 def includeDiagnostics = providers.gradleProperty('includeDiagnostics').map { it.toBoolean() }.getOrElse(false)
 if (!enableAi && includeDiagnostics) { throw new GradleException('AI diagnostics require -PenableAi=true.') }
+def verifyModelPack = tasks.register('verifyModelPack') {
+    onlyIf { enableAi }
+    doLast {
+        def python = providers.environmentVariable('THRU3D_PYTHON').getOrElse(
+            System.getProperty('os.name').toLowerCase().contains('windows') ? 'python' : 'python3')
+        def verification = providers.exec {
+            commandLine python, rootProject.file('../tools/model_assets.py').absolutePath, '--verify-only'
+            ignoreExitValue = true
+        }
+        if (verification.result.get().exitValue != 0) {
+            throw new GradleException('Selected model pack verification failed:\n' +
+                verification.standardOutput.asText.get() + verification.standardError.asText.get())
+        }
+    }
+}
 def playerAssets = layout.buildDirectory.dir('playerAssets')
 def stagePlayerAssets = tasks.register('stagePlayerAssets', Sync) {
+    // Keep validation independent: Sync skips its actions when all source assets are absent.
+    dependsOn verifyModelPack
     inputs.property('enableAi', enableAi)
     from('src/main/assets')
     into(playerAssets)
-    if (!enableAi) { exclude 'rvm/**', 'rvm-mnn/**', 'depth-mnn/**' }
+    if (!enableAi) { exclude 'rvm/**', 'rvm-mnn/**', 'depth-mnn/**', 'ai-models/**' }
     if (!includeDiagnostics) {
         exclude 'rvm/reference/**', 'rvm/**/*.bin', 'rvm/**/*.param', 'rvm-mnn/rvm_quality.mnn'
     }
@@ -36,6 +53,10 @@ android {
     sourceSets.main.assets.setSrcDirs([playerAssets])
     sourceSets.main.assets.srcDir '../../third_party'
     sourceSets.main.assets.srcDir '../../app/godot/i18n'
+    if (!enableAi) {
+        // Defense at the merger as well as Sync, including an empty source tree or stale staging.
+        sourceSets.main.assets.exclude 'rvm/**', 'rvm-mnn/**', 'depth-mnn/**', 'ai-models/**'
+    }
     defaultConfig {
         minSdk 29
         consumerProguardFiles 'consumer-rules.pro'

@@ -323,7 +323,7 @@ def inspect_package(path, env, sdk):
                     ('libquest_media.so', 'libquest_mpv.so', 'libquest_render_bridge.so', 'libgodot_android.so', 'libgojni.so', 'libmpv.so')}
         if not required <= names:
             raise RuntimeError(f'Missing packaged libraries: {required-names}')
-        if any(re.match(r'assets/(rvm|rvm-mnn|depth-mnn)/|lib/[^/]+/lib(quest_rvm|MNN[^/]*|ncnn)\.so$', n) for n in names):
+        if any(re.match(r'assets/(rvm|rvm-mnn|depth-mnn|ai-models)/|lib/[^/]+/lib(quest_rvm|MNN[^/]*|ncnn)\.so$', n) for n in names):
             raise RuntimeError('Base player APK contains inference libraries/models')
         if any(n.startswith('lib/') and not n.startswith('lib/arm64-v8a/') for n in names):
             raise RuntimeError('Unexpected APK architecture')

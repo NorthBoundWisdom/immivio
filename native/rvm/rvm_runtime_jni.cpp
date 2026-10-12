@@ -43,7 +43,8 @@ std::string cache_directory; // config_mutex
 bool gpu_fp16 = true;        // config_mutex
 std::string gpu_model = "fast"; // config_mutex: model of GPU runtimes prepared from now on
 
-// "fast": distilled narrow-decoder RVM (default); "quality": the fused upstream network.
+// "fast" is the build-selected matting adapter asset (public or custom weights).
+// "quality" retains the separate upstream oracle in diagnostic builds only.
 const char* model_asset(const std::string& model) {
     if (model == "fast") return "rvm-mnn/rvm.mnn";
 #if QUEST_DIAGNOSTIC_MODELS
@@ -81,7 +82,7 @@ std::string mnn_cache_path(AAsset* model, const quest::RvmProfile& profile, bool
     snprintf(tag, sizeof(tag), "%016llx", static_cast<unsigned long long>(hash));
     std::lock_guard<std::mutex> guard(config_mutex);
     if (cache_directory.empty()) return {};
-    return cache_directory + "/mnn_rvm_" + profile.key + (fp16 ? "_fp16_" : "_fp32_") + tag + ".cache";
+    return cache_directory + "/mnn_rvm_" + profile.key + (fp16 ? "_fp16_vrpp1_" : "_fp32_vrpp1_") + tag + ".cache";
 }
 
 // GPU runtimes use MNN OpenCL (ratio=1 upstream branch, pha + states, one dynamic model).

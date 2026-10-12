@@ -6,7 +6,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.concurrent.atomic.AtomicLong
 
-/** Blocking scaled-RGB bridge for the future R02 worker. Never call from XR/GL/UI threads.
+/** MNN RVM adapter over a build-selected public/custom model. Never prepare/infer on XR/GL/UI threads.
  * Caller owns buffers until process returns and must reject results after reset/close.
  * No decoder, immutable color frame, or verified source PTS is provided by this class.
  */
@@ -16,13 +16,14 @@ internal class RvmRuntime private constructor(
     val sessionId: Long,
     generation: Long,
     handle: Long,
-) : AutoCloseable {
+    override val model: ModelDescriptor?,
+) : MattingRuntime {
     private val handle = AtomicLong(handle)
     private val epoch = AtomicLong(generation)
     private val dimensions = profile.split('x').map { it.toInt() }
     private val alphaBytes = dimensions[0] * dimensions[1] * 4
 
-    fun reset(nextGeneration: Long): Boolean {
+    override fun reset(nextGeneration: Long): Boolean {
         var previous = epoch.get()
         while (true) {
             require(nextGeneration > previous) { "Reset requires a newer generation" }
@@ -38,7 +39,7 @@ internal class RvmRuntime private constructor(
                 leftAlpha: ByteBuffer, rightAlpha: ByteBuffer): JSONObject =
         process(generation, frameId, ptsUs, left, right, leftAlpha, rightAlpha, 0, false)
 
-    fun process(generation: Long, frameId: Long, ptsUs: Long, left: ByteBuffer, right: ByteBuffer,
+    override fun process(generation: Long, frameId: Long, ptsUs: Long, left: ByteBuffer, right: ByteBuffer,
                 leftAlpha: ByteBuffer, rightAlpha: ByteBuffer, stream: Int, resetFirst: Boolean): JSONObject {
         val id = handle.get()
         check(id > 0 && epoch.get() == generation) { "RVM runtime closed or stale" }
@@ -51,7 +52,7 @@ internal class RvmRuntime private constructor(
         return if (handle.get() == id && epoch.get() == generation) result else JSONObject().put("state", "stale")
     }
 
-    fun processAhb(generation: Long, frameId: Long, ptsUs: Long, buffers: LongArray, alpha: LongArray,
+    override fun processAhb(generation: Long, frameId: Long, ptsUs: Long, buffers: LongArray, alpha: LongArray,
                    stream: Int, resetFirst: Boolean): JSONObject {
         val id = handle.get()
         check(id > 0 && epoch.get() == generation) { "RVM runtime closed or stale" }
@@ -81,9 +82,11 @@ internal class RvmRuntime private constructor(
         fun prepare(assets: AssetManager, vulkan: Boolean, profile: String, sessionId: Long, generation: Long): RvmRuntime {
             require(profile in RvmProfiles.keys && sessionId > 0 && generation > 0)
             check(RvmNative.unavailable == null) { "RVM native library unavailable" }
+            // CPU is the dedicated ncnn oracle; GPU uses the selected task adapter.
+            val model = if (vulkan) BundledModels.resolve(assets, ModelTask.MATTING) else null
             val id = RvmNative.prepareRuntime(assets, vulkan, profile, sessionId, generation)
             check(id > 0) { "RVM prepare failed" }
-            return RvmRuntime(assets, profile, sessionId, generation, id)
+            return RvmRuntime(assets, profile, sessionId, generation, id, model)
         }
     }
 }

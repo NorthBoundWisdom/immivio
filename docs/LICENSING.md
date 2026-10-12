@@ -38,7 +38,7 @@ Names and branding identify this project. The software license does not promise 
 
 ## Source publication versus APK distribution
 
-This repository is an application source snapshot. Model weights and compiled third-party libraries are excluded from Git. A clean clone cannot reproduce the current distributed APK until the required modified model and its appropriate modification form are made available separately. The original private media used during training is not distributed; this statement does not conclude what model-related corresponding source must include.
+This repository is an application source snapshot. Model weights and compiled third-party libraries are excluded from Git. A clean clone cannot reproduce the historical student-based distributed APK until the required modified model and its appropriate modification form are made available separately. The public upstream model-pack configuration uses separately obtained upstream weights and the committed conversion tools; it does not claim binary equivalence to the historical APK. The original private media used during training is not distributed; this statement does not conclude what model-related corresponding source must include.
 
 When distributing a covered binary, GPL v3 requires corresponding source through an applicable delivery method. A root license file and links to upstream projects are not, by themselves, a complete binary source offer. Supply the relevant preferred forms for modification, required modifications, interfaces, build/install scripts, exact dependency sources and applicable installation information. Keep each binary release associated with its source tag and model/dependency versions.
 

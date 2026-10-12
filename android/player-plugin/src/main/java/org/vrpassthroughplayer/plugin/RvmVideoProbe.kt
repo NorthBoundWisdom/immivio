@@ -42,7 +42,7 @@ internal class RvmVideoProbe(
     private val lock = Any()
     private val gate = FramePairGate(scope).apply { setAlpha(true) }
     private var closed = false
-    private var runtime: RvmRuntime? = null
+    private var runtime: MattingRuntime? = null
     private val pending = ArrayDeque<Input>()
     private var scheduled = false
     private var count = 0
@@ -70,8 +70,9 @@ internal class RvmVideoProbe(
                 val host = context() ?: error("RVM probe activity unavailable")
                 RvmNative.configureGpu(RvmWarmup.cacheDirectory(host).absolutePath, true)
                 val generation = gate.modelGeneration()
-                val prepared = RvmRuntime.prepare(host.assets, vulkan, profile,
-                    scope.logicalSessionId.toLong(), generation)
+                val prepared: MattingRuntime = if (vulkan)
+                    ModelRuntimeFactory.matting(host.assets, profile, scope.logicalSessionId.toLong(), generation)
+                else RvmRuntime.prepare(host.assets, false, profile, scope.logicalSessionId.toLong(), generation)
                 val retained = synchronized(lock) {
                     if (closed) false else { runtime = prepared; appliedGeneration = generation; true }
                 }
@@ -256,7 +257,7 @@ internal class RvmVideoProbe(
 
     override fun close() {
         val obsolete: List<Input>
-        val previous: RvmRuntime?
+        val previous: MattingRuntime?
         synchronized(lock) {
             if (closed) return
             closed = true; gate.close()

@@ -58,6 +58,7 @@ MnnRvmBackend::MnnRvmBackend(const void* model, size_t bytes, int width, int hei
         require(main == MNN_FORWARD_OPENCL, "MNN OpenCL backend unavailable; refusing CPU execution");
         eye.src = net_->getSessionInput(eye.session, "src");
         require(eye.src != nullptr, "MNN RVM src input missing");
+        require(eye.src->channel() == 3 || eye.src->channel() == 4, "MNN RVM src must declare RGB or RGBA channels");
         // RGB, or RGBA (4th channel ignored; keeps MNN's 4-channel blocks aligned) when the model declares it.
         const int src_channels = eye.src->channel() == 4 ? 4 : 3;
         net_->resizeTensor(eye.src, {1, src_channels, height, width});
@@ -75,7 +76,7 @@ MnnRvmBackend::MnnRvmBackend(const void* model, size_t bytes, int width, int hei
         require(eye.pha != nullptr && eye.pha->width() == width && eye.pha->height() == height && eye.pha->channel() == 1,
                 "MNN RVM Alpha output differs from the profile");
         eye.pha_u8 = net_->getSessionOutput(eye.session, "pha_u8");
-        require(eye.pha_u8 != nullptr && eye.pha_u8->width() == width && eye.pha_u8->height() == height,
+        require(eye.pha_u8 != nullptr && eye.pha_u8->width() == width && eye.pha_u8->height() == height && eye.pha_u8->channel() == 1,
                 "MNN RVM model lacks the zero-copy pha_u8 output");
         for (int i = 0; i < 4; ++i) {
             const auto name = "r" + std::to_string(i + 1) + "o";

@@ -8,11 +8,23 @@ internal object DepthNative {
     // Loads libquest_rvm on first use of this object.
     val unavailable: String? = RvmNative.unavailable
     /** Compiled-program cache this model uses under [cacheDirectory]. */
-    @JvmStatic external fun cachePath(assets: AssetManager, cacheDirectory: String?): String
+    fun cachePath(assets: AssetManager, cacheDirectory: String?): String {
+        // A readiness query may run on the UI thread; verification happens at create.
+        return modelCachePath(assets, cacheDirectory)
+    }
+    @JvmStatic private external fun modelCachePath(assets: AssetManager, cacheDirectory: String?): String
     /** Builds the OpenCL session (a cold cache compiles for tens of seconds). */
-    @JvmStatic external fun create(assets: AssetManager, cacheDirectory: String?): Long
+    fun create(assets: AssetManager, cacheDirectory: String?): Long {
+        BundledModels.resolve(assets, ModelTask.VIDEO_DEPTH)
+        return createModel(assets, cacheDirectory)
+    }
+    @JvmStatic private external fun createModel(assets: AssetManager, cacheDirectory: String?): Long
     /** Independent still-photo model, same shared worker but separate compiled-program cache. */
-    @JvmStatic external fun createPhoto(assets: AssetManager, cacheDirectory: String?): Long
+    fun createPhoto(assets: AssetManager, cacheDirectory: String?): Long {
+        BundledModels.resolve(assets, ModelTask.PHOTO_DEPTH)
+        return createPhotoModel(assets, cacheDirectory)
+    }
+    @JvmStatic private external fun createPhotoModel(assets: AssetManager, cacheDirectory: String?): Long
     /** {"width","height","prepare_ms","gpu_ops","cpu_fallback_ops"} */
     @JvmStatic external fun describe(handle: Long): String
     /** rgb float32 CHW [0,1] -> near float32 HxW [0,1] (1 = nearest). reset restarts the shot's depth band. */
