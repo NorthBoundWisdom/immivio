@@ -173,6 +173,12 @@ struct Source final {
     std::vector<int64_t> subtitle_track_ids; // commands_mutex
     int desired_subtitle_id = 0;
     bool subtitle_dirty = false;
+    int desired_subtitle_ms = 0, desired_audio_ms = 0;
+    bool sync_dirty = false;
+    uint64_t desired_sync_command = 0;
+    std::string pending_subtitle_path, pending_subtitle_title;
+    uint64_t pending_subtitle_command = 0, imported_subtitle_command = 0;
+    std::string subtitle_import_error;
     std::string subtitle_snapshot; // status_mutex
     uint64_t published_subtitle_sequence = 0; // status_mutex
     int64_t published_subtitle_ns = 0; // status_mutex
@@ -341,6 +347,7 @@ struct Source final {
 #endif
         const auto subtitle_json = "{\"sequence\":" + std::to_string(++subtitle_sequence) +
             ",\"command_id\":" + std::to_string(subtitle_command_applied) + ",\"track_id\":" + quote(subtitle_id) +
+            ",\"subtitle_delay_seconds\":" + quote(seconds_property(core, "sub-delay")) +
             ",\"text\":" + quote(subtitle_text) + ",\"start_seconds\":" + quote(subtitle_start) +
             ",\"bitmap\":" + bitmap_json +
             ",\"end_seconds\":" + quote(subtitle_end) + ",\"position_seconds\":" + quote(seconds_property(core, "time-pos")) +
@@ -364,6 +371,10 @@ struct Source final {
             ",\"audio_track_id\":" + quote(aid) + ",\"audio_tracks\":" + tracks_json +
             ",\"subtitle_tracks\":" + subtitles_json + ",\"subtitle\":" + subtitle_json +
             ",\"pgs_supported\":" + (pgs_read ? "true" : "false") +
+            ",\"subtitle_import_command\":" + std::to_string(imported_subtitle_command) +
+            ",\"subtitle_import_error\":" + quote(subtitle_import_error) +
+            ",\"subtitle_delay_seconds\":" + quote(seconds_property(core, "sub-delay")) +
+            ",\"audio_delay_seconds\":" + quote(seconds_property(core, "audio-delay")) +
             ",\"playback_speed\":" + quote(property(core, "speed")) + ",\"volume\":" + quote(volume) + ",\"mute\":" + quote(mute) + ",\"audio_samplerate\":" + quote(rate) +
             ",\"audio_channels\":" + quote(channels) + ",\"avsync_seconds\":" + quote(avsync) +
             ",\"paused_for_cache\":" + quote(cache_pause) + ",\"decoder_frame_drop_count\":" + quote(decoder_drops) +
@@ -534,6 +545,10 @@ struct Source final {
                 dolby_color_mode(core);
                 bool set_play = false, play = false, set_audio = false, muted = false, set_subtitle = false, seek_exact = true, set_speed = false;
                 double speed = 1.0;
+                bool set_sync = false;
+                int subtitle_ms = 0, audio_ms = 0;
+                uint64_t sync_command = 0, import_command = 0;
+                std::string import_path, import_title;
 #ifndef NDEBUG
                 bool set_step = false;
 #endif
@@ -542,6 +557,10 @@ struct Source final {
                 {
                     std::lock_guard<std::mutex> lock(commands_mutex);
                     if (loaded) {
+                        set_sync = sync_dirty; sync_dirty = false;
+                        subtitle_ms = desired_subtitle_ms; audio_ms = desired_audio_ms; sync_command = desired_sync_command;
+                        import_path.swap(pending_subtitle_path); import_title.swap(pending_subtitle_title);
+                        import_command = pending_subtitle_command;
                         set_play = playing_dirty; play = desired_play; playing_dirty = false;
                         set_speed = speed_dirty; speed = desired_speed; speed_dirty = false;
 #ifndef NDEBUG
@@ -567,10 +586,26 @@ struct Source final {
                     checked(mpv_set_property(core, "mute", MPV_FORMAT_FLAG, &mute), "MPV mute");
                     audio_commands_applied.fetch_add(1);
                 }
-                if (set_subtitle) {
+                if (set_sync) {
+                    double sub_seconds = subtitle_ms / 1000.0, audio_seconds = audio_ms / 1000.0;
+                    checked(mpv_set_property(core, "sub-delay", MPV_FORMAT_DOUBLE, &sub_seconds), "MPV subtitle delay");
+                    checked(mpv_set_property(core, "audio-delay", MPV_FORMAT_DOUBLE, &audio_seconds), "MPV audio delay");
+                    subtitle_command_applied = std::max(subtitle_command_applied, sync_command);
+                    clear_pgs();
+                }
+                if (!import_path.empty()) {
+                    const char* add[] = {"sub-add", import_path.c_str(),
+                        (!set_subtitle || import_command > subtitle_command) ? "select" : "auto", import_title.c_str(), nullptr};
+                    const int added = mpv_command(core, add);
+                    imported_subtitle_command = import_command;
+                    subtitle_import_error = added < 0 ? mpv_error_string(added) : "";
+                    subtitle_command_applied = std::max(subtitle_command_applied, import_command);
+                    clear_pgs();
+                }
+                if (set_subtitle && (import_path.empty() || subtitle_command > import_command)) {
                     const auto selected = subtitle_id < 0 ? "auto" : (subtitle_id == 0 ? "no" : std::to_string(subtitle_id));
                     checked(mpv_set_property_string(core, "sid", selected.c_str()), "MPV subtitle track");
-                    subtitle_command_applied = subtitle_command;
+                    subtitle_command_applied = std::max(subtitle_command_applied, subtitle_command);
                     next_snapshot = std::chrono::steady_clock::now();
                 }
                 if (seek >= 0) {
@@ -1404,6 +1439,37 @@ Java_org_vrpassthroughplayer_plugin_MpvSourceNative_setSubtitle(JNIEnv* env, jcl
         source->desired_subtitle_command = ++source->subtitle_requests;
         source->subtitle_dirty = true; source->wake.notify_one();
         return static_cast<jlong>(source->desired_subtitle_command);
+    } catch (const std::exception& failure) { error(env, failure); return 0; }
+}
+extern "C" JNIEXPORT jlong JNICALL
+Java_org_vrpassthroughplayer_plugin_MpvSourceNative_setSync(JNIEnv* env, jclass, jlong handle, jint subtitle_ms, jint audio_ms) {
+    try {
+        if (subtitle_ms < -10000 || subtitle_ms > 10000 || audio_ms < -10000 || audio_ms > 10000) return 0;
+        auto source = find(handle); std::lock_guard<std::mutex> lock(source->commands_mutex);
+        if (source->closing.load() || source->subtitle_requests >= static_cast<uint64_t>(std::numeric_limits<jlong>::max())) return 0;
+        source->desired_subtitle_ms = subtitle_ms; source->desired_audio_ms = audio_ms;
+        source->desired_sync_command = ++source->subtitle_requests;
+        source->sync_dirty = true; source->wake.notify_one();
+        return static_cast<jlong>(source->desired_sync_command);
+    } catch (const std::exception& failure) { error(env, failure); return 0; }
+}
+extern "C" JNIEXPORT jlong JNICALL
+Java_org_vrpassthroughplayer_plugin_MpvSourceNative_addSubtitle(JNIEnv* env, jclass, jlong handle, jstring path, jstring title) {
+    try {
+        require(path && title, "Subtitle path/title missing");
+        auto read = [&](jstring input) {
+            const char* utf = env->GetStringUTFChars(input, nullptr); require(utf, "Subtitle text unavailable");
+            std::string value(utf); env->ReleaseStringUTFChars(input, utf); return value;
+        };
+        const auto file = read(path), label = read(title);
+        if (file.empty() || file.front() != '/' || file.size() > 8192 || label.size() > 1024) return 0;
+        auto source = find(handle); std::lock_guard<std::mutex> lock(source->commands_mutex);
+        if (source->closing.load() || !source->pending_subtitle_path.empty() ||
+            source->subtitle_requests >= static_cast<uint64_t>(std::numeric_limits<jlong>::max())) return 0;
+        source->pending_subtitle_path = file; source->pending_subtitle_title = label;
+        source->pending_subtitle_command = ++source->subtitle_requests;
+        source->wake.notify_one();
+        return static_cast<jlong>(source->pending_subtitle_command);
     } catch (const std::exception& failure) { error(env, failure); return 0; }
 }
 extern "C" JNIEXPORT jstring JNICALL

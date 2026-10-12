@@ -29,6 +29,8 @@ g++ -std=c++17 -Wall -Wextra -Werror -I native/rvm tests/native/depth_stabilizer
 ./build/tests/depth_stabilizer_test
 ```
 
+`test_playback_tools.gd` covers per-video timing isolation/persistence, rejected controls, delayed cue clocks, stale picker/import callbacks, asynchronous import confirmation, editable queue metadata/order, shuffle coverage, saved queue state, ray-target separation and verified EOF advance. The first queue advance must wait for `eof_pair_post_draw`; single-video looping and paused/stale sessions cannot auto-advance. `SubtitleImportTest` exercises supported suffixes, exact Unicode bytes, empty files and the 16 MiB copy bound. Host and package checks do not establish Android document-provider UX or headset audio synchronization.
+
 ## Android tests
 
 With the full toolchain configured, `Build-Player.ps1` runs JVM tests as part of plugin assembly. `Test-Player.ps1` provides the broader historical host/render checks. Additional `Test-*Device.ps1` tools require an authorized headset and their specified media/model fixtures.

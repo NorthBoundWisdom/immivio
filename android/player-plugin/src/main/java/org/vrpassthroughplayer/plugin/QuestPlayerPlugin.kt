@@ -40,6 +40,9 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     private val picker = LocalVideoPicker({ activity }) { json ->
         if (!closed.get()) emitSignal("local_video_selected", json)
     }
+    private val subtitlePicker = LocalVideoPicker({ activity }, "*/*", 0x6650) { json ->
+        if (!closed.get()) emitSignal("local_subtitle_selected", json)
+    }
     private val localAccess = LocalVideoAccess({ activity?.applicationContext }) { id, json ->
         if (!closed.get()) emitSignal("local_video_access", id, json)
     }
@@ -148,6 +151,8 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         SignalInfo("photo_preload_depth", Int::class.javaObjectType, String::class.java),
         SignalInfo("media_list", Int::class.javaObjectType, String::class.java),
         SignalInfo("local_video_selected", String::class.java),
+        SignalInfo("local_subtitle_selected", String::class.java),
+        SignalInfo("mpv_subtitle_import", Int::class.javaObjectType, String::class.java),
         SignalInfo("local_video_access", Int::class.javaObjectType, String::class.java),
         SignalInfo("media_state", Int::class.javaObjectType, String::class.java),
         SignalInfo("media_format", Int::class.javaObjectType, String::class.java),
@@ -177,6 +182,18 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         runOnHostThread { if (!closed.get()) picker.open(id) }
         return id
     }
+    @UsedByGodot fun pick_local_subtitle(): Int {
+        if (closed.get()) return -1
+        val id = requestId.incrementAndGet()
+        runOnHostThread { if (!closed.get()) subtitlePicker.open(id) }
+        return id
+    }
+    @UsedByGodot fun cancel_local_subtitle_pick(id: Int) {
+        if (!closed.get()) runOnHostThread { subtitlePicker.cancel(id) }
+    }
+    @UsedByGodot fun set_mpv_sync(id: Int, subtitleMs: Int, audioMs: Int): Boolean =
+        !closed.get() && mpv.setSync(id, subtitleMs, audioMs)
+    @UsedByGodot fun add_mpv_subtitle(id: Int, uri: String): Boolean = !closed.get() && mpv.addSubtitle(id, uri)
     @UsedByGodot fun cancel_local_video_pick(id: Int) { if (!closed.get()) runOnHostThread { picker.cancel(id) } }
     @UsedByGodot fun request_local_video_access(uri: String): Int {
         if (closed.get()) return -1
@@ -372,7 +389,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
             grantResults != null && grantResults.isNotEmpty() && grantResults.all { it == android.content.pm.PackageManager.PERMISSION_GRANTED })
     }
     override fun onMainActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        if (!closed.get()) picker.result(requestCode, resultCode, data)
+        if (!closed.get()) { picker.result(requestCode, resultCode, data); subtitlePicker.result(requestCode, resultCode, data) }
     }
 
     override fun onGLDrawFrame(gl: GL10?) {
@@ -450,6 +467,6 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     override fun onGodotTerminating() { close() }
 
     private fun close() {
-        if (closed.compareAndSet(false, true)) { accounts.close(); photos.close(); photoPreloads.close(); photoPreviews.close(); PhotoDepthRuntime.release(); picker.close(); localAccess.close(); probe.shutdownNow(); media.shutdown(); controlled.shutdown(); mpv.shutdown(); rvm.close(); sources.close() }
+        if (closed.compareAndSet(false, true)) { accounts.close(); photos.close(); photoPreloads.close(); photoPreviews.close(); PhotoDepthRuntime.release(); picker.close(); subtitlePicker.close(); localAccess.close(); probe.shutdownNow(); media.shutdown(); controlled.shutdown(); mpv.shutdown(); rvm.close(); sources.close() }
     }
 }

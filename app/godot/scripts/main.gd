@@ -44,7 +44,13 @@ var photo_active := false
 var video_menu: Node3D
 var photo_menu: Node3D
 var video: Node3D
-var video_queue: Array[Dictionary] = []
+const PlaybackQueue := preload("res://scripts/playback_queue.gd")
+var playback_queue := PlaybackQueue.new()
+var video_queue: Array[Dictionary]:
+	get: return playback_queue.items
+	set(value): playback_queue.replace(value)
+var _queue_add_mode := false
+var _queue_end_key := ""
 var calibration_board: Node3D
 var last_rvm_request := 0
 var next_rvm_case := 0
@@ -134,6 +140,11 @@ func _ready() -> void:
 	display.status_changed.connect(_update_status)
 	display.status_changed.connect(_on_input_session_changed)
 	settings.load(settings_path)
+	var saved_queue: Variant = settings.get_value("playback", "queue", [])
+	if saved_queue is Array: playback_queue.replace(saved_queue)
+	playback_queue.custom = bool(settings.get_value("playback", "custom_queue", false))
+	for key in ["queue_autoplay", "queue_repeat", "queue_shuffle"]:
+		playback_queue.configure(key, bool(settings.get_value("playback", key, false)))
 	reclining_mode = bool(settings.get_value("ui", "reclining_mode", false))
 	I18n.use(str(settings.get_value("ui", "language", "auto")))
 	fps_overlay = FpsOverlay.new()
@@ -217,7 +228,10 @@ func _ready() -> void:
 	recent_menu.chosen.connect(_on_library_chosen)
 	recent_menu.storage_eject_requested.connect(_on_storage_eject_requested)
 	recent_menu.storage_removed.connect(_release_storage_readers)
-	recent_menu.player_requested.connect(_show_player_menu)
+	recent_menu.player_requested.connect(func():
+		if _queue_add_mode: _queue_action("queue_done")
+		else: _show_player_menu())
+	recent_menu.queue_requested.connect(_queue_action)
 	recent_menu.setting_changed.connect(_on_setting_changed)
 	recent_menu.setting_previewed.connect(_on_playback_adjustment)
 	recent_menu.recenter_requested.connect(_recenter)
@@ -1029,6 +1043,17 @@ func _viewer() -> Node3D:
 
 func _on_library_chosen(uri: String, title: String) -> void:
 	var is_photo: bool = ImageInfo.is_image(uri, title) or recent_menu.is_image_uri(uri)
+	if _queue_add_mode:
+		if not is_photo:
+			var metadata: Dictionary = recent_menu.server_browser.selection.duplicate(true) if uri.begins_with("medialib://") else {}
+			for item in recent_menu.video_queue():
+				if item.uri == uri: metadata = item.get("metadata", {}); break
+			playback_queue.custom = true
+			playback_queue.append([{"uri": uri, "title": title, "metadata": metadata}])
+			_save_queue()
+			recent_menu.status = "Added to playback queue"
+			recent_menu.refresh()
+		return
 	var directory_context: Dictionary = recent_menu.photo_directory_context() if is_photo else {}
 	recent_menu.dismiss()
 	if player_menu: player_menu.dismiss()
@@ -1047,13 +1072,18 @@ func _on_library_chosen(uri: String, title: String) -> void:
 		photo.close_image()
 		photo_active = false
 		player_menu = video_menu
-		video_queue = recent_menu.video_queue()
+		playback_queue.anchor = uri
+		if not playback_queue.custom: video_queue = recent_menu.video_queue()
+		if playback_queue.find(uri).is_empty(): playback_queue.append([{"uri": uri, "title": title}])
 		var metadata: Dictionary = recent_menu.server_browser.selection.duplicate(true) if uri.begins_with("medialib://") else {}
 		if not uri.begins_with("medialib://"):
 			for row in recent_menu.rows:
 				if str(row.get("uri", "")) == uri: metadata = row.duplicate(true); break
 		recent_menu.server_browser.selection = {}
 		if metadata.get("uri", "") != uri: metadata = {}
+		if not playback_queue.find(uri).is_empty(): playback_queue.find(uri).metadata = metadata.duplicate(true)
+		if playback_queue.shuffle: playback_queue.configure("queue_shuffle", true, uri)
+		_save_queue()
 		if video.open_library(uri, title, metadata): _show_player_menu()
 
 func _on_file_renamed(old_uri: String, new_uri: String, title: String) -> void:
@@ -1065,8 +1095,8 @@ func _on_file_renamed(old_uri: String, new_uri: String, title: String) -> void:
 	if not photo.mode_memory.save(): recent_menu.file_actions.rename.migration_failed = true
 	if not video.bookmark_store.relocate(old_uri, new_uri, title, int(recent_menu.file_actions.target.get("size", -1))): recent_menu.file_actions.rename.migration_failed = true
 	LibraryMenu.Thumbnails.relocate(old_uri, new_uri)
-	for item in video_queue:
-		if str(item.get("uri", "")) == old_uri: item.uri = new_uri; item.title = title; item.erase("metadata")
+	playback_queue.relocate(old_uri, new_uri, title)
+	_save_queue()
 	_update_thumbnail_protection()
 
 func _prepare_file_delete(uri: String) -> void:
@@ -1079,6 +1109,7 @@ func _prepare_file_delete(uri: String) -> void:
 
 func _forget_deleted_file(uri: String) -> void:
 	video_queue = video_queue.filter(func(item): return str(item.get("uri", "")) != uri and not str(item.get("uri", "")).begins_with(uri.trim_suffix("/") + "/"))
+	_save_queue()
 	# Photo preload readers must be released before removing a queued image.
 	if photo.queue.any(func(item): return str(item.get("uri", "")) == uri):
 		photo.close_image(); photo_active = false; player_menu = video_menu
@@ -1094,6 +1125,7 @@ func _on_storage_eject_requested(volume: Dictionary) -> void:
 func _release_storage_readers(volume: Dictionary) -> void:
 	if video and StorageVolume.contains_uri(volume,video.local_uri): video.close_video()
 	video_queue = video_queue.filter(func(item): return not StorageVolume.contains_uri(volume,str(item.get("uri",""))))
+	_save_queue()
 	if photo and photo.release_storage(volume):
 		photo_active = false
 		if photo_menu: photo_menu.dismiss()
@@ -1101,12 +1133,8 @@ func _release_storage_readers(volume: Dictionary) -> void:
 	_grab = {}; stick_controls.suspend()
 
 func _adjacent_video(direction: int) -> Dictionary:
-	if photo_active or not video or direction == 0: return {}
-	for index in video_queue.size():
-		if str(video_queue[index].uri) != video.local_uri: continue
-		var target := index + (1 if direction > 0 else -1)
-		return video_queue[target] if target >= 0 and target < video_queue.size() else {}
-	return {}
+	if photo_active or not video: return {}
+	return playback_queue.adjacent(video.local_uri, direction)
 
 func _navigate_video(direction: int) -> void:
 	var item := _adjacent_video(direction)
@@ -1115,6 +1143,56 @@ func _navigate_video(direction: int) -> void:
 	stick_controls.suspend()
 	_menu_touched_ms = Time.get_ticks_msec()
 	video.open_library(str(item.uri), str(item.title), item.get("metadata", {}))
+	if player_menu and player_menu.visible: player_menu.refresh()
+
+func _queue_action(operation: String) -> void:
+	playback_queue.anchor = video.local_uri
+	if operation == "queue_add":
+		_queue_add_mode = true
+		recent_menu.queue_add_mode = true
+		_show_recent_menu()
+		return
+	if operation == "queue_done":
+		_queue_add_mode = false; recent_menu.queue_add_mode = false
+		_show_player_menu()
+		video_menu._adjustment = "queue"; video_menu.section = 1; video_menu.refresh()
+		return
+	if operation == "queue_add_list":
+		playback_queue.custom = true; playback_queue.append(recent_menu.video_queue())
+	elif operation == "queue_clear":
+		playback_queue.clear(); playback_queue.custom = false
+	else:
+		var parts := operation.split("_")
+		if parts.size() != 3 or not parts[2].is_valid_int(): return
+		var index := int(parts[2])
+		if index < 0 or index >= video_queue.size(): return
+		if parts[1] != "play": playback_queue.custom = true
+		match parts[1]:
+			"play":
+				var item := video_queue[index]
+				if playback_queue.shuffle: playback_queue.configure("queue_shuffle", true, str(item.uri))
+				photo.close_image(); photo_active = false; player_menu = video_menu
+				video.requested_play = true
+				video.open_library(str(item.uri), str(item.title), item.get("metadata", {}))
+			"remove": playback_queue.remove(index)
+			"up": playback_queue.move(index, -1)
+			"down": playback_queue.move(index, 1)
+	_save_queue()
+	if video_menu and video_menu.visible: video_menu.refresh()
+
+func _save_queue() -> void:
+	settings.set_value("playback", "queue", playback_queue.saved_entries())
+	settings.set_value("playback", "custom_queue", playback_queue.custom)
+	settings.save(settings_path)
+
+func _advance_queue(session_id: int, uri: String) -> void:
+	if photo_active or video.media.session_id != session_id or video.local_uri != uri or not video.completed_presentation(): return
+	if video.loop_enabled or not playback_queue.autoplay: return
+	var item := playback_queue.adjacent(uri, 1)
+	if item.is_empty(): return
+	# An automatic next entry starts at zero; manual navigation retains its resume policy.
+	video.requested_play = true
+	video.open_library(str(item.uri), str(item.title), item.get("metadata", {}), true)
 	if player_menu and player_menu.visible: player_menu.refresh()
 
 func _on_photo_changed() -> void:
@@ -1420,6 +1498,8 @@ func _toggle_player_menu() -> void:
 		_show_player_menu()
 
 func _show_player_menu() -> void:
+	_queue_add_mode = false
+	if recent_menu is LibraryMenu: recent_menu.queue_add_mode = false
 	memory_swipe.cancel()
 	if photo: photo.gallery.cancel_all()
 	_trigger_taps.clear()
@@ -1574,6 +1654,10 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 	Log.record("setting_changed", {"key": key, "value": value})
 
 func _on_menu_action(operation: String) -> void:
+	if operation.begins_with("queue_"):
+		_queue_action(operation); return
+	if operation == "load_subtitle": video.pick_external_subtitle(); return
+	if operation == "forget_subtitle": video.forget_external_subtitle(); return
 	if photo_active:
 		_on_photo_action(operation)
 		return
@@ -1629,6 +1713,10 @@ func _on_menu_seek(position_ms: int) -> void:
 	video.seek_absolute(position_ms)
 
 func _on_player_setting(key: String, value: Variant) -> void:
+	if key in ["queue_autoplay", "queue_repeat", "queue_shuffle"]:
+		playback_queue.configure(key, bool(value), video.local_uri)
+		settings.set_value("playback", key, bool(value)); settings.save(settings_path)
+		return
 	if photo_active: return
 	match key:
 		"seek_mode", "subtitle_distance", "subtitle_position", "subtitle_direction": _on_setting_changed(key, value)
@@ -1712,6 +1800,11 @@ func _menu_state() -> Dictionary:
 		"volume": video.audio_volume, "muted": video.audio_muted,
 		"audio_available": details.get("audio_tracks", []).size() > 0,
 		"audio_options": audio_options, "audio_track_id": video.audio_track_id,
+		"subtitle_delay_ms": video.subtitle_delay_ms, "audio_delay_ms": video.audio_delay_ms,
+		"external_subtitle": not video.external_subtitle_uri.is_empty(),
+		"subtitle_loading": video._subtitle_loading or video._subtitle_pick > 0,
+		"queue_items": video_queue, "queue_revision": playback_queue.revision,
+		"queue_autoplay": playback_queue.autoplay, "queue_repeat": playback_queue.repeat_all, "queue_shuffle": playback_queue.shuffle,
 		"audio_tracks": details.get("audio_tracks", []).size(), "audio_track": _audio_track_name(details),
 		"clone_voice": video.clone_voice_track() > 0, "clone_voice_active": video.clone_voice_active(),
 		"depth_requested": video.depth_requested, "depth_enabled": video.depth_enabled, "depth_strength": video.depth_strength,
@@ -1856,6 +1949,12 @@ func _toggle_display() -> void:
 
 func _on_video_changed() -> void:
 	if photo_active: return
+	if video.media.state != "ended": _queue_end_key = ""
+	elif playback_queue.autoplay and not video.loop_enabled and video.completed_presentation():
+		var key := "%s/%s/%s" % [video.media.session_id, video.local_uri, video.media.last_pair.get("source_epoch", 0)]
+		if key != _queue_end_key:
+			_queue_end_key = key
+			_advance_queue.call_deferred(video.media.session_id, video.local_uri)
 	_update_thumbnail_protection()
 	_update_background()
 	_update_status()
@@ -2079,6 +2178,9 @@ func _update_status() -> void:
 
 
 func _on_playback_adjustment(key: String, value: Variant) -> void:
+	if key in ["subtitle_delay_ms", "audio_delay_ms"]:
+		if not photo_active: video.set_sync_delay(key, float(value))
+		return
 	if key in ["stereo_horizontal", "stereo_vertical"]:
 		if not photo_active: video.set_stereo_alignment(key, float(value))
 		return
@@ -2123,6 +2225,7 @@ func _on_playback_adjustment(key: String, value: Variant) -> void:
 	video.color_grade.apply(video.material)
 
 func _save_playback_adjustments() -> void:
+	video.commit_sync()
 	video.commit_stereo_view()
 	settings.set_value("screen", "distance", video.screen_distance)
 	settings.set_value("screen", "scale", video.screen_scale)

@@ -72,6 +72,18 @@ var requested_play := true
 var audio_track_id := -1
 var audio_volume := 100.0
 var audio_muted := false
+var subtitle_delay_ms := 0
+var audio_delay_ms := 0
+var external_subtitle_uri := ""
+var _sync_pending := false
+var _subtitle_pick := 0
+var _subtitle_pick_session := 0
+var _pending_external_uri := ""
+var _subtitle_import_command := 0
+var _subtitle_import_uri := ""
+var _subtitle_loading := false
+var _subtitle_requested_uri := ""
+var _subtitle_import_floor := 0
 var subtitles := SubtitleState.new()
 ## Text subtitles: on the flat screen near its lower edge; in immersive modes floating at
 ## a video-local projection with stereo disparity controlled by [subtitle_distance].
@@ -171,6 +183,8 @@ func _ready() -> void:
 	if OS.get_name() == "Android" and Engine.has_singleton("QuestPlayer"):
 		platform = Engine.get_singleton("QuestPlayer")
 		platform.connect("local_video_selected", _on_selected)
+		if platform.has_signal("local_subtitle_selected"): platform.connect("local_subtitle_selected", _on_subtitle_selected)
+		if platform.has_signal("mpv_subtitle_import"): platform.connect("mpv_subtitle_import", _on_subtitle_import)
 		platform.connect("local_video_access", _on_local_access)
 		platform.connect("mpv_pair_available", _on_pair)
 		platform.connect("mpv_state", _on_state)
@@ -324,10 +338,14 @@ func cancel_pending_open() -> void:
 
 # Library selection: MediaStore content URIs are readable through the media permission;
 # network URIs (smb://, DLNA http) have no document grant to check.
-func open_library(uri: String, title: String, metadata: Dictionary = {}) -> bool:
+func open_library(uri: String, title: String, metadata: Dictionary = {}, from_start: bool = false) -> bool:
 	var cover := str(metadata.get("cover", recent_files.lookup(uri).get("cover", "")))
 	var opened := false
-	if uri.begins_with("medialib://") and not metadata.is_empty():
+	if from_start:
+		requested_play = true
+		if uri.begins_with("content://") and not recent_files.lookup(uri).is_empty(): opened = open_recent(uri, true, metadata)
+		else: opened = open_local(uri, title, 0, true, false, str(metadata.get("basename", "")), metadata)
+	elif uri.begins_with("medialib://") and not metadata.is_empty():
 		requested_play = true
 		var start: int = int(metadata.get("start_ms", -1))
 		opened = open_local(uri, title, _resume(uri) if start < 0 else start, true, false, str(metadata.get("basename", "")), metadata)
@@ -417,6 +435,11 @@ func open_local(uri: String, title: String, start_ms: int = 0, restore_mode: boo
 	packed_file = bool(stated.get("packed", false))
 	packed_alpha = packed_file
 	_layout_pending = null
+	var saved_sync := mode_memory.lookup(uri) if restore_mode else {}
+	subtitle_delay_ms = int(saved_sync.get("subtitle_delay_ms", 0))
+	audio_delay_ms = int(saved_sync.get("audio_delay_ms", 0))
+	external_subtitle_uri = str(saved_sync.get("external_subtitle_uri", ""))
+	_pending_external_uri = external_subtitle_uri
 	if restore_mode:
 		# Ignore legacy per-file model choices; everyday playback uses one tested ROI profile.
 		profile = AUTOMATIC_PROFILE
@@ -494,6 +517,7 @@ func open_local(uri: String, title: String, start_ms: int = 0, restore_mode: boo
 	if _subtitle_surface: _subtitle_surface.visible = false
 	reset_view() # every video starts straight ahead at its natural size
 	_audio_pending = id > 0
+	_sync_pending = id > 0
 	if id <= 0:
 		picker_error = "Player resources are still closing"
 	else:
@@ -518,6 +542,11 @@ func _unbind() -> void:
 		caption.visible = false
 
 func close_video() -> void:
+	if _subtitle_pick > 0 and PlatformMethods.supports(platform, "cancel_local_subtitle_pick"):
+		platform.cancel_local_subtitle_pick(_subtitle_pick)
+	_subtitle_pick = 0; _subtitle_pick_session = 0
+	_pending_external_uri = ""; _subtitle_import_uri = ""; _subtitle_import_command = 0; _subtitle_loading = false
+	_sync_pending = false
 	commit_stereo_view()
 	viewing_eye = 0
 	stereo_horizontal = 0.0
@@ -812,6 +841,59 @@ func toggle_play() -> void:
 	if platform and media.accepts(media.session_id):
 		platform.set_mpv_playing(media.session_id, requested_play and not _waiting_first)
 	changed.emit()
+
+func set_sync_delay(key: String, value: float) -> bool:
+	if key not in ["subtitle_delay_ms", "audio_delay_ms"] or not is_finite(value) or value < -10000 or value > 10000: return false
+	var sub := roundi(value) if key == "subtitle_delay_ms" else subtitle_delay_ms
+	var audio := roundi(value) if key == "audio_delay_ms" else audio_delay_ms
+	if not PlatformMethods.supports(platform, "set_mpv_sync") or not media.accepts(media.session_id): return false
+	if not platform.set_mpv_sync(media.session_id, sub, audio): return false
+	subtitle_delay_ms = sub; audio_delay_ms = audio
+	subtitles.clear(); bitmap_subtitles.clear(material)
+	changed.emit()
+	return true
+
+func commit_sync() -> void:
+	_remember_mode()
+
+func pick_external_subtitle() -> void:
+	if _subtitle_pick > 0 or _subtitle_loading or not media.accepts(media.session_id): return
+	if not PlatformMethods.supports(platform, "pick_local_subtitle"):
+		picker_error = "Subtitle picker unavailable"; changed.emit(); return
+	_subtitle_pick_session = media.session_id
+	_subtitle_pick = platform.pick_local_subtitle()
+
+func _on_subtitle_selected(payload: String) -> void:
+	var result: Variant = JSON.parse_string(payload)
+	if not result is Dictionary or _subtitle_pick <= 0 or int(result.get("picker_request", 0)) != _subtitle_pick: return
+	if _subtitle_pick_session != media.session_id:
+		_subtitle_pick = 0; changed.emit(); return
+	if result.get("state") in ["cancelled", "error"]:
+		_subtitle_pick = 0
+		if result.state == "error": picker_error = "Unable to read subtitle. Select it again."
+	elif result.get("state") == "selected":
+		_subtitle_pick = 0
+		_pending_external_uri = str(result.get("uri", ""))
+	changed.emit()
+
+func _on_subtitle_import(id: int, payload: String) -> void:
+	if id != media.session_id or not _subtitle_loading: return
+	var result: Variant = JSON.parse_string(payload)
+	if not result is Dictionary: return
+	if result.get("state") == "queued":
+		_subtitle_import_command = int(result.get("command", 0))
+		_subtitle_import_uri = str(result.get("uri", ""))
+		subtitles.select(-1)
+	elif result.get("state") == "error":
+		_subtitle_loading = false
+		picker_error = "Unable to load subtitle. Choose an SRT, ASS, SSA or VTT file."
+	changed.emit()
+
+func forget_external_subtitle() -> void:
+	if _subtitle_loading or _subtitle_pick > 0: return
+	external_subtitle_uri = ""; _pending_external_uri = ""
+	if picker_error.contains("subtitle"): picker_error = ""
+	_remember_mode(); changed.emit()
 
 func set_audio_options(track_id: int, volume: float, muted: bool) -> bool:
 	if track_id < -1 or not is_finite(volume) or volume < 0.0 or volume > 100.0 or not platform or not media.accepts(media.session_id):
@@ -1244,7 +1326,8 @@ func _remember_mode() -> void:
 	var mode := {"geometry": geometry, "stereo_sbs": stereo_sbs, "swap_eyes": swap_eyes,
 		"viewing_eye": viewing_eye, "stereo_horizontal": stereo_horizontal, "stereo_vertical": stereo_vertical,
 		"alpha_requested": alpha_requested, "profile": profile, "depth_requested": depth_requested,
-		"top_bottom": stereo_sbs and top_bottom, "stereo_half": stereo_sbs and stereo_half, "fisheye_fov": fisheye_fov}
+		"top_bottom": stereo_sbs and top_bottom, "stereo_half": stereo_sbs and stereo_half, "fisheye_fov": fisheye_fov,
+		"subtitle_delay_ms": subtitle_delay_ms, "audio_delay_ms": audio_delay_ms, "external_subtitle_uri": external_subtitle_uri}
 	if mode_memory.remember(local_uri, mode) and not mode_memory.save():
 		Log.record("file_mode_save_failed", {"error": mode_memory.last_error})
 
@@ -1326,6 +1409,18 @@ func _on_state(id: int, payload: String) -> void:
 		requested_play = false
 	media.playback = report
 	var details: Dictionary = report.get("details", {})
+	if _subtitle_loading and _subtitle_import_command == 0 and int(details.get("subtitle_import_command", 0)) > _subtitle_import_floor:
+		# A processing revision can supersede the queued callback while retaining the same MPV host.
+		_subtitle_import_command = int(details.subtitle_import_command)
+		_subtitle_import_uri = _subtitle_requested_uri
+		subtitles.select(-1)
+	if _subtitle_import_command > 0 and int(details.get("subtitle_import_command", 0)) >= _subtitle_import_command:
+		if str(details.get("subtitle_import_error", "")).is_empty():
+			external_subtitle_uri = _subtitle_import_uri
+			_remember_mode(); picker_error = ""
+		else:
+			picker_error = "Unable to load subtitle. Choose an SRT, ASS, SSA or VTT file."
+		_subtitle_import_command = 0; _subtitle_import_uri = ""; _subtitle_loading = false
 	var size := str(details.get("file_size", ""))
 	if not BookmarkStore.integer(_bookmark_metadata.get("size", -1), 1, 9007199254740991) and size.is_valid_int() and BookmarkStore.integer(int(size), 1, 9007199254740991):
 		# Native metadata fills gaps for recent/SAF opens, without hashing or reading the video.
@@ -1600,8 +1695,8 @@ func _subtitle_anchor_direction() -> Array:
 	var anchor := SubtitleDepth.anchor(subtitle_position, subtitle_direction == 1) * Vector3.FORWARD
 	return [anchor.x, anchor.y, anchor.z]
 
-func _can_loop() -> bool:
-	if not loop_enabled or not requested_play or media.state != "ended" or _waiting_first or not _pending_revision.is_empty():
+func completed_presentation() -> bool:
+	if not requested_play or media.state != "ended" or _waiting_first or not _pending_revision.is_empty():
 		return false
 	var end: Dictionary = media.playback
 	var final_pair: Dictionary = media.last_pair
@@ -1614,7 +1709,17 @@ func _can_loop() -> bool:
 		and int(target.pts_us) == int(final_pair.get("pts_us", -1)) \
 		and (not alpha_requested or final_pair.get("inference_ran", false))
 
+func _can_loop() -> bool:
+	return loop_enabled and completed_presentation()
+
 func _process(_delta: float) -> void:
+	if _sync_pending and PlatformMethods.supports(platform, "set_mpv_sync"):
+		_sync_pending = not platform.set_mpv_sync(media.session_id, subtitle_delay_ms, audio_delay_ms)
+	if not _pending_external_uri.is_empty() and not _subtitle_loading and media.state in ["ready", "playing", "paused"]:
+		if PlatformMethods.supports(platform, "add_mpv_subtitle") and platform.add_mpv_subtitle(media.session_id, _pending_external_uri):
+			_subtitle_requested_uri = _pending_external_uri
+			_subtitle_import_floor = int(media.playback.get("details", {}).get("subtitle_import_command", 0))
+			_pending_external_uri = ""; _subtitle_loading = true
 	if _audio_pending:
 		set_audio_options(audio_track_id, audio_volume, audio_muted)
 	elif prefer_clone_voice and not _clone_applied and clone_voice_track() > 0:

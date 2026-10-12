@@ -9,10 +9,12 @@ import org.json.JSONObject
 /** System UI and selection coordination on main; all provider work is asynchronous. */
 internal class LocalVideoPicker(
     private val host: () -> Activity?,
+    private val mimeType: String = "video/*",
+    private val initialCode: Int = 0x5650,
     private val event: (String) -> Unit,
 ) {
     private var pending = false
-    private var code = 0x5650
+    private var code = initialCode
     private var request = 0
     private val selection = LocalVideoSelection({ host()?.applicationContext }) { payload ->
         event(JSONObject(payload).put("picker_request", request).toString())
@@ -25,13 +27,13 @@ internal class LocalVideoPicker(
         val activity = host() ?: return report("error", "ACTIVITY_UNAVAILABLE")
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
-            type = "video/*"
+            type = mimeType
             putExtra(Intent.EXTRA_LOCAL_ONLY, true)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
         }
         try {
             pending = true
-            code = if (code == 0x7fff) 0x5650 else code + 1
+            code = if (code >= initialCode + 0xff) initialCode else code + 1
             activity.startActivityForResult(intent, code)
             report("opening")
         } catch (_: ActivityNotFoundException) {

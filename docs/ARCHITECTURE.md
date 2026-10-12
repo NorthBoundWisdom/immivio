@@ -10,6 +10,10 @@ The application includes persistent timestamp-only bookmarks (`bookmark_store`, 
 
 Photo presentation uses immersive screen geometry, adjacent-image preloading and a separate stereo cache. Flat-photo navigation uses a single-hand horizontal pinch drag followed by release; two-hand pinch zoom remains available. Photo stereo strength supports 0–200%, independently of video strength. Selected ordinary flat photos can prepare depth and person matting, with matched color/mask updates before switching the presented pair. `projected_subtitles.gd` and the shader include implement subtitles in the video projection.
 
+Playback queue policy lives in `playback_queue.gd`, separately from native media sessions. Original library URIs, titles, order and minimal basename/size metadata persist; source account records and temporary proxy URLs are not copied from source metadata. Default directory navigation captures the current list; explicitly edited queues retain their entries. Automatic transitions reuse the native final-frame presentation predicate and ignore stale sessions. Queue repeat and shuffle are independent of single-video looping, which has priority.
+
+Subtitle/audio offsets use coalesced MPV control-thread commands with the same subtitle serial fences as track changes. Text cue checks account for `sub-delay` while video source tickets remain unchanged. Manual subtitle selection retains Android document permission, copies supported text files on an isolated IO worker, and retains each bounded temporary file until its MPV host closes. Import errors leave video playback running. Per-video offsets and the selected document URI share the existing checksummed mode store.
+
 ## Android boundary
 
 `QuestPlayerPlugin.kt` exposes Godot-callable methods and owns Android media selection, libraries and lifecycle. Document grants, file descriptors and HTTP/SMB/cloud sources are managed in Kotlin. Authentication data stays in application-private storage; no account credentials belong in source control.

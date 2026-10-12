@@ -6,6 +6,9 @@ Newest first, following product release milestones. Some development/source snap
 
 ## Unreleased
 
+- Added per-video subtitle/audio timing controls, reset actions and manual SRT/ASS/SSA/VTT subtitle selection with retained document permission.
+- Added editable, persistent playback queues with reordering, removal, automatic next playback, queue repeat and shuffle; automatic advance waits for the final presented frame.
+
 - Added a persistent Reclining mode in General settings, off by default, allowing tilted flat-video screens and menus while keeping Follow independent.
 
 - Expand Android Release CI to four Windows/macOS checks: two with public AI models and two without AI, sharing a verified source-frame backend between the AI hosts.

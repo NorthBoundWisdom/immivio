@@ -6,6 +6,10 @@ extends "res://scripts/ray_menu.gd"
 
 signal chosen(uri: String, title: String)
 signal player_requested
+signal queue_requested(operation: String)
+var queue_add_mode := false
+const QUEUE_ADD_LIST := 88
+const QUEUE_DONE := 89
 signal recenter_requested
 signal setting_changed(key: String, value: Variant)
 signal setting_previewed(key: String, value: Variant)
@@ -904,6 +908,8 @@ func _read_cache_usage() -> Vector2i:
 ## Video state changes arrive several times a second: redraw only when the Alpha profiles
 ## (current, compiling, cold) shown on the Alpha tab change.
 func _activate(target: int) -> void:
+	if target == QUEUE_ADD_LIST: queue_requested.emit("queue_add_list"); return
+	if target == QUEUE_DONE: queue_requested.emit("queue_done"); return
 	if _activate_footer(target): return
 	if file_actions.action(target): return
 	if choices.action(target): return
@@ -1368,6 +1374,9 @@ func _draw() -> void:
 	_draw_rows()
 	if section == Section.SETTINGS and tab == ABOUT_TAB:
 		_draw_about()
+	if queue_add_mode:
+		_button(QUEUE_ADD_LIST, I18n.t("Add current list"), Vector2(-0.22, 0.57), Vector2(0.62, 0.07), not video_queue().is_empty())
+		_button(QUEUE_DONE, I18n.t("Done adding"), Vector2(0.46, 0.57), Vector2(0.62, 0.07))
 	if section == Section.SETTINGS:
 		_button(RESTART_APP, I18n.t("Restart app"), Vector2(0.10, -0.515), Vector2(0.42, 0.07), true, "refresh")
 		_button(QUIT_APP, I18n.t("Close app"), Vector2(0.59, -0.515), Vector2(0.42, 0.07), true, "close")

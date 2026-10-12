@@ -22,6 +22,11 @@ internal object RvmWorkers {
         val thread = HandlerThread("QuestRvmRoi").apply { start() }
         Handler(thread.looper)
     }
+    /** Document-provider subtitle IO never blocks decoding, model inference or lifecycle work. */
+    val subtitles: Handler by lazy {
+        val thread = HandlerThread("QuestSubtitleImport").apply { start() }
+        Handler(thread.looper)
+    }
     val video: Handler by lazy {
         val thread = HandlerThread("QuestVideoRvm").apply { start() }
         Handler(thread.looper)

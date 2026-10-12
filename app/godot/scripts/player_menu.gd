@@ -48,6 +48,14 @@ const SUBTITLE_DOWN := 291
 const SUBTITLE_ROWS := 3
 const SUBTITLE_POSITION := 292
 const PLAYBACK_SETTINGS := 470
+const SYNC_SETTINGS := 490
+const QUEUE_SETTINGS := 491
+const SUBTITLE_LOAD := 492
+const SUBTITLE_FORGET := 493
+const SUBTITLE_DELAY_RESET := 494
+const AUDIO_DELAY_RESET := 495
+const QueueMenu := preload("res://scripts/playback_queue_menu.gd")
+var queue_menu := QueueMenu.new(self)
 const ROTATION_RESET := 471
 const SPEED_RESET := 472
 const StereoView := preload("res://scripts/stereo_view.gd")
@@ -185,7 +193,7 @@ func refresh_values() -> void:
 		return
 	_state = state_provider.call() if state_provider.is_valid() else {}
 	if not _adjustment.is_empty():
-		if _adjustment in ["screen", "stereo_view"] and _settings_drawn != _settings_key():
+		if _adjustment in ["screen", "stereo_view", "sync", "queue"] and _settings_drawn != _settings_key():
 			_finish_adjustment()
 			if _adjustment == "stereo_view" and not _enabled("stereo_view"): _adjustment = ""
 			refresh()
@@ -363,7 +371,7 @@ func _draw_subtitles() -> void:
 	_subtitle_offset = clampi(_subtitle_offset, 0, maxi(0, tracks.size() - SUBTITLE_ROWS))
 	var rows := _subtitle_controls()
 	var scrolling := tracks.size() > SUBTITLE_ROWS
-	var height := 0.18 + (1 + mini(tracks.size(), SUBTITLE_ROWS)) * 0.075 + rows.size() * 0.10 + (0.06 if scrolling else 0.0)
+	var height := 0.26 + (1 + mini(tracks.size(), SUBTITLE_ROWS)) * 0.075 + rows.size() * 0.10 + (0.06 if scrolling else 0.0)
 	var top := 0.285 + height
 	var panel := _quad(Vector2(1.10, height), Vector3(0, 0.285 + height / 2, 0.001), Color(PANEL, 0.96), 10)
 	panel.material_override.set_shader_parameter("corner_radius", 0.025)
@@ -387,9 +395,11 @@ func _draw_subtitles() -> void:
 		title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		choices.field(null, row.field, Vector2(0.14, y), 0.64, 0.075)
 		y -= 0.10
-	var hint := _label(I18n.t("External subtitles must match the video filename."), Vector3(0, 0.355, 0.004), 15)
+	_button(SUBTITLE_LOAD, I18n.t("Load subtitle file"), Vector2(-0.25, 0.365), Vector2(0.47, 0.065), not _state.get("subtitle_loading", false))
+	_button(SYNC_SETTINGS, I18n.t("Synchronization"), Vector2(0.25, 0.365), Vector2(0.47, 0.065))
+	var hint := _label(I18n.t("External subtitles must match the video filename."), Vector3(0, 0.31, 0.004), 13)
 	hint.modulate = MUTED
-	var example := _label(I18n.t("movie.mp4 → movie.srt"), Vector3(0, 0.315, 0.004), 14)
+	var example := _label(I18n.t("movie.mp4 → movie.srt"), Vector3(0, 0.28, 0.004), 12)
 	example.modulate = MUTED
 	choices.bounds = Vector2(0.285, top - 0.08)
 	choices.finish()
@@ -411,6 +421,7 @@ func _subtitle_row(target: int, id: int, text: String, y: float) -> void:
 
 func stick_scroll(y: float, delta: float) -> void:
 	if choices.stick_scroll(y, delta): return
+	if _adjustment == "queue": queue_menu.stick_scroll(y, delta); return
 	if visible and bookmarks.opened:
 		bookmarks.stick_scroll(y, delta)
 		return
@@ -644,7 +655,7 @@ func _bar_key() -> String:
 	return str([_state.get("clone_voice", false), _state.get("geometry", 0), _state.get("has_video", false),
 		_state.get("spatial_video", false),
 		_state.get("source_uri", ""), _subtitle_tracks(), _state.get("subtitle_track", 0), bookmarks.key(), _state.get("audio_options", []), _state.get("audio_track_id", -1),
-		_state.get("subtitle_distance", SubtitleDepth.DEFAULT), _state.get("subtitle_position", SubtitleDepth.DEFAULT_POSITION), _state.get("subtitle_direction", 0), _state.get("subtitle_size", 100), _state.get("subtitle_flat_position", 0)])
+		_state.get("subtitle_distance", SubtitleDepth.DEFAULT), _state.get("subtitle_position", SubtitleDepth.DEFAULT_POSITION), _state.get("subtitle_direction", 0), _state.get("subtitle_size", 100), _state.get("subtitle_flat_position", 0), _state.get("subtitle_loading", false)])
 
 func _seek_at(x: float) -> int:
 	return roundi(clampf((x + BAR_SEEK / 2) / BAR_SEEK, 0.0, 1.0) * int(_state.get("duration_ms", 0)))
@@ -788,7 +799,8 @@ func _draw_panel() -> void:
 func _settings_key() -> String:
 	return str([_state.get("source_uri", ""), _state.get("has_video", false),
 		_state.get("loop", false), _state.get("screen_curve", 0.0), _state.get("seek_mode", "speed"), _state.get("stereo", false), _state.get("geometry", 0),
-		_state.get("show_fps", false), _state.get("viewing_eye", 0), _state.get("swap_eyes", false)])
+		_state.get("show_fps", false), _state.get("viewing_eye", 0), _state.get("swap_eyes", false),
+		_state.get("queue_revision", 0), _state.get("external_subtitle", false), _state.get("subtitle_loading", false)])
 
 func _setting_choices(operation: String) -> Dictionary:
 	if not _enabled(operation): return {}
@@ -861,6 +873,16 @@ func _activate(target: int) -> void:
 		or target in [MODE_STEREO, MODE_STEREO + 1, MODE_STEREO + 3, MODE_STEREO + 4, MODE_STEREO + 5, MODE_STEREO + 6] \
 		or target in range(MODE_LENS, MODE_LENS + LENS_FOVS.size())): return
 	if choices.action(target): return
+	if _adjustment == "queue" and queue_menu.action(target): return
+	if target in [SUBTITLE_LOAD, SUBTITLE_FORGET]:
+		action_requested.emit("load_subtitle" if target == SUBTITLE_LOAD else "forget_subtitle")
+		return
+	if target in [SYNC_SETTINGS, QUEUE_SETTINGS]:
+		_finish_adjustment(); choices.reset()
+		_subtitle_open = false; _mode_open = false; _volume_open = false
+		_close_depth_slider(); section = 1
+		_adjustment = "sync" if target == SYNC_SETTINGS else "queue"
+		refresh(); return
 	bookmarks.opened = false
 	if section == 0 and target == 111:
 		if not _enabled("audio"): return
@@ -990,8 +1012,6 @@ func _update_highlights() -> void:
 			button.node.get_child(1).material_override.albedo_color = ACCENT if active else (button.foreground if button.enabled else MUTED)
 			if active and not _hover.values().has(button.target):
 				button.node.material_override.set_shader_parameter("surface_color", SELECTED)
-		if button.target == 10 + section and not _hover.values().has(button.target):
-			button.node.material_override.set_shader_parameter("surface_color", Color(0.16, 0.31, 0.27))
 		if section == 0 and button.enabled and not _hover.values().has(button.target) and button.target == 104 and _state.get("alpha_requested", false):
 			button.node.material_override.set_shader_parameter("surface_color", Color(0.16, 0.31, 0.27))
 		if section == 0 and button.enabled and not _hover.values().has(button.target) and button.target == 112 and _state.get("depth_requested", false):
@@ -1092,6 +1112,7 @@ func _caption_text(operation: String) -> String:
 	return operation
 
 func _status_text() -> String:
+	if _state.get("subtitle_loading", false): return I18n.t("Loading subtitle…")
 	if not str(_state.get("error", "")).is_empty():
 		return I18n.t("Error: open Info")
 	if not _state.get("has_video", false): return I18n.t("No video selected")
@@ -1131,10 +1152,13 @@ func _finish_adjustment() -> void:
 
 func _draw_settings_tabs(y: float) -> void:
 	_button(10, "", Vector2(-0.66, y), Vector2(0.09, 0.065), true, "up")
-	for tab in [{"id": 11, "text": "Screen"}, {"id": PLAYBACK_SETTINGS, "text": "Playback"}, {"id": 12, "text": "Info"}]:
-		var index: int = [11, PLAYBACK_SETTINGS, 12].find(tab.id)
-		_button(tab.id, I18n.t(tab.text), Vector2(-0.34 + index * 0.33, y), Vector2(0.30, 0.065))
-		if (tab.id == 11 and _adjustment == "screen") or (tab.id == PLAYBACK_SETTINGS and section == 1 and _adjustment.is_empty()) or (tab.id == 12 and section == 2):
+	var tabs := [{"id": 11, "text": "Screen"}, {"id": PLAYBACK_SETTINGS, "text": "Playback"},
+		{"id": SYNC_SETTINGS, "text": "Synchronization"}, {"id": QUEUE_SETTINGS, "text": "Queue"}, {"id": 12, "text": "Info"}]
+	for index in tabs.size():
+		var tab: Dictionary = tabs[index]
+		_button(tab.id, I18n.t(tab.text), Vector2(-0.46 + index * 0.23, y), Vector2(0.22, 0.065))
+		(_buttons.back().node.get_child(0) as Label3D).font_size = 16
+		if (tab.id == 11 and _adjustment == "screen") or (tab.id == PLAYBACK_SETTINGS and section == 1 and _adjustment.is_empty()) or (tab.id == 12 and section == 2) or (tab.id == SYNC_SETTINGS and _adjustment == "sync") or (tab.id == QUEUE_SETTINGS and _adjustment == "queue"):
 			_buttons.back().base_color = SELECTED
 	_button(CLOSE, "", Vector2(0.66, y), Vector2(0.09, 0.065), true, "close")
 
@@ -1163,7 +1187,29 @@ func _draw_screen_settings() -> void:
 	_refresh_adjustments()
 	choices.finish()
 
+func _draw_sync_settings() -> void:
+	_settings_drawn = _settings_key()
+	_set_backdrop(Vector2(1.55, 1.08))
+	_draw_settings_tabs(0.38)
+	_place_device_status(Vector2(0, -0.585))
+	_adjustment_row(496, "subtitle_delay_ms", "Subtitle delay", Vector3(-10000, 10000, 50), 0.19)
+	_inline_reset(SUBTITLE_DELAY_RESET, "Reset", "subtitle_delay_ms", 0, 0.19)
+	_adjustment_row(497, "audio_delay_ms", "Audio delay", Vector3(-10000, 10000, 50), 0.045)
+	_inline_reset(AUDIO_DELAY_RESET, "Reset", "audio_delay_ms", 0, 0.045)
+	var hint := _label(I18n.t("Positive: later · Negative: earlier"), Vector3(0, -0.07, 0.004), 17)
+	hint.modulate = MUTED
+	_button(SUBTITLE_LOAD, I18n.t("Load subtitle file"), Vector2(-0.33, -0.20), Vector2(0.62, 0.08), _state.get("has_video", false) and not _state.get("subtitle_loading", false))
+	_button(SUBTITLE_FORGET, I18n.t("Forget subtitle file"), Vector2(0.33, -0.20), Vector2(0.62, 0.08), _state.get("external_subtitle", false) and not _state.get("subtitle_loading", false))
+	_label(I18n.t("Timing and selected subtitle are saved per video."), Vector3(0, -0.32, 0.004), 17)
+	_status = _label(_status_text(), Vector3(0, -0.48, 0.004), 16)
+	_refresh_adjustments(); choices.finish()
+
 func _draw_adjustments() -> void:
+	if _adjustment == "sync":
+		_draw_sync_settings(); return
+	if _adjustment == "queue":
+		_settings_drawn = _settings_key()
+		queue_menu.draw(); return
 	if _adjustment == "screen":
 		_draw_screen_settings()
 		return
@@ -1242,7 +1288,7 @@ func _refresh_adjustments() -> void:
 	for row in _adjust_rows.values():
 		var distance: bool = row.key in ["subtitle_distance", "screen_distance"]
 		var position: bool = row.key == "subtitle_position"
-		var defaults := {"screen_scale": 100.0, "screen_rotation": 0.0, "playback_speed": 1.0, "alpha_fps": 20.0, "stereo_horizontal": 0.0, "stereo_vertical": 0.0}
+		var defaults := {"screen_scale": 100.0, "screen_rotation": 0.0, "playback_speed": 1.0, "alpha_fps": 20.0, "stereo_horizontal": 0.0, "stereo_vertical": 0.0, "subtitle_delay_ms": 0.0, "audio_delay_ms": 0.0}
 		var value := float(_state.get(row.key, defaults[row.key])) if defaults.has(row.key) else (float(_state.get(row.key, 5.0 if row.key == "subtitle_distance" else Surface.SCREEN_DISTANCE)) if distance else (float(_state.get(row.key, SubtitleDepth.DEFAULT_POSITION)) if position else float(values.get(row.key, Grade.DEFAULTS[row.key]))))
 		var fraction := clampf((value - row.span.x) / (row.span.y - row.span.x), 0, 1)
 		if row.key == "subtitle_distance": fraction = SubtitleDepth.slider_fraction(value)
@@ -1250,6 +1296,7 @@ func _refresh_adjustments() -> void:
 		if row.key == "screen_scale": row.label.text = "%d%%" % roundi(value)
 		elif row.key == "screen_rotation": row.label.text = "%+.0f°" % value if value != 0 else "0°"
 		elif row.key == "playback_speed": row.label.text = "%.2f×" % value
+		elif row.key in ["subtitle_delay_ms", "audio_delay_ms"]: row.label.text = "%+d ms" % roundi(value)
 		elif row.key == "alpha_fps": row.label.text = "%d FPS" % roundi(value)
 		elif row.key in ["stereo_horizontal", "stereo_vertical"]: row.label.text = "%+.2f%%" % value if value != 0 else "0.00%"
 		row.fill.visible = fraction > 0
@@ -1282,6 +1329,9 @@ func _activate_adjustment(target: int) -> void:
 	if target == CLOSE:
 		dismiss()
 		return
+	if _adjustment == "sync" and target in [SUBTITLE_DELAY_RESET, AUDIO_DELAY_RESET]:
+		adjustment_requested.emit("subtitle_delay_ms" if target == SUBTITLE_DELAY_RESET else "audio_delay_ms", 0)
+		adjustment_committed.emit(); refresh_values(); return
 	if target == 400:
 		_adjustment = ""
 	elif _adjustment == "stereo_view" and _enabled("stereo_view"):

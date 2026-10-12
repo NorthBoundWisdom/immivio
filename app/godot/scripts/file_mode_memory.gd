@@ -42,6 +42,11 @@ static func valid_mode(value: Variant) -> bool:
 	for name in ["top_bottom", "stereo_half"]:
 		if value.has(name) and not value[name] is bool:
 			return false
+	for key in ["subtitle_delay_ms", "audio_delay_ms"]:
+		if value.has(key) and (not (value[key] is int or value[key] is float) or not is_finite(float(value[key])) or float(value[key]) != floorf(float(value[key])) or absf(float(value[key])) > 10000): return false
+	if value.has("external_subtitle_uri"):
+		if not value.external_subtitle_uri is String or value.external_subtitle_uri.length() > 8192: return false
+		if not value.external_subtitle_uri.is_empty() and not (value.external_subtitle_uri.begins_with("content://") or value.external_subtitle_uri.begins_with("file://")): return false
 	return StereoView.valid(value)
 
 func _bank_path(bank: int) -> String:

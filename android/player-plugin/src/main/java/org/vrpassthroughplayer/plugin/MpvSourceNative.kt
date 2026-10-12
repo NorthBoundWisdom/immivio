@@ -28,6 +28,9 @@ internal object MpvSourceNative {
     @JvmStatic external fun setAudio(handle: Long, trackId: Int, volume: Double, muted: Boolean): Boolean
     /** 0 rejected; positive coalesced command serial. -1 auto, 0 off, actual subtitle id. */
     @JvmStatic external fun setSubtitle(handle: Long, trackId: Int): Long
+    /** Positive milliseconds delay the selected audio/subtitles. Returns a subtitle fence serial. */
+    @JvmStatic external fun setSync(handle: Long, subtitleMs: Int, audioMs: Int): Long
+    @JvmStatic external fun addSubtitle(handle: Long, path: String, title: String): Long
     /** Plain text in a separate UI layer; empty when no newer snapshot is available. */
     @JvmStatic external fun subtitleStatus(handle: Long, afterSequence: Long): String
     /** Cropped premultiplied RGBA for this exact bitmap version, empty if superseded. */

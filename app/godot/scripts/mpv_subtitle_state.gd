@@ -53,6 +53,9 @@ func observe(snapshot: Dictionary, session_id: int, pair: Dictionary) -> bool:
 	var start := str(snapshot.get("start_seconds", ""))
 	var end := str(snapshot.get("end_seconds", ""))
 	var position := str(snapshot.get("position_seconds", ""))
+	var delay := str(snapshot.get("subtitle_delay_seconds", "0"))
+	if not delay.is_valid_float() or not is_finite(float(delay)): return true
+	if position.is_valid_float(): position = str(float(position) - float(delay))
 	if not start.is_valid_float() or not end.is_valid_float() or not position.is_valid_float():
 		return true
 	if not is_finite(float(start)) or not is_finite(float(end)) or not is_finite(float(position)) \

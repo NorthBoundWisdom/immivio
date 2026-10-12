@@ -8,6 +8,8 @@ import android.os.Handler
 import android.os.ParcelFileDescriptor
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
+import android.provider.OpenableColumns
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.concurrent.ConcurrentHashMap
@@ -71,6 +73,10 @@ internal class MpvVideoBridge(
         @Volatile var closing = false
         @Volatile var playing = true
         var speed = 1.0 // synchronized(host), retained across processing revisions
+        var subtitleMs = 0
+        var audioMs = 0
+        val importingSubtitle = AtomicBoolean(false)
+        val importedSubtitles = mutableListOf<File>()
         @Volatile var audioEnabled = audio
         @Volatile var audioAvailable = audio
         @Volatile var descriptor: ParcelFileDescriptor? = null
@@ -83,6 +89,7 @@ internal class MpvVideoBridge(
             networkLease?.let(releaseNetwork); networkLease = null
             subtitleLeases.forEach(releaseNetwork); subtitleLeases = emptyList()
             audioLeases.forEach(releaseNetwork); audioLeases = emptyList()
+            synchronized(this) { importedSubtitles.forEach { it.delete() }; importedSubtitles.clear() }
             descriptor?.close(); descriptor = null
             sidecars.forEach { runCatching { it.close() } }; sidecars = emptyList()
         }
@@ -228,7 +235,11 @@ internal class MpvVideoBridge(
                             captions.flatMap { listOf(it.location, it.title) }.toTypedArray(), host.exactStart)
                         check(host.handle > 0)
                         host.markStartup("native_created_ms")
-                        synchronized(host) { check(MpvSourceNative.setSpeed(host.handle, host.speed)) }
+                        synchronized(host) {
+                            check(MpvSourceNative.setSpeed(host.handle, host.speed))
+                            host.subtitleCommand = MpvSourceNative.setSync(host.handle, host.subtitleMs, host.audioMs)
+                            check(host.subtitleCommand > 0)
+                        }
                         MpvSourceNative.setFrameCap(host.handle, frameCap(session))
                         MpvSourceNative.setDirect(host.handle, direct(session))
                         // Native creation stays paused until focus policy has
@@ -311,6 +322,61 @@ internal class MpvVideoBridge(
         if (accepted) session.host.audioEnabled = trackId != 0
         refreshPlayback(explicit = accepted && trackId != 0)
         return accepted
+    }
+    fun setSync(id: Int, subtitleMs: Int, audioMs: Int): Boolean {
+        if (subtitleMs !in -10000..10000 || audioMs !in -10000..10000) return false
+        val session = sessions[id] ?: return false
+        synchronized(session.host) {
+            if (!active(session) || session.host.closing) return false
+            if (session.host.handle > 0) {
+                val serial = MpvSourceNative.setSync(session.host.handle, subtitleMs, audioMs)
+                if (serial <= 0) return false
+                session.host.subtitleCommand = maxOf(session.host.subtitleCommand, serial)
+            }
+            session.host.subtitleMs = subtitleMs; session.host.audioMs = audioMs
+            return true
+        }
+    }
+    fun addSubtitle(id: Int, text: String): Boolean {
+        val session = sessions[id] ?: return false
+        val uri = Uri.parse(text)
+        if (!active(session) || session.host.handle <= 0 || text.length > 8192 || uri.scheme !in setOf("content", "file") ||
+            !session.host.importingSubtitle.compareAndSet(false, true)) return false
+        val queued = RvmWorkers.subtitles.post {
+            var temporary: File? = null
+            try {
+                val app = context() ?: error("Activity unavailable")
+                var name = uri.lastPathSegment.orEmpty()
+                if (uri.scheme == "content") app.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
+                    if (it.moveToFirst()) name = it.getString(0).orEmpty()
+                }
+                val extension = SubtitleImport.extension(name)
+                val staged = File.createTempFile("subtitle-", ".$extension", app.cacheDir)
+                temporary = staged
+                val input = if (uri.scheme == "file") File(uri.path ?: error("Subtitle path missing")).inputStream()
+                    else app.contentResolver.openInputStream(uri) ?: error("Subtitle permission lost")
+                input.use { source -> staged.outputStream().use { SubtitleImport.copy(source, it) } }
+                synchronized(session.host) {
+                    val current = sessions.values.firstOrNull { it.host === session.host && active(it) }
+                    check(current != null && !session.host.closing && session.host.handle > 0) { "Subtitle session changed" }
+                    check(session.host.importedSubtitles.size < 16) { "Too many imported subtitles; reopen the video" }
+                    val serial = MpvSourceNative.addSubtitle(session.host.handle, staged.absolutePath, name.take(256))
+                    check(serial > 0) { "Subtitle import busy" }
+                    session.host.importedSubtitles.add(staged)
+                    temporary = null // MPV may read it until the host fully closes.
+                    session.host.subtitleCommand = maxOf(session.host.subtitleCommand, serial)
+                    event("mpv_subtitle_import", current, JSONObject().put("state", "queued").put("uri", text).put("command", serial))
+                }
+            } catch (failure: Exception) {
+                sessions.values.firstOrNull { it.host === session.host && active(it) }?.let { current ->
+                    event("mpv_subtitle_import", current, JSONObject().put("state", "error").put("error", failure.message ?: "Subtitle import failed"))
+                }
+            } finally {
+                temporary?.delete(); session.host.importingSubtitle.set(false)
+            }
+        }
+        if (!queued) session.host.importingSubtitle.set(false)
+        return queued
     }
     fun setSubtitle(id: Int, trackId: Int): Boolean {
         val session = sessions[id] ?: return false

@@ -27,6 +27,12 @@ Minimum compatibility targets are **Quest 2** and **PICO Neo3**. Source/build co
 - Media-server sections, filters, details, continuation pages and capability-dependent favorites; manual DLNA endpoints and exposed external subtitles.
 - Photo distance/size controls and a separate 2–8× magnifier referenced to the displayed image; source-dependent file management.
 
+## Synchronization and playback queues
+
+Playback settings include Synchronization and Queue. Subtitle and audio offsets range from −10 to +10 seconds in 50 ms steps, with separate resets and per-video persistence. The subtitle popup and Synchronization page can load SRT/ASS/SSA/VTT through the Android document picker without a matching video filename. Reopening the video attempts to restore the chosen document; select it again or forget the association if its permission is lost.
+
+The queue supports play, move up/down, remove and clear. Add videos opens the library for individual additions or the currently loaded list; paged sources can be added page by page without recursively scanning remote folders. Up to 500 entries and their order persist across restarts without starting playback. Auto-play next, repeat queue and shuffle default off. Single-video looping takes precedence. Automatic next playback starts at zero after the final frame is presented; manual navigation retains resume behavior.
+
 ## Source release
 
 This repository contains application source, build scripts, third-party source pins/patches, and tests. Model weights, compiled dependencies, signing keys, personal media and development records are excluded.
