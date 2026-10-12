@@ -1,5 +1,5 @@
-name: Prepare Android release CI
-description: Provision shared tools and mode-specific caches for the four release checks
+name: Prepare Android CI
+description: Provision shared tools and mode-specific caches for the four build checks
 inputs:
   ai:
     description: Include the public AI preparation caches

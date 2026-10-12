@@ -3,16 +3,24 @@ name: Android Release (AI and no AI)
 on:
   push:
     branches: [main]
-    tags: ['v*']
+    tags: ['**']
   pull_request:
     branches: [main]
   workflow_dispatch:
     inputs:
+      build_type:
+        description: APK build type (tags always use Release)
+        type: choice
+        default: Debug
+        options: [Debug, Release]
       vendor:
         description: Android target
         type: choice
         default: all
         options: [all, Pico, Quest, OpenXR]
+
+env:
+  CI_BUILD_TYPE: ${{ startsWith(github.ref, 'refs/tags/') && 'Release' || inputs.build_type || 'Debug' }}
 
 permissions:
   contents: read
@@ -23,7 +31,7 @@ concurrency:
 
 jobs:
   build:
-    name: Release / no AI / ${{ matrix.os }}
+    name: ${{ startsWith(github.ref, 'refs/tags/') && 'Release' || inputs.build_type || 'Debug' }} / no AI / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     strategy:
@@ -44,11 +52,11 @@ jobs:
           ai: 'false'
       - name: Check source, dependency boundaries and Godot behavior
         run: python tools/ci_android.py test
-      - name: Build and verify Android Release packages
+      - name: Build and verify Android ${{ env.CI_BUILD_TYPE }} packages
         env:
-          CI_ANDROID_KEYSTORE_BASE64: ${{ github.event_name != 'pull_request' && secrets.ANDROID_KEYSTORE_BASE64 || '' }}
-          CI_ANDROID_KEY_ALIAS: ${{ github.event_name != 'pull_request' && secrets.ANDROID_KEY_ALIAS || '' }}
-          CI_ANDROID_KEY_PASSWORD: ${{ github.event_name != 'pull_request' && secrets.ANDROID_KEY_PASSWORD || '' }}
+          CI_ANDROID_KEYSTORE_BASE64: ${{ env.CI_BUILD_TYPE == 'Release' && github.event_name != 'pull_request' && secrets.ANDROID_KEYSTORE_BASE64 || '' }}
+          CI_ANDROID_KEY_ALIAS: ${{ env.CI_BUILD_TYPE == 'Release' && github.event_name != 'pull_request' && secrets.ANDROID_KEY_ALIAS || '' }}
+          CI_ANDROID_KEY_PASSWORD: ${{ env.CI_BUILD_TYPE == 'Release' && github.event_name != 'pull_request' && secrets.ANDROID_KEY_PASSWORD || '' }}
         run: python tools/ci_android.py build
 
       - name: Stop Gradle daemons before cache archival
@@ -58,10 +66,10 @@ jobs:
       - name: Upload installable packages and build receipts
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          name: Android-noai-Release-${{ runner.os }}
+          name: Android-noai-${{ env.CI_BUILD_TYPE }}-${{ runner.os }}
           path: |
-            artifacts/*.apk
-            artifacts/*.build.json
+            artifacts/*-noai-*.apk
+            artifacts/*-noai-*.build.json
             artifacts/SHA256SUMS.txt
             artifacts/ci-summary.json
           if-no-files-found: error
@@ -81,7 +89,7 @@ jobs:
           retention-days: 7
 
   build-ai-macos:
-    name: Release / AI / macos-15
+    name: ${{ startsWith(github.ref, 'refs/tags/') && 'Release' || inputs.build_type || 'Debug' }} / AI / macos-15
     runs-on: macos-15
     timeout-minutes: 180
     defaults:
@@ -115,11 +123,11 @@ jobs:
           retention-days: 14
       - name: Download, convert and verify public AI models and runtime
         run: python tools/prepare_public_ai.py --jobs 2
-      - name: Build and verify AI Android Release packages
+      - name: Build and verify AI Android ${{ env.CI_BUILD_TYPE }} packages
         env:
-          CI_ANDROID_KEYSTORE_BASE64: ${{ github.event_name != 'pull_request' && secrets.ANDROID_KEYSTORE_BASE64 || '' }}
-          CI_ANDROID_KEY_ALIAS: ${{ github.event_name != 'pull_request' && secrets.ANDROID_KEY_ALIAS || '' }}
-          CI_ANDROID_KEY_PASSWORD: ${{ github.event_name != 'pull_request' && secrets.ANDROID_KEY_PASSWORD || '' }}
+          CI_ANDROID_KEYSTORE_BASE64: ${{ env.CI_BUILD_TYPE == 'Release' && github.event_name != 'pull_request' && secrets.ANDROID_KEYSTORE_BASE64 || '' }}
+          CI_ANDROID_KEY_ALIAS: ${{ env.CI_BUILD_TYPE == 'Release' && github.event_name != 'pull_request' && secrets.ANDROID_KEY_ALIAS || '' }}
+          CI_ANDROID_KEY_PASSWORD: ${{ env.CI_BUILD_TYPE == 'Release' && github.event_name != 'pull_request' && secrets.ANDROID_KEY_PASSWORD || '' }}
         run: python tools/ci_android.py build --ai
       - name: Stop Gradle daemons before cache archival
         if: always()
@@ -127,10 +135,10 @@ jobs:
       - name: Upload AI packages and build receipts
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          name: Android-ai-Release-macOS
+          name: Android-ai-${{ env.CI_BUILD_TYPE }}-macOS
           path: |
-            artifacts/*-ai-release-*.apk
-            artifacts/*-ai-release-*.build.json
+            artifacts/*-ai-*.apk
+            artifacts/*-ai-*.build.json
             artifacts/SHA256SUMS.txt
             artifacts/ci-summary.json
           if-no-files-found: error
@@ -150,7 +158,7 @@ jobs:
           retention-days: 7
 
   build-ai-windows:
-    name: Release / AI / windows-2025
+    name: ${{ startsWith(github.ref, 'refs/tags/') && 'Release' || inputs.build_type || 'Debug' }} / AI / windows-2025
     needs: build-ai-macos
     runs-on: windows-2025
     timeout-minutes: 120
@@ -177,11 +185,11 @@ jobs:
         run: python tools/ci_android.py test
       - name: Download, convert and verify public AI models and runtime
         run: python tools/prepare_public_ai.py --jobs 2
-      - name: Build and verify AI Android Release packages
+      - name: Build and verify AI Android ${{ env.CI_BUILD_TYPE }} packages
         env:
-          CI_ANDROID_KEYSTORE_BASE64: ${{ github.event_name != 'pull_request' && secrets.ANDROID_KEYSTORE_BASE64 || '' }}
-          CI_ANDROID_KEY_ALIAS: ${{ github.event_name != 'pull_request' && secrets.ANDROID_KEY_ALIAS || '' }}
-          CI_ANDROID_KEY_PASSWORD: ${{ github.event_name != 'pull_request' && secrets.ANDROID_KEY_PASSWORD || '' }}
+          CI_ANDROID_KEYSTORE_BASE64: ${{ env.CI_BUILD_TYPE == 'Release' && github.event_name != 'pull_request' && secrets.ANDROID_KEYSTORE_BASE64 || '' }}
+          CI_ANDROID_KEY_ALIAS: ${{ env.CI_BUILD_TYPE == 'Release' && github.event_name != 'pull_request' && secrets.ANDROID_KEY_ALIAS || '' }}
+          CI_ANDROID_KEY_PASSWORD: ${{ env.CI_BUILD_TYPE == 'Release' && github.event_name != 'pull_request' && secrets.ANDROID_KEY_PASSWORD || '' }}
         run: python tools/ci_android.py build --ai
       - name: Stop Gradle daemons before cache archival
         if: always()
@@ -189,10 +197,10 @@ jobs:
       - name: Upload AI packages and build receipts
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          name: Android-ai-Release-Windows
+          name: Android-ai-${{ env.CI_BUILD_TYPE }}-Windows
           path: |
-            artifacts/*-ai-release-*.apk
-            artifacts/*-ai-release-*.build.json
+            artifacts/*-ai-*.apk
+            artifacts/*-ai-*.build.json
             artifacts/SHA256SUMS.txt
             artifacts/ci-summary.json
           if-no-files-found: error

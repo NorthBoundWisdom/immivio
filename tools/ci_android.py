@@ -207,11 +207,27 @@ def check_export_path(templates, gradle, env):
     print('Verified Godot/Gradle export path with spaces and a literal +', flush=True)
 
 
-def build(vendor, godot, templates, *, ai=False):
-    env, signing = signing_env(os.environ)
+def build_type_for_ref(requested=None, environment=None):
+    environment = os.environ if environment is None else environment
+    # A tag is a release boundary even if a caller accidentally requests Debug.
+    if environment.get('GITHUB_REF', '').startswith('refs/tags/'):
+        return 'Release'
+    selected = requested or environment.get('CI_BUILD_TYPE', 'Debug')
+    if selected not in ('Debug', 'Release'):
+        raise ValueError('Build type must be Debug or Release')
+    return selected
+
+
+def build(vendor, godot, templates, *, ai=False, build_type=None):
+    build_type = build_type_for_ref(build_type)
+    if build_type == 'Release':
+        env, signing = signing_env(os.environ)
+    else:
+        env = {key: value for key, value in os.environ.items() if not key.startswith('CI_ANDROID_')}
+        signing = 'debug-keystore'
     vendors = ['Pico', 'Quest', 'OpenXR'] if vendor == 'all' else [vendor]
     receipts = []
-    args = argparse.Namespace(vendor=vendors[0], build_type='Release', godot=godot, templates=Path(templates),
+    args = argparse.Namespace(vendor=vendors[0], build_type=build_type, godot=godot, templates=Path(templates),
         sdk=None, java_home=None, gradle=None, ndk=player.LOCK['ndk'], cmake=player.LOCK['cmake'], plugin_only=False,
         ai=ai, mnn_source=player.CACHE/'ai/MNN-3.6.1-vrpp', mnn_lib=player.CACHE/'ai/mnn-android/libMNN.a',
         ncnn_dir=player.CACHE/'ai/ncnn/ncnn-20260526-android-vulkan/arm64-v8a',
@@ -234,14 +250,16 @@ def build(vendor, godot, templates, *, ai=False):
                     shutil.copytree(player.LOGS, player.ROOT/'artifacts/ci-logs'/target, dirs_exist_ok=True)
             platform = {'Pico': 'PICO', 'Quest': 'QUEST', 'OpenXR': 'OpenXR'}[target]
             mode = 'ai' if ai else 'noai'
-            candidates = list((player.ROOT/'artifacts').glob(f'Thru3D-{platform}-*-{mode}-release-*.build.json'))
+            candidates = list((player.ROOT/'artifacts').glob(f'Thru3D-{platform}-*-{mode}-{build_type.lower()}-*.build.json'))
             if not candidates:
                 raise RuntimeError('Missing receipt for the selected AI/build target')
             path = max(candidates, key=lambda p: p.stat().st_mtime)
             receipt = json.loads(path.read_text(encoding='utf-8'))
             if receipt.get('ai_enabled') is not ai:
                 raise RuntimeError('Build receipt AI mode differs from the selected CI job')
-            receipt.update(ci_signing=signing, ci_host=os.environ.get('RUNNER_OS', sys.platform),
+            if receipt.get('build_type') != build_type:
+                raise RuntimeError('Build receipt type differs from the selected CI build type')
+            receipt.update(ci_ref=os.environ.get('GITHUB_REF', ''), ci_signing=signing, ci_host=os.environ.get('RUNNER_OS', sys.platform),
                            ci_target_seconds=round(time.monotonic()-started, 1))
             path.write_text(json.dumps(receipt, indent=2)+'\n', encoding='utf-8')
             receipts.append(receipt)
@@ -251,7 +269,7 @@ def build(vendor, godot, templates, *, ai=False):
     (artifacts/'ci-summary.json').write_text(json.dumps(receipts, indent=2)+'\n', encoding='utf-8')
     if os.environ.get('GITHUB_STEP_SUMMARY'):
         with Path(os.environ['GITHUB_STEP_SUMMARY']).open('a', encoding='utf-8') as summary:
-            summary.write(f'### Android Release, {"AI" if ai else "no AI"} — {os.environ.get("RUNNER_OS", sys.platform)}\n\n')
+            summary.write(f'### Android {build_type}, {"AI" if ai else "no AI"} — {os.environ.get("RUNNER_OS", sys.platform)}\n\n')
             contents = 'Public upstream models and the inference runtime are included.' if ai else 'CI packages contain no AI models or inference libraries.'
             summary.write(f'Signing: `{signing}`. {contents}\n\n')
             summary.write('| Platform | APK | SHA256 |\n|---|---|---|\n')
@@ -271,6 +289,7 @@ def main():
     package.add_argument('--godot', default=os.environ.get('GODOT_EXE', 'godot'))
     package.add_argument('--templates', default=os.environ.get('GODOT_TEMPLATES_DIR'))
     package.add_argument('--ai', action='store_true')
+    package.add_argument('--build-type', choices=['Debug', 'Release'])
     args = parser.parse_args()
     if args.command == 'setup':
         setup()
@@ -281,7 +300,7 @@ def main():
     else:
         if not args.templates:
             parser.error('--templates or GODOT_TEMPLATES_DIR is required')
-        build(args.vendor, args.godot, args.templates, ai=args.ai)
+        build(args.vendor, args.godot, args.templates, ai=args.ai, build_type=args.build_type)
 
 
 if __name__ == '__main__':

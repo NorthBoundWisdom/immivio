@@ -6,6 +6,8 @@ Newest first, following product release milestones. Some development/source snap
 
 ## Unreleased
 
+- Tag pushes now force Release APKs; branch/PR pushes default to Debug, manual builds can choose either, and CI rejects mismatched build-type receipts.
+
 - Added per-video subtitle/audio timing controls, reset actions and manual SRT/ASS/SSA/VTT subtitle selection with retained document permission.
 - Added editable, persistent playback queues with reordering, removal, automatic next playback, queue repeat and shuffle; automatic advance waits for the final presented frame.
 

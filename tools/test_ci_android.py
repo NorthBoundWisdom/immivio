@@ -13,24 +13,25 @@ import ci_android as ci
 
 
 class CiBoundaries(unittest.TestCase):
-    def check_build_mode(self, ai, receipt_ai=None):
+    def check_build_mode(self, ai, receipt_ai=None, build_type='Debug', receipt_type=None, environment=None, requested_type=None):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             def build(args, env, sdk, **kwargs):
                 artifacts = root/'artifacts';artifacts.mkdir(exist_ok=True)
                 mode = 'ai' if ai else 'noai'
-                data = dict(apk=f'Thru3D-QUEST-v1-{mode}-release-test.apk', sha256='fixture', vendor='Quest',
-                            ai_enabled=ai if receipt_ai is None else receipt_ai)
-                (artifacts/f'Thru3D-QUEST-v1-{mode}-release-test.build.json').write_text(json.dumps(data))
+                data = dict(apk=f'Thru3D-QUEST-v1-{mode}-{build_type.lower()}-test.apk', sha256='fixture', vendor='Quest',
+                            ai_enabled=ai if receipt_ai is None else receipt_ai, build_type=build_type if receipt_type is None else receipt_type)
+                (artifacts/f'Thru3D-QUEST-v1-{mode}-{build_type.lower()}-test.build.json').write_text(json.dumps(data))
             with patch.object(ci.player, 'ROOT', root), patch.object(ci.player, 'CACHE', root/'.cache'), \
                  patch.object(ci.player, 'LOGS', root/'logs'), \
                  patch.object(ci.player, 'build_lock', side_effect=contextlib.nullcontext), \
                  patch.object(ci.player, 'environment', return_value=({}, root/'sdk')), \
                  patch.object(ci.player, 'gradle_executable', return_value=root/'gradle'), \
                  patch.object(ci, 'check_export_path'), patch.object(ci.player, 'prepare_dependencies') as prepare, \
-                 patch.object(ci.player, 'build', side_effect=build), patch.dict(ci.os.environ, {}, clear=True):
-                ci.build('Quest', 'godot', root/'templates', ai=ai)
+                 patch.object(ci.player, 'build', side_effect=build), patch.dict(ci.os.environ, environment or {}, clear=True):
+                ci.build('Quest', 'godot', root/'templates', ai=ai, build_type=requested_type or build_type)
                 self.assertIs(prepare.call_args.args[1].ai, ai)
+                self.assertEqual(prepare.call_args.args[1].build_type, build_type)
                 summary = json.loads((root/'artifacts/ci-summary.json').read_text())
                 self.assertIs(summary[0]['ai_enabled'], ai)
 
@@ -43,6 +44,28 @@ class CiBoundaries(unittest.TestCase):
     def test_ai_job_rejects_a_mislabeled_model_free_receipt(self):
         with self.assertRaisesRegex(RuntimeError, 'AI mode differs'):
             self.check_build_mode(True, False)
+
+    def test_tag_ref_forces_release_even_when_debug_is_requested(self):
+        self.assertEqual(ci.build_type_for_ref('Debug', {'GITHUB_REF': 'refs/tags/v0.6.0-fork.1'}), 'Release')
+        self.check_build_mode(True, build_type='Release', environment={'GITHUB_REF': 'refs/tags/v0.6.0-fork.1'}, requested_type='Debug')
+        self.check_build_mode(False, build_type='Release', environment={'GITHUB_REF': 'refs/tags/v0.6.0-fork.1'})
+
+    def test_branch_and_pr_default_to_debug(self):
+        for ref in ('refs/heads/main', 'refs/pull/1/merge'):
+            self.assertEqual(ci.build_type_for_ref(environment={'GITHUB_REF': ref}), 'Debug')
+
+    def test_manual_release_and_invalid_build_type(self):
+        self.assertEqual(ci.build_type_for_ref('Release', {}), 'Release')
+        self.assertEqual(ci.build_type_for_ref(environment={'CI_BUILD_TYPE': 'Release'}), 'Release')
+        with self.assertRaisesRegex(ValueError, 'Debug or Release'):
+            ci.build_type_for_ref('Invalid', {})
+
+    def test_debug_jobs_do_not_decode_repository_signing_material(self):
+        self.check_build_mode(False, environment={'CI_ANDROID_KEY_ALIAS': 'unused-in-debug'})
+
+    def test_debug_receipt_cannot_pass_a_release_job(self):
+        with self.assertRaisesRegex(RuntimeError, 'receipt type differs'):
+            self.check_build_mode(False, build_type='Release', receipt_type='Debug')
 
     def test_templates_install_only_android_and_repair_a_corrupt_cache(self):
         with tempfile.TemporaryDirectory() as directory:
