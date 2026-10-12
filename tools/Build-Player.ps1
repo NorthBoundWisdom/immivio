@@ -42,7 +42,8 @@ $exportPreset = switch ($XrVendor) {
 if ($XrVendor -eq 'OpenXR') {
     Write-Output 'Experimental standard OpenXR target: device runtime, full controller input and passthrough require device validation.'
 }
-$applicationId = 'com.wapok.thru3d'
+$applicationId = if ($WithoutAI) { 'com.wapok.thru3d' } else { 'com.wapok.thru3d.ai' }
+$applicationLabel = if ($WithoutAI) { 'Thru3D No AI' } else { 'Thru3D AI' }
 function Convert-HexString([byte[]]$Bytes) { -join ($Bytes | ForEach-Object { $_.ToString('X2') }) }
 $workspace = Split-Path -Parent $PSScriptRoot
 # Gradle outputs, Godot's import cache and evidence paths belong to one checkout.
@@ -68,7 +69,19 @@ try {
 # library references to rewrite; old Jetifier must leave this pure Java jar alone.
 [Environment]::SetEnvironmentVariable('ORG_GRADLE_PROJECT_android.jetifier.ignorelist',
     (@($originalSigningEnvironment['ORG_GRADLE_PROJECT_android.jetifier.ignorelist'], 'bcprov-jdk18on') | Where-Object { $_ }) -join ',', 'Process')
-if ($BuildType -eq 'Release') {
+if (-not $WithoutAI) {
+    if ($BuildType -eq 'Release' -and $IncludeDiagnostics) { throw 'Distribution Release builds cannot include diagnostic models/media.' }
+    $pythonCommand = if ($env:THRU3D_PYTHON) { $env:THRU3D_PYTHON } elseif (Test-Path (Join-Path $workspace '.venv/Scripts/python.exe')) { Join-Path $workspace '.venv/Scripts/python.exe' } else { (Get-Command python -ErrorAction Stop).Source }
+    $signingFile = Join-Path $workspace ('.cache/signing-env/' + [guid]::NewGuid().ToString('N') + '.json')
+    try {
+        & $pythonCommand (Join-Path $workspace 'tools/build_player.py') --ai --build-type $BuildType --signing-env-file $signingFile
+        if ($LASTEXITCODE -ne 0) { throw 'AI signing identity preparation failed.' }
+        $signingValues = Get-Content -LiteralPath $signingFile -Raw | ConvertFrom-Json
+        foreach ($property in $signingValues.PSObject.Properties) {
+            [Environment]::SetEnvironmentVariable($property.Name, [string]$property.Value, 'Process')
+        }
+    } finally { if (Test-Path -LiteralPath $signingFile) { Remove-Item -LiteralPath $signingFile -Force } }
+} elseif ($BuildType -eq 'Release') {
     if ($IncludeDiagnostics) { throw 'Distribution Release builds cannot include diagnostic models/media.' }
     & "$PSScriptRoot\environment\Prepare-ReleaseSigning.ps1" -ToolRoot $ToolRoot
 } else {
@@ -76,11 +89,15 @@ if ($BuildType -eq 'Release') {
 }
 $projectDirectory = Join-Path $workspace 'app\godot'
 $appVersion = [regex]::Match((Get-Content (Join-Path $projectDirectory 'project.godot') -Raw), '(?m)^config/version="([^"]+)"').Groups[1].Value
+$originalExportPresets = [IO.File]::ReadAllBytes($exportPresetsPath)
+$variantPresets = [Text.Encoding]::UTF8.GetString($originalExportPresets)
+$variantPresets = [regex]::Replace($variantPresets, '(?m)^package/unique_name="[^"]*"', ('package/unique_name="' + $applicationId + '"'))
+$variantPresets = [regex]::Replace($variantPresets, '(?m)^package/name="[^"]*"', ('package/name="' + $applicationLabel + '"'))
 if ($IncludeDiagnostics) {
-    $originalExportPresets = [IO.File]::ReadAllBytes($exportPresetsPath)
-    $diagnosticPresets = [Text.Encoding]::UTF8.GetString($originalExportPresets).Replace('exclude_filter="tests/*,media/*"', 'exclude_filter="tests/*"').Replace('include_filter="i18n/*.json,', 'include_filter="media/*.mp4,i18n/*.json,')
-    [IO.File]::WriteAllText($exportPresetsPath, $diagnosticPresets, [Text.UTF8Encoding]::new($false))
+    $variantPresets = $variantPresets.Replace('exclude_filter="tests/*,media/*"', 'exclude_filter="tests/*"').Replace('include_filter="i18n/*.json,', 'include_filter="media/*.mp4,i18n/*.json,')
 }
+[IO.File]::WriteAllText($exportPresetsPath, $variantPresets, [Text.UTF8Encoding]::new($false))
+
 $artifactDirectory = Join-Path $workspace 'build/output'
 $logDirectory = Join-Path $artifactDirectory 'logs'
 New-Item -ItemType Directory -Path $logDirectory -Force | Out-Null

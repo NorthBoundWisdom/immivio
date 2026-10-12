@@ -171,13 +171,16 @@ var _covers := {}                  # DLNA cover URL -> HTTPRequest while it down
 func dismiss() -> void:
 	file_actions.reset()
 	choices.reset()
-	account_panel.close()
+	if account_panel.active(): account_panel.close()
+	_drag.clear(); _fling = 0.0
 	server_browser.cancel()
 	_cancel_cloud()
 	super()
 
 func _ready() -> void:
 	super()
+	allow_user_dismiss = false
+	curve_radius = 1.6
 	choices.changed.connect(func(key, value): setting_changed.emit(key, value))
 	choices.previewed.connect(func(key, value): setting_previewed.emit(key, value))
 	_side = Node3D.new()
@@ -193,6 +196,13 @@ func attach_platform(value: Object) -> void:
 		platform.connect("media_list", _on_media_list)
 	if platform and platform.has_signal("android_lifecycle") and not platform.is_connected("android_lifecycle", _on_android_lifecycle):
 		platform.connect("android_lifecycle", _on_android_lifecycle)
+	_cache_revision += 1
+	_cache_usage = null
+	_request_cache_usage()
+
+func capture_envelope() -> Rect2:
+	# Browsing and ordinary settings share a projection from the first frame.
+	return Rect2(-1.18, -0.82, 2.16, 1.44)
 
 func _on_android_lifecycle(state: String) -> void:
 	if state == "resume" and _local_grant_pending:
@@ -225,12 +235,18 @@ func _reset_navigation() -> void:
 func _plane_point(origin: Vector3, direction: Vector3) -> Variant:
 	if not origin.is_finite() or not direction.is_finite() or direction.length_squared() < 0.000001:
 		return null
+	if xr_surface and (xr_surface.native_supported or xr_surface.get("scene_curved") == true) and xr_surface.active_menu == self:
+		var mapped: Dictionary = xr_surface.map_ray(self, origin, direction)
+		return to_local(mapped.get("canvas_point", mapped.point)) if not mapped.is_empty() else null
 	var inverse := global_transform.affine_inverse()
 	var start := inverse * origin
 	var delta := inverse.basis * direction.normalized()
 	if delta.z >= -0.00001 or start.z <= 0.0:
 		return null
 	return start + delta * (-start.z / delta.z)
+
+func has_pointer_capture() -> bool:
+	return not _drag.is_empty() or not choices.capture.is_empty() or not account_panel.web_hand.is_empty()
 
 func _row_target(target: int) -> bool:
 	return target >= ROW_BASE and target < ROW_BASE + _drawn_slots()
@@ -352,6 +368,7 @@ func stick_scroll(y: float, delta: float) -> void:
 	_set_scroll(scroll - signf(y) * amount * _lines() * STICK_SPEED * delta)
 
 func _process(delta: float) -> void:
+	_poll_cache_usage()
 	if not file_actions.modal.is_empty(): return
 	if visible: account_panel.tick(delta)
 	if not visible or not _drag.is_empty() or not choices.capture.is_empty() or Time.get_ticks_msec() - _stick_ms < 120:
@@ -698,11 +715,10 @@ func _rebuild_rows() -> void:
 				rows.append(_choice_row("Save play history", "history", settings.get("history", true),
 					[{"value": true, "label": "On"}, {"value": false, "label": "Off"}]))
 				# Library thumbnails plus Android photo/depth/SBS files.
-				if _cache_usage == null:
-					_cache_usage = _read_cache_usage() # scan once, not on each redraw
-				var cache: Vector2i = _cache_usage
+				if _cache_usage == null: _request_cache_usage()
+				var cache: Vector2i = _cache_usage if _cache_usage != null else Vector2i.ZERO
 				var armed := _confirm == "clear_cache"
-				rows.append({"title": I18n.t("Clear cache"), "detail": _bytes(cache.y) if cache.x > 0 else "", "icon": "check" if armed else "trash",
+				rows.append({"title": I18n.t("Clear cache"), "detail": I18n.t("Loading…") if _cache_usage == null else (_bytes(cache.y) if cache.x > 0 else ""), "icon": "check" if armed else "trash",
 					"selected": armed, "clear_cache": true, "empty": cache.x == 0})
 			elif tab == DISPLAY_TAB:
 				var quality_choices: Array = [{"value": Quality.AUTO, "label": "Auto"}]
@@ -895,19 +911,50 @@ static func _size(entry: Dictionary) -> String:
 
 ## Cold Alpha profile awaiting its confirming second press.
 var _confirm := ""
-var _cache_usage: Variant = null   # thumbnail and photo files/bytes, read on opening settings
+var _cache_usage: Variant = null
+var _cache_thread: Thread
+var _cache_revision := 0
+var _cache_job_revision := 0
+var _cache_due_ms := 0
+var _cache_redraw_pending := false
 
-func _read_cache_usage() -> Vector2i:
+static func _scan_cache_usage(photo_usage_reader: Callable) -> Vector2i:
 	var usage := Thumbnails.usage() + preload("res://scripts/photo_preview_cache.gd").disk_usage()
-	if PlatformMethods.supports(platform, "photo_cache_usage"):
-		var photo_usage: Variant = JSON.parse_string(str(platform.photo_cache_usage()))
+	# The Android adapter only scans files; it does not access the Godot scene tree.
+	if photo_usage_reader.is_valid():
+		var photo_usage: Variant = JSON.parse_string(str(photo_usage_reader.call()))
 		if photo_usage is Dictionary:
 			usage += Vector2i(maxi(0, int(photo_usage.get("files", 0))), maxi(0, int(photo_usage.get("bytes", 0))))
 	return usage
 
+func _request_cache_usage() -> void:
+	if _cache_thread: return
+	var reader := Callable(platform, "photo_cache_usage") if PlatformMethods.supports(platform, "photo_cache_usage") else Callable()
+	_cache_job_revision = _cache_revision
+	_cache_thread = Thread.new()
+	if _cache_thread.start(_scan_cache_usage.bind(reader)) != OK:
+		_cache_thread = null
+		_cache_usage = Vector2i.ZERO
+
+func _poll_cache_usage() -> void:
+	if _cache_thread and not _cache_thread.is_alive():
+		var usage: Vector2i = _cache_thread.wait_to_finish()
+		_cache_thread = null
+		if _cache_job_revision == _cache_revision:
+			_cache_usage = usage; _cache_due_ms = Time.get_ticks_msec() + 10000
+			_cache_redraw_pending = true
+		else: _request_cache_usage()
+	if _cache_redraw_pending and visible and section == Section.SETTINGS and tab == GENERAL_TAB and not has_pointer_capture():
+		_cache_redraw_pending = false
+		refresh()
+
+func _exit_tree() -> void:
+	if _cache_thread: _cache_thread.wait_to_finish(); _cache_thread = null
+
 ## Video state changes arrive several times a second: redraw only when the Alpha profiles
 ## (current, compiling, cold) shown on the Alpha tab change.
 func _activate(target: int) -> void:
+	if target in [CLOSE, PLAYER]: return
 	if target == QUEUE_ADD_LIST: queue_requested.emit("queue_add_list"); return
 	if target == QUEUE_DONE: queue_requested.emit("queue_done"); return
 	if _activate_footer(target): return
@@ -940,13 +987,12 @@ func _activate(target: int) -> void:
 		scroll = 0.0
 		status = ""
 		_editor = {}
-		_cache_usage = null
+		if section == Section.SETTINGS and Time.get_ticks_msec() >= _cache_due_ms: _request_cache_usage()
 		_load_section()
 		refresh()
 	elif target >= TAB_BASE and target < TAB_BASE + SETTING_TABS.size():
 		tab = target - TAB_BASE
 		scroll = 0.0
-		_cache_usage = null
 		_load_section()
 		refresh()
 	elif target == BACK:
@@ -1076,6 +1122,7 @@ func _choose(row: Dictionary) -> void:
 		Thumbnails.clear()
 		preload("res://scripts/photo_preview_cache.gd").clear_disk()
 		if PlatformMethods.supports(platform, "clear_photo_cache"): platform.clear_photo_cache()
+		_cache_revision += 1
 		_cache_usage = null
 		refresh()
 	elif row.has("setting"):
@@ -1304,10 +1351,6 @@ func _draw() -> void:
 	for position in NAV_ORDER.size():
 		var i: int = NAV_ORDER[position]
 		_nav_button(NAV_BASE + i, I18n.t(NAV[i]), NAV_ICONS[i], Vector2(0, 0.39 - position * 0.13), i == section)
-	_round(RECENTER, "recenter", Vector2(0.01, -0.65), 0.08, true, false, I18n.t("Recenter"))
-	_round(PLAYER, "play", Vector2(0.13, -0.65), 0.08, true, false, I18n.t("Player"))
-	_round(CLOSE, "close", Vector2(0.25, -0.65), 0.08, true, false, I18n.t("Close"))
-	_place_device_status(Vector2(0.13, -0.735))
 	if account_panel.active():
 		account_panel.draw()
 		return

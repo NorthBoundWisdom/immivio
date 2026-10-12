@@ -154,21 +154,23 @@ def host_tests(godot):
         raise RuntimeError(f'Godot source tests failed: {failures}')
 
 
-def signing_env(environ):
+def signing_env(environ, *, ai=False):
     env = environ.copy()
-    names = ('CI_ANDROID_KEYSTORE_BASE64', 'CI_ANDROID_KEY_ALIAS', 'CI_ANDROID_KEY_PASSWORD')
-    values = [env.pop(name, '') for name in names]
+    transport = 'CI_ANDROID_AI_' if ai else 'CI_ANDROID_'
+    names = tuple(transport+key for key in ('KEYSTORE_BASE64', 'KEY_ALIAS', 'KEY_PASSWORD'))
+    values = [env.get(name, '') for name in names]
+    env = {key: value for key, value in env.items() if not key.startswith('CI_ANDROID_')}
     if not any(values):
         return env, 'ephemeral-ci-key'
     if not all(values):
         raise RuntimeError('Configure all three Android signing secrets, or none')
-    key = Path(env.get('RUNNER_TEMP', player.ROOT/'artifacts/signing'))/'thru3d-ci-release.keystore'
+    key = Path(env.get('RUNNER_TEMP', player.ROOT/'artifacts/signing'))/('thru3d-ai-ci-release.keystore' if ai else 'thru3d-ci-release.keystore')
     key.parent.mkdir(parents=True, exist_ok=True)
     key.write_bytes(base64.b64decode(values[0], validate=True))
     if os.name != 'nt':
         key.chmod(0o600)
-    env.update(GODOT_ANDROID_KEYSTORE_RELEASE_PATH=str(key), GODOT_ANDROID_KEYSTORE_RELEASE_USER=values[1],
-               GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD=values[2])
+    prefix = 'THRU3D_AI_KEYSTORE_RELEASE' if ai else 'GODOT_ANDROID_KEYSTORE_RELEASE'
+    env.update({prefix+'_PATH': str(key), prefix+'_USER': values[1], prefix+'_PASSWORD': values[2]})
     return env, 'repository-signing-key'
 
 
@@ -221,10 +223,10 @@ def build_type_for_ref(requested=None, environment=None):
 def build(vendor, godot, templates, *, ai=False, build_type=None):
     build_type = build_type_for_ref(build_type)
     if build_type == 'Release':
-        env, signing = signing_env(os.environ)
+        env, signing = signing_env(os.environ, ai=ai)
     else:
         env = {key: value for key, value in os.environ.items() if not key.startswith('CI_ANDROID_')}
-        signing = 'debug-keystore'
+        signing = 'local-variant-key'
     vendors = ['Pico', 'Quest', 'OpenXR'] if vendor == 'all' else [vendor]
     receipts = []
     args = argparse.Namespace(vendor=vendors[0], build_type=build_type, godot=godot, templates=Path(templates),

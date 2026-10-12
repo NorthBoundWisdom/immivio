@@ -15,9 +15,12 @@ const CLOSE_MENU := -1003
 const FOOTER_DIAMETER := 0.09
 const FOOTER_HIT_SIZE := 0.105
 const FOOTER_GAP := 0.025
-const STATUS_WIDTH := 0.30
+const STATUS_WIDTH := 0.36
 var max_ray_metres := MAX_RAY_METRES
 var xr_surface: Node
+var curve_radius := 0.0
+var allow_user_dismiss := true
+const TOOLTIP_MAX_WIDTH := 0.64
 var layout_revision := 0
 const SURFACE := preload("res://shaders/menu_surface.gdshader")
 const Icons := preload("res://scripts/menu_icons.gd")
@@ -115,7 +118,7 @@ func ray_hit(origin: Vector3, direction: Vector3) -> Dictionary:
 	if not visible or not origin.is_finite() or not direction.is_finite() or direction.length_squared() < 0.000001:
 		return {}
 	var mapped := {}
-	if xr_surface and xr_surface.native_supported and xr_surface.active_menu == self:
+	if xr_surface and (xr_surface.native_supported or xr_surface.get("scene_curved") == true) and xr_surface.active_menu == self:
 		mapped = xr_surface.map_ray(self, origin, direction)
 		if mapped.is_empty() or float(mapped.distance) > max_ray_metres: return {}
 		origin = mapped.origin; direction = mapped.direction
@@ -142,7 +145,8 @@ func ray_hit(origin: Vector3, direction: Vector3) -> Dictionary:
 			continue
 		best = {"target": button.target, "point": to_local(world), "distance": distance, "enabled": button.enabled}
 	if not best.is_empty() and not mapped.is_empty():
-		best.point = to_local(mapped.point)
+		best.point = to_local(mapped.get("canvas_point", mapped.point))
+		best["world_point"] = mapped.point
 		best.distance = mapped.distance
 	return best
 
@@ -156,7 +160,7 @@ func update_pointer(hand: String, origin: Vector3, direction: Vector3, tracked: 
 	pointer.line.visible = valid
 	pointer.dot.visible = not hit.is_empty()
 	if valid:
-		var endpoint: Vector3 = to_global(hit.point) if not hit.is_empty() else origin + direction.normalized() * max_ray_metres
+		var endpoint: Vector3 = hit.get("world_point", to_global(hit.point)) if not hit.is_empty() else origin + direction.normalized() * max_ray_metres
 		var mesh: ImmediateMesh = pointer.line.mesh
 		mesh.clear_surfaces()
 		mesh.surface_begin(Mesh.PRIMITIVE_LINES)
@@ -186,7 +190,7 @@ func _activate_hit(hit: Dictionary) -> void:
 
 func _activate_footer(target: int) -> bool:
 	if target == CLOSE_MENU:
-		dismiss()
+		if allow_user_dismiss: dismiss()
 		return true
 	if target not in [FOLLOW, TEMP_PASSTHROUGH]: return false
 	var state := _session_controls()
@@ -280,14 +284,12 @@ func refresh_session_controls(force: bool = false) -> void:
 			_buttons[index].node.free()
 			_buttons.remove_at(index)
 	var show_passthrough: bool = state.get("passthrough_visible", false)
-	var count := 3 if show_passthrough else 2
+	var count := 2 if show_passthrough else 1
 	var span := count * FOOTER_DIAMETER + (count - 1) * FOOTER_GAP
 	var width := span + FOOTER_GAP + STATUS_WIDTH
 	var left := _footer_centre.x - width * 0.5
 	device_status.position = Vector3(left + span + FOOTER_GAP + STATUS_WIDTH * 0.5, _footer_centre.y, 0.002)
-	_footer_button(CLOSE_MENU, "close", Vector2(left + FOOTER_DIAMETER * 0.5, _footer_centre.y),
-		false, true, I18n.t("Close menu"))
-	_footer_button(FOLLOW, "head_follow", Vector2(left + FOOTER_DIAMETER * 1.5 + FOOTER_GAP, _footer_centre.y),
+	_footer_button(FOLLOW, "head_follow", Vector2(left + FOOTER_DIAMETER * 0.5, _footer_centre.y),
 		state.get("follow", false), true, I18n.t("Disable follow" if state.get("follow", false) else "Enable follow"))
 	if show_passthrough:
 		var alpha: bool = state.get("alpha", false)
@@ -413,18 +415,38 @@ func _update_tooltip() -> void:
 		return
 	if not _tooltip:
 		_tooltip = _quad(Vector2(0.2, 0.05), Vector3.ZERO, Color(0.02, 0.025, 0.03, 0.92), 16)
+		_tooltip.set_meta("xr_ui_transient_bounds", true)
 		add_child(_tooltip)
 		var text := _label("", Vector3(0, 0, 0.002), 17, _tooltip)
 		text.render_priority = 17
 	var label: Label3D = _tooltip.get_child(0)
-	label.text = str(_tips[shown.target])
+	label.text = _fit_title(str(_tips[shown.target]), "", TOOLTIP_MAX_WIDTH - 0.04, 17)
 	var width := FONT.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 17).x * 0.0012 + 0.04
 	var size := Vector2(width, 0.046)
 	_tooltip.mesh.size = size
 	_tooltip.material_override.set_shader_parameter("surface_size", size)
 	var rect: Rect2 = shown.rect
-	_tooltip.position = Vector3(rect.get_center().x, rect.position.y - 0.04 if shown.get("tip_below", false) else rect.end.y + 0.04, 0.012)
+	var x := rect.get_center().x
+	var envelope := capture_envelope()
+	if envelope.has_area(): x = clampf(x, envelope.position.x + width / 2, envelope.end.x - width / 2)
+	_tooltip.position = Vector3(x, rect.position.y - 0.04 if shown.get("tip_below", false) else rect.end.y + 0.04, 0.012)
 	_tooltip.visible = true
+
+## Reserve hover text before it becomes visible. Hover must not resize/recentre
+## the capture or its cylinder, which can move the target out from under the ray.
+func tooltip_envelope() -> Rect2:
+	var reserved := capture_envelope()
+	if reserved.has_area():
+		# Reserve the same footer-tip margin for every page in the family.
+		return Rect2(reserved.position - Vector2(0, 0.12), reserved.size + Vector2(0, 0.24))
+	var bounds := Rect2()
+	for button in _buttons:
+		if not _tips.has(button.target): continue
+		var rect: Rect2 = button.rect
+		var y := rect.position.y - 0.04 if button.get("tip_below", false) else rect.end.y + 0.04
+		var region := Rect2(Vector2(rect.get_center().x - TOOLTIP_MAX_WIDTH / 2, y - 0.023), Vector2(TOOLTIP_MAX_WIDTH, 0.046))
+		bounds = bounds.merge(region) if bounds.has_area() else region
+	return bounds
 
 func _fit_title(title: String, suffix: String, width: float = 1.32, font_size: int = 26) -> String:
 	var fits := func(text: String) -> bool:

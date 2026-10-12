@@ -134,5 +134,55 @@ class DependencyBoundaries(unittest.TestCase):
             network.assert_not_called()
 
 
+class VariantIdentityBoundaries(unittest.TestCase):
+    def test_package_and_label_are_separate_and_presets_restore_after_failure(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(builder, 'PROJECT', Path(directory)):
+            path = Path(directory)/'export_presets.cfg'
+            original = b'\r\n'.join([b'package/unique_name="com.wapok.thru3d"\r\npackage/name="Original"']*3)
+            path.write_bytes(original)
+            with self.assertRaisesRegex(RuntimeError, 'simulated'):
+                with builder.variant_export_presets(True) as identity:
+                    self.assertEqual(identity['application_id'], 'com.wapok.thru3d.ai')
+                    self.assertEqual(path.read_text().count('package/name="Thru3D AI"'), 3)
+                    raise RuntimeError('simulated export failure')
+            self.assertEqual(path.read_bytes(), original)
+            with builder.variant_export_presets(False) as identity:
+                self.assertEqual(identity['application_id'], 'com.wapok.thru3d')
+                self.assertNotEqual(identity, builder.android_identity(True))
+            self.assertEqual(path.read_bytes(), original)
+
+    def test_ai_keys_do_not_inherit_the_base_key_and_are_reused(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(builder, 'ROOT', Path(directory)):
+            def generate(command, **kwargs):
+                target = Path(command[command.index('-keystore')+1])
+                target.write_bytes(b'fixture private key')
+            env = {'JAVA_HOME': directory, 'GODOT_ANDROID_KEYSTORE_RELEASE_PATH': 'base.key',
+                   'GODOT_ANDROID_KEYSTORE_RELEASE_USER': 'base', 'GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD': 'base-password'}
+            with patch.object(builder, 'run', side_effect=generate) as run:
+                base = builder.signing_environment(env)
+                ai = builder.signing_environment(env, ai=True)
+                repeated = builder.signing_environment(env, ai=True)
+                debug = builder.signing_environment(env, ai=True, build_type='Debug')
+                self.assertEqual(run.call_count, 1)
+            self.assertEqual(base['GODOT_ANDROID_KEYSTORE_RELEASE_PATH'], 'base.key')
+            self.assertNotEqual(ai['GODOT_ANDROID_KEYSTORE_RELEASE_PATH'], 'base.key')
+            self.assertEqual(ai['GODOT_ANDROID_KEYSTORE_RELEASE_PATH'], repeated['GODOT_ANDROID_KEYSTORE_RELEASE_PATH'])
+            self.assertEqual(ai['GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD'], repeated['GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD'])
+            self.assertEqual(ai['GODOT_ANDROID_KEYSTORE_RELEASE_PATH'], debug['GODOT_ANDROID_KEYSTORE_DEBUG_PATH'])
+            self.assertEqual(env['GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD'], 'base-password')
+
+    def test_partial_ai_key_override_is_rejected(self):
+        with self.assertRaisesRegex(RuntimeError, 'all THRU3D_AI'):
+            builder.signing_environment({'THRU3D_AI_KEYSTORE_RELEASE_USER': 'only-alias'}, ai=True)
+
+    def test_missing_saved_ai_key_cannot_silently_create_a_new_identity(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(builder, 'ROOT', Path(directory)), patch.object(builder, 'run') as run:
+            root = Path(directory); signing = root/'artifacts/signing'; signing.mkdir(parents=True)
+            (signing/'thru3d-ai-signing.json').write_text(json.dumps({'keystore': str(signing/'missing.key'), 'alias':'ai','password':'fixture'}))
+            with self.assertRaisesRegex(RuntimeError, 'Saved signing key is missing'):
+                builder.signing_environment({}, ai=True)
+            run.assert_not_called()
+
+
 if __name__ == '__main__':
     unittest.main()

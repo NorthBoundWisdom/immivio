@@ -194,7 +194,7 @@ func _run() -> void:
 	menu.toggle()
 	check(not click(menu, 102) and not click(menu, 104) and not click(menu, 112) and host.calls.is_empty(), "No-video play and both effects disabled, no native side effect")
 	check(click(menu, 100) and recent.visible and not menu.visible, "Pointer recent button opens one menu")
-	check(click(recent, Recent.PLAYER) and menu.visible and not recent.visible, "Pointer Player returns from recent menu")
+	check(click(recent, Recent.PLAYER) and menu.visible and not recent.visible, "Legacy recent fixture returns to controls; production library has no player shortcut")
 	check(click(menu, 100) and not menu.visible and recent.visible, "Pointer open video shows the in-headset library")
 	recent.dismiss()
 	video.open_local("file:///menu.mp4", "测试电影 😀", 0, false)
@@ -523,7 +523,7 @@ func _run() -> void:
 	video.set_projection(0)
 	main._show_player_menu()
 	check(click(menu, 107) and video.media.state == "closed" and host.calls.back() == ["close", 7], "Close video uses production close/cancel sequence")
-	check(not click(menu, 102), "Play disabled after close even if URI retained for recovery")
+	check(video.local_uri.is_empty() and recent.visible and not menu.visible and not click(menu, 102), "Close clears media identity and returns to the library without the timeline")
 	video.load_mode_lock({"geometry": 1, "layout": 1, "depth": false, "fisheye_fov": 180})
 	video.open_local("file:///lock/plain.mp4", "plain.mp4")
 	check(video.geometry == 1 and video.stereo_sbs and not video.top_bottom and video._layout_pending == null, "Locked mode opens an unnamed new file")
@@ -550,6 +550,7 @@ func _run() -> void:
 	video.open_local("file:///menu.mp4", "测试电影 😀")
 	menu.section = 0
 	main.video_queue = [{"uri": "file:///menu.mp4", "title": "测试电影 😀"}, {"uri": "file:///next.mp4", "title": "Next"}]
+	main._show_player_menu()
 	menu.refresh()
 	check(not click(menu, 101), "First video disables previous")
 	check(click(menu, 103) and video.local_uri == "file:///next.mp4" and host.calls.any(func(c): return c[0] == "open" and c[1] == "file:///next.mp4"), "Pointer next opens the next video through the production backend")

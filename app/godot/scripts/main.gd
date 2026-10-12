@@ -78,6 +78,12 @@ var stick_controls := StickControls.new()
 var recent_menu: Node3D
 var player_menu: Node3D
 var menu_compositor: Node3D
+const LIBRARY_DISTANCE_LIMITS := Vector2(0.8, 3.0)
+var library_distance := 1.4
+var _library_grab := {}
+var _menu_resume_pending := false
+var _resume_tracked_frames := 0
+var _last_input_session := ""
 var settings := ConfigFile.new()
 var settings_path := SETTINGS_PATH
 var background: Node
@@ -140,6 +146,8 @@ func _ready() -> void:
 	display.status_changed.connect(_update_status)
 	display.status_changed.connect(_on_input_session_changed)
 	settings.load(settings_path)
+	var saved_library_distance := float(settings.get_value("ui", "library_distance", 1.4))
+	library_distance = clampf(saved_library_distance, LIBRARY_DISTANCE_LIMITS.x, LIBRARY_DISTANCE_LIMITS.y) if is_finite(saved_library_distance) else 1.4
 	var saved_queue: Variant = settings.get_value("playback", "queue", [])
 	if saved_queue is Array: playback_queue.replace(saved_queue)
 	playback_queue.custom = bool(settings.get_value("playback", "custom_queue", false))
@@ -369,7 +377,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			if OS.get_name() == "Android":
 				return
 			if event.keycode == KEY_ESCAPE:
-				menu.dismiss()
+				if menu.get("allow_user_dismiss") != false: menu.dismiss()
 			elif menu == recent_menu:
 				match event.keycode:
 					KEY_UP: recent_menu.move_focus(-1)
@@ -432,13 +440,19 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				_request_controlled_probe()
 
 # Menus are ray + trigger only. A list row clicks on release unless the ray dragged to scroll.
-# Controller grip moves the picture; trigger taps toggle controls or select UI.
+# Controller grip drags placement; grip plus the same hand's stick adjusts distance.
 # Optical-hand pinches retain their existing content gestures.
 func _on_controller_release(action: String, hand: String = "") -> void:
 	if not _controller_allowed(hand): return
 	_on_pointer_release(action, hand)
 
 func _on_pointer_release(action: String, hand: String) -> void:
+	if action == "grip_click" and _library_grab.get("hand", "") == hand:
+		if _library_grab.get("moved", false):
+			settings.set_value("ui", "library_distance", library_distance)
+			settings.save(settings_path)
+		_library_grab.clear()
+		return
 	if action == "trigger_click" and _inspect_blocked.has(hand):
 		_inspect_blocked.erase(hand)
 		return
@@ -495,13 +509,16 @@ func _on_pointer_button(action: String, hand: String) -> void:
 		return
 	var menu := _active_menu()
 	if action == "grip_click":
+		if menu == recent_menu and menu is LibraryMenu:
+			_begin_library_grab(hand)
+			return
 		if not _viewer().local_uri.is_empty() and _ray(hand) != null \
 			and (menu == null or (menu == player_menu and not menu.has_pointer_capture())):
 			_trigger_taps.clear()
 			if menu == player_menu: menu.dismiss()
 			_begin_grab(hand, "grip_click")
 		return
-	if action == "trigger_click" and _grab.get("action", "") == "grip_click": return
+	if action == "trigger_click" and (not _library_grab.is_empty() or _grab.get("action", "") == "grip_click"): return
 	if menu:
 		match action:
 			"trigger_click":
@@ -511,7 +528,8 @@ func _on_pointer_button(action: String, hand: String) -> void:
 					# A slider owned by the other hand rejects this press; it is not a screen drag.
 					if ray != null and menu.ray_hit(ray[0], ray[1]).is_empty():
 						_begin_picture_press(hand)
-			"by_button": menu.dismiss()
+			"by_button":
+				if menu.get("allow_user_dismiss") != false: menu.dismiss()
 		return
 	if photo_active:
 		match action:
@@ -570,6 +588,7 @@ func _process(delta: float) -> void:
 	if not _head_placed and _head_tracked():
 		_head_placed = true
 		if not view_follow.enabled: _recenter()
+	_restore_menu_after_resume()
 	if video and _viewer().local_uri != _screen_uri:
 		_screen_uri = _viewer().local_uri
 		if not _screen_uri.is_empty():
@@ -577,6 +596,7 @@ func _process(delta: float) -> void:
 			if photo_active: photo.placement_pending = false
 	_update_photo_inspect()
 	_update_grab()
+	_update_library_grab()
 	if photo_active and not _active_menu() and not photo.inspect:
 		for hand in ["left_hand", "right_hand"]:
 			var ray: Variant = _ray(hand)
@@ -593,6 +613,13 @@ func _process(delta: float) -> void:
 	_process_sticks(left, right, delta)
 
 func _process_sticks(left: Vector2, right: Vector2, delta: float) -> void:
+	if not _library_grab.is_empty():
+		_update_library_grab_stick(left, right, delta)
+		_update_menu_pointer("left_hand")
+		_update_menu_pointer("right_hand")
+		stick_controls.suspend(); return
+	if _grab.get("action", "") == "grip_click":
+		stick_controls.suspend(); return
 	if photo_active and photo.gallery.has_capture():
 		stick_controls.suspend(); return
 	if photo_active and photo.inspect:
@@ -780,6 +807,7 @@ func _dispatch_hand_input(inputs: Dictionary, _delta: float = 1.0 / 72.0) -> voi
 		if inputs[hand].get("released", false): _on_pointer_release("trigger_click", hand)
 
 func _cancel_pointer(hand: String) -> void:
+	if _library_grab.get("hand", "") == hand: _library_grab.clear()
 	if photo: photo.gallery.cancel_pointer(hand)
 	_inspect_blocked.erase(hand)
 	_trigger_taps.erase(hand)
@@ -792,6 +820,10 @@ func _cancel_pointer(hand: String) -> void:
 		if is_instance_valid(menu) and menu.has_method("cancel_pointer"): menu.cancel_pointer(hand)
 
 func _on_input_session_changed() -> void:
+	var state := display.session_state
+	if _last_input_session == "session_focussed" and state != "session_focussed":
+		_menu_resume_pending = true; _resume_tracked_frames = 0
+	_last_input_session = state
 	if _input_focused(): return
 	_trigger_taps.clear()
 	photo_hands.cancel()
@@ -800,6 +832,22 @@ func _on_input_session_changed() -> void:
 		hand_pointers[hand].update({}, 0)
 		_cancel_pointer(hand)
 		if hand_marks.has(hand): hand_marks[hand].visible = false
+
+func _restore_menu_after_resume() -> void:
+	if not _menu_resume_pending: return
+	if not _input_focused() or _head_pose() == null:
+		_resume_tracked_frames = 0
+		return
+	# The first resumed focus event may still precede the new tracked camera pose.
+	_resume_tracked_frames += 1
+	if _resume_tracked_frames < 3: return
+	_menu_resume_pending = false; _resume_tracked_frames = 0
+	if not recent_menu: return
+	if recent_menu.visible:
+		_place_menu(recent_menu)
+	elif _viewer().local_uri.is_empty():
+		_show_recent_menu(true)
+	Log.record("library_resume_recentered", {"library_visible": recent_menu.visible})
 
 func _hand_input_report() -> Dictionary:
 	var report := {}
@@ -825,12 +873,75 @@ const GRAB_START := 0.035   # radians the ray turns before a grip/pinch becomes 
 const MOUSE_TURN := 0.004   # radians per pixel in the desktop preview
 const ZOOM_SPEED := 0.6     # sphere radii per second at full deflection
 const PUSH_SPEED := 1.5     # metres per second the held flat screen moves at full deflection
-const SCALE_SPEED := 0.8    # exponential size change per second; up enlarges, down shrinks
 const STICK_DEADZONE := 0.2
 ## Grip (or optical pinch) held outside menus: action, hand, ray angles, moved; a press on a
 ## flat screen corner adds resize = {corner, start_length, start_scale}.
 var _grab := {}
 var _trigger_taps := {}
+
+func _begin_library_grab(hand: String) -> void:
+	if not _library_grab.is_empty() or recent_menu.has_pointer_capture(): return
+	var ray: Variant = _ray(hand)
+	if ray == null: return
+	var point: Variant = recent_menu._plane_point(ray[0], ray[1])
+	if point == null or not Rect2(-1.1, -0.85, 2.05, 1.5).has_point(Vector2(point.x, point.y)): return
+	var offset: Vector3 = recent_menu.global_position - _eye()
+	if offset.length() < .1: return
+	_trigger_taps.clear()
+	stick_controls.suspend()
+	recent_menu._fling = 0.0
+	var ray_length: float = ray[0].distance_to(recent_menu.to_global(point))
+	var direction: Vector3 = (ray[0] + ray[1] * ray_length - _eye()).normalized()
+	_library_grab = {"hand": hand, "ray_length": ray_length, "start_direction": direction,
+		"last_direction": direction, "dragged": false, "moved": false}
+
+func _update_library_grab() -> void:
+	if _library_grab.is_empty(): return
+	var ray: Variant = _ray(_library_grab.hand)
+	if ray == null or not recent_menu.visible:
+		_library_grab.clear(); return
+	recent_menu._stick_ms = Time.get_ticks_msec()
+	var direction: Vector3 = (ray[0] + ray[1] * float(_library_grab.ray_length) - _eye()).normalized()
+	var head: Variant = _head_pose()
+	var frame: Basis = _menu_head_pose(head).basis if head != null and (view_follow.enabled or reclining_mode) else Basis.IDENTITY
+	var angles := _ray_angles(frame.inverse() * direction)
+	if not _library_grab.dragged:
+		var turned := angles - _ray_angles(frame.inverse() * _library_grab.start_direction)
+		turned.x = wrapf(turned.x, -PI, PI)
+		if not reclining_mode: turned.y = 0.0
+		if turned.length() < GRAB_START: return
+		_library_grab.dragged = true
+	var previous := _ray_angles(frame.inverse() * _library_grab.last_direction)
+	_library_grab.last_direction = direction
+	_library_grab.moved = true
+	var pose := Transform3D(frame, _eye()).affine_inverse() * recent_menu.global_transform
+	var offset := pose.origin
+	var placement := _ray_angles(offset) + Vector2(wrapf(angles.x - previous.x, -PI, PI), angles.y - previous.y if reclining_mode else 0.0)
+	if reclining_mode:
+		var target := (Basis(Vector3.UP, placement.x) * Basis(Vector3.RIGHT, clampf(placement.y, -1.5, 1.5))) * Vector3.FORWARD
+		pose.basis = Basis(Quaternion(offset.normalized(), target)) * pose.basis
+		pose.origin = target * offset.length()
+	else:
+		pose.basis = Basis(Vector3.UP, placement.x)
+		pose.origin = pose.basis * Vector3(0, 0, -Vector2(offset.x, offset.z).length()) + Vector3.UP * offset.y
+	recent_menu.global_transform = Transform3D(frame, _eye()) * pose
+	_on_menu_placement_changed(recent_menu)
+
+func _update_library_grab_stick(left: Vector2, right: Vector2, delta: float) -> void:
+	if _library_grab.is_empty() or not recent_menu.visible or _ray(_library_grab.hand) == null: return
+	var held := left if _library_grab.hand == "left_hand" else right
+	if not is_finite(held.y) or absf(held.y) <= STICK_DEADZONE: return
+	var amount := signf(held.y) * (absf(held.y) - STICK_DEADZONE) / (1.0 - STICK_DEADZONE) * delta * PUSH_SPEED
+	var distance := clampf(library_distance + amount, LIBRARY_DISTANCE_LIMITS.x, LIBRARY_DISTANCE_LIMITS.y)
+	var offset := recent_menu.global_position - _eye()
+	if reclining_mode:
+		recent_menu.global_position = _eye() + offset.normalized() * distance
+	else:
+		var horizontal := Vector3(offset.x, 0, offset.z).normalized()
+		recent_menu.global_position = _eye() + horizontal * distance + Vector3.UP * offset.y
+	library_distance = distance
+	_library_grab.moved = true
+	_on_menu_placement_changed(recent_menu)
 
 func _begin_picture_press(hand: String) -> void:
 	if _ray(hand) == null: return
@@ -840,16 +951,18 @@ func _begin_picture_press(hand: String) -> void:
 		_trigger_taps[hand] = {"uri": _viewer().local_uri, "photo": photo_active}
 
 func _update_flat_grab_stick(left: Vector2, right: Vector2, delta: float) -> void:
-	if _active_menu() or _grab.is_empty() or _grab.has("resize") or _grab.has("inspect") or _viewer().geometry != Geometry.Geometry.FLAT:
+	if _active_menu() or _grab.is_empty() or _grab.has("resize") or _grab.has("inspect") or _grab.get("tap_only", false):
 		return
 	var held := left if _grab.hand == "left_hand" else right
 	if not is_finite(held.y) or absf(held.y) <= STICK_DEADZONE: return
 	var amount := signf(held.y) * (absf(held.y) - STICK_DEADZONE) / (1.0 - STICK_DEADZONE) * delta
 	_grab.moved = true
-	if photo_active:
+	if _viewer().geometry != Geometry.Geometry.FLAT:
+		_viewer().zoom_view(-amount * ZOOM_SPEED)
+	elif _grab.get("action", "") == "grip_click" or photo_active:
 		_push_screen(amount * PUSH_SPEED)
 	else:
-		video.set_screen_scale(video.screen_scale * exp(amount * SCALE_SPEED))
+		video.set_screen_scale(video.screen_scale * exp(amount * 0.8))
 
 func _eye() -> Vector3:
 	if is_instance_valid(_viewer().view_camera) and _viewer().view_camera.is_inside_tree():
@@ -892,6 +1005,11 @@ func _begin_grab(hand: String, action: String = "grip_click") -> void:
 	var angles := _ray_angles(ray[1])
 	_grab = {"hand": hand, "action": action, "start": angles, "last": angles, "moved": false,
 		"start_direction": ray[1], "last_direction": ray[1]}
+	if action == "grip_click":
+		_grab.ray_length = maxf(.25, ray[0].distance_to(_viewer().panel.global_position)) if _viewer().geometry == Geometry.Geometry.FLAT else 2.0
+		var direction: Vector3 = (ray[0] + ray[1] * float(_grab.ray_length) - _eye()).normalized()
+		_grab.start = _ray_angles(direction); _grab.last = _grab.start
+		_grab.start_direction = direction; _grab.last_direction = direction
 	if _is_photo_hand(hand) or (photo_active and photo.gallery.overview()):
 		_grab["tap_only"] = true
 		return
@@ -922,11 +1040,14 @@ func _update_grab() -> void:
 	if _grab.has("inspect"):
 		photo.inspect_ray(ray[0], ray[1], true)
 		return
-	var angles := _ray_angles(ray[1])
+	var direction: Vector3 = ray[1]
+	if _grab.has("ray_length"):
+		direction = (ray[0] + ray[1] * float(_grab.ray_length) - _eye()).normalized()
+	var angles := _ray_angles(direction)
 	var head: Variant = _head_pose()
 	var local_drag: bool = view_follow.enabled and _flat_followable(_viewer()) and head != null
 	if local_drag:
-		angles = _ray_angles(head.basis.inverse() * ray[1])
+		angles = _ray_angles(head.basis.inverse() * direction)
 	if not _grab.moved:
 		var start_angles: Vector2 = _ray_angles(head.basis.inverse() * _grab.start_direction) if local_drag else _grab.start
 		var turned: Vector2 = angles - start_angles
@@ -943,7 +1064,7 @@ func _update_grab() -> void:
 	var last_angles: Vector2 = _ray_angles(head.basis.inverse() * _grab.last_direction) if local_drag else _grab.last
 	var step: Vector2 = angles - last_angles
 	_grab.last = angles
-	_grab.last_direction = ray[1]
+	_grab.last_direction = direction
 	_turn_picture(wrapf(step.x, -PI, PI), step.y)
 
 ## Yaw (positive left) and pitch (positive up) of a direction.
@@ -1458,7 +1579,8 @@ func _place_menu(menu: Node3D) -> void:
 		player_menu.lift_panels = true
 		player_menu.panel_lift = 0.45
 		player_menu.max_ray_metres = player_menu.MAX_RAY_METRES
-	var pose: Variant = _view_pose(1.4, drop)
+	var distance := library_distance if menu == recent_menu else 1.4
+	var pose: Variant = _view_pose(distance, drop)
 	if pose == null:
 		menu.transform = Transform3D(Basis.from_scale(ui_scale), Vector3(0, 1.6 - drop, -1.55))
 	else:
@@ -1488,6 +1610,7 @@ func _update_player_menu_anchor() -> void:
 			_player_menu_anchor_eye = eye
 
 func _toggle_player_menu() -> void:
+	if recent_menu and recent_menu.visible and recent_menu.get("allow_user_dismiss") == false: return
 	_trigger_taps.clear()
 	if photo_active and photo.inspect:
 		_close_photo_inspect()
@@ -1498,6 +1621,7 @@ func _toggle_player_menu() -> void:
 		_show_player_menu()
 
 func _show_player_menu() -> void:
+	_library_grab.clear()
 	_queue_add_mode = false
 	if recent_menu is LibraryMenu: recent_menu.queue_add_mode = false
 	memory_swipe.cancel()
@@ -1510,7 +1634,7 @@ func _show_player_menu() -> void:
 		_menu_touched_ms = Time.get_ticks_msec()
 		player_menu.toggle()
 
-func _show_recent_menu() -> void:
+func _show_recent_menu(preserve_navigation: bool = false) -> void:
 	memory_swipe.cancel()
 	if photo: photo.gallery.cancel_all()
 	_trigger_taps.clear()
@@ -1519,7 +1643,10 @@ func _show_recent_menu() -> void:
 		player_menu.dismiss()
 	if recent_menu and not recent_menu.visible:
 		_place_menu(recent_menu)
-		recent_menu.toggle()
+		if preserve_navigation:
+			recent_menu.visible = true
+			recent_menu.refresh()
+		else: recent_menu.toggle()
 
 func _canvas_controls_snapshot() -> Dictionary:
 	var viewer := _viewer()
@@ -1681,7 +1808,10 @@ func _on_menu_action(operation: String) -> void:
 		"previous_video": _navigate_video(-1)
 		"next_video": _navigate_video(1)
 		"loop": video.toggle_loop()
-		"stop": video.close_video()
+		"stop":
+			_grab.clear(); _trigger_taps.clear(); stick_controls.suspend()
+			video.close_video()
+			_show_recent_menu(true)
 		"stereo": video.toggle_stereo()
 		"eyes": video.toggle_eye_order()
 		"projection": video.cycle_projection()
@@ -2046,6 +2176,7 @@ func _on_session_control(operation: String) -> void:
 	elif operation == "follow":
 		_update_view_follow()
 		view_follow.set_enabled(not view_follow.enabled)
+		_library_grab.clear()
 		_grab.clear()
 		photo_hands.cancel(); photo_swipe.cancel(); memory_swipe.cancel(); stick_controls.suspend()
 		var head: Variant = _head_pose()
@@ -2077,6 +2208,7 @@ func _on_custom_background_saved(path: String, title: String, orientation: int) 
 	if background.choice == "custom" and photo_active: photo.close_image()
 
 func _recenter() -> void:
+	_library_grab.clear()
 	_grab.clear()
 	photo_hands.cancel()
 	photo_swipe.cancel(); memory_swipe.cancel()
@@ -2304,5 +2436,7 @@ func _finish_app(restart: bool) -> void:
 		get_tree().quit()
 
 func _notification(what: int) -> void:
+	if what in [NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_APPLICATION_RESUMED]:
+		_menu_resume_pending = true; _resume_tracked_frames = 0
 	if what == NOTIFICATION_APPLICATION_PAUSED and photo and _gallery_save_after > 0:
 		_save_photo_adjustments()

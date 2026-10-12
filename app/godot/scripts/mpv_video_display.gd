@@ -579,6 +579,11 @@ func close_video() -> void:
 	_audio_pending = false
 	control.close()
 	_remember_file = false
+	local_uri = ""
+	display_name = ""
+	alpha_requested = false
+	depth_requested = false
+	set_corner_hover(-1)
 	subtitles.clear(true)
 	bitmap_subtitles.clear(material)
 	if _subtitle_surface: _subtitle_surface.visible = false

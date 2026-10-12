@@ -357,7 +357,6 @@ func draw_web() -> void:
 	menu._label(provider_name(provider), Vector3(-0.05, 0.75, 0.009), 24)
 	menu._button(BASE + 24, "", Vector2(0.51, 0.75), Vector2(0.1, 0.08), true, "minus")
 	menu._button(BASE + 23, "", Vector2(0.66, 0.75), Vector2(0.1, 0.08), true, "plus")
-	menu._button(menu.CLOSE, "", Vector2(0.85, 0.75), Vector2(0.1, 0.08), true, "close")
 	var rect := web_rect()
 	menu._button(WEB, "", rect.get_center(), rect.size)
 	web_node = texture_node(web_texture, rect.get_center(), rect.size)

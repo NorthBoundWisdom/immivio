@@ -27,6 +27,12 @@ func check(value: bool, message: String) -> void:
 		failures.append(message)
 		push_error(message)
 
+func wait_for_cache(menu: Node3D) -> void:
+	var deadline := Time.get_ticks_msec() + 5000
+	while (menu._cache_usage == null or menu._cache_thread != null) and Time.get_ticks_msec() < deadline:
+		await process_frame
+		menu._poll_cache_usage()
+
 func _initialize() -> void:
 	_run.call_deferred()
 
@@ -76,21 +82,25 @@ func _run() -> void:
 	menu.section = Menu.Section.SETTINGS
 	menu.tab = menu.GENERAL_TAB
 	menu.refresh()
+	await wait_for_cache(menu)
 	var index := menu.rows.find_custom(func(r): return r.has("clear_cache"))
 	check(index >= 0 and str(menu.rows[index].detail) != "", "Clear cache row shows the size")
 	menu._choose(menu.rows[index])
 	check(Thumbnails.has("file:///v.mp4") and menu._confirm == "clear_cache", "First press only arms")
 	menu._choose(menu.rows[menu.rows.find_custom(func(r): return r.has("clear_cache"))])
 	check(not Thumbnails.has("file:///v.mp4") and Thumbnails.usage().x == 0, "Second press clears the cache")
+	await wait_for_cache(menu)
 	var photo_host := PhotoCacheHost.new()
-	menu.platform = photo_host
+	menu.attach_platform(photo_host)
 	menu._cache_usage = null
 	menu.refresh()
+	await wait_for_cache(menu)
 	var photo_row: Dictionary = menu.rows[menu.rows.find_custom(func(r): return r.has("clear_cache"))]
 	check(not photo_row.empty and menu._cache_usage == Vector2i(3, 12582912), "Photo-only cache is counted and can be cleared without thumbnails")
 	menu._choose(photo_row)
 	check(photo_host.clears == 0, "First press does not delete photo files")
 	menu._choose(menu.rows[menu.rows.find_custom(func(r): return r.has("clear_cache"))])
+	await wait_for_cache(menu)
 	check(photo_host.clears == 1 and menu._cache_usage == Vector2i.ZERO, "Confirmed clear reaches Android and refreshes the remaining size")
 	menu.platform = null
 

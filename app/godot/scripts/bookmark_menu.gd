@@ -13,7 +13,7 @@ const ROW := 2100
 const DELETE := 2200
 const GROUP := 2300
 const ROWS := 5
-const LANE_Y := -0.142
+const LANE_Y := -0.038
 const Timeline := preload("res://scripts/timeline_markers.gd")
 const SeekPolicy := preload("res://scripts/seek_policy.gd")
 var menu: Node3D
@@ -56,13 +56,13 @@ func draw() -> void:
 		menu._state.get("bookmark_ready", false) and menu._seek_hand.is_empty(), menu.I18n.t("Add bookmark"))
 	var all: Array = menu._state.get("bookmarks", [])
 	if not all.is_empty():
-		menu._round(LIST, "bookmark", Vector2(-0.28, 0.215), 0.08, has_video, false, menu.I18n.t("Bookmarks"))
-		menu._label(str(all.size()), Vector3(-0.235, 0.245, 0.004), 13)
+		menu._round(LIST, "bookmark", Vector2(-0.42, 0.215), menu.FOOTER_DIAMETER, has_video, false, menu.I18n.t("Bookmarks"))
+		menu._label(str(all.size()), Vector3(-0.375, 0.245, 0.004), 13)
 	elif opened:
 		# The final delete closes the now-empty list. Undo remains available separately.
 		opened = false; subset.clear(); capture.clear()
 	if menu._state.get("bookmark_undo", false):
-		menu._round(UNDO, "undo", Vector2(0.42, 0.215), 0.08, true, false, menu.I18n.t("Undo delete"))
+		menu._round(UNDO, "undo", Vector2(0.42, 0.215), menu.FOOTER_DIAMETER, true, false, menu.I18n.t("Undo delete"))
 	if Time.get_ticks_msec() < notice_until:
 		menu._label(notice, Vector3(0, 0.152, 0.005), 14)
 	var groups := Timeline.groups(all, int(menu._state.get("duration_ms", 0)), menu.BAR_SEEK)
@@ -70,9 +70,9 @@ func draw() -> void:
 		var group: Dictionary = groups[index]
 		var target := GROUP + index
 		menu._button(target, str(group.markers.size()) if group.markers.size() > 1 else "", Vector2(group.x, LANE_Y),
-			Vector2(0.044, 0.044), menu._state.get("bookmark_seekable", false), "" if group.markers.size() > 1 else "bookmark")
+			Vector2(0.044, 0.030), menu._state.get("bookmark_seekable", false), "" if group.markers.size() > 1 else "bookmark")
 		menu._buttons.back().base_color = menu.SELECTED if Time.get_ticks_msec() < notice_until and group.markers.any(func(item): return item.id == flash_id) else Color(menu.TILE, 0)
-		menu._decoration(Vector2(0.002, 0.024), Vector2(group.x, -0.105), menu.ACCENT)
+		menu._decoration(Vector2(0.002, 0.018), Vector2(group.x, -0.061), menu.ACCENT)
 		menu._tips[target] = menu._time(int(group.markers[0].position_ms)) if group.markers.size() == 1 else menu.I18n.t("Bookmarks") + " · " + str(group.markers.size())
 		targets[target] = {"kind": "group", "ids": group.markers.map(func(item): return item.id)}
 	if not opened: return

@@ -66,14 +66,14 @@ func _run() -> void:
 			main._on_pointer_button("grip_click", "right_hand")
 			check(not menu.visible and main._grab.get("action", "") == "grip_click", "%s grip closes controls" % mode)
 			main._update_flat_grab_stick(Vector2(0, 1), Vector2.ZERO, 0.4)
-			check(video.screen_scale == 1.0, "Other hand cannot scale held screen")
+			check(video.screen_scale == 1.0, "Other hand cannot move held screen")
 			main._update_flat_grab_stick(Vector2.ZERO, Vector2(0, 1), 0.4)
-			check(video.screen_scale > 1.0 and video.screen_distance == 2.0, "%s held up grows at fixed distance" % mode)
+			check(video.screen_scale == 1.0 and is_equal_approx(video.screen_distance,2.6), "%s grip plus stick moves farther without scaling" % mode)
 			var grown: float = video.screen_scale
 			video._apply_geometry() # Next native frame must retain the new mesh and pose.
 			check(video._flat.size.is_equal_approx(size * grown), "%s presented frame preserves size" % mode)
 			main._update_flat_grab_stick(Vector2.ZERO, Vector2(0, -1), 0.4)
-			check(is_equal_approx(video.screen_scale, 1), "%s down shrinks symmetrically" % mode)
+			check(is_equal_approx(video.screen_distance,2.0) and video.screen_scale == 1.0, "%s grip plus stick down moves nearer symmetrically" % mode)
 			main._on_pointer_release("grip_click", "right_hand")
 			check(main._grab.is_empty() and not menu.visible, "Release finishes without reopening controls")
 			for corner in [0, 1]:
@@ -86,7 +86,7 @@ func _run() -> void:
 				check(video._handles[corner].visible, "Active corner bracket is visible")
 				main.test_ray = [eye, (video.panel.to_global(Vector3(video.screen_corner(corner).x * 1.5, video.screen_corner(corner).y * 1.5, 0)) - eye).normalized()]
 				main._update_grab()
-				check(video.screen_scale > 1 and video.screen_distance == 2, "%s corner grows without moving distance" % mode)
+				check(video.screen_scale > 1 and is_equal_approx(video.screen_distance, 2), "%s corner grows without moving distance" % mode)
 				main._on_pointer_release("grip_click", "right_hand")
 			video.set_screen_scale(1)
 			main._grab = {"hand": "right_hand", "moved": false}
@@ -132,6 +132,26 @@ func _run() -> void:
 	check(menu._adjustment == "screen" and not menu._adjust_rows.values().any(func(row): return row.key == "screen_distance"), "Immersive projection disables flat distance")
 	main._on_playback_adjustment("screen_distance", 5)
 	check(is_equal_approx(video.screen_distance, 2), "Immersive adjustment cannot change flat screen")
+	menu.dismiss(); main._grab = {"hand": "right_hand", "action": "grip_click", "moved": false}
+	video.view_zoom = 0.0
+	main._update_flat_grab_stick(Vector2(0, 1), Vector2.ZERO, .5)
+	check(is_zero_approx(video.view_zoom), "Other hand cannot move held immersive view")
+	main._update_flat_grab_stick(Vector2.ZERO, Vector2(0, 1), .5)
+	check(video.view_zoom < 0, "Immersive grip plus stick up moves view farther")
+	var held_zoom: float = video.view_zoom
+	main._process_sticks(Vector2(1, 1), Vector2(0, 1), .5)
+	check(video.view_zoom == held_zoom, "Grip blocks ordinary playback stick shortcuts")
+	main._update_flat_grab_stick(Vector2.ZERO, Vector2(0, -1), .5)
+	check(is_zero_approx(video.view_zoom), "Immersive grip plus stick down reverses depth movement")
+	main._grab.clear(); video.geometry = 0; video.reclining_mode = true
+	video.screen_distance = 2.0; video.screen_scale = 1.0
+	video.flat_pose = Transform3D(Basis(Vector3.RIGHT, .6), eye + Vector3(0, .5, -1.93649))
+	video._apply_geometry(); main.test_ray = [eye,(video.panel.global_position-eye).normalized()]
+	main._begin_grab("right_hand")
+	var old_position: Vector3 = video.panel.global_position
+	main.test_ray[0] += Vector3.UP * .3; main._update_grab()
+	check(video.panel.global_position.y > old_position.y and is_equal_approx(video.screen_scale,1), "Physical grip translation moves reclining picture vertically without scaling")
+	main._on_pointer_release("grip_click", "right_hand")
 	menu.free()
 	main.recent_menu.free()
 	main.free()

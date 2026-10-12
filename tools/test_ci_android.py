@@ -114,5 +114,23 @@ class CiBoundaries(unittest.TestCase):
         self.assertEqual(env, {})
 
 
+class VariantCiSigning(unittest.TestCase):
+    def test_ai_uses_its_own_secrets_and_does_not_fall_back_to_the_base_secret(self):
+        base = {'CI_ANDROID_KEYSTORE_BASE64': base64.b64encode(b'base key').decode(),
+                'CI_ANDROID_KEY_ALIAS': 'base', 'CI_ANDROID_KEY_PASSWORD': 'base-password'}
+        env, mode = ci.signing_env(base, ai=True)
+        self.assertEqual(mode, 'ephemeral-ci-key')
+        self.assertFalse(any(key.startswith('CI_ANDROID_') for key in env))
+        with tempfile.TemporaryDirectory() as directory:
+            source = {**base, 'RUNNER_TEMP': directory,
+                      'CI_ANDROID_AI_KEYSTORE_BASE64': base64.b64encode(b'ai key').decode(),
+                      'CI_ANDROID_AI_KEY_ALIAS': 'ai', 'CI_ANDROID_AI_KEY_PASSWORD': 'ai-password'}
+            env, mode = ci.signing_env(source, ai=True)
+            self.assertEqual(mode, 'repository-signing-key')
+            self.assertEqual(Path(env['THRU3D_AI_KEYSTORE_RELEASE_PATH']).read_bytes(), b'ai key')
+            self.assertNotIn('GODOT_ANDROID_KEYSTORE_RELEASE_PATH', env)
+            self.assertFalse(any(key.startswith('CI_ANDROID_') for key in env))
+
+
 if __name__ == '__main__':
     unittest.main()

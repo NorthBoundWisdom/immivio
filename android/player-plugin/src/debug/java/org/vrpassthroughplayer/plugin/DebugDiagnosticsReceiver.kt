@@ -21,9 +21,9 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                 val report = JSONObject().put("request", request).put("action", intent.action)
                     .put("diagnostic_process", DiagnosticRequests.processId)
                 try {
-                    val id = if (intent.action == "com.wapok.thru3d.DEBUG_PHOTO_PORTRAIT") {
+                    val id = if (intent.action == "${context.packageName}.DEBUG_PHOTO_PORTRAIT") {
                         PhotoPortraitProbe.request(context.applicationContext,request)
-                    } else if (intent.action in setOf("com.wapok.thru3d.DEBUG_LAUNCH", "com.wapok.thru3d.DEBUG_LAUNCH_2D")) {
+                    } else if (intent.action in setOf("${context.packageName}.DEBUG_LAUNCH", "${context.packageName}.DEBUG_LAUNCH_2D")) {
                         // XR probes must enter through the normal VR launcher. Starting
                         // GodotApp directly produced focused views but no live head pose.
                         val launch = if (intent.action!!.endsWith("_2D")) {
@@ -36,21 +36,21 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                         context.startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                         report.put("launch_entry", if (intent.action!!.endsWith("_2D")) "diagnostic_2d" else "normal_vr_launcher")
                         1
-                    } else if (intent.action == "com.wapok.thru3d.DEBUG_RVM_STANDALONE") {
+                    } else if (intent.action == "${context.packageName}.DEBUG_RVM_STANDALONE") {
                         RvmStandaloneProbe.request(context.applicationContext, intent.getStringExtra("mode") ?: "resident",
                             intent.getStringExtra("profile") ?: "256x144")
-                    } else if (intent.action == "com.wapok.thru3d.DEBUG_SMB_CRYPTO") {
+                    } else if (intent.action == "${context.packageName}.DEBUG_SMB_CRYPTO") {
                         report.put("smb", SmbCryptoProbe.run())
                         1
-                    } else if (intent.action == "com.wapok.thru3d.DEBUG_CLOUD") {
+                    } else if (intent.action == "${context.packageName}.DEBUG_CLOUD") {
                         val provider = intent.getStringExtra("provider") ?: CloudDrive.P115
                         if (provider == CloudDrive.P115) CloudPlaybackProbe.request(context.applicationContext, request, intent.getBooleanExtra("play", false))
                         else OpenListCloudProbe.request(context.applicationContext, request, provider, intent.getBooleanExtra("play", false))
-                    } else if (intent.action == "com.wapok.thru3d.DEBUG_PLEX_NETWORK") {
+                    } else if (intent.action == "${context.packageName}.DEBUG_PLEX_NETWORK") {
                         val raw = intent.getStringExtra("connections") ?: error("Missing connections")
                         report.put("plex_network", PlexNetworkProbe.run(context.applicationContext, request, raw))
                         1
-                    } else if (intent.action == "com.wapok.thru3d.DEBUG_DLNA") {
+                    } else if (intent.action == "${context.packageName}.DEBUG_DLNA") {
                         // Same discovery as the library menu; results go to logcat tag QuestDlna.
                         val app = context.applicationContext
                         Thread {
@@ -62,29 +62,29 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                             finally { lock.release() }
                         }.start()
                         1
-                    } else if (intent.action == "com.wapok.thru3d.DEBUG_DEPTH_BENCH") {
+                    } else if (intent.action == "${context.packageName}.DEBUG_DEPTH_BENCH") {
                         // 2D->3D model timing on the GPU; no player, no XR session needed.
                         DepthBenchmarkProbe.request(context.applicationContext, intent.getIntExtra("runs", 60))
-                    } else if (intent.action == "com.wapok.thru3d.DEBUG_LOCAL_ACCESS") {
+                    } else if (intent.action == "${context.packageName}.DEBUG_LOCAL_ACCESS") {
                         LocalAccessProbe.request(context.applicationContext, intent.getStringExtra("case") ?: "file_present")
-                    } else if (intent.action == "com.wapok.thru3d.DEBUG_LOCAL_SELECTION") {
+                    } else if (intent.action == "${context.packageName}.DEBUG_LOCAL_SELECTION") {
                         LocalSelectionProbe.request(context.applicationContext, intent.getStringExtra("case") ?: "unicode")
-                    } else if (intent.action == "com.wapok.thru3d.DEBUG_MPV_DOLBY") {
+                    } else if (intent.action == "${context.packageName}.DEBUG_MPV_DOLBY") {
                         MpvDolbyDiagnostics.request(context.applicationContext,
                             intent.getStringExtra("fixture") ?: "dovi_profile5.mkv",
                             intent.getBooleanExtra("direct", false), intent.getBooleanExtra("audio", false),
                             intent.getBooleanExtra("hardware", true), intent.getBooleanExtra("pixels_only", false))
-                    } else if (intent.action == "com.wapok.thru3d.DEBUG_MPV_URI") {
+                    } else if (intent.action == "${context.packageName}.DEBUG_MPV_URI") {
                         MpvDiagnostics.requestExternal(context.applicationContext)
-                    } else if (intent.action == "com.wapok.thru3d.DEBUG_MPV_SHARED") {
+                    } else if (intent.action == "${context.packageName}.DEBUG_MPV_SHARED") {
                         MpvSharedDiagnostics.request(context.applicationContext, intent.getBooleanExtra("hardware", true))
-                    } else if (intent.action == "com.wapok.thru3d.DEBUG_MPV_MOTION") {
+                    } else if (intent.action == "${context.packageName}.DEBUG_MPV_MOTION") {
                         MpvMotionDiagnostics.request(context.applicationContext, intent.getStringExtra("profile") ?: "384x216",
                             intent.getBooleanExtra("ordered", false))
-                    } else if (intent.action == "com.wapok.thru3d.DEBUG_MPV_AUDIO") {
+                    } else if (intent.action == "${context.packageName}.DEBUG_MPV_AUDIO") {
                         MpvAudioDiagnostics.request(context.applicationContext, intent.getBooleanExtra("hardware", true))
-                    } else if (intent.action in setOf("com.wapok.thru3d.DEBUG_MPV_CORE",
-                            "com.wapok.thru3d.DEBUG_MPV_GPU", "com.wapok.thru3d.DEBUG_MPV_SOURCE")) {
+                    } else if (intent.action in setOf("${context.packageName}.DEBUG_MPV_CORE",
+                            "${context.packageName}.DEBUG_MPV_GPU", "${context.packageName}.DEBUG_MPV_SOURCE")) {
                         val sourceFrame = intent.action!!.endsWith("_SOURCE")
                         MpvDiagnostics.request(context.applicationContext,
                             if (sourceFrame) "mp03_frame_identity" else intent.getStringExtra("fixture") ?: "c03_sbs_grid",
@@ -93,7 +93,7 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                     } else {
                         val plugin = DiagnosticRequests.current() ?: error("Running Godot plugin unavailable")
                         when (intent.action) {
-                        "com.wapok.thru3d.DEBUG_PLAYER_MPV" -> {
+                        "${context.packageName}.DEBUG_PLAYER_MPV" -> {
                             val operation = intent.getStringExtra("operation") ?: "open"
                             require(operation in setOf("open", "alpha", "depth", "playing", "seek", "hold_pixels", "observe", "stereo", "profile", "close", "pixels", "subtitle", "display_quality", "sharpness", "cloud_accounts", "cloud_page_probe", "display_menu", "player_menu", "restart_app", "quit_app", "seek_policy_ui", "media_library_ui"))
                             val command = JSONObject().put("operation", operation).put("request_key", request)
@@ -183,17 +183,17 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                             }
                             plugin.requestMpvPlayerCommand(command.toString())
                         }
-                        "com.wapok.thru3d.DEBUG_CANCEL_CONTROLLED" ->
+                        "${context.packageName}.DEBUG_CANCEL_CONTROLLED" ->
                             plugin.cancelControlledProbe(intent.getIntExtra("id", -1))
-                        "com.wapok.thru3d.DEBUG_RVM" -> plugin.request_rvm_profile_benchmark(
+                        "${context.packageName}.DEBUG_RVM" -> plugin.request_rvm_profile_benchmark(
                             intent.getBooleanExtra("vulkan", false), intent.getStringExtra("profile") ?: "256x144")
-                        "com.wapok.thru3d.DEBUG_CONTROLLED", "com.wapok.thru3d.DEBUG_RVM_VIDEO" -> {
+                        "${context.packageName}.DEBUG_CONTROLLED", "${context.packageName}.DEBUG_RVM_VIDEO" -> {
                             val fixture = intent.getStringExtra("fixture") ?: "c03_sbs_grid"
                             require(fixture in listOf("c03_sbs_grid", "c04_alpha_f180", "c04_independent_alpha"))
                             val directory = File(context.filesDir, "fixtures").apply { mkdirs() }
                             val target = File(directory, "$fixture.mp4")
                             context.assets.open("media/$fixture.mp4").use { input -> target.outputStream().use { input.copyTo(it) } }
-                            if (intent.action == "com.wapok.thru3d.DEBUG_RVM_VIDEO")
+                            if (intent.action == "${context.packageName}.DEBUG_RVM_VIDEO")
                                 plugin.requestRvmVideoProbe("file://${target.absolutePath}", true,
                                     intent.getStringExtra("profile") ?: "256x144", intent.getBooleanExtra("vulkan", true))
                             else plugin.request_controlled_probe("file://${target.absolutePath}", 0, true,

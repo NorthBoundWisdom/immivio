@@ -105,6 +105,12 @@ Timeline dragging defaults to **Fast seek**, starting near a keyframe for a quic
 
 Playback controls stay aligned with the canvas-centre direction at a readable distance. Their plane follows the current view while idle, and stays fixed during a slider drag. Supported headsets display menus through a native high-resolution XR overlay with scalable text. Display quality also controls video geometry antialiasing; Enhanced uses stronger antialiasing for flat-screen edges while keeping immersive playback lighter.
 
+AI and no-AI Android builds install as separate applications (**Thru3D AI** and **Thru3D No AI**) with different package IDs and local signing keys. The no-AI app keeps its existing identity; both can coexist on one headset with independent data.
+
+The library uses a curved window. Aim at it and hold the controller grip to drag it left/right, or in both axes in reclining mode. While holding grip, move that controller’s stick up/down to adjust distance between 0.8 and 3 metres; releasing saves the distance. Video grips likewise drag placement, with grip plus stick controlling depth. Closing a video hides playback controls and returns to the previous directory and browse position. Library settings are prewarmed at startup, and cache-size statistics run in the background. The library footer contains only follow, temporary passthrough and battery/clock status in one row. User menu/back actions cannot dismiss the library. Video playback omits follow and temporary passthrough, retains one close-video action to stop playback and return to the library, and places all floating actions and battery/clock above the timeline. The status capsule matches the action height, colour and corners. After sleep or XR focus recovery, a visible library returns to the centre of the tracked view, retaining its distance and browsing state.
+
+Playback Settings → IPD exposes software inter-eye separation compensation, vertical alignment and reset for stereo VR180 content. Corrections are percentages of one displayed eye, saved per video on release; they do not alter lens spacing or XR runtime IPD. Select the correct SBS/TB layout first. Playback settings and popups are prewarmed, and common pages retain and reuse their controls.
+
 ## Status and limitations
 
 - Early source release; Android ARM64 builds use separate Quest, PICO and experimental standard OpenXR presets.

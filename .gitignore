@@ -52,6 +52,6 @@ credentials/
 *.key
 *.pem
 signing-identities.json
-thru3d-signing.json
+thru3d*-signing.json
 .freecm
 .DS_Store

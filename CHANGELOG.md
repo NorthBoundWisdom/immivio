@@ -6,6 +6,12 @@ Newest first, following product release milestones. Some development/source snap
 
 ## Unreleased
 
+- AI and no-AI Android builds now use distinct package IDs, launcher labels and signing identities for side-by-side installation; the no-AI app retains its existing identity and data.
+- Made the library curved, added grip dragging with same-hand stick depth adjustment, and return to the previous browse position when closing video. Removed duplicate library/playback actions and aligned status controls with the action row.
+- Stabilized hover tooltip bounds to prevent UI projection jumps, and recenter the visible library after sleep/focus recovery once head tracking returns.
+- Prewarm library settings and 31 playback page/popup states; retain a bounded cache of prepared settings controls and move cache-size scans off the UI thread.
+- Added a dedicated software IPD calibration tab with per-video horizontal/vertical alignment and reset; physical headset IPD remains unchanged.
+
 - Tag pushes now force Release APKs; branch/PR pushes default to Debug, manual builds can choose either, and CI rejects mismatched build-type receipts.
 
 - Added per-video subtitle/audio timing controls, reset actions and manual SRT/ASS/SSA/VTT subtitle selection with retained document permission.

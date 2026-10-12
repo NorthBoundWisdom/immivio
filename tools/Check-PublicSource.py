@@ -38,7 +38,7 @@ def check_files(files):
             errors.append(f'{name}: private development or promotion content')
         if name.endswith('store_capture_debug.gd') or 'local.properties' == path.name:
             errors.append(f'{name}: local-only configuration/tool')
-        if path.name.lower() in {'signing-identities.json', 'thru3d-signing.json', '.env'}:
+        if path.name.lower() in {'signing-identities.json', '.env'} or (path.name.lower().startswith('thru3d') and path.name.lower().endswith('-signing.json')):
             errors.append(f'{name}: excluded signing identity or local credential configuration')
         if path.name.lower().startswith(('readme', 'changelog')) and name not in {'README.md', 'README.zh-CN.md', 'CHANGELOG.md', 'CHANGELOG.zh-CN.md', 'third_party/README.md'}:
             errors.append(f'{name}: internal documentation excluded')

@@ -1,6 +1,7 @@
 extends SceneTree
 const Main := preload("res://scripts/main.gd")
 const Menu := preload("res://scripts/ray_menu.gd")
+const PlayerMenu := preload("res://scripts/player_menu.gd")
 const HostTest := preload("res://tests/test_player_menu.gd")
 const Memory := preload("res://scripts/file_mode_memory.gd")
 const Catalog := preload("res://scripts/recent_files.gd")
@@ -50,11 +51,16 @@ func footer_check(menu: Node3D, name: String) -> void:
 	var close := button(menu, Menu.CLOSE_MENU)
 	var follow := button(menu, Menu.FOLLOW)
 	var pass_button := button(menu, Menu.TEMP_PASSTHROUGH)
+	if menu is PlayerMenu:
+		check(follow.is_empty() and pass_button.is_empty(), name + " omits session toggles during video playback")
+		check(menu.device_status.position.y > (menu.BAR_SEEK_Y if menu.section == 0 else menu._backdrop.position.y), name + " status is above playback content")
+		return
 	check(not follow.is_empty() and not pass_button.is_empty(), name + " includes both global footer controls")
 	if follow.is_empty() or pass_button.is_empty(): return
-	check(not close.is_empty() and close.rect.end.x < follow.rect.position.x, name + " has close menu to the left of follow")
+	check(close.is_empty(), name + " footer omits the duplicate close control")
 	check(not follow.rect.intersects(pass_button.rect), name + " has separate ray targets")
-	check(follow.node.mesh.size.y > menu.device_status.HEIGHT * 1.8, name + " controls exceed status height")
+	check(is_equal_approx(follow.node.position.y, pass_button.node.position.y) and is_equal_approx(follow.node.position.y, menu.device_status.position.y), name + " footer and status use one row")
+	check(is_equal_approx(follow.node.mesh.size.y, menu.device_status.HEIGHT), name + " controls and status have matching heights")
 	check(follow.node.position.y + Menu.FOOTER_HIT_SIZE / 2 < menu._backdrop.position.y - menu._backdrop.mesh.size.y / 2,
 		name + " controls clear the panel")
 	for other in menu._buttons:
@@ -63,25 +69,21 @@ func footer_check(menu: Node3D, name: String) -> void:
 		if not close.is_empty(): check(not close.rect.intersects(other.rect), name + " close target does not overlap " + str(other.target))
 
 func close_menu_check(main: Node3D, menu: Node3D, name: String) -> void:
-	var item := button(menu, Menu.CLOSE_MENU)
-	check(not item.is_empty(), name + " close menu is available")
-	if item.is_empty(): return
+	check(button(menu, Menu.CLOSE_MENU).is_empty(), name + " omits close menu button")
 	var state: bool = main.view_follow.enabled
 	var poses: Dictionary = main.view_follow._poses.duplicate()
 	var passthrough: bool = main.temporary_passthrough
 	var alpha: bool = main.video.alpha_wanted()
 	var video_state: String = main.video.media.state
 	var photo_uri: String = main.photo.local_uri
-	var origin: Vector3 = item.node.global_position + item.node.global_basis.z * .25
-	var direction: Vector3 = -item.node.global_basis.z
-	menu.update_pointer("right_hand",origin,direction,true)
-	check(menu._tooltip.visible and menu._tooltip.get_child(0).text == "关闭菜单", name + " ray tooltip says close menu")
-	main.test_ray = [origin,direction]
-	main._on_pointer_button("trigger_click","right_hand")
-	check(not menu.visible and main._active_menu() == null and menu._hover.is_empty(), name + " closes immediately on trigger press")
-	check(main._grab.is_empty(), name + " close press cannot start a screen drag")
-	main._on_pointer_release("trigger_click","right_hand")
-	check(not menu.visible and main._active_menu() == null, name + " trigger release does not reopen menu")
+	main._on_pointer_button("by_button", "right_hand")
+	if menu == main.recent_menu:
+		check(menu.visible and main._active_menu() == menu, name + " cannot dismiss library with a controller button")
+		main._toggle_player_menu()
+		check(menu.visible, name + " menu button cannot replace library with empty controls")
+	else:
+		check(not menu.visible and main._active_menu() == null and menu._hover.is_empty(), name + " playback controls still dismiss via controller")
+	check(main._grab.is_empty(), name + " dismissal cannot start a screen drag")
 	check(main.view_follow.enabled == state and main.view_follow._poses == poses and main.temporary_passthrough == passthrough,
 		name + " retains session choices and saved head offsets")
 	check(main.video.media.state == video_state and main.video.alpha_wanted() == alpha and main.photo.local_uri == photo_uri,
@@ -304,7 +306,8 @@ func _run() -> void:
 	main.recent_menu.file_actions.target = {"title":"Example.mp4", "uri":"file:///Example.mp4"}
 	main.recent_menu.refresh()
 	close_menu_check(main,main.recent_menu,"File confirmation")
-	check(main.recent_menu.file_actions.modal.is_empty(), "Close menu cancels file confirmation without deleting")
+	check(not main.recent_menu.file_actions.modal.is_empty(), "Dismissal cannot hide a file confirmation; its own cancel action remains available")
+	main.recent_menu.file_actions.reset()
 	main.photo_active = false; main.player_menu = main.video_menu
 	main._show_player_menu(); main.video_menu._mode_open = true; main.video_menu.refresh()
 	close_menu_check(main,main.video_menu,"Video popup")

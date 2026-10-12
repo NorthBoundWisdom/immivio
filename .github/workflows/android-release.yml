@@ -125,9 +125,9 @@ jobs:
         run: python tools/prepare_public_ai.py --jobs 2
       - name: Build and verify AI Android ${{ env.CI_BUILD_TYPE }} packages
         env:
-          CI_ANDROID_KEYSTORE_BASE64: ${{ env.CI_BUILD_TYPE == 'Release' && github.event_name != 'pull_request' && secrets.ANDROID_KEYSTORE_BASE64 || '' }}
-          CI_ANDROID_KEY_ALIAS: ${{ env.CI_BUILD_TYPE == 'Release' && github.event_name != 'pull_request' && secrets.ANDROID_KEY_ALIAS || '' }}
-          CI_ANDROID_KEY_PASSWORD: ${{ env.CI_BUILD_TYPE == 'Release' && github.event_name != 'pull_request' && secrets.ANDROID_KEY_PASSWORD || '' }}
+          CI_ANDROID_AI_KEYSTORE_BASE64: ${{ env.CI_BUILD_TYPE == 'Release' && github.event_name != 'pull_request' && secrets.ANDROID_AI_KEYSTORE_BASE64 || '' }}
+          CI_ANDROID_AI_KEY_ALIAS: ${{ env.CI_BUILD_TYPE == 'Release' && github.event_name != 'pull_request' && secrets.ANDROID_AI_KEY_ALIAS || '' }}
+          CI_ANDROID_AI_KEY_PASSWORD: ${{ env.CI_BUILD_TYPE == 'Release' && github.event_name != 'pull_request' && secrets.ANDROID_AI_KEY_PASSWORD || '' }}
         run: python tools/ci_android.py build --ai
       - name: Stop Gradle daemons before cache archival
         if: always()
@@ -187,9 +187,9 @@ jobs:
         run: python tools/prepare_public_ai.py --jobs 2
       - name: Build and verify AI Android ${{ env.CI_BUILD_TYPE }} packages
         env:
-          CI_ANDROID_KEYSTORE_BASE64: ${{ env.CI_BUILD_TYPE == 'Release' && github.event_name != 'pull_request' && secrets.ANDROID_KEYSTORE_BASE64 || '' }}
-          CI_ANDROID_KEY_ALIAS: ${{ env.CI_BUILD_TYPE == 'Release' && github.event_name != 'pull_request' && secrets.ANDROID_KEY_ALIAS || '' }}
-          CI_ANDROID_KEY_PASSWORD: ${{ env.CI_BUILD_TYPE == 'Release' && github.event_name != 'pull_request' && secrets.ANDROID_KEY_PASSWORD || '' }}
+          CI_ANDROID_AI_KEYSTORE_BASE64: ${{ env.CI_BUILD_TYPE == 'Release' && github.event_name != 'pull_request' && secrets.ANDROID_AI_KEYSTORE_BASE64 || '' }}
+          CI_ANDROID_AI_KEY_ALIAS: ${{ env.CI_BUILD_TYPE == 'Release' && github.event_name != 'pull_request' && secrets.ANDROID_AI_KEY_ALIAS || '' }}
+          CI_ANDROID_AI_KEY_PASSWORD: ${{ env.CI_BUILD_TYPE == 'Release' && github.event_name != 'pull_request' && secrets.ANDROID_AI_KEY_PASSWORD || '' }}
         run: python tools/ci_android.py build --ai
       - name: Stop Gradle daemons before cache archival
         if: always()

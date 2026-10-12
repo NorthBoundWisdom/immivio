@@ -6,9 +6,9 @@ const Menu := preload("res://scripts/ray_menu.gd")
 const Icons := preload("res://scripts/menu_icons.gd")
 const I18n := preload("res://scripts/i18n.gd")
 const Methods := preload("res://scripts/platform_methods.gd")
-const HEIGHT := 0.046
-const ICON := 0.036
-const FONT_SIZE := 16
+const HEIGHT := Menu.FOOTER_DIAMETER
+const ICON := 0.05
+const FONT_SIZE := 19
 const LOW := 20
 const LOW_COLOR := Color(1.0, 0.42, 0.38)
 const POWER_COLOR := Color(1.0, 0.76, 0.36)
@@ -36,7 +36,7 @@ func _ready() -> void:
 			status_provider = func() -> Dictionary:
 				var parsed: Variant = JSON.parse_string(str(plugin.device_status()))
 				return parsed if parsed is Dictionary else {}
-	_pill = _quad(Vector2(0.2, HEIGHT), Vector3.ZERO, Color(Menu.PANEL, 0.86), 10)
+	_pill = _quad(Vector2(0.2, HEIGHT), Vector3.ZERO, Menu.TILE, 11)
 	_pill.material_override.set_shader_parameter("corner_radius", HEIGHT * 0.5)
 	_battery = _icon("battery", Color(0.93, 0.95, 0.98))
 	# Inside of the battery outline (icon units 8.5..15.5 x 5.5..20.5 of 24), filled from the bottom.

@@ -64,6 +64,16 @@ const EYE_SWAP := 483
 const ALIGNMENT_RESET := 484
 const ALIGNMENT_HORIZONTAL := 485
 const ALIGNMENT_VERTICAL := 486
+const IPD_SETTINGS := 498
+const SETTINGS_CACHE_LIMIT := 24
+var _settings_layouts := {}
+var _drawn_settings_key := ""
+var settings_cache_hits := 0
+const CACHE_SHAPE_DEFAULTS := {
+	"has_video": false, "stereo": false, "viewing_eye": 0, "swap_eyes": false,
+	"top_bottom": false, "loop": false, "screen_curve": 0.0, "seek_mode": "speed",
+	"show_fps": false, "external_subtitle": false, "subtitle_loading": false,
+}
 
 ## The bar already carries video mode, recenter, volume and subtitles, and Alpha resolution
 ## lives in the library's Settings: this panel keeps only what neither has.
@@ -138,6 +148,12 @@ func capture_envelope() -> Rect2:
 	# Reserve the whole ordinary page family before the transport bar first opens.
 	return CAPTURE_ENVELOPE
 
+## Playback has its own top action row; session toggles belong to the library.
+func refresh_session_controls(_force: bool = false) -> void:
+	if not device_status: return
+	var y: float = 0.215 if section == 0 else _backdrop.position.y + _backdrop.mesh.size.y * 0.5 + 0.10
+	device_status.position = Vector3(0.16 if section == 0 else 0.0, y, 0.002)
+
 func has_pointer_capture() -> bool:
 	return not choices.capture.is_empty() or not bookmarks.capture.is_empty() or not _seek_hand.is_empty() or not _volume_hand.is_empty() \
 		or not _depth_hand.is_empty() or not _adjust_hand.is_empty()
@@ -195,7 +211,6 @@ func refresh_values() -> void:
 	if not _adjustment.is_empty():
 		if _adjustment in ["screen", "stereo_view", "sync", "queue"] and _settings_drawn != _settings_key():
 			_finish_adjustment()
-			if _adjustment == "stereo_view" and not _enabled("stereo_view"): _adjustment = ""
 			refresh()
 			return
 		_refresh_adjustments()
@@ -253,9 +268,90 @@ func _process(_delta: float) -> void:
 		_refresh_ms = Time.get_ticks_msec() + 250
 		refresh_values()
 
+func _layout_cache_key() -> String:
+	if not choices.opened.is_empty(): return ""
+	if section == 2: return str([2, I18n.language, _state.get("capabilities_available", false)])
+	if section != 1: return ""
+	if _adjustment not in ["", "screen", "stereo_view", "sync", "queue", "color_grade"]: return ""
+	var shape := [I18n.language, _adjustment, _grade_page if _adjustment == "color_grade" else 0]
+	for key in CACHE_SHAPE_DEFAULTS:
+		shape.append(_state.get(key, CACHE_SHAPE_DEFAULTS[key]))
+	shape.append(int(_state.get("geometry", 0)) == 0 if _adjustment == "screen" else false)
+	shape.append(_enabled("alpha") if _adjustment.is_empty() else false)
+	if _adjustment == "queue":
+		shape.append(_state.get("queue_items", []))
+		shape.append(queue_menu.offset)
+		shape.append(_state.get("source_uri", "") if not _state.get("queue_items", []).is_empty() else "")
+		for key in ["queue_autoplay", "queue_repeat", "queue_shuffle"]: shape.append(_state.get(key, false))
+	return str(shape)
+
+func _park_settings_layout() -> void:
+	if _drawn_settings_key.is_empty() or _buttons.is_empty(): return
+	var container := Node3D.new(); container.visible = false; add_child(container)
+	var nodes: Array[Node3D] = []
+	for button in _buttons: nodes.append(button.node)
+	nodes.append_array(_labels); nodes.append_array(_decorations)
+	for node in nodes:
+		if is_instance_valid(node) and node.get_parent() == self: node.reparent(container, false)
+	var entry := {"container":container, "buttons":_buttons.duplicate(), "labels":_labels.duplicate(),
+		"decorations":_decorations.duplicate(), "tips":_tips.duplicate(), "adjust_rows":_adjust_rows.duplicate(),
+		"presets":_preset_buttons.duplicate(), "status":_status, "info":_info,
+		"choice_targets":choices.targets.duplicate(), "choice_sliders":choices.sliders.duplicate(), "choice_bounds":choices.bounds,
+		"queue_actions":queue_menu.actions.duplicate(),
+		"backdrop_size":_backdrop.mesh.size, "backdrop_position":_backdrop.position,
+		"backdrop_color":_backdrop.material_override.get_shader_parameter("surface_color"),
+		"backdrop_corner":_backdrop.material_override.get_shader_parameter("corner_radius")}
+	if _settings_layouts.has(_drawn_settings_key): _settings_layouts[_drawn_settings_key].container.free()
+	_settings_layouts[_drawn_settings_key] = entry
+	_buttons.clear(); _labels.clear(); _decorations.clear()
+	_drawn_settings_key = ""
+	_trim_settings_cache()
+
+func adopt_prepared_layouts(donor: Node3D) -> void:
+	donor._park_settings_layout()
+	for key in donor._settings_layouts.keys():
+		if _settings_layouts.has(key): continue
+		var entry: Dictionary = donor._settings_layouts[key]
+		entry.container.reparent(self, false)
+		_settings_layouts[key] = entry
+		donor._settings_layouts.erase(key)
+	_trim_settings_cache()
+
+func _trim_settings_cache() -> void:
+	while _settings_layouts.size() > SETTINGS_CACHE_LIMIT:
+		var oldest: String = _settings_layouts.keys()[0]
+		_settings_layouts[oldest].container.free()
+		_settings_layouts.erase(oldest)
+
 func _draw() -> void:
-	_clear_layout()
-	choices.begin(str([section, _state.get("source_uri", ""), _state.get("bookmark_scope", "")]), Vector2(-0.43, 0.32))
+	_park_settings_layout()
+	var cached_key := _layout_cache_key()
+	if not cached_key.is_empty() and _settings_layouts.has(cached_key):
+		_clear_layout()
+		var entry: Dictionary = _settings_layouts[cached_key]; _settings_layouts.erase(cached_key)
+		for node in entry.container.get_children(): node.reparent(self, false)
+		entry.container.free()
+		_reset_draw_fields()
+		_buttons = entry.buttons; _labels = entry.labels; _decorations = entry.decorations; _tips = entry.tips
+		_adjust_rows = entry.adjust_rows; _preset_buttons = entry.presets; _status = entry.status; _info = entry.info
+		choices.reset(); choices.scope = str([section, _state.get("source_uri", ""), _state.get("bookmark_scope", "")])
+		choices.targets = entry.choice_targets; choices.sliders = entry.choice_sliders; choices.bounds = entry.choice_bounds
+		if _adjustment == "queue": queue_menu.actions = entry.queue_actions
+		_set_backdrop(entry.backdrop_size, Vector2(entry.backdrop_position.x, entry.backdrop_position.y))
+		_backdrop.material_override.set_shader_parameter("surface_color", entry.backdrop_color)
+		_backdrop.material_override.set_shader_parameter("corner_radius", entry.backdrop_corner)
+		_settings_drawn = _settings_key(); _drawn_settings_key = cached_key
+		if is_instance_valid(_status): _status.text = _status_text()
+		if is_instance_valid(_info): _info.text = _info_text()
+		if section == 1 and _adjustment.is_empty():
+			for button in _buttons:
+				if button.target == 100: button.node.get_child(0).text = _caption("color_grade")
+		_refresh_adjustments(); _update_highlights(); settings_cache_hits += 1
+		return
+	_draw_uncached()
+	_drawn_settings_key = cached_key
+
+func _reset_draw_fields() -> void:
 	_info = null
 	_title = null
 	_progress = null
@@ -274,6 +370,11 @@ func _draw() -> void:
 	_subtitle_ids = {}
 	_adjust_rows = {}
 	_preset_buttons = {}
+
+func _draw_uncached() -> void:
+	_clear_layout()
+	choices.begin(str([section, _state.get("source_uri", ""), _state.get("bookmark_scope", "")]), Vector2(-0.43, 0.32))
+	_reset_draw_fields()
 	if not _immersive_subtitles():
 		if choices.opened == "subtitle_distance": choices.reset()
 		if _adjustment == "subtitle_distance":
@@ -322,10 +423,12 @@ func _draw_bar() -> void:
 	_glyph(11, "settings", Vector2(0.5, row), 0.075, true, I18n.t("Settings"))
 	_seek_bar(BAR_SEEK_Y)
 	# Floating actions above the bar.
-	_round(107, "close", Vector2(-0.14, 0.215), 0.08, _enabled("stop"), false, I18n.t("Close video"))
-	_round(100, "folder", Vector2(0, 0.215), 0.08, true, false, I18n.t("Library"))
-	_round(108, "recenter", Vector2(0.14, 0.215), 0.08, true, false, I18n.t("Recenter"))
-	_place_device_status(Vector2(0, -0.245))
+	if _state.get("has_video", false):
+		_round(107, "close", Vector2(-0.20, 0.215), FOOTER_DIAMETER, true, false, I18n.t("Close video"))
+	else:
+		_round(100, "folder", Vector2(-0.20, 0.215), FOOTER_DIAMETER, true, false, I18n.t("Library"))
+	_round(108, "recenter", Vector2(-0.085, 0.215), FOOTER_DIAMETER, true, false, I18n.t("Recenter"))
+	_place_device_status(Vector2(0.16, 0.215))
 	bookmarks.draw()
 	if _mode_open:
 		_draw_modes()
@@ -868,6 +971,10 @@ func _activate_hit(hit: Dictionary) -> void:
 		super._activate_hit(hit)
 
 func _activate(target: int) -> void:
+	if target == IPD_SETTINGS:
+		_finish_adjustment(); choices.reset()
+		section = 1; _adjustment = "stereo_view"
+		refresh(); return
 	if _activate_footer(target): return
 	if _state.get("spatial_video", false) and (target in range(MODE_PROJECTION, MODE_PROJECTION + 4) \
 		or target in [MODE_STEREO, MODE_STEREO + 1, MODE_STEREO + 3, MODE_STEREO + 4, MODE_STEREO + 5, MODE_STEREO + 6] \
@@ -1151,14 +1258,14 @@ func _finish_adjustment() -> void:
 	adjustment_committed.emit()
 
 func _draw_settings_tabs(y: float) -> void:
-	_button(10, "", Vector2(-0.66, y), Vector2(0.09, 0.065), true, "up")
+	_button(400 if _adjustment == "stereo_view" else 10, "", Vector2(-0.66, y), Vector2(0.09, 0.065), true, "up")
 	var tabs := [{"id": 11, "text": "Screen"}, {"id": PLAYBACK_SETTINGS, "text": "Playback"},
-		{"id": SYNC_SETTINGS, "text": "Synchronization"}, {"id": QUEUE_SETTINGS, "text": "Queue"}, {"id": 12, "text": "Info"}]
+		{"id": IPD_SETTINGS, "text": "IPD"}, {"id": SYNC_SETTINGS, "text": "Synchronization"}, {"id": QUEUE_SETTINGS, "text": "Queue"}, {"id": 12, "text": "Info"}]
 	for index in tabs.size():
 		var tab: Dictionary = tabs[index]
-		_button(tab.id, I18n.t(tab.text), Vector2(-0.46 + index * 0.23, y), Vector2(0.22, 0.065))
+		_button(tab.id, I18n.t(tab.text), Vector2(-0.475 + index * 0.19, y), Vector2(0.18, 0.065))
 		(_buttons.back().node.get_child(0) as Label3D).font_size = 16
-		if (tab.id == 11 and _adjustment == "screen") or (tab.id == PLAYBACK_SETTINGS and section == 1 and _adjustment.is_empty()) or (tab.id == 12 and section == 2) or (tab.id == SYNC_SETTINGS and _adjustment == "sync") or (tab.id == QUEUE_SETTINGS and _adjustment == "queue"):
+		if (tab.id == 11 and _adjustment == "screen") or (tab.id == IPD_SETTINGS and _adjustment == "stereo_view") or (tab.id == PLAYBACK_SETTINGS and section == 1 and _adjustment.is_empty()) or (tab.id == 12 and section == 2) or (tab.id == SYNC_SETTINGS and _adjustment == "sync") or (tab.id == QUEUE_SETTINGS and _adjustment == "queue"):
 			_buttons.back().base_color = SELECTED
 	_button(CLOSE, "", Vector2(0.66, y), Vector2(0.09, 0.065), true, "close")
 
@@ -1237,9 +1344,7 @@ func _draw_adjustments() -> void:
 func _draw_stereo_view() -> void:
 	_settings_drawn = _settings_key()
 	_set_backdrop(Vector2(1.55, 1.08))
-	_button(400, "", Vector2(-0.66, 0.43), Vector2(0.09, 0.065), true, "up")
-	_button(CLOSE, "", Vector2(0.66, 0.43), Vector2(0.09, 0.065), true, "close")
-	_label(I18n.t("Stereo viewing"), Vector3(0, 0.43, 0.004), 24)
+	_draw_settings_tabs(0.43)
 	_place_device_status(Vector2(0, -0.585))
 	var mode := int(_state.get("viewing_eye", 0))
 	for i in StereoView.MODES.size():
@@ -1249,14 +1354,15 @@ func _draw_stereo_view() -> void:
 	var title := _label(I18n.t("Stereo alignment"), Vector3(-0.66, 0.015, 0.004), 20)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	title.modulate = MUTED
-	if mode == 0:
-		_adjustment_row(ALIGNMENT_HORIZONTAL, "stereo_horizontal", "Horizontal alignment", Vector3(-StereoView.LIMIT, StereoView.LIMIT, StereoView.STEP), -0.095)
+	if mode == 0 and _enabled("stereo_view"):
+		_adjustment_row(ALIGNMENT_HORIZONTAL, "stereo_horizontal", "IPD compensation", Vector3(-StereoView.LIMIT, StereoView.LIMIT, StereoView.STEP), -0.095)
 		_slider_tick(ALIGNMENT_HORIZONTAL, 0.0, "0", -0.095)
 		_adjustment_row(ALIGNMENT_VERTICAL, "stereo_vertical", "Vertical alignment", Vector3(-StereoView.LIMIT, StereoView.LIMIT, StereoView.STEP), -0.235)
 		_slider_tick(ALIGNMENT_VERTICAL, 0.0, "0", -0.235)
 		_button(ALIGNMENT_RESET, I18n.t("Reset alignment"), Vector2(0, -0.40), Vector2(0.42, 0.08), _enabled("stereo_view"))
+		_label(I18n.t("Adjust until the two images merge. Saved per video."), Vector3(0, -0.49, 0.004), 14).modulate = MUTED
 	else:
-		var hint := _label(I18n.t("Same view in both eyes"), Vector3(0, -0.17, 0.004), 21)
+		var hint := _label(I18n.t("Same view in both eyes" if _enabled("stereo_view") else "Select a stereo video layout to adjust IPD."), Vector3(0, -0.17, 0.004), 19)
 		hint.modulate = MUTED
 	_refresh_adjustments()
 

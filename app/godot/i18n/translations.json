@@ -528,7 +528,11 @@
     "Exit portrait": "退出人像",
     "Preparing portrait": "正在提取人像",
     "Portrait unavailable": "人像提取不可用",
-    "No person detected": "未识别到人像"
+    "No person detected": "未识别到人像",
+    "IPD": "瞳距",
+    "IPD compensation": "瞳距补偿",
+    "Adjust until the two images merge. Saved per video.": "调整至双眼画面融合；每个视频独立保存。",
+    "Select a stereo video layout to adjust IPD.": "请先选择立体视频格式，再调整瞳距。"
   },
   "zh_Hant": {
     "Reset": "重設",
@@ -1059,7 +1063,11 @@
     "Exit portrait": "退出人像",
     "Preparing portrait": "正在提取人像",
     "Portrait unavailable": "人像提取無法使用",
-    "No person detected": "未辨識到人像"
+    "No person detected": "未辨識到人像",
+    "IPD": "瞳距",
+    "IPD compensation": "瞳距補償",
+    "Adjust until the two images merge. Saved per video.": "調整至雙眼畫面融合；每個影片獨立儲存。",
+    "Select a stereo video layout to adjust IPD.": "請先選擇立體影片格式，再調整瞳距。"
   },
   "ja": {
     "Reset": "リセット",
@@ -1590,6 +1598,10 @@
     "Exit portrait": "人物表示を終了",
     "Preparing portrait": "人物を抽出中",
     "Portrait unavailable": "人物を抽出できません",
-    "No person detected": "人物が見つかりません"
+    "No person detected": "人物が見つかりません",
+    "IPD": "瞳孔間距離",
+    "IPD compensation": "瞳孔間距離の補正",
+    "Adjust until the two images merge. Saved per video.": "左右の映像が重なるまで調整。動画ごとに保存。",
+    "Select a stereo video layout to adjust IPD.": "立体動画の形式を選択してから調整してください。"
   }
 }
