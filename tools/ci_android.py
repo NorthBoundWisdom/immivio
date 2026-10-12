@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Provision and exercise the same model-free Android builder on hosted CI."""
+"""Provision and exercise AI and model-free Android Release builders on hosted CI."""
 import argparse
 import base64
 import hashlib
@@ -115,6 +115,7 @@ def host_tests(godot):
     player.run([sys.executable, player.ROOT/'tools/Check-PublicSource.py'])
     player.run([sys.executable, player.ROOT/'tools/test_build_player.py'])
     player.run([sys.executable, player.ROOT/'tools/test_ci_android.py'])
+    player.run([sys.executable, player.ROOT/'tools/test_ci_ai.py'])
     player.run([sys.executable, player.ROOT/'tools/test_model_assets.py'])
     sdk = os.environ.get('ANDROID_HOME') or os.environ.get('ANDROID_SDK_ROOT')
     if sdk:
@@ -206,12 +207,15 @@ def check_export_path(templates, gradle, env):
     print('Verified Godot/Gradle export path with spaces and a literal +', flush=True)
 
 
-def build(vendor, godot, templates):
+def build(vendor, godot, templates, *, ai=False):
     env, signing = signing_env(os.environ)
     vendors = ['Pico', 'Quest', 'OpenXR'] if vendor == 'all' else [vendor]
     receipts = []
     args = argparse.Namespace(vendor=vendors[0], build_type='Release', godot=godot, templates=Path(templates),
-        sdk=None, java_home=None, gradle=None, ndk=player.LOCK['ndk'], cmake=player.LOCK['cmake'], plugin_only=False)
+        sdk=None, java_home=None, gradle=None, ndk=player.LOCK['ndk'], cmake=player.LOCK['cmake'], plugin_only=False,
+        ai=ai, mnn_source=player.CACHE/'ai/MNN-3.6.1-vrpp', mnn_lib=player.CACHE/'ai/mnn-android/libMNN.a',
+        ncnn_dir=player.CACHE/'ai/ncnn/ncnn-20260526-android-vulkan/arm64-v8a',
+        mpv_dir=player.CACHE/'ci-ai/mpv/arm64-v8a', mpv_receipt=player.CACHE/'ci-ai/mpv/source-build.json')
     # Keep a single lock and toolchain for all targets; reuse only within this invocation.
     with player.build_lock():
         env, sdk = player.environment(args, env)
@@ -219,7 +223,7 @@ def build(vendor, godot, templates):
         # deliberately configured shared installation through GRADLE_HOME.
         args.gradle = player.gradle_executable(args, use_host=os.environ.get('GITHUB_ACTIONS') != 'true')
         check_export_path(templates, args.gradle, env)
-        player.prepare_dependencies(env)
+        player.prepare_dependencies(env, args)
         for index, target in enumerate(vendors):
             args.vendor = target
             started = time.monotonic()
@@ -229,9 +233,14 @@ def build(vendor, godot, templates):
                 if player.LOGS.exists():
                     shutil.copytree(player.LOGS, player.ROOT/'artifacts/ci-logs'/target, dirs_exist_ok=True)
             platform = {'Pico': 'PICO', 'Quest': 'QUEST', 'OpenXR': 'OpenXR'}[target]
-            candidates = list((player.ROOT/'artifacts').glob(f'Thru3D-{platform}-*-noai-release-*.build.json'))
+            mode = 'ai' if ai else 'noai'
+            candidates = list((player.ROOT/'artifacts').glob(f'Thru3D-{platform}-*-{mode}-release-*.build.json'))
+            if not candidates:
+                raise RuntimeError('Missing receipt for the selected AI/build target')
             path = max(candidates, key=lambda p: p.stat().st_mtime)
             receipt = json.loads(path.read_text(encoding='utf-8'))
+            if receipt.get('ai_enabled') is not ai:
+                raise RuntimeError('Build receipt AI mode differs from the selected CI job')
             receipt.update(ci_signing=signing, ci_host=os.environ.get('RUNNER_OS', sys.platform),
                            ci_target_seconds=round(time.monotonic()-started, 1))
             path.write_text(json.dumps(receipt, indent=2)+'\n', encoding='utf-8')
@@ -242,8 +251,9 @@ def build(vendor, godot, templates):
     (artifacts/'ci-summary.json').write_text(json.dumps(receipts, indent=2)+'\n', encoding='utf-8')
     if os.environ.get('GITHUB_STEP_SUMMARY'):
         with Path(os.environ['GITHUB_STEP_SUMMARY']).open('a', encoding='utf-8') as summary:
-            summary.write(f'### Android Release, no AI — {os.environ.get("RUNNER_OS", sys.platform)}\n\n')
-            summary.write(f'Signing: `{signing}`. CI packages contain no AI models or inference libraries.\n\n')
+            summary.write(f'### Android Release, {"AI" if ai else "no AI"} — {os.environ.get("RUNNER_OS", sys.platform)}\n\n')
+            contents = 'Public upstream models and the inference runtime are included.' if ai else 'CI packages contain no AI models or inference libraries.'
+            summary.write(f'Signing: `{signing}`. {contents}\n\n')
             summary.write('| Platform | APK | SHA256 |\n|---|---|---|\n')
             for receipt in receipts:
                 summary.write(f'| {receipt["vendor"]} | {receipt["apk"]} | `{receipt["sha256"]}` |\n')
@@ -260,6 +270,7 @@ def main():
     package.add_argument('--vendor', choices=['all', 'Pico', 'Quest', 'OpenXR'], default=os.environ.get('CI_VENDOR', 'all'))
     package.add_argument('--godot', default=os.environ.get('GODOT_EXE', 'godot'))
     package.add_argument('--templates', default=os.environ.get('GODOT_TEMPLATES_DIR'))
+    package.add_argument('--ai', action='store_true')
     args = parser.parse_args()
     if args.command == 'setup':
         setup()
@@ -270,7 +281,7 @@ def main():
     else:
         if not args.templates:
             parser.error('--templates or GODOT_TEMPLATES_DIR is required')
-        build(args.vendor, args.godot, args.templates)
+        build(args.vendor, args.godot, args.templates, ai=args.ai)
 
 
 if __name__ == '__main__':

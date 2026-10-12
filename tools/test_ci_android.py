@@ -1,6 +1,8 @@
 """Offline checks for CI template caching and optional signing configuration."""
 import base64
+import contextlib
 import hashlib
+import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -11,6 +13,37 @@ import ci_android as ci
 
 
 class CiBoundaries(unittest.TestCase):
+    def check_build_mode(self, ai, receipt_ai=None):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            def build(args, env, sdk, **kwargs):
+                artifacts = root/'artifacts';artifacts.mkdir(exist_ok=True)
+                mode = 'ai' if ai else 'noai'
+                data = dict(apk=f'Thru3D-QUEST-v1-{mode}-release-test.apk', sha256='fixture', vendor='Quest',
+                            ai_enabled=ai if receipt_ai is None else receipt_ai)
+                (artifacts/f'Thru3D-QUEST-v1-{mode}-release-test.build.json').write_text(json.dumps(data))
+            with patch.object(ci.player, 'ROOT', root), patch.object(ci.player, 'CACHE', root/'.cache'), \
+                 patch.object(ci.player, 'LOGS', root/'logs'), \
+                 patch.object(ci.player, 'build_lock', side_effect=contextlib.nullcontext), \
+                 patch.object(ci.player, 'environment', return_value=({}, root/'sdk')), \
+                 patch.object(ci.player, 'gradle_executable', return_value=root/'gradle'), \
+                 patch.object(ci, 'check_export_path'), patch.object(ci.player, 'prepare_dependencies') as prepare, \
+                 patch.object(ci.player, 'build', side_effect=build), patch.dict(ci.os.environ, {}, clear=True):
+                ci.build('Quest', 'godot', root/'templates', ai=ai)
+                self.assertIs(prepare.call_args.args[1].ai, ai)
+                summary = json.loads((root/'artifacts/ci-summary.json').read_text())
+                self.assertIs(summary[0]['ai_enabled'], ai)
+
+    def test_ai_job_selects_ai_builder_and_ai_receipts(self):
+        self.check_build_mode(True)
+
+    def test_existing_job_stays_model_free(self):
+        self.check_build_mode(False)
+
+    def test_ai_job_rejects_a_mislabeled_model_free_receipt(self):
+        with self.assertRaisesRegex(RuntimeError, 'AI mode differs'):
+            self.check_build_mode(True, False)
+
     def test_templates_install_only_android_and_repair_a_corrupt_cache(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

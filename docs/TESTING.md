@@ -11,6 +11,8 @@ $env:GODOT_EXE = (Get-Command godot).Source
 
 The public checker examines tracked files for excluded binary types, credentials and private paths. It is a publication boundary check, not a substitute for a full security review.
 
+`test_ci_ai.py` checks same-recipe dependency transfer, corruption rejection before publication, source-frame validation and safe ZIP entries. `test_ci_android.py` also checks that AI and no-AI jobs select the corresponding builder and reject mislabeled receipts.
+
 `test_model_assets.py` uses synthetic bytes to check public/custom model identities, path normalization, hash corruption, complete validation before replacing an existing pack, contract/runtime rejection and conversion provenance. JVM `ModelRepositoryTest` checks lazy hash verification, failure recovery and rejection before model bytes are opened. Neither suite proves numerical model compatibility. Real AI builds still need matching models, the patched MNN runtime and device validation.
 
 `python tools/test_ai_native_compat.py --ndk /path/to/ndk` cross-compiles an Android string-hash probe and confirms the inference compatibility header avoids LLVM 21's new external `std::__hash_memory` dependency. MNN and the inference wrapper use libc++'s provided inline fallback, preserving Godot's single existing C++ runtime. Hosted CI runs this probe with the locked NDK; final APK inspection still checks every strong native dependency/symbol.

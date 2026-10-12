@@ -184,13 +184,21 @@ class ModelPacks(unittest.TestCase):
     def test_converter_reuses_only_the_matching_variant(self):
         module = self.converter()
         (module.OUT / 'rvm.mnn').write_bytes(b'cached-public-model')
-        (module.OUT / 'manifest.json').write_text(json.dumps(dict(schema_version=5, variant='upstream')))
+        (module.OUT / 'manifest.json').write_text(json.dumps(dict(schema_version=5, variant='upstream', conversion_recipe_sha256=module.recipe_sha())))
         installed = []
         module.install = lambda: installed.append(True)
         module.prune_fgr = lambda _: self.fail('Matching variant should reuse its verified conversion cache')
         with patch('sys.argv', ['prepare_rvm_mnn.py']):
             module.main()
         self.assertEqual(installed, [True])
+
+    def test_changed_conversion_recipe_does_not_reuse_a_restored_ci_model(self):
+        module = self.converter()
+        (module.OUT / 'rvm.mnn').write_bytes(b'old-public-model')
+        (module.OUT / 'manifest.json').write_text(json.dumps(dict(schema_version=5, variant='upstream', conversion_recipe_sha256='old')))
+        with patch('sys.argv', ['prepare_rvm_mnn.py']), contextlib.redirect_stdout(io.StringIO()):
+            module.main()
+        self.assertEqual(models.read_json(module.OUT/'manifest.json')['conversion_recipe_sha256'], module.recipe_sha())
 
 
 if __name__ == '__main__':

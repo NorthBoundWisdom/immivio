@@ -45,6 +45,15 @@ def sha(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+def recipe_sha():
+    # A restored CI conversion cache must not bypass changed graph/checking code.
+    directory = Path(__file__).resolve().parent
+    digest = hashlib.sha256()
+    for name in ('prepare_rvm_mnn.py', 'fuse_rvm_graph.py', 'specialize_rvm_ratio_one.py'):
+        digest.update(name.encode());digest.update((directory/name).read_bytes())
+    return digest.hexdigest()
+
+
 def prune_fgr(model):
     keep = [v for v in model.graph.output if v.name != 'fgr']
     del model.graph.output[:]
@@ -178,7 +187,7 @@ def main():
     current = OUT / 'manifest.json'
     if not args.regenerate and current.is_file() and (OUT / 'rvm.mnn').is_file():
         cached = json.loads(current.read_text(encoding='utf-8'))
-        if cached.get('schema_version') == 5 and cached.get('variant', 'distilled') == args.variant:
+        if cached.get('schema_version') == 5 and cached.get('variant', 'distilled') == args.variant and cached.get('conversion_recipe_sha256') == recipe_sha():
             install()
             return
     OUT.mkdir(parents=True, exist_ok=True)
@@ -234,7 +243,7 @@ def main():
         student_record = dict(manifest='models/manifest/rvm_student.json', sha256=student_manifest['sha256'],
                               conv_hardswish=student_hswish, marked_onnx_sha256=sha(student_marked))
     target = OUT / 'rvm.mnn'
-    manifest = dict(schema_version=5, variant=args.variant, backend='MNN 3.6.1 OpenCL', source_onnx=str(SOURCE.relative_to(ROOT)),
+    manifest = dict(schema_version=5, variant=args.variant, conversion_recipe_sha256=recipe_sha(), backend='MNN 3.6.1 OpenCL', source_onnx=str(SOURCE.relative_to(ROOT)),
                     source_sha256=sha(SOURCE), pruned_onnx_sha256=sha(pruned), u8_onnx_sha256=sha(u8),
                     fused_onnx_sha256=sha(fused), marked_onnx_sha256=sha(marked), mnn_sha256=sha(target),
                     quality_mnn_sha256=sha(OUT / 'rvm_quality.mnn'),

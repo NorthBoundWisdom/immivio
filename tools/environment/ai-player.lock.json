@@ -33,6 +33,17 @@
       "filename": "depth_anything_v2_small.onnx",
       "bytes": 99060839,
       "sha256": "afb6a5c28f3b6bf1618c6e43f02073ef9dfdc70e937502d51603e57b0a1df10c"
+    },
+    "mpv_builder": {
+      "url": "https://codeload.github.com/mpv-android/mpv-android/tar.gz/fdf74f6830c47dbaa8a22ac79726e8303f1db5af",
+      "filename": "mpv-android-fdf74f6.tar.gz",
+      "bytes": 2115606,
+      "sha256": "5ca9265c8824d9afbd5d9c276db950a3b986d1b61972a95657f0d3dd72eddd89"
     }
+  },
+  "mpv_builder_revision": "fdf74f6830c47dbaa8a22ac79726e8303f1db5af",
+  "mpv_host_python": {
+    "Jinja2": "3.1.6",
+    "packaging": "26.3"
   }
 }

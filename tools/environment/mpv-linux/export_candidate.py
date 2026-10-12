@@ -12,7 +12,7 @@ from build_receipt import inputs
 ROOT = Path(__file__).resolve().parents[3]
 WORK = Path(str(Path(os.environ.get('THRU3D_MPV_WORK', str(Path.home() / '.cache/thru3d-mpv')))))
 BUILDER = WORK/'mpv-android/buildscripts'
-TOOLCHAIN = WORK/'android-ndk-r30/toolchains/llvm/prebuilt/linux-x86_64/bin'
+TOOLCHAIN = Path(os.environ.get('THRU3D_MPV_TOOLCHAIN_BIN', str(WORK/'android-ndk-r30/toolchains/llvm/prebuilt/linux-x86_64/bin')))
 DEST = Path(os.environ.get('THRU3D_MPV_EXPORT', str(ROOT / 'build/output/mpv-source/arm64-v8a')))
 LIBS = ['libmpv.so', 'libavcodec.so', 'libavdevice.so', 'libavfilter.so',
         'libavformat.so', 'libavutil.so', 'libswresample.so', 'libswscale.so']
@@ -99,7 +99,8 @@ def main():
         'license_profile': 'Upstream default GPL MPV and FFmpeg gpl/version3; Debug candidate only',
         'reproducibility': 'Exact sources/options/toolchain recorded; independent second-build byte comparison pending',
     }
-    target_manifest = ROOT/'third_party/mpv/source-build.json'
+    target_manifest = Path(os.environ.get('THRU3D_MPV_MANIFEST', str(ROOT/'third_party/mpv/source-build.json')))
+    target_manifest.parent.mkdir(parents=True, exist_ok=True)
     temporary = target_manifest.with_suffix('.json.tmp')
     temporary.write_text(json.dumps(manifest, indent=2)+'\n')
     temporary.replace(target_manifest)

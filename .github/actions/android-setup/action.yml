@@ -1,0 +1,49 @@
+name: Prepare Android release CI
+description: Provision shared tools and mode-specific caches for the four release checks
+inputs:
+  ai:
+    description: Include the public AI preparation caches
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      with:
+        python-version: '3.13'
+    - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
+      with:
+        distribution: temurin
+        java-version: '25'
+    - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+      with:
+        go-version: '1.27.1'
+        cache: false
+    - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4
+      with:
+        cmdline-tools-version: '15859902'
+        packages: platform-tools
+        log-accepted-android-sdk-licenses: false
+    - name: Locate mode-specific caches
+      id: paths
+      shell: python
+      env:
+        CI_WITH_AI: ${{ inputs.ai }}
+      run: |
+        import os
+        paths = ['~/.gradle/caches/modules-2', '~/.gradle/wrapper', '.cache/downloads',
+                 '.cache/openlist/android-build.json', '.cache/ci-tools/templates',
+                 'app/godot/addons/quest_player/bin/cloudcore.aar', 'app/godot/.godot/imported']
+        mode = 'ai' if os.environ['CI_WITH_AI'] == 'true' else 'noai'
+        if mode == 'ai':
+            paths += ['.cache/ai/downloads', 'models/source', 'build/rvm/mnn',
+                      'build/rvm-ratio-one/source', '.cache/ci-ai/mpv']
+        with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
+            output.write('mode=' + mode + '\npaths<<CACHE_PATHS\n' + '\n'.join(paths) + '\nCACHE_PATHS\n')
+    - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+      with:
+        path: ${{ steps.paths.outputs.paths }}
+        key: ${{ runner.os }}-${{ runner.arch }}-android-${{ steps.paths.outputs.mode }}-v4-${{ hashFiles('tools/environment/base-player.lock.json', 'tools/environment/ai-player.lock.json', 'third_party/mpv/*.json', 'native/mpv/patches/*', 'tools/ci_ai.py', 'tools/models/*.py', 'cloud/openlist/*.go', 'android/*.gradle', 'android/player-plugin/build.gradle') }}
+        restore-keys: ${{ runner.os }}-${{ runner.arch }}-android-${{ steps.paths.outputs.mode }}-v4-
+    - name: Prepare locked Godot and Android tools
+      shell: bash
+      run: python tools/ci_android.py setup

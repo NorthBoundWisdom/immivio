@@ -6,6 +6,8 @@ Newest first, following product release milestones. Some development/source snap
 
 ## Unreleased
 
+- Expand Android Release CI to four Windows/macOS checks: two with public AI models and two without AI, sharing a verified source-frame backend between the AI hosts.
+
 - Add checksum-pinned public AI preparation and portable AI APK builds with source-frame backend verification, exact model receipts and package integrity checks.
 - Make RVM conversion distinguish measured floating-point threshold crossings from incorrect 8-bit Alpha export, and collect native session cycles before Python shutdown.
 
