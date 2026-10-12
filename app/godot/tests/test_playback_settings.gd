@@ -175,7 +175,7 @@ func _run() -> void:
 	video._apply_geometry()
 	video.stereo_sbs = true
 	menu.refresh()
-	check(menu._buttons.any(func(b): return b.node.get_children().any(func(n): return n is Label3D and n.text == "Stereo viewing")), "Flat native stereo exposes stereo viewing controls")
+	check(menu.text_snapshot().contains("Stereo viewing") and button(menu, 103).enabled, "Flat native stereo exposes stereo viewing controls")
 	video.stereo_sbs = false
 	click(menu, 10)
 	click(menu, 110)

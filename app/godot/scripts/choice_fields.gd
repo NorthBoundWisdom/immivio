@@ -41,7 +41,7 @@ func _button(item: Dictionary, label: String, centre: Vector2, size: Vector2, pa
 		var container: Node3D = parent.get_parent()
 		var local: Vector3 = container.to_local(parent.to_global(Vector3(centre.x, centre.y, 0)))
 		centre = Vector2(local.x, local.y); field_z = local.z + 0.004; parent = container
-	menu._button(target, menu._fit_title(label, "", size.x - 0.025, 18), centre, size, true, "", false, parent)
+	menu._control_button(target, label, centre, size.x, true, "", false, parent)
 	var button: Dictionary = menu._buttons.back()
 	if field_z > 0: button.node.position.z = field_z
 	button.base_color = menu.SELECTED if selected else menu.TILE
@@ -51,7 +51,7 @@ func _button(item: Dictionary, label: String, centre: Vector2, size: Vector2, pa
 	(button.node.get_child(0) as Label3D).render_priority = 14
 	return target
 
-func field(parent: Node3D, row: Dictionary, centre: Vector2, width: float, height: float = 0.06) -> void:
+func field(parent: Node3D, row: Dictionary, centre: Vector2, width: float, height: float = 0.065) -> void:
 	if row.get("slider", false):
 		_slider(parent, row, centre, width, height)
 		return
@@ -81,6 +81,11 @@ func _slider(parent: Node3D, row: Dictionary, centre: Vector2, width: float, hei
 	var rail_width := width - 0.15
 	var target := _button({"kind": "slider", "key": row.key, "span": row.span}, "", centre, Vector2(width, height), parent)
 	var button: Dictionary = menu._buttons.back()
+	var centre_y: float = button.rect.get_center().y
+	button.rect.size.y = height
+	button.rect.position.y = centre_y - height / 2
+	button.node.mesh.size.y = height
+	button.node.material_override.set_shader_parameter("surface_size", button.node.mesh.size)
 	button.base_color = Color(menu.TILE, 0)
 	button.node.material_override.set_shader_parameter("surface_color", button.base_color)
 	var node: MeshInstance3D = button.node
@@ -116,6 +121,7 @@ func _refresh_slider(target: int, value: float) -> void:
 	slider.fill.material_override.set_shader_parameter("surface_size", slider.fill.mesh.size)
 	slider.knob.position.x = slider.left + fraction * slider.width
 	slider.label.text = ("%.0f" % value if slider.unit in ["%", " FPS"] else ("%+.0f" % value if slider.unit == "°" and value != 0 else ("%.0f" % value if slider.unit == "°" else "%.1f" % value))) + slider.unit
+	if slider.unit == "×": slider.label.text = "%.2f×" % value
 
 func _preview_slider(point: Vector3) -> void:
 	var span: Vector3 = capture.item.span
@@ -146,16 +152,23 @@ func finish() -> void:
 		if targets.has(button.target):
 			var item: Dictionary = targets[button.target]
 			button.enabled = item.kind == "open" and item.key == opened
+			button["keep_visible"] = true # Temporarily blocked by the open popup.
 	var options: Array = popup.choices
 	var capacity := clampi(int(popup.get("rows", POPUP_ROWS)), 1, POPUP_ROWS)
-	offset = clampi(offset, 0, maxi(0, options.size() - capacity))
-	var count := mini(capacity, options.size())
 	var header: String = str(popup.get("heading", ""))
 	var footer: String = str(popup.get("footer", ""))
 	var header_height := 0.065 if not header.is_empty() else 0.0
 	var footer_height := (0.085 + 0.035 * footer.count("\n")) if not footer.is_empty() else 0.0
+	var available_height := bounds.y - bounds.x - header_height - footer_height - 0.055
+	capacity = mini(capacity, maxi(1, floori(available_height / PITCH)))
+	var scroll_height := 0.075 if options.size() > capacity else 0.0
+	if scroll_height > 0:
+		capacity = mini(capacity, maxi(1, floori((available_height - scroll_height) / PITCH)))
+	popup["rows"] = capacity
+	offset = clampi(offset, 0, maxi(0, options.size() - capacity))
+	var count := mini(capacity, options.size())
 	var width := float(popup.get("width", 0.72))
-	var height := count * PITCH + 0.055 + header_height + footer_height
+	var height := count * PITCH + 0.055 + header_height + footer_height + scroll_height
 	var top := anchor.y - 0.04
 	if top - height < bounds.x: top = anchor.y + 0.04 + height
 	top = clampf(top, bounds.x + height, bounds.y)
@@ -175,14 +188,14 @@ func finish() -> void:
 		(node.get_child(0) as Label3D).render_priority = 32
 		menu._tips[target] = menu.I18n.t(str(option.get("hint", "")))
 	if not footer.is_empty():
-		var hint: Label3D = menu._label(menu.I18n.t(footer), Vector3(x, top-height + footer_height / 2, 0.039), 16)
+		var hint: Label3D = menu._label(menu.I18n.t(footer), Vector3(x, top-height + scroll_height + footer_height / 2, 0.039), 16)
 		hint.modulate = menu.MUTED; hint.render_priority = 32
 	if options.size() > capacity:
-		_button({"kind": "scroll", "step": -1}, "↑", Vector2(x-width/2+0.07, top-height+footer_height+0.016), Vector2(0.07, 0.03))
+		_button({"kind": "scroll", "step": -1}, "↑", Vector2(x-width/2+0.07, top-height+0.04), Vector2(0.07, menu.CONTROL_HEIGHT))
 		menu._buttons.back().node.position.z = 0.038
 		menu._buttons.back().node.material_override.render_priority = 31
 		(menu._buttons.back().node.get_child(0) as Label3D).render_priority = 32
-		_button({"kind": "scroll", "step": 1}, "↓", Vector2(x+width/2-0.07, top-height+footer_height+0.016), Vector2(0.07, 0.03))
+		_button({"kind": "scroll", "step": 1}, "↓", Vector2(x+width/2-0.07, top-height+0.04), Vector2(0.07, menu.CONTROL_HEIGHT))
 		menu._buttons.back().node.position.z = 0.038
 		menu._buttons.back().node.material_override.render_priority = 31
 		(menu._buttons.back().node.get_child(0) as Label3D).render_priority = 32

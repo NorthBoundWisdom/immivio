@@ -121,6 +121,7 @@ func _run() -> void:
 	video.close_video()
 	check(not video.is_spatial_video(), "Closing the source clears its format lock")
 	video.media.begin(10)
+	video.local_uri = "file:///ordinary-test.mp4"
 	video.media.format = {"width": 1920, "height": 1080}
 	video.advance_session = false
 	video.auto_depth = false

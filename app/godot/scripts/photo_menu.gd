@@ -174,13 +174,13 @@ func _refresh_adjustments() -> void:
 
 func _draw_panel() -> void:
 	_set_backdrop(Vector2(1.16, 0.55))
-	_button(10, "", Vector2(-0.48, 0.2), Vector2(0.085, 0.065), true, "up")
+	_control_button(10, "", Vector2(-0.48, 0.2), CONTROL_HEIGHT, true, "up")
 	_label(I18n.t("Images"), Vector3(0, 0.2, 0.004), 21)
-	_button(PHOTO_STRENGTH, I18n.t("3D depth") + "  " + _depth_caption(), Vector2(-0.26, 0.035), Vector2(0.49, 0.105), _can_depth(), "depth")
+	_control_button(PHOTO_STRENGTH, I18n.t("3D depth") + "  " + _depth_caption(), Vector2(-0.26, 0.035), 0.49, _can_depth(), "depth")
 	var names := ["Off", "Slight", "Medium", "Full"]
 	var curve := [0.0, 0.35, 0.7, 1.0].find(float(_state.get("screen_curve", 0)))
-	_button(PHOTO_CURVE, I18n.t("Screen curve") + "  " + I18n.t(names[maxi(0, curve)]), Vector2(0.26, 0.035), Vector2(0.49, 0.105), int(_state.get("geometry", 0)) == 0 and not _state.get("portrait_requested",false), "screen")
-	_button(PHOTO_BACKGROUND, I18n.t("Use as background"), Vector2(0, -0.10), Vector2(0.56, 0.08), _state.get("can_background", false), "image")
+	_control_button(PHOTO_CURVE, I18n.t("Screen curve") + "  " + I18n.t(names[maxi(0, curve)]), Vector2(0.26, 0.035), 0.49, int(_state.get("geometry", 0)) == 0 and not _state.get("portrait_requested",false), "screen")
+	_control_button(PHOTO_BACKGROUND, I18n.t("Use as background"), Vector2(0, -0.10), 0.56, _state.get("can_background", false), "image")
 	_status = _label(_photo_status(), Vector3(0, -0.19, 0.004), 15)
 	_status.modulate = MUTED
 	_place_device_status(Vector2(0, -0.32))

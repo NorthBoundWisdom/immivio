@@ -9,7 +9,7 @@ const STATE := {"has_video": true, "title": "Thru3D", "source_uri": "warmup://sy
 	"position_ms": 30000, "audio_available": true, "playing": true}
 const PAGES := ["bar", "screen", "playback", "sync", "queue", "info", "color0", "color1", "color2", "stereo", "mode", "subtitles", "volume",
 	"screen_immersive", "stereo_left", "screen_mono", "playback_mono", "sync_mono", "queue_mono", "color0_mono", "color1_mono", "color2_mono", "ipd_mono",
-	"depth", "audio", "subtitle_immersive", "queue_populated", "bookmarks", "playback_alpha", "stereo_tb", "info_available"]
+	"depth", "audio", "subtitle_immersive", "queue_populated", "bookmarks", "playback_alpha", "stereo_tb", "info_available", "quick_screen", "quick_speed", "quick_loop"]
 var playback_menu: Node3D
 
 const SESSION_STATE := {"follow": false, "passthrough_visible": true, "passthrough": false, "alpha": false}
@@ -31,7 +31,7 @@ func prepare(menu: Node3D, page: String) -> void:
 	menu._reset_navigation()
 	var name := page.trim_suffix("_mono")
 	match name:
-		"bar", "mode", "subtitles", "volume", "depth", "audio", "subtitle_immersive", "bookmarks":
+		"bar", "mode", "subtitles", "volume", "depth", "audio", "subtitle_immersive", "bookmarks", "quick_screen", "quick_speed", "quick_loop":
 			menu.section = 0
 		"info", "info_available": menu.section = 2
 		_: menu.section = 1
@@ -43,6 +43,7 @@ func prepare(menu: Node3D, page: String) -> void:
 		_: menu._adjustment = "color_grade" if name.begins_with("color") else ""
 	menu._grade_page = int(name.trim_prefix("color")) if name.begins_with("color") else 0
 	menu._mode_open = name == "mode"; menu._subtitle_open = name in ["subtitles", "subtitle_immersive"]
+	menu._quick_open = name.trim_prefix("quick_") if name.begins_with("quick_") else ""
 	menu._volume_open = name == "volume"; menu._depth_open = name == "depth"
 	menu._state = STATE.duplicate(true)
 	menu._state["stereo"] = not page.ends_with("_mono") and name != "depth"

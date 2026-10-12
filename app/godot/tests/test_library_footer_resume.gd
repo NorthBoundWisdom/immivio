@@ -47,21 +47,26 @@ func _run() -> void:
 		for reclining in [false,true]:
 			main.view_follow.set_enabled(follow); main.reclining_mode = reclining
 			menu.global_position = Vector3(5,3,4)
-			main.display.session_state = "session_stopping"; main._on_input_session_changed()
-			main.tracked = false; main.display.session_state = "session_focussed"; main._on_input_session_changed()
-			var before: Vector3 = menu.global_position
-			main._restore_menu_after_resume()
-			check(main._menu_resume_pending and menu.global_position==before,"Resume waits for valid head tracking")
+			main.video.flat_pose = Transform3D(Basis(Vector3.UP, .7), Vector3(2, 1.8, -3))
+			main.view_follow.capture(main._menu_key(menu), main._menu_head_pose(main.xr_camera.global_transform), menu.global_transform)
+			var before := menu.global_transform
+			var video_before: Transform3D = main.video.flat_pose
+			var offsets: Dictionary = main.view_follow._poses.duplicate(true)
+			main._notification(Main.NOTIFICATION_APPLICATION_PAUSED)
+			main.display.session_state = "session_visible"; main._on_input_session_changed()
+			main.tracked = false
+			main._apply_system_recenter()
+			check(menu.global_transform.is_equal_approx(before) and main.video.flat_pose.is_equal_approx(video_before), "System overlay and tracking loss preserve menu and screen placement")
 			main.xr_camera.global_transform = Transform3D(Basis.from_euler(Vector3(.6,.9,.2)),Vector3(1,1.7,-.3))
 			main.tracked = true
-			for frame in 3: main._restore_menu_after_resume()
-			var expected: Transform3D = main._menu_head_pose(main.xr_camera.global_transform)*Transform3D(Basis.IDENTITY,Vector3(0,-.05,-main.library_distance))
-			check(not main._menu_resume_pending and menu.global_transform.is_equal_approx(expected),"Resume centres menu after tracking in upright/reclining and follow modes")
-			if follow:
-				check(main.view_follow.pose(main._menu_key(menu),main._menu_head_pose(main.xr_camera.global_transform)).is_equal_approx(expected),"Resume replaces stale follow offset")
-	var stable: Transform3D = menu.global_transform
-	main._on_input_session_changed(); main._restore_menu_after_resume()
-	check(menu.global_transform.is_equal_approx(stable) and not main._menu_resume_pending,"An unchanged focused display state cannot cause repeated recentering")
+			main.display.session_state = "session_focussed"; main._on_input_session_changed()
+			main._notification(Main.NOTIFICATION_APPLICATION_RESUMED)
+			for frame in 5: main._apply_system_recenter()
+			check(menu.global_transform.is_equal_approx(before) and main.video.flat_pose.is_equal_approx(video_before), "Returning from system dialog never centres content in upright/reclining and follow modes")
+			check(main.view_follow._poses == offsets, "Resume preserves saved follow offsets")
+	main.view_follow.set_enabled(false)
+	main._recenter()
+	check(not menu.global_position.is_equal_approx(Vector3(5,3,4)), "Explicit in-app recenter remains available")
 	compositor.free(); main.queue_free(); await process_frame
 	for failure in failures: push_error(failure)
 	print("Library footer and resume: %d checks, %d failures" % [checks,failures.size()])

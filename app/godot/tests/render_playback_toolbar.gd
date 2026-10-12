@@ -19,10 +19,13 @@ func _run() -> void:
 	menu.device_status.refresh(true)
 	for language in ["zh","en"]:
 		menu.I18n.use(language)
-		for page in ["bar","bookmarks","volume"]:
+		for page in ["bar","bookmarks","volume","quick_screen","quick_speed","quick_loop"]:
 			state.bookmarks = [{"id":"a","position_ms":60000},{"id":"b","position_ms":240000}] if page=="bookmarks" else []
 			state.bookmark_undo = page=="bookmarks"
-			menu.visible = true;menu.section = 0;menu._volume_open = page=="volume";menu.refresh()
+			menu._reset_navigation()
+			menu.visible = true;menu.section = 0;menu._volume_open = page=="volume"
+			menu._quick_open = page.trim_prefix("quick_") if page.begins_with("quick_") else ""
+			menu.refresh()
 			for frame in 3:await process_frame;await RenderingServer.frame_post_draw
 			viewport.get_texture().get_image().save_png(output.path_join(language+"-"+page+".png"))
 	menu.queue_free();viewport.queue_free();await process_frame;quit()

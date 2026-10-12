@@ -81,9 +81,9 @@ var menu_compositor: Node3D
 const LIBRARY_DISTANCE_LIMITS := Vector2(0.8, 3.0)
 var library_distance := 1.4
 var _library_grab := {}
-var _menu_resume_pending := false
-var _resume_tracked_frames := 0
-var _last_input_session := ""
+const SYSTEM_RECENTER_TRACKED_FRAMES := 3
+var _system_recenter_pending := false
+var _system_recenter_frames := 0
 var settings := ConfigFile.new()
 var settings_path := SETTINGS_PATH
 var background: Node
@@ -170,8 +170,8 @@ func _ready() -> void:
 	input_visuals = InputVisuals.new()
 	input_visuals.name = "InputVisuals"
 	origin.add_child(input_visuals)
-	# Long-press of the controller's Meta button recenters the runtime's space; bring the screen
-	# and menus in front of the new view, exactly as the in-app Recenter does.
+	# A tracking-space reset (long Home press) requests centring. Focus recovery
+	# after an ordinary system dialog does not request placement changes.
 	var openxr := XRServer.find_interface("OpenXR")
 	if not desktop and openxr and openxr.has_signal("pose_recentered"):
 		openxr.connect("pose_recentered", _on_system_recentered)
@@ -572,12 +572,23 @@ func _head_tracked() -> bool:
 
 func _on_system_recentered() -> void:
 	Log.record("system_recentered")
-	if view_follow.enabled:
-		_update_view_follow()
-	else:
-		_recenter()
+	_system_recenter_pending = true
+	_system_recenter_frames = 0
+
+func _apply_system_recenter() -> void:
+	if not _system_recenter_pending: return
+	if not _input_focused() or _head_pose() == null:
+		_system_recenter_frames = 0
+		return
+	# OpenXR updates its tracker before signalling, but XRCamera3D can still hold
+	# the previous reference-space pose. Use subsequent tracked scene frames.
+	_system_recenter_frames += 1
+	if _system_recenter_frames < SYSTEM_RECENTER_TRACKED_FRAMES: return
+	_recenter()
+	Log.record("system_recenter_applied")
 
 func _process(delta: float) -> void:
+	_apply_system_recenter()
 	_update_view_follow()
 	_refresh_session_controls()
 	if _gallery_save_after > 0 and Time.get_ticks_msec() >= _gallery_save_after:
@@ -588,7 +599,6 @@ func _process(delta: float) -> void:
 	if not _head_placed and _head_tracked():
 		_head_placed = true
 		if not view_follow.enabled: _recenter()
-	_restore_menu_after_resume()
 	if video and _viewer().local_uri != _screen_uri:
 		_screen_uri = _viewer().local_uri
 		if not _screen_uri.is_empty():
@@ -660,7 +670,7 @@ func _update_controls_visibility(menu: Node3D) -> void:
 		_menu_touched_ms = now
 		return
 	# Keep popups, sliders and pending seeks visible; use media state, not the seek queue's state.
-	if menu.section != 0 or menu._mode_open or not menu._adjustment.is_empty() or menu._volume_open or menu._depth_open: return
+	if menu.section != 0 or menu._mode_open or not menu._quick_open.is_empty() or not menu._adjustment.is_empty() or menu._volume_open or menu._depth_open: return
 	if photo_active and photo_menu._layout_open: return
 	if photo_active:
 		if photo_menu._gallery_open: return
@@ -820,10 +830,6 @@ func _cancel_pointer(hand: String) -> void:
 		if is_instance_valid(menu) and menu.has_method("cancel_pointer"): menu.cancel_pointer(hand)
 
 func _on_input_session_changed() -> void:
-	var state := display.session_state
-	if _last_input_session == "session_focussed" and state != "session_focussed":
-		_menu_resume_pending = true; _resume_tracked_frames = 0
-	_last_input_session = state
 	if _input_focused(): return
 	_trigger_taps.clear()
 	photo_hands.cancel()
@@ -832,22 +838,6 @@ func _on_input_session_changed() -> void:
 		hand_pointers[hand].update({}, 0)
 		_cancel_pointer(hand)
 		if hand_marks.has(hand): hand_marks[hand].visible = false
-
-func _restore_menu_after_resume() -> void:
-	if not _menu_resume_pending: return
-	if not _input_focused() or _head_pose() == null:
-		_resume_tracked_frames = 0
-		return
-	# The first resumed focus event may still precede the new tracked camera pose.
-	_resume_tracked_frames += 1
-	if _resume_tracked_frames < 3: return
-	_menu_resume_pending = false; _resume_tracked_frames = 0
-	if not recent_menu: return
-	if recent_menu.visible:
-		_place_menu(recent_menu)
-	elif _viewer().local_uri.is_empty():
-		_show_recent_menu(true)
-	Log.record("library_resume_recentered", {"library_visible": recent_menu.visible})
 
 func _hand_input_report() -> Dictionary:
 	var report := {}
@@ -2208,6 +2198,8 @@ func _on_custom_background_saved(path: String, title: String, orientation: int) 
 	if background.choice == "custom" and photo_active: photo.close_image()
 
 func _recenter() -> void:
+	_system_recenter_pending = false
+	_system_recenter_frames = 0
 	_library_grab.clear()
 	_grab.clear()
 	photo_hands.cancel()
@@ -2436,7 +2428,5 @@ func _finish_app(restart: bool) -> void:
 		get_tree().quit()
 
 func _notification(what: int) -> void:
-	if what in [NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_APPLICATION_RESUMED]:
-		_menu_resume_pending = true; _resume_tracked_frames = 0
 	if what == NOTIFICATION_APPLICATION_PAUSED and photo and _gallery_save_after > 0:
 		_save_photo_adjustments()

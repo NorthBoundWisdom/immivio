@@ -146,16 +146,16 @@ func _run() -> void:
 	state.alpha_enabled = true
 	state["depth_requested"] = false
 	state["depth_enabled"] = false
-	# Video mode grid open, a ray resting on the Alpha button: its name shows above it.
+	# Video mode grid open, a ray resting on its shortcut: its name shows above it.
 	menu._mode_open = true
 	menu.refresh()
-	var alpha_rect: Rect2 = menu._buttons.filter(func(b): return b.target == 104)[0].rect
+	var alpha_rect: Rect2 = menu._buttons.filter(func(b): return b.target == menu.MODE)[0].rect
 	menu.update_pointer("left_hand", menu.to_global(Vector3(alpha_rect.get_center().x, alpha_rect.get_center().y, 0.1)), -menu.global_basis.z, true)
 	await process_frame
 	await RenderingServer.frame_post_draw
 	await RenderingServer.frame_post_draw
 	viewport.get_texture().get_image().save_png(output.path_join("playback_modes.png"))
-	if not menu._tooltip or not menu._tooltip.visible or menu._tooltip.get_child(0).text != preload("res://scripts/i18n.gd").t("Passthrough"):
+	if not menu._tooltip or not menu._tooltip.visible or menu._tooltip.get_child(0).text != preload("res://scripts/i18n.gd").t("Video mode"):
 		failures.append("Hovered bar icon shows its name")
 	# Fisheye: lens angles under the layouts; a top-bottom source lit.
 	state["geometry"] = 2

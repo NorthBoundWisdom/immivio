@@ -207,8 +207,8 @@ func _run() -> void:
 	check(main._menu_state().source_size == "3840 x 1920" and main._menu_state().codec == "hevc" and main._menu_state().text_subtitle_tracks == 2, "Menu uses actual format and codec; excludes bitmap subtitles")
 	check(click(menu, 102, "left_hand") and not video.requested_play and host.calls.back() == ["play", 7, false], "Left pointer pauses actual player")
 	check(click(menu, 102) and video.requested_play and host.calls.back() == ["play", 7, true], "Right pointer resumes actual player")
-	var shown := func(target: int) -> bool: return menu._buttons.any(func(b): return b.target == target)
-	check(shown.call(112) and shown.call(104) and not click(menu, 104), "Flat screen keeps both effects on the bar, with unsupported Alpha disabled")
+	var shown := func(target: int) -> bool: return menu._buttons.any(func(b): return b.target == target and b.node.visible)
+	check(shown.call(112) and not shown.call(104) and not click(menu, 104), "Flat screen shows available depth and hides unsupported Alpha")
 	check(not menu._mode_open and click(menu, 112, "left_hand") and video.depth_requested and video._pending_revision.depth and menu._depth_open,
 		"2D -> 3D opens its strength slider and enables the remembered strength")
 	menu.update_pointer("left_hand", Vector3.ZERO, Vector3.ZERO, false)
@@ -244,16 +244,14 @@ func _run() -> void:
 	video.set_projection(1)
 	menu.refresh()
 	var before_disabled_depth := host.calls.size()
-	check(shown.call(104) and shown.call(112) and not click(menu, 112) and host.calls.size() == before_disabled_depth,
-		"VR180 keeps both bar effects visible; disabled depth cannot issue a backend command")
-	check(click(menu, 104) and video.alpha_requested and video._pending_revision.alpha, "Alpha button requests same-source production revision")
-	menu.update_pointer("right_hand", Vector3.ZERO, Vector3.ZERO, false)
-	var alpha_tile: Dictionary = menu._buttons.filter(func(b): return b.target == 104)[0]
-	check(alpha_tile.node.material_override.get_shader_parameter("surface_color") == Color(0.16, 0.31, 0.27), "Requested Alpha is shown on its bar button, not as status text")
+	check(not shown.call(104) and not shown.call(112) and not click(menu, 104) and not click(menu, 112) and host.calls.size() == before_disabled_depth,
+		"VR180 toolbar omits passthrough and unavailable depth without issuing a backend command")
+	main._on_menu_action("alpha")
+	check(video.alpha_requested and video._pending_revision.alpha, "Existing backend Alpha route still requests the same-source revision")
 	video.set_projection(3)
 	menu.refresh()
-	check(shown.call(104) and shown.call(112) and not click(menu, 104) and not click(menu, 112) and not video.alpha_requested,
-		"360 keeps both bar effects visible but disabled, and stops the previous Alpha effect")
+	check(not shown.call(104) and not shown.call(112) and not click(menu, 104) and not click(menu, 112) and not video.alpha_requested,
+		"360 hides both unavailable effects and stops the previous Alpha effect")
 	check(click(menu, Menu.MODE) and click(menu, Menu.MODE_PROJECTION) and video.geometry == 0 and not video.stereo_sbs, "Back to flat 2D through the mode tiles")
 	check(not shown.call(Menu.MODE_STEREO + 2) and not shown.call(Menu.MODE_STEREO + 3) and shown.call(112), "Video popup omits duplicate depth and eye-order controls, retaining bar depth")
 	check(menu._buttons.filter(func(b): return b.target >= Menu.MODE_PROJECTION and b.target < Menu.MODE_PROJECTION + 4).map(func(b): return b.target) == [Menu.MODE_PROJECTION, Menu.MODE_PROJECTION + 1, Menu.MODE_PROJECTION + 3, Menu.MODE_PROJECTION + 2], "Projection tiles place Fisheye after 360 without changing stored IDs")
@@ -378,7 +376,7 @@ func _run() -> void:
 	check(click(menu, Menu.MODE_STEREO + 6) and video.mode_lock.layout == 4, "Half TB selection locks and saves")
 	check(click(menu, Menu.MODE_STEREO + 6) and video.mode_lock.is_empty(), "Half TB lock toggles off")
 	check(click(menu, Menu.MODE_STEREO + 1) and not video.stereo_half and not video.top_bottom, "Full SBS clears both half and TB")
-	check(shown.call(112) and not click(menu, 112) and not video.depth_requested, "Native stereo keeps the depth shortcut visible but disabled")
+	check(not shown.call(112) and not click(menu, 112) and not video.depth_requested, "Native stereo hides the unavailable depth shortcut")
 	check(click(menu, 11) and click(menu, Menu.PLAYBACK_SETTINGS) and menu._caption("eyes") == "L / R" and click(menu, eye_order_target) and click(menu, Menu.EYE_SWAP) and video.swap_eyes and menu._caption("eyes") == "R / L", "Settings swaps actual SBS eye order")
 	check(click(menu, Menu.VIEWING_EYE + 1) and video.viewing_eye == 1 and menu._adjust_rows.is_empty(), "Left-eye viewing uses the actual controller and hides alignment sliders")
 	check(click(menu, Menu.VIEWING_EYE + 2) and video.viewing_eye == 2, "Right-eye viewing uses the actual controller")

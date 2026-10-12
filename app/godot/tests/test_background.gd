@@ -198,7 +198,7 @@ func _run() -> void:
 	check(supported.applied_passthrough, "Paused Alpha retains passthrough")
 	main.video.requested_play = true
 	main.video.close_video()
-	check(not main.video.local_uri.is_empty() and main.video.alpha_requested, "Regression reproduces closed video with retained URI and Alpha preference")
+	check(main.video.local_uri.is_empty() and not main.video.alpha_requested, "Closing video clears playback identity and the active Alpha request")
 	main._update_background()
 	check(not supported.applied_passthrough and supported.environment.background_mode == Environment.BG_SKY, "Closing Alpha restores saved panorama")
 	main.video.media.begin(8)

@@ -16,6 +16,9 @@ const FOOTER_DIAMETER := 0.09
 const FOOTER_HIT_SIZE := 0.105
 const FOOTER_GAP := 0.025
 const STATUS_WIDTH := 0.36
+const CONTROL_HEIGHT := 0.065
+const CONTROL_FONT_SIZE := 18
+const CONTROL_ICON_SIZE := 0.032
 var max_ray_metres := MAX_RAY_METRES
 var xr_surface: Node
 var curve_radius := 0.0
@@ -104,6 +107,7 @@ func _reset_navigation() -> void:
 
 func refresh() -> void:
 	_draw()
+	_update_highlights()
 
 func _activate(_target: int) -> void:
 	pass
@@ -117,6 +121,8 @@ func _draw() -> void:
 func ray_hit(origin: Vector3, direction: Vector3) -> Dictionary:
 	if not visible or not origin.is_finite() or not direction.is_finite() or direction.length_squared() < 0.000001:
 		return {}
+	var world_origin := origin
+	var world_direction := direction
 	var mapped := {}
 	if xr_surface and (xr_surface.native_supported or xr_surface.get("scene_curved") == true) and xr_surface.active_menu == self:
 		mapped = xr_surface.map_ray(self, origin, direction)
@@ -125,7 +131,7 @@ func ray_hit(origin: Vector3, direction: Vector3) -> Dictionary:
 	var ray := direction.normalized()
 	var best := {}
 	for button in _buttons:
-		if (not button.enabled and not button.get("hover_disabled", false)) or not button.node.visible:
+		if (not button.enabled and not button.get("hover_disabled", false)) or not button.node.is_visible_in_tree():
 			continue
 		var inverse: Transform3D = button.node.global_transform.affine_inverse()
 		var start: Vector3 = inverse * origin
@@ -144,6 +150,43 @@ func ray_hit(origin: Vector3, direction: Vector3) -> Dictionary:
 		if distance > max_ray_metres or (not best.is_empty() and distance >= float(best.distance)):
 			continue
 		best = {"target": button.target, "point": to_local(world), "distance": distance, "enabled": button.enabled}
+	if not best.is_empty() and mapped.is_empty():
+		var panel_hit := ray_panel_hit(world_origin, world_direction)
+		if not panel_hit.is_empty() and float(panel_hit.distance) < float(best.distance) - 0.00001: return {}
+	if not best.is_empty() and not mapped.is_empty():
+		best.point = to_local(mapped.get("canvas_point", mapped.point))
+		best["world_point"] = mapped.point
+		best.distance = mapped.distance
+	return best
+
+## Panel feedback is independent of button activation: gaps and hidden controls
+## still stop the laser, without becoming clickable or highlighted targets.
+func ray_panel_hit(origin: Vector3, direction: Vector3) -> Dictionary:
+	if not visible or not origin.is_finite() or not direction.is_finite() or direction.length_squared() < 0.000001:
+		return {}
+	var mapped := {}
+	if xr_surface and (xr_surface.native_supported or xr_surface.get("scene_curved") == true) and xr_surface.active_menu == self:
+		mapped = xr_surface.map_ray(self, origin, direction)
+		if mapped.is_empty() or float(mapped.distance) > max_ray_metres: return {}
+		origin = mapped.origin; direction = mapped.direction
+	var best := {}
+	var panels: Array[Node3D] = [_backdrop]
+	panels.append_array(_decorations)
+	for panel in panels:
+		if not is_instance_valid(panel) or not panel.is_visible_in_tree() or not panel.get_meta("xr_ui_panel", false): continue
+		var inverse := panel.global_transform.affine_inverse()
+		var start := inverse * origin
+		var delta := inverse.basis * direction.normalized()
+		if delta.z >= -0.00001 or start.z <= 0.0: continue
+		var local := start + delta * (-start.z / delta.z)
+		var half: Vector2 = panel.mesh.size * 0.5
+		var radius := minf(float(panel.material_override.get_shader_parameter("corner_radius")), minf(half.x, half.y))
+		var corner := Vector2(absf(local.x), absf(local.y)) - (half - Vector2.ONE * radius)
+		if corner.x > radius or corner.y > radius or corner.max(Vector2.ZERO).length() > radius: continue
+		var world: Vector3 = panel.global_transform * Vector3(local.x, local.y, 0)
+		var distance := origin.distance_to(world)
+		if distance > max_ray_metres or (not best.is_empty() and distance >= float(best.distance)): continue
+		best = {"target": NONE, "point": to_local(world), "distance": distance, "enabled": false}
 	if not best.is_empty() and not mapped.is_empty():
 		best.point = to_local(mapped.get("canvas_point", mapped.point))
 		best["world_point"] = mapped.point
@@ -155,6 +198,7 @@ func update_pointer(hand: String, origin: Vector3, direction: Vector3, tracked: 
 		return
 	var hit := ray_hit(origin, direction) if tracked else {}
 	_hover[hand] = int(hit.get("target", NONE))
+	if tracked and hit.is_empty(): hit = ray_panel_hit(origin, direction)
 	var pointer := _pointer(hand)
 	var valid := tracked and origin.is_finite() and direction.is_finite() and direction.length_squared() > 0.000001
 	pointer.line.visible = valid
@@ -233,6 +277,7 @@ func _button(target: int, text: String, centre: Vector2, size: Vector2, enabled:
 	var base := ACCENT if primary else TILE
 	var foreground := Color(0.045, 0.1, 0.085) if primary else Color(0.93, 0.95, 0.98)
 	var node := _quad(size, Vector3(centre.x, centre.y, 0.002), base, 11)
+	node.visible = enabled
 	(parent if parent else self).add_child(node)
 	var label := _label(text, Vector3(0, -size.y * 0.26 if not icon.is_empty() else 0, 0.004), 19 if not icon.is_empty() else 23, node)
 	label.modulate = foreground if enabled else MUTED * Color(0.7, 0.7, 0.7)
@@ -243,6 +288,23 @@ func _button(target: int, text: String, centre: Vector2, size: Vector2, enabled:
 			foreground if enabled else MUTED, node)
 	_buttons.append({"target": target, "rect": Rect2(centre - size / 2, size), "enabled": enabled, "node": node,
 		"base_color": base, "foreground": foreground})
+
+## Standard settings action: one text line, optional inline icon, shared height.
+## Media tiles, transport controls and slider hit areas retain their own layouts.
+func _control_button(target: int, text: String, centre: Vector2, width: float, enabled: bool = true,
+		icon: String = "", primary: bool = false, parent: Node3D = null) -> void:
+	var inset := 0.075 if not icon.is_empty() and not text.is_empty() else 0.04
+	var caption := _fit_title(text, "", width - inset, CONTROL_FONT_SIZE)
+	_button(target, caption, centre, Vector2(width, CONTROL_HEIGHT), enabled, "", primary, parent)
+	var button: Dictionary = _buttons.back()
+	var label: Label3D = button.node.get_child(0)
+	label.font_size = CONTROL_FONT_SIZE
+	if not icon.is_empty():
+		if not text.is_empty():
+			label.position.x = 0.02
+		_icon(icon, Vector3(-width / 2 + 0.03 if not text.is_empty() else 0.0, 0, 0.004), CONTROL_ICON_SIZE,
+			button.foreground if enabled else MUTED, button.node)
+	if caption != text: _tips[target] = text
 
 ## Icon-only round button (play, floating actions); [tip] names it while a ray hovers it.
 func _round(target: int, icon: String, centre: Vector2, diameter: float, enabled: bool = true,
@@ -331,6 +393,7 @@ func _icon(key: String, location: Vector3, size: float, color: Color, parent: No
 
 func _quad(size: Vector2, location: Vector3, color: Color, priority: int) -> MeshInstance3D:
 	var node := MeshInstance3D.new()
+	if priority in [10, 30]: node.set_meta("xr_ui_panel", true)
 	var mesh := QuadMesh.new()
 	mesh.size = size
 	node.mesh = mesh
@@ -396,6 +459,7 @@ func _pointer(hand: String) -> Dictionary:
 
 func _update_highlights() -> void:
 	for button in _buttons:
+		button.node.visible = button.get("layout_visible", true) and (button.enabled or button.get("keep_visible", false) or button.get("fixed_current", false))
 		var hovered: bool = button.enabled and _hover.values().has(button.target)
 		var color: Color = button.base_color
 		if not button.enabled: color = Color(0.26, 0.44, 0.38) if button.get("hover_disabled", false) and button.base_color == ACCENT else Color(0.085, 0.095, 0.115, button.base_color.a)
@@ -406,7 +470,7 @@ func _update_highlights() -> void:
 func _update_tooltip() -> void:
 	var shown := {}
 	for button in _buttons:
-		if (button.enabled or button.get("hover_disabled", false)) and _tips.has(button.target) and _hover.values().has(button.target):
+		if button.node.is_visible_in_tree() and (button.enabled or button.get("hover_disabled", false)) and _tips.has(button.target) and _hover.values().has(button.target):
 			shown = button
 			break
 	if shown.is_empty():

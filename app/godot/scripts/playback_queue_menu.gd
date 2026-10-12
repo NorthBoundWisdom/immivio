@@ -41,8 +41,7 @@ func draw() -> void:
 func button(operation: String, title: String, centre: Vector2, size: Vector2, enabled: bool = true) -> void:
 	var id := BASE + actions.size()
 	actions[id] = operation
-	menu._button(id, title, centre, size, enabled)
-	(menu._buttons.back().node.get_child(0) as Label3D).font_size = 17
+	menu._control_button(id, title, centre, size.x, enabled)
 
 func action(target: int) -> bool:
 	if not actions.has(target): return false

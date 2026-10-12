@@ -418,7 +418,8 @@ func _place_list() -> void:
 	for button in _buttons:
 		if _row_target(button.target):
 			var line := float((button.target - ROW_BASE) / _cols()) - fraction
-			button.node.visible = line > -0.35 and line < _lines() - 0.65
+			button["layout_visible"] = line > -0.35 and line < _lines() - 0.65
+			button.node.visible = button.layout_visible and (button.enabled or button.get("keep_visible", false))
 	if is_instance_valid(_bar_thumb):
 		var span := _bar_span()
 		var thumb: float = _bar_thumb.mesh.size.y
@@ -459,6 +460,7 @@ func _max_scroll() -> float:
 func refresh() -> void:
 	_rebuild_rows()
 	_draw()
+	_update_highlights()
 
 # --- requests -------------------------------------------------------------------------------
 
@@ -1372,7 +1374,7 @@ func _draw() -> void:
 			_label(I18n.t("Open source licenses" if _about_page == 3 else "Credits"), Vector3(0.13, 0.46, 0.004), 24)
 		for position in tabs.size():
 			var i: int = SETTING_ORDER[position]
-			_button(TAB_BASE + i, I18n.t(tabs[i]), Vector2(-0.40 + position * 0.225, 0.46), Vector2(0.21, 0.07))
+			_control_button(TAB_BASE + i, I18n.t(tabs[i]), Vector2(-0.40 + position * 0.225, 0.46), 0.21)
 			(_buttons.back().node.get_child(0) as Label3D).font_size = 18
 			_lit(i == tab)
 		if section in [Section.RECENT, Section.LOCAL, Section.SMB, Section.DLNA, Section.CLOUD]:
@@ -1421,8 +1423,8 @@ func _draw() -> void:
 		_button(QUEUE_ADD_LIST, I18n.t("Add current list"), Vector2(-0.22, 0.57), Vector2(0.62, 0.07), not video_queue().is_empty())
 		_button(QUEUE_DONE, I18n.t("Done adding"), Vector2(0.46, 0.57), Vector2(0.62, 0.07))
 	if section == Section.SETTINGS:
-		_button(RESTART_APP, I18n.t("Restart app"), Vector2(0.10, -0.515), Vector2(0.42, 0.07), true, "refresh")
-		_button(QUIT_APP, I18n.t("Close app"), Vector2(0.59, -0.515), Vector2(0.42, 0.07), true, "close")
+		_control_button(RESTART_APP, I18n.t("Restart app"), Vector2(0.10, -0.515), 0.42, true, "refresh")
+		_control_button(QUIT_APP, I18n.t("Close app"), Vector2(0.59, -0.515), 0.42, true, "close")
 	if status in ["Video access needed", "Media access needed", "All files access needed"]:
 		_button(GRANT, I18n.t("Grant"), Vector2(0.19, -0.34), Vector2(0.3, 0.07), not _local_grant_pending, "", true)
 	if file_actions.editing:
@@ -1509,6 +1511,8 @@ func _draw_rows() -> void:
 				Vector2(0.17, row_top - k * _pitch()), bool(row.get("selected", false)))
 			if bool(row.get("about_info", false)):
 				_buttons.back().enabled = false
+				_buttons.back()["keep_visible"] = true
+				_buttons.back().base_color = Color(TILE, 0.0)
 				var node: MeshInstance3D = _buttons.back().node
 				var title: Label3D = node.get_child(0)
 				title.position.y = 0.023
@@ -1543,6 +1547,8 @@ func _setting_field(row: Dictionary, centre: Vector2) -> void:
 	_row_button(ROW_BASE, str(row.title), "", "", centre, false)
 	var button: Dictionary = _buttons.back()
 	button.enabled = false
+	button["keep_visible"] = true # The row holds a heading and separate choice controls.
+	button.base_color = Color(TILE, 0.0)
 	var node: MeshInstance3D = button.node
 	if node.get_child_count() > 1: node.get_child(1).visible = false
 	var title: Label3D = node.get_child(0)
@@ -1664,14 +1670,17 @@ func _turn_recent_page(step: int) -> void:
 	refresh()
 
 func _row_button(target: int, title: String, detail: String, icon: String, centre: Vector2, selected: bool) -> void:
-	_button(target, _fit_title(title, "", 0.9, 22), centre, Vector2(1.24, 0.098), true, "", false, _list)
+	if section == Section.SETTINGS:
+		_control_button(target, title, centre, 1.24, true, "", false, _list)
+	else:
+		_button(target, _fit_title(title, "", 0.9, 22), centre, Vector2(1.24, 0.098), true, "", false, _list)
 	_lit(selected)
 	var node: MeshInstance3D = _buttons.back().node
 	var label: Label3D = node.get_child(0)
 	label.position.x = -0.48
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	label.font_size = 22
-	_icon(icon, Vector3(-0.565, 0, 0.004), 0.045, _buttons.back().foreground, node)
+	label.font_size = CONTROL_FONT_SIZE if section == Section.SETTINGS else 22
+	_icon(icon, Vector3(-0.565, 0, 0.004), CONTROL_ICON_SIZE if section == Section.SETTINGS else 0.045, _buttons.back().foreground, node)
 	if not detail.is_empty():
 		var info := _label(detail, Vector3(0.58, 0, 0.004), 17, node)
 		info.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -1679,7 +1688,7 @@ func _row_button(target: int, title: String, detail: String, icon: String, centr
 
 ## Navigation entry on the angled column: the current one is lit by colour, not a solid fill.
 func _nav_button(target: int, text: String, icon: String, centre: Vector2, selected: bool) -> void:
-	_button(target, text, centre, Vector2(0.36, 0.11), true, "", false, _side)
+	_control_button(target, text, centre, 0.36, true, "", false, _side)
 	var button: Dictionary = _buttons.back()
 	button.base_color = SELECTED if selected else Color(TILE, 0.0)
 	var node: MeshInstance3D = button.node
@@ -1687,11 +1696,11 @@ func _nav_button(target: int, text: String, icon: String, centre: Vector2, selec
 	label.position.x = -0.08
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	label.modulate = ACCENT if selected else button.foreground
-	_icon(icon, Vector3(-0.13, 0, 0.004), 0.05, ACCENT if selected else button.foreground, node)
+	_icon(icon, Vector3(-0.13, 0, 0.004), CONTROL_ICON_SIZE, ACCENT if selected else button.foreground, node)
 
 func _draw_about() -> void:
 	if _about_page != 0:
-		_button(ABOUT_HOME, "", Vector2(0.80, 0.46), Vector2(0.09, 0.07), true, "up")
+		_control_button(ABOUT_HOME, "", Vector2(0.80, 0.46), CONTROL_HEIGHT, true, "up")
 
 func _about_info(title: String, detail: String) -> Dictionary:
 	return {"title": title, "detail": detail, "icon": "info", "about_info": true}

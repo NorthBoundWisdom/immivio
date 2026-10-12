@@ -167,6 +167,7 @@ func _activate(target: int, item: Dictionary, media_scope: String) -> void:
 
 func _close_other_popups() -> void:
 	menu.choices.reset()
+	menu._quick_open = ""
 	menu._subtitle_open = false; menu._mode_open = false; menu._volume_open = false
 	menu._close_depth_slider()
 

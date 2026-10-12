@@ -212,10 +212,10 @@ func _run() -> void:
 		check(main._person_passthrough() and main.display.applied_passthrough, "Person passthrough forces actual transparent state")
 		main._show_recent_menu(); main.recent_menu.refresh()
 		var item := button(main.recent_menu, Menu.TEMP_PASSTHROUGH)
-		check(not item.enabled and item.base_color == Menu.ACCENT, "Person mode shows restricted on-state")
+		check(not item.enabled and not item.node.visible, "Person mode hides the unavailable temporary passthrough button")
 		var origin: Vector3 = item.node.global_position + item.node.global_basis.z * .25
 		main.recent_menu.update_pointer("right_hand", origin, -item.node.global_basis.z, true)
-		check(main.recent_menu._tooltip.visible and main.recent_menu._tooltip.get_child(0).text == "Cannot switch during person passthrough", "Restricted button retains ray hover explanation")
+		check(main.recent_menu._hover.right_hand == Menu.NONE and (not main.recent_menu._tooltip or not main.recent_menu._tooltip.visible), "Hidden unavailable button has no ray hover or tooltip")
 		click(main.recent_menu, Menu.TEMP_PASSTHROUGH)
 		main._on_session_control("temporary_passthrough")
 		check(main.temporary_passthrough == original and main.video.alpha_wanted(), "Neither click nor direct action changes temporary request or Alpha")
@@ -244,9 +244,8 @@ func _run() -> void:
 	main.xr_camera.position += Vector3(4,0,0); main._update_view_follow(); main._recenter()
 	check(main.recent_menu.global_transform.is_equal_approx(frozen), "Invalid head tracking does not recapture or move panels")
 	main.tracked = true
-	var recovered: Variant = main.view_follow.pose(main._menu_key(main.recent_menu), Main._upright_pose(main._head_pose()))
 	main._on_system_recentered()
-	check(main.recent_menu.global_transform.is_equal_approx(recovered), "System recenter/tracking recovery retains local pose")
+	check(main._system_recenter_pending and main.recent_menu.global_transform.is_equal_approx(frozen), "System reset waits for fresh tracking before repositioning panels")
 	main.display.preview = true
 	main._on_session_control("follow")
 	var world: Transform3D = main.video.global_transform * main.video.flat_pose

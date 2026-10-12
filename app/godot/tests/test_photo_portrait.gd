@@ -52,8 +52,7 @@ func _run() -> void:
 	check(button.enabled, "The photo portrait control is available before any 3D conversion")
 	app.video_menu._state = {"has_video":true,"geometry":1,"alpha_requested":false}
 	app.video_menu._draw()
-	var video_button: Dictionary = app.video_menu._buttons.filter(func(b):return b.target == 104)[0]
-	check(button.rect == video_button.rect and button.base_color == video_button.base_color and button.node.get_child(1).material_override.albedo_texture == video_button.node.get_child(1).material_override.albedo_texture, "Photo/video portrait controls share their position, size, surface and icon")
+	check(not app.video_menu._buttons.any(func(b):return b.target == 104) and button.enabled, "Video toolbar omits passthrough while the photo portrait control remains available")
 	app.photo_menu.dismiss()
 	var old_curve: float = photo.screen_curve; var old_pose: Transform3D = photo.flat_pose
 	var poses := {}
