@@ -6,6 +6,9 @@ Newest first, following product release milestones. Some development/source snap
 
 ## Unreleased
 
+- Add checksum-pinned public AI preparation and portable AI APK builds with source-frame backend verification, exact model receipts and package integrity checks.
+- Make RVM conversion distinguish measured floating-point threshold crossings from incorrect 8-bit Alpha export, and collect native session cycles before Python shutdown.
+
 - Add build-selected model packs with adapter/runtime contracts and size/SHA256 verification for public and custom weights; default RVM conversion to public upstream weights while retaining the historical distilled variant.
 - Separate matting session use behind an interface, include model fingerprints in photo effect caches, and exclude model-pack metadata from no-AI builds.
 

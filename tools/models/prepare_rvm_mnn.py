@@ -18,6 +18,7 @@ otherwise inserts around every Concat/Interp. Quest 3, 320x320 FP16: 37.8 -> 29.
 per stereo pair, closer to ORT FP32 than the unfused graph.
 """
 import argparse
+import gc
 import os
 from pathlib import Path
 import hashlib
@@ -97,8 +98,29 @@ def verify_u8(unit_path, u8_path, width, height):
     ra = dict(zip([o.name for o in a.get_outputs()], a.run(None, {'src': u8 / 255, **states})))
     rb = dict(zip([o.name for o in b.get_outputs()], b.run(None, {'src': u8, **states})))
     worst = max(float(np.max(np.abs(ra[k] - rb[k]))) for k in ('pha', 'r1o', 'r2o', 'r3o', 'r4o'))
-    rounding = float(np.max(np.abs(np.floor(rb['pha_u8']) - np.round(ra['pha'] * 255))))
-    return worst, rounding
+    return dict(max_abs=worst, **check_alpha_quantization(ra['pha'], rb['pha'], rb['pha_u8']))
+
+
+def check_alpha_quantization(reference, actual, exported):
+    """Accept a 1-LSB threshold crossing only when explained by the measured FP32 error.
+
+    Rounding the reference must use half-up (positive lround), not NumPy's ties-to-even.
+    Independently require the exported buffer to quantize its own Alpha exactly.
+    """
+    if not all(np.isfinite(value).all() for value in (reference, actual, exported)):
+        raise ValueError('Nonfinite Alpha in conversion check')
+    scaled = reference * 255
+    expected = np.floor(scaled + 0.5)
+    quantized = np.floor(exported)
+    difference = np.abs(quantized - expected)
+    # Include FP32 multiplication/addition rounding in addition to the measured graph error.
+    budget = np.abs(actual - reference) * 255 + 8 * np.finfo(np.float32).eps * np.maximum(np.abs(scaled), 1)
+    distance = np.abs(scaled - (np.floor(scaled) + 0.5))
+    ambiguous = (difference == 1) & (distance <= budget)
+    invalid = (difference != 0) & ~ambiguous
+    export_invalid = quantized != np.floor(actual * 255 + 0.5)
+    return dict(max_quantized_difference=float(difference.max()), ambiguous_pixels=int(ambiguous.sum()),
+                invalid_pixels=int(invalid.sum()), export_invalid_pixels=int(export_invalid.sum()))
 
 
 def state_hw(width, height, level):
@@ -156,7 +178,7 @@ def main():
     current = OUT / 'manifest.json'
     if not args.regenerate and current.is_file() and (OUT / 'rvm.mnn').is_file():
         cached = json.loads(current.read_text(encoding='utf-8'))
-        if cached.get('variant', 'distilled') == args.variant:
+        if cached.get('schema_version') == 5 and cached.get('variant', 'distilled') == args.variant:
             install()
             return
     OUT.mkdir(parents=True, exist_ok=True)
@@ -173,9 +195,9 @@ def main():
     onnx.checker.check_model(u8_model)
     onnx.save(u8_model, u8)
     u8_checks = {p['key']: verify_u8(pruned, u8, p['width'], p['height']) for p in PROFILES}
-    for key, (worst, rounding) in u8_checks.items():
-        if worst > 1e-5 or rounding > 0:
-            raise SystemExit(f'0..255 input graph differs at {key}: {worst} / rounding {rounding}')
+    for key, check in u8_checks.items():
+        if check['max_abs'] > 1e-5 or check['invalid_pixels'] or check['export_invalid_pixels']:
+            raise SystemExit(f'0..255 input graph differs at {key}: {check}')
     fused = OUT / 'rvm.fused.u8.onnx'
     fused_model, fusion = fuse_rvm_graph.build(split=True, fold='scale', source=u8, rgba=True)
     onnx.save(fused_model, fused)
@@ -212,7 +234,7 @@ def main():
         student_record = dict(manifest='models/manifest/rvm_student.json', sha256=student_manifest['sha256'],
                               conv_hardswish=student_hswish, marked_onnx_sha256=sha(student_marked))
     target = OUT / 'rvm.mnn'
-    manifest = dict(schema_version=4, variant=args.variant, backend='MNN 3.6.1 OpenCL', source_onnx=str(SOURCE.relative_to(ROOT)),
+    manifest = dict(schema_version=5, variant=args.variant, backend='MNN 3.6.1 OpenCL', source_onnx=str(SOURCE.relative_to(ROOT)),
                     source_sha256=sha(SOURCE), pruned_onnx_sha256=sha(pruned), u8_onnx_sha256=sha(u8),
                     fused_onnx_sha256=sha(fused), marked_onnx_sha256=sha(marked), mnn_sha256=sha(target),
                     quality_mnn_sha256=sha(OUT / 'rvm_quality.mnn'),
@@ -230,4 +252,8 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    finally:
+        # Collect Python/native session cycles while ORT's module/runtime is still alive.
+        gc.collect()

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "candidate": "source-frame",
-  "state": "Reference library hashes; rebuild and export a receipt for your own toolchain.",
+  "state": "compiled_and_exported; device_validation_pending",
   "source_lock_sha256": "7036a7bf793e00607d7b65f3c4c98428a3004d3584423116d91fe0b4c22273cd",
   "builder_revision": "fdf74f6830c47dbaa8a22ac79726e8303f1db5af",
   "mpv_revision": "0b7ed670f7c353dd3dd4f8ae0fc788a181a15aa6",
@@ -17,26 +17,26 @@
   "elf_page_alignment": 16384,
   "build_command": "buildall.sh --arch arm64 mpv",
   "build_scripts_sha256": {
+    "scripts/lua.sh": "111bc1f7fd28231b926b9c8f55e7b5b99d57c18832a536f387b0f8828ccc37c8",
+    "scripts/mpv-android.sh": "33fd2e40e11c45dc3ebd92f6b1bca51aba79339e31abdfc4545cab280fd5e95c",
     "scripts/mbedtls.sh": "b5ec1bbf8ff077c4d1a97f07b4c8c2d42320586f245286a643b1a3e654ad8b12",
     "scripts/libplacebo.sh": "7cd7f3a6c9f7da6176be5bfc0c6d3c0be39ea5582919f3b6dd2ddb82a6342953",
-    "scripts/ffmpeg.sh": "3d6693d3ef359437ca54cabaadb973901a95198d4d917a4438d8bf285af3f6fe",
-    "scripts/mpv-android.sh": "33fd2e40e11c45dc3ebd92f6b1bca51aba79339e31abdfc4545cab280fd5e95c",
-    "scripts/dav1d.sh": "8717a693b35c5e6100917f9d4dcca5d589c39fec431ff32f09989187b5b2785a",
-    "scripts/libxml2.sh": "c1ae9c57f149501539a82348fa07bda1bd83784038835db37280311c9af8649f",
     "scripts/fribidi.sh": "133bc90a43e5ed52049450c690d1e441250354b5ae6f877edae4e579d2081e31",
     "scripts/curl.sh": "9b3a9f5c94db6c346b5ec4ee94a2df6e3b158576433c94641d25bb5e35f466c9",
-    "scripts/libass.sh": "030fa9e5893ae3cea8d3dbb1ac35846a26047b4552363c1a8252c259722e6b74",
-    "scripts/mpv.sh": "043338c15fbbd79e505a7f96c3436fc6ba16f81e4cbd41351742e2d65f632853",
     "scripts/unibreak.sh": "97748c6438623f0dc48f20cbee500cfbda2a3de361db453a9e911a9b58af5805",
-    "scripts/freetype2.sh": "7106e47146cd38ab345bbe1c2e76a2823d8e385728b5ac10ae99a6c1534f97a3",
     "scripts/harfbuzz.sh": "35c1d28835920de6b9e69f00164eae7a3d14987e71fb8871acb0e1bac075c1b2",
+    "scripts/dav1d.sh": "8717a693b35c5e6100917f9d4dcca5d589c39fec431ff32f09989187b5b2785a",
+    "scripts/freetype2.sh": "7106e47146cd38ab345bbe1c2e76a2823d8e385728b5ac10ae99a6c1534f97a3",
     "scripts/fontconfig.sh": "8506836424e3b5ea329a8138b9db5fff2ee844883458fe4531398e805ae873e9",
-    "scripts/lua.sh": "111bc1f7fd28231b926b9c8f55e7b5b99d57c18832a536f387b0f8828ccc37c8",
-    "include/depinfo.sh": "fb1fce0b17b0b1335e9b5b08a85053e0f7dbaeb8c4129c118ac11b9a64da24db",
-    "include/download-deps.sh": "6726bc49b310a965ca4161298e7b6150fe0aa9c55861a15d40c459903bbade34",
-    "include/download-sdk.sh": "dcff6683bbc3077f00d0a63107d951e0ad485186d29fe91a5302cfe2c027772c",
+    "scripts/libxml2.sh": "c1ae9c57f149501539a82348fa07bda1bd83784038835db37280311c9af8649f",
+    "scripts/libass.sh": "030fa9e5893ae3cea8d3dbb1ac35846a26047b4552363c1a8252c259722e6b74",
+    "scripts/ffmpeg.sh": "3d6693d3ef359437ca54cabaadb973901a95198d4d917a4438d8bf285af3f6fe",
+    "scripts/mpv.sh": "043338c15fbbd79e505a7f96c3436fc6ba16f81e4cbd41351742e2d65f632853",
     "include/path.sh": "b7869b3d5ec68ab3018579d5fe7b194512a7aa410f37798f46849bbd4c3709ff",
+    "include/download-deps.sh": "6726bc49b310a965ca4161298e7b6150fe0aa9c55861a15d40c459903bbade34",
     "include/ci.sh": "bc48bec00b246b2ccc77682ea367c06e9af49480821d0cb3b8f42746254c4a24",
+    "include/download-sdk.sh": "dcff6683bbc3077f00d0a63107d951e0ad485186d29fe91a5302cfe2c027772c",
+    "include/depinfo.sh": "fb1fce0b17b0b1335e9b5b08a85053e0f7dbaeb8c4129c118ac11b9a64da24db",
     "buildall.sh": "4cf0d6cc6e106c3f235ab9fa0227b4ee4bf8788d3c66b086f8a626e72ccf85b7"
   },
   "packaged_libraries": [
@@ -52,9 +52,9 @@
   "libraries": [
     {
       "name": "libmpv.so",
-      "sha256": "d1e0c3c79d55c93e338ebf5c5abca823241eb48f424dd5deac646be555404686",
-      "bytes": 8263512,
-      "built_sha256": "04b2e376d4ab4f0e98d326596f887744541fcebd7646d0a6a12def9f02849552",
+      "sha256": "b2906d07e696c8e8fb490563c271bf5c249cda064361d7353a6fabcbfdeda112",
+      "bytes": 8263480,
+      "built_sha256": "639a12d4090a2f0f95d62a082e38e6d565615beeb95cf97e410a27d6213c08a5",
       "needed": [
         "libm.so",
         "libz.so",
@@ -75,9 +75,9 @@
     },
     {
       "name": "libavcodec.so",
-      "sha256": "28ba89fd0ce15c93bca2347bca43fda4321209e803a8a08fc99057c5c5b6d9d2",
-      "bytes": 12394320,
-      "built_sha256": "edcb57a471c3e0f900c5f0550ff930f113142e26aa1d8c2e3ce3c53bb9444d9e",
+      "sha256": "47a9659bccb055f48127790c34441325ac863f05ea0c94055ae047417b8222b9",
+      "bytes": 12394000,
+      "built_sha256": "52d2602981c88261c7fb56b92650148872ca7cc334cd5c9abd690c3981567a6f",
       "needed": [
         "libswresample.so",
         "libavutil.so",
@@ -91,9 +91,9 @@
     },
     {
       "name": "libavdevice.so",
-      "sha256": "ba250301a6dc6724d5bfbf888beaeb0d9dde9bd4664a6e8176d12bf713163c44",
-      "bytes": 9216,
-      "built_sha256": "d408006fff832b1ef3984302f9daed192924e9bef61e7796944708c0d1567d2e",
+      "sha256": "4cd26f96dc512edb213af9beefb1539f692fed42d9966c3da23322ba0f5f4dc8",
+      "bytes": 9200,
+      "built_sha256": "adf290e905690ef8e7195c909ccaa3042bf7cf0b6af6f6425fda954556298ab5",
       "needed": [
         "libavformat.so",
         "libavutil.so",
@@ -102,9 +102,9 @@
     },
     {
       "name": "libavfilter.so",
-      "sha256": "9960677b40ca15c3c19620322e6b4aa34cff3b5632bedfc024e7fbb4f2d2524f",
-      "bytes": 4300576,
-      "built_sha256": "c7c468e98469a4dabaadc17d9ccf4670bb7fa3826ab8e56a8a478cf7461dcb17",
+      "sha256": "f7f35e4bfdccf13b2a29e10c57939614f5ac44028fe3d6ea7eba4fd7913f05b5",
+      "bytes": 4300416,
+      "built_sha256": "db868cd04f3d17697852ffe2ee9cb0c3e615983e31c7714582a170396e64b73f",
       "needed": [
         "libswscale.so",
         "libavformat.so",
@@ -117,9 +117,9 @@
     },
     {
       "name": "libavformat.so",
-      "sha256": "e2bb1f997701a503f73c399aebbe12228dfbbcb899aea949195aa90e87418016",
-      "bytes": 4022832,
-      "built_sha256": "5224d635a81e14edab762ee06d79b0a2102b1add9c66bed8a7d8a73b8deda8a8",
+      "sha256": "98577bd5c1992eea1b57a45da6460fe34dfabb98740f94269e06fefc5b052575",
+      "bytes": 3382376,
+      "built_sha256": "8e8cbdf8cd3017f1fe0c5102fa48a8943a23081cd890c38cc54b5e67bc4a351c",
       "needed": [
         "libavcodec.so",
         "libavutil.so",
@@ -130,9 +130,9 @@
     },
     {
       "name": "libavutil.so",
-      "sha256": "18450ee7ce7099ea4638b2622bc30c495e3d1089b89492410204dc10f5b67f30",
-      "bytes": 740376,
-      "built_sha256": "da82fd86ce2a96d97be3f737a6d1d321de08bb0dc4407b61bd68f16ac670ea5e",
+      "sha256": "10e4e0d0dda4abbfd3c29c15f75810ad4ffa697083dd8943e2e266922257bf42",
+      "bytes": 740328,
+      "built_sha256": "0c788568022afdb3ec71077da8e016f6b88d64b115f70ab45181fd5611cec189",
       "needed": [
         "libm.so",
         "libandroid.so",
@@ -142,9 +142,9 @@
     },
     {
       "name": "libswresample.so",
-      "sha256": "a891bfebf8dbf4ccb2c6f5907c784aad086f5ec1d7c5e452806310ad6cbeddcb",
-      "bytes": 100688,
-      "built_sha256": "13fff00d733af3e85b5af0c0d526dcbd9bb095fba4b3eedac590766355ac93f7",
+      "sha256": "b400ffee215928b01a30244d734e0ca897056ee51cf366a825bac77e1b6a642f",
+      "bytes": 100656,
+      "built_sha256": "495fd8bf569ff1e2874b205278624a1e21ab44153d796380a95f628e96866911",
       "needed": [
         "libavutil.so",
         "libm.so",
@@ -153,9 +153,9 @@
     },
     {
       "name": "libswscale.so",
-      "sha256": "3e43471587732fcdef16d01724ed427cb1110decbe06e666de6cf7b13f74f8d5",
-      "bytes": 1246664,
-      "built_sha256": "db8333286787e4092151edd3bccec2d980d35c7ecb792394cdf74709ea5bf3a1",
+      "sha256": "cfff083297ae5bde1bf499a1eb7b714b02befbc40c226346b181eb37e662ed65",
+      "bytes": 1246600,
+      "built_sha256": "da007b901bf4f5fea1f37349d57800289d78e9e6946cb7f419937a54c298a920",
       "needed": [
         "libavutil.so",
         "libm.so",
@@ -163,12 +163,12 @@
       ]
     }
   ],
-  "host_packages_sha256": "0d42dd4ec021254111a439214a2681bf37ca44ba2af04a9d97af479f2bd1dd33",
-  "build_receipt_sha256": "1af189ab7cf1886b33a93f536eed83ada8f5b80881c67e33f969345d82ef82f6",
+  "export_directory": "/work/toolchain/mpv/source-frame/arm64-v8a",
+  "host_packages_sha256": "d8a1c08a14e729121aa30824cddd1a136ecd5c1731f0c0dc109935ef6bd9fb90",
+  "build_receipt_sha256": "15f0dc7be5310d7b15bb1bd9549dcf4625f2347b241f36c3023502f6762018f7",
   "meson": "1.11.0",
   "ninja": "1.11.1",
   "cxx_runtime_policy": "Use the existing Godot/project libc++_shared; do not package a duplicate; device compatibility pending",
-  "license_profile": "GPL mpv and FFmpeg with gpl/version3 enabled; used by Debug and Release.",
-  "reproducibility": "Exact sources/options/toolchain recorded; independent second-build byte comparison pending",
-  "reference_source_lock_sha256": "906a65cdecc4a1d67bcad34100a06ba0e8c21c27df83f01e2fe2227350c8d16b"
+  "license_profile": "Upstream default GPL MPV and FFmpeg gpl/version3; Debug candidate only",
+  "reproducibility": "Exact sources/options/toolchain recorded; independent second-build byte comparison pending"
 }

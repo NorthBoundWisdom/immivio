@@ -26,6 +26,8 @@ This phase supports build-time selection only. There is no user-facing model sel
 
 ## Public upstream configuration
 
+On a host with Python 3.13 and the prepared Android SDK, `python3 tools/prepare_public_ai.py` downloads checksum-pinned public weights and native dependencies, prepares the patched MNN Android library, converts the three task models and installs their selected pack. `--models-only` skips Android runtime compilation. See [portable AI builds](BUILD.md#build-modes-and-compatibility) for packaging with source-frame mpv.
+
 Prepare the AI toolchain described in [BUILD.md](BUILD.md), the pinned depth ONNX listed below and two sample images for its numerical conversion checks. The public path does not read `rvm_student.json` or require a private student checkpoint:
 
 ```powershell
@@ -94,6 +96,8 @@ Relevant tools:
 - `prepare_rvm_mnn.py --variant upstream` (default): convert the public upstream graph using `MNNCONVERT`; `--variant distilled` additionally requires the pinned student. Changing variants invalidates the conversion cache.
 - `prepare_depth_mnn.py`: convert/check the video depth source with two user-provided sample images under `build/depth/sample_a.png` and `sample_b.png`. Run again with `--photo --install` to install the separate photo model; it never replaces the video asset.
 - `tools/mnn/patch_mnn_vrpp.py`: reproduce the MNN OpenCL HardSwish changes required by the matting graph.
+
+RVM conversion records both FP32 graph error and 8-bit quantization checks. A one-level quantized difference is accepted only at a rounding threshold explained by measured FP32 error; the exported Alpha must independently quantize its own floating Alpha exactly. `tools/models/test_rvm_quantization.py` exercises these boundaries in the AI Python environment. It does not relax the existing graph error limits.
 
 For example, graph preparation begins with:
 

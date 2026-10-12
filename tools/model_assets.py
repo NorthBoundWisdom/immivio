@@ -106,6 +106,13 @@ def normalized(pack):
     return dict(pack, models=[dict(m, path=CONTRACTS[m['task']][1]) for m in pack['models']])
 
 
+def validate_runtime_pack(pack):
+    validate(pack)
+    if normalized(pack) != pack:
+        raise ValueError('Installed model paths differ from the runtime adapter assets; reimport the pack')
+    return pack
+
+
 def install(pack, source, destination=ASSETS, prepare_support=True, preserve_diagnostics=False):
     """Verify the complete source first; publish the runtime catalog last."""
     source, destination = Path(source).resolve(), Path(destination).resolve()
@@ -178,6 +185,8 @@ def from_converted(directory, variant):
                 raise ValueError('Depth source or shape differs from the recorded conversion')
         model['conversion'] = conversion
         model.update(bytes=path.stat().st_size, sha256=digest(path))
+        if model['task'] != 'matting':
+            model['version'] = 'public-conversion-v1'
         if model['task'] == 'matting':
             if variant == 'upstream':
                 model.update(id='rvm-mobilenetv3-upstream', version='v1.0.0-ratio1-vrpp1', license='GPL-3.0',
@@ -201,7 +210,7 @@ def main():
         print(output)
         return
     if args.verify_only:
-        installed = read_json(ASSETS / 'ai-models/manifest.json')
+        installed = validate_runtime_pack(read_json(ASSETS / 'ai-models/manifest.json'))
         verify_files(installed, ASSETS)
         if args.manifest:
             if normalized(validate(read_json(args.manifest))) != installed:

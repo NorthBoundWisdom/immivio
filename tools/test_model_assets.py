@@ -51,6 +51,9 @@ class ModelPacks(unittest.TestCase):
         self.assertEqual(selected['models'][0]['path'], 'rvm-mnn/rvm.mnn')
         self.assertFalse((self.destination / 'custom').exists())
         models.verify_files(selected, self.destination)
+        models.validate_runtime_pack(selected)
+        with self.assertRaisesRegex(ValueError, 'runtime adapter'):
+            models.validate_runtime_pack(self.pack)
 
     def test_bad_final_model_does_not_replace_an_existing_pack(self):
         self.install()
@@ -160,7 +163,8 @@ class ModelPacks(unittest.TestCase):
         module.prune_fgr = lambda graph: graph
         module.add_u8_io = lambda graph: graph
         module.verify = lambda *_: 0.0
-        module.verify_u8 = lambda *_: (0.0, 0.0)
+        module.verify_u8 = lambda *_: dict(max_abs=0.0, max_quantized_difference=0.0, ambiguous_pixels=0,
+                                          invalid_pixels=0, export_invalid_pixels=0)
         module.convert = lambda _, target: Path(target).write_bytes(b'converted-public-upstream')
         module.install = lambda: None
         return module
@@ -180,7 +184,7 @@ class ModelPacks(unittest.TestCase):
     def test_converter_reuses_only_the_matching_variant(self):
         module = self.converter()
         (module.OUT / 'rvm.mnn').write_bytes(b'cached-public-model')
-        (module.OUT / 'manifest.json').write_text(json.dumps(dict(variant='upstream')))
+        (module.OUT / 'manifest.json').write_text(json.dumps(dict(schema_version=5, variant='upstream')))
         installed = []
         module.install = lambda: installed.append(True)
         module.prune_fgr = lambda _: self.fail('Matching variant should reuse its verified conversion cache')

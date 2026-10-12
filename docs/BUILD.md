@@ -1,6 +1,6 @@
 # Building from source
 
-The model-free Android player has a Python build entry point for macOS, Linux and Windows. The historical AI build uses PowerShell 7 on Windows and a Linux source build of patched libmpv. Paths are configurable; source and build output must remain separate. This repository does not bundle SDKs, compiled libraries or runtime model weights.
+The Android player has a Python build entry point for macOS, Linux and Windows, including an AI mode for prepared models/native dependencies. Public model/native preparation is exercised on macOS; other hosts need compatible wheels or builds for the pinned converter/Python packages. The historical AI build also uses PowerShell 7 on Windows and a Linux source build of patched libmpv. Paths are configurable; source and build output must remain separate. This repository does not bundle SDKs, compiled libraries or runtime model weights.
 
 ## Base player: no AI models
 
@@ -28,6 +28,22 @@ Release builds use an explicitly supplied `GODOT_ANDROID_KEYSTORE_RELEASE_*` env
 APKs and build receipts are written to `artifacts/`. The workflow verifies signing, 16 KiB ZIP alignment, required ARM64 libraries and absence of AI model/library payloads. Public libmpv supplies playback-clock estimates rather than verified decoded-frame PTS; this provenance is retained through the display path, and such tickets cannot authorize AI inference. Real-headset decoding, audio synchronization and seek behavior still require device verification.
 
 ## Build modes and compatibility
+
+Prepared public AI models can also be built through the portable Python entry point. Use Python 3.13 and the Android SDK/NDK/CMake described above:
+
+```sh
+python3 tools/prepare_public_ai.py
+# Build/export source-frame mpv through the Linux workflow below first.
+python3 tools/build_player.py --ai --vendor Quest --build-type Debug \
+  --mnn-source .cache/ai/MNN-3.6.1-vrpp \
+  --mnn-lib .cache/ai/mnn-android/libMNN.a \
+  --ncnn-dir .cache/ai/ncnn/ncnn-20260526-android-vulkan/arm64-v8a \
+  --mpv-dir build/output/mpv-source/arm64-v8a
+```
+
+Use `--vendor Pico` for PICO. `prepare_public_ai.py --models-only` reuses a separately prepared native runtime. Downloads and Python packages are versioned in `tools/environment/ai-player.lock.json`; downloaded weights must match the historical catalog's **upstream source** hashes. The RVM model remains non-distilled, with the existing ratio=1, RGBA and GPU graph adaptations. Two generated sample images are used if no depth conversion samples exist; these check numerical conversion, not real-media quality.
+
+The AI builder verifies the installed model pack, imports only source-frame libraries matching their source/patch receipt, and checks model hashes, native dependency/symbol closure, the source-frame/PGS exports, signing and 16 KiB alignment in the final APK. It does not replace source-frame mpv with standard mpv. AI outputs use `-ai-` in their names and include the exact model pack in their `.build.json` receipt. Weights, build caches and APKs remain outside Git. Headset execution and sustained performance require device validation.
 
 Direct Gradle builds retain `enableAi=true` and `standardMpv=false` by default. The Python base-player entry point explicitly selects `enableAi=false` and `standardMpv=true`; it does not change the default AI build. `Build-Player.ps1 -WithoutAI` also selects the official mpv candidate unless another candidate is supplied explicitly.
 
