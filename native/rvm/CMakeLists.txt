@@ -33,6 +33,7 @@ target_compile_definitions(quest_rvm PRIVATE QUEST_DIAGNOSTIC_MODELS=$<BOOL:${QU
 target_include_directories(quest_rvm PRIVATE "${RVM_PROFILE_INCLUDE}")
 target_include_directories(quest_rvm SYSTEM PRIVATE "${MNN_SOURCE}/include")
 target_compile_options(quest_rvm PRIVATE -Wall -Wextra -Werror)
+target_compile_options(quest_rvm PRIVATE -include "${CMAKE_CURRENT_LIST_DIR}/libcxx_compat.h")
 # Debug remains debuggable but must exercise the optimized production wrapper.
 # Keep finite-value rejection valid; ncnn's separately built library is unchanged.
 target_compile_options(quest_rvm PRIVATE "$<$<CONFIG:Debug>:-O2>" -fno-fast-math)

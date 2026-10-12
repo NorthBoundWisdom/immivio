@@ -45,6 +45,8 @@ Use `--vendor Pico` for PICO. `prepare_public_ai.py --models-only` reuses a sepa
 
 The AI builder verifies the installed model pack, imports only source-frame libraries matching their source/patch receipt, and checks model hashes, native dependency/symbol closure, the source-frame/PGS exports, signing and 16 KiB alignment in the final APK. It does not replace source-frame mpv with standard mpv. AI outputs use `-ai-` in their names and include the exact model pack in their `.build.json` receipt. Weights, build caches and APKs remain outside Git. Headset execution and sustained performance require device validation.
 
+The MNN preparation and inference wrapper force-include `native/rvm/libcxx_compat.h` when compiling for Android. It selects libc++'s own inline hashing fallback for newer NDK headers, so the AI library can use the Godot template's existing `libc++_shared.so` without requiring LLVM 21's additional hash export or packaging a second runtime.
+
 Direct Gradle builds retain `enableAi=true` and `standardMpv=false` by default. The Python base-player entry point explicitly selects `enableAi=false` and `standardMpv=true`; it does not change the default AI build. `Build-Player.ps1 -WithoutAI` also selects the official mpv candidate unless another candidate is supplied explicitly.
 
 | Capability | AI enabled + project mpv | AI disabled + project mpv | AI disabled + standard mpv |

@@ -116,6 +116,9 @@ def host_tests(godot):
     player.run([sys.executable, player.ROOT/'tools/test_build_player.py'])
     player.run([sys.executable, player.ROOT/'tools/test_ci_android.py'])
     player.run([sys.executable, player.ROOT/'tools/test_model_assets.py'])
+    sdk = os.environ.get('ANDROID_HOME') or os.environ.get('ANDROID_SDK_ROOT')
+    if sdk:
+        player.run([sys.executable, player.ROOT/'tools/test_ai_native_compat.py', '--ndk', Path(sdk)/'ndk'/player.LOCK['ndk']])
     logs = player.ROOT/'artifacts/source-tests'
     logs.mkdir(parents=True, exist_ok=True)
     env = os.environ.copy()

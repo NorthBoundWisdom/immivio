@@ -98,11 +98,13 @@ def prepare_runtime(python, args):
                '-DMNN_VULKAN=OFF', '-DMNN_ARM82=ON', '-DMNN_USE_LOGCAT=ON', '-DMNN_BUILD_TOOLS=OFF',
                '-DMNN_BUILD_BENCHMARK=OFF', '-DMNN_BUILD_TEST=OFF', '-DMNN_BUILD_CONVERTER=OFF', '-DMNN_KLEIDIAI=OFF']
     builder.run([cmake, '-S', fork, '-B', native, '-G', 'Ninja', f'-DCMAKE_MAKE_PROGRAM={ninja}',
-                 f'-DCMAKE_TOOLCHAIN_FILE={ndk}/build/cmake/android.toolchain.cmake', *options], log='ai-mnn-configure.log')
+                 f'-DCMAKE_TOOLCHAIN_FILE={ndk}/build/cmake/android.toolchain.cmake',
+                 f'-DCMAKE_CXX_FLAGS=-include "{ROOT}/native/rvm/libcxx_compat.h"', *options], log='ai-mnn-configure.log')
     builder.run([cmake, '--build', native, '--parallel', str(args.jobs)], log='ai-mnn-build.log')
     builder.extract(download('ncnn'), CACHE/'ncnn')
     receipt = dict(lock_sha256=builder.digest(ROOT/'tools/environment/ai-player.lock.json'),
                    patch_sha256=builder.digest(ROOT/'tools/mnn/patch_mnn_vrpp.py'), ndk=args.ndk, cmake=args.cmake,
+                   libcxx_compat_sha256=builder.digest(ROOT/'native/rvm/libcxx_compat.h'),
                    mnn_library_sha256=builder.digest(native/'libMNN.a'), options=options)
     (CACHE/'native-preparation.json').write_text(json.dumps(receipt, indent=2)+'\n')
 
