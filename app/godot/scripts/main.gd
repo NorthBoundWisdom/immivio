@@ -77,6 +77,7 @@ var settings_path := SETTINGS_PATH
 var background: Node
 var view_follow := ViewFollow.new()
 var temporary_passthrough := false
+var reclining_mode := false
 var controlled_request := 0
 var controlled_report: Dictionary = {}
 var controlled_status := "Controlled decoder probe not run"
@@ -133,6 +134,7 @@ func _ready() -> void:
 	display.status_changed.connect(_update_status)
 	display.status_changed.connect(_on_input_session_changed)
 	settings.load(settings_path)
+	reclining_mode = bool(settings.get_value("ui", "reclining_mode", false))
 	I18n.use(str(settings.get_value("ui", "language", "auto")))
 	fps_overlay = FpsOverlay.new()
 	fps_overlay.source = _fps_sample
@@ -163,6 +165,7 @@ func _ready() -> void:
 	if Engine.has_singleton("QuestPlayer"):
 		Engine.get_singleton("QuestPlayer").set_rvm_model("fast")
 	video = Video.new()
+	video.reclining_mode = reclining_mode
 	video.name = "VideoDisplay"
 	video.changed.connect(_on_video_changed)
 	video.mode_lock_changed.connect(_on_mode_lock_changed.bind("video"))
@@ -1254,10 +1257,10 @@ func _canvas_menu_anchor_key() -> Array:
 	# Content owns placement. Head pitch/roll/yaw must not rotate idle controls.
 	# Immersive translation is handled separately; capture freezes the plane.
 	var pose: Variant = viewer.panel.global_transform if viewer.geometry == Geometry.Geometry.FLAT else viewer.subtitle_transform().basis
-	return [viewer.local_uri, viewer.geometry, pose, player_menu.section, photo_active,
+	return [viewer.local_uri, viewer.geometry, pose, player_menu.section, photo_active, reclining_mode,
 		menu_compositor.native_placement_available() if is_instance_valid(menu_compositor) else false]
 
-## Full tracked pose is retained for media follow; menu placement filters tilt.
+## Full tracked pose is retained for media follow; reclining menus also use it.
 func _head_pose() -> Variant:
 	var camera: Camera3D = xr_camera
 	if not is_instance_valid(camera) and (video or photo): camera = _viewer().view_camera
@@ -1272,11 +1275,14 @@ func _head_pose() -> Variant:
 static func _upright_pose(head: Transform3D) -> Transform3D:
 	return MediaSurface.upright_pose(head)
 
-## Reset/open placement uses horizontal distance and a world-vertical drop.
+func _menu_head_pose(head: Transform3D) -> Transform3D:
+	return head if reclining_mode else _upright_pose(head)
+
+## Reclining placement uses the full gaze; ordinary placement stays upright.
 func _view_pose(distance: float, drop: float) -> Variant:
 	var head: Variant = _head_pose()
 	if head == null: return null
-	return _upright_pose(head) * Transform3D(Basis.IDENTITY, Vector3(0, -drop, -distance))
+	return _menu_head_pose(head) * Transform3D(Basis.IDENTITY, Vector3(0, -drop, -distance))
 
 func _place_screen(recenter: bool = false) -> void:
 	var head: Variant = _head_pose()
@@ -1313,7 +1319,7 @@ func _update_view_follow() -> void:
 	if not view_follow.enabled: return
 	var head: Variant = _head_pose()
 	if head == null: return
-	var menu_head := _upright_pose(head)
+	var menu_head := _menu_head_pose(head)
 	for menu in [recent_menu, video_menu, photo_menu]:
 		if not menu or not menu.visible: continue
 		# Immersive controls belong to the reset/content sphere, even in follow mode.
@@ -1342,10 +1348,12 @@ func _place_menu(menu: Node3D) -> void:
 		if _viewer().geometry == Geometry.Geometry.FLAT:
 			pose = _viewer().subtitle_transform()
 			var toward_eye := eye - pose.origin
-			var horizontal := Vector3(toward_eye.x, 0, toward_eye.z)
-			var facing: Basis = _upright_pose(head).basis if head != null else Basis.IDENTITY
-			if horizontal.length_squared() > .0001:
-				facing = Basis.looking_at(-horizontal.normalized(), Vector3.UP)
+			var facing := pose.basis.orthonormalized()
+			if not reclining_mode:
+				var horizontal := Vector3(toward_eye.x, 0, toward_eye.z)
+				facing = _upright_pose(head).basis if head != null else Basis.IDENTITY
+				if horizontal.length_squared() > .0001:
+					facing = Basis.looking_at(-horizontal.normalized(), Vector3.UP)
 			if toward_eye.length() > 0.1:
 				var normal := toward_eye.normalized()
 				# Native overlays keep readable distance; scene fallback needs clearance.
@@ -1365,7 +1373,7 @@ func _place_menu(menu: Node3D) -> void:
 		menu.global_transform = pose * Transform3D(Basis.IDENTITY, Vector3(0, bar_offset, 0))
 		_player_menu_anchor_key = _canvas_menu_anchor_key()
 		_player_menu_anchor_eye = eye
-		if head != null: view_follow.capture(_menu_key(menu), _upright_pose(head), menu.global_transform)
+		if head != null: view_follow.capture(_menu_key(menu), _menu_head_pose(head), menu.global_transform)
 		return
 	var drop := (0.45 if player_menu.section == 0 else 0.0) if menu == player_menu else 0.05
 	if menu == player_menu:
@@ -1378,7 +1386,7 @@ func _place_menu(menu: Node3D) -> void:
 	else:
 		pose.basis *= Basis.from_scale(ui_scale)
 		menu.global_transform = pose
-		view_follow.capture(_menu_key(menu), _upright_pose(head), pose)
+		view_follow.capture(_menu_key(menu), _menu_head_pose(head), pose)
 
 func _active_menu() -> Node3D:
 	if recent_menu and recent_menu.visible:
@@ -1468,6 +1476,7 @@ func _library_settings() -> Dictionary:
 		"display_quality": display_quality, "display_quality_pending": not is_equal_approx(display.render_scale, Quality.render_scale(display_quality, low_end_gpu)),
 		"sharpness": Quality.load_sharpness(settings, low_end_gpu),
 		"history": video.history_enabled,
+		"reclining_mode": reclining_mode,
 		"seek_mode": video.SeekPolicy.normalize(video.seek_mode),
 		"subtitle_distance": video.subtitle_distance,
 		"subtitle_position": video.subtitle_position,
@@ -1483,6 +1492,10 @@ func _library_settings() -> Dictionary:
 
 func _on_setting_changed(key: String, value: Variant) -> void:
 	match key:
+		"reclining_mode":
+			_set_reclining_mode(bool(value))
+			settings.set_value("ui", "reclining_mode", reclining_mode)
+			settings.save(settings_path)
 		"file_editing":
 			recent_menu.file_actions.set_enabled(bool(value))
 			settings.set_value("library", "file_editing", bool(value))
@@ -1890,7 +1903,23 @@ func _connect_session_controls(menu: Node3D) -> void:
 
 func _on_menu_placement_changed(menu: Node3D) -> void:
 	var head: Variant = _head_pose()
-	if head != null: view_follow.capture(_menu_key(menu), _upright_pose(head), menu.global_transform)
+	if head != null: view_follow.capture(_menu_key(menu), _menu_head_pose(head), menu.global_transform)
+
+func _set_reclining_mode(enabled: bool) -> void:
+	if reclining_mode == enabled: return
+	_update_view_follow()
+	reclining_mode = enabled
+	video.reclining_mode = enabled
+	var head: Variant = _head_pose()
+	if video.geometry == Geometry.Geometry.FLAT:
+		if enabled and not video.local_uri.is_empty() and head != null:
+			# Face the current gaze immediately, without enabling continuous follow.
+			video.set_flat_world_pose(head * Transform3D(Basis.IDENTITY, Vector3(0, 0, -video.screen_distance)))
+		else:
+			video._apply_flat_pose()
+		_capture_follow_screen(video, head)
+	for menu in [recent_menu, video_menu, photo_menu]:
+		if menu and menu.visible: _place_menu(menu)
 
 func _person_passthrough() -> bool:
 	if photo_active and photo: return photo.portrait_requested or photo.portrait_enabled
@@ -1923,7 +1952,7 @@ func _on_session_control(operation: String) -> void:
 		var head: Variant = _head_pose()
 		if view_follow.enabled and head != null:
 			for menu in [recent_menu, video_menu, photo_menu]:
-				if menu and menu.visible: view_follow.capture(_menu_key(menu), _upright_pose(head), menu.global_transform)
+				if menu and menu.visible: view_follow.capture(_menu_key(menu), _menu_head_pose(head), menu.global_transform)
 			var surface := _viewer()
 			if _flat_followable(surface) and not surface.local_uri.is_empty():
 				var local: Vector3 = head.affine_inverse() * (surface.global_transform * surface.flat_pose).origin

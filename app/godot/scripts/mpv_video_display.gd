@@ -61,6 +61,7 @@ var prefer_clone_voice := false
 ## the Alpha switch shows it instead of running RVM.
 var packed_file := false
 var packed_alpha := false
+var reclining_mode := false
 ## What the file name left open; filled from the first frame's shape, then cleared.
 var _layout_pending: Variant = null
 var _layout_basename := ""
@@ -1537,9 +1538,9 @@ func _pixel_aspect() -> float:
 	return float(media.format.get("pixel_aspect", 1.0))
 
 func _apply_flat_pose() -> void:
-	# Every flat-video placement path (drag, follow, restore and presented frames)
-	# shares this constraint. Explicit picture rotation stays within this plane.
-	flat_pose = global_transform.affine_inverse() * upright_pose(global_transform * flat_pose)
+	# Reclining mode permits full placement tilt, including follow and recenter.
+	if not reclining_mode:
+		flat_pose = global_transform.affine_inverse() * upright_pose(global_transform * flat_pose)
 	super._apply_flat_pose()
 	if caption and caption.visible: _place_caption()
 	_sync_subtitle_surface()

@@ -106,6 +106,8 @@ func _run() -> void:
 	main.video.recent_files = Catalog.new(directory.path_join("recent.cfg"))
 	main.video.load_mode_lock({})
 	check(not main.view_follow.enabled and not main.temporary_passthrough, "Every startup disables session modes")
+	check(not main.reclining_mode and not main.video.reclining_mode and not main._library_settings().reclining_mode,
+		"Reclining mode is off by default in settings and video placement")
 	check(button(main.recent_menu, Menu.FOLLOW).base_color == Menu.TILE, "Initial follow button is off")
 	footer_check(main.recent_menu, "Empty library")
 	check(click(main.recent_menu, Menu.TEMP_PASSTHROUGH) and main.temporary_passthrough and main.display.applied_passthrough,
@@ -312,11 +314,14 @@ func _run() -> void:
 	main.photo_active = true; main.player_menu = main.photo_menu
 	main._show_player_menu(); main.photo_menu._adjustment = "photo_view"; main.photo_menu.refresh()
 	close_menu_check(main,main.photo_menu,"Photo adjustments")
+	_check_reclining(main)
 	main.settings.save(main.settings_path)
 	var restarted := FollowMain.new()
 	restarted.settings_path = main.settings_path; restarted.display = SupportedDisplay.new()
 	root.add_child(restarted); restarted.set_process(false); restarted.report_timer.stop()
 	check(not restarted.view_follow.enabled and not restarted.temporary_passthrough, "Restart ignores previous runtime selections")
+	check(restarted.reclining_mode and restarted.video.reclining_mode and restarted._library_settings().reclining_mode,
+		"Restart restores reclining preference without enabling session follow")
 	I18n.use("zh")
 	check(I18n.t("Cannot switch during person passthrough") == "人像透视开启时不可切换", "Restriction hover is localized")
 	restarted.queue_free(); main.queue_free(); await process_frame
@@ -326,3 +331,67 @@ func _run() -> void:
 	for failure in failures: push_error(failure)
 	print("View follow checks: %s (%d)" % [report.state,checks])
 	quit(0 if failures.is_empty() else 1)
+
+func _choose_reclining(main: Node3D, enabled: bool) -> void:
+	var menu: Node3D = main.recent_menu
+	for target in menu.choices.targets:
+		var item: Dictionary = menu.choices.targets[target]
+		if item.get("kind") == "open" and item.get("key") == "reclining_mode":
+			menu.choices.action(target)
+			break
+	for target in menu.choices.targets:
+		var item: Dictionary = menu.choices.targets[target]
+		if item.get("kind") == "choose" and item.get("key") == "reclining_mode" and item.value == enabled:
+			menu.choices.action(target)
+			return
+	check(false, "Reclining mode choice is reachable from General settings")
+
+func _check_reclining(main: Node3D) -> void:
+	I18n.use("en")
+	main.photo_active = false; main.player_menu = main.video_menu
+	main.video.geometry = 0; main.video.panel.visible = true
+	main.video.set_alpha(false)
+	if main.view_follow.enabled: main._on_session_control("follow")
+	main.xr_camera.transform = Transform3D(Basis.from_euler(Vector3(1.45, .3, .2)), Vector3(0, 1.6, 0))
+	main._show_recent_menu()
+	main.recent_menu._activate(main.recent_menu.NAV_BASE + main.recent_menu.Section.SETTINGS)
+	check(main.recent_menu.rows.any(func(row): return row.get("key", "") == "reclining_mode" and row.value == false),
+		"General settings expose the disabled reclining mode")
+	_choose_reclining(main, true)
+	check(main.reclining_mode and main.video.reclining_mode and not main.view_follow.enabled,
+		"Settings enables reclining immediately without enabling follow")
+	check(main.settings.get_value("ui", "reclining_mode", false), "Reclining choice is saved")
+	check(main.video.flat_pose.basis.is_equal_approx(main.xr_camera.global_basis), "Enabling reclining faces the lying viewer immediately")
+	check(main.recent_menu.global_basis.is_equal_approx(main.xr_camera.global_basis), "Reclining settings menu faces the lying viewer")
+	main._recenter()
+	check(main.video.flat_pose.basis.is_equal_approx(main.xr_camera.global_basis), "Recenter preserves full reclining gaze without follow")
+	main._turn_picture(.1, -.2)
+	check(absf(main.video.panel.global_basis.z.y) > .5, "Reclining drag permits a tilted video screen")
+	main._show_player_menu()
+	check(main.video_menu.global_basis.orthonormalized().is_equal_approx(main.video.subtitle_transform().basis),
+		"Reclining playback controls share the screen placement plane")
+	main._on_session_control("follow")
+	main._recenter()
+	var local := placement(main, main.video)
+	var menu_local: Transform3D = main.xr_camera.global_transform.affine_inverse() * main.video_menu.global_transform
+	for pitch in [PI / 2, -1.45, .7]:
+		main.xr_camera.transform = Transform3D(Basis.from_euler(Vector3(pitch, -.4, .6)), Vector3(2, 1, -3))
+		main._update_view_follow()
+		main.video._apply_flat_pose() # Presented-frame updates must not restore the upright constraint.
+		check(placement(main, main.video).is_equal_approx(local), "Reclining video follows full head pose at pitch " + str(pitch))
+		check((main.xr_camera.global_transform.affine_inverse() * main.video_menu.global_transform).is_equal_approx(menu_local),
+			"Reclining controls follow full head pose at pitch " + str(pitch))
+	main._show_recent_menu()
+	_choose_reclining(main, false)
+	check(not main.reclining_mode and not main.video.reclining_mode and main.view_follow.enabled,
+		"Disabling reclining preserves the independent follow switch")
+	check(absf(main.video.panel.global_basis.z.y) < .00001 and main.recent_menu.global_basis.y.is_equal_approx(Vector3.UP),
+		"Disabling reclining restores upright video and menus immediately")
+	main.xr_camera.rotation = Vector3(1.2, .8, -.6)
+	main._update_view_follow()
+	check(absf(main.video.panel.global_basis.z.y) < .00001, "Following after disabling reclining cannot restore stale tilt")
+	main._on_session_control("follow")
+	_choose_reclining(main, true) # Retain this preference for the restart check.
+	for locale in ["zh", "zh_Hant", "ja"]:
+		I18n.use(locale)
+		check(I18n.t("Reclining mode") != "Reclining mode", "Reclining mode label is localized for " + locale)

@@ -687,6 +687,8 @@ func _rebuild_rows() -> void:
 				var languages: Array = []
 				for value in I18n.CHOICES: languages.append({"value": value, "label": LANGUAGE_NAMES[value]})
 				rows.append(_choice_row("Language", "language", I18n.choice, languages))
+				rows.append(_choice_row("Reclining mode", "reclining_mode", settings.get("reclining_mode", false),
+					[{"value": false, "label": "Off"}, {"value": true, "label": "On"}], false, "Allow tilted screens and menus"))
 				rows.append(_choice_row("Allow file management", "file_editing", file_actions.enabled,
 					[{"value": false, "label": "Off"}, {"value": true, "label": "On"}]))
 				rows.append(_choice_row("Save play history", "history", settings.get("history", true),

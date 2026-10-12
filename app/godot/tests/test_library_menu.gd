@@ -437,7 +437,7 @@ func _run() -> void:
 	check(menu.text_snapshot().contains("本地文件") and menu.text_snapshot().contains("需要媒体访问权限") 		and not menu.text_snapshot().contains("Local files"), "Chinese menu and status")
 	menu._activate(Menu.NAV_BASE + Menu.Section.SETTINGS)
 	menu._activate(Menu.TAB_BASE + Menu.GENERAL_TAB)
-	check(menu.rows.size() == 4 and menu.rows[0].title == "语言" and menu.rows[0].value == "zh"
+	check(menu.rows.size() == 5 and menu.rows[0].title == "语言" and menu.rows[0].value == "zh"
 		and menu.rows[0].choices.map(func(option): return option.label) == ["System", "简体中文", "繁體中文", "日本語", "English"],
 		"General groups all languages in one dropdown, each named in itself")
 	var chosen := []

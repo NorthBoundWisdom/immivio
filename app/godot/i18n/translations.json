@@ -1,5 +1,7 @@
 {
   "zh": {
+    "Reclining mode": "躺卧模式",
+    "Allow tilted screens and menus": "允许屏幕和菜单随视线倾斜",
     "Stereo viewing": "立体观看",
     "Both eyes": "双眼",
     "Left eye": "左眼",
@@ -507,6 +509,8 @@
     "No person detected": "未识别到人像"
   },
   "zh_Hant": {
+    "Reclining mode": "躺臥模式",
+    "Allow tilted screens and menus": "允許螢幕和選單隨視線傾斜",
     "Stereo viewing": "立體觀看",
     "Both eyes": "雙眼",
     "Left eye": "左眼",
@@ -1014,6 +1018,8 @@
     "No person detected": "未辨識到人像"
   },
   "ja": {
+    "Reclining mode": "寝転びモード",
+    "Allow tilted screens and menus": "画面とメニューの傾きを許可",
     "Stereo viewing": "立体視",
     "Both eyes": "両眼",
     "Left eye": "左眼",
