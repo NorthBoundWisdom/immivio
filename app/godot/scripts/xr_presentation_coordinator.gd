@@ -289,13 +289,20 @@ func _place_menu(menu: Node3D) -> void:
 		host._player_menu_anchor_eye = eye
 		if head != null: host.view_follow.capture(host._menu_key(menu), host._menu_head_pose(head), menu.global_transform)
 		return
-	var drop = (0.45 if host.player_menu.section == 0 else 0.0) if menu == host.player_menu else 0.05
+	var drop = (0.45 if host.player_menu.section == 0 else 0.0) if menu == host.player_menu else (0.0 if menu == host.recent_menu else 0.05)
 	if menu == host.player_menu:
 		host.player_menu.lift_panels = true
 		host.player_menu.panel_lift = 0.45
 		host.player_menu.max_ray_metres = host.player_menu.MAX_RAY_METRES
 	var distance = host.library_distance if menu == host.recent_menu else 1.4
 	var pose: Variant = host._view_pose(distance, drop)
+	if menu == host.recent_menu and head != null:
+		# Place the complete browser's visual centre on the current gaze ray.
+		# Its asymmetric navigation/footer envelope is offset from the node origin.
+		# Upright mode controls orientation, not the direction of initial placement.
+		var centre: Vector2 = menu.capture_envelope().get_center()
+		pose = Transform3D(host._menu_head_pose(head).basis, head.origin - head.basis.z * distance)
+		pose.origin -= pose.basis * Vector3(centre.x, centre.y, 0)
 	if pose == null:
 		menu.transform = Transform3D(Basis.from_scale(ui_scale), Vector3(0, 1.6 - drop, -1.55))
 	else:

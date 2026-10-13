@@ -45,13 +45,15 @@ func _run() -> void:
 			main._apply_system_recenter()
 			check(main.centres == calls, "Recenter waits for subsequent tracked scene frames")
 			main._apply_system_recenter()
-			var expected := main._menu_head_pose(new_head) * Transform3D(Basis.IDENTITY, Vector3(0, -.05, -main.library_distance))
-			check(not main._system_recenter_pending and main.centres == calls + 1 and menu.global_transform.is_equal_approx(expected), "Long Home centres the menu using the new reference-space head pose")
+			var centre: Vector2 = menu.capture_envelope().get_center()
+			var expected_centre: Vector3 = new_head.origin - new_head.basis.z * main.library_distance
+			check(not main._system_recenter_pending and main.centres == calls + 1 and menu.to_global(Vector3(centre.x, centre.y, 0)).is_equal_approx(expected_centre), "Long Home places the complete browser centre on the new gaze ray")
+			check(menu.global_basis.is_equal_approx(main._menu_head_pose(new_head).basis), "Library orientation retains the upright/reclining preference")
 			check((menu.global_position - new_head.origin).dot(-new_head.basis.z) > 0, "A 180-degree reference-space change puts the window in front, never behind")
 			var screen: Transform3D = main.video.global_transform * main.video.flat_pose
 			check((screen.origin-new_head.origin).dot(-new_head.basis.z) > 0 and is_equal_approx(screen.origin.distance_to(new_head.origin), main.video.screen_distance), "Flat video returns in front at its remembered distance")
 			if follow:
-				check(main.view_follow.pose(main._menu_key(menu), main._menu_head_pose(new_head)).is_equal_approx(expected), "Long Home replaces stale follow offsets with centred placement")
+				check(main.view_follow.pose(main._menu_key(menu), main._menu_head_pose(new_head)).is_equal_approx(menu.global_transform), "Long Home replaces stale follow offsets with centred placement")
 			before = menu.global_transform
 			main._notification(Main.NOTIFICATION_APPLICATION_PAUSED)
 			main.display.session_state = "session_visible"; main._on_input_session_changed()
@@ -94,6 +96,23 @@ func _run() -> void:
 	main._presentation._runtime_is_pico = true
 	menu.visible = true; main.player_menu.visible = false
 	main.video.geometry = 0; main.video._apply_geometry(); main.video.panel.visible = true
+	main.view_follow.set_enabled(false)
+	for reclining in [false, true]:
+		main.reclining_mode = reclining
+		for pitch in [-.45, 0.0, .35]:
+			var gaze := Transform3D(Basis.from_euler(Vector3(pitch, .6, .12)), Vector3(.2, 1.7, -.3))
+			main.xr_camera.global_transform = gaze
+			main._place_menu(menu)
+			var centre: Vector2 = menu.capture_envelope().get_center()
+			var centre_world: Vector3 = menu.to_global(Vector3(centre.x, centre.y, 0))
+			check(centre_world.is_equal_approx(gaze.origin - gaze.basis.z * main.library_distance), "Opening the file browser centres its visual envelope for pitched gaze")
+			check(menu.global_basis.is_equal_approx(main._menu_head_pose(gaze).basis), "Gaze-centred browser retains upright/reclining orientation")
+			var fixed_pose := menu.global_transform
+			main.xr_camera.global_transform = new_head
+			main._update_view_follow()
+			main._on_system_recentered()
+			for frame in 5: main._apply_system_recenter()
+			check(menu.global_transform.is_equal_approx(fixed_pose), "An opened browser stays fixed when the head moves and PICO emits a runtime reset")
 	for follow in [false, true]:
 		for reclining in [false, true]:
 			main.view_follow.set_enabled(follow); main.reclining_mode = reclining

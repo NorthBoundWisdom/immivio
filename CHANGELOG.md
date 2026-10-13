@@ -6,6 +6,7 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 ## Unreleased
 
+- Centre the complete file-browser window on the current gaze when opening or explicitly recentering it, removing the downward offset while retaining upright/reclining orientation and fixed placement afterward.
 - Remove the low-frame-rate UI fallback detector and persistent latch. Supported native menu layers remain active independently of application frame rate.
 - Keep PICO windows and media placement when the runtime emits automatic tracking-space reset notifications. Explicit in-app recenter remains available; other runtimes retain their system-recenter handling.
 
