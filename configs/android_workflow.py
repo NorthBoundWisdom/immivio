@@ -49,6 +49,7 @@ BUILD_INPUTS = (
 
 
 def arguments_for(vendor, build_type, tools, *, mpv_dir=None, mpv_receipt=None):
+    components = player.sdk_tools()
     return SimpleNamespace(
         vendor=vendor,
         build_type=build_type,
@@ -57,8 +58,9 @@ def arguments_for(vendor, build_type, tools, *, mpv_dir=None, mpv_receipt=None):
         gradle=tools["gradle"],
         sdk=None,
         java_home=None,
-        ndk=TOOLCHAIN["android"]["ndk"],
-        cmake=TOOLCHAIN["android"]["cmake"],
+        ndk=components["ndk"],
+        cmake=components["cmake"],
+        build_tools=components["build_tools"],
         plugin_only=False,
         mpv_dir=mpv_dir,
         mpv_receipt=mpv_receipt,

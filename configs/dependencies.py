@@ -4,7 +4,6 @@ import json
 import os
 from pathlib import Path
 import shutil
-import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -153,17 +152,18 @@ def host_tools():
 
     godot = executable("GODOT_EXE", "godot")
     gradle = executable("GRADLE_EXE", "gradle")
-    observed = subprocess.check_output(
-        [godot, "--headless", "--version"], text=True
-    ).strip()
-    if observed != TOOLCHAIN["godot"]["version"]:
-        raise RuntimeError(
-            f"Expected Godot {TOOLCHAIN['godot']['version']}, observed {observed}"
-        )
     args = SimpleNamespace(godot=godot, templates=os.environ.get("GODOT_TEMPLATES_DIR"))
-    templates, _ = player.template_directory(args, os.environ)
+    templates, observed = player.template_directory(args, os.environ)
     if not (templates / "android_source.zip").is_file():
         raise RuntimeError(
             f"Preinstall matching Godot Android export templates in {templates}"
+        )
+    expected_template = observed.split(".official")[0]
+    if (
+        not (templates / "version.txt").is_file()
+        or (templates / "version.txt").read_text().strip() != expected_template
+    ):
+        raise RuntimeError(
+            f"Godot templates must match the installed editor {observed}"
         )
     return {"godot": godot, "templates": str(templates), "gradle": gradle}

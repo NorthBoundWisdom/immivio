@@ -11,7 +11,7 @@ Immivio uses FreeCM for project source roots and the Android OpenXR addon. Tools
 | Optional mpv/FFmpeg backend sources and hand-model maintenance sources | FreeCM declarations with `disabled: true` by default |
 | Android application/plugin packages | Gradle version catalog, lockfiles and verification metadata under `android/` |
 | OpenList's Go modules | `cloud/openlist/go.mod` and `go.sum` |
-| Python, JDK, Go, Gradle, Godot and export templates, Android SDK/NDK/CMake, gomobile/gobind | Preinstalled host environment; required versions in `configs/toolchain.json` |
+| Python, JDK, Go, Gradle, Godot and export templates, Android SDK/NDK/CMake, gomobile/gobind | Preinstalled host environment; compatible host installations; Android project targets in `configs/toolchain.json` |
 | Android ARM64 libmpv/FFmpeg libraries | Prepared host SDK directory, checked against `third_party/mpv/manifest.json` |
 | Optional Python media/native tools | Preinstalled environment; `requirements-media-tools.txt` and `requirements-native-tools.txt` |
 
@@ -19,7 +19,7 @@ Immivio uses FreeCM for project source roots and the Android OpenXR addon. Tools
 
 ## Prepare the host once
 
-Install the versions listed in `configs/toolchain.json`. Use `JAVA_HOME`, `ANDROID_HOME` / `ANDROID_SDK_ROOT`, and `PATH` for the installed tools. `GODOT_EXE`, `GODOT_TEMPLATES_DIR` and `GRADLE_EXE` can select nonstandard installation paths. Godot's matching Android export templates must already contain `android_source.zip` and `version.txt`.
+Use compatible installed tools. Python needs the standard-library features available in 3.11+; Go must support the project module language version. JDK/Gradle compatibility is checked by the Android build plugin. No exact host tool versions are prescribed. `configs/toolchain.json` records Android application targets, not host versions. Use `JAVA_HOME`, `ANDROID_HOME` / `ANDROID_SDK_ROOT`, and `PATH` for the installed tools. `GODOT_EXE`, `GODOT_TEMPLATES_DIR` and `GRADLE_EXE` can select nonstandard installation paths. Godot's matching Android export templates must already contain `android_source.zip` and `version.txt`.
 
 Large desktop media libraries and ordinary native build tools can be installed with the operating system's package manager, for example:
 
@@ -32,11 +32,11 @@ sudo apt install ffmpeg libmpv-dev pkg-config ninja-build meson
 
 The desktop libraries installed by these commands cannot be packaged into Android. Prepare the eight Android ARM64 libraries listed in `third_party/mpv/manifest.json` in a separate SDK directory, then set `IMMIVIO_MPV_LIB_DIR` to it. The manifest records the supported upstream mpv-android release, download location and each library's checksum. A maintainer can unpack `lib/arm64-v8a/*.so` from that release APK once, outside the project build. The build verifies all selected library bytes before copying them. It does not download mpv, FFmpeg or their full Git histories.
 
-Preinstall both Go binding tools using the `gomobile` module version recorded in `configs/toolchain.json`, and add their installation directory to `PATH`. For example, replace `<gomobile-version>` with that value during environment preparation:
+Preinstall compatible `gomobile` and `gobind` tools and add their installation directory to `PATH`. The build uses those tools directly and records their binary hashes in its build cache; it does not install or require one particular tool revision.
+
+NDK, CMake and Android Build Tools are selected from complete stable installations under the supplied Android SDK. The latest installed version is the default; `IMMIVIO_NDK_VERSION`, `IMMIVIO_CMAKE_VERSION` and `IMMIVIO_BUILD_TOOLS_VERSION` can select another installed component. Godot's templates must match the installed editor version. These compatibility relationships do not pin the editor or SDK tools to specific releases.
 
 ```sh
-go install golang.org/x/mobile/cmd/gomobile@<gomobile-version>
-go install golang.org/x/mobile/cmd/gobind@<gomobile-version>
 python3 configs/check_environment.py
 ```
 
@@ -69,7 +69,7 @@ The default backend consumes the prepared, unmodified upstream **mpv-android rel
 
 Optional sources remain declared with a fixed `remote`, `commit` and `disabled: true`, as in PcbDemo. FreeCM skips them during initialization, update, verification and dependency resolution. To develop the private backend, set `disabled` to `false` for the native dependency group in the machine-local `source_roots.lock.jsonc`: all optional entries except `GodotOpenXRHands`. Keep the template defaults disabled. Then run `--init` and `--update`. Enable `GodotOpenXRHands` separately only when maintaining the already checked-in hand models.
 
-The optional Linux build consumes preinstalled Autoconf, Automake, Libtool, pkg-config, gperf, NASM, CMake, Bison, Flex, gettext, Meson 1.11.0, Ninja and Python packages. Preinstall NDK `30.0.16248370` and set `ANDROID_NDK_HOME`; enable unprivileged user/network namespaces. It copies enabled source roots into disposable build trees and runs compilation without network access:
+The optional Linux build consumes preinstalled Autoconf, Automake, Libtool, pkg-config, gperf, NASM, CMake, Bison, Flex, gettext, Meson, Ninja and Python packages. Preinstall a compatible Linux Android NDK and set `ANDROID_NDK_HOME`; enable unprivileged user/network namespaces. It copies enabled source roots into disposable build trees and runs compilation without network access:
 
 ```sh
 python3 configs/native_mpv_workflow.py configure

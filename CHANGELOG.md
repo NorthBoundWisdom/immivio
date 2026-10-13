@@ -6,6 +6,8 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 ## Unreleased
 
+- Complete local refactor regression and six Android package checks; migrate obsolete EOF/stereo fixtures to frame contract v2. Remove exact host-tool version requirements and select installed Android SDK components.
+
 - Continue the refactor: remove native inference/warp buffers, introduce version-2 playback descriptors, split Godot application controllers and Kotlin source/display ownership, and retire inference-specific verification matrices. Runtime/package acceptance is deferred.
 
 - Start the architecture refactor: isolate retired-settings migration, remove dormant model-preheat/Alpha-FPS paths and unused inference JNI entry points, and preserve the current playback lease/fence contracts.

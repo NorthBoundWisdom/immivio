@@ -120,7 +120,7 @@ func _run() -> void:
 	check(main.video_menu._adjustment == "queue" and main.video_menu.queue_menu.actions.values().has("queue_play_1"), "Queue panel renders editable entries")
 	main._on_player_setting("queue_autoplay", true)
 	main.video._waiting_first = false
-	main.video.media.state = "ended"; main.video.media.last_pair = {"session_id": 7, "slot_token": 1, "source_epoch": 2, "frame_id": 8, "pts_us": 9000000}
+	main.video.media.state = "ended"; main.video.media.last_pair = {"contract_version": 2, "session_id": 7, "slot_token": 1, "source_epoch": 2, "frame_id": 8, "pts_us": 9000000}
 	main.video.media.playback = {"eof_source_resolved": true, "eof_pair_post_draw": false, "eof_presented_slot": 1, "eof_source_ticket": {"source_epoch": 2, "frame_id": 8, "pts_us": 9000000}}
 	var before := host.calls.size()
 	main._advance_queue(7, "file:///timing-a.mp4")

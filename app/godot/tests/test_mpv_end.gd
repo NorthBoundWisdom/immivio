@@ -16,15 +16,15 @@ func _initialize() -> void:
 	var video := Video.new()
 	video.media.state = "ended"
 	video.loop_enabled = true
-	video.alpha_requested = true
-	video.media.last_pair = {"slot_token": 9, "source_epoch": 7, "frame_id": 179, "pts_us": 5966667, "inference_ran": true}
+	video.alpha_requested = false
+	video.media.last_pair = {"contract_version": 2, "slot_token": 9, "source_epoch": 7, "frame_id": 179, "pts_us": 5966667}
 	video.media.playback = {"eof_source_resolved": true, "eof_source_ticket": {"source_epoch": 7, "frame_id": 179, "pts_us": 5966667}}
 	_check(not video._can_loop(), "EOF and a bound final pair must wait for post-draw confirmation")
 	video.media.playback["eof_pair_post_draw"] = true
 	video.media.playback["eof_presented_slot"] = 8
 	_check(not video._can_loop(), "Earlier drawn slot cannot authorize the newly bound final pair")
 	video.media.playback["eof_presented_slot"] = 9
-	_check(video._can_loop(), "Exact final source and complete drawn Alpha can loop")
+	_check(video._can_loop(), "Exact final source and complete drawn v2 pair can loop")
 	video.media.last_pair["pts_us"] = 5933333
 	_check(not video._can_loop(), "Penultimate frame must not loop even if core is ended")
 	video.media.last_pair["pts_us"] = 5966667
@@ -37,9 +37,9 @@ func _initialize() -> void:
 	video._waiting_first = true
 	_check(not video._can_loop(), "Replacement generation cannot loop before its first frame")
 	video._waiting_first = false
-	video.media.last_pair["inference_ran"] = false
-	_check(not video._can_loop(), "Alpha mode cannot loop from an opaque placeholder")
-	video.alpha_requested = false
+	video.media.last_pair["contract_version"] = 1
+	_check(not video._can_loop(), "A retired frame contract cannot authorize EOF completion")
+	video.media.last_pair["contract_version"] = 2
 	_check(video._can_loop(), "Normal playback can loop from a complete opaque pair")
 	video.free()
 	var replay := ReplayProbe.new()

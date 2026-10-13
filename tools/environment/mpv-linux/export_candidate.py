@@ -85,7 +85,7 @@ def main():
         'mpv_revision': patch_manifest['base_mpv_revision'],
         'patch_sha256': patch_manifest['patch_sha256'],
         'private_header_sha256': patch_manifest['private_header_sha256'],
-        'api_version': patch_manifest['api_version'], 'ndk': '30.0.16248370', 'android_api': 23,
+        'api_version': patch_manifest['api_version'], 'ndk': re.search(r'(?m)^Pkg.Revision\s*=\s*(.+)$', (Path(os.environ['ANDROID_NDK_HOME'])/'source.properties').read_text())[1].strip(), 'android_api': 23,
         'pgs_bitmap_patch_sha256': sha(ROOT/'native/mpv/patches/0003-mpv-pgs-bitmap.patch'),
         'pgs_bitmap_header_sha256': sha(ROOT/'native/mpv/include/mpv/quest_subtitle.h'),
         'dovi_rpu_patch_sha256': sha(ROOT/'native/mpv/patches/0002-ffmpeg-profile5-rpu.patch'),

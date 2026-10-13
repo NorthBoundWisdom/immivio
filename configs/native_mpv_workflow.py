@@ -52,11 +52,6 @@ def configure(env):
     ):
         if not shutil.which(tool, path=env["PATH"]):
             raise RuntimeError(f"Install Linux build prerequisite: {tool}")
-    if (
-        subprocess.check_output(["meson", "--version"], text=True, env=env).strip()
-        != "1.11.0"
-    ):
-        raise RuntimeError("Preinstall Meson 1.11.0 in the native build environment")
     roots = workflow.require_dependency_roots()
     WORK.mkdir(parents=True, exist_ok=True)
     destination = WORK / "mpv-android"
@@ -76,9 +71,7 @@ def configure(env):
         identity.write_text(commit)
     ndk = Path(env.get("ANDROID_NDK_HOME", ""))
     if not (ndk / "source.properties").is_file():
-        raise RuntimeError("Preinstall Linux Android NDK r30 and set ANDROID_NDK_HOME")
-    if "30.0.16248370" not in (ndk / "source.properties").read_text():
-        raise RuntimeError("Optional native backend requires Android NDK 30.0.16248370")
+        raise RuntimeError("Preinstall Linux Android NDK and set ANDROID_NDK_HOME")
     ndk = ndk.resolve()
     sdk = destination / "buildscripts/sdk"
     sdk.mkdir(exist_ok=True)

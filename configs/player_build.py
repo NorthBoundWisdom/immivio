@@ -144,15 +144,65 @@ def build_lock():
     return workspace_mutation_lock(ROOT)
 
 
+def sdk_directory(env):
+    value = env.get("ANDROID_HOME") or env.get("ANDROID_SDK_ROOT")
+    if value:
+        return Path(value).expanduser().absolute()
+    if os.name == "nt":
+        return Path(env.get("LOCALAPPDATA", Path.home())) / "Android/Sdk"
+    return Path.home() / (
+        "Library/Android/sdk" if sys.platform == "darwin" else "Android/Sdk"
+    )
+
+
+def installed_sdk_component(sdk, directory, marker, *, preferred=""):
+    base = Path(sdk) / directory
+    if preferred:
+        selected = base / preferred
+        if not (selected / marker).exists():
+            raise RuntimeError(f"Configured Android component is missing: {selected}")
+        return preferred
+    candidates = (
+        [
+            path
+            for path in base.iterdir()
+            if path.is_dir()
+            and re.fullmatch(r"\d+(?:\.\d+)*", path.name)
+            and (path / marker).exists()
+        ]
+        if base.is_dir()
+        else []
+    )
+    if not candidates:
+        raise RuntimeError(f"Preinstall an Android {directory} component under {base}")
+    return max(candidates, key=lambda path: tuple(map(int, path.name.split(".")))).name
+
+
+def sdk_tools(env=None):
+    env = os.environ if env is None else env
+    sdk = sdk_directory(env)
+    return {
+        "ndk": installed_sdk_component(
+            sdk,
+            "ndk",
+            "build/cmake/android.toolchain.cmake",
+            preferred=env.get("IMMIVIO_NDK_VERSION", ""),
+        ),
+        "cmake": installed_sdk_component(
+            sdk, "cmake", "bin", preferred=env.get("IMMIVIO_CMAKE_VERSION", "")
+        ),
+        "build_tools": installed_sdk_component(
+            sdk,
+            "build-tools",
+            "source.properties",
+            preferred=env.get("IMMIVIO_BUILD_TOOLS_VERSION", ""),
+        ),
+    }
+
+
 def environment(args, base_env=None):
     env = android_environment(os.environ if base_env is None else base_env)
-    sdk = args.sdk or env.get("ANDROID_HOME") or env.get("ANDROID_SDK_ROOT")
-    if not sdk:
-        sdk = Path.home() / (
-            "Library/Android/sdk" if sys.platform == "darwin" else "Android/Sdk"
-        )
-        if os.name == "nt":
-            sdk = Path(env.get("LOCALAPPDATA", Path.home())) / "Android/Sdk"
+    sdk = Path(args.sdk).expanduser().absolute() if args.sdk else sdk_directory(env)
     # Preserve host-provided SDK junctions/aliases. On Windows C:\Android can
     # point into Program Files; resolving it breaks gomobile's unquoted CC path.
     sdk = Path(sdk).expanduser().absolute()
@@ -173,7 +223,7 @@ def environment(args, base_env=None):
         ).exists()
     ):
         raise RuntimeError(
-            "Set JAVA_HOME or --java-home to a JDK supported by Gradle 9.8.1"
+            "Set JAVA_HOME to a JDK compatible with the installed Gradle/Android plugin"
         )
     ndk = sdk / "ndk" / args.ndk
     if not (ndk / "build/cmake/android.toolchain.cmake").exists():
@@ -684,7 +734,7 @@ def configure_project(args, env, sdk):
         f"-PandroidNdkVersion={args.ndk}",
         f"-PandroidCmakeVersion={args.cmake}",
         f"-PandroidCompileSdk={TOOLCHAIN['android']['platform']}",
-        f"-PandroidBuildToolsVersion={TOOLCHAIN['android']['build_tools']}",
+        f"-PandroidBuildToolsVersion={args.build_tools}",
         f"-PandroidMinSdk={TOOLCHAIN['android']['min_sdk']}",
         f"-PgodotAarPath={api}",
         "--console=plain",

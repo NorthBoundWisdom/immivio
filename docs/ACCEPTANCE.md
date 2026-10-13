@@ -1,17 +1,30 @@
 # Deferred refactor acceptance
 
-R2–R5 code migration is complete; runtime acceptance is **pending**. The owner requested compilation and light static checks only, with no test matrix or APK packaging tests during this refactor. Automatic CI is skipped on the refactor checkpoint. No new device-performance or playback-quality claim is made.
+R2–R5 code migration has reached local acceptance. The owner subsequently authorized the deferred checks and narrowed the completion criterion to producing installable packages on this machine; other platforms are delegated to CI. Earlier compile-only results remain historical evidence.
 
-## Compile evidence
+Host tools are no longer pinned to exact versions. Required language/library features, Godot editor/template matching, Android application targets and native library integrity remain enforced.
 
-- Android NDK syntax compilation of the split render bridge.
-- Android Debug production Kotlin and JVM test-source compilation, using one Gradle worker.
-- Compilation of changed Godot scripts and fixtures without instantiating/running the tests.
-- Static source boundary, JNI declaration/export-name parity, workflow syntax and website link checks.
+## Local acceptance results — 2026-10-13
 
-These checks do not validate GL synchronization, user-data migrations, headset interaction or package delivery. The successful R1 tests/APK are a **historical baseline**, not evidence for the new frame contract or controller split.
+| Check | Result |
+| --- | --- |
+| Python workflow tests | 31 passed, including host-component selection and stale-build checks |
+| Release selection/publication tests | 13 passed |
+| Website tests | 4 passed; all six bilingual pages checked |
+| JVM tests | 234 passed; 11 credential-dependent optional cases skipped |
+| Godot host tests | All 75 passed |
+| Go `cloudcore` tests | Passed |
+| Android builds/packages | Quest, Pico, OpenXR × Debug and Release: all six passed local packaging/verification |
+| Package integrity | APK hashes match receipts; ARM64 ELF, JNI/dependency checks, 16KB, ZIP alignment, signatures and application identity checked |
+| Source checks | Public-source boundary, command manifest and workflow syntax passed |
 
-## Central acceptance sequence
+Three initially failing Godot cases still referenced retired `warped`/inference behavior or lacked a version-2 EOF descriptor. Their fixtures were migrated to supported packed stereo and versioned source-frame completion. Focused reruns and the complete Godot suite passed afterward.
+
+The final packages, build receipts and `SHA256SUMS.txt` live under ignored `artifacts/`; a consolidated package record is `artifacts/refactor-acceptance/packages.json`. Source remains in Git; binaries and signing material do not.
+
+Windows/cross-platform execution is delegated to CI per the owner's updated scope. Real-headset, sustained-thermal/performance, private-backend and credentialed live-source checks are not certified by this local result. There are only Android emulators attached; no physical headset was tested. Previous compile-only evidence and R1 package results do not stand in for those checks.
+
+## CI and device follow-up
 
 1. Configure the prepared host environment; initialize enabled FreeCM inputs and prepare ordinary package caches if needed. Use the current commands in [BUILD.md](BUILD.md).
 2. Run `tests/workflow`, release selection/publication tests and website checks. Verify production-source changes reject stale build receipts.
