@@ -17,7 +17,10 @@ class ReleaseAssets(unittest.TestCase):
         for vendor, platform in release.PLATFORMS.items():
             name = f'Immivio-{platform}-0.6.0-release-20261013.apk'
             data = vendor.encode(); (directory / name).write_bytes(data)
-            record = {'vendor':vendor, 'apk':name, 'sha256':hashlib.sha256(data).hexdigest(),
+            record = {'schema_version':2, 'dependency_mode':'pinned','freecm_commit':'d'*40,
+                      'dependency_commits':{'OpenList':'e'*40},'dependency_assets':{'MpvAndroid':[]},
+                      'gradle_locks':{'android/gradle.lockfile':'f'*64},'dependency_manifests':{key:'f'*64 for key in ('source_roots.lock.jsonc.in','configs/toolchain.json','android/gradle/libs.versions.toml','android/gradle/verification-metadata.xml','cloud/openlist/go.mod','cloud/openlist/go.sum')},
+                      'vendor':vendor, 'apk':name, 'sha256':hashlib.sha256(data).hexdigest(),
                       'product':'Immivio', 'build_type':'Release', 'source_commit':COMMIT,
                       'ci_ref':'refs/tags/'+TAG, 'ci_host':'macOS',
                       'signing_certificate_sha256':'b'*64, 'ci_signing':'ephemeral-ci-key'}
@@ -54,7 +57,7 @@ class ReleaseAssets(unittest.TestCase):
                     release.prepare(packages, root / 'release', TAG, COMMIT)
                 self.assertFalse((root / 'release').exists())
 
-    def test_legacy_tag_receipts_without_certificate_metadata_remain_publishable(self):
+    def test_receipts_without_optional_certificate_metadata_remain_publishable(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             packages = self.fixture(root)
@@ -65,6 +68,15 @@ class ReleaseAssets(unittest.TestCase):
             manifest = release.prepare(packages, root / 'release', TAG, COMMIT)
             self.assertEqual(len(manifest['packages']), 3)
             self.assertNotIn('signing_certificate_sha256', manifest['packages'][0])
+
+    def test_unpinned_or_incomplete_dependency_provenance_is_rejected(self):
+        for key,value in [('dependency_mode','latest'),('schema_version',1),('freecm_commit',''),('dependency_manifests',{}),('gradle_locks',{})]:
+            with self.subTest(key=key), tempfile.TemporaryDirectory() as temporary:
+                root=Path(temporary);packages=self.fixture(root)
+                receipt=next(packages.glob('*.build.json'));record=json.loads(receipt.read_text())
+                record[key]=value;receipt.write_text(json.dumps(record))
+                with self.assertRaises(ValueError):release.prepare(packages,root/'release',TAG,COMMIT)
+                self.assertFalse((root/'release').exists())
 
     def test_corrupt_late_apk_does_not_copy_any_other_valid_assets(self):
         with tempfile.TemporaryDirectory() as temporary:

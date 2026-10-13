@@ -1,62 +1,63 @@
 # Building Immivio
 
-Immivio has one playback edition. Builds do not prepare, compile or package inference models, MNN or ncnn. The former AI/no-AI build switches and model preparation workflows have been retired.
+Immivio has one playback edition. Inference models, MNN and ncnn are excluded.
 
-## Host tools
+## Dependency and toolchain ownership
 
-Use the versions pinned in `tools/environment/base-player.lock.json`: Godot 4.7.2 and matching Android export templates, the locked Android SDK/NDK/CMake, a compatible JDK, Go and Python. Hosted CI provisions these tools on Windows and macOS. Local builds use `JAVA_HOME`, `ANDROID_HOME` / `ANDROID_SDK_ROOT`, and optionally `GODOT_EXE` / `GODOT_TEMPLATES_DIR`.
+`FreeCM/` is a pinned submodule. `source_roots.lock.jsonc.in` owns Git source pins and download URLs, SHA-256 hashes and exact sizes. `configs/toolchain.json` owns host tool requirements; `android/gradle/libs.versions.toml`, Gradle dependency locks and verification metadata own Maven packages; `cloud/openlist/go.mod` and `go.sum` own the embedded core's Go modules. Native mpv source records under `third_party/mpv` remain corresponding-source and receipt provenance, not a separate downloader.
 
-The builder verifies downloaded dependency hashes, builds the OpenList adapter from its pinned source, stages the Android plugin, runs JVM tests, imports the Godot project and exports the APK. Downloads and generated files are kept in ignored `.cache`, `build` and `artifacts` directories.
+Install the Python, JDK, Go and Android SDK components specified in the toolchain configuration. Local builds use `JAVA_HOME` and `ANDROID_HOME` / `ANDROID_SDK_ROOT`. Windows/macOS initialization prepares the locked Godot editor; `GODOT_EXE` can select an editor with the exact locked version. Linux uses a supplied matching editor. CI provisions the SDK and host runtimes before dependency initialization.
 
 ```sh
-git clone https://github.com/NorthBoundWisdom/immivio.git
+git clone --recurse-submodules https://github.com/NorthBoundWisdom/immivio.git
 cd immivio
-python3 tools/build_player.py --vendor Quest --build-type Debug
+python3 configs/source_root_workflow.py --init
+python3 configs/source_root_workflow.py --update
+python3 configs/android_workflow.py configure --vendor Quest --build-type Debug
+python3 configs/android_workflow.py build --vendor Quest --build-type Debug
+python3 configs/android_workflow.py test --vendor Quest --build-type Debug
+python3 configs/android_workflow.py package --vendor Quest --build-type Debug
 ```
 
-Use `Pico` or `OpenXR` for the other targets and `--build-type Release` for an optimized distributable package. The PowerShell wrapper calls the same builder:
+Use `Pico` or `OpenXR` for the other targets and `Release` for distributable packages. The same Python commands run in PowerShell. The previous build and preparation commands have been removed.
 
-```powershell
-./tools/Build-Player.ps1 -XrVendor Pico -BuildType Release
-```
+Only dependency `--init` accesses the network. After intentional Maven upgrades, maintainers can use `--init --refresh-packages` to regenerate the committed Gradle locks and verification metadata, review their diff, then configure again. It selects host assets into the ignored active lock, prepares FreeCM seeds and prefetches Go/Gradle packages. `--update`, diagnostics, configuration, compilation, testing and packaging consume verified local inputs offline. Missing inputs require another initialization. Initialization selects current template assets while preserving local source-root settings; `--refreshpin` updates only Git commit pins. Release requires pinned source dependencies.
 
-`--sdk`, `--java-home`, `--godot` and `--templates` can select explicit host locations. `--prepare-only` prepares dependencies; `--plugin-only` builds/tests the Android plugin without exporting the app.
+Configure is explicit. Build/Test/Package reject missing or stale configuration. Package requires a successful current Build. `run` installs an already packaged APK on the attached Android device. The FreeCM editor command manifest exposes these same actions.
+
+Generated host tools, source roots and configuration live under ignored `build/`; Gradle and Go use repository-local `.cache/` stores. `--cleanbuild --dry-run` previews cleanup. Cleanup preserves dependency seed/source roots and signing material, but removes generated configurations and build outputs; run `--update` and Configure afterward.
 
 ## Playback backends
 
-| Backend | Preparation and capabilities |
-| --- | --- |
-| Standard libmpv (default) | Uses the checksum-pinned public Android libraries. Ordinary playback and existing stereo media use render-transaction timing; exact decoded-image PTS and the project-private PGS/spatial APIs are not claimed. |
-| Verified project libmpv | Optional independently prepared source-frame backend. Its receipt must match the pinned source revision, patch/header hashes, source lock and every packaged library. Private PGS, Dolby and spatial capabilities still depend on the actual source/device. No inference runtime is involved. |
+The default backend uses checksum-pinned, unmodified **mpv-android upstream release libraries**, through libmpv's public render API. mpv-android is the Android distribution, rather than a standalone Android SDK released by the mpv main project. Ordinary and packed stereo playback are supported by this path; it does not claim the private backend's decoded-frame PTS, PGS bitmap, MV-HEVC or Dolby capabilities.
 
-To import a verified project backend:
+The optional project backend remains isolated while public-API replacements are evaluated. Import it with both receipt and directory at every stage:
 
 ```sh
-python3 tools/build_player.py --vendor Quest --build-type Release \
-  --mpv-dir /path/to/verified/arm64-v8a \
-  --mpv-receipt /path/to/source-build.json
+python3 configs/android_workflow.py configure --vendor Quest --build-type Debug \
+  --mpv-dir /path/to/arm64-v8a --mpv-receipt /path/to/source-build.json
 ```
 
-Source pins, patches and corresponding-source information are under `third_party/mpv` and `native/mpv/patches`; `tools/environment/Prepare-MpvAndroid.ps1` contains the historical source-backend preparation path. Do not substitute arbitrary library bytes or bypass the receipt check.
+Supply the same two arguments to Build, Test and Package. The importer verifies source revision, source-lock identity, patches, headers and every library before staging any bytes. PGS/spatial/Dolby capabilities still require media and device validation.
 
-## Output and identity
+To build the optional backend on Linux, install the native build prerequisites (Autoconf, Automake, Libtool, pkg-config, gperf, NASM, CMake, Bison, Flex, gettext, Meson 1.11.0 and Ninja), and enable unprivileged user/network namespaces. The build runs in a network namespace with no network access. Then use:
 
-Artifacts are named `Immivio-<QUEST|PICO|OpenXR>-<version>-<debug|release>-<YYYYMMDD>.apk`. Each APK has a `.build.json` receipt containing the product, source commit, signing certificate, backend, hashes and toolchain versions. There is no edition suffix.
+```sh
+python3 configs/source_root_workflow.py --init --native-mpv
+python3 configs/source_root_workflow.py --update
+python3 configs/native_mpv_workflow.py configure
+python3 configs/native_mpv_workflow.py build
+python3 configs/native_mpv_workflow.py package
+```
 
-The visible app name is **Immivio**. The store listing name is **Immivio – VR & Spatial Media Player**. The existing ordinary player's `com.wapok.thru3d` application ID, native package namespace and user-data directory remain stable so compatible signed updates preserve data. These identifiers are compatibility contracts, not the public product name.
+The source backend uses `build/native-mpv/`; its library output and receipt are under `build/native-mpv/output/`. No upstream source roots are patched in place. Public-API replacements will be validated one capability at a time before removing corresponding project patches.
 
-Existing local `artifacts/signing/thru3d-signing.json` credentials are reused. New installations of the build tool create an Immivio signing identity. Explicit `GODOT_ANDROID_KEYSTORE_RELEASE_*` or Debug counterparts take priority. Keep credentials and signing material out of Git. Different certificates cannot update one another merely because package names match.
+## Outputs, signing and CI
 
-## CI and releases
+APKs keep the `Immivio-<QUEST|PICO|OpenXR>-<version>-<debug|release>-<YYYYMMDD>.apk` naming contract. Each version 2 `.build.json` receipt includes source commit, FreeCM commit, resolved dependency commits, asset and package-lock digests, toolchain, backend, APK hash and signing certificate.
 
-`.github/workflows/android-release.yml` runs one Windows/macOS matrix. Branch/PR builds default to Debug; tags force Release. Both hosts exercise the same builder. Release signing uses the existing `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD` secrets; Debug jobs do not receive them.
+The application ID remains `com.wapok.thru3d`, preserving upgrades and user data with a compatible signing certificate. Existing `artifacts/signing/thru3d-signing.json` credentials are reused. Explicit `GODOT_ANDROID_KEYSTORE_<DEBUG|RELEASE>_*` variables take priority; partial overrides fail. Keep keys and credentials outside Git.
 
-The tag publisher requires successful Release jobs on both hosts, verifies the exact tag/commit and copies the three canonical macOS APKs. It checks all receipts and hashes before preparing any publishable assets. Historical pre-Immivio releases remain historical; the new publisher does not relabel old binaries.
+Windows/macOS CI uses these same explicit stages for all three targets. Tags build Release and use repository signing secrets when supplied. Publishing requires successful jobs on both hosts, complete pinned version 2 receipts and matching tag/commit; canonical APKs come from macOS.
 
-APK inspection rejects model assets and removed inference libraries, verifies ARM64 ELF dependencies/symbols and alignment, checks the app label/ID, and verifies signing and ZIP alignment. These checks establish packaging behavior, not headset playback performance.
-
-## Branding and website
-
-The source artwork is `app/godot/branding/immivio-icon.png`. Run `godot --headless --xr-mode off --path app/godot --script ../../tools/prepare_branding.gd` to generate the adaptive foreground and transparent-corner website icon. All export presets share the source and themed monochrome assets.
-
-The bilingual static site is in `website/`. `python3 tools/check_website.py` checks local links, languages, screenshots and any published Immivio download choices. GitHub Pages publishes from `main`; until a branded Release exists, the download selector links to current development workflow artifacts.
+APK checks retain ARM64, ELF symbol/dependency closure and 16KB alignment, signature, ZIP alignment, application identity and exclusion of inference components. These checks do not establish headset playback performance.

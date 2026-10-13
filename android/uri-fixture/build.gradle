@@ -1,11 +1,11 @@
 plugins { id 'com.android.application' }
 android {
     namespace 'org.vrpassthroughplayer.urifixture'
-    compileSdk 36
-    buildToolsVersion '36.1.0'
+    compileSdk androidCompileSdk.toInteger()
+    buildToolsVersion androidBuildToolsVersion
     defaultConfig {
         applicationId 'org.vrpassthroughplayer.urifixture'
-        minSdk 29
+        minSdk androidMinSdk.toInteger()
         targetSdk 32
         versionCode 1
         versionName '0.1-test-only'

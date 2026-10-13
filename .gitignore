@@ -55,3 +55,9 @@ signing-identities.json
 thru3d*-signing.json
 .freecm
 .DS_Store
+
+# FreeCM active workspace and Python caches
+/source_roots.lock.jsonc
+/source_roots.lock.jsonc.pending
+/.freecm.workspace.lock*
+__pycache__/

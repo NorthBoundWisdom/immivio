@@ -1,0 +1,6 @@
+# This is a Gradle generated file for dependency locking.
+# Manual edits can break the build and are not advised.
+# This file is expected to be part of source control.
+# To regenerate this file, run: ./gradlew :assetPackInstallTime:dependencies --write-locks
+com.android.tools.build:aapt2:9.2.0-15009934=immivioAndroidTools
+empty=manifestElements,packElements

@@ -79,7 +79,13 @@ def main():
                 parts = PurePosixPath(member.name).parts
                 if not parts or ".." in parts or PurePosixPath(member.name).is_absolute():
                     raise ValueError("Source archive path is unsafe")
-        subprocess.run(["tar", "-xf", str(source), "--strip-components=1", "-C", str(destination)], check=True)
+        with tarfile.open(source) as archive:
+            for member in archive.getmembers():
+                parts = PurePosixPath(member.name).parts[1:]
+                if not parts:
+                    continue
+                member.name = str(PurePosixPath(*parts))
+                archive.extract(member, destination, filter='data')
         marker.write_text(json.dumps(record, indent=2)+"\n")
         print(f"Extracted {record['name']} {record['revision']}", flush=True)
     mpv = base/"mpv"

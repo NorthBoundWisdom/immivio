@@ -5,7 +5,7 @@
 - License: GNU Affero General Public License v3.0; see `LICENSE`.
 - The upstream authors retain copyright in their respective contributions.
 - Local adapter: `cloud/openlist/cloudcore.go` in this repository. The build changes the GORM tag on `Storage.Addition` to `serializer:vrpp_secret` to encrypt provider credentials. No other upstream source changes are applied.
-- Build recipe and exact archive hashes: `tools/environment/Prepare-OpenList.ps1`.
+- Build recipes (Git pin in source_roots.lock.jsonc.in): `configs/dependencies.py and configs/player_build.py`.
 - Go: 1.27.1. Android binding: `golang.org/x/mobile` at `v0.0.0-20260908204917-8b95e45f8d3e` (BSD-3-Clause).
 - The APK uses an in-process core, a private JNI management interface, and a capability-protected loopback media router. It does not embed OpenList's frontend or the OpenList-Mobile app.
 

@@ -1,6 +1,6 @@
 set(MPV_LIB_DIR "${CMAKE_CURRENT_LIST_DIR}/../../android/player-plugin/src/main/jniLibs/arm64-v8a")
 if(NOT EXISTS "${MPV_LIB_DIR}/libmpv.so")
-    message(FATAL_ERROR "Run tools/environment/Prepare-MpvAndroid.ps1 for the pinned MPV development candidate")
+    message(FATAL_ERROR "Run configs/android_workflow.py configure to stage the locked mpv libraries")
 endif()
 add_library(mpv_candidate SHARED IMPORTED)
 set_target_properties(mpv_candidate PROPERTIES IMPORTED_LOCATION "${MPV_LIB_DIR}/libmpv.so")

@@ -6,9 +6,9 @@ This directory retains upstream license texts, source locks, checksums and prove
 - `p115rsacipher`: original MIT notice and provenance for the Kotlin 115 RSA adaptation.
 - `gradle`: wrapper Apache-2.0 license and notice.
 - `polyhaven`: CC0 source and attribution for the unmodified built-in background.
-- `openlist`: AGPL-3.0 upstream license, Go/gomobile and dependency notices; the local Go adapter is in `cloud/openlist`, with the checksum-pinned build and source modification in `tools/environment/Prepare-OpenList.ps1`.
+- `openlist`: AGPL-3.0 upstream license, Go/gomobile and dependency notices; the local Go adapter is in `cloud/openlist`, with the checksum-pinned build and source modification in `configs/dependencies.py and configs/player_build.py`.
 
-Godot, Godot OpenXR Vendors and Maven dependencies are prepared externally. Keep their exact-version notices with redistributed outputs.
+FreeCM prepares Godot and Godot OpenXR Vendors assets; Gradle prepares locked Maven dependencies. Keep their exact-version notices with redistributed outputs.
 
 The repository includes only synthetic test media. Private human-video fixtures and model weights are excluded.
 

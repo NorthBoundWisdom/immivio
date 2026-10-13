@@ -13,11 +13,6 @@ on:
         type: choice
         default: Debug
         options: [Debug, Release]
-      vendor:
-        description: Android target
-        type: choice
-        default: all
-        options: [all, Pico, Quest, OpenXR]
 
 env:
   CI_BUILD_TYPE: ${{ startsWith(github.ref, 'refs/tags/') && 'Release' || inputs.build_type || 'Debug' }}
@@ -44,22 +39,42 @@ jobs:
     env:
       PYTHONUTF8: '1'
       GOMAXPROCS: '2'
-      CI_VENDOR: ${{ inputs.vendor || 'all' }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          submodules: false
+      - name: Initialize FreeCM
+        run: git submodule update --init FreeCM
       - uses: ./.github/actions/android-setup
-      - name: Check source, dependency boundaries and Godot behavior
-        run: python tools/ci_android.py test
-      - name: Build and verify Android ${{ env.CI_BUILD_TYPE }} packages
+      - name: Initialize and materialize locked dependencies
+        run: |
+          python configs/source_root_workflow.py --init --quiet
+          python configs/source_root_workflow.py --update --quiet
+      - name: Configure Android targets
+        run: |
+          for target in Pico Quest OpenXR; do
+            python configs/android_workflow.py configure --vendor "$target" --build-type "$CI_BUILD_TYPE"
+          done
+      - name: Build Android plugins
+        run: |
+          for target in Pico Quest OpenXR; do
+            python configs/android_workflow.py build --vendor "$target" --build-type "$CI_BUILD_TYPE"
+          done
+      - name: Run workflow, JVM, Go and Godot tests
+        run: python configs/android_workflow.py test --vendor Quest --build-type "$CI_BUILD_TYPE"
+      - name: Package and verify Android targets
         env:
           CI_ANDROID_KEYSTORE_BASE64: ${{ env.CI_BUILD_TYPE == 'Release' && github.event_name != 'pull_request' && secrets.ANDROID_KEYSTORE_BASE64 || '' }}
           CI_ANDROID_KEY_ALIAS: ${{ env.CI_BUILD_TYPE == 'Release' && github.event_name != 'pull_request' && secrets.ANDROID_KEY_ALIAS || '' }}
           CI_ANDROID_KEY_PASSWORD: ${{ env.CI_BUILD_TYPE == 'Release' && github.event_name != 'pull_request' && secrets.ANDROID_KEY_PASSWORD || '' }}
-        run: python tools/ci_android.py build
+        run: |
+          for target in Pico Quest OpenXR; do
+            python configs/android_workflow.py package --vendor "$target" --build-type "$CI_BUILD_TYPE"
+          done
 
       - name: Stop Gradle daemons before cache archival
         if: always()
-        run: python tools/ci_android.py stop-gradle
+        run: python configs/android_workflow.py stop-gradle
 
       - name: Upload installable packages and build receipts
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6

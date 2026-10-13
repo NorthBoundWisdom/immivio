@@ -1,0 +1,36 @@
+// Only FreeCM --init invokes this task online. Build/test/package use --offline.
+allprojects {
+    dependencyLocking {
+        lockAllConfigurations()
+        lockMode = LockMode.STRICT
+    }
+    configurations.configureEach { configuration ->
+        // AGP creates these file-only SDK configurations during task execution.
+        // They carry local android.jar/JDK image inputs, not Maven versions.
+        if (configuration.name in ['androidApis', 'androidJdkImage']) {
+            configuration.resolutionStrategy.deactivateDependencyLocking()
+        }
+    }
+    // AGP requests AAPT2 in a detached configuration only when app tasks run.
+    // Pin and prepare all host classifiers so Windows/macOS share reviewed metadata.
+    def toolDependencies = configurations.dependencyScope('immivioAndroidToolDependencies')
+    configurations.resolvable('immivioAndroidTools') {
+        extendsFrom toolDependencies.get()
+    }
+    ['linux', 'osx', 'windows'].each { classifier ->
+        dependencies.add('immivioAndroidToolDependencies',
+            "com.android.tools.build:aapt2:${libs.versions.aapt2.get()}:${classifier}")
+    }
+    tasks.register('prepareDependencyCache') {
+        doLast {
+            configurations.findAll { configuration ->
+                configuration.canBeResolved && !configuration.name.contains('AndroidTest')
+            }.each { configuration ->
+                // Project/AAR task outputs are built later. Prepare external artifacts only.
+                configuration.incoming.artifactView {
+                    componentFilter { id -> id instanceof org.gradle.api.artifacts.component.ModuleComponentIdentifier }
+                }.files.files
+            }
+        }
+    }
+}

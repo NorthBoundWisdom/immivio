@@ -40,6 +40,20 @@ def prepare(packages, output, tag, commit):
             raise ValueError('Release receipt belongs to a different tag or commit')
         if record.get('ci_host') != 'macOS':
             raise ValueError('Release assets must come from the canonical macOS builds')
+        if record.get('schema_version') != 2 or record.get('dependency_mode') != 'pinned':
+            raise ValueError('Release requires a version 2 pinned dependency receipt')
+        if not re.fullmatch(r'[0-9a-f]{40}', record.get('freecm_commit', '')):
+            raise ValueError('Release receipt is missing the FreeCM commit')
+        if not record.get('dependency_commits') or not record.get('dependency_assets') or not record.get('gradle_locks'):
+            raise ValueError('Release receipt is missing dependency provenance')
+        for digest in record.get('dependency_manifests', {}).values():
+            if not re.fullmatch(r'[0-9a-f]{64}', digest):
+                raise ValueError('Invalid dependency manifest digest')
+        required_manifests = {'source_roots.lock.jsonc.in', 'configs/toolchain.json',
+                              'android/gradle/libs.versions.toml', 'android/gradle/verification-metadata.xml',
+                              'cloud/openlist/go.mod', 'cloud/openlist/go.sum'}
+        if not required_manifests <= record.get('dependency_manifests', {}).keys():
+            raise ValueError('Release receipt is missing dependency manifest digests')
         name = record.get('apk', '')
         pattern = rf'Immivio-{PLATFORMS[vendor]}-[A-Za-z0-9._-]+-release-\d{{8}}\.apk'
         if not re.fullmatch(pattern, name) or receipt.name != Path(name).with_suffix('.build.json').name:

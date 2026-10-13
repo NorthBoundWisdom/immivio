@@ -1,0 +1,385 @@
+{
+  "schemaVersion": 5,
+  "depsMode": "pinned",
+  "depsManualPath": {
+    "OpenList": ""
+  },
+  "dependencies": {
+    "OpenList": {
+      "remote": "https://github.com/OpenListTeam/OpenList.git",
+      "commit": "2bdf16d5967d0a403f67d809efd5a418b8f5bd30"
+    }
+  },
+  "assets": {
+    "Gradle": {
+      "seedPath": "build/dependency_seed_repos/Gradle",
+      "limits": {
+        "maxDownloadBytes": 536870912
+      },
+      "files": [
+        {
+          "id": "Gradle",
+          "type": "file",
+          "url": "https://services.gradle.org/distributions/gradle-9.8.1-bin.zip",
+          "fileName": "gradle-9.8.1-bin.zip",
+          "sha256": "dce76f55f8e251a3a1f130eb120f30b3d271de2b76c9b0729d316b5a1b6dc01f",
+          "sizeBytes": 151620101
+        }
+      ]
+    },
+    "GodotWindows": {
+      "seedPath": "build/dependency_seed_repos/GodotWindows",
+      "limits": {
+        "maxDownloadBytes": 536870912
+      },
+      "files": [
+        {
+          "id": "GodotWindows",
+          "type": "file",
+          "url": "https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_win64.exe.zip",
+          "fileName": "godot-windows.zip",
+          "sha256": "731980f9608d61333e5baf54a2ef17210acc7a538446c0cb9969f002aca1e953",
+          "sizeBytes": 86013866
+        }
+      ]
+    },
+    "GodotMacOS": {
+      "seedPath": "build/dependency_seed_repos/GodotMacOS",
+      "limits": {
+        "maxDownloadBytes": 536870912
+      },
+      "files": [
+        {
+          "id": "GodotMacOS",
+          "type": "file",
+          "url": "https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_macos.universal.zip",
+          "fileName": "godot-macos.zip",
+          "sha256": "c58a24e31d720be9d62f60cb5627c4e695fb72f21b0cfe1bc9ccaa9a3b3ba63e",
+          "sizeBytes": 170622178
+        }
+      ]
+    },
+    "GodotTemplates": {
+      "seedPath": "build/dependency_seed_repos/GodotTemplates",
+      "limits": {
+        "maxDownloadBytes": 1281349702,
+        "maxArchiveTotalBytes": 8589934592,
+        "maxArchiveMemberBytes": 2147483648,
+        "maxCompressionRatio": 5000
+      },
+      "files": [
+        {
+          "id": "android",
+          "type": "archive",
+          "url": "https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_export_templates.tpz",
+          "fileName": "godot-templates.tpz",
+          "sha256": "f298490b8d44d934be425a5a65a51bf15f422428b229a06a6e11d9ffea248011",
+          "sizeBytes": 1281349702,
+          "extract": [
+            {
+              "from": "templates/android_source.zip",
+              "to": "android_source.zip",
+              "sha256": "a15416b528efb0a19a7d187e4d9f4e5336d0689144b111329fb4bd12c4447ad3",
+              "sizeBytes": 214418211
+            },
+            {
+              "from": "templates/android_debug.apk",
+              "to": "android_debug.apk",
+              "sha256": "59e0073f0fa59f552684a861d8f4266b0b34b488a140d6657eac7dd70d1a0a0d",
+              "sizeBytes": 127260725
+            },
+            {
+              "from": "templates/android_release.apk",
+              "to": "android_release.apk",
+              "sha256": "6d1bb2cfa126a1b1c87e064a35b3cbd181bef0ec784dec1efd1d64dffa8be6cb",
+              "sizeBytes": 104803333
+            },
+            {
+              "from": "templates/version.txt",
+              "to": "version.txt",
+              "sha256": "38885c88f75abbc797a1db7559719800279a00cfb9fa8b2e2868a7f6f84bad2e",
+              "sizeBytes": 13
+            }
+          ]
+        }
+      ]
+    },
+    "OpenXRVendors": {
+      "seedPath": "build/dependency_seed_repos/OpenXRVendors",
+      "limits": {
+        "maxDownloadBytes": 536870912
+      },
+      "files": [
+        {
+          "id": "OpenXRVendors",
+          "type": "file",
+          "url": "https://github.com/GodotVR/godot_openxr_vendors/releases/download/5.1.0-stable/godotopenxrvendorsaddon.zip",
+          "fileName": "godotopenxrvendorsaddon-5.1.0.zip",
+          "sha256": "6a838dbdf4115549e4511ebee0da9a5dcc8f9f6258d4cc2f2ee57a907a3e2911",
+          "sizeBytes": 48136648
+        }
+      ]
+    },
+    "MpvAndroid": {
+      "seedPath": "build/dependency_seed_repos/MpvAndroid",
+      "limits": {
+        "maxDownloadBytes": 536870912
+      },
+      "files": [
+        {
+          "id": "MpvAndroid",
+          "type": "file",
+          "url": "https://github.com/mpv-android/mpv-android/releases/download/2026-09-17/app-default-arm64-v8a-release.apk",
+          "fileName": "mpv-android-2026-09-17.apk",
+          "sha256": "0b0e0a534dd6b8d2b117f06952e0600064ad97702e48bff02543e3e32107803d",
+          "sizeBytes": 34290346
+        }
+      ]
+    },
+    "NotoSansCJKSC": {
+      "seedPath": "build/dependency_seed_repos/NotoSansCJKSC",
+      "limits": {
+        "maxDownloadBytes": 536870912
+      },
+      "files": [
+        {
+          "id": "NotoSansCJKSC",
+          "type": "file",
+          "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/523d033d6cb47f4a80c58a35753646f5c3608a78/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf",
+          "fileName": "NotoSansCJKsc-Regular.otf",
+          "sha256": "2c76254f6fc379fddfce0a7e84fb5385bb135d3e399294f6eeb6680d0365b74b",
+          "sizeBytes": 16437364
+        }
+      ]
+    },
+    "NotoSansCJKTC": {
+      "seedPath": "build/dependency_seed_repos/NotoSansCJKTC",
+      "limits": {
+        "maxDownloadBytes": 536870912
+      },
+      "files": [
+        {
+          "id": "NotoSansCJKTC",
+          "type": "file",
+          "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/523d033d6cb47f4a80c58a35753646f5c3608a78/Sans/OTF/TraditionalChinese/NotoSansCJKtc-Regular.otf",
+          "fileName": "NotoSansCJKtc-Regular.otf",
+          "sha256": "dce08bd4fd91aa8aa76ed8fea4b694c2dfb8550f67871e326843212ddbeb88b4",
+          "sizeBytes": 16435884
+        }
+      ]
+    },
+    "NotoSansCJKJP": {
+      "seedPath": "build/dependency_seed_repos/NotoSansCJKJP",
+      "limits": {
+        "maxDownloadBytes": 536870912
+      },
+      "files": [
+        {
+          "id": "NotoSansCJKJP",
+          "type": "file",
+          "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/523d033d6cb47f4a80c58a35753646f5c3608a78/Sans/OTF/Japanese/NotoSansCJKjp-Regular.otf",
+          "fileName": "NotoSansCJKjp-Regular.otf",
+          "sha256": "68a3fc98800b2a27b371f2fb79991daf3633bd89309d4ffaa6946fd587f375b5",
+          "sizeBytes": 16467736
+        }
+      ]
+    },
+    "NotoLicense": {
+      "seedPath": "build/dependency_seed_repos/NotoLicense",
+      "limits": {
+        "maxDownloadBytes": 536870912
+      },
+      "files": [
+        {
+          "id": "NotoLicense",
+          "type": "file",
+          "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/523d033d6cb47f4a80c58a35753646f5c3608a78/LICENSE",
+          "fileName": "NotoSansCJK-LICENSE.txt",
+          "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2",
+          "sizeBytes": 4301
+        }
+      ]
+    },
+    "MpvSources": {
+      "seedPath": "build/dependency_seed_repos/MpvSources",
+      "files": [
+        {
+          "id": "mbedtls",
+          "type": "file",
+          "url": "https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-3.6.7/mbedtls-3.6.7.tar.bz2",
+          "fileName": "mbedtls-3.6.7.tar.bz2",
+          "sha256": "a7e8bcbec0e6f761b4af24f25677626b35f762f68eef79c08677a363212d11f6",
+          "sizeBytes": 5473689
+        },
+        {
+          "id": "dav1d",
+          "type": "file",
+          "url": "https://codeload.github.com/videolan/dav1d/tar.gz/362bc1138228390a0a521ecf3af18b23c6afeb9e",
+          "fileName": "dav1d-362bc113.tar.gz",
+          "sha256": "0ac7c8f7a5cd1d5dbcb24ebaf8f204a44686a80f837c5dfaa5a9775d1841ed8b",
+          "sizeBytes": 1751984
+        },
+        {
+          "id": "ffmpeg",
+          "type": "file",
+          "url": "https://codeload.github.com/FFmpeg/FFmpeg/tar.gz/094a2f8a2a5e7fa64736e067de224ce28fdf5979",
+          "fileName": "ffmpeg-094a2f8a.tar.gz",
+          "sha256": "3633c09eb65cba9864fe4ca1eff75ca1423174869e423e5fe9d8fce028fcf66a",
+          "sizeBytes": 17690975
+        },
+        {
+          "id": "freetype2",
+          "type": "file",
+          "url": "https://download.savannah.gnu.org/releases/freetype/freetype-2.14.3.tar.xz",
+          "fileName": "freetype-2.14.3.tar.xz",
+          "sha256": "36bc4f1cc413335368ee656c42afca65c5a3987e8768cc28cf11ba775e785a5f",
+          "sizeBytes": 2670220
+        },
+        {
+          "id": "fribidi",
+          "type": "file",
+          "url": "https://github.com/fribidi/fribidi/releases/download/v1.0.16/fribidi-1.0.16.tar.xz",
+          "fileName": "fribidi-1.0.16.tar.xz",
+          "sha256": "1b1cde5b235d40479e91be2f0e88a309e3214c8ab470ec8a2744d82a5a9ea05c",
+          "sizeBytes": 1098260
+        },
+        {
+          "id": "harfbuzz",
+          "type": "file",
+          "url": "https://github.com/harfbuzz/harfbuzz/releases/download/14.4.0/harfbuzz-14.4.0.tar.xz",
+          "fileName": "harfbuzz-14.4.0.tar.xz",
+          "sha256": "2357ed966c6ced7bfa720b0640c0231065af01158fbea215093ffa15aed44371",
+          "sizeBytes": 20107692
+        },
+        {
+          "id": "unibreak",
+          "type": "file",
+          "url": "https://github.com/adah1972/libunibreak/releases/download/libunibreak_8_0/libunibreak-8.0.tar.gz",
+          "fileName": "libunibreak-8.0.tar.gz",
+          "sha256": "9c4fad6e517338a098373acc9f35579ae2c325e6446666fb9ac2666ba15ceba4",
+          "sizeBytes": 1088508
+        },
+        {
+          "id": "libxml2",
+          "type": "file",
+          "url": "https://download.gnome.org/sources/libxml2/2.15/libxml2-2.15.4.tar.xz",
+          "fileName": "libxml2-2.15.4.tar.xz",
+          "sha256": "98087fd181d9070724f3fbc65c7377db03038eb92bd882374daff44940138821",
+          "sizeBytes": 3177444
+        },
+        {
+          "id": "fontconfig",
+          "type": "file",
+          "url": "https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/2.18.3/fontconfig-2.18.3.tar.gz",
+          "fileName": "fontconfig-2.18.3.tar.gz",
+          "sha256": "9ae01e1d53acdef56010c5451cd34aa41d325b2faccd8606448d8fa01b2496b3",
+          "sizeBytes": 666753
+        },
+        {
+          "id": "libass",
+          "type": "file",
+          "url": "https://codeload.github.com/libass/libass/tar.gz/b2fe9d8770678a7b5271387d38c20657ebf3429a",
+          "fileName": "libass-b2fe9d87.tar.gz",
+          "sha256": "1f8d0547aa6a40895baee0338adaaae7d8e94406f971a4602957cdbbe6f7d495",
+          "sizeBytes": 352548
+        },
+        {
+          "id": "lua",
+          "type": "file",
+          "url": "https://www.lua.org/ftp/lua-5.2.4.tar.gz",
+          "fileName": "lua-5.2.4.tar.gz",
+          "sha256": "b9e2e4aad6789b3b63a056d442f7b39f0ecfca3ae0f1fc0ae4e9614401b69f4b",
+          "sizeBytes": 252651
+        },
+        {
+          "id": "libplacebo",
+          "type": "file",
+          "url": "https://codeload.github.com/haasn/libplacebo/tar.gz/3330a515d62139259c26239014f286e233bd3a5c",
+          "fileName": "libplacebo-3330a515.tar.gz",
+          "sha256": "57b8b2beaba218523cef9839af12c9d44785b6cf8e5f79ca3aa55367d7420c80",
+          "sizeBytes": 875287
+        },
+        {
+          "id": "curl",
+          "type": "file",
+          "url": "https://curl.se/download/curl-8.21.0.tar.gz",
+          "fileName": "curl-8.21.0.tar.gz",
+          "sha256": "d9b327997999045a24cda50f3983e69e51c516bd8be6ef9842fc7f99135e33bb",
+          "sizeBytes": 4298225
+        },
+        {
+          "id": "mpv",
+          "type": "file",
+          "url": "https://codeload.github.com/mpv-player/mpv/tar.gz/0b7ed670f7c353dd3dd4f8ae0fc788a181a15aa6",
+          "fileName": "mpv-0b7ed67.tar.gz",
+          "sha256": "d84b3c706592558bfba8e6305d00f86406c647c3b8b317236433e25caf4d9d91",
+          "sizeBytes": 7459676
+        },
+        {
+          "id": "libplacebo-3rdparty-fast_float",
+          "type": "file",
+          "url": "https://codeload.github.com/fastfloat/fast_float/tar.gz/97b54ca9e75f5303507699d27c6b4f4efe4641a1",
+          "fileName": "fast_float-97b54ca9.tar.gz",
+          "sha256": "2b132274539286e41f37857cac22aa8441d21bd86d55de825a3342b149f66801",
+          "sizeBytes": 120200
+        },
+        {
+          "id": "libplacebo-3rdparty-glad",
+          "type": "file",
+          "url": "https://codeload.github.com/Dav1dde/glad/tar.gz/73db193f853e2ee079bf3ca8a64aa2eaf6459043",
+          "fileName": "glad-73db193f.tar.gz",
+          "sha256": "33dbeae44d8315ece57e14eba4b1b4a02ac5406d1c4f49cd20048c91522a6b9a",
+          "sizeBytes": 645779
+        },
+        {
+          "id": "libplacebo-3rdparty-jinja",
+          "type": "file",
+          "url": "https://codeload.github.com/pallets/jinja/tar.gz/15206881c006c79667fe5154fe80c01c65410679",
+          "fileName": "jinja-15206881.tar.gz",
+          "sha256": "b88a20dcc2e34072fcf4159325bc6c34cd4b29a81a8b83d15d2f28ba561da296",
+          "sizeBytes": 276954
+        },
+        {
+          "id": "libplacebo-3rdparty-markupsafe",
+          "type": "file",
+          "url": "https://codeload.github.com/pallets/markupsafe/tar.gz/297fc8e356e6836a62087949245d09a28e9f1b13",
+          "fileName": "markupsafe-297fc8e3.tar.gz",
+          "sha256": "da7c010c9c81a66ac73036558c1fcb6212b50482f43211cd1254035b94f82414",
+          "sizeBytes": 83817
+        }
+      ]
+    },
+    "MpvBuilder": {
+      "seedPath": "build/dependency_seed_repos/MpvBuilder",
+      "limits": {
+        "maxDownloadBytes": 536870912
+      },
+      "files": [
+        {
+          "id": "MpvBuilder",
+          "type": "file",
+          "url": "https://codeload.github.com/mpv-android/mpv-android/tar.gz/fdf74f6830c47dbaa8a22ac79726e8303f1db5af",
+          "fileName": "mpv-android-fdf74f6.tar.gz",
+          "sha256": "5ca9265c8824d9afbd5d9c276db950a3b986d1b61972a95657f0d3dd72eddd89",
+          "sizeBytes": 2115606
+        }
+      ]
+    },
+    "MpvLinuxNdk": {
+      "seedPath": "build/dependency_seed_repos/MpvLinuxNdk",
+      "limits": {
+        "maxDownloadBytes": 738633529
+      },
+      "files": [
+        {
+          "id": "MpvLinuxNdk",
+          "type": "file",
+          "url": "https://dl.google.com/android/repository/android-ndk-r30-linux.zip",
+          "fileName": "android-ndk-r30-linux.zip",
+          "sha256": "753611f410d002cfcd3f3dc2ef49aad532089d3180b436c060a90bf0fcb64df2",
+          "sizeBytes": 738633529
+        }
+      ]
+    }
+  }
+}

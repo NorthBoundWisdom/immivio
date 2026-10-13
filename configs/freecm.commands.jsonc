@@ -1,0 +1,1175 @@
+{
+  "version": 2,
+  "commands": {
+    "config": [
+      {
+        "id": "quest-debug",
+        "label": "Quest Debug",
+        "command": "python3",
+        "args": [
+          "configs/android_workflow.py",
+          "configure",
+          "--vendor",
+          "Quest",
+          "--build-type",
+          "Debug"
+        ],
+        "platforms": [
+          "darwin",
+          "linux"
+        ],
+        "defaults": {
+          "build": "quest-debug",
+          "run": "quest-debug",
+          "test": "quest-debug",
+          "package": "quest-debug"
+        },
+        "readiness": {
+          "inputs": [
+            "source_roots.lock.jsonc",
+            "configs/toolchain.json",
+            "android/gradle/libs.versions.toml"
+          ],
+          "outputs": [
+            "build/configurations/Quest-Debug.json"
+          ]
+        },
+        "default": true
+      },
+      {
+        "id": "quest-release",
+        "label": "Quest Release",
+        "command": "python3",
+        "args": [
+          "configs/android_workflow.py",
+          "configure",
+          "--vendor",
+          "Quest",
+          "--build-type",
+          "Release"
+        ],
+        "platforms": [
+          "darwin",
+          "linux"
+        ],
+        "defaults": {
+          "build": "quest-release",
+          "run": "quest-release",
+          "test": "quest-release",
+          "package": "quest-release"
+        },
+        "readiness": {
+          "inputs": [
+            "source_roots.lock.jsonc",
+            "configs/toolchain.json",
+            "android/gradle/libs.versions.toml"
+          ],
+          "outputs": [
+            "build/configurations/Quest-Release.json"
+          ]
+        }
+      },
+      {
+        "id": "pico-debug",
+        "label": "Pico Debug",
+        "command": "python3",
+        "args": [
+          "configs/android_workflow.py",
+          "configure",
+          "--vendor",
+          "Pico",
+          "--build-type",
+          "Debug"
+        ],
+        "platforms": [
+          "darwin",
+          "linux"
+        ],
+        "defaults": {
+          "build": "pico-debug",
+          "run": "pico-debug",
+          "test": "pico-debug",
+          "package": "pico-debug"
+        },
+        "readiness": {
+          "inputs": [
+            "source_roots.lock.jsonc",
+            "configs/toolchain.json",
+            "android/gradle/libs.versions.toml"
+          ],
+          "outputs": [
+            "build/configurations/Pico-Debug.json"
+          ]
+        }
+      },
+      {
+        "id": "pico-release",
+        "label": "Pico Release",
+        "command": "python3",
+        "args": [
+          "configs/android_workflow.py",
+          "configure",
+          "--vendor",
+          "Pico",
+          "--build-type",
+          "Release"
+        ],
+        "platforms": [
+          "darwin",
+          "linux"
+        ],
+        "defaults": {
+          "build": "pico-release",
+          "run": "pico-release",
+          "test": "pico-release",
+          "package": "pico-release"
+        },
+        "readiness": {
+          "inputs": [
+            "source_roots.lock.jsonc",
+            "configs/toolchain.json",
+            "android/gradle/libs.versions.toml"
+          ],
+          "outputs": [
+            "build/configurations/Pico-Release.json"
+          ]
+        }
+      },
+      {
+        "id": "openxr-debug",
+        "label": "OpenXR Debug",
+        "command": "python3",
+        "args": [
+          "configs/android_workflow.py",
+          "configure",
+          "--vendor",
+          "OpenXR",
+          "--build-type",
+          "Debug"
+        ],
+        "platforms": [
+          "darwin",
+          "linux"
+        ],
+        "defaults": {
+          "build": "openxr-debug",
+          "run": "openxr-debug",
+          "test": "openxr-debug",
+          "package": "openxr-debug"
+        },
+        "readiness": {
+          "inputs": [
+            "source_roots.lock.jsonc",
+            "configs/toolchain.json",
+            "android/gradle/libs.versions.toml"
+          ],
+          "outputs": [
+            "build/configurations/OpenXR-Debug.json"
+          ]
+        }
+      },
+      {
+        "id": "openxr-release",
+        "label": "OpenXR Release",
+        "command": "python3",
+        "args": [
+          "configs/android_workflow.py",
+          "configure",
+          "--vendor",
+          "OpenXR",
+          "--build-type",
+          "Release"
+        ],
+        "platforms": [
+          "darwin",
+          "linux"
+        ],
+        "defaults": {
+          "build": "openxr-release",
+          "run": "openxr-release",
+          "test": "openxr-release",
+          "package": "openxr-release"
+        },
+        "readiness": {
+          "inputs": [
+            "source_roots.lock.jsonc",
+            "configs/toolchain.json",
+            "android/gradle/libs.versions.toml"
+          ],
+          "outputs": [
+            "build/configurations/OpenXR-Release.json"
+          ]
+        }
+      },
+      {
+        "id": "win-quest-debug",
+        "label": "Windows Quest Debug",
+        "command": "python",
+        "args": [
+          "configs/android_workflow.py",
+          "configure",
+          "--vendor",
+          "Quest",
+          "--build-type",
+          "Debug"
+        ],
+        "platforms": [
+          "win32"
+        ],
+        "defaults": {
+          "build": "win-quest-debug",
+          "run": "win-quest-debug",
+          "test": "win-quest-debug",
+          "package": "win-quest-debug"
+        },
+        "readiness": {
+          "inputs": [
+            "source_roots.lock.jsonc",
+            "configs/toolchain.json",
+            "android/gradle/libs.versions.toml"
+          ],
+          "outputs": [
+            "build/configurations/Quest-Debug.json"
+          ]
+        },
+        "default": true
+      },
+      {
+        "id": "win-quest-release",
+        "label": "Windows Quest Release",
+        "command": "python",
+        "args": [
+          "configs/android_workflow.py",
+          "configure",
+          "--vendor",
+          "Quest",
+          "--build-type",
+          "Release"
+        ],
+        "platforms": [
+          "win32"
+        ],
+        "defaults": {
+          "build": "win-quest-release",
+          "run": "win-quest-release",
+          "test": "win-quest-release",
+          "package": "win-quest-release"
+        },
+        "readiness": {
+          "inputs": [
+            "source_roots.lock.jsonc",
+            "configs/toolchain.json",
+            "android/gradle/libs.versions.toml"
+          ],
+          "outputs": [
+            "build/configurations/Quest-Release.json"
+          ]
+        }
+      },
+      {
+        "id": "win-pico-debug",
+        "label": "Windows Pico Debug",
+        "command": "python",
+        "args": [
+          "configs/android_workflow.py",
+          "configure",
+          "--vendor",
+          "Pico",
+          "--build-type",
+          "Debug"
+        ],
+        "platforms": [
+          "win32"
+        ],
+        "defaults": {
+          "build": "win-pico-debug",
+          "run": "win-pico-debug",
+          "test": "win-pico-debug",
+          "package": "win-pico-debug"
+        },
+        "readiness": {
+          "inputs": [
+            "source_roots.lock.jsonc",
+            "configs/toolchain.json",
+            "android/gradle/libs.versions.toml"
+          ],
+          "outputs": [
+            "build/configurations/Pico-Debug.json"
+          ]
+        }
+      },
+      {
+        "id": "win-pico-release",
+        "label": "Windows Pico Release",
+        "command": "python",
+        "args": [
+          "configs/android_workflow.py",
+          "configure",
+          "--vendor",
+          "Pico",
+          "--build-type",
+          "Release"
+        ],
+        "platforms": [
+          "win32"
+        ],
+        "defaults": {
+          "build": "win-pico-release",
+          "run": "win-pico-release",
+          "test": "win-pico-release",
+          "package": "win-pico-release"
+        },
+        "readiness": {
+          "inputs": [
+            "source_roots.lock.jsonc",
+            "configs/toolchain.json",
+            "android/gradle/libs.versions.toml"
+          ],
+          "outputs": [
+            "build/configurations/Pico-Release.json"
+          ]
+        }
+      },
+      {
+        "id": "win-openxr-debug",
+        "label": "Windows OpenXR Debug",
+        "command": "python",
+        "args": [
+          "configs/android_workflow.py",
+          "configure",
+          "--vendor",
+          "OpenXR",
+          "--build-type",
+          "Debug"
+        ],
+        "platforms": [
+          "win32"
+        ],
+        "defaults": {
+          "build": "win-openxr-debug",
+          "run": "win-openxr-debug",
+          "test": "win-openxr-debug",
+          "package": "win-openxr-debug"
+        },
+        "readiness": {
+          "inputs": [
+            "source_roots.lock.jsonc",
+            "configs/toolchain.json",
+            "android/gradle/libs.versions.toml"
+          ],
+          "outputs": [
+            "build/configurations/OpenXR-Debug.json"
+          ]
+        }
+      },
+      {
+        "id": "win-openxr-release",
+        "label": "Windows OpenXR Release",
+        "command": "python",
+        "args": [
+          "configs/android_workflow.py",
+          "configure",
+          "--vendor",
+          "OpenXR",
+          "--build-type",
+          "Release"
+        ],
+        "platforms": [
+          "win32"
+        ],
+        "defaults": {
+          "build": "win-openxr-release",
+          "run": "win-openxr-release",
+          "test": "win-openxr-release",
+          "package": "win-openxr-release"
+        },
+        "readiness": {
+          "inputs": [
+            "source_roots.lock.jsonc",
+            "configs/toolchain.json",
+            "android/gradle/libs.versions.toml"
+          ],
+          "outputs": [
+            "build/configurations/OpenXR-Release.json"
+          ]
+        }
+      }
+    ],
+    "build": [
+      {
+        "id": "quest-debug",
+        "label": "Quest Debug",
+        "command": "python3",
+        "args": [
+          "configs/android_workflow.py",
+          "build",
+          "--vendor",
+          "Quest",
+          "--build-type",
+          "Debug"
+        ],
+        "configurations": [
+          "quest-debug"
+        ]
+      },
+      {
+        "id": "quest-release",
+        "label": "Quest Release",
+        "command": "python3",
+        "args": [
+          "configs/android_workflow.py",
+          "build",
+          "--vendor",
+          "Quest",
+          "--build-type",
+          "Release"
+        ],
+        "configurations": [
+          "quest-release"
+        ]
+      },
+      {
+        "id": "pico-debug",
+        "label": "Pico Debug",
+        "command": "python3",
+        "args": [
+          "configs/android_workflow.py",
+          "build",
+          "--vendor",
+          "Pico",
+          "--build-type",
+          "Debug"
+        ],
+        "configurations": [
+          "pico-debug"
+        ]
+      },
+      {
+        "id": "pico-release",
+        "label": "Pico Release",
+        "command": "python3",
+        "args": [
+          "configs/android_workflow.py",
+          "build",
+          "--vendor",
+          "Pico",
+          "--build-type",
+          "Release"
+        ],
+        "configurations": [
+          "pico-release"
+        ]
+      },
+      {
+        "id": "openxr-debug",
+        "label": "OpenXR Debug",
+        "command": "python3",
+        "args": [
+          "configs/android_workflow.py",
+          "build",
+          "--vendor",
+          "OpenXR",
+          "--build-type",
+          "Debug"
+        ],
+        "configurations": [
+          "openxr-debug"
+        ]
+      },
+      {
+        "id": "openxr-release",
+        "label": "OpenXR Release",
+        "command": "python3",
+        "args": [
+          "configs/android_workflow.py",
+          "build",
+          "--vendor",
+          "OpenXR",
+          "--build-type",
+          "Release"
+        ],
+        "configurations": [
+          "openxr-release"
+        ]
+      },
+      {
+        "id": "win-quest-debug",
+        "label": "Quest Debug",
+        "command": "python",
+        "args": [
+          "configs/android_workflow.py",
+          "build",
+          "--vendor",
+          "Quest",
+          "--build-type",
+          "Debug"
+        ],
+        "configurations": [
+          "win-quest-debug"
+        ]
+      },
+      {
+        "id": "win-quest-release",
+        "label": "Quest Release",
+        "command": "python",
+        "args": [
+          "configs/android_workflow.py",
+          "build",
+          "--vendor",
+          "Quest",
+          "--build-type",
+          "Release"
+        ],
+        "configurations": [
+          "win-quest-release"
+        ]
+      },
+      {
+        "id": "win-pico-debug",
+        "label": "Pico Debug",
+        "command": "python",
+        "args": [
+          "configs/android_workflow.py",
+          "build",
+          "--vendor",
+          "Pico",
+          "--build-type",
+          "Debug"
+        ],
+        "configurations": [
+          "win-pico-debug"
+        ]
+      },
+      {
+        "id": "win-pico-release",
+        "label": "Pico Release",
+        "command": "python",
+        "args": [
+          "configs/android_workflow.py",
+          "build",
+          "--vendor",
+          "Pico",
+          "--build-type",
+          "Release"
+        ],
+        "configurations": [
+          "win-pico-release"
+        ]
+      },
+      {
+        "id": "win-openxr-debug",
+        "label": "OpenXR Debug",
+        "command": "python",
+        "args": [
+          "configs/android_workflow.py",
+          "build",
+          "--vendor",
+          "OpenXR",
+          "--build-type",
+          "Debug"
+        ],
+        "configurations": [
+          "win-openxr-debug"
+        ]
+      },
+      {
+        "id": "win-openxr-release",
+        "label": "OpenXR Release",
+        "command": "python",
+        "args": [
+          "configs/android_workflow.py",
+          "build",
+          "--vendor",
+          "OpenXR",
+          "--build-type",
+          "Release"
+        ],
+        "configurations": [
+          "win-openxr-release"
+        ]
+      }
+    ],
+    "run": [
+      {
+        "id": "quest-debug",
+        "label": "Quest Debug",
+        "command": "python3",
+        "args": [
+          "configs/android_workflow.py",
+          "run",
+          "--vendor",
+          "Quest",
+          "--build-type",
+          "Debug"
+        ],
+        "configurations": [
+          "quest-debug"
+        ]
+      },
+      {
+        "id": "quest-release",
+        "label": "Quest Release",
+        "command": "python3",
+        "args": [
+          "configs/android_workflow.py",
+          "run",
+          "--vendor",
+          "Quest",
+          "--build-type",
+          "Release"
+        ],
+        "configurations": [
+          "quest-release"
+        ]
+      },
+      {
+        "id": "pico-debug",
+        "label": "Pico Debug",
+        "command": "python3",
+        "args": [
+          "configs/android_workflow.py",
+          "run",
+          "--vendor",
+          "Pico",
+          "--build-type",
+          "Debug"
+        ],
+        "configurations": [
+          "pico-debug"
+        ]
+      },
+      {
+        "id": "pico-release",
+        "label": "Pico Release",
+        "command": "python3",
+        "args": [
+          "configs/android_workflow.py",
+          "run",
+          "--vendor",
+          "Pico",
+          "--build-type",
+          "Release"
+        ],
+        "configurations": [
+          "pico-release"
+        ]
+      },
+      {
+        "id": "openxr-debug",
+        "label": "OpenXR Debug",
+        "command": "python3",
+        "args": [
+          "configs/android_workflow.py",
+          "run",
+          "--vendor",
+          "OpenXR",
+          "--build-type",
+          "Debug"
+        ],
+        "configurations": [
+          "openxr-debug"
+        ]
+      },
+      {
+        "id": "openxr-release",
+        "label": "OpenXR Release",
+        "command": "python3",
+        "args": [
+          "configs/android_workflow.py",
+          "run",
+          "--vendor",
+          "OpenXR",
+          "--build-type",
+          "Release"
+        ],
+        "configurations": [
+          "openxr-release"
+        ]
+      },
+      {
+        "id": "win-quest-debug",
+        "label": "Quest Debug",
+        "command": "python",
+        "args": [
+          "configs/android_workflow.py",
+          "run",
+          "--vendor",
+          "Quest",
+          "--build-type",
+          "Debug"
+        ],
+        "configurations": [
+          "win-quest-debug"
+        ]
+      },
+      {
+        "id": "win-quest-release",
+        "label": "Quest Release",
+        "command": "python",
+        "args": [
+          "configs/android_workflow.py",
+          "run",
+          "--vendor",
+          "Quest",
+          "--build-type",
+          "Release"
+        ],
+        "configurations": [
+          "win-quest-release"
+        ]
+      },
+      {
+        "id": "win-pico-debug",
+        "label": "Pico Debug",
+        "command": "python",
+        "args": [
+          "configs/android_workflow.py",
+          "run",
+          "--vendor",
+          "Pico",
+          "--build-type",
+          "Debug"
+        ],
+        "configurations": [
+          "win-pico-debug"
+        ]
+      },
+      {
+        "id": "win-pico-release",
+        "label": "Pico Release",
+        "command": "python",
+        "args": [
+          "configs/android_workflow.py",
+          "run",
+          "--vendor",
+          "Pico",
+          "--build-type",
+          "Release"
+        ],
+        "configurations": [
+          "win-pico-release"
+        ]
+      },
+      {
+        "id": "win-openxr-debug",
+        "label": "OpenXR Debug",
+        "command": "python",
+        "args": [
+          "configs/android_workflow.py",
+          "run",
+          "--vendor",
+          "OpenXR",
+          "--build-type",
+          "Debug"
+        ],
+        "configurations": [
+          "win-openxr-debug"
+        ]
+      },
+      {
+        "id": "win-openxr-release",
+        "label": "OpenXR Release",
+        "command": "python",
+        "args": [
+          "configs/android_workflow.py",
+          "run",
+          "--vendor",
+          "OpenXR",
+          "--build-type",
+          "Release"
+        ],
+        "configurations": [
+          "win-openxr-release"
+        ]
+      }
+    ],
+    "test": [
+      {
+        "id": "quest-debug",
+        "label": "Quest Debug",
+        "command": "python3",
+        "args": [
+          "configs/android_workflow.py",
+          "test",
+          "--vendor",
+          "Quest",
+          "--build-type",
+          "Debug"
+        ],
+        "configurations": [
+          "quest-debug"
+        ]
+      },
+      {
+        "id": "quest-release",
+        "label": "Quest Release",
+        "command": "python3",
+        "args": [
+          "configs/android_workflow.py",
+          "test",
+          "--vendor",
+          "Quest",
+          "--build-type",
+          "Release"
+        ],
+        "configurations": [
+          "quest-release"
+        ]
+      },
+      {
+        "id": "pico-debug",
+        "label": "Pico Debug",
+        "command": "python3",
+        "args": [
+          "configs/android_workflow.py",
+          "test",
+          "--vendor",
+          "Pico",
+          "--build-type",
+          "Debug"
+        ],
+        "configurations": [
+          "pico-debug"
+        ]
+      },
+      {
+        "id": "pico-release",
+        "label": "Pico Release",
+        "command": "python3",
+        "args": [
+          "configs/android_workflow.py",
+          "test",
+          "--vendor",
+          "Pico",
+          "--build-type",
+          "Release"
+        ],
+        "configurations": [
+          "pico-release"
+        ]
+      },
+      {
+        "id": "openxr-debug",
+        "label": "OpenXR Debug",
+        "command": "python3",
+        "args": [
+          "configs/android_workflow.py",
+          "test",
+          "--vendor",
+          "OpenXR",
+          "--build-type",
+          "Debug"
+        ],
+        "configurations": [
+          "openxr-debug"
+        ]
+      },
+      {
+        "id": "openxr-release",
+        "label": "OpenXR Release",
+        "command": "python3",
+        "args": [
+          "configs/android_workflow.py",
+          "test",
+          "--vendor",
+          "OpenXR",
+          "--build-type",
+          "Release"
+        ],
+        "configurations": [
+          "openxr-release"
+        ]
+      },
+      {
+        "id": "win-quest-debug",
+        "label": "Quest Debug",
+        "command": "python",
+        "args": [
+          "configs/android_workflow.py",
+          "test",
+          "--vendor",
+          "Quest",
+          "--build-type",
+          "Debug"
+        ],
+        "configurations": [
+          "win-quest-debug"
+        ]
+      },
+      {
+        "id": "win-quest-release",
+        "label": "Quest Release",
+        "command": "python",
+        "args": [
+          "configs/android_workflow.py",
+          "test",
+          "--vendor",
+          "Quest",
+          "--build-type",
+          "Release"
+        ],
+        "configurations": [
+          "win-quest-release"
+        ]
+      },
+      {
+        "id": "win-pico-debug",
+        "label": "Pico Debug",
+        "command": "python",
+        "args": [
+          "configs/android_workflow.py",
+          "test",
+          "--vendor",
+          "Pico",
+          "--build-type",
+          "Debug"
+        ],
+        "configurations": [
+          "win-pico-debug"
+        ]
+      },
+      {
+        "id": "win-pico-release",
+        "label": "Pico Release",
+        "command": "python",
+        "args": [
+          "configs/android_workflow.py",
+          "test",
+          "--vendor",
+          "Pico",
+          "--build-type",
+          "Release"
+        ],
+        "configurations": [
+          "win-pico-release"
+        ]
+      },
+      {
+        "id": "win-openxr-debug",
+        "label": "OpenXR Debug",
+        "command": "python",
+        "args": [
+          "configs/android_workflow.py",
+          "test",
+          "--vendor",
+          "OpenXR",
+          "--build-type",
+          "Debug"
+        ],
+        "configurations": [
+          "win-openxr-debug"
+        ]
+      },
+      {
+        "id": "win-openxr-release",
+        "label": "OpenXR Release",
+        "command": "python",
+        "args": [
+          "configs/android_workflow.py",
+          "test",
+          "--vendor",
+          "OpenXR",
+          "--build-type",
+          "Release"
+        ],
+        "configurations": [
+          "win-openxr-release"
+        ]
+      }
+    ],
+    "package": [
+      {
+        "id": "quest-debug",
+        "label": "Quest Debug",
+        "command": "python3",
+        "args": [
+          "configs/android_workflow.py",
+          "package",
+          "--vendor",
+          "Quest",
+          "--build-type",
+          "Debug"
+        ],
+        "configurations": [
+          "quest-debug"
+        ]
+      },
+      {
+        "id": "quest-release",
+        "label": "Quest Release",
+        "command": "python3",
+        "args": [
+          "configs/android_workflow.py",
+          "package",
+          "--vendor",
+          "Quest",
+          "--build-type",
+          "Release"
+        ],
+        "configurations": [
+          "quest-release"
+        ]
+      },
+      {
+        "id": "pico-debug",
+        "label": "Pico Debug",
+        "command": "python3",
+        "args": [
+          "configs/android_workflow.py",
+          "package",
+          "--vendor",
+          "Pico",
+          "--build-type",
+          "Debug"
+        ],
+        "configurations": [
+          "pico-debug"
+        ]
+      },
+      {
+        "id": "pico-release",
+        "label": "Pico Release",
+        "command": "python3",
+        "args": [
+          "configs/android_workflow.py",
+          "package",
+          "--vendor",
+          "Pico",
+          "--build-type",
+          "Release"
+        ],
+        "configurations": [
+          "pico-release"
+        ]
+      },
+      {
+        "id": "openxr-debug",
+        "label": "OpenXR Debug",
+        "command": "python3",
+        "args": [
+          "configs/android_workflow.py",
+          "package",
+          "--vendor",
+          "OpenXR",
+          "--build-type",
+          "Debug"
+        ],
+        "configurations": [
+          "openxr-debug"
+        ]
+      },
+      {
+        "id": "openxr-release",
+        "label": "OpenXR Release",
+        "command": "python3",
+        "args": [
+          "configs/android_workflow.py",
+          "package",
+          "--vendor",
+          "OpenXR",
+          "--build-type",
+          "Release"
+        ],
+        "configurations": [
+          "openxr-release"
+        ]
+      },
+      {
+        "id": "win-quest-debug",
+        "label": "Quest Debug",
+        "command": "python",
+        "args": [
+          "configs/android_workflow.py",
+          "package",
+          "--vendor",
+          "Quest",
+          "--build-type",
+          "Debug"
+        ],
+        "configurations": [
+          "win-quest-debug"
+        ]
+      },
+      {
+        "id": "win-quest-release",
+        "label": "Quest Release",
+        "command": "python",
+        "args": [
+          "configs/android_workflow.py",
+          "package",
+          "--vendor",
+          "Quest",
+          "--build-type",
+          "Release"
+        ],
+        "configurations": [
+          "win-quest-release"
+        ]
+      },
+      {
+        "id": "win-pico-debug",
+        "label": "Pico Debug",
+        "command": "python",
+        "args": [
+          "configs/android_workflow.py",
+          "package",
+          "--vendor",
+          "Pico",
+          "--build-type",
+          "Debug"
+        ],
+        "configurations": [
+          "win-pico-debug"
+        ]
+      },
+      {
+        "id": "win-pico-release",
+        "label": "Pico Release",
+        "command": "python",
+        "args": [
+          "configs/android_workflow.py",
+          "package",
+          "--vendor",
+          "Pico",
+          "--build-type",
+          "Release"
+        ],
+        "configurations": [
+          "win-pico-release"
+        ]
+      },
+      {
+        "id": "win-openxr-debug",
+        "label": "OpenXR Debug",
+        "command": "python",
+        "args": [
+          "configs/android_workflow.py",
+          "package",
+          "--vendor",
+          "OpenXR",
+          "--build-type",
+          "Debug"
+        ],
+        "configurations": [
+          "win-openxr-debug"
+        ]
+      },
+      {
+        "id": "win-openxr-release",
+        "label": "OpenXR Release",
+        "command": "python",
+        "args": [
+          "configs/android_workflow.py",
+          "package",
+          "--vendor",
+          "OpenXR",
+          "--build-type",
+          "Release"
+        ],
+        "configurations": [
+          "win-openxr-release"
+        ]
+      }
+    ]
+  }
+}

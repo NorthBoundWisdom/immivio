@@ -7,7 +7,7 @@ plugins {
 if (providers.gradleProperty('enableAi').orNull == 'true') {
     throw new GradleException('Immivio no longer supports inference builds.')
 }
-def standardMpv = providers.gradleProperty('standardMpv').map { it.toBoolean() }.getOrElse(true)
+def standardMpv = project.property('standardMpv').toBoolean()
 def playerAssets = layout.buildDirectory.dir('playerAssets')
 def stagePlayerAssets = tasks.register('stagePlayerAssets', Sync) {
     from('src/main/assets')
@@ -17,16 +17,16 @@ def stagePlayerAssets = tasks.register('stagePlayerAssets', Sync) {
 
 android {
     namespace 'org.vrpassthroughplayer.plugin'
-    compileSdk 36
-    buildToolsVersion '36.1.0'
-    ndkVersion providers.gradleProperty('androidNdkVersion').getOrElse('29.0.14206865')
+    compileSdk androidCompileSdk.toInteger()
+    buildToolsVersion androidBuildToolsVersion
+    ndkVersion androidNdkVersion
     buildFeatures { buildConfig true }
     sourceSets.main.assets.setSrcDirs([playerAssets])
     sourceSets.main.assets.srcDir '../../third_party'
     sourceSets.main.assets.srcDir '../../app/godot/i18n'
     sourceSets.main.assets.exclude 'rvm/**', 'rvm-mnn/**', 'depth-mnn/**', 'ai-models/**'
     defaultConfig {
-        minSdk 29
+        minSdk androidMinSdk.toInteger()
         consumerProguardFiles 'consumer-rules.pro'
         ndk { abiFilters 'arm64-v8a' }
         externalNativeBuild {
@@ -35,7 +35,7 @@ android {
             }
         }
     }
-    externalNativeBuild { cmake { path '../../native/CMakeLists.txt'; version providers.gradleProperty('androidCmakeVersion').getOrElse('3.31.6') } }
+    externalNativeBuild { cmake { path '../../native/CMakeLists.txt'; version androidCmakeVersion } }
     // The Godot APK provides the matching NDK C++ shared runtime.
     packagingOptions { jniLibs { excludes += ['**/libc++_shared.so'] } }
     // A stale prior build must not reintroduce removed runtime libraries.
@@ -58,7 +58,7 @@ configurations {
     smbUpstream { canBeConsumed = false; transitive = false }
 }
 def smbClientJar = tasks.register('smbClientJar', Jar) {
-    archiveFileName = 'jcifs-3.0.4-smb-client.jar'
+    archiveFileName = 'jcifs-smb-client.jar'
     destinationDirectory = layout.buildDirectory.dir('smb-client')
     from({ zipTree(configurations.smbUpstream.singleFile) })
     exclude 'org/codelibs/jcifs/smb/http/**', 'org/codelibs/jcifs/smb/https/**'
@@ -68,26 +68,26 @@ def smbClientJar = tasks.register('smbClientJar', Jar) {
     reproducibleFileOrder = true
 }
 
-def godotApi = providers.gradleProperty('godotAarPath')
+def godotApi = providers.provider { godotAarPath }
 if (!godotApi.isPresent() || !file(godotApi.get()).isFile()) {
-    throw new GradleException('Pass -PgodotAarPath=<Godot 4.7.2 Android template AAR>. Run tools/Build-Player.ps1 to prepare it.')
+    throw new GradleException('Pass -PgodotAarPath=<Godot 4.7.2 Android template AAR>. Run configs/android_workflow.py configure to prepare it.')
 }
 dependencies {
     // The exported Godot APK supplies this library. Never package a second engine.
     compileOnly files(godotApi.get())
     compileOnly files("../../app/godot/addons/quest_player/bin/cloudcore.aar")
-    implementation 'androidx.media3:media3-exoplayer:1.10.1'
+    implementation libs.media3.exoplayer
     // Preserve SMB2/3, NTLM authentication, signing and encryption (LGPL-2.1).
-    smbUpstream 'org.codelibs:jcifs:3.0.4'
+    smbUpstream libs.jcifs
     implementation files(smbClientJar)
     // Match jcifs 3.0.4's upstream runtime dependencies; exported by Godot too.
-    implementation 'org.slf4j:slf4j-api:1.7.36'
-    implementation 'org.bouncycastle:bcprov-jdk18on:1.85'
-    testImplementation 'junit:junit:4.13.2'
+    implementation libs.slf4j.api
+    implementation libs.bcprov
+    testImplementation libs.junit
     // JVM tests exercise org.json; android.jar only provides stubs.
-    testImplementation 'org.json:json:20240303'
+    testImplementation libs.json
     // Debug Activity subclasses GodotActivity. The matching Godot export template
     // supplies Fragment 1.8.6; compile only, never package another host framework.
-    debugCompileOnly 'androidx.fragment:fragment:1.8.6'
+    debugCompileOnly libs.fragment
 }
 

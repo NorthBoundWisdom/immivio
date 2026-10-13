@@ -1,25 +1,12 @@
-param([string]$ToolRoot = $(if ($env:THRU3D_TOOL_ROOT) { $env:THRU3D_TOOL_ROOT } else { Join-Path ([Environment]::GetFolderPath('UserProfile')) '.cache\thru3d-toolchain' }))
+param([string]$ToolRoot = '')
 $ErrorActionPreference = 'Stop'
-$env:JAVA_HOME = Join-Path $ToolRoot 'jdk/jdk-17.0.20.1+1'
-$env:ANDROID_HOME = Join-Path $ToolRoot 'android-sdk'
+$workspace = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$toolchain = Get-Content "$workspace/configs/toolchain.json" -Raw | ConvertFrom-Json
+$paths = Get-Content "$workspace/build/host-tools/paths.json" -Raw | ConvertFrom-Json
+if (-not $env:ANDROID_HOME) { $env:ANDROID_HOME = Join-Path $env:LOCALAPPDATA 'Android/Sdk' }
 $env:ANDROID_SDK_ROOT = $env:ANDROID_HOME
-$env:ANDROID_NDK_HOME = Join-Path $env:ANDROID_HOME 'ndk/29.0.14206865'
-$env:GRADLE_USER_HOME = Join-Path $ToolRoot 'gradle-cache'
-$env:ANDROID_USER_HOME = Join-Path $ToolRoot 'android-user'
-$env:TEMP = Join-Path $ToolRoot 'tmp'
-$env:TMP = $env:TEMP
-$env:QUEST_MPV_ROOT = Join-Path $ToolRoot 'mpv/2026-09-17'
-if (-not $env:GODOT_EXE) {
-    $godotCommand = Get-Command godot -ErrorAction SilentlyContinue
-    if ($godotCommand) { $env:GODOT_EXE = $godotCommand.Source }
-    else { throw 'Set GODOT_EXE to the Godot executable. See docs/BUILD.md.' }
-}
-$toolPaths = @((Join-Path $env:JAVA_HOME 'bin'), (Join-Path $env:ANDROID_HOME 'platform-tools'),
-    (Join-Path $env:ANDROID_HOME 'cmdline-tools/latest/bin'), (Join-Path $env:ANDROID_HOME 'cmake/3.31.6/bin'))
-$requiredPaths = @($env:JAVA_HOME, $env:ANDROID_HOME, $env:ANDROID_NDK_HOME, $env:GODOT_EXE)
-foreach ($path in $requiredPaths) {
-    if (-not (Test-Path -LiteralPath $path)) { throw "Missing tool/dependency: $path. See docs/BUILD.md." }
-}
-foreach ($path in @($env:GRADLE_USER_HOME, $env:ANDROID_USER_HOME, $env:TEMP)) { New-Item -ItemType Directory -Path $path -Force | Out-Null }
-$env:Path = ($toolPaths + @($env:Path -split ';' | Where-Object { $_ -and $_ -notin $toolPaths })) -join ';'
-Write-Output 'Immivio Android environment active.'
+$env:ANDROID_NDK_HOME = Join-Path $env:ANDROID_HOME "ndk/$($toolchain.android.ndk)"
+$env:GRADLE_USER_HOME = Join-Path $workspace '.cache/gradle'
+$env:GODOT_EXE = $paths.godot
+$env:GODOT_TEMPLATES_DIR = $paths.templates
+$env:PATH = "$env:ANDROID_HOME/platform-tools;$env:PATH"

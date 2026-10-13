@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "python": "3.13",
+  "java": "25",
+  "go": "1.27.1",
+  "godot": {
+    "version": "4.7.2.stable.official.ed1daf0bf",
+    "executables": {
+      "windows": "Godot_v4.7.2-stable_win64_console.exe",
+      "macos": "Godot.app/Contents/MacOS/Godot"
+    }
+  },
+  "android": {
+    "platform": 36,
+    "build_tools": "36.1.0",
+    "ndk": "30.0.16248370",
+    "cmake": "4.1.2",
+    "min_sdk": 29,
+    "command_line_tools": "15859902"
+  },
+  "gomobile": "v0.0.0-20260908204917-8b95e45f8d3e",
+  "fonts": [
+    {
+      "filename": "NotoSansCJKsc-Regular.otf",
+      "family": "Noto Sans CJK SC"
+    },
+    {
+      "filename": "NotoSansCJKtc-Regular.otf",
+      "family": "Noto Sans CJK TC"
+    },
+    {
+      "filename": "NotoSansCJKjp-Regular.otf",
+      "family": "Noto Sans CJK JP"
+    }
+  ]
+}
