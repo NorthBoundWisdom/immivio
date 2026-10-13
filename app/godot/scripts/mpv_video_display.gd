@@ -69,6 +69,10 @@ var _rvm_alpha := false # the bound pair carries an inferred Alpha
 var _clone_applied := false
 var loop_enabled := false
 var requested_play := true
+signal audio_preferences_changed(volume: float, muted: bool)
+const TrackPreference := preload("res://scripts/track_preference.gd")
+var _track_choices := {}
+var _tracks_pending := {}
 var audio_track_id := -1
 var audio_volume := 100.0
 var audio_muted := false
@@ -107,6 +111,8 @@ var subtitle_position := SubtitleDepth.DEFAULT_POSITION:
 var subtitle_direction := 0:
 	set(value):
 		subtitle_direction = clampi(value, 0, 1)
+const CaptionPalette := preload("res://scripts/caption_palette.gd")
+var subtitle_palette := 0
 const ProjectedSubtitles := preload("res://scripts/projected_subtitles.gd")
 var projected_subtitles: Node
 const CAPTION_DROP := 0.244 # radians below the line of sight (14 degrees)
@@ -436,6 +442,8 @@ func open_local(uri: String, title: String, start_ms: int = 0, restore_mode: boo
 	packed_alpha = packed_file
 	_layout_pending = null
 	var saved_sync := mode_memory.lookup(uri) if restore_mode else {}
+	_track_choices = saved_sync.get("track_choices", {}).duplicate(true)
+	_tracks_pending = _track_choices.duplicate(true)
 	subtitle_delay_ms = int(saved_sync.get("subtitle_delay_ms", 0))
 	audio_delay_ms = int(saved_sync.get("audio_delay_ms", 0))
 	external_subtitle_uri = str(saved_sync.get("external_subtitle_uri", ""))
@@ -579,6 +587,7 @@ func close_video() -> void:
 	_audio_pending = false
 	control.close()
 	_remember_file = false
+	_track_choices.clear(); _tracks_pending.clear()
 	local_uri = ""
 	display_name = ""
 	alpha_requested = false
@@ -717,6 +726,7 @@ func _try_revision() -> void:
 	var held_format := media.format.duplicate()
 	media.begin(id)
 	if _is_frozen(): media.format = held_format
+	_tracks_pending = _track_choices.duplicate(true)
 	platform.set_mpv_playing(id, false)
 	if int(request.position_ms) >= 0:
 		_last_seek_mode = request.seek_mode
@@ -820,7 +830,7 @@ func toggle_clone_voice() -> bool:
 	if clone <= 0:
 		return false
 	var active := clone_voice_active()
-	if not set_audio_options(-1 if active else clone, audio_volume, audio_muted):
+	if not select_audio_track(-1 if active else clone):
 		return false
 	prefer_clone_voice = not active
 	return true
@@ -900,21 +910,28 @@ func forget_external_subtitle() -> void:
 	if picker_error.contains("subtitle"): picker_error = ""
 	_remember_mode(); changed.emit()
 
+func restore_audio_preferences(volume: Variant, muted: Variant) -> void:
+	audio_volume = clampf(float(volume), 0.0, 100.0) if (volume is float or volume is int) and is_finite(float(volume)) else 100.0
+	audio_muted = muted if muted is bool else false
+
 func set_audio_options(track_id: int, volume: float, muted: bool) -> bool:
 	if track_id < -1 or not is_finite(volume) or volume < 0.0 or volume > 100.0 or not platform or not media.accepts(media.session_id):
 		return false
 	if not platform.set_mpv_audio(media.session_id, track_id, volume, muted):
 		return false
+	var sound_changed := audio_volume != volume or audio_muted != muted
 	audio_track_id = track_id
 	audio_volume = volume
 	audio_muted = muted
 	_audio_pending = false
+	if sound_changed: audio_preferences_changed.emit(volume, muted)
 	changed.emit()
 	return true
 
 ## An explicit menu choice wins over automatic dubbing, including before the first frame.
 func select_audio_track(track_id: int) -> bool:
 	if not set_audio_options(track_id, audio_volume, audio_muted): return false
+	_remember_track("audio", track_id)
 	_clone_applied = true
 	prefer_clone_voice = clone_voice_track() > 0 and track_id == clone_voice_track()
 	return true
@@ -927,6 +944,31 @@ func change_volume(delta: float) -> bool:
 func toggle_mute() -> bool:
 	return set_audio_options(audio_track_id, audio_volume, not audio_muted)
 
+func _remember_track(kind: String, id: int) -> void:
+	var tracks: Array = subtitle_tracks() if kind == "subtitle" else media.playback.get("details", {}).get("audio_tracks", [])
+	var choice := TrackPreference.capture(id, tracks)
+	if choice.is_empty(): return
+	_track_choices[kind] = choice
+	if kind == "subtitle" and (_subtitle_loading or not _pending_external_uri.is_empty()):
+		_tracks_pending[kind] = choice.duplicate(true)
+	else:
+		_tracks_pending.erase(kind)
+	_remember_mode()
+
+func _restore_track_choices() -> void:
+	if not media.accepts(media.session_id): return
+	var details: Dictionary = media.playback.get("details", {})
+	for kind in _tracks_pending.keys():
+		if kind == "subtitle" and (_subtitle_loading or not _pending_external_uri.is_empty()): continue
+		if not details.has(kind + "_tracks"): continue
+		var tracks: Array = subtitle_tracks() if kind == "subtitle" else details.audio_tracks
+		var id: Variant = TrackPreference.resolve(_tracks_pending[kind], tracks)
+		if id == null: continue
+		var accepted := set_subtitle_track(int(id), false) if kind == "subtitle" else set_audio_options(int(id), audio_volume, audio_muted)
+		if accepted:
+			_tracks_pending.erase(kind)
+			if kind == "audio": _clone_applied = true
+
 func cycle_audio_track(direction: int = 1) -> bool:
 	var details: Dictionary = media.playback.get("details", {})
 	var tracks: Array = details.get("audio_tracks", [])
@@ -938,7 +980,7 @@ func cycle_audio_track(direction: int = 1) -> bool:
 			choices.append(int(track.id))
 	var current := int(details.get("audio_track_id", 0))
 	var index := choices.find(current)
-	return set_audio_options(choices[posmod(index + direction, choices.size())], audio_volume, audio_muted)
+	return select_audio_track(choices[posmod(index + direction, choices.size())])
 
 func seek_absolute(position_ms: int, mode: String = "") -> bool:
 	if not platform or not media.accepts(media.session_id):
@@ -999,7 +1041,7 @@ func bookmark_action(operation: String, marker_id: String, scope: String) -> Str
 					return "" if seek_absolute(int(marker.position_ms), SeekPolicy.effective(seek_mode, bookmark_seek_mode)) else "Bookmark jump failed"
 	return ""
 
-func set_subtitle_track(track_id: int) -> bool:
+func set_subtitle_track(track_id: int, remember: bool = true) -> bool:
 	if track_id < -1 or not platform or not media.accepts(media.session_id):
 		return false
 	if track_id > 0 and not subtitle_tracks().any(func(t): return int(t.id) == track_id):
@@ -1007,6 +1049,7 @@ func set_subtitle_track(track_id: int) -> bool:
 	if not platform.set_mpv_subtitle(media.session_id, track_id):
 		return false
 	subtitles.select(track_id)
+	if remember: _remember_track("subtitle", track_id)
 	bitmap_subtitles.clear(material)
 	if _subtitle_surface: _subtitle_surface.visible = false
 	if caption:
@@ -1071,6 +1114,8 @@ func _poll_subtitles() -> void:
 	_sync_subtitle_surface()
 
 func _place_caption() -> void:
+	caption.modulate = CaptionPalette.INK[CaptionPalette.index(subtitle_palette)]
+	caption.outline_modulate = CaptionPalette.outline(subtitle_palette)
 	if geometry == Geometry.Geometry.FLAT:
 		# Ordinary video captions stay on the screen, independent of immersive preferences.
 		var pose := subtitle_transform()
@@ -1333,6 +1378,7 @@ func _remember_mode() -> void:
 		"alpha_requested": alpha_requested, "profile": profile, "depth_requested": depth_requested,
 		"top_bottom": stereo_sbs and top_bottom, "stereo_half": stereo_sbs and stereo_half, "fisheye_fov": fisheye_fov,
 		"subtitle_delay_ms": subtitle_delay_ms, "audio_delay_ms": audio_delay_ms, "external_subtitle_uri": external_subtitle_uri}
+	if not _track_choices.is_empty(): mode["track_choices"] = _track_choices.duplicate(true)
 	if mode_memory.remember(local_uri, mode) and not mode_memory.save():
 		Log.record("file_mode_save_failed", {"error": mode_memory.last_error})
 
@@ -1426,6 +1472,7 @@ func _on_state(id: int, payload: String) -> void:
 		else:
 			picker_error = "Unable to load subtitle. Choose an SRT, ASS, SSA or VTT file."
 		_subtitle_import_command = 0; _subtitle_import_uri = ""; _subtitle_loading = false
+	_restore_track_choices()
 	var size := str(details.get("file_size", ""))
 	if not BookmarkStore.integer(_bookmark_metadata.get("size", -1), 1, 9007199254740991) and size.is_valid_int() and BookmarkStore.integer(int(size), 1, 9007199254740991):
 		# Native metadata fills gaps for recent/SAF opens, without hashing or reading the video.
@@ -1653,7 +1700,7 @@ func _apply_geometry() -> void:
 		if _subtitle_surface: _subtitle_surface.visible = false
 		for track in media.playback.get("details", {}).get("subtitle_tracks", []):
 			if track is Dictionary and int(track.get("id", 0)) == subtitles.requested_track and str(track.get("codec", "")) == "hdmv_pgs_subtitle":
-				set_subtitle_track(0)
+				set_subtitle_track(0, false)
 	_apply_packed()
 	if caption and caption.visible: _place_caption()
 	_sync_subtitle_surface()
@@ -1727,7 +1774,7 @@ func _process(_delta: float) -> void:
 			_pending_external_uri = ""; _subtitle_loading = true
 	if _audio_pending:
 		set_audio_options(audio_track_id, audio_volume, audio_muted)
-	elif prefer_clone_voice and not _clone_applied and clone_voice_track() > 0:
+	elif not _track_choices.has("audio") and prefer_clone_voice and not _clone_applied and clone_voice_track() > 0:
 		_clone_applied = set_audio_options(clone_voice_track(), audio_volume, audio_muted)
 	if panel and geometry != Geometry.Geometry.FLAT:
 		_center_on_view()

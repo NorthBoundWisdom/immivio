@@ -1,5 +1,7 @@
 # Thru3D Media Player
 
+This repository is maintained independently by **NorthBoundWisdom**. It originated from [zerochocobo/Thru3D-Media-Player](https://github.com/zerochocobo/Thru3D-Media-Player); the original GPL-3.0 license and source history are retained. Issues, contributions and releases for this edition belong to [this repository](https://github.com/NorthBoundWisdom/Thru3D-Media-Player). Selected 0.7.0 behaviors have been reimplemented on our existing architecture; this branch is not a full upstream 0.7.0 merge.
+
 [简体中文](README.zh-CN.md) · [Changelog](CHANGELOG.md) · [中文更新日志](CHANGELOG.zh-CN.md)
 
 Standalone Android VR/MR media player for Meta Quest and PICO. Thru3D combines a Godot OpenXR interface, Android media access, a native libmpv renderer, and MNN inference for video matting and depth-based stereo rendering.
@@ -35,6 +37,9 @@ Playback settings include Synchronization and Queue. Subtitle and audio offsets 
 
 The queue supports play, move up/down, remove and clear. Add videos opens the library for individual additions or the currently loaded list; paged sources can be added page by page without recursively scanning remote folders. Up to 500 entries and their order persist across restarts without starting playback. Auto-play next, repeat queue and shuffle default off. Single-video looping takes precedence. Automatic next playback starts at zero after the final frame is presented; manual navigation retains resume behavior.
 
+- Explicit per-video audio/subtitle choices, persistent sound level/mute, five text-caption palettes and double-tap 3D/mute shortcuts.
+- Photo walls with remembered 1–3-row layouts; wrapped full-filename hover tips.
+
 ## Source release
 
 This repository contains application source, build scripts, third-party source pins/patches, and tests. Model weights, compiled dependencies, signing keys, personal media and development records are excluded.
@@ -68,7 +73,7 @@ libmpv / FFmpeg → shared GPU video textures → Godot stereo rendering
 ## Getting started
 
 ```powershell
-git clone https://github.com/zerochocobo/Thru3D-Media-Player.git Thru3D
+git clone https://github.com/NorthBoundWisdom/Thru3D-Media-Player.git Thru3D
 cd Thru3D
 python tools/Check-PublicSource.py
 

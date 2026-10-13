@@ -74,6 +74,21 @@ func _run() -> void:
 	photo.set_layout_mode(2); await load_previews(photo)
 	check(not photo.panel.visible and photo.gallery.cards.has(0) and photo.gallery.cards.has(95) and photo.gallery.cards.has(1), "Wall overview includes first, real last and second images")
 	check(photo.gallery.cards[95].pose.origin.x < 0 and photo.gallery.cards[1].pose.origin.x > 0, "First photo's left neighbour is the directory last")
+	for count in [2, 3]:
+		photo.gallery.set_wall_rows(count); await load_previews(photo)
+		var levels := {}
+		var indices: Array = photo.gallery.cards.keys(); indices.sort()
+		for slot in indices.size(): check(indices[slot] == slot, "Multi-row wall uses a contiguous directory group")
+		for card in photo.gallery.cards.values():
+			var local: Vector3 = photo.gallery.anchor.affine_inverse() * card.pose.origin
+			levels[snappedf(local.y, 0.001)] = true
+			check(absf(local.y) + card.size.y * 0.5 < 1.3, "Rows stay within a gaze-centered vertical budget")
+		check(levels.size() == count, "All selected rows are populated")
+		var config := ConfigFile.new(); photo.gallery.save_settings(config)
+		var restored := Photo.Gallery.new(); restored.restore_settings(config)
+		check(restored.wall_rows == count, "Wall row count survives settings restoration")
+		restored.free()
+	photo.gallery.set_wall_rows(1); await load_previews(photo)
 	var wall_poses := {}
 	for index in photo.gallery.cards: wall_poses[index] = photo.gallery.cards[index].pose
 	var wall_anchor: Transform3D = photo.gallery.anchor

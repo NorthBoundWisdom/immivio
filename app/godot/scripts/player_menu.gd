@@ -156,8 +156,9 @@ func capture_envelope() -> Rect2:
 ## Playback has its own top action row; session toggles belong to the library.
 func refresh_session_controls(_force: bool = false) -> void:
 	if not device_status: return
-	var y: float = 0.215 if section == 0 else _backdrop.position.y + _backdrop.mesh.size.y * 0.5 + 0.10
-	device_status.position = Vector3(0.16 if section == 0 else 0.0, y, 0.002)
+	var transport := section == 0 and _adjustment.is_empty()
+	var y: float = 0.215 if transport else _backdrop.position.y + _backdrop.mesh.size.y * 0.5 + 0.10
+	device_status.position = Vector3(0.16 if transport else 0.0, y, 0.002)
 
 func has_pointer_capture() -> bool:
 	return not choices.capture.is_empty() or not bookmarks.capture.is_empty() or not _seek_hand.is_empty() or not _volume_hand.is_empty() \
@@ -191,6 +192,7 @@ func dismiss() -> void:
 	super.dismiss()
 
 func _reset_navigation() -> void:
+	_shortcut_target = -1
 	_quick_open = ""
 	choices.reset()
 	bookmarks.reset()
@@ -258,6 +260,7 @@ func refresh_values() -> void:
 			_tips[102] = I18n.t("Pause" if _pausable() else "Play")
 		if section == 0 and button.target == 109:
 			button.node.get_child(1).material_override.albedo_texture = Icons.texture(_sound_icon())
+			button.node.get_child(1).material_override.albedo_color = Color("ff6262") if _state.get("muted", false) else button.foreground
 	if is_instance_valid(_status):
 		_status.text = _status_text()
 	if is_instance_valid(_info):
@@ -413,6 +416,10 @@ func _draw_bar() -> void:
 	_title.modulate = MUTED
 	var row := 0.025
 	_glyph(109, _sound_icon(), Vector2(VOLUME_X, row), 0.075, _enabled("mute"), I18n.t("Sound"))
+	if _state.get("muted", false):
+		for child in _buttons.back().node.get_children():
+			if child is MeshInstance3D and child.material_override is StandardMaterial3D:
+				child.material_override.albedo_color = Color("ff6262")
 	_glyph(110, "subtitle", Vector2(-0.4, row), 0.075, _enabled("subtitles"), I18n.t("Subtitles") + ": " + _subtitle_name())
 	_bar_drawn = _bar_key()
 	_glyph(111, "voice", Vector2(-0.3, row), 0.075, _enabled("audio"), I18n.t("Audio track"))
@@ -516,6 +523,7 @@ func _subtitle_controls() -> Array:
 	else:
 		rows.append({"title": "Vertical position", "field": {"key": "subtitle_flat_position", "value": _state.get("subtitle_flat_position", 0.0), "slider": true, "span": Vector3(0, 100, 1), "unit": "%"}})
 	rows.append({"title": "Text size", "field": {"key": "subtitle_size", "value": _state.get("subtitle_size", 100.0), "slider": true, "span": Vector3(50, 200, 5), "unit": "%"}})
+	rows.append({"title": "Text color", "field": preload("res://scripts/caption_palette.gd").choices(int(_state.get("subtitle_palette", 0)))})
 	return rows
 
 func _draw_subtitles() -> void:
@@ -648,6 +656,7 @@ func _refresh_depth() -> void:
 	_depth_label.text = _depth_caption()
 
 func _set_depth_at(y: float) -> void:
+	_shortcut_target = -1
 	var fraction := (y - DEPTH_SPAN.x) / (DEPTH_SPAN.y - DEPTH_SPAN.x)
 	var strength := DepthStrength.from_fraction(fraction, _depth_maximum())
 	if fraction < 0.02: strength = 0.0 # Small bottom dead zone makes Off easy to reach.
@@ -697,6 +706,7 @@ func _refresh_volume() -> void:
 
 ## Pointer height on the track -> 0..100; the lowest steps snap to mute.
 func _set_volume_at(y: float) -> void:
+	_shortcut_target = -1
 	var level := roundi(clampf((y - VOLUME_SPAN.x) / (VOLUME_SPAN.y - VOLUME_SPAN.x), 0.0, 1.0) * 100)
 	if level < VOLUME_MUTE:
 		level = 0
@@ -807,7 +817,7 @@ func _bar_key() -> String:
 	return str([_state.get("clone_voice", false), _state.get("geometry", 0), _state.get("has_video", false),
 		_state.get("spatial_video", false), _state.get("stereo", false), _state.get("ai_enabled", true),
 		_state.get("source_uri", ""), _subtitle_tracks(), _state.get("subtitle_track", 0), bookmarks.key(), _state.get("audio_options", []), _state.get("audio_track_id", -1),
-		_state.get("subtitle_distance", SubtitleDepth.DEFAULT), _state.get("subtitle_position", SubtitleDepth.DEFAULT_POSITION), _state.get("subtitle_direction", 0), _state.get("subtitle_size", 100), _state.get("subtitle_flat_position", 0), _state.get("subtitle_loading", false)])
+		_state.get("subtitle_distance", SubtitleDepth.DEFAULT), _state.get("subtitle_position", SubtitleDepth.DEFAULT_POSITION), _state.get("subtitle_direction", 0), _state.get("subtitle_size", 100), _state.get("subtitle_flat_position", 0), _state.get("subtitle_loading", false), _state.get("subtitle_palette", 0)])
 
 func _seek_at(x: float) -> int:
 	return roundi(clampf((x + BAR_SEEK / 2) / BAR_SEEK, 0.0, 1.0) * int(_state.get("duration_ms", 0)))
@@ -956,7 +966,7 @@ func _settings_key() -> String:
 	return str([_state.get("source_uri", ""), _state.get("has_video", false),
 		_state.get("loop", false), _state.get("screen_curve", 0.0), _state.get("seek_mode", "speed"), _state.get("stereo", false), _state.get("geometry", 0),
 		_state.get("show_fps", false), _state.get("viewing_eye", 0), _state.get("swap_eyes", false),
-		_state.get("queue_revision", 0), _state.get("external_subtitle", false), _state.get("subtitle_loading", false)])
+		_state.get("queue_revision", 0), _state.get("external_subtitle", false), _state.get("subtitle_loading", false), _state.get("subtitle_palette", 0)])
 
 func _setting_choices(operation: String) -> Dictionary:
 	if not _enabled(operation): return {}
@@ -1022,7 +1032,35 @@ func _time(milliseconds: int) -> String:
 	var seconds := maxi(0, milliseconds / 1000)
 	return "%d:%02d:%02d" % [seconds / 3600, (seconds / 60) % 60, seconds % 60] if seconds >= 3600 else "%02d:%02d" % [seconds / 60, seconds % 60]
 
+var _shortcut_target := -1
+var _shortcut_time := -1000
+var _shortcut_source := ""
+var _shortcut_depth_was_on := false
+
+func _shortcut_double_tap(target: int, now: int) -> bool:
+	var source := str(_state.get("source_uri", ""))
+	var repeated := target == _shortcut_target and source == _shortcut_source and now >= _shortcut_time and now - _shortcut_time <= 350
+	if not repeated: _shortcut_depth_was_on = bool(_state.get("depth_requested", false))
+	_shortcut_target = -1 if repeated else target
+	_shortcut_time = now
+	_shortcut_source = source
+	return repeated
+
 func _activate_hit(hit: Dictionary) -> void:
+	var target := int(hit.target)
+	if section == 0 and target in [109, 112] and hit.get("enabled", true):
+		if _shortcut_double_tap(target, Time.get_ticks_msec()):
+			if target == 109 and _enabled("mute"):
+				_volume_open = false; _volume_hand = ""
+				action_requested.emit("mute")
+			elif target == 112 and _can_depth():
+				_close_depth_slider()
+				depth_strength_requested.emit(0.0 if _shortcut_depth_was_on else float(_state.get("depth_strength", 1.0)))
+				depth_strength_committed.emit()
+			refresh(); return
+	else:
+		_shortcut_target = -1
+
 	if int(hit.target) == SEEK:
 		if _can_seek():
 			var fraction := clampf((float(hit.point.x) + BAR_SEEK / 2) / BAR_SEEK, 0.0, 1.0)

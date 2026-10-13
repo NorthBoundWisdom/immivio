@@ -7,6 +7,8 @@ var label: Label
 var _text := ""
 var _vertical := false
 var _size := 1.0
+var _ink := Color.WHITE
+var _edge := Color.BLACK
 var vertical_text: Control
 const VerticalText := preload("res://scripts/vertical_subtitle_text.gd")
 
@@ -39,7 +41,11 @@ func update_patch(caption: Label3D, target: ShaderMaterial, anchor: Basis, dista
 	if not viewport or not caption.visible or caption.text.is_empty():
 		clear(target)
 		return
-	if _text != caption.text or _vertical != vertical or not is_equal_approx(_size, text_size):
+	if _text != caption.text or _vertical != vertical or not is_equal_approx(_size, text_size) or _ink != caption.modulate or _edge != caption.outline_modulate:
+		_ink = caption.modulate; _edge = caption.outline_modulate
+		label.add_theme_color_override("font_color", _ink)
+		label.add_theme_color_override("font_outline_color", _edge)
+		vertical_text.ink = _ink; vertical_text.edge = _edge
 		_size = text_size
 		label.add_theme_font_size_override("font_size", roundi(40 * _size))
 		label.add_theme_constant_override("outline_size", maxi(2, roundi(8 * _size)))

@@ -448,6 +448,7 @@ struct Source final {
             // Network sources: a deep read-ahead absorbs Wi-Fi jitter for 8K bitrates.
             option("cache", "auto"); option("demuxer-max-bytes", "256MiB"); option("demuxer-readahead-secs", "20");
             option("network-timeout", "30");
+            option("user-agent", "Thru3D-Media-Player (Android; libmpv)");
             option("osd-level", "0"); option("sub", "no"); option("sub-visibility", "no"); option("interpolation", "no"); option("dither", "no");
             option("scale", "bilinear"); option("cscale", "bilinear"); option("dscale", "bilinear");
             // Non-Profile-5 sources: one direct OES -> RGBA8 pass instead of an 8K RGBA16F intermediate plus a

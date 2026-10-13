@@ -1568,6 +1568,7 @@ func _tile(target: int, row: Dictionary, centre: Vector2) -> void:
 	var icon := str(row.get("icon", "video"))
 	_button(target, _fit_title(str(row.title), "", 0.5, 18), centre, TILE_SIZE, true, "", false, _list)
 	var button: Dictionary = _buttons.back()
+	if str(button.node.get_child(0).text) != str(row.title): _tips[target] = str(row.title)
 	button.base_color = SELECTED if file_actions.editing and file_actions.row_uri(row) == file_actions.selected else Color(TILE, 0.0)
 	button.enabled = not file_actions.editing or not file_actions.row_uri(row).is_empty()
 	button.node.material_override.set_shader_parameter("surface_color", button.base_color)
@@ -1674,6 +1675,7 @@ func _row_button(target: int, title: String, detail: String, icon: String, centr
 		_control_button(target, title, centre, 1.24, true, "", false, _list)
 	else:
 		_button(target, _fit_title(title, "", 0.9, 22), centre, Vector2(1.24, 0.098), true, "", false, _list)
+	if str(_buttons.back().node.get_child(0).text) != title: _tips[target] = title
 	_lit(selected)
 	var node: MeshInstance3D = _buttons.back().node
 	var label: Label3D = node.get_child(0)

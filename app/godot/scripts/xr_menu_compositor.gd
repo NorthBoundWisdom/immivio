@@ -48,6 +48,10 @@ var _bridge_status := {}
 var camera: Camera3D
 var active_menu: Node3D
 var native_supported := false
+var layer_fallback_reason := ""
+var _layer_sample_seconds := 0.0
+var _layer_sample_frames := 0
+var _layer_grace := 1.5
 var content_bounds := Rect2()
 var surface_rect := Rect2()
 var _original_mask := 0
@@ -140,9 +144,27 @@ func _set_scene_curved(value: bool) -> void:
 		var node: Object = item.node.get_ref()
 		if is_instance_valid(node): _tag(node)
 
-func _process(_delta: float) -> void:
+## Ignore first presentation and suspend-sized gaps. A sustained collapse disables
+## native submission until restart; scene geometry and its ray mapping remain usable.
+func observe_layer_rate(delta: float, refresh_hz: float, active: bool) -> void:
+	if not layer_fallback_reason.is_empty(): return
+	if not active or not is_finite(delta) or delta <= 0.0 or delta > 0.5:
+		_layer_sample_seconds = 0.0; _layer_sample_frames = 0; _layer_grace = 1.5
+		return
+	if _layer_grace > 0.0:
+		_layer_grace -= delta
+		return
+	_layer_sample_seconds += delta; _layer_sample_frames += 1
+	if _layer_sample_seconds < 2.0: return
+	var target := refresh_hz if is_finite(refresh_hz) and refresh_hz >= 30.0 else 72.0
+	if _layer_sample_frames / _layer_sample_seconds < target * 0.5:
+		layer_fallback_reason = "sustained_low_fps"
+	_layer_sample_seconds = 0.0; _layer_sample_frames = 0
+
+func _process(delta: float) -> void:
 	if not _configured: return
 	if _session_state.is_valid() and OS.get_name() == "Android" and _session_state.call() not in ["session_focussed", "session_visible"]:
+		observe_layer_rate(0.0, 72.0, false)
 		if _bridge: _bridge.setEnabled(false)
 		if viewport: viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 		presentations.reset(); presented.clear(); _last_frame_us = 0
@@ -157,7 +179,9 @@ func _process(_delta: float) -> void:
 		_clear_frames = 2 if not shown else 0
 		_set_scene_curved(false)
 	var target := _display_layer()
-	var use_native := target != null and target.is_natively_supported() and _bridge != null
+	var xr := XRServer.primary_interface as OpenXRInterface
+	observe_layer_rate(delta, xr.display_refresh_rate if xr else 72.0, active_menu != null and native_supported)
+	var use_native := layer_fallback_reason.is_empty() and target != null and target.is_natively_supported() and _bridge != null
 	var use_scene: bool = active_menu != null and active_menu.curve_radius > 0.0 and not use_native
 	if not viewport and (use_native or use_scene): _create_capture()
 	if not viewport: return
@@ -414,7 +438,7 @@ func snapshot() -> Dictionary:
 	var font: Font = active_menu.ui_font() if is_instance_valid(active_menu) else null
 	var session_ready: bool = OS.get_name() != "Android" or not _session_state.is_valid() or _session_state.call() in ["session_focussed", "session_visible"]
 	return {"native_supported": native_supported, "active": (native_supported or scene_curved) and session_ready and active_menu != null,
-		"session_ready": session_ready, "presentation": _bridge_status, "projected_ray_count": projected_rays,
+		"layer_fallback_reason": layer_fallback_reason, "session_ready": session_ready, "presentation": _bridge_status, "projected_ray_count": projected_rays,
 		"warmup": warmup.snapshot() if is_instance_valid(warmup) else {},
 		"capture_serial": presentations.serial, "presented_serial": presentations.committed,
 		"capture_rect": [surface_rect.position.x, surface_rect.position.y, surface_rect.size.x, surface_rect.size.y],

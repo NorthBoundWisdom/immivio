@@ -214,7 +214,9 @@ func _run() -> void:
 	menu.update_pointer("left_hand", Vector3.ZERO, Vector3.ZERO, false)
 	var depth_tile: Dictionary = menu._buttons.filter(func(b): return b.target == 112)[0]
 	check(depth_tile.node.material_override.get_shader_parameter("surface_color") == Menu.SELECTED, "Requested depth lights its primary bar button")
+	menu._shortcut_time -= 500 # Separate single clicks; quick pairs now toggle the effect.
 	check(click(menu, 112) and video.depth_requested and not menu._depth_open, "Closing the slider keeps 3D active")
+	menu._shortcut_time -= 500
 	check(click(menu, 112) and menu._depth_open, "Reopen strength control")
 	menu.refresh_values()
 	check(menu._depth_busy != null and menu._depth_busy.visible, "Requested 3D still preparing spins a ring on its button")

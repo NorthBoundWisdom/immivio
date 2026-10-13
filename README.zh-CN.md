@@ -1,5 +1,7 @@
 # Thru3D Media Player
 
+本仓库由 **NorthBoundWisdom 独立维护**，源自 [zerochocobo/Thru3D-Media-Player](https://github.com/zerochocobo/Thru3D-Media-Player)，保留原 GPL-3.0 许可与源码历史。本版本的问题反馈、贡献和发布均以[本仓库](https://github.com/NorthBoundWisdom/Thru3D-Media-Player)为准。原版 0.7.0 的部分行为已按现有架构重新实现；本分支并非完整合入原版 0.7.0。
+
 [English](README.md) · [更新日志](CHANGELOG.zh-CN.md) · [English changelog](CHANGELOG.md)
 
 面向 Meta Quest 和 PICO 的独立 Android VR/MR 媒体播放器。使用 Godot OpenXR 构建界面，Kotlin 管理媒体与授权，libmpv/FFmpeg 解码，MNN OpenCL 执行人物抠像与深度推理。
@@ -28,6 +30,9 @@
 
 - 媒体服务器分区、筛选、详情和连续分页；收藏与外挂字幕取决于服务器能力，支持手动添加DLNA地址。
 - 图片距离/大小调整、按实际显示尺寸计算的2～8倍独立放大镜，以及按来源能力提供的文件管理。
+
+- 每个视频独立记住音轨／字幕选择；全局保存音量和静音，文字字幕提供五种配色，视频 3D／音量图标支持双击开关。
+- 照片墙支持记忆 1～3 行布局，长文件名以换行悬浮提示完整显示。
 
 ## 校时与播放队列
 

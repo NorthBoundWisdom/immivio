@@ -470,7 +470,7 @@ func _update_highlights() -> void:
 func _update_tooltip() -> void:
 	var shown := {}
 	for button in _buttons:
-		if button.node.is_visible_in_tree() and (button.enabled or button.get("hover_disabled", false)) and _tips.has(button.target) and _hover.values().has(button.target):
+		if button.node.is_visible_in_tree() and (button.enabled or button.get("hover_disabled", false)) and not str(_tips.get(button.target, "")).strip_edges().is_empty() and _hover.values().has(button.target):
 			shown = button
 			break
 	if shown.is_empty():
@@ -484,16 +484,24 @@ func _update_tooltip() -> void:
 		var text := _label("", Vector3(0, 0, 0.002), 17, _tooltip)
 		text.render_priority = 17
 	var label: Label3D = _tooltip.get_child(0)
-	label.text = _fit_title(str(_tips[shown.target]), "", TOOLTIP_MAX_WIDTH - 0.04, 17)
-	var width := FONT.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 17).x * 0.0012 + 0.04
-	var size := Vector2(width, 0.046)
+	var text := str(_tips[shown.target]).strip_edges()
+	var width := minf(TOOLTIP_MAX_WIDTH - 0.04, ui_font().get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 17).x * label.pixel_size)
+	label.font = ui_font(); label.text = text
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.width = maxf(width, 0.01) / label.pixel_size
+	var measured := ui_font().get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, label.width, 17, -1,
+		TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE)
+	var size := Vector2(width + 0.04, maxf(0.046, measured.y * label.pixel_size + 0.02))
 	_tooltip.mesh.size = size
 	_tooltip.material_override.set_shader_parameter("surface_size", size)
 	var rect: Rect2 = shown.rect
-	var x := rect.get_center().x
+	var centre := to_local(shown.node.global_position)
+	var at := Vector2(centre.x, centre.y + (-1.0 if shown.get("tip_below", false) else 1.0) * (rect.size.y * 0.5 + size.y * 0.5 + 0.017))
 	var envelope := capture_envelope()
-	if envelope.has_area(): x = clampf(x, envelope.position.x + width / 2, envelope.end.x - width / 2)
-	_tooltip.position = Vector3(x, rect.position.y - 0.04 if shown.get("tip_below", false) else rect.end.y + 0.04, 0.012)
+	if envelope.has_area():
+		at.x = clampf(at.x, envelope.position.x + size.x * 0.5, envelope.end.x - size.x * 0.5)
+		at.y = clampf(at.y, envelope.position.y + size.y * 0.5, envelope.end.y - size.y * 0.5)
+	_tooltip.position = Vector3(at.x, at.y, 0.012)
 	_tooltip.visible = true
 
 ## Reserve hover text before it becomes visible. Hover must not resize/recentre

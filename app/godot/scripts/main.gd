@@ -63,6 +63,7 @@ var photo_hands := PhotoHandGestures.new()
 var photo_swipe := PhotoPalmSwipe.new()
 var memory_swipe := preload("res://scripts/memory_swipe.gd").new()
 var _gallery_save_after := 0
+var _audio_save_after := 0
 var _gallery_saved_state := ""
 var _photo_open_hide_controls := false
 var _photo_pointer_hand := ""
@@ -189,6 +190,8 @@ func _ready() -> void:
 	video.changed.connect(_on_video_changed)
 	video.mode_lock_changed.connect(_on_mode_lock_changed.bind("video"))
 	video.thumbnail_ready.connect(_on_video_thumbnail_ready)
+	video.restore_audio_preferences(settings.get_value("audio", "volume", 100.0), settings.get_value("audio", "muted", false))
+	video.audio_preferences_changed.connect(_save_audio_preferences)
 	video.prefer_clone_voice = bool(settings.get_value("audio", "prefer_clone_voice", false))
 	video.history_enabled = bool(settings.get_value("library", "history", true))
 	_restore_seek_settings()
@@ -199,6 +202,7 @@ func _ready() -> void:
 	video.subtitle_position = video.SubtitleDepth.restore_position(settings)
 	video.subtitle_size = clampf(float(settings.get_value("subtitles", "size", 1.0)), 0.5, 2.0)
 	video.subtitle_flat_position = clampf(float(settings.get_value("subtitles", "flat_position", 0.0)), 0.0, 1.0)
+	video.subtitle_palette = video.CaptionPalette.index(settings.get_value("subtitles", "palette", 0))
 	video.subtitle_direction = int(settings.get_value("subtitles", "direction", 0))
 	video.color_grade.restore(settings.get_value("video", "color_grade", {}))
 	# The flat screen keeps the distance, size and curve the viewer last chose.
@@ -588,6 +592,7 @@ func _apply_system_recenter() -> void:
 	Log.record("system_recenter_applied")
 
 func _process(delta: float) -> void:
+	if _audio_save_after > 0 and Time.get_ticks_msec() >= _audio_save_after: _flush_audio_preferences()
 	_apply_system_recenter()
 	_update_view_follow()
 	_refresh_session_controls()
@@ -1308,7 +1313,7 @@ func _advance_queue(session_id: int, uri: String) -> void:
 
 func _on_photo_changed() -> void:
 	if not photo_active: return
-	var gallery_state := "%d/%s/%s" % [photo.gallery.mode, str(photo.gallery._scales), str(photo.gallery._distances)]
+	var gallery_state := "%d/%s/%s/%d" % [photo.gallery.mode, str(photo.gallery._scales), str(photo.gallery._distances), photo.gallery.wall_rows]
 	if gallery_state != _gallery_saved_state:
 		_gallery_saved_state = gallery_state; _gallery_save_after = Time.get_ticks_msec() + 450
 	if _photo_open_hide_controls and not photo.loading and photo.panel.visible:
@@ -1325,6 +1330,8 @@ func _on_photo_adjustment(key: String, value: Variant) -> void:
 	match key:
 		"gallery_scale":
 			photo.gallery.set_view_scale(float(value)); photo.changed.emit()
+		"wall_rows":
+			photo.gallery.set_wall_rows(int(value)); photo.changed.emit()
 		"gallery_distance":
 			photo.gallery.set_view_distance(float(value)); photo.changed.emit()
 		"screen_distance":
@@ -1346,7 +1353,7 @@ func _save_photo_adjustments() -> void:
 	settings.set_value("photo_screen", "magnification", photo.inspect_magnification)
 	photo.gallery.save_settings(settings)
 	_gallery_save_after = 0
-	_gallery_saved_state = "%d/%s/%s" % [photo.gallery.mode, str(photo.gallery._scales), str(photo.gallery._distances)]
+	_gallery_saved_state = "%d/%s/%s/%d" % [photo.gallery.mode, str(photo.gallery._scales), str(photo.gallery._distances), photo.gallery.wall_rows]
 	settings.save(settings_path)
 
 func _toggle_photo_inspect(hand: String = "") -> void:
@@ -1841,7 +1848,7 @@ func _on_player_setting(key: String, value: Variant) -> void:
 	match key:
 		"seek_mode", "subtitle_distance", "subtitle_position", "subtitle_direction": _on_setting_changed(key, value)
 		"viewing_eye": video.set_viewing_eye(int(value))
-		"subtitle_size", "subtitle_flat_position": _on_playback_adjustment(key, value); _save_playback_adjustments()
+		"subtitle_size", "subtitle_flat_position", "subtitle_palette": _on_playback_adjustment(key, value); _save_playback_adjustments()
 		"loop": video.loop_enabled = bool(value); video.changed.emit()
 		"show_fps": _on_setting_changed(key, value)
 		"screen_curve": video.set_screen_curve(float(value)); _save_screen(); video.changed.emit()
@@ -1867,7 +1874,17 @@ func _on_bookmark_request(operation: String, marker_id: String, scope: String) -
 	elif not message.is_empty(): player_menu.bookmarks.notify(I18n.t(message))
 	else: player_menu.refresh_values()
 
-## Muting keeps the level, so unmuting (left stick) brings the sound back where it was.
+## Coalesce slider updates; lifecycle notifications flush the accepted level.
+func _save_audio_preferences(volume: float, muted: bool) -> void:
+	settings.set_value("audio", "volume", volume)
+	settings.set_value("audio", "muted", muted)
+	_audio_save_after = Time.get_ticks_msec() + 350
+
+func _flush_audio_preferences() -> void:
+	if _audio_save_after <= 0: return
+	_audio_save_after = 0
+	settings.save(settings_path)
+
 func _on_menu_volume(volume: float, muted: bool) -> void:
 	if photo_active: return
 	video.set_audio_options(video.audio_track_id, video.audio_volume if muted else volume, muted)
@@ -1931,7 +1948,7 @@ func _menu_state() -> Dictionary:
 		"screen_curve": video.screen_curve, "screen_distance": video.screen_distance,
 		"screen_scale": video.screen_scale * 100.0, "screen_rotation": video.screen_rotation, "playback_speed": video.playback_speed,
 		"alpha_fps": _alpha_fps(), "show_fps": fps_overlay != null and fps_overlay.visible,
-		"subtitle_size": video.subtitle_size * 100, "subtitle_flat_position": video.subtitle_flat_position * 100,
+		"subtitle_palette": video.subtitle_palette, "subtitle_size": video.subtitle_size * 100, "subtitle_flat_position": video.subtitle_flat_position * 100,
 		"subtitle_distance": video.subtitle_distance, "color_grade": video.color_grade.snapshot(),
 		"subtitle_position": video.subtitle_position,
 		"subtitle_direction": video.subtitle_direction,
@@ -2330,6 +2347,8 @@ func _on_playback_adjustment(key: String, value: Variant) -> void:
 	elif key == "alpha_fps":
 		_apply_alpha_fps(value)
 		return
+	elif key == "subtitle_palette":
+		video.subtitle_palette = video.CaptionPalette.index(value)
 	elif key == "subtitle_size":
 		if not is_finite(float(value)): return
 		video.subtitle_size = clampf(float(value) / 100.0, 0.5, 2.0)
@@ -2353,6 +2372,7 @@ func _save_playback_adjustments() -> void:
 	video.commit_stereo_view()
 	settings.set_value("screen", "distance", video.screen_distance)
 	settings.set_value("screen", "scale", video.screen_scale)
+	settings.set_value("subtitles", "palette", video.subtitle_palette)
 	settings.set_value("subtitles", "size", video.subtitle_size)
 	settings.set_value("subtitles", "flat_position", video.subtitle_flat_position)
 	settings.set_value("subtitles", "distance", video.subtitle_distance)
@@ -2428,5 +2448,7 @@ func _finish_app(restart: bool) -> void:
 		get_tree().quit()
 
 func _notification(what: int) -> void:
+	if what in [NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_WM_CLOSE_REQUEST, NOTIFICATION_PREDELETE]:
+		_flush_audio_preferences()
 	if what == NOTIFICATION_APPLICATION_PAUSED and photo and _gallery_save_after > 0:
 		_save_photo_adjustments()

@@ -5,6 +5,8 @@ extends Control
 const FONT_SIZE := 40
 const MARGIN := 40.0
 const COLUMN_PITCH := 56.0
+var ink := Color.WHITE
+var edge := Color.BLACK
 var columns: Array[Dictionary] = []
 var content_scale := 1.0
 var font_scale := 1.0
@@ -69,8 +71,8 @@ func _draw() -> void:
 			point = Vector2.ZERO
 		else:
 			draw_set_transform(Vector2.ZERO, 0, Vector2.ONE * content_scale)
-		_server.shaped_text_draw_outline(column.rid, get_canvas_item(), point, -1, -1, maxi(2, roundi(8 * font_scale)), Color.BLACK)
-		_server.shaped_text_draw(column.rid, get_canvas_item(), point, -1, -1, Color.WHITE)
+		_server.shaped_text_draw_outline(column.rid, get_canvas_item(), point, -1, -1, maxi(2, roundi(8 * font_scale)), edge)
+		_server.shaped_text_draw(column.rid, get_canvas_item(), point, -1, -1, ink)
 
 func _clear_columns() -> void:
 	if _server:

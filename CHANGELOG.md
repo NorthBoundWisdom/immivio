@@ -6,6 +6,14 @@ Newest first, following product release milestones. Some development/source snap
 
 ## Unreleased
 
+- Maintain this edition independently; retain the original license and history, and direct contributions/releases to NorthBoundWisdom.
+- Reimplement selected original 0.7.0 behaviors: persist explicit audio/subtitle choices per video (with metadata matching after track renumbering), and retain volume/mute across launches.
+- Double-tap the video 3D/volume icons to toggle depth/mute; keep the remembered depth strength and existing single-tap controls. Muted volume uses a red icon.
+- Offer five text-caption palettes across flat and projected/vertical captions without recoloring PGS bitmaps. Show complete long library filenames in wrapped hover tips.
+- Add persisted 1–3-row photo walls with ordered groups, aspect-preserving cards and bounded vertical placement.
+- Retain DLNA subtitle links when metadata is incomplete, refresh from the containing directory and match by server object ID when resource URLs change. Identify playback HTTP requests as Thru3D rather than a generic libmpv client.
+- Add sustained-low-frame-rate fallback to our existing native menu compositor, retaining its scene/curved fallback and input mapping.
+
 - AI and no-AI Android builds now use distinct package IDs, launcher labels and signing identities for side-by-side installation; the no-AI app retains its existing identity and data.
 - Made the library curved, added grip dragging with same-hand stick depth adjustment, and return to the previous browse position when closing video. Removed duplicate library/playback actions and aligned status controls with the action row.
 - Stabilized hover tooltip bounds to prevent UI projection jumps, and recenter the visible library after sleep/focus recovery once head tracking returns.

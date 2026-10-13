@@ -81,3 +81,15 @@ The public snapshot removes private store-capture automation from the applicatio
 Existing 115 and Baidu clients retain encrypted account records. The embedded OpenList JNI core supplies additional provider connections, including 115 Open, OneDrive, Aliyun Drive and Quark. Only the capability-protected loopback media router listens on HTTP. Authorization stays in the same Activity's VR web panel; provider-specific callbacks are validated against the active session/state before importing credentials and checking directory access. Quark uses the FnNAS broker's nonce-bound callback exchange. No OpenList frontend or separate Android account window is used. Real-account and minimum-headset validation remains separate from source publication.
 
 Media-server browsing separates home sections, loaded pages, filter/category state and detail navigation. Favorites use server support where available and a local fallback otherwise. Source policies and native/Go bridges provide supported rename/delete operations without assuming every backend permits writes. Photo magnification maps the displayed image's local projected size to a separate inspection window; it does not enlarge the underlying full-image shader.
+
+## Independent maintenance
+
+NorthBoundWisdom maintains this edition separately. Original 0.7.0 snapshot `a878917` was reviewed as a behavior reference, not merged or cherry-picked. Existing standard-libmpv ownership/seek handling, optional AI/model packs, playback queues, timing controls, reclining mode and the Android-Surface menu compositor remain the integration points.
+
+`track_preference.gd` records only explicit track intent in the existing checksummed per-file mode store. Metadata identifies renumbered tracks; ambiguous or missing matches stay pending until matching metadata arrives. Off/Auto remain explicit values. Playback revisions retry intent against the new session; stale-session reports cannot apply it. Sound settings are global, saved after a short idle interval or on suspend/close, and updated only after a native request succeeds.
+
+`caption_palette.gd` supplies text colors for flat, horizontal projected and vertical captions. PGS retains its bitmap colors. Photo walls reuse the existing preview cache and interaction surfaces; multi-row groups have a shared vertical budget and preserve source aspect ratios. DLNA history retains its original playback URI while subtitle refresh resolves by server-scoped object ID and confirms removals against a complete parent listing.
+
+The native menu compositor observes sustained frame rate only after its first presentation settles. A low-rate failure latches the existing scene fallback until restart, preserving curved ray mapping. It does not replace the presenter or introduce a video swapchain.
+
+The original decoder-to-OpenXR video path, controller-binding editor, subtitle projection rewrite, photo reveal effects and PICO-specific rendering changes are not included in this adaptation. They cross device/runtime contracts that differ in this edition and require a separate design and headset validation; this branch does not claim complete 0.7.0 parity.

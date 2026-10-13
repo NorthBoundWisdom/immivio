@@ -132,12 +132,15 @@ func _draw_adjustments() -> void:
 		super._draw_adjustments()
 		return
 	if int(_state.get("layout", 0)) in [2, 3] and int(_state.get("gallery_focus", -1)) < 0:
-		_set_backdrop(Vector2(1.55, 0.50))
+		_set_backdrop(Vector2(1.55, 0.70 if int(_state.get("layout", 0)) == 2 else 0.50), Vector2(0, -0.07))
 		_button(PHOTO_ADJUST_BACK, "", Vector2(-0.66, 0.19), Vector2(0.09, 0.065), true, "up")
 		_button(CLOSE, "", Vector2(0.66, 0.19), Vector2(0.09, 0.065), true, "close")
 		_label(I18n.t(Photo.Gallery.NAMES[int(_state.layout)]), Vector3(0, 0.19, 0.004), 24)
 		_adjustment_row(450, "gallery_scale", "Image size", Vector3(Photo.Gallery.SCALE_LIMITS.x, Photo.Gallery.SCALE_LIMITS.y, 0.05), 0.02)
 		_adjustment_row(451, "gallery_distance", "Distance", Vector3(Photo.Gallery.DISTANCE_LIMITS.x, Photo.Gallery.DISTANCE_LIMITS.y, 0.1), -0.125)
+		if int(_state.get("layout", 0)) == 2:
+			_adjustment_row(452, "wall_rows", "Wall rows", Vector3(1, 3, 1), -0.27)
+		_place_device_status(Vector2(0, -0.49 if int(_state.get("layout", 0)) == 2 else -0.32))
 		_refresh_adjustments(); return
 	_set_backdrop(Vector2(1.55, 0.64))
 	_button(PHOTO_ADJUST_BACK, "", Vector2(-0.66, 0.25), Vector2(0.09, 0.065), true, "up")
@@ -166,6 +169,7 @@ func _refresh_adjustments() -> void:
 		var value := float(_state.get(row.key, fallback))
 		var fraction := clampf((value - row.span.x) / (row.span.y - row.span.x), 0.0, 1.0)
 		row.label.text = "%.1f m" % value if row.key in ["screen_distance", "gallery_distance"] else ("%d%%" % roundi(value * 100) if row.key in ["screen_scale", "gallery_scale"] else "%.1f×" % value)
+		if row.key == "wall_rows": row.label.text = str(roundi(value))
 		row.fill.visible = fraction > 0
 		row.fill.mesh.size.x = maxf(0.001, fraction * 0.6)
 		row.fill.position.x = 0.03 + fraction * 0.3

@@ -532,7 +532,14 @@
     "IPD": "瞳距",
     "IPD compensation": "瞳距补偿",
     "Adjust until the two images merge. Saved per video.": "调整至双眼画面融合；每个视频独立保存。",
-    "Select a stereo video layout to adjust IPD.": "请先选择立体视频格式，再调整瞳距。"
+    "Select a stereo video layout to adjust IPD.": "请先选择立体视频格式，再调整瞳距。",
+    "White text": "白色文字",
+    "Yellow text": "黄色文字",
+    "Cyan text": "青色文字",
+    "Green text": "绿色文字",
+    "Dark text": "深色文字",
+    "Text color": "文字配色",
+    "Wall rows": "照片墙行数"
   },
   "zh_Hant": {
     "Reset": "重設",
@@ -1067,7 +1074,14 @@
     "IPD": "瞳距",
     "IPD compensation": "瞳距補償",
     "Adjust until the two images merge. Saved per video.": "調整至雙眼畫面融合；每個影片獨立儲存。",
-    "Select a stereo video layout to adjust IPD.": "請先選擇立體影片格式，再調整瞳距。"
+    "Select a stereo video layout to adjust IPD.": "請先選擇立體影片格式，再調整瞳距。",
+    "White text": "白色文字",
+    "Yellow text": "黃色文字",
+    "Cyan text": "青色文字",
+    "Green text": "綠色文字",
+    "Dark text": "深色文字",
+    "Text color": "文字配色",
+    "Wall rows": "照片牆列數"
   },
   "ja": {
     "Reset": "リセット",
@@ -1602,6 +1616,13 @@
     "IPD": "瞳孔間距離",
     "IPD compensation": "瞳孔間距離の補正",
     "Adjust until the two images merge. Saved per video.": "左右の映像が重なるまで調整。動画ごとに保存。",
-    "Select a stereo video layout to adjust IPD.": "立体動画の形式を選択してから調整してください。"
+    "Select a stereo video layout to adjust IPD.": "立体動画の形式を選択してから調整してください。",
+    "White text": "白い文字",
+    "Yellow text": "黄色い文字",
+    "Cyan text": "水色の文字",
+    "Green text": "緑の文字",
+    "Dark text": "暗い文字",
+    "Text color": "文字の配色",
+    "Wall rows": "写真ウォールの行数"
   }
 }

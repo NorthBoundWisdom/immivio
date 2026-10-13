@@ -1314,7 +1314,7 @@ func snapshot() -> Dictionary:
 	var position := pending_index if pending_index >= 0 else index
 	var title := str(queue[position].get("title", "")) if position >= 0 and position < queue.size() else display_name
 	return {"has_image": _texture != null, "loading": loading, "placeholder": placeholder_visible(), "preparing_depth": not _pending_display.is_empty(), "title": title, "index": position, "count": queue.size(),
-		"layout": gallery.mode, "gallery_scale": gallery.view_scale, "gallery_distance": gallery.view_distance, "gallery_swapping": gallery._swap_phase != 0, "gallery_focus": gallery.focus, "directory_loading": directory.loading, "directory_error": directory_error, "queue_complete": queue_complete,
+		"wall_rows": gallery.wall_rows, "layout": gallery.mode, "gallery_scale": gallery.view_scale, "gallery_distance": gallery.view_distance, "gallery_swapping": gallery._swap_phase != 0, "gallery_focus": gallery.focus, "directory_loading": directory.loading, "directory_error": directory_error, "queue_complete": queue_complete,
 		"can_background": can_background(),
 		"can_previous": not portrait_requested and queue.size() > 1 and (((geometry == Geometry.Geometry.FLAT or gallery.mode != 0) and queue_complete) or position > 0),
 		"can_next": not portrait_requested and queue.size() > 1 and (((geometry == Geometry.Geometry.FLAT or gallery.mode != 0) and queue_complete) or (position >= 0 and position < queue.size() - 1)),

@@ -159,6 +159,37 @@ class DlnaLibraryTest {
         }
     }
 
+    @Test fun incompleteMetadataKeepsDirectorySubtitlesAndFollowsChangedResourceUrls() {
+        var persisted = ""
+        var phase = 0
+        var offline = false
+        MediaServerClientTest.Fixture { request, _, body ->
+            when {
+                request.contains("/description.xml") -> MediaServerClientTest.Reply(body = description.toByteArray())
+                request.startsWith("HEAD ") -> MediaServerClientTest.Reply(body = byteArrayOf())
+                offline -> MediaServerClientTest.Reply(503, body = byteArrayOf())
+                else -> {
+                    val metadata = body.contains("BrowseMetadata")
+                    val resource = "<res protocolInfo=\"http-get:*:video/mp4:*\">/movie.mp4?token=$phase</res>"
+                    val caption = if (metadata || phase == 2) "" else
+                        "<res protocolInfo=\"http-get:*:application/x-subrip:*\">/sub-$phase.srt</res>"
+                    MediaServerClientTest.Reply(body = soap(xml(item(resource + caption))).toByteArray())
+                }
+            }
+        }.use { fixture ->
+            val library = DlnaLibrary({ persisted }, { persisted = it })
+            val id = library.save(JSONObject().put("location", fixture.url))
+            val oldUri = library.browse(id, "0").getJSONObject(0).getString("uri")
+            phase = 1
+            assertEquals(fixture.url + "/sub-1.srt", library.subtitles(oldUri).single().url.toString())
+            offline = true
+            val restored = DlnaLibrary({ persisted }, { persisted = it })
+            assertEquals(fixture.url + "/sub-1.srt", restored.subtitles(oldUri).single().url.toString())
+            offline = false; phase = 2
+            assertTrue(restored.subtitles(oldUri).isEmpty())
+        }
+    }
+
     @Test fun browseReplayRefreshRemovalAndCaptionHeaderReachOriginalByteStreams() {
         var endpoint = ""
         var state = ""
@@ -209,7 +240,7 @@ class DlnaLibraryTest {
             assertTrue(restored.subtitles(video).isEmpty())
             header = true
             assertEquals(endpoint + "/subs/movie.srt", restored.subtitles(video).single().url.toString())
-            assertEquals(listOf("children", "metadata", "metadata", "metadata"), flags)
+            assertEquals(listOf("children", "metadata", "metadata", "children", "metadata", "children"), flags)
             assertTrue(restored.subtitles("http://unknown/video.mp4").isEmpty())
         }
     }

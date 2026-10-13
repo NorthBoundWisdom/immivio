@@ -47,6 +47,10 @@ static func valid_mode(value: Variant) -> bool:
 	if value.has("external_subtitle_uri"):
 		if not value.external_subtitle_uri is String or value.external_subtitle_uri.length() > 8192: return false
 		if not value.external_subtitle_uri.is_empty() and not (value.external_subtitle_uri.begins_with("content://") or value.external_subtitle_uri.begins_with("file://")): return false
+	if value.has("track_choices"):
+		if not value.track_choices is Dictionary or value.track_choices.size() > 2: return false
+		for kind in value.track_choices:
+			if kind not in ["audio", "subtitle"] or not preload("res://scripts/track_preference.gd").valid(value.track_choices[kind]): return false
 	return StereoView.valid(value)
 
 func _bank_path(bank: int) -> String:

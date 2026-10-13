@@ -77,7 +77,7 @@ internal class DlnaLibrary(
                 val uri = entry.getString("uri")
                 references.remove(uri)
                 references[uri] = JSONObject().put("uri", uri).put("object_id", entry.getString("id"))
-                    .put("server", selected.json()).put("subtitles", entry.optJSONArray("subtitles") ?: JSONArray())
+                    .put("parent_id", objectId).put("server", selected.json()).put("subtitles", entry.optJSONArray("subtitles") ?: JSONArray())
             }
             // Keep every video in the complete displayed directory available for subtitle selection.
             while (references.size > DlnaClient.MAX_BROWSE_ITEMS) references.remove(references.keys.first())
@@ -91,14 +91,36 @@ internal class DlnaLibrary(
         val original = synchronized(this) { references[uri] } ?: return emptyList()
         val reference = JSONObject(original.toString())
         var captions = reference.optJSONArray("subtitles") ?: JSONArray()
-        // Refresh metadata for history replay: added/removed/language tracks can change on the server.
-        runCatching {
-            val selected = server(reference.getJSONObject("server")) ?: return@runCatching
-            val entries = DlnaClient.browse(selected, reference.getString("object_id"), metadata = true)
-            val entry = (0 until entries.length()).map { entries.getJSONObject(it) }.firstOrNull { it.optString("uri") == uri }
-            captions = entry?.optJSONArray("subtitles") ?: JSONArray()
+        // Object IDs identify a media item; expiring resource URLs do not.
+        val stored = reference.optJSONObject("server")?.let(::server)
+        val endpoint = stored?.let { synchronized(this) { saved[it.id]?.let(::server) ?: found[it.id] ?: it } }
+        val objectId = reference.optString("object_id")
+        var headerUri = uri
+        fun matching(rows: JSONArray): JSONObject? {
+            val hits = (0 until rows.length()).mapNotNull { rows.optJSONObject(it) }
+                .filter { it.optString("kind") == "video" && it.optString("id") == objectId }
+            return hits.singleOrNull()
         }
-        if (captions.length() == 0) captions = runCatching { DlnaClient.captionHeader(uri) }.getOrDefault(JSONArray())
+        fun accept(row: JSONObject): JSONArray {
+            DlnaClient.httpUri(row.optString("uri"))?.let { headerUri = it.toString() }
+            return row.optJSONArray("subtitles") ?: JSONArray()
+        }
+        if (endpoint != null && objectId.isNotBlank()) {
+            val metadata = runCatching { matching(DlnaClient.browse(endpoint, objectId, metadata = true)) }.getOrNull()
+            val refreshed = metadata?.let(::accept)
+            if (refreshed != null && refreshed.length() > 0) {
+                captions = refreshed
+            } else {
+                // An incomplete metadata response cannot revoke the cached tracks.
+                // Only a successful, complete parent listing can confirm their removal.
+                val parent = reference.optString("parent_id")
+                if (parent.isNotBlank() && parent != "-1" && parent != objectId) {
+                    val directory = runCatching { DlnaClient.browse(endpoint, parent) }.getOrNull()
+                    if (directory != null) captions = matching(directory)?.let(::accept) ?: JSONArray()
+                }
+            }
+        }
+        if (captions.length() == 0) captions = runCatching { DlnaClient.captionHeader(headerUri) }.getOrDefault(JSONArray())
         synchronized(this) {
             if (references[uri] === original) {
                 references.remove(uri)

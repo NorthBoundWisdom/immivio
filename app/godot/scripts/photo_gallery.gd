@@ -19,6 +19,7 @@ const ANIMATION_SECONDS := 0.34
 var photo: Node3D
 var previews := Previews.new()
 var mode := Layout.SINGLE
+var wall_rows := 1
 var view_scale := 1.0
 var _scales := [1.0, 1.0, 1.0, 1.0]
 var view_distance := 3.0
@@ -111,7 +112,15 @@ func set_view_distance(value: float) -> void:
 	if is_equal_approx(next, view_distance): return
 	view_distance = next; _distances[mode] = next; _reflow = true
 
+func set_wall_rows(value: int) -> void:
+	var rows := clampi(value, 1, 3)
+	if wall_rows == rows: return
+	wall_rows = rows
+	_wall_groups.clear(); _wall_group = 0
+	_reflow = true
+
 func restore_settings(settings: ConfigFile) -> void:
+	set_wall_rows(int(settings.get_value("photo_screen", "wall_rows", 1)))
 	mode = clampi(int(settings.get_value("photo_screen", "layout", 0)), 0, 3)
 	for layout in 4:
 		var scale := float(settings.get_value("photo_screen", "layout_%d_scale" % layout,
@@ -122,6 +131,7 @@ func restore_settings(settings: ConfigFile) -> void:
 	view_scale = _scales[mode]; view_distance = _distances[mode]; _reflow = true
 
 func save_settings(settings: ConfigFile) -> void:
+	settings.set_value("photo_screen", "wall_rows", wall_rows)
 	settings.set_value("photo_screen", "layout", mode)
 	settings.set_value("photo_screen", "gallery_scale", view_scale)
 	for layout in 4:
@@ -303,6 +313,31 @@ func _fragment_count() -> int:
 	var rows := clampi(floori(2.2 / (0.80 * view_scale)), 1, 3)
 	return mini(mini(MAX_CARDS, columns * rows), photo.queue.size())
 
+## Ordered rows use one bounded angular span and a shared vertical budget.
+## Scaling never stretches an image, and partial directories never wrap past their end.
+func _build_wall_rows(current: int) -> void:
+	var height := minf(1.05 * view_scale, 2.2 / wall_rows)
+	var gap := 0.06
+	var offset := 0
+	var visited := {}
+	for row in wall_rows:
+		var items := []
+		var angle := 0.0
+		var capacity := ceili(mini(MAX_CARDS - visited.size(), photo.queue.size() - offset) / float(wall_rows - row))
+		while items.size() < capacity and offset < photo.queue.size() and visited.size() < MAX_CARDS:
+			var index := _neighbor(current, offset)
+			if index < 0 or visited.has(index): break
+			var size := Vector2(height * _aspect(index), height)
+			if size.x > view_distance * 1.5: size *= view_distance * 1.5 / size.x
+			var span := 2.0 * atan(size.x * 0.5 / view_distance)
+			if not items.is_empty() and angle + gap + span > PI * 1.6: break
+			if not items.is_empty(): angle += gap
+			items.append({"index": index, "size": size, "angle": angle + span * 0.5})
+			angle += span; offset += 1; visited[index] = true
+		var y := ((wall_rows - 1) * 0.5 - row) * (height + gap)
+		for item in items:
+			_add(item.index, anchor * _ring_pose(item.angle - angle * 0.5, view_distance, y), item.size, RECT)
+
 func _build(current: int) -> void:
 	_pool = cards; cards = {}
 	var used := {current: true} if mode == Layout.SIDES else {}
@@ -319,6 +354,8 @@ func _build(current: int) -> void:
 				var size := Vector2(height * _aspect(index), height)
 				if size.x > radius * 0.25: size *= radius * 0.25 / size.x
 				_add(index, anchor * _ring_pose(angle * side, radius, (2 - rank) * radius * 0.22), size, RECT)
+	elif mode == Layout.WALL and wall_rows > 1:
+		_build_wall_rows(current)
 	elif mode == Layout.WALL:
 		var radius := view_distance
 		var height := 1.05 * view_scale
