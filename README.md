@@ -1,143 +1,98 @@
+<p align="center"><img src="website/assets/icon.png" width="88" alt="Thru3D icon"></p>
+
 # Thru3D Media Player
 
-This repository is maintained independently by **NorthBoundWisdom**. It originated from [zerochocobo/Thru3D-Media-Player](https://github.com/zerochocobo/Thru3D-Media-Player); the original GPL-3.0 license and source history are retained. Issues, contributions and releases for this edition belong to [this repository](https://github.com/NorthBoundWisdom/Thru3D-Media-Player). Selected 0.7.0 behaviors have been reimplemented on our existing architecture; this branch is not a full upstream 0.7.0 merge.
+**Your videos and photos, with room to look around.**
 
-[简体中文](README.zh-CN.md) · [Changelog](CHANGELOG.md) · [中文更新日志](CHANGELOG.zh-CN.md)
+Thru3D is an open-source VR/MR media player for **Meta Quest and PICO**. Watch videos on a virtual screen, step into 180° and 360° scenes, browse stereo photos, and play media from your headset or network library.
 
-Standalone Android VR/MR media player for Meta Quest and PICO. Thru3D combines a Godot OpenXR interface, Android media access, a native libmpv renderer, and MNN inference for video matting and depth-based stereo rendering.
+[Website](https://northboundwisdom.github.io/Thru3D-Media-Player/) · [Download APKs](https://github.com/NorthBoundWisdom/Thru3D-Media-Player/releases/latest) · [Getting started](https://northboundwisdom.github.io/Thru3D-Media-Player/guide/) · [简体中文](README.zh-CN.md)
 
-Current source version: **0.6.0** (Android versionCode **13**). An experimental standard OpenXR Android export is also available.
+This repository continues development of [zerochocobo/Thru3D-Media-Player](https://github.com/zerochocobo/Thru3D-Media-Player). **Version 0.6.0 is our last shared development baseline. From that point, this edition follows its own development and release path and is independently maintained by NorthBoundWisdom.** The GitHub fork relationship has been removed; the original source history, attribution and GPL-3.0 license are preserved.
 
-Minimum compatibility targets are **Quest 2** and **PICO Neo3**. Source/build compatibility does not establish hardware performance or interaction acceptance on every device.
+## See it in action
 
-Download installable APKs from [GitHub Releases](https://github.com/NorthBoundWisdom/Thru3D-Media-Player/releases), under each release's **Assets**. Tag ZIP/TAR downloads contain source code. Release assets include PICO, QUEST and OpenXR APKs in AI and No AI variants, with SHA256 hashes and build receipts. See the release notes for signing and installation compatibility.
+![Thru3D playing the supplied 8K stereo video with its playback controls visible](website/assets/screenshots/playback.png)
 
-## Features
+*Actual Android emulator capture using `blandscape-60mbps.mp4`. Screenshots show the current development build through its 2D diagnostic entry; headset stereoscopy, tracking and passthrough are experienced on a supported device.*
 
-- Video and photo viewing: flat, 180° and 360° projections; mono and side-by-side stereo.
-- Person matting and passthrough composition for supported 180° video projections.
-- Depth-based 2D-to-3D viewing for flat mono videos and photos.
-- Local Android document access, SMB, WebDAV, DLNA and media-server libraries; 115, Baidu, Aliyun Drive, Quark and OneDrive connections.
-- Audio tracks, text subtitles and flat-video PGS bitmap subtitles; 0.25×–3× playback speed with pitch correction and per-file viewing preferences.
-- Plex phone/computer pairing and original-file library playback.
-- Dolby Vision Profile 5 color handling on compatible hardware; no blanket profile, certification or native HDR claim.
-- Picture rotation, flat-screen distance/size/curvature and text subtitle sizing/position; subtitles remain upright when the picture rotates.
-- Controller ray/trigger selection and hand interaction; English, Chinese and Japanese UI.
-- Persistent timestamp bookmarks, source-frame previews for recent playback, and paged media navigation.
-- Rendered hands/controllers and display-quality controls, including sharpness and flat-screen adjustments.
-- VR-native account forms and in-app web login; speed-first and precise seek policies.
-- Immersive photo presentation, pinch-drag navigation, adjacent-photo preload and cached 3D conversion; photo stereo strength is adjustable up to 200%.
-
-- Media-server sections, filters, details, continuation pages and capability-dependent favorites; manual DLNA endpoints and exposed external subtitles.
-- Photo distance/size controls and a separate 2–8× magnifier referenced to the displayed image; source-dependent file management.
-
-## Synchronization and playback queues
-
-Playback settings include Synchronization and Queue. Subtitle and audio offsets range from −10 to +10 seconds in 50 ms steps, with separate resets and per-video persistence. The subtitle popup and Synchronization page can load SRT/ASS/SSA/VTT through the Android document picker without a matching video filename. Reopening the video attempts to restore the chosen document; select it again or forget the association if its permission is lost.
-
-The queue supports play, move up/down, remove and clear. Add videos opens the library for individual additions or the currently loaded list; paged sources can be added page by page without recursively scanning remote folders. Up to 500 entries and their order persist across restarts without starting playback. Auto-play next, repeat queue and shuffle default off. Single-video looping takes precedence. Automatic next playback starts at zero after the final frame is presented; manual navigation retains resume behavior.
-
-- Explicit per-video audio/subtitle choices, persistent sound level/mute, five text-caption palettes and double-tap 3D/mute shortcuts.
-- Photo walls with remembered 1–3-row layouts; wrapped full-filename hover tips.
-
-## Source release
-
-This repository contains application source, build scripts, third-party source pins/patches, and tests. Model weights, compiled dependencies, signing keys, personal media and development records are excluded.
-
-**AI is optional at build time.** The model-free Python workflow prepares verified non-AI dependencies automatically; supply the host toolchain described in [BUILD.md](docs/BUILD.md). It retains ordinary video/photo playback, existing stereo videos, text subtitles and media browsing. Standard mpv has additional capability limits, including unavailable PGS bitmap subtitles and unverified source-frame PTS; see the [build-mode comparison](docs/BUILD.md#build-modes-and-compatibility). The AI conversion workflow now defaults to public upstream RVM weights adapted for the player. Build-selected model packs also support compatible custom/distilled weights under their own IDs and hashes. The historical student weights are not hosted, and raw upstream checkpoints still require conversion. See [model requirements](docs/MODELS.md) before starting an AI-enabled Android build. This source snapshot is not presented as a complete corresponding-source offer for an existing APK.
-
-The desktop Godot tests and native depth-stabilizer test can run without model weights or an Android toolchain.
-
-## Architecture
-
-```text
-Godot scenes / GDScript / OpenXR
-              │
-Android Kotlin plugin: media libraries, permissions, playback sessions
-              │ JNI
-libmpv / FFmpeg → shared GPU video textures → Godot stereo rendering
-              └ MNN OpenCL: recurrent matting and monocular depth
-```
-
-| Directory | Purpose |
+| Playback settings | Display preferences |
 | --- | --- |
-| `app/godot` | XR scenes, menus, shaders, localization and host tests |
-| `android` | Kotlin Godot plugin, Gradle wrapper and JVM tests |
-| `native` | JNI media bridge, rendering and inference backends |
-| `cloud/openlist` | Embedded OpenList Go adapter and synthetic tests |
-| `tools` | Build, conversion and verification entry points |
-| `models` | Model contracts, checksums and licenses; no weights |
-| `third_party` | Dependency sources, patches, provenance and notices |
-| `benchmarks`, `tests` | Verification programs and synthetic fixtures |
+| ![Playback settings in Thru3D](website/assets/screenshots/settings.png) | ![Display preferences in Thru3D](website/assets/screenshots/display.png) |
 
-## Getting started
+## What you can do
 
-```powershell
-git clone https://github.com/NorthBoundWisdom/Thru3D-Media-Player.git Thru3D
-cd Thru3D
-python tools/Check-PublicSource.py
+- **Watch your way.** Flat screens, 180° and 360° projections, fisheye video, and side-by-side or top-bottom stereo layouts. Adjust the screen's size, distance and curvature where supported.
+- **Bring your library.** Open local files or connect SMB, WebDAV, DLNA and supported media servers. Cloud connections are also available, subject to the service and your account permissions.
+- **Keep a comfortable setup.** Move panels with a controller grip, adjust viewing distance, and use optional reclining mode. Per-video viewing preferences help you return to a familiar setup.
+- **Take control of playback.** Choose audio and subtitles, adjust speed, save timestamp bookmarks, correct audio/subtitle timing, and build a persistent playback queue.
+- **Explore photographs.** View single photos, side previews, a photo wall or memory fragments. Supported spatial-photo and spatial-video formats retain their stereo views.
+- **Try optional AI effects.** The AI edition adds depth-based 2D-to-3D viewing for supported flat mono media and person matting for supported content. Ordinary playback is also available in an edition without AI models.
 
-# Source-only tests: point this at your Godot executable.
-$env:GODOT_EXE = (Get-Command godot).Source
-./tools/Test-Source.ps1
-```
+The current development branch additionally includes remembered per-video track choices, persistent volume/mute, five text-subtitle palettes, 1–3-row photo walls and double-tap 3D/mute shortcuts. **Published APKs may lag behind `main`; check the release notes for the features in your download.**
 
-For Android, prepare the toolchain described in [BUILD.md](docs/BUILD.md). AI-enabled builds additionally require externally supplied, version-matched models.
+## Download the right edition
 
-For an Android base player without AI, prepare Godot Android templates, Go, a JDK and the Android SDK, then use the portable entry point. It verifies/downloads standard mpv libraries and builds the OpenList AAR from source:
+Open [GitHub Releases](https://github.com/NorthBoundWisdom/Thru3D-Media-Player/releases/latest), expand **Assets**, and choose an **`.apk`** matching your headset and preferred edition. The source ZIP/TAR archives are for developers.
 
-```sh
-python3 tools/build_player.py --vendor Quest --build-type Release
-```
+| Headset | Filename to look for |
+| --- | --- |
+| Meta Quest | `Thru3D-QUEST-…apk` |
+| PICO | `Thru3D-PICO-…apk` |
+| Other compatible Android OpenXR runtimes | `Thru3D-OpenXR-…apk` — experimental |
 
-Use `--vendor Pico` or `--vendor OpenXR` for the other Android targets. The following is the retained AI-enabled workflow:
+| Edition | Choose it when… |
+| --- | --- |
+| **No AI** (`noai`) | You want ordinary video/photo playback and existing stereo media with a smaller installation. Live AI conversion is unavailable. |
+| **AI** (`ai`) | You want the optional depth and person-matting features. Downloads are larger, and results depend on your device and media. |
 
-```powershell
-$env:THRU3D_TOOL_ROOT = Join-Path $HOME '.cache/thru3d-toolchain'
-./tools/Import-ModelAssets.ps1 -FromDirectory ./external-model-assets
-./tools/Build-Player.ps1 -ToolRoot $env:THRU3D_TOOL_ROOT -UsePreparedModelAssets -XrVendor Quest
-# PICO uses a separate export preset and vendor loader.
-./tools/Build-Player.ps1 -ToolRoot $env:THRU3D_TOOL_ROOT -UsePreparedModelAssets -XrVendor Pico
-# Experimental: requires a compatible standard OpenXR runtime on the device.
-./tools/Build-Player.ps1 -ToolRoot $env:THRU3D_TOOL_ROOT -UsePreparedModelAssets -XrVendor OpenXR
-```
+Quest 2 and PICO Neo3 are compatibility targets. Support and performance vary by device, codec and video resolution; successful packaging or emulator playback does not establish performance on every headset. Standard OpenXR builds require a compatible Android runtime.
 
-Rebuildable outputs use `build/output/`; temporary data uses `tmp/`. Formal release archives and private signing material use persistent directories, all excluded from public Git. A locally built application has your own signing identity. It cannot necessarily update an installed distribution signed by another key.
+### Your first session
 
-## Controls
+1. **Install.** Enable developer mode on your headset, connect it to your computer, approve USB debugging, and install the selected APK with your preferred sideloading tool.
+2. **Open.** Launch Thru3D from your headset's sideloaded-app library. Allow the file or folder access you want to use.
+3. **Choose media.** Open a local video/photo or add a network source in the library.
+4. **Match the picture.** If the image looks split or distorted, select its projection and stereo layout. For a VR180 SBS fisheye source, use **Fisheye + SBS**.
+5. **Make it comfortable.** Recenter the view, set the screen placement, and choose audio/subtitles from the playback controls.
 
-Hold a controller grip to move the canvas (or drag a corner to resize it). Tap the trigger outside controls to show or hide the playback bar at the canvas centre; the playback panel uses 75% width and 2/3 height; flat video and its controls stay vertical relative to the floor by default. Settings → General offers Reclining mode (off by default), which allows tilted screens and menus, applies immediately and persists independently of Follow. Immersive controls sit below the reset gaze centre and face that direction; menu reset uses the horizontal viewing direction unless Reclining mode is enabled; the trigger also selects controls and drags sliders. Open the VR menu with the left Menu button. Point a controller ray at a control and press that controller's trigger. Libraries, settings, list popups and photo menus use thumbsticks only for scrolling. The ordinary video control bar allows seek, volume and immersive zoom shortcuts; pointer capture suppresses them, with a return-to-center gate after capture or lists close. Hand pointing/pinching is also supported. Desktop input is intended for development previews.
+For step-by-step help, see the [user guide](https://northboundwisdom.github.io/Thru3D-Media-Player/guide/).
 
-Timeline dragging defaults to **Fast seek**, starting near a keyframe for a quicker response. Choose **Settings → Video → Seek mode → Exact seek** when landing at the requested time matters more than latency. The choice is saved across restarts and is also available in playback settings. Dragging previews the target; releasing the trigger submits one seek. Bookmarks can follow this setting or select their own precision.
+## Everyday controls
 
-Playback controls stay aligned with the canvas-centre direction at a readable distance. Their plane follows the current view while idle, and stays fixed during a slider drag. Supported headsets display menus through a native high-resolution XR overlay with scalable text. Display quality also controls video geometry antialiasing; Enhanced uses stronger antialiasing for flat-screen edges while keeping immersive playback lighter.
+| Action | How |
+| --- | --- |
+| Show or hide playback controls | Left Menu button, or tap the picture with the trigger |
+| Select a control | Point with the controller ray and press its trigger; supported hand pointing/pinching is also available |
+| Move the picture or library window | Hold the grip; use the same hand's thumbstick to adjust distance where available |
+| Seek or change volume | Use the playback controls; thumbsticks provide shortcuts while lists and captured sliders are inactive |
+| Scroll a library or settings list | Use the thumbstick while that list is open |
+| Return to the library | Use **Close video** on the playback controls |
+| Watch while reclined | Enable **Settings → General → Reclining mode**; Follow is a separate setting |
 
-AI and no-AI Android builds install as separate applications (**Thru3D AI** and **Thru3D No AI**) with different package IDs and local signing keys. The no-AI app keeps its existing identity; both can coexist on one headset with independent data.
+In the current development build, double-tap the video **3D** icon to toggle the effect and the **volume** icon to mute/restore sound. The UI supports English, Simplified Chinese, Traditional Chinese and Japanese.
 
-The library uses a curved window. Aim at it and hold the controller grip to drag it left/right, or in both axes in reclining mode. While holding grip, move that controller’s stick up/down to adjust distance between 0.8 and 3 metres; releasing saves the distance. Video grips likewise drag placement, with grip plus stick controlling depth. Closing a video hides playback controls and returns to the previous directory and browse position. Library settings are prewarmed at startup, and cache-size statistics run in the background. The library footer contains only follow, temporary passthrough and battery/clock status in one row. User menu/back actions cannot dismiss the library. Video playback omits follow and temporary passthrough, retains one close-video action to stop playback and return to the library, and places all floating actions and battery/clock above the timeline. The status capsule matches the action height, colour and corners. Settings actions and choices share a single-row style with inline icons, and information is shown as plain text. The right side of play provides video-mode, screen, playback-speed and loop shortcuts with compact popups above the bar; full settings remain available. The playback bar has no passthrough entry. Closing a short-press Home dialog or recovering XR focus does not automatically centre application screens or menus. Holding Home requests recentering after the new tracked camera pose is available, placing content in front of the current view; manual in-app Recenter also remains available.
+## A few useful answers
 
-Playback Settings → IPD exposes software inter-eye separation compensation, vertical alignment and reset for stereo VR180 content. Corrections are percentages of one displayed eye, saved per video on release; they do not alter lens spacing or XR runtime IPD. Select the correct SBS/TB layout first. Playback settings and popups are prewarmed, and common pages retain and reuse their controls.
+**Can I use it without AI?** Yes. Choose the No AI APK for ordinary playback and pre-existing stereo media. It uses a different playback backend; PGS bitmap subtitles and some specialized spatial/Dolby features differ from the AI build. See the [build capability table](docs/BUILD.md#build-modes-and-compatibility) if you need those formats.
 
-## Status and limitations
+**Why won't an APK update my existing installation?** Android requires matching application IDs and signing keys. Builds from different distributors, or some CI builds, may not update one another. Keep your existing installation and saved data until you have checked the release's installation notes. Current development builds give AI and No AI editions separate app identities; check the particular release before installing both.
 
-- Early source release; Android ARM64 builds use separate Quest, PICO and experimental standard OpenXR presets.
-- Quest 3 has been used during development. PICO packaging checks do not establish PICO hardware playback, passthrough or hand-tracking validation.
-- Matting quality, GPU support and sustained performance depend on the model, device and video. Host/packaging checks are not headset performance measurements.
-- AI depth operates on flat mono content; video matting is limited to supported sources, including the dedicated spatial-video path; photo portrait matting applies to selected ordinary flat photos.
-- Cloud/media-service adapters depend on third-party services and user authorization.
+**Will any 8K or 3D video play smoothly?** Resolution alone is not enough to tell. Codec, bitrate, projection, effects and headset hardware all matter. AI effects add processing work. The screenshots are examples of the interface, not a headset performance benchmark.
 
-Read [architecture](docs/ARCHITECTURE.md), [build](docs/BUILD.md), [models](docs/MODELS.md) and [testing](docs/TESTING.md) for implementation details. Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md).
+**Does the screenshot video come with the app?** No. The supplied sample was used to capture the interface; the original video is not included in the repository or downloads.
 
-## License
+**Where should I report a problem?** Open an [issue in this repository](https://github.com/NorthBoundWisdom/Thru3D-Media-Player/issues). Include the headset, app version/edition, media format and steps to reproduce. Share a short sample only if you are allowed to distribute it; keep account credentials and private media out of public reports.
 
-Project-owned source is released under **GPL-3.0-only**. See [LICENSE](LICENSE) for the complete GNU GPL v3 text and [licensing scope](docs/LICENSING.md) for third-party code, models, assets and binary distribution requirements. Third-party components keep their existing licenses; this declaration does not relicense them or grant rights to excluded assets.
+## Development, history and license
 
-The embedded OpenList component is **AGPL-3.0**; its adapter, pinned build recipe and upstream/dependency notices are included. Combined binary distribution must satisfy its applicable AGPL obligations as explained in the licensing scope.
+- [English changelog](CHANGELOG.md) · [中文更新日志](CHANGELOG.zh-CN.md)
+- [Build from source](docs/BUILD.md) · [Model requirements](docs/MODELS.md)
+- [Architecture](docs/ARCHITECTURE.md) · [Testing](docs/TESTING.md) · [Contributing](CONTRIBUTING.md)
+- Project source: [GPL-3.0-only](LICENSE). Third-party components retain their licenses, including the embedded OpenList component's AGPL-3.0 obligations. See [licensing details](docs/LICENSING.md).
 
-## Spatial media and photo layouts
+## More from NorthBoundWisdom
 
-- Native stereo HEIC/HEIF spatial photos and iPhone MV-HEVC spatial video playback; spatial video can use the supported people-passthrough path. Spatial-photo output is sRGB, not a native HDR claim.
-- Side thumbnails, Photo Wall and Memory Fragments, with asynchronous loading feedback and remembered layouts.
-- Portrait passthrough for selected ordinary flat photos, with 0–200% stereo strength. Native stereo/panorama photos and overview grids are outside this portrait path.
-- Session-scoped head following for flat videos, single photos/portraits and menus; an independent environment-passthrough footer control. No permanent spatial-anchor or full-wall head-lock claim.
-- Stereo/left-view/right-view video display and per-video horizontal/vertical alignment. Both eyes display the selected logical view in single-view mode; it does not disable one panel or alter headset IPD.
+[**Ravo Studio**](https://northboundwisdom.github.io/Ravo/) — organize, review and develop your photographs.
+
+[**SonaFolio**](https://northboundwisdom.github.io/sonafolio/) — turn podcasts and media into transcripts and a local knowledge library.

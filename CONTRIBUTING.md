@@ -11,3 +11,7 @@ VR menus use controller ray/trigger selection or hand interaction, never thumbst
 Distribution APK filenames use platform names `QUEST`, `PICO` and `OpenXR`, with the requested software version and build date. Do not use specific headset models in distribution filenames.
 
 For every version update, maintain both `CHANGELOG.md` and `CHANGELOG.zh-CN.md` with the same release coverage. Review the README feature overview: add important durable capabilities, while keeping fixes and detailed history in the changelogs. Preserve media/device limitations and use English commit messages.
+
+The user website lives in `website/`, with an English home/guide and matching pages under `website/zh/`. Run `python3 tools/check_website.py` and `node --check website/assets/site.js` after editing it. The Pages workflow publishes this directory from `main` and refreshes the APK selector when a GitHub Release is published. Keep actual screenshots and their capture manifest together; do not commit the source video or device diagnostics.
+
+The supplied application artwork is `app/godot/branding/thru3d-icon.png`. After replacing it, run `godot --headless --xr-mode off --path app/godot --script ../../tools/prepare_branding.gd` for adaptive safe-area sizing and the website icon. Keep the separate Android monochrome mask consistent with the mark. All three Android export presets share these assets.

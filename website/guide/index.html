@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>Thru3D — Getting started</title>
+<meta name="description" content="An open-source VR media player for Meta Quest and PICO. Download Thru3D, bring your library, and watch videos and stereo photos your way.">
+<link rel="canonical" href="https://northboundwisdom.github.io/Thru3D-Media-Player/guide/">
+<link rel="alternate" hreflang="zh-CN" href="https://northboundwisdom.github.io/Thru3D-Media-Player/zh/guide/">
+<link rel="alternate" hreflang="x-default" href="https://northboundwisdom.github.io/Thru3D-Media-Player/guide/">
+<meta property="og:title" content="Thru3D — Getting started">
+<meta property="og:description" content="An open-source VR media player for Meta Quest and PICO. Download Thru3D, bring your library, and watch videos and stereo photos your way.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://northboundwisdom.github.io/Thru3D-Media-Player/guide/">
+<meta property="og:image" content="https://northboundwisdom.github.io/Thru3D-Media-Player/assets/screenshots/playback.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="../assets/icon.png" type="image/png">
+<link rel="apple-touch-icon" href="../assets/icon.png">
+<link rel="stylesheet" href="../assets/site.css">
+<script defer data-site-script src="../assets/site.js">
+</script>
+</head>
+<body data-theme="dark">
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+<div class="wrap header-inner">
+<a class="brand" href=".././">
+<img src="../assets/icon.png" alt="" width="39" height="39">Thru3D</a>
+<nav class="nav" aria-label="Main navigation">
+<a class="optional" href=".././#experience">Experience</a>
+<a href=".././#download">Download</a>
+<a class="optional" href="../guide/">Guide</a>
+<a class="locale" href="../zh/guide/" lang="zh-CN">中文</a>
+<button class="theme" type="button" data-theme-toggle aria-label="Toggle light theme" aria-pressed="false">◐</button>
+</nav>
+</div>
+</header>
+<main id="main" class="wrap guide-layout">
+<nav class="guide-nav" aria-label="Guide contents">
+<p class="eyebrow">User guide</p>
+<a href="#install">Install</a>
+<a href="#first-video">Your first video</a>
+<a href="#controls">Everyday controls</a>
+<a href="#library">Libraries & photos</a>
+<a href="#troubleshooting">Troubleshooting</a>
+</nav>
+<article class="guide-content">
+<p class="eyebrow">THRU3D / GETTING STARTED</p>
+<h1>Start with your own media.</h1>
+<p>Choose an APK, open a video, and put the picture where you want it.</p>
+<section id="install">
+<h2>01 / Install on your headset</h2>
+<ol>
+<li>Choose Quest, PICO or experimental OpenXR on the <a href=".././#download">download page</a>, then select AI or No AI.</li>
+<li>Enable developer mode, connect your headset by USB, and approve debugging.</li>
+<li>Install the downloaded APK with your preferred sideloading tool. The file should end in <code>.apk</code>; source archives are for developers.</li>
+<li>Launch Thru3D from the headset’s sideloaded-app library.</li>
+</ol>
+<div class="note">An update needs a matching application ID and signing key. Packages from other distributors or some CI builds may not update an existing installation. Check the release notes and keep your current app and data until you have confirmed compatibility.</div>
+</section>
+<section id="first-video">
+<h2>02 / Play your first video</h2>
+<ol>
+<li>Open a local file in the library and grant access to the file or folder you want to use.</li>
+<li>Match the projection and stereo layout to your source, then check eye order.</li>
+<li>Use the playback controls to recenter, choose audio/subtitles, and set the screen placement.</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Media</th>
+<th>Start with</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Ordinary video</td>
+<td>Flat + mono</td>
+</tr>
+<tr>
+<td>Side-by-side / top-bottom stereo</td>
+<td>SBS / TB to match the source; choose projection separately</td>
+</tr>
+<tr>
+<td>VR180 SBS fisheye</td>
+<td>Fisheye + SBS; match field of view to the source</td>
+</tr>
+<tr>
+<td>360° equirectangular video</td>
+<td>360° + the source’s mono/stereo layout</td>
+</tr>
+</tbody>
+</table>
+<p class="note">These are starting points, not a guarantee of automatic detection. Adjust manually when names, metadata and actual content disagree.</p>
+</section>
+<section id="controls">
+<h2>03 / Everyday controls</h2>
+<table>
+<tbody>
+<tr>
+<th>Show playback controls</th>
+<td>Left Menu button, or tap the picture with the trigger.</td>
+</tr>
+<tr>
+<th>Select and adjust</th>
+<td>Point a controller ray and press the trigger. Hold and drag sliders.</td>
+</tr>
+<tr>
+<th>Move the interface</th>
+<td>Hold grip to move a picture or library window. Use the same hand’s thumbstick for distance where supported.</td>
+</tr>
+<tr>
+<th>Scroll</th>
+<td>Use a thumbstick in an open list or settings view. Lists take priority over playback shortcuts.</td>
+</tr>
+<tr>
+<th>Watch reclined</th>
+<td>Settings → General → Reclining mode. Follow is controlled separately.</td>
+</tr>
+<tr>
+<th>Return to the library</th>
+<td>Choose Close video to return to the previous browsing location.</td>
+</tr>
+</tbody>
+</table>
+<h3>Subtitles, timing and queues</h3>
+<p>Select a subtitle track or load SRT, ASS, SSA or VTT from the subtitle controls. The synchronization page adjusts audio and subtitle timing independently by up to ten seconds. Save a playback queue, then optionally enable automatic advance, repeat or shuffle.</p>
+<p>The current development build remembers explicit audio/subtitle choices per video and offers five text-caption palettes. Double-tap the video 3D/volume icons to toggle the effect/mute. Check your APK’s release notes for availability.</p>
+</section>
+<section id="library">
+<h2>04 / Connect a library. Explore photos.</h2>
+<p>Use local files, SMB, WebDAV, DLNA or supported media servers. Add a source, then supply its address and required authorization. Browsing, favorites, sidecar subtitles and file management depend on the source.</p>
+<p>Photos can be viewed individually, with side previews, on a photo wall or as memory fragments. The development build supports 1–3 wall rows. Supported HEIC/HEIF spatial photos and MV-HEVC spatial videos can retain their stereo views, depending on the build backend and source.</p>
+<p>AI depth applies to supported flat mono content; person matting has projection and model restrictions. No AI builds do not perform live conversion. <a href="https://github.com/NorthBoundWisdom/Thru3D-Media-Player/blob/main/docs/BUILD.md#build-modes-and-compatibility">Compare build capabilities ↗</a>
+</p>
+</section>
+<section id="troubleshooting">
+<h2>05 / When something needs attention</h2>
+<h3>Split, distorted or inverted stereo</h3>
+<p>Check Flat/180°/Fisheye/360° projection, then mono/SBS/TB layout. Swap eyes if necessary. Software eye alignment does not change headset lenses or physical IPD.</p>
+<h3>Slow playback or unavailable effects</h3>
+<p>Disable live AI effects first, try lower-bitrate media, and check the device, codec and build capabilities. Decoding an 8K file in an emulator does not establish a headset frame-rate target.</p>
+<h3>Missing subtitles</h3>
+<p>Check that a track is selected and any external file is still accessible. The No AI standard-mpv backend does not provide the project’s private PGS interface; try a text subtitle track.</p>
+<h3>Report an issue</h3>
+<p>Include your headset, version/AI edition, media format and reproduction steps in <a href="https://github.com/NorthBoundWisdom/Thru3D-Media-Player/issues">Issues</a>. Share samples only when you have distribution permission, and keep credentials private.</p>
+<p>Developer references: <a href="https://github.com/NorthBoundWisdom/Thru3D-Media-Player/blob/main/docs/BUILD.md">Build</a> · <a href="https://github.com/NorthBoundWisdom/Thru3D-Media-Player/blob/main/docs/MODELS.md">Models</a> · <a href="https://github.com/NorthBoundWisdom/Thru3D-Media-Player/blob/main/CHANGELOG.md">Changelog</a>
+</p>
+</section>
+</article>
+</main>
+<footer class="site-footer wrap">
+<div class="footer-top">
+<p>Continued from version 0.6.0 of <a href="https://github.com/zerochocobo/Thru3D-Media-Player">zerochocobo/Thru3D-Media-Player</a>. Independently developed and released by NorthBoundWisdom from that baseline, with the original attribution, history and GPL-3.0 license preserved.</p>
+<div class="footer-links">
+<a href="https://github.com/NorthBoundWisdom/Thru3D-Media-Player">GitHub ↗</a>
+<a href="https://github.com/NorthBoundWisdom/Thru3D-Media-Player/issues">Report an issue ↗</a>
+<a href="https://github.com/NorthBoundWisdom/Thru3D-Media-Player/blob/main/LICENSE">GPL-3.0 ↗</a>
+</div>
+</div>
+<div class="copyright">
+<span>Thru3D · NorthBoundWisdom</span>
+<span>Open source · Independently maintained · Hosted on GitHub Pages</span>
+</div>
+</footer>
+<dialog class="lightbox" aria-label="Application screenshot">
+<img alt="">
+<div class="lightbox-footer">
+<p>
+</p>
+<a href="../assets/screenshots/playback.png" target="_blank" rel="noopener">Original image ↗</a>
+<button type="button">Close ✕</button>
+</div>
+</dialog>
+</body>
+</html>

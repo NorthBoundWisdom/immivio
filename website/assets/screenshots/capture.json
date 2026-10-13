@@ -1,0 +1,31 @@
+{
+  "source_video": "blandscape-60mbps.mp4",
+  "source_dimensions": [
+    8192,
+    4096
+  ],
+  "source_included": false,
+  "application_commit": "388b30da1230b31f7297f619a4910d052344accd",
+  "application": "Thru3D No AI development Debug build",
+  "capture_environment": "Android 16 ARM64 emulator, 2D diagnostic entry with the real application renderer",
+  "projection": "Fisheye 180, SBS",
+  "frame_size": [
+    1920,
+    1080
+  ],
+  "notes": "Actual application captures. No headset stereo, passthrough or performance claim. The user supplied the video for these website screenshots.",
+  "screenshots": [
+    {
+      "file": "playback.png",
+      "sha256": "139e3b1963aa3701dcd0ed165f4d8122afc53f05c2a08fb0e702498c8d0c85c7"
+    },
+    {
+      "file": "settings.png",
+      "sha256": "184cf185bcc3b1f5bb914db17cdb1389ad7dfc21ca1c88cf9d46086d9bb5c1ff"
+    },
+    {
+      "file": "display.png",
+      "sha256": "6e5a60110aafe97ec93e66d0e848ad4a045cfaab3d961e74101b0afcc6452cea"
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+name: Publish Thru3D website
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'website/**'
+      - 'tools/check_website.py'
+      - '.github/workflows/website-pages.yml'
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: main
+      - name: Refresh public download choices
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh api repos/${{ github.repository }}/releases/latest
+          --jq '{tag_name,html_url,assets:[.assets[] | select(.name | endswith(".apk")) | {name,size,browser_download_url}]}'
+          > website/assets/releases.json
+      - name: Check site links, languages and download choices
+        run: python3 tools/check_website.py
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
+        with:
+          path: website
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

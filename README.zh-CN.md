@@ -1,101 +1,98 @@
+<p align="center"><img src="website/assets/icon.png" width="88" alt="Thru3D 图标"></p>
+
 # Thru3D Media Player
 
-本仓库由 **NorthBoundWisdom 独立维护**，源自 [zerochocobo/Thru3D-Media-Player](https://github.com/zerochocobo/Thru3D-Media-Player)，保留原 GPL-3.0 许可与源码历史。本版本的问题反馈、贡献和发布均以[本仓库](https://github.com/NorthBoundWisdom/Thru3D-Media-Player)为准。原版 0.7.0 的部分行为已按现有架构重新实现；本分支并非完整合入原版 0.7.0。
+**让你的影片与照片，拥有更大的观看空间。**
 
-[English](README.md) · [更新日志](CHANGELOG.zh-CN.md) · [English changelog](CHANGELOG.md)
+Thru3D 是面向 **Meta Quest 和 PICO** 的开源 VR/MR 媒体播放器。你可以在虚拟屏幕上看视频、进入 180°／360° 场景、浏览立体照片，也可以直接播放头显或网络媒体库里的内容。
 
-面向 Meta Quest 和 PICO 的独立 Android VR/MR 媒体播放器。使用 Godot OpenXR 构建界面，Kotlin 管理媒体与授权，libmpv/FFmpeg 解码，MNN OpenCL 执行人物抠像与深度推理。
+[官方网站](https://northboundwisdom.github.io/Thru3D-Media-Player/zh/) · [下载 APK](https://github.com/NorthBoundWisdom/Thru3D-Media-Player/releases/latest) · [使用指南](https://northboundwisdom.github.io/Thru3D-Media-Player/zh/guide/) · [English](README.md)
 
-当前源码版本：**0.6.0**，Android versionCode **13**；另提供实验性的标准 OpenXR Android 导出目标。
+本仓库在 [zerochocobo/Thru3D-Media-Player](https://github.com/zerochocobo/Thru3D-Media-Player) 的基础上继续开发。**0.6.0 是双方最后共同采用的开发基线；从这个版本起，本项目走独立的开发与发布路线，由 NorthBoundWisdom 独立维护。** GitHub fork 关系现已解除，原有源码历史、来源署名及 GPL-3.0 许可继续保留。
 
-最低兼容目标为 **Quest 2、PICO Neo3**。源码和构建兼容不等于所有机型的性能、显示及交互均已实机验收。
+## 实际运行画面
 
-可安装 APK 位于 [GitHub Releases](https://github.com/NorthBoundWisdom/Thru3D-Media-Player/releases) 中每个版本的 **Assets**。Tags 页面中的 ZIP/TAR 是源码压缩包。Release 附件包含 PICO、QUEST、OpenXR 的 AI 和非 AI APK，以及 SHA256 校验值和构建记录；签名与安装兼容性见对应版本说明。
+![Thru3D 播放指定 8K 立体视频时的实际控制界面](website/assets/screenshots/playback.png)
 
-## 功能
+*使用 `blandscape-60mbps.mp4` 在 Android 虚拟机中截取，展示当前开发版本的二维调试入口。双眼立体、头部追踪和透视效果需在支持的头显上体验。*
 
-- 视频和照片：平面、180°、360°，单目和左右立体。
-- 支持的 180° 视频人物抠像与透视合成。
-- 平面单目视频、照片的深度 2D→3D 显示。
-- 本地文件、SMB、WebDAV、DLNA、媒体服务器，以及115、百度、阿里云盘、夸克和OneDrive连接。
-- 音轨、文字字幕与平面视频PGS位图字幕、0.25×～3×倍速/音高补偿和逐文件观看偏好。
-- Plex手机/电脑配对、片库浏览与原片播放。
-- 兼容设备上的Dolby Vision Profile 5颜色处理；不泛化全部格式、杜比认证或原生HDR。
-- 视频旋转、平面距离/大小/曲率及文字字幕字号/位置；画面旋转时字幕保持正立。
-- 手柄射线/扳机选择、手部交互及中英日界面。
-- 持久化时间点书签、最近播放源帧预览、分页浏览。
-- 手部/手柄可视化、锐度及平面屏幕调整。
-- VR 内账号管理和内嵌网页登录、速度优先与精确跳转。
-- 沉浸式图片展示、捏合横拖切图、相邻图片预加载和3D缓存；图片立体强度最高200%。
+| 播放设置 | 显示设置 |
+| --- | --- |
+| ![Thru3D 播放设置](website/assets/screenshots/settings.png) | ![Thru3D 显示设置](website/assets/screenshots/display.png) |
 
-- 媒体服务器分区、筛选、详情和连续分页；收藏与外挂字幕取决于服务器能力，支持手动添加DLNA地址。
-- 图片距离/大小调整、按实际显示尺寸计算的2～8倍独立放大镜，以及按来源能力提供的文件管理。
+## 你可以用它做什么
 
-- 每个视频独立记住音轨／字幕选择；全局保存音量和静音，文字字幕提供五种配色，视频 3D／音量图标支持双击开关。
-- 照片墙支持记忆 1～3 行布局，长文件名以换行悬浮提示完整显示。
+- **选择适合内容的观看方式。** 支持平面、180°、360°、鱼眼视频，以及左右／上下立体格式。支持的模式可以调整屏幕大小、距离与曲率。
+- **连接自己的媒体库。** 打开本地文件，或连接 SMB、WebDAV、DLNA 和支持的媒体服务器；也可使用云盘连接，具体能力取决于服务和账号权限。
+- **调整到舒适的位置。** 用手柄抓握键移动画面和窗口，调整观看距离，按需开启躺卧模式，并记住每个视频的观看偏好。
+- **更方便地控制播放。** 切换音轨和字幕、调整倍速、保存时间点书签、校准音画／字幕时间，或建立可保存的播放队列。
+- **浏览照片和空间媒体。** 在单图、侧边预览、照片墙和记忆碎片之间切换；支持范围内的空间照片和空间视频可保留立体视图。
+- **按需使用 AI。** AI 版为支持的平面单目内容提供深度 2D 转 3D，并为支持的内容提供人物抠像。普通播放也可以使用不含 AI 模型的版本。
 
-## 校时与播放队列
+当前开发分支还加入了逐视频字幕／音轨选择记忆、音量／静音持久化、五种文字字幕配色、1～3 行照片墙，以及 3D／静音双击快捷开关。**已发布 APK 可能晚于 `main` 的进度，请以具体版本的发布说明为准。**
 
-播放设置新增“同步校时”和“播放队列”。字幕、音频可分别提前／延后最多 10 秒，以 50 ms 调整并独立复位，按视频保存。字幕菜单或同步页可通过 Android 文档选择器手动加载 SRT、ASS、SSA、VTT，无须与视频同名；所选文件会在再次打开该视频时尝试恢复，权限失效时可重新选择或取消记忆。
+## 下载适合你的版本
 
-队列支持单项播放、上移／下移、移除和清空；“添加视频”进入媒体库，点击视频逐项加入，也可添加当前已加载列表，完成后返回队列。分页来源可翻页后继续添加，不递归扫描远端目录。队列最多 500 项，保存条目与顺序，启动时不会自动播放。自动连播、列表循环和随机播放均默认关闭；单片循环优先于自动连播。自动下一部从头开始，手动切片仍遵循续播规则。
+打开 [GitHub Releases](https://github.com/NorthBoundWisdom/Thru3D-Media-Player/releases/latest)，展开 **Assets**，下载与你的头显和功能需求对应的 **`.apk`**。源码 ZIP／TAR 压缩包用于开发，不是安装包。
 
-## 公开范围与构建条件
+| 设备 | 选择的文件名 |
+| --- | --- |
+| Meta Quest | `Thru3D-QUEST-…apk` |
+| PICO | `Thru3D-PICO-…apk` |
+| 其他兼容的 Android OpenXR 运行时 | `Thru3D-OpenXR-…apk`，实验性支持 |
 
-公开仓库包含应用源码、必要资源、构建与模型修改脚本、第三方来源和测试。模型权重、编译依赖、签名密钥、个人媒体和研发记录不进入 Git。
+| 版本 | 适合的需求 |
+| --- | --- |
+| **No AI**（`noai`） | 主要播放普通视频、照片和已有立体内容，希望安装体积更小；不提供实时 AI 转换。 |
+| **AI**（`ai`） | 希望使用可选的深度和人物抠像功能；安装包更大，效果与性能取决于设备和片源。 |
 
-**AI 功能可在构建时关闭。** 无 AI 的 Python 构建流程会自动准备并校验非 AI 依赖，本机工具链要求见 [构建说明](docs/BUILD.md)。基础视频/图片播放、已有立体视频、文本字幕及媒体浏览仍可使用。标准 mpv 还有其他能力边界，例如不支持 PGS 位图字幕，不能验证精确源帧 PTS；详见 [构建模式对照](docs/BUILD.md#build-modes-and-compatibility)。AI 转换流程现在默认选择公开上游 RVM，并适配播放器接口；通过构建时选择模型包，也可以接入具有独立 ID 和哈希的兼容私有/蒸馏模型。历史学生权重仍未托管，原始上游 checkpoint 仍须转换后使用。具体文件、SHA256、导入方式和复现边界见 [模型说明](docs/MODELS.md)。本快照不宣称已经完成现有 APK 的完整对应源码交付。
+Quest 2、PICO Neo3 是兼容目标。不同设备、编码和分辨率的表现可能不同；打包成功或模拟器可播放，不代表所有头显都已完成实机验证。通用 OpenXR 版需要兼容的 Android 运行时。
 
-不依赖模型和 Android SDK 的源码检查：
+### 第一次使用
 
-```powershell
-python tools/Check-PublicSource.py
-$env:GODOT_EXE = (Get-Command godot).Source
-./tools/Test-Source.ps1
-```
+1. **安装。** 开启头显开发者模式，连接电脑并允许 USB 调试，用你常用的侧载工具安装对应 APK。
+2. **启动。** 从头显的侧载应用列表打开 Thru3D，允许访问你准备使用的文件或目录。
+3. **选择内容。** 打开本地视频／照片，或在资料库中添加网络来源。
+4. **匹配画面格式。** 如果画面分成两半或发生变形，请选择正确的投影和立体布局。例如 VR180 SBS 鱼眼片源使用 **鱼眼 + SBS**。
+5. **调整观看体验。** 居中画面、调整屏幕位置，再从播放控件选择音轨和字幕。
 
-Android 构建需先完成 [环境准备](docs/BUILD.md)。AI 构建另需导入自行取得且有权使用的版本匹配模型。
+详细步骤见[使用指南](https://northboundwisdom.github.io/Thru3D-Media-Player/zh/guide/)。
 
-基础播放器可以不带 AI 构建；准备好 Godot Android 模板、Go、JDK 和 Android SDK 后，跨平台入口会校验并获取标准 mpv 库、从源码构建 OpenList AAR：
+## 常用操作
 
-```sh
-python3 tools/build_player.py --vendor Quest --build-type Release
-```
+| 想做什么 | 如何操作 |
+| --- | --- |
+| 显示／隐藏播放控件 | 左手 Menu 键，或用扳机点按画面 |
+| 选择控件 | 用手柄射线指向并按扳机；支持的设备也可使用手部指向／捏合 |
+| 移动画面或资料库窗口 | 按住抓握键；支持的位置可用同手摇杆调整远近 |
+| 跳转或调整音量 | 使用播放控件；未打开列表、未捕获滑块时也可用摇杆快捷操作 |
+| 滚动资料库或设置列表 | 打开对应列表后使用摇杆 |
+| 回到资料库 | 选择播放控件中的“关闭视频” |
+| 躺着观看 | 开启“设置 → 常规 → 躺卧模式”；“跟随”仍为独立开关 |
 
-`--vendor Pico`、`--vendor OpenXR` 选择其他 Android 目标。以下为保留的 AI 构建流程：
+当前开发版本还支持双击视频 **3D** 图标开关立体效果、双击 **音量** 图标静音／恢复。界面支持英文、简体中文、繁体中文和日文。
 
-```powershell
-$env:THRU3D_TOOL_ROOT = Join-Path $HOME '.cache/thru3d-toolchain'
-./tools/Import-ModelAssets.ps1 -FromDirectory ./external-model-assets
-./tools/Build-Player.ps1 -ToolRoot $env:THRU3D_TOOL_ROOT -UsePreparedModelAssets -XrVendor Quest
-./tools/Build-Player.ps1 -ToolRoot $env:THRU3D_TOOL_ROOT -UsePreparedModelAssets -XrVendor Pico
-./tools/Build-Player.ps1 -ToolRoot $env:THRU3D_TOOL_ROOT -UsePreparedModelAssets -XrVendor OpenXR
-```
+## 常见问题
 
-可重建输出放在忽略的 `build/output/`，短期数据放在 `tmp/`。正式发布归档、签名资料和个人备份使用持久目录，并始终排除于公开 Git。自行生成的签名不一定可以覆盖已有发行版。Quest/PICO 分别使用对应厂商导出预设；标准 OpenXR 目标要求设备具备兼容运行时，PICO/通用打包检查不等同于真机验证。运行所需的 MIT 手部 glTF 网格随源码保留，AI 权重不入 Git。
+**不需要 AI，可以用吗？** 可以。No AI APK 可播放普通媒体和已有立体内容。它使用不同的播放后端，PGS 位图字幕及部分空间／杜比能力与 AI 版存在差异；有这些需求时，请查看[构建能力对照](docs/BUILD.md#build-modes-and-compatibility)。
 
-## 目录与操作
+**为什么 APK 不能覆盖已安装的版本？** Android 要求应用 ID 和签名密钥一致。不同发布者或部分 CI 构建之间可能无法直接覆盖。先核对发布说明，并保留原安装和数据。当前开发版本为 AI／No AI 使用独立应用身份；具体发布包能否共存请以该版本说明为准。
 
-`app/godot` 包含场景、菜单、着色器和语言；`android` 包含 Kotlin 插件和 JVM 测试；`native` 包含 JNI 与推理/渲染；`tools` 包含构建和验证；`models` 只保存契约、哈希和许可；`third_party` 保存依赖来源与声明。
+**所有 8K 或 3D 视频都能流畅播放吗？** 不能仅根据分辨率判断。编码、码率、投影、效果及设备硬件都会影响播放，AI 也会增加处理负担。这里的截图展示界面，不代表头显性能基准。
 
-按住手柄抓取键移动画布，指向边角抓取可调整大小。点按扳机键在画布中心显示或隐藏播放条；扳机也用于选择控件和拖动滑块。播放面板宽度为原来的 3/4、高度为 2/3。默认情况下，平面视频屏幕和控制条与地面垂直；设置 → 常规中的“躺卧模式”默认关闭，开启后允许屏幕和菜单随视线倾斜，立即生效并保存，跟随仍为独立开关；180°/360° 沉浸播放的控制条位于重置视线中心偏下，面向重置时的视线方向。躺卧模式关闭时，菜单重置只采用头显的水平朝向。原生界面层只显示指向光点，激光线留在场景中。左 Menu 打开菜单，用手柄射线指向并按对应扳机选择。媒体库、设置、列表弹层及图片菜单中，摇杆只用于滚动并隔离播放快捷动作。普通视频控制条显示时仍可用摇杆快进/快退、音量和沉浸缩放；指针捕获期间屏蔽快捷动作，退出列表或结束捕获后须回中再触发。也支持手部指向和捏合。桌面模式用于开发预览。
+**截图中的视频会随应用提供吗？** 不会。它仅用于拍摄展示画面，原始视频未包含在仓库或下载包中。
 
-AI 与无 AI 版以 **Thru3D AI** 和 **Thru3D No AI** 两个独立应用安装，使用不同包名和本机签名密钥，可在同一头显共存，数据各自独立。无 AI 版保留原包名和签名，可继续覆盖更新并保留原数据。
+**在哪里反馈问题？** 请在[本仓库 Issues](https://github.com/NorthBoundWisdom/Thru3D-Media-Player/issues)中说明头显型号、应用版本／版本类型、媒体格式及复现步骤。只分享你有权分发的样片，不要上传账号凭据或私人媒体。
 
-文件管理窗口采用弧形显示。指向窗口并按住抓握键，移动手柄可调整左右位置；躺卧模式下也可上下移动。按住抓握键时，使用同一手柄的摇杆前后调整距离，范围为 0.8～3 米，松手后保存。视频画面同样用抓握拖动位置、抓握加摇杆调整远近。关闭视频会隐藏播放条并返回原来的目录和浏览位置。文件管理的设置页在启动时预热，缓存大小在后台统计。文件管理窗口底部仅保留同一行的跟随、临时透视和电量/时间；菜单键、返回键不会关闭文件管理页面。视频播放页不显示跟随和临时透视；仅保留“关闭视频”作为停止播放并返回资料库的入口，悬浮操作与电量/时间统一位于进度条上方，状态胶囊与按钮采用相同高度和底色。设置中的操作按钮和选项使用统一的单行样式与横向图标，信息区域采用纯文本。播放按钮右侧提供播放模式、屏幕、播放速度和循环快捷入口；设置在播放条上方的小弹窗中调整，完整设置页仍可访问。播放条不提供透视背景入口。短按 Home 后关闭系统弹窗或恢复 XR 焦点，不会自动居中画面和菜单。长按 Home 会等待新的头显姿态更新后，将画面和窗口居中到当前视野前方；也可使用应用内的手动居中。
+## 开发、历史和许可
 
-播放设置新增“瞳距”分页：用“瞳距补偿”调整左右画面水平间距，配合垂直对齐和重置校正 VR180 立体重影，松手后按视频独立保存。补偿单位是单眼画面宽度的百分比，属于软件双眼校准，不改变头显镜片或运行时瞳距；请先在视频模式中选择正确的 SBS/TB 立体格式。播放设置和弹层启动时预热，常用分页保留控件并复用。
+- [中文更新日志](CHANGELOG.zh-CN.md) · [English changelog](CHANGELOG.md)
+- [源码构建](docs/BUILD.md) · [模型要求](docs/MODELS.md)
+- [架构](docs/ARCHITECTURE.md) · [测试](docs/TESTING.md) · [贡献](CONTRIBUTING.md)
+- 项目源码采用 [GPL-3.0-only](LICENSE)。第三方组件保留各自许可，包含内嵌 OpenList 的 AGPL-3.0 义务，详见[许可说明](docs/LICENSING.md)。
 
-抠像质量、GPU 支持及持续性能取决于模型、设备和媒体；主机与打包测试不代表头显播放性能验收。技术细节见 [架构](docs/ARCHITECTURE.md)、[测试](docs/TESTING.md) 和 [贡献指南](CONTRIBUTING.md)。
+## 兄弟项目
 
-项目原创源码采用 **GPL-3.0-only**，完整文本见 [LICENSE](LICENSE)。第三方组件及资源保留原许可；适用范围和二进制发行要求见 [许可说明](docs/LICENSING.md)。
+[**Ravo Studio**](https://northboundwisdom.github.io/Ravo/) — 整理、浏览并处理你的照片。
 
-内嵌OpenList组件采用 **AGPL-3.0**；`cloud/openlist`包含Go适配源码，构建脚本和上游/依赖许可随源码保留。组合二进制发行还须履行适用的AGPL义务，详见许可说明。
-
-## 空间媒体与照片布局
-
-- HEIC/HEIF原生立体空间照片与iPhone MV-HEVC空间视频；空间视频可使用支持的人物透视路径，空间照片输出sRGB，不宣称原生HDR。
-- 两侧小图、照片墙和记忆碎片，异步加载反馈及布局记忆。
-- 普通平面照片人像透视、0～200%立体强度；原生立体/全景和多图总览不进入该人像路径。
-- 平面视频、单图/人像及菜单的会话内头显跟随，独立环境透视开关；不宣称永久空间锚点或整面照片墙随头锁定。
-- 视频双眼/左视角/右视角和逐片水平/垂直校正；单视角由双眼显示同一逻辑视角，不关闭另一块屏幕或改变头显IPD。
+[**SonaFolio**](https://northboundwisdom.github.io/sonafolio/) — 将播客和媒体转为转写文本与本地知识库。

@@ -6,6 +6,9 @@ Newest first, following product release milestones. Some development/source snap
 
 ## Unreleased
 
+- Replace the application and website icon with the supplied neon panorama artwork.
+- Rewrite the English/Chinese README for users and add a bilingual GitHub Pages website with emulator screenshots and installation guidance.
+
 - Maintain this edition independently; retain the original license and history, and direct contributions/releases to NorthBoundWisdom.
 - Reimplement selected original 0.7.0 behaviors: persist explicit audio/subtitle choices per video (with metadata matching after track renumbering), and retain volume/mute across launches.
 - Double-tap the video 3D/volume icons to toggle depth/mute; keep the remembered depth strength and existing single-tap controls. Muted volume uses a red icon.

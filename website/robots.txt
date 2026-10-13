@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://northboundwisdom.github.io/Thru3D-Media-Player/sitemap.xml

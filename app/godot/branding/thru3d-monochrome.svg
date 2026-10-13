@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="432" height="432" viewBox="0 0 432 432">
+  <!-- Android themed-icon mask, based on the supplied panorama/play mark. -->
+  <g transform="translate(72 72) scale(.229665)" fill="#fff">
+    <path d="M478 456Q478 399 530 414L790 567Q850 612 800 658L533 795Q476 822 478 754Z"/>
+    <path d="M346 322Q386 310 386 358V849Q386 901 347 889L179 835Q125 816 125 757V454Q125 371 346 322Z"/>
+    <path d="M906 322Q869 314 869 357V850Q869 901 909 889L1079 834Q1130 814 1130 755V454Q1130 372 906 322Z"/>
+    <g fill="none" stroke="#fff" stroke-width="32" stroke-linecap="round">
+      <path d="M286 296C455 175 800 175 970 296"/>
+      <path d="M286 919C455 1040 800 1040 970 919"/>
+    </g>
+  </g>
+</svg>

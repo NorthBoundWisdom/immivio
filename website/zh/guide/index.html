@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>Thru3D — 使用指南</title>
+<meta name="description" content="面向 Meta Quest 和 PICO 的开源 VR 媒体播放器。下载 APK，观看视频、立体照片和沉浸内容。">
+<link rel="canonical" href="https://northboundwisdom.github.io/Thru3D-Media-Player/zh/guide/">
+<link rel="alternate" hreflang="en" href="https://northboundwisdom.github.io/Thru3D-Media-Player/guide/">
+<link rel="alternate" hreflang="x-default" href="https://northboundwisdom.github.io/Thru3D-Media-Player/guide/">
+<meta property="og:title" content="Thru3D — 使用指南">
+<meta property="og:description" content="面向 Meta Quest 和 PICO 的开源 VR 媒体播放器。下载 APK，观看视频、立体照片和沉浸内容。">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://northboundwisdom.github.io/Thru3D-Media-Player/zh/guide/">
+<meta property="og:image" content="https://northboundwisdom.github.io/Thru3D-Media-Player/assets/screenshots/playback.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="../../assets/icon.png" type="image/png">
+<link rel="apple-touch-icon" href="../../assets/icon.png">
+<link rel="stylesheet" href="../../assets/site.css">
+<script defer data-site-script src="../../assets/site.js">
+</script>
+</head>
+<body data-theme="dark">
+<a class="skip" href="#main">跳到正文</a>
+<header class="site-header">
+<div class="wrap header-inner">
+<a class="brand" href="../../zh/">
+<img src="../../assets/icon.png" alt="" width="39" height="39">Thru3D</a>
+<nav class="nav" aria-label="主导航">
+<a class="optional" href="../../zh/#experience">体验</a>
+<a href="../../zh/#download">下载</a>
+<a class="optional" href="../../zh/guide/">使用指南</a>
+<a class="locale" href="../../guide/" lang="en">English</a>
+<button class="theme" type="button" data-theme-toggle aria-label="切换深浅主题" aria-pressed="false">◐</button>
+</nav>
+</div>
+</header>
+<main id="main" class="wrap guide-layout">
+<nav class="guide-nav" aria-label="指南目录">
+<p class="eyebrow">使用指南</p>
+<a href="#install">安装</a>
+<a href="#first-video">第一次播放</a>
+<a href="#controls">常用操作</a>
+<a href="#library">媒体来源与照片</a>
+<a href="#troubleshooting">问题排查</a>
+</nav>
+<article class="guide-content">
+<p class="eyebrow">THRU3D / 开始使用</p>
+<h1>从这里开始。</h1>
+<p>选好安装包，打开自己的视频，再把画面调整到舒服的位置。</p>
+<section id="install">
+<h2>01 / 安装到头显</h2>
+<ol>
+<li>在 <a href="../../zh/#download">下载页</a>选择 Quest、PICO 或实验性 OpenXR 包，并选择 AI／No AI。</li>
+<li>开启头显的开发者模式，通过 USB 连接电脑并允许调试。</li>
+<li>用你常用的侧载工具安装下载的 APK。下载文件应以 <code>.apk</code> 结尾，源码压缩包不能直接安装。</li>
+<li>从设备的侧载应用列表启动 Thru3D。</li>
+</ol>
+<div class="note">更新安装需要匹配的应用 ID 和签名。来自其他发布者或部分 CI 的包可能无法覆盖已有安装；请先查看发布说明，保留原应用和数据。</div>
+</section>
+<section id="first-video">
+<h2>02 / 播放第一个视频</h2>
+<ol>
+<li>从资料库打开本地文件，按需允许访问所选文件或目录。</li>
+<li>选择片源对应的投影和立体布局，再检查左右眼顺序。</li>
+<li>用播放控件居中画面、选择音轨／字幕，并按需要调整大小和距离。</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>内容</th>
+<th>起步设置</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>普通视频</td>
+<td>平面 + 单目</td>
+</tr>
+<tr>
+<td>左右／上下立体视频</td>
+<td>按片源选择 SBS／TB；投影另行设置</td>
+</tr>
+<tr>
+<td>VR180 鱼眼 SBS</td>
+<td>鱼眼 + SBS；视场角按片源设置</td>
+</tr>
+<tr>
+<td>360° 等距柱状视频</td>
+<td>360° + 与片源匹配的单目／立体布局</td>
+</tr>
+</tbody>
+</table>
+<p class="note">这些是起步设置，并非自动识别保证。文件名、编码元数据和实际内容不一致时，需要手动调整。</p>
+</section>
+<section id="controls">
+<h2>03 / 常用操作</h2>
+<table>
+<tbody>
+<tr>
+<th>打开播放控件</th>
+<td>左手 Menu 键，或用扳机点按画面。</td>
+</tr>
+<tr>
+<th>选择与调整</th>
+<td>手柄射线 + 扳机；滑块可按住拖动。</td>
+</tr>
+<tr>
+<th>移动界面</th>
+<td>按住抓握键拖动画面或资料库窗口；支持的位置可用同手摇杆调距离。</td>
+</tr>
+<tr>
+<th>滚动</th>
+<td>打开列表或设置时使用摇杆。列表优先于播放快捷操作。</td>
+</tr>
+<tr>
+<th>躺卧观看</th>
+<td>设置 → 常规 → 躺卧模式；跟随另行控制。</td>
+</tr>
+<tr>
+<th>返回资料库</th>
+<td>选择“关闭视频”，回到先前浏览的位置。</td>
+</tr>
+</tbody>
+</table>
+<h3>字幕、校时与队列</h3>
+<p>在字幕按钮中选择轨道，或手动加载 SRT、ASS、SSA、VTT。同步页可分别提前／延后字幕和音频最多 10 秒。播放队列可保存顺序，按需开启自动连播、列表循环或随机播放。</p>
+<p>当前开发版可按视频保存明确选择的字幕和音轨，文字字幕有五种配色；双击视频 3D／音量图标可开关效果／静音。是否包含这些功能，请查看你的 APK 发布说明。</p>
+</section>
+<section id="library">
+<h2>04 / 连接资料库，浏览照片</h2>
+<p>资料库支持本地文件、SMB、WebDAV、DLNA 和支持的媒体服务器。先添加来源，再填写该来源要求的地址与授权信息。网络目录、收藏、外挂字幕和文件管理能力会因来源而异。</p>
+<p>照片支持单图、侧边预览、照片墙和记忆碎片。当前开发版的照片墙可以选择 1～3 行。支持范围内的 HEIC／HEIF 空间照片与 MV-HEVC 空间视频可保留双眼视图；具体取决于构建后端和片源。</p>
+<p>AI 深度适用于支持的平面单目内容；人物透视有投影和模型限制。No AI 版不提供实时转换。<a href="https://github.com/NorthBoundWisdom/Thru3D-Media-Player/blob/main/docs/BUILD.md#build-modes-and-compatibility">查看构建能力对照 ↗</a>
+</p>
+</section>
+<section id="troubleshooting">
+<h2>05 / 遇到问题时</h2>
+<h3>画面分裂、变形或立体反转</h3>
+<p>检查平面／180°／鱼眼／360° 投影，检查单目／SBS／TB 布局；必要时交换左右眼。软件双眼校准不改变头显镜片或硬件瞳距。</p>
+<h3>播放不流畅或 AI 效果不可用</h3>
+<p>先关闭实时 AI 效果，尝试更低码率的内容，再核对设备、编码与构建能力。8K 文件在虚拟机中可解码，不代表头显达到特定帧率。</p>
+<h3>字幕没出现</h3>
+<p>检查字幕轨道是否关闭，外挂文件是否仍可访问。No AI 的标准 mpv 后端不提供项目专有的 PGS 字幕接口；可以尝试文本字幕。</p>
+<h3>报告问题</h3>
+<p>在 <a href="https://github.com/NorthBoundWisdom/Thru3D-Media-Player/issues">Issues</a> 中提供设备型号、版本／AI 类型、格式和复现步骤。仅上传有权分发的样片，不公开账号凭据。</p>
+<p>开发资料：<a href="https://github.com/NorthBoundWisdom/Thru3D-Media-Player/blob/main/docs/BUILD.md">构建</a> · <a href="https://github.com/NorthBoundWisdom/Thru3D-Media-Player/blob/main/docs/MODELS.md">模型</a> · <a href="https://github.com/NorthBoundWisdom/Thru3D-Media-Player/blob/main/CHANGELOG.zh-CN.md">更新日志</a>
+</p>
+</section>
+</article>
+</main>
+<footer class="site-footer wrap">
+<div class="footer-top">
+<p>基于 <a href="https://github.com/zerochocobo/Thru3D-Media-Player">zerochocobo/Thru3D-Media-Player</a> 的 0.6.0 版本继续开发。从 0.6.0 起独立维护与发布，由 NorthBoundWisdom 维护，保留原项目署名、历史和 GPL-3.0 许可。</p>
+<div class="footer-links">
+<a href="https://github.com/NorthBoundWisdom/Thru3D-Media-Player">GitHub ↗</a>
+<a href="https://github.com/NorthBoundWisdom/Thru3D-Media-Player/issues">反馈问题 ↗</a>
+<a href="https://github.com/NorthBoundWisdom/Thru3D-Media-Player/blob/main/LICENSE">GPL-3.0 ↗</a>
+</div>
+</div>
+<div class="copyright">
+<span>Thru3D · NorthBoundWisdom</span>
+<span>开源 · 独立维护 · GitHub Pages 托管</span>
+</div>
+</footer>
+<dialog class="lightbox" aria-label="软件运行截图">
+<img alt="">
+<div class="lightbox-footer">
+<p>
+</p>
+<a href="../../assets/screenshots/playback.png" target="_blank" rel="noopener">查看原图 ↗</a>
+<button type="button">关闭 ✕</button>
+</div>
+</dialog>
+</body>
+</html>
