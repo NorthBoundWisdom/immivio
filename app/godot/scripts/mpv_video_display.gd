@@ -231,9 +231,9 @@ func _maybe_capture_thumbnail() -> void:
 		platform.release_mpv_pair_pin(int(pair.session_id), int(pair.slot_token))
 		_thumbnail_busy = false
 		return
-	var stereo := bool(pair.get("stereo_sbs", false)) or binding.warped
+	var stereo := bool(pair.get("stereo_sbs", false)) or false
 	var tb := stereo and bool(pair.get("top_bottom", false))
-	var eye := Vector2(float(pair.width) * (2.0 if binding.warped else 1.0) * (0.5 if stereo and not tb else 1.0), float(pair.height) * (0.5 if tb else 1.0))
+	var eye := Vector2(float(pair.width) * (2.0 if false else 1.0) * (0.5 if stereo and not tb else 1.0), float(pair.height) * (0.5 if tb else 1.0))
 	var scale: Array = pair.get("color_uv_scale", [1.0, 1.0])
 	var image: Image = await Thumbnails.capture(self, binding.color_texture(), str(binding.ticket.get("color_target", "")) == "external",
 		stereo, Thumbnails.crop_for(geometry, eye), Vector2(float(scale[0]), float(scale[1])), tb)
@@ -1299,9 +1299,7 @@ func _present_pending() -> void:
 	if not claimed is Dictionary:
 		return
 	_unbind()
-	_binding.opaque = not alpha_requested and not depth_requested and not packed_file \
-		and not claimed.get("alpha_requested", false) and not claimed.get("depth_requested", false) \
-		and not claimed.get("inference_ran", false) and not claimed.get("depth_ran", false)
+	_binding.opaque = not packed_file and claimed.get("mask_kind") == "opaque"
 	if not _binding.bind(material, claimed):
 		platform.detach_mpv_pair(media.session_id, int(claimed.slot_token))
 		picker_error = "Complete video frame could not be bound"
@@ -1311,7 +1309,7 @@ func _present_pending() -> void:
 	media.logical_session_id = int(claimed.logical_session_id)
 	media.generation = int(claimed.generation)
 	media.format_revision = int(claimed.format_revision)
-	media.effect_revision = int(claimed.effect_revision)
+	media.effect_revision = int(claimed.presentation_revision)
 	media.frame_counter += 1
 	var par := float(claimed.get("pixel_aspect", 1.0))
 	_spatial_video = _spatial_video or bool(claimed.get("spatial_video", false))
@@ -1319,8 +1317,8 @@ func _present_pending() -> void:
 		"spatial_video": _spatial_video,
 		"pixel_aspect": par if is_finite(par) and par > 0.0 and par <= 16.0 else 1.0,
 		"stereo_mode": str(claimed.get("stereo_mode", "")), "unapplied_rotation_degrees": 0}
-	_rvm_alpha = bool(claimed.alpha_requested) and bool(claimed.inference_ran)
-	depth_enabled = bool(claimed.get("depth_requested", false)) and bool(claimed.get("depth_ran", false))
+	_rvm_alpha = false
+	depth_enabled = false
 	_apply_packed()
 	material.set_shader_parameter("alpha_enabled", _rvm_alpha)
 	_send_depth_view()
@@ -1477,7 +1475,7 @@ func _on_debug_command(id: int, payload: String) -> void:
 	elif command.operation == "hold_pixels":
 		if _is_frozen() and not _pixel_busy:
 			var held: Dictionary = _binding.ticket.duplicate(true)
-			if _binding.warped: held.stereo_sbs = false
+			if false: held.stereo_sbs = false
 			var pinned: bool = platform.retain_mpv_frozen_frame(int(held.frozen_frame_id))
 			if not pinned: return
 			_pixel_busy = true
@@ -1604,8 +1602,8 @@ func _apply_geometry() -> void:
 	_apply_packed()
 	if caption and caption.visible: _place_caption()
 	_sync_subtitle_surface()
-	material.set_shader_parameter("stereo_sbs", stereo_sbs or _binding.warped)
-	material.set_shader_parameter("depth_enabled", depth_enabled and not _binding.warped)
+	material.set_shader_parameter("stereo_sbs", stereo_sbs or false)
+	material.set_shader_parameter("depth_enabled", depth_enabled and not false)
 	material.set_shader_parameter("depth_shift", DEPTH_SHIFT * depth_strength if depth_requested else 0.0)
 
 func layout_snapshot() -> Dictionary:
@@ -1659,7 +1657,7 @@ func completed_presentation() -> bool:
 		and int(target.source_epoch) == int(final_pair.get("source_epoch", -1)) \
 		and int(target.frame_id) == int(final_pair.get("frame_id", -1)) \
 		and int(target.pts_us) == int(final_pair.get("pts_us", -1)) \
-		and (not alpha_requested or final_pair.get("inference_ran", false))
+		and final_pair.get("contract_version") == 2
 
 func _can_loop() -> bool:
 	return loop_enabled and completed_presentation()

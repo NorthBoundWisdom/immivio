@@ -4,19 +4,19 @@ Immivio is a Godot/OpenXR interface over an Android media-library plugin, libmpv
 
 ## Application and input
 
-`app/godot/scripts/main.gd` coordinates libraries, playback, photos, settings and XR input. `player_settings_migration.gd` owns the idempotent cleanup of retired effect preferences; ordinary audio, subtitles, queues and native stereo locks are preserved. Controller rays/triggers and supported hand gestures select controls. Grip placement, reclining mode, follow behavior and recentering retain their existing contracts. Lists and captured sliders suppress playback shortcuts until the stick returns to center.
+`app/godot/scripts/main.gd` assembles the scene and connects lifecycle/events. Input, photo, playback/queue, preferences and XR presentation coordinators own their respective behavior/state. The main scene retains narrow adapters for existing integrations; controllers access it through weak references. `player_settings_migration.gd` owns the idempotent cleanup of retired effect preferences; ordinary audio, subtitles, queues and native stereo locks are preserved. Controller rays/triggers and supported hand gestures select controls. Grip placement, reclining mode, follow behavior and recentering retain their existing contracts. Lists and captured sliders suppress playback shortcuts until the stick returns to center.
 
 `xr_menu_compositor.gd` owns the Android-Surface menu presenter, its acknowledged presentation queue, curved mapping and scene fallback. Sustained low frame rates latch the fallback until restart. Menu pose and ray targets use the same presented layout.
 
 ## Playback
 
-`MpvVideoBridge.kt` owns MPV source sessions, immutable texture leases, audio focus and frame delivery. `native/mpv/mpv_source.cpp` owns decoding/render transactions, source epochs, seeks and EOF. `native/render-bridge` manages GPU resources and fences; source buffers cannot be reused before the last consumer releases ownership.
+`MpvVideoBridge.kt` coordinates MPV sessions, audio focus and frame delivery. `PlaybackHost` holds decoder lifetime, `PlaybackSourceResources` owns FD/network/subtitle resources, and `PlaybackDisplayLeases` holds consumer GL leases under the session lock. `native/mpv/mpv_source.cpp` owns decoding/render transactions, source epochs, seeks and EOF. `native/render-bridge` manages GPU resources and fences; source buffers cannot be reused before the last consumer releases ownership.
 
 The standard backend provides playback-clock estimates rather than verified source-image PTS. The optional verified project backend exposes additional private source/PGS/spatial contracts. Both work without an inference runtime. Existing SBS/TB, projection, eye alignment, subtitles, playback speed and precomputed mask data remain media/rendering features.
 
 Per-video track intent is stored in the existing checksummed mode store. Track metadata guards against ID reuse; stale-session reports cannot restore another source's choices. Global sound preferences are coalesced and flushed on suspend/close. Timing corrections and playback queues remain independent of track selection.
 
-Some frame descriptors and saved-mode fields retain legacy names such as `model_generation`, `alpha_requested` and `depth_requested` for compatibility with immutable frame validation and old settings. Their presence does not enable inference. Live effect requests are rejected; obsolete automatic-conversion preferences are ignored/cleared, and no model loader or preparation worker exists.
+Frame descriptors use [contract version 2](FRAME_CONTRACT.md), with source identity, presentation revision and same-fence color/mask completion. Model/inference/warp fields are retired. Saved-mode compatibility is handled by settings migration, separately from transport validation.
 
 ## Photos and libraries
 
@@ -34,4 +34,4 @@ The MNN/ncnn runtime, RVM matting, monocular depth, photo conversion/portrait jo
 
 ## Refactoring status
 
-[REFACTOR_PLAN.md](REFACTOR_PLAN.md) records the current analysis and ordered migration batches. R1 removes dormant Godot model-preheat/Alpha-FPS controls and the unused RenderBridge inference JNI surface. The current color/mask lease, fence, freeze and context ownership rules remain. Native internal ROI/scout/warp implementation is scheduled for R2; the historical frame identity fields are migrated jointly in R3.
+[REFACTOR_PLAN.md](REFACTOR_PLAN.md) records completed code batches and remaining acceptance. The native renderer has separate GL state, slot, frozen-frame and JNI modules; it only captures RGBA source color and opaque R8 masks. It preserves borrowed producer ownership and seven slots pending device measurement. Runtime/cross-platform/package acceptance is deferred by the owner; see [ACCEPTANCE.md](ACCEPTANCE.md).

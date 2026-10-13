@@ -11,8 +11,8 @@ func frame_identity() -> Dictionary:
 		return {"source_pts_verified": false, "immutable_color_frame": false}
 	var result: Dictionary = {}
 	for key in ["session_id", "logical_session_id", "generation", "frame_id", "pts_us", "source_epoch",
-		"format_revision", "effect_revision", "model_generation", "slot_token", "source_pts_verified",
-		"immutable_color_frame", "pair_identity_verified", "inference_ran", "alpha_requested"]:
+		"contract_version", "format_revision", "presentation_revision", "slot_token", "source_pts_verified",
+		"immutable_color_frame", "pair_identity_verified", "mask_kind"]:
 		result[key] = last_pair.get(key)
 	return result
 

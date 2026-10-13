@@ -14,10 +14,8 @@ internal object RenderBridgeNative {
     @JvmStatic external fun ready(handle: Long, token: Long): Boolean
     @JvmStatic external fun texture(handle: Long, token: Long): Int
     @JvmStatic external fun enableBorrowedColor(handle: Long): Boolean
-    @JvmStatic external fun colorImage(handle: Long, token: Long): Long
-    @JvmStatic external fun freezePair(handle: Long, token: Long, warped: Boolean): LongArray
+    @JvmStatic external fun freezePair(handle: Long, token: Long): LongArray
     @JvmStatic external fun releaseFrozen(handle: Long)
-    @JvmStatic external fun uploadAlpha(handle: Long, token: Long, left: ByteBuffer, right: ByteBuffer): Boolean
     @JvmStatic external fun alphaReady(handle: Long, token: Long): Boolean
     @JvmStatic external fun alphaTexture(handle: Long, token: Long): Int
     @JvmStatic external fun readAlpha(handle: Long, token: Long, output: ByteBuffer): Boolean

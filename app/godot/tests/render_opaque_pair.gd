@@ -106,15 +106,14 @@ func _run() -> void:
 		material.set_shader_parameter("rotation_degrees", 0)
 		material.set_shader_parameter("sharpness", .2)
 	old.set_shader_parameter("test_eye", 0)
-	var pair := {"session_id": 1, "logical_session_id": 1, "generation": 1, "frame_id": 1, "pts_us": 0,
-		"format_revision": 1, "effect_revision": 1, "model_generation": 1, "slot_token": 1,
+	var pair := {"contract_version": 2, "source_epoch": 1, "consumer_copy_fence_ready": true, "color_target": "texture", "mask_kind": "opaque", "session_id": 1, "logical_session_id": 1, "generation": 1, "frame_id": 1, "pts_us": 0,
+		"format_revision": 1, "presentation_revision": 1, "slot_token": 1,
 		"color_texture_id": RenderingServer.texture_get_native_handle(texture.get_rid()),
 		"alpha_texture_id": RenderingServer.texture_get_native_handle(alpha_texture.get_rid()),
-		"width": 64, "height": 64, "input_width": 16, "input_height": 16, "alpha_width": 32, "alpha_height": 16,
-		"rotation_degrees": 0, "model_content_rect": [0, 0, 1, 1], "stereo_sbs": false,
+		"width": 64, "height": 64, "alpha_width": 32, "alpha_height": 16,
+		"rotation_degrees": 0, "mask_content_rect": [0, 0, 1, 1], "stereo_sbs": false,
 		"alpha_slot_token": 1, "alpha_frame_id": 1, "alpha_pts_us": 0, "source_pts_verified": false,
 		"source_ticket_origin": "standard_libmpv_render", "source_ticket_valid": true,
-		"alpha_requested": false, "depth_requested": false, "inference_ran": false,
 		"immutable_color_frame": true, "pair_identity_verified": true, "alpha_fence_ready": true,
 		"alpha_gpu_uploaded": true, "alpha_texture_format": "GL_R8_numeric"}
 	if not binding.bind(fast, pair): failures.append("Native opaque binding failed")
@@ -129,10 +128,10 @@ func _run() -> void:
 		failures.append("Native opaque colour was not preserved")
 	binding.unbind()
 	await process_frame
-	# An opt-in must never override a real inferred alpha pair.
+	# An opaque opt-in must never override a numeric source mask.
 	alpha.fill(Color(.25, 0, 0)); alpha_texture.update(alpha)
-	pair.source_pts_verified = true; pair.alpha_requested = true; pair.inference_ran = true
-	if not binding.bind(fast, pair): failures.append("Synthetic alpha binding failed")
+	pair.source_pts_verified = true; pair.mask_kind = "numeric"
+	if not binding.bind(fast, pair): failures.append("Numeric source-mask binding failed")
 	fast.set_shader_parameter("alpha_enabled", true)
 	quad.material_override = fast
 	await RenderingServer.frame_post_draw; await RenderingServer.frame_post_draw

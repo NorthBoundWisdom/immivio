@@ -8,7 +8,7 @@ class FramePairGateTest {
     private fun ticket(frame: Long = 10, pts: Long = 1000, revision: Int = 1) =
         DecodedFrameGate.Ticket(scope, frame, pts, revision, 1)
 
-    @Test fun runtimeMustMatchSourceAndModelEpoch() {
+    @Test fun runtimeMustMatchSourceAndPresentationRevision() {
         val gate = FramePairGate(scope)
         val id = gate.identify(ticket(), 42)!!
         assertTrue(gate.matchesRuntime(id, 3, 1, 10, 1000))
@@ -22,15 +22,15 @@ class FramePairGateTest {
         val gate = FramePairGate(scope)
         val normal = gate.identify(ticket(), 42)!!
         assertTrue(gate.presented(normal))
-        assertEquals(2L, gate.setAlpha(true))
+        assertEquals(2L, gate.revisePresentation())
         assertFalse(gate.accepts(normal))
         val masked = gate.identify(ticket(), 43)!!
         assertEquals(normal.frameId, masked.frameId)
         assertEquals(normal.generation, masked.generation)
-        assertEquals(2L, masked.modelGeneration)
+        assertEquals(2L, masked.presentationRevision)
         assertTrue(gate.presented(masked))
-        assertEquals(2L, gate.setAlpha(true))
-        gate.setAlpha(false)
+        assertEquals(3L, gate.revisePresentation())
+        gate.revisePresentation()
         assertFalse(gate.accepts(masked))
     }
     @Test fun formatChangeAndCloseRejectCompletion() {
@@ -53,7 +53,7 @@ class FramePairGateTest {
         assertFalse(gate.presented(old))
         assertFalse(gate.accepts(newer.copy(ptsUs = 1100)))
     }
-    @Test fun playbackClockEstimateCannotAuthorizeInferencePairs() {
+    @Test fun playbackClockEstimateCannotAuthorizeExactSourcePairs() {
         val gate = FramePairGate(scope)
         val id = gate.identify(ticket(), 42)!!.copy(playbackClockEstimate=true)
         assertFalse(gate.accepts(id)); assertFalse(gate.presented(id))

@@ -51,17 +51,17 @@ func run(parent: Node) -> Dictionary:
 	material.shader = shader
 	quad.material_override = material
 	await RenderingServer.frame_post_draw
-	var pair := {"session_id": 1, "logical_session_id": 1, "generation": 1, "frame_id": 7, "pts_us": 233333,
-		"format_revision": 2, "effect_revision": 2, "model_generation": 3, "slot_token": 8,
+	var pair := {"contract_version": 2, "source_epoch": 1, "consumer_copy_fence_ready": true, "color_target": "texture", "mask_kind": "numeric", "session_id": 1, "logical_session_id": 1, "generation": 1, "frame_id": 7, "pts_us": 233333,
+		"format_revision": 2, "presentation_revision": 2, "slot_token": 8,
 		"color_texture_id": RenderingServer.texture_get_native_handle(rgb_owner.get_rid()),
 		"alpha_texture_id": RenderingServer.texture_get_native_handle(mask_owner.get_rid()),
-		"width": 64, "height": 32, "input_width": 16, "input_height": 16, "alpha_width": 32, "alpha_height": 16,
-		"rotation_degrees": 0, "model_content_rect": rect, "stereo_sbs": true, "alpha_slot_token": 8,
+		"width": 64, "height": 32, "alpha_width": 32, "alpha_height": 16,
+		"rotation_degrees": 0, "mask_content_rect": rect, "stereo_sbs": true, "alpha_slot_token": 8,
 		"alpha_frame_id": 7, "alpha_pts_us": 233333, "source_pts_verified": true, "immutable_color_frame": true,
 		"pair_identity_verified": true, "alpha_fence_ready": true, "alpha_gpu_uploaded": true, "alpha_texture_format": "GL_R8_numeric"}
 	var invalid_cases := [{"alpha_pts_us": 233334}, {"alpha_frame_id": 8}, {"alpha_slot_token": 9}, {"alpha_fence_ready": false},
 		{"source_pts_verified": false}, {"alpha_texture_format": "GL_SRGB8"}, {"alpha_width": 16}, {"rotation_degrees": 45},
-		{"model_content_rect": [0.2, 0, 0.9, 1]}, {"model_content_rect": [0, 0, 0.001, 1]}, {"model_content_rect": [NAN, 0, 1, 1]}]
+		{"mask_content_rect": [0.2, 0, 0.9, 1]}, {"mask_content_rect": [0, 0, 0.001, 1]}, {"mask_content_rect": [NAN, 0, 1, 1]}]
 	for change in invalid_cases:
 		var bad := pair.duplicate(true)
 		bad.merge(change, true)

@@ -5,7 +5,7 @@ import org.junit.Test
 
 class PairDisplayGateTest {
     private val scope = MediaSessionGate.Scope(3, 2, 4)
-    private fun pair(token: Long, frame: Long = token) = FramePairGate.Identity(3, 2, 4, frame, frame*33333, 2, 2, 3, token)
+    private fun pair(token: Long, frame: Long = token) = FramePairGate.Identity(3, 2, 4, frame, frame*33333, 2, 3, token)
     @Test fun replaceReadyKeepsExistingDisplayClaim() {
         val gate = PairDisplayGate(scope)
         assertNull(gate.offer(pair(1))); assertNotNull(gate.claim(1)); assertTrue(gate.acknowledge(1))

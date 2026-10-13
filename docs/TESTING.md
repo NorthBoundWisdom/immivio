@@ -21,3 +21,5 @@ Workflow tests cover corrupt assets, offline acquisition boundaries, configurati
 Use the Android workflow for host tests and package verification. Rendering fixtures remain under `app/godot/tests/render_*.gd` for focused visual checks. Build and package each target before device verification. Existing device probes and media benchmarks remain available. Use the optional backend and its checked receipt for private PGS, spatial-video or Dolby tests; host/APK checks alone do not establish those capabilities on a headset.
 
 Dependency-selection tests verify that disabled source entries need no seed or download, and explicitly enabling them requires prepared inputs. Host-environment checks inspect installations without installing or downloading tools.
+
+The current refactor checkpoint was compiled without running the test matrix or APK packaging tests, as requested by the owner. Use [ACCEPTANCE.md](ACCEPTANCE.md) for the deferred verification sequence and [FRAME_CONTRACT.md](FRAME_CONTRACT.md) when adapting device reports. Earlier passing results do not certify the current changes.

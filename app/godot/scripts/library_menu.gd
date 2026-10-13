@@ -22,7 +22,10 @@ var current_file_provider: Callable
 const FileActions := preload("res://scripts/library_file_actions.gd")
 var file_actions := FileActions.new(self)
 
-enum Section { RECENT, LOCAL, SMB, DLNA, CLOUD, SETTINGS, MEDIA_SERVER }
+const LibrarySourceController := preload("res://scripts/library_source_controller.gd")
+var _sources := LibrarySourceController.new(self)
+
+const Section := LibrarySourceController.Section
 const NAV := ["Recent", "Local files", "SMB network", "DLNA network", "Cloud drives", "Settings", "Media servers"]
 const NAV_ICONS := ["history", "device", "server", "cast", "cloud", "settings", "media_library"]
 const NAV_ORDER := [Section.RECENT, Section.LOCAL, Section.SMB, Section.DLNA, Section.CLOUD, Section.MEDIA_SERVER, Section.SETTINGS]
@@ -129,9 +132,15 @@ var focus_index := 0 # Desktop keyboard preview only.
 var rows: Array[Dictionary] = []
 var media_filter := 0
 var status := ""                   # English; shown through I18n
-var _pending := {}                 # request id -> kind
-var _local_entries: Array = []
-var _local_stack: Array = []       # [{id, title}] from a storage volume down to the open folder
+var _pending: Dictionary:
+	get: return _sources._pending
+	set(value): _sources._pending = value
+var _local_entries: Array:
+	get: return _sources._local_entries
+	set(value): _sources._local_entries = value
+var _local_stack: Array:
+	get: return _sources._local_stack
+	set(value): _sources._local_stack = value
 var _local_all_files := true       # the last listing could read the whole disk
 var _local_grant_pending := false
 var _local_volumes: Array = []
@@ -146,21 +155,41 @@ var _dlna_servers: Array = []
 var _dlna_stack: Array = []        # [{id, title}] containers from the server root
 var _dlna_server := ""
 var _dlna_entries: Array = []
-var _cloud_stack: Array = []
-var _cloud_entries: Array = []
+var _cloud_stack: Array:
+	get: return _sources._cloud_stack
+	set(value): _sources._cloud_stack = value
+var _cloud_entries: Array:
+	get: return _sources._cloud_entries
+	set(value): _sources._cloud_entries = value
 var _cloud_setup := false
-var _cloud_page := 0 # zero-based, committed only after a successful response
+var _cloud_page: int:
+	get: return _sources._cloud_page
+	set(value): _sources._cloud_page = value
 var _recent_page := 0
 var _recent_count := 0
 var _recent_all_rows: Array[Dictionary] = []
-var _cloud_requested_page := 0
-var _cloud_offsets: Array[int] = [0]
-var _cloud_next := -1
-var _cloud_total := -1
+var _cloud_requested_page: int:
+	get: return _sources._cloud_requested_page
+	set(value): _sources._cloud_requested_page = value
+var _cloud_offsets: Array[int]:
+	get: return _sources._cloud_offsets
+	set(value): _sources._cloud_offsets = value
+var _cloud_next: int:
+	get: return _sources._cloud_next
+	set(value): _sources._cloud_next = value
+var _cloud_total: int:
+	get: return _sources._cloud_total
+	set(value): _sources._cloud_total = value
 var _cloud_page_size := 48
-var _cloud_busy := false
-var _cloud_location := ""
-var _cloud_positions := {}
+var _cloud_busy: bool:
+	get: return _sources._cloud_busy
+	set(value): _sources._cloud_busy = value
+var _cloud_location: String:
+	get: return _sources._cloud_location
+	set(value): _sources._cloud_location = value
+var _cloud_positions: Dictionary:
+	get: return _sources._cloud_positions
+	set(value): _sources._cloud_positions = value
 var _editor := {}                  # SMB or DLNA server; empty when not editing
 var _field := 1
 var _shift := false
@@ -465,131 +494,10 @@ func refresh() -> void:
 # --- requests -------------------------------------------------------------------------------
 
 func _request(kind: String, id: Variant) -> void:
-	if id is int and id > 0:
-		if kind == "cloud":
-			for previous in _pending.keys():
-				if _pending[previous] == "cloud":
-					_pending.erase(previous)
-		if kind.begins_with("dlna") and kind not in ["dlna_save", "dlna_remove"]:
-			for previous in _pending.keys():
-				if _pending[previous] == kind: _pending.erase(previous)
-		_pending[id] = kind
-		if kind == "local":
-			for previous in _pending.keys():
-				if previous != id and _pending[previous] == "local": _pending.erase(previous)
-		status = "Loading…"
-	else:
-		status = "Unavailable"
+	_sources._request(kind, id)
 
 func _on_media_list(id: int, payload: String) -> void:
-	if file_actions.receive(id, payload): return
-	if cloud_accounts.receive(id, payload): return
-	# Unsolicited store notifications also work when Quest does not pause/resume VR.
-	if id == 0:
-		var event: Variant = JSON.parse_string(payload)
-		if event is Dictionary and event.get("source") == "local_storage":
-			if event.get("state") == "error":
-				if section == Section.LOCAL: status = "Storage device unavailable"; refresh()
-				return
-			var volumes: Array = event.get("volumes", [])
-			if volumes == _local_volumes: return
-			var removed := _external_volumes().filter(func(volume): return not volumes.any(func(current): return str(current.id) == str(volume.id)))
-			_local_volumes = volumes
-			for volume in removed: storage_removed.emit(volume.duplicate(true))
-			if not _local_eject_pending.is_empty() and not _local_volumes.any(func(volume): return str(volume.id) == _local_eject_pending):
-				_local_eject_pending = ""
-			if not _local_stack.is_empty() and not _local_volumes.any(func(volume): return str(volume.id) == str(_local_stack[0].id)):
-				_local_stack.clear(); _local_entries = []; _local_eject_pending = ""
-			if section == Section.LOCAL and not account_panel.active():
-				_load_section()
-				if visible: refresh()
-			return
-		if event is Dictionary and event.get("source") == "local_access":
-			var access_state := str(event.get("state", "error"))
-			_local_grant_pending = access_state in ["requested", "settings_opened"]
-			if section != Section.LOCAL or account_panel.active(): return
-			if access_state == "granted": _load_section()
-			elif access_state == "settings_opened": status = "Allow access in system settings"
-			elif access_state == "requested": status = "Media access needed"
-			else: status = str(event.get("error", "Permission settings unavailable"))
-			if visible: refresh()
-			return
-		if event is Dictionary and event.get("source") == "medialib" and event.get("state") == "accounts_changed":
-			server_browser.setup = false
-			if section == Section.MEDIA_SERVER:
-				# Let a VR deletion finish its saved-filter cleanup before reloading.
-				if server_browser.pending.values().any(func(request): return request.action == "remove"): return
-				server_browser.load_servers()
-				refresh()
-			return
-	if server_browser.receive(id, payload): return
-	if not _pending.has(id):
-		return
-	var kind: String = _pending[id]
-	_pending.erase(id)
-	if kind.begins_with("dlna") and section != Section.DLNA: return
-	if kind == "cloud": _cloud_busy = false
-	if kind == "cloud" and section != Section.CLOUD:
-		return
-	var parsed: Variant = JSON.parse_string(payload)
-	if not parsed is Dictionary:
-		if kind == "cloud":
-			file_actions.cloud_failed()
-			status = "Cloud connection failed"
-			refresh()
-		return
-	var result: Dictionary = parsed
-	if kind == "cloud" and (str(result.get("path", "")) != _cloud_path() or \
-		int(result.get("offset", 0)) != _cloud_offsets[_cloud_requested_page] or
-		(not _cloud_path().is_empty() and PlatformMethods.supports(platform, "media_cloud_sorted_page") and str(result.get("order", "")) != file_actions.cloud_order())):
-		# A matching request ID with the wrong page is a protocol failure, not pending work.
-		file_actions.cloud_failed()
-		status = "Cloud connection failed"
-		if visible: refresh()
-		return
-	status = ""
-	var state := str(result.get("state", "error"))
-	if state == "denied":
-		status = "All files access needed" if str(result.get("error", "")) == "ALL_FILES_ACCESS_NEEDED" else "Media access needed"
-	elif state != "ready":
-		if kind == "cloud": file_actions.cloud_failed()
-		status = str(result.get("error", "Error")).left(80)
-	else:
-		match kind:
-			"cloud":
-				file_actions.commit_cloud(str(result.get("order", "")))
-				_cloud_entries = result.get("entries", [])
-				_cloud_page = _cloud_requested_page
-				_cloud_next = int(result.get("next_offset", -1))
-				_cloud_total = int(result.get("total", -1))
-				_cloud_page_size = maxi(1, int(result.get("page_size", 48)))
-				_reset_navigation()
-			"local":
-				if str(result.get("path", "")) == _local_path():
-					_local_entries = result.get("entries", [])
-					_local_volumes = result.get("volumes", _local_entries.filter(func(entry): return entry.get("volume",false)) if _local_path().is_empty() else _local_volumes)
-					_local_all_files = bool(result.get("all_files", true))
-					if _local_release_notice:
-						_local_release_notice = false
-						if section == Section.LOCAL: status = "Storage access stopped. You can unplug."
-			"smb_servers":
-				_smb_servers = result.get("servers", [])
-			"smb_found":
-				_smb_found = result.get("discovered", [])
-			"smb_browse":
-				if str(result.get("server_id")) == _smb_server and str(result.get("path")) == _smb_path:
-					_smb_entries = result.get("entries", [])
-			"dlna_servers", "dlna_discover", "dlna_save", "dlna_remove":
-				_dlna_servers = result.get("servers", [])
-				if kind in ["dlna_save", "dlna_remove"] and int(_editor.get("request_id", -1)) == id:
-					_editor = {}
-					_dlna_server = ""; _dlna_stack.clear(); _dlna_entries.clear(); scroll = 0.0
-			"dlna_browse":
-				var current_object := str(_dlna_stack.back().id) if not _dlna_stack.is_empty() else "0"
-				if str(result.get("server_id")) == _dlna_server and str(result.get("object_id", current_object)) == current_object:
-					_dlna_entries = result.get("entries", [])
-	if visible:
-		refresh()
+	_sources._on_media_list(id, payload)
 
 func _grant_local_access() -> void:
 	if _local_grant_pending: return
@@ -635,26 +543,7 @@ func finish_storage_release(path: String) -> void:
 	refresh()
 
 func _load_section() -> void:
-	if section == Section.MEDIA_SERVER:
-		server_browser.load_servers()
-		return
-	if not platform:
-		status = "Headset only" if section in [Section.LOCAL, Section.SMB, Section.DLNA, Section.CLOUD] else ""
-		return
-	match section:
-		Section.CLOUD:
-			_load_cloud()
-		Section.LOCAL:
-			# Always read again: files change, and access may have just been granted in settings.
-			_request("local", platform.media_local_browse(_local_path()))
-		Section.SMB:
-			if _smb_server.is_empty():
-				_request("smb_servers", platform.media_smb_servers())
-		Section.DLNA:
-			if _dlna_server.is_empty():
-				if PlatformMethods.supports(platform, "media_dlna_servers"):
-					_request("dlna_servers", platform.media_dlna_servers())
-				if _dlna_servers.is_empty(): _request("dlna_discover", platform.media_dlna_discover())
+	_sources._load_section()
 
 # --- rows -----------------------------------------------------------------------------------
 
@@ -799,55 +688,19 @@ func _rebuild_rows() -> void:
 
 ## The open local folder's path ("" lists the storage volumes).
 func _local_path() -> String:
-	return "" if _local_stack.is_empty() else str(_local_stack.back().id)
+	return _sources._local_path()
 
 func _cloud_path() -> String:
-	return "" if _cloud_stack.is_empty() else str(_cloud_stack.back().id)
+	return _sources._cloud_path()
 
 func _cancel_cloud() -> void:
-	for id in _pending.keys():
-		if _pending[id] == "cloud":
-			if PlatformMethods.supports(platform, "media_cloud_cancel"):
-				platform.media_cloud_cancel(int(id))
-			_pending.erase(id)
-	_cloud_busy = false
+	_sources._cancel_cloud()
 
 func _load_cloud(reset: bool = true, force: bool = false, page: int = 0) -> void:
-	_cancel_cloud()
-	if reset:
-		if not _cloud_entries.is_empty() or _cloud_page > 0:
-			_cloud_positions[_cloud_location] = {"page": _cloud_page, "offsets": _cloud_offsets.duplicate()}
-			while _cloud_positions.size() > 32: _cloud_positions.erase(_cloud_positions.keys()[0])
-		_cloud_location = _cloud_path()
-		var saved_page: Dictionary = _cloud_positions.get(_cloud_location, {})
-		_cloud_entries = []
-		_cloud_page = 0
-		_cloud_offsets.assign(saved_page.get("offsets", [0]))
-		page = int(saved_page.get("page", 0))
-		_cloud_next = -1
-		_cloud_total = -1
-	if not platform or page < 0 or page >= _cloud_offsets.size(): return
-	_cloud_requested_page = page
-	_cloud_busy = true
-	if PlatformMethods.supports(platform, "media_cloud_sorted_page") and not _cloud_path().is_empty():
-		_request("cloud", platform.media_cloud_sorted_page(_cloud_path(), _cloud_offsets[page], force, file_actions.cloud_order()))
-	elif PlatformMethods.supports(platform, "media_cloud_page"):
-		_request("cloud", platform.media_cloud_page(_cloud_path(), _cloud_offsets[page], force))
-	elif page == 0:
-		_request("cloud", platform.media_cloud_browse(_cloud_path(), force))
-	else:
-		status = "Unavailable"
-	if not _pending.values().has("cloud"): _cloud_busy = false
+	_sources._load_cloud(reset, force, page)
 
 func _turn_cloud_page(step: int) -> void:
-	if _cloud_busy or _cloud_stack.is_empty(): return
-	var page := _cloud_page + step
-	if page < 0 or (step > 0 and _cloud_next < 0): return
-	if step > 0:
-		_cloud_offsets.resize(page + 1)
-		_cloud_offsets[page] = _cloud_next
-	_load_cloud(false, false, page)
-	refresh()
+	_sources._turn_cloud_page(step)
 
 func _entry_row(entry: Dictionary) -> Dictionary:
 	if bool(entry.get("container", false)):
@@ -909,7 +762,6 @@ static func _size(entry: Dictionary) -> String:
 
 # --- activation -----------------------------------------------------------------------------
 
-## Cold Alpha profile awaiting its confirming second press.
 var _confirm := ""
 var _cache_usage: Variant = null
 var _cache_thread: Thread
@@ -1221,30 +1073,7 @@ func _go_to(level: int) -> void:
 	refresh()
 
 func _refresh_source() -> void:
-	if not platform:
-		return
-	if section == Section.CLOUD:
-		_load_cloud(false, true, _cloud_page)
-		refresh()
-		return
-	match section:
-		Section.LOCAL:
-			_local_grant_pending = false # Also recovers when a VR settings overlay sends no resume.
-			_local_eject_pending = ""
-		Section.SMB:
-			if _smb_server.is_empty():
-				_request("smb_found", platform.media_smb_discover())
-			else:
-				_request("smb_browse", platform.media_smb_browse(_smb_server, _smb_path))
-		Section.DLNA:
-			if _dlna_server.is_empty():
-				_request("dlna_discover", platform.media_dlna_discover())
-			else:
-				_request("dlna_browse", platform.media_dlna_browse(_dlna_server, str(_dlna_stack.back().id) if _dlna_stack.size() > 0 else "0"))
-			refresh()
-			return
-	_load_section()
-	refresh()
+	_sources._refresh_source()
 
 # --- Network server editor with a ray keyboard --------------------------------------------------
 

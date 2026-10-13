@@ -3,7 +3,7 @@ package org.vrpassthroughplayer.plugin
 /** One released Surface buffer at a time. Never relabel a coalesced/latest OES frame. */
 internal class DecodedFrameGate(val scope: MediaSessionGate.Scope) {
     data class Ticket(val scope: MediaSessionGate.Scope, val frameId: Long, val ptsUs: Long,
-                      val formatRevision: Int, val effectRevision: Int) {
+                      val formatRevision: Int, val presentationRevision: Int) {
         val timestampNs: Long get() = Math.multiplyExact(ptsUs, 1000L)
     }
     private var pending: Ticket? = null
@@ -11,10 +11,10 @@ internal class DecodedFrameGate(val scope: MediaSessionGate.Scope) {
     private var closed = false
     private var lastFrame = -1L
 
-    @Synchronized fun begin(frameId: Long, ptsUs: Long, formatRevision: Int, effectRevision: Int): Ticket? {
+    @Synchronized fun begin(frameId: Long, ptsUs: Long, formatRevision: Int, presentationRevision: Int): Ticket? {
         if (closed || pending != null) return null
-        require(frameId > lastFrame && ptsUs in 0..Long.MAX_VALUE / 1000 && formatRevision > 0 && effectRevision > 0)
-        return Ticket(scope, frameId, ptsUs, formatRevision, effectRevision).also {
+        require(frameId > lastFrame && ptsUs in 0..Long.MAX_VALUE / 1000 && formatRevision > 0 && presentationRevision > 0)
+        return Ticket(scope, frameId, ptsUs, formatRevision, presentationRevision).also {
             pending = it; notified = false; lastFrame = frameId
         }
     }

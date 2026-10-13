@@ -3,7 +3,7 @@ package org.vrpassthroughplayer.plugin
 /** Logical ownership only: no EGL calls. All methods run under the session lock.
  * Up to [depth] ready pairs, claimed oldest first; up to two claims while Godot replaces a
  * material binding. depth 1 keeps only the latest. A deeper queue keeps pairs that become
- * ready in a burst (GL uploads finishing together when RVM holds the GPU) instead of
+ * ready in a burst (GPU captures finishing together) instead of
  * replacing all but the newest unseen: the display runs at 72 Hz, the source at 30.
  * Closing rejects offers/claims/acks but still accepts detach of existing claims.
  */
@@ -26,7 +26,7 @@ internal class PairDisplayGate(private val scope: MediaSessionGate.Scope, privat
         id.logicalSessionId == scope.logicalSessionId && id.generation == scope.generation &&
         id.slotToken > 0 && id.frameId >= frame && id.ptsUs >= 0 &&
         (id.playbackClockEstimate || id.ptsUs >= pts) && id.formatRevision > 0 &&
-        id.effectRevision > 0 && id.modelGeneration > 0
+        id.presentationRevision > 0
 
     /** Retire the returned token. A rejected input returns its own token. */
     fun offer(id: FramePairGate.Identity): Long? {

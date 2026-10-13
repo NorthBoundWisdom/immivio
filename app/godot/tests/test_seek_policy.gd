@@ -203,10 +203,9 @@ func _run() -> void:
 	video.control.observe(1000, 60000)
 	video.seek_absolute(5500)
 	video.control.take_pending(); video._pending_revision.clear()
-	bridge.pair = {"session_id": 7, "logical_session_id": 7, "generation": 1,
-		"format_revision": 1, "effect_revision": 1, "model_generation": 1,
-		"frame_id": 70, "pts_us": 4000000, "source_epoch": 2, "slot_token": 10,
-		"width": 8192, "height": 4096, "alpha_requested": false, "inference_ran": false,
+	bridge.pair = {"contract_version": 2, "consumer_copy_fence_ready": true, "color_target": "texture", "mask_kind": "numeric", "session_id": 7, "logical_session_id": 7, "generation": 1,
+		"format_revision": 1, "presentation_revision": 1, "frame_id": 70, "pts_us": 4000000, "source_epoch": 2, "slot_token": 10,
+		"width": 8192, "height": 4096,
 		"source_pts_verified": true}
 	video._pending_pair = bridge.pair
 	video._present_pending()
