@@ -2,13 +2,17 @@
 
 # Immivio
 
-### Open Spatial Media Player
+### Free, open-source VR video player for Meta Quest and PICO
 
 **VR180 · VR360 · 3D · Spatial Video · Photos**
 
-An open-source spatial media player for standalone XR headsets.
+Immivio is a **free, open-source VR video and spatial media player** for standalone Android XR headsets. No player purchase or subscription is required.
 
-Watch your own videos and photos on Meta Quest, PICO, or a compatible Android OpenXR headset. Choose a virtual screen or an immersive projection, connect your media library, and keep playback controls within reach.
+Watch VR180, 360° and 3D side-by-side (SBS) videos and supported spatial photos on Meta Quest, PICO, or a compatible Android OpenXR headset. Choose a virtual cinema screen or an immersive projection, connect your NAS or media library, and keep playback controls within reach.
+
+**Designed for high-performance playback:** libmpv uses Android hardware video decoding where supported, with shared GPU textures for rendering and adjustable display quality. Actual performance depends on headset, codec, resolution and bitrate.
+
+Immivio 是面向 Meta Quest 与 PICO 的免费开源 VR 视频播放器，支持 VR180、360° 全景、3D 左右立体视频与空间照片，提供硬件解码、GPU 渲染，以及 SMB、WebDAV、DLNA 网络媒体库访问。[查看中文官网](https://northboundwisdom.github.io/immivio/zh/)。
 
 [Website](https://northboundwisdom.github.io/immivio/) · [Releases](https://github.com/NorthBoundWisdom/immivio/releases) · [Development builds](https://github.com/NorthBoundWisdom/immivio/actions/workflows/android-release.yml) · [User guide](https://northboundwisdom.github.io/immivio/guide/) · [中文官网与使用指南](https://northboundwisdom.github.io/immivio/zh/)
 
@@ -25,6 +29,7 @@ Immivio continues development of [zerochocobo/Thru3D-Media-Player](https://githu
 | ![Playback settings](website/assets/screenshots/settings.png) | ![Display preferences](website/assets/screenshots/display.png) |
 
 - **Watch flat or immersive media.** Flat screens, VR180, VR360 and fisheye projections; side-by-side and top-bottom stereo layouts, including half-width/half-height formats.
+- **Free and open source.** Download, use and build the player under GPL-3.0; third-party services follow their own terms and may have their own fees.
 - **Bring your own library.** Local files, SMB, WebDAV, DLNA, supported media servers and cloud sources. Available operations depend on the source and your account permissions.
 - **Get comfortable.** Move the picture and panels, adjust supported screen size/distance/curvature, and use reclining mode or head-follow when you want them.
 - **Keep control.** Audio and subtitle selection, playback speed, timestamp bookmarks, per-video audio/subtitle timing, persistent queues, repeat and shuffle.

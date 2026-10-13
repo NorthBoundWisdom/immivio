@@ -14,4 +14,6 @@ For every version update, maintain `CHANGELOG.md` and the matching English/Chine
 
 The user website lives in `website/`, with an English home, guide and release notes, and matching pages under `website/zh/`. Run `python3 tools/check_website.py` and `node --check website/assets/site.js` after editing it. The Pages workflow publishes this directory from `main` and refreshes the APK selector when a GitHub Release is published. Keep actual screenshots and their capture manifest together; do not commit the source video or device diagnostics.
 
+Keep search titles, descriptions, social previews and JSON-LD consistent with each page's visible content in both languages. Update sitemap modification dates only for pages whose content changed. Performance claims need evidence; describe supported hardware decoding and GPU rendering without inventing benchmarks, ratings or format guarantees. Keep the repository description and topics aligned with the README's current product scope.
+
 The supplied application artwork is `app/godot/branding/immivio-icon.png`. After replacing it, run `godot --headless --xr-mode off --path app/godot --script ../../tools/prepare_branding.gd` for adaptive safe-area sizing and the website icon. Keep the separate Android monochrome mask consistent with the mark. All three Android export presets share these assets.

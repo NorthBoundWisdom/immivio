@@ -201,6 +201,9 @@ code {
   margin:1.6rem 0 0;
   max-width:32rem
 }
+html[lang="zh-CN"] .hero h1 {
+  font-size:clamp(2.25rem,4vw,3.6rem)
+}
 .hero .fine {
   font-size:.74rem!important
 }
@@ -714,9 +717,6 @@ input[type=radio] {
 }
 .hero-copy {
   max-width:800px
-}
-.hero h1 br {
-  display:none
 }
 .hero-media img {
   aspect-ratio:16/9

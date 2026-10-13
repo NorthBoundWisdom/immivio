@@ -22,10 +22,23 @@ class Page(HTMLParser):
         self.path, self.ids, self.links = path, set(), []
         self.language, self.headings = "", 0
         self.canonical, self.alternates, self.locales = "", {}, []
+        self.metadata, self.titles, self.structured = {}, [], []
+        self.capture = None
         self.feed(path.read_text(encoding="utf-8"))
 
     def handle_starttag(self, tag, attrs):
         values = dict(attrs)
+        if tag == "meta":
+            key = values.get("name") or values.get("property")
+            if key:
+                assert key not in self.metadata, f"{self.path}: duplicate meta {key}"
+                self.metadata[key] = values.get("content", "")
+        if tag == "title":
+            self.titles.append("")
+            self.capture = "title"
+        if tag == "script" and values.get("type") == "application/ld+json":
+            self.capture = "json"
+            self.json_text = ""
         if "id" in values:
             assert values["id"] not in self.ids, (
                 f"{self.path}: duplicate ID {values['id']}"
@@ -46,6 +59,19 @@ class Page(HTMLParser):
         for field in ["src", "href"]:
             if values.get(field):
                 self.links.append(values[field])
+
+    def handle_data(self, data):
+        if self.capture == "title":
+            self.titles[-1] += data
+        elif self.capture == "json":
+            self.json_text += data
+
+    def handle_endtag(self, tag):
+        if tag == "title":
+            self.capture = None
+        elif tag == "script" and self.capture == "json":
+            self.structured.append(json.loads(self.json_text))
+            self.capture = None
 
 
 def main():
@@ -74,6 +100,36 @@ def main():
         assert page.canonical == ORIGIN + relative.removesuffix("index.html"), (
             f"{path}: wrong canonical URL"
         )
+        assert page.alternates.get(page.language) == page.canonical, (
+            f"{path}: missing self language alternate"
+        )
+        assert len(page.titles) == 1 and page.titles[0].strip()
+        assert page.metadata.get("description", "").strip()
+        for prefix in ("og:", "twitter:"):
+            assert page.metadata.get(prefix + "title") == page.titles[0]
+            assert (
+                page.metadata.get(prefix + "description")
+                == page.metadata["description"]
+            )
+        assert page.metadata.get("og:url") == page.canonical
+        assert "noindex" not in page.metadata.get("robots", "").lower()
+        assert len(page.structured) == 1
+        graph = page.structured[0]
+        assert graph["@context"] == "https://schema.org"
+        entries = graph["@graph"]
+        web_pages = [entry for entry in entries if entry["@type"] == "WebPage"]
+        assert len(web_pages) == 1
+        assert web_pages[0]["url"] == page.canonical
+        assert web_pages[0]["inLanguage"] == page.language
+        assert web_pages[0]["name"] == page.titles[0]
+        assert web_pages[0]["description"] == page.metadata["description"]
+        apps = [entry for entry in entries if entry["@type"] == "SoftwareApplication"]
+        if relative in ("index.html", "zh/index.html"):
+            assert len(apps) == 1
+            assert (
+                apps[0]["name"] == "Immivio" and apps[0]["isAccessibleForFree"] is True
+            )
+            assert apps[0]["offers"]["price"] == "0"
         assert page.alternates.get(
             "en" if zh else "zh-CN"
         ) == ORIGIN + counterpart.removesuffix("index.html"), (
@@ -145,7 +201,7 @@ def main():
             == shot["sha256"]
         )
     print(
-        f"Website checks passed: {len(pages)} pages, 2 languages, single-edition downloads, 3 emulator screenshots."
+        f"Website checks passed: {len(pages)} pages, 2 languages, search metadata and structured data, single-edition downloads, 3 emulator screenshots."
     )
 
 
