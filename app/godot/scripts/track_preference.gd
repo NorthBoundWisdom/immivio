@@ -1,7 +1,7 @@
 extends RefCounted
 ## Persist intent, not MPV's automatically selected track. Metadata guards against
 ## a server reusing a numeric ID for a different language after a library refresh.
-const FIELDS := ["lang", "title", "codec"]
+const FIELDS := ["language", "title", "codec"]
 
 static func valid(value: Variant) -> bool:
 	if not value is Dictionary or not value.has("id"): return false

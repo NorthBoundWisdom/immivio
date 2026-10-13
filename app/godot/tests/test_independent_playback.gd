@@ -25,12 +25,12 @@ func check(ok: bool, message: String) -> void:
 	if not ok: failures.append(message)
 func _initialize() -> void: _run.call_deferred()
 func _run() -> void:
-	var rows := [{"id": 2, "lang": "zh", "title": "Commentary", "codec": "aac"}]
+	var rows := [{"id": 2, "language": "zh", "title": "Commentary", "codec": "aac"}]
 	var choice := Preference.capture(2, rows)
-	check(Preference.resolve(choice, [{"id": 2, "lang": "en"}]) == null, "Reused IDs cannot select another language")
+	check(Preference.resolve(choice, [{"id": 2, "language": "en"}]) == null, "Reused IDs cannot select another language")
 	var moved := rows.duplicate(true); moved[0].id = 8
 	check(Preference.resolve(choice, moved) == 8, "A unique metadata match survives renumbering")
-	moved.append({"id": 9, "lang": "zh", "title": "Commentary", "codec": "aac"})
+	moved.append({"id": 9, "language": "zh", "title": "Commentary", "codec": "aac"})
 	check(Preference.resolve(choice, moved) == null, "Ambiguous renamed tracks remain unresolved")
 	check(not Preference.valid({"id": NAN}) and not Preference.valid({"id": 1.5}), "Invalid serialized IDs are rejected")
 	var video := Video.new(); root.add_child(video); video.set_process(false)
@@ -39,7 +39,7 @@ func _run() -> void:
 	var folder := ProjectSettings.globalize_path("res://../../build/output/independent-playback-%d" % Time.get_ticks_usec())
 	video.mode_memory = Memory.new(folder)
 	video.open_local("file:///track-a.mp4", "A")
-	var details := {"audio_tracks": rows, "subtitle_tracks": [{"id": 3, "lang": "en", "codec": "subrip"}]}
+	var details := {"audio_tracks": rows, "subtitle_tracks": [{"id": 3, "language": "en", "codec": "subrip"}]}
 	video._on_state(video.media.session_id, JSON.stringify({"state": "paused", "details": details}))
 	check(video.select_audio_track(2) and video.set_subtitle_track(0), "Explicit audio and subtitle-off choices accepted")
 	var saved := video.mode_memory.lookup(video.local_uri)
