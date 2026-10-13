@@ -216,8 +216,8 @@ func _ready() -> void:
 	input_visuals = InputVisuals.new()
 	input_visuals.name = "InputVisuals"
 	origin.add_child(input_visuals)
-	# A tracking-space reset (long Home press) requests centring. Focus recovery
-	# after an ordinary system dialog does not request placement changes.
+	# Runtime space notifications are handled by the presentation policy. PICO
+	# automatic notifications preserve placement; explicit app recenter still works.
 	var openxr := XRServer.find_interface("OpenXR")
 	if not desktop and openxr and openxr.has_signal("pose_recentered"):
 		openxr.connect("pose_recentered", _on_system_recentered)

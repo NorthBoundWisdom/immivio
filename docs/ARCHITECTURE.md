@@ -8,6 +8,8 @@ Immivio is a Godot/OpenXR interface over an Android media-library plugin, libmpv
 
 `xr_menu_compositor.gd` owns the Android-Surface menu presenter, its acknowledged presentation queue, curved mapping and scene fallback. Sustained low frame rates latch the fallback until restart. Menu pose and ray targets use the same presented layout.
 
+PICO runtime space-reset notifications preserve existing menu/media placement: these notifications also occur automatically and do not expose user intent. Explicit in-app recenter still places content in front of the current gaze. Other runtimes retain deferred system recenter after tracked scene frames. Focus recovery alone never requests placement changes.
+
 ## Playback
 
 `MpvVideoBridge.kt` coordinates MPV sessions, audio focus and frame delivery. `PlaybackHost` holds decoder lifetime, `PlaybackSourceResources` owns FD/network/subtitle resources, and `PlaybackDisplayLeases` holds consumer GL leases under the session lock. `native/mpv/mpv_source.cpp` owns decoding/render transactions, source epochs, seeks and EOF. `native/render-bridge` manages GPU resources and fences; source buffers cannot be reused before the last consumer releases ownership.

@@ -4,6 +4,10 @@
 
 Newest first, following product release milestones. Entries under 0.6.0 and earlier describe the original project; removed conversion features are historical, not current Immivio capabilities. Some development/source snapshots contained features before their product release. Original APK identifiers `0.2` and `0.4` are retained; `0.4` was also called `0.4.0` in release notes. Availability depends on device, server and media capabilities.
 
+## Unreleased
+
+- Keep PICO windows and media placement when the runtime emits automatic tracking-space reset notifications. Explicit in-app recenter remains available; other runtimes retain their system-recenter handling.
+
 ## 0.9.0 — 2026-10-13
 
 - Set the application version to 0.9.0 / versionCode 14 for Quest, PICO and experimental OpenXR packages.

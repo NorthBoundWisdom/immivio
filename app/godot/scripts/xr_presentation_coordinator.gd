@@ -12,6 +12,7 @@ const ViewFollow := preload("res://scripts/view_follow.gd")
 var _head_placed := false
 var _system_recenter_pending := false
 var _system_recenter_frames := 0
+var _runtime_is_pico := OS.has_feature("pico")
 var library_distance := 1.4
 var view_follow := ViewFollow.new()
 var temporary_passthrough := false
@@ -33,6 +34,14 @@ func _head_tracked() -> bool:
 func _on_system_recentered() -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host): return
+	# PICO also sends this notification during automatic tracking-space changes.
+	# OpenXR does not identify user intent here. Keep world placement instead of
+	# turning an idle runtime notification into an application recenter request.
+	if _runtime_is_pico:
+		host._system_recenter_pending = false
+		host._system_recenter_frames = 0
+		Log.record("system_recenter_placement_preserved", {"runtime": "pico"})
+		return
 	Log.record("system_recentered")
 	host._system_recenter_pending = true
 	host._system_recenter_frames = 0

@@ -25,6 +25,7 @@ func _run() -> void:
 	root.add_child(main); main.set_process(false); main.report_timer.stop(); main.menu_compositor.set_process(false)
 	main.video.set_process(false); main.photo.set_process(false)
 	main.display.preview = false; main.display.session_state = "session_focussed"; main._head_placed = true
+	main._presentation._runtime_is_pico = false
 	var menu: Node3D = main.recent_menu
 	var old_head := Transform3D(Basis(Vector3.UP, .25), Vector3(.5, 1.7, .2))
 	var new_head := Transform3D(Basis.from_euler(Vector3(.45, .25 + PI, .2)), Vector3(-.3, 1.8, .4))
@@ -88,6 +89,30 @@ func _run() -> void:
 		check((main.player_menu.global_position-new_head.origin).dot(-new_head.basis.z) > 0, "Long Home centres playback controls in front for projection %d" % projection)
 		if projection != 0:
 			check(main.video.view_yaw == 0 and main.video.view_pitch == 0 and main.video.view_zoom == 0, "Long Home resets immersive view offsets")
+	# PICO runtime notifications do not distinguish automatic space changes from
+	# a user's system recenter. They must not pull an idle window to the new gaze.
+	main._presentation._runtime_is_pico = true
+	menu.visible = true; main.player_menu.visible = false
+	main.video.geometry = 0; main.video._apply_geometry(); main.video.panel.visible = true
+	for follow in [false, true]:
+		for reclining in [false, true]:
+			main.view_follow.set_enabled(follow); main.reclining_mode = reclining
+			main.xr_camera.global_transform = old_head
+			main._recenter()
+			main.view_follow.capture(main._menu_key(menu), main._menu_head_pose(old_head), menu.global_transform)
+			var before: Transform3D = menu.global_transform
+			var screen_before: Transform3D = main.video.flat_pose
+			var offsets: Dictionary = main.view_follow._poses.duplicate(true)
+			calls = main.centres
+			for notification in 4:
+				main._on_system_recentered()
+				main.xr_camera.global_transform = new_head
+				for frame in 5: main._apply_system_recenter()
+			check(main.centres == calls and not main._system_recenter_pending, "Repeated PICO space notifications do not request content recentering")
+			check(menu.global_transform.is_equal_approx(before) and main.video.flat_pose.is_equal_approx(screen_before), "PICO notifications preserve existing menu and screen placement")
+			check(main.view_follow._poses == offsets, "PICO notifications preserve explicit follow offsets")
+			main._recenter()
+			check(main.centres == calls + 1 and not menu.global_transform.is_equal_approx(before), "Explicit in-app recenter still moves PICO content in front of the user")
 	main.queue_free(); await process_frame
 	for failure in failures: push_error(failure)
 	print("System recenter: %d checks, %d failures" % [checks, failures.size()])
