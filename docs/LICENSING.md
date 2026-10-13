@@ -19,14 +19,12 @@ The project license does not replace third-party notices or claim ownership of u
 | Component | License / treatment |
 | --- | --- |
 | libmpv / FFmpeg | Recorded GPL build; source revisions, build scripts and the project mpv patch are included/referenced. Upstream headers retain their notices. |
-| Robust Video Matting | Upstream code is GPL-3.0. The project records its modified student weights as GPL-derived; no separate permissive grant for the actual weights is asserted. Keep its full license and modification provenance. |
 | Godot | MIT engine and corresponding template notices. |
 | Hand fallback meshes and texture | Unmodified MIT Godot OpenXR hand demo assets; full license and pinned upstream provenance in `app/godot/models/hands`. These glTF buffers are runtime visuals, not AI weights. |
 | Godot OpenXR Vendors | External addon; preserve the addon and each vendor component's actual license. No vendor SDK binaries are vendored here. |
 | AndroidX Media3 | Apache-2.0; retain applicable dependency/transitive notices when distributing an APK. |
 | CodeLibs JCIFS | LGPL-2.1; keep its source/license obligations and those of transitive dependencies. |
 | p115rsacipher adaptation | MIT; source and attribution in `third_party/p115rsacipher`. |
-| Gradle wrapper | Apache-2.0; license and notice in `third_party/gradle`. |
 | Belfast Sunset (Pure Sky) | Unmodified Poly Haven background, CC0-1.0; source and attribution are kept with the image. |
 | Project-generated test fixtures | Synthetic images, patterns and audio; no private source media is included. |
 

@@ -84,7 +84,7 @@ finally {
     Write-Output "Evidence: $directory"
 }
 if ($result.state -ne 'collected_scoped_selection_trace') { throw $result.error }
-& "$workspace/.venv/Scripts/python.exe" "$workspace/benchmarks/local_selection_device.py" $directory
+& python "$workspace/benchmarks/local_selection_device.py" $directory
 if ($LASTEXITCODE -ne 0) {
     $result.state='failed_independent_selection_audit'
     $result | ConvertTo-Json -Depth 10 | Set-Content "$directory/result.json"

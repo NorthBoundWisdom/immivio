@@ -152,7 +152,7 @@ finally {
     Write-Output "Evidence: $directory"
 }
 if ($result.state -ne 'passed_scoped_subtitle_trace') { throw $result.error }
-& "$workspace\.venv\Scripts\python.exe" "$workspace\benchmarks\mpv_subtitles_device.py" $directory
+& python "$workspace\benchmarks\mpv_subtitles_device.py" $directory
 if ($LASTEXITCODE -ne 0) {
     $result.state = 'failed_independent_subtitle_audit'
     $result | ConvertTo-Json -Depth 10 | Set-Content "$directory/result.json"

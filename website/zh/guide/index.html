@@ -6,12 +6,12 @@
 <meta name="color-scheme" content="dark light">
 <meta name="application-name" content="Immivio – VR &amp; Spatial Media Player">
 <title>Immivio — 使用指南</title>
-<meta name="description" content="面向 Meta Quest 和 PICO 的开源 VR 媒体播放器。下载 APK，观看视频、立体照片和沉浸内容。">
+<meta name="description" content="Immivio 使用指南：安装到头显、选择视频布局、连接媒体库，以及排查播放和字幕问题。">
 <link rel="canonical" href="https://northboundwisdom.github.io/immivio/zh/guide/">
 <link rel="alternate" hreflang="en" href="https://northboundwisdom.github.io/immivio/guide/">
 <link rel="alternate" hreflang="x-default" href="https://northboundwisdom.github.io/immivio/guide/">
 <meta property="og:title" content="Immivio — 使用指南">
-<meta property="og:description" content="面向 Meta Quest 和 PICO 的开源 VR 媒体播放器。下载 APK，观看视频、立体照片和沉浸内容。">
+<meta property="og:description" content="Immivio 使用指南：安装到头显、选择视频布局、连接媒体库，以及排查播放和字幕问题。">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://northboundwisdom.github.io/immivio/zh/guide/">
 <meta property="og:image" content="https://northboundwisdom.github.io/immivio/assets/screenshots/playback.png">
@@ -32,6 +32,7 @@
 <a class="optional" href="../../zh/#experience">体验</a>
 <a href="../../zh/#download">下载</a>
 <a class="optional" href="../../zh/guide/">使用指南</a>
+<a class="optional" href="../../zh/updates/">更新说明</a>
 <a class="locale" href="../../guide/" lang="en">English</a>
 <button class="theme" type="button" data-theme-toggle aria-label="切换深浅主题" aria-pressed="false">◐</button>
 </nav>
@@ -142,10 +143,10 @@
 <h3>播放不流畅</h3>
 <p>尝试更低码率的内容，再核对设备、编码与构建能力。8K 文件在虚拟机中可解码，不代表头显达到特定帧率。</p>
 <h3>字幕没出现</h3>
-<p>检查字幕轨道是否关闭，外挂文件是否仍可访问。标准 mpv 后端不提供项目专有的 PGS 字幕接口；可以尝试文本字幕。</p>
+<p>检查字幕轨道是否关闭，外挂文件是否仍可访问。PGS 支持因安装包而异；请查看对应版本的说明，或尝试 SRT、ASS、SSA、VTT 文本字幕。</p>
 <h3>报告问题</h3>
 <p>在 <a href="https://github.com/NorthBoundWisdom/immivio/issues">Issues</a> 中提供设备型号、构建版本、格式和复现步骤。仅上传有权分发的样片，不公开账号凭据。</p>
-<p>开发资料：<a href="https://github.com/NorthBoundWisdom/immivio/blob/main/docs/BUILD.md">构建</a> · <a href="https://github.com/NorthBoundWisdom/immivio/blob/main/CHANGELOG.zh-CN.md">更新日志</a>
+<p>开发资料：<a href="https://github.com/NorthBoundWisdom/immivio/blob/main/docs/BUILD.md">构建</a> · <a href="../updates/">更新说明</a>
 </p>
 </section>
 </article>
@@ -155,6 +156,7 @@
 <p>基于 <a href="https://github.com/zerochocobo/Thru3D-Media-Player">zerochocobo/Thru3D-Media-Player</a> 的 0.6.0 版本继续开发。从 0.6.0 起独立维护与发布，由 NorthBoundWisdom 维护，保留原项目署名、历史和 GPL-3.0 许可。</p>
 <div class="footer-links">
 <a href="https://github.com/NorthBoundWisdom/immivio">GitHub ↗</a>
+<a href="../../zh/updates/">更新说明 ↗</a>
 <a href="https://github.com/NorthBoundWisdom/immivio/issues">反馈问题 ↗</a>
 <a href="https://github.com/NorthBoundWisdom/immivio/blob/main/LICENSE">GPL-3.0 ↗</a>
 </div>

@@ -136,5 +136,5 @@ finally {
     Write-Output "Evidence: $directory"
 }
 if ($result.state -ne 'passed_scoped_profile_and_mode_trace') { throw $result.error }
-& "$workspace/.venv/Scripts/python.exe" "$workspace/benchmarks/mpv_modes_device.py" $directory
+& python "$workspace/benchmarks/mpv_modes_device.py" $directory
 if ($LASTEXITCODE -ne 0) { throw 'Independent profile/mode audit failed' }

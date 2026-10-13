@@ -1,10 +1,13 @@
 # Changelog
 
-[简体中文](CHANGELOG.zh-CN.md)
+[Bilingual release notes](https://northboundwisdom.github.io/immivio/updates/)
 
-Newest first, following product release milestones. Some development/source snapshots contained features before their product release. Original APK identifiers `0.2` and `0.4` are retained; `0.4` was also called `0.4.0` in release notes. Availability depends on device, server and media capabilities.
+Newest first, following product release milestones. Entries under 0.6.0 and earlier describe the original project; removed conversion features are historical, not current Immivio capabilities. Some development/source snapshots contained features before their product release. Original APK identifiers `0.2` and `0.4` are retained; `0.4` was also called `0.4.0` in release notes. Availability depends on device, server and media capabilities.
 
 ## Unreleased
+
+- Simplify FreeCM management: keep OpenList and the OpenXR addon active, declare optional native sources at fixed commits with `disabled: true`, restore Gradle/Go manifests and use prepared host tools and Android libraries.
+- Retire superseded Windows test/package wrappers and the checked-in machine-specific mpv build receipt; retain device probes and optional native build recipes.
 
 - Rename the independently maintained project, application and build artifacts to Immivio; the repository is now `NorthBoundWisdom/immivio`. Retain ordinary-player app identity/signing compatibility.
 - Remove live AI depth, person matting, model preparation/training tools, inference libraries and AI-specific build jobs. Keep existing stereo/spatial media, ordinary photos and precomputed media masks.
@@ -12,7 +15,7 @@ Newest first, following product release milestones. Some development/source snap
 - Make website/README icon corners transparent and apply the formal Immivio brand.
 
 - Replace the application and website icon with the supplied neon panorama artwork.
-- Rewrite the English/Chinese README for users and add a bilingual GitHub Pages website with emulator screenshots and installation guidance.
+- Maintain the bilingual website, installation guide and release notes; keep one repository README and technical changelog.
 
 - Maintain this edition independently; retain the original license and history, and direct contributions/releases to NorthBoundWisdom.
 - Reimplement selected original 0.7.0 behaviors: persist explicit audio/subtitle choices per video (with metadata matching after track renumbering), and retain volume/mute across launches.
@@ -22,7 +25,6 @@ Newest first, following product release milestones. Some development/source snap
 - Retain DLNA subtitle links when metadata is incomplete, refresh from the containing directory and match by server object ID when resource URLs change. Identify playback HTTP requests as Thru3D rather than a generic libmpv client.
 - Add sustained-low-frame-rate fallback to our existing native menu compositor, retaining its scene/curved fallback and input mapping.
 
-- AI and no-AI Android builds now use distinct package IDs, launcher labels and signing identities for side-by-side installation; the no-AI app retains its existing identity and data.
 - Made the library curved, added grip dragging with same-hand stick depth adjustment, and return to the previous browse position when closing video. Removed duplicate library/playback actions and aligned status controls with the action row.
 - Stabilized hover tooltip bounds to prevent UI projection jumps, and recenter the visible library after sleep/focus recovery once head tracking returns.
 - Prewarm library settings and 31 playback page/popup states; retain a bounded cache of prepared settings controls and move cache-size scans off the UI thread.
@@ -35,17 +37,7 @@ Newest first, following product release milestones. Some development/source snap
 
 - Added a persistent Reclining mode in General settings, off by default, allowing tilted flat-video screens and menus while keeping Follow independent.
 
-- Expand Android Release CI to four Windows/macOS checks: two with public AI models and two without AI, sharing a verified source-frame backend between the AI hosts.
-
-- Add checksum-pinned public AI preparation and portable AI APK builds with source-frame backend verification, exact model receipts and package integrity checks.
-- Make RVM conversion distinguish measured floating-point threshold crossings from incorrect 8-bit Alpha export, and collect native session cycles before Python shutdown.
-
-- Add build-selected model packs with adapter/runtime contracts and size/SHA256 verification for public and custom weights; default RVM conversion to public upstream weights while retaining the historical distilled variant.
-- Separate matting session use behind an interface, include model fingerprints in photo effect caches, and exclude model-pack metadata from no-AI builds.
-
-- Added an optional model-free build that excludes AI runtimes/assets and disables live inference controls while preserving ordinary playback and precomputed stereo/masks.
 - Added a verified standard-libmpv backend and portable Android build entry point; documented its source-timing, PGS and Dolby metadata limits separately from the project mpv backend.
-- Added Windows/macOS CI for model-free PICO, Quest and OpenXR Android packages, with dependency caches, package verification and optional isolated signing.
 - Updated the color-grading regression to exercise subtitle distance through the current subtitle popup.
 
 ## 0.6.0 — 2026-10-11

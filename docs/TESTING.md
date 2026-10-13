@@ -16,6 +16,6 @@ The Android workflow offers `--level l0` (workflow and publication boundaries), 
 
 Workflow tests cover corrupt assets, offline acquisition boundaries, configuration staleness, separate Build/Package stages, safe cleanup, verified optional backend imports, process timeouts and signing identity preservation. Release tests reject incomplete dependency provenance and mismatched tag/commit/host/variant or APK bytes.
 
-Build and package each target before device verification. Existing device probes and media benchmarks remain available. Use the optional backend and its checked receipt for private PGS, spatial-video or Dolby tests; host/APK checks alone do not establish those capabilities on a headset.
+Use the Android workflow for host tests and package verification. Rendering fixtures remain under `app/godot/tests/render_*.gd` for focused visual checks. Build and package each target before device verification. Existing device probes and media benchmarks remain available. Use the optional backend and its checked receipt for private PGS, spatial-video or Dolby tests; host/APK checks alone do not establish those capabilities on a headset.
 
 Dependency-selection tests verify that disabled source entries need no seed or download, and explicitly enabling them requires prepared inputs. Host-environment checks inspect installations without installing or downloading tools.

@@ -1,21 +1,20 @@
-param([string]$ToolRoot = $(if ($env:THRU3D_TOOL_ROOT) { $env:THRU3D_TOOL_ROOT } else { Join-Path ([Environment]::GetFolderPath('UserProfile')) '.cache\thru3d-toolchain' }))
 $ErrorActionPreference = 'Stop'
 $workspace = Split-Path -Parent $PSScriptRoot
-. "$PSScriptRoot\environment\Activate-QuestEnvironment.ps1" -ToolRoot $ToolRoot
+. "$PSScriptRoot\environment\Activate-QuestEnvironment.ps1"
 $output = Join-Path $workspace 'build\output\mpv-subtitles-host'
 $build = Join-Path $workspace 'build\native-mpv-json'
-& "$ToolRoot\android-sdk\cmake\3.31.6\bin\cmake.exe" -S "$workspace\benchmarks\native_mpv_json" -B $build -G 'Visual Studio 17 2022' -A x64
+& cmake -S "$workspace\benchmarks\native_mpv_json" -B $build -G 'Visual Studio 17 2022' -A x64
 if ($LASTEXITCODE -ne 0) { throw 'Native JSON configuration failed.' }
-& "$ToolRoot\android-sdk\cmake\3.31.6\bin\cmake.exe" --build $build --config Release
+& cmake --build $build --config Release
 if ($LASTEXITCODE -ne 0) { throw 'Native JSON compilation failed.' }
-& "$workspace\.venv\Scripts\python.exe" "$workspace\benchmarks\native_mpv_json\verify.py" --executable "$build\Release\mpv_json_oracle.exe" --output "$output\json"
+& python "$workspace\benchmarks\native_mpv_json\verify.py" --executable "$build\Release\mpv_json_oracle.exe" --output "$output\json"
 if ($LASTEXITCODE -ne 0) { throw 'Independent native JSON oracle failed.' }
-& "$workspace\.venv\Scripts\python.exe" "$workspace\tools\media\generate_mp06_subtitle_fixture.py"
+& python "$workspace\tools\media\generate_mp06_subtitle_fixture.py"
 if ($LASTEXITCODE -ne 0) { throw 'Subtitle fixture mux/timing verification failed.' }
 $pgsBuild = Join-Path $workspace 'build\native-pgs'
-& "$ToolRoot\android-sdk\cmake\3.31.6\bin\cmake.exe" -S "$workspace\benchmarks\native_pgs" -B $pgsBuild -G 'Visual Studio 17 2022' -A x64
+& cmake -S "$workspace\benchmarks\native_pgs" -B $pgsBuild -G 'Visual Studio 17 2022' -A x64
 if ($LASTEXITCODE -ne 0) { throw 'PGS pixel configuration failed.' }
-& "$ToolRoot\android-sdk\cmake\3.31.6\bin\cmake.exe" --build $pgsBuild --config Release
+& cmake --build $pgsBuild --config Release
 if ($LASTEXITCODE -ne 0) { throw 'PGS pixel compilation failed.' }
 & "$pgsBuild\Release\pgs_bitmap_checks.exe"
 if ($LASTEXITCODE -ne 0) { throw 'PGS crop/premultiplied alpha/scale checks failed.' }

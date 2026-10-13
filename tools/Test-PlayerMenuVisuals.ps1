@@ -1,7 +1,6 @@
-param([string]$ToolRoot = $(if ($env:THRU3D_TOOL_ROOT) { $env:THRU3D_TOOL_ROOT } else { Join-Path ([Environment]::GetFolderPath('UserProfile')) '.cache\thru3d-toolchain' }))
 $ErrorActionPreference='Stop'
 $workspace=Split-Path -Parent $PSScriptRoot
-. "$PSScriptRoot/environment/Activate-QuestEnvironment.ps1" -ToolRoot $ToolRoot
+. "$PSScriptRoot/environment/Activate-QuestEnvironment.ps1"
 $output=Join-Path $workspace 'build/output/ui-polish'
 $sourceHashes=@{}
 foreach ($file in Get-ChildItem "$workspace/app/godot/scripts","$workspace/app/godot/shaders","$workspace/app/godot/tests" -File) {

@@ -10,7 +10,7 @@ An open-source spatial media player for standalone XR headsets.
 
 Watch your own videos and photos on Meta Quest, PICO, or a compatible Android OpenXR headset. Choose a virtual screen or an immersive projection, connect your media library, and keep playback controls within reach.
 
-[Website](https://northboundwisdom.github.io/immivio/) · [Releases](https://github.com/NorthBoundWisdom/immivio/releases) · [Development builds](https://github.com/NorthBoundWisdom/immivio/actions/workflows/android-release.yml) · [User guide](https://northboundwisdom.github.io/immivio/guide/) · [简体中文](README.zh-CN.md)
+[Website](https://northboundwisdom.github.io/immivio/) · [Releases](https://github.com/NorthBoundWisdom/immivio/releases) · [Development builds](https://github.com/NorthBoundWisdom/immivio/actions/workflows/android-release.yml) · [User guide](https://northboundwisdom.github.io/immivio/guide/) · [中文官网与使用指南](https://northboundwisdom.github.io/immivio/zh/)
 
 Immivio continues development of [zerochocobo/Thru3D-Media-Player](https://github.com/zerochocobo/Thru3D-Media-Player). **Version 0.6.0 is the last shared baseline. From that point, this project follows its own development and release path, independently maintained by NorthBoundWisdom.** The original source history, attribution and GPL-3.0 license are preserved.
 
@@ -74,7 +74,7 @@ The interface supports English, Simplified Chinese, Traditional Chinese and Japa
 
 **Will Immivio update my existing app?** The ordinary player's application ID and signing identity are retained to preserve its data. Android still requires matching signing keys; builds from other distributors or ephemeral CI keys may not update one another. Check the package notes before replacing an installation.
 
-**Are spatial formats and PGS subtitles supported in every build?** No. The standard-libmpv build and the optionally imported, verified project-mpv backend have different capabilities. See [build and format compatibility](docs/BUILD.md#playback-backends). No format support is inferred from a filename alone.
+**Are spatial formats and PGS subtitles supported in every build?** No. The standard-libmpv build and the optionally imported, verified project-mpv backend have different capabilities. See [build and format compatibility](docs/BUILD.md#optional-dependencies-and-playback-backends). No format support is inferred from a filename alone.
 
 **Will every 8K video play smoothly?** Codec, bitrate, projection and hardware all matter. An emulator screenshot is not a headset benchmark.
 
@@ -83,7 +83,7 @@ The interface supports English, Simplified Chinese, Traditional Chinese and Japa
 ## Project and development
 
 - Store listing name: **Immivio – VR & Spatial Media Player**
-- [Changelog](CHANGELOG.md) · [中文更新日志](CHANGELOG.zh-CN.md)
+- [Changelog](CHANGELOG.md) · [Release notes / 更新说明](https://northboundwisdom.github.io/immivio/updates/)
 - [Build from source](docs/BUILD.md) · [Architecture](docs/ARCHITECTURE.md) · [Testing](docs/TESTING.md) · [Contributing](CONTRIBUTING.md)
 - Project source is [GPL-3.0-only](LICENSE). Third-party components retain their licenses, including the embedded OpenList component's AGPL-3.0 obligations. See [licensing details](docs/LICENSING.md).
 

@@ -18,7 +18,7 @@ class ReleaseAssets(unittest.TestCase):
             name = f'Immivio-{platform}-0.6.0-release-20261013.apk'
             data = vendor.encode(); (directory / name).write_bytes(data)
             record = {'schema_version':2, 'dependency_mode':'pinned','freecm_commit':'d'*40,
-                      'dependency_commits':{'OpenList':'e'*40},'dependency_assets':{'MpvAndroid':[]},
+                      'dependency_commits':{'OpenList':'e'*40},'dependency_assets':{'OpenXRVendors':[]},
                       'gradle_locks':{'android/gradle.lockfile':'f'*64},'dependency_manifests':{key:'f'*64 for key in ('source_roots.lock.jsonc.in','configs/toolchain.json','android/gradle/libs.versions.toml','android/gradle/verification-metadata.xml','cloud/openlist/go.mod','cloud/openlist/go.sum')},
                       'vendor':vendor, 'apk':name, 'sha256':hashlib.sha256(data).hexdigest(),
                       'product':'Immivio', 'build_type':'Release', 'source_commit':COMMIT,
@@ -124,6 +124,18 @@ class ReleaseSource(unittest.TestCase):
     def test_successful_historical_tag_run_can_be_backfilled(self):
         run, jobs = self.fixture()
         self.assertEqual(selection.validate('owner/player', TAG, run, COMMIT, jobs), COMMIT)
+
+    def test_previous_hosted_jobs_remain_valid_for_historical_tags(self):
+        run, _ = self.fixture()
+        jobs = [{'name': name, 'conclusion': 'success'} for name in selection.LEGACY_BUILD_JOBS]
+        self.assertEqual(selection.validate('owner/player', TAG, run, COMMIT, jobs), COMMIT)
+
+    def test_mixed_old_and_new_host_names_cannot_replace_a_complete_matrix(self):
+        run, _ = self.fixture()
+        jobs = [{'name': 'Release / Windows', 'conclusion': 'success'},
+                {'name': 'Release / macos-15', 'conclusion': 'success'}]
+        with self.assertRaises(ValueError):
+            selection.validate('owner/player', TAG, run, COMMIT, jobs)
 
     def test_automatic_publisher_requires_passed_builds_in_its_current_run(self):
         run, jobs = self.fixture()

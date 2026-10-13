@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="application-name" content="Immivio – VR &amp; Spatial Media Player">
+<title>Immivio — 更新说明</title>
+<meta name="description" content="Immivio 中英文更新说明：开发中的变化、APK 兼容性和历史版本。">
+<link rel="canonical" href="https://northboundwisdom.github.io/immivio/zh/updates/">
+<link rel="alternate" hreflang="en" href="https://northboundwisdom.github.io/immivio/updates/">
+<link rel="alternate" hreflang="x-default" href="https://northboundwisdom.github.io/immivio/updates/">
+<meta property="og:title" content="Immivio — 更新说明">
+<meta property="og:description" content="Immivio 中英文更新说明：开发中的变化、APK 兼容性和历史版本。">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://northboundwisdom.github.io/immivio/zh/updates/">
+<meta property="og:image" content="https://northboundwisdom.github.io/immivio/assets/screenshots/playback.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="../../assets/icon.png" type="image/png">
+<link rel="apple-touch-icon" href="../../assets/icon.png">
+<link rel="stylesheet" href="../../assets/site.css">
+<script defer data-site-script src="../../assets/site.js">
+</script>
+</head>
+<body data-theme="dark">
+<a class="skip" href="#main">跳到正文</a>
+<header class="site-header">
+<div class="wrap header-inner">
+<a class="brand" href="../../zh/">
+<img src="../../assets/icon.png" alt="" width="39" height="39">Immivio</a>
+<nav class="nav" aria-label="主导航">
+<a class="optional" href="../../zh/#experience">体验</a>
+<a href="../../zh/#download">下载</a>
+<a class="optional" href="../../zh/guide/">使用指南</a>
+<a class="optional" href="../../zh/updates/">更新说明</a>
+<a class="locale" href="../../updates/" lang="en">English</a>
+<button class="theme" type="button" data-theme-toggle aria-label="切换深浅主题" aria-pressed="false">◐</button>
+</nav>
+</div>
+</header>
+<main id="main" class="wrap guide-layout">
+<nav class="guide-nav" aria-label="更新说明目录">
+<p class="eyebrow">更新说明</p>
+<a href="#current">开发中的变化</a>
+<a href="#compatibility">安装包兼容性</a>
+<a href="#history">历史版本</a>
+</nav>
+<article class="guide-content">
+<p class="eyebrow">IMMIVIO / 更新</p>
+<h1>Immivio 的新变化。</h1>
+<p>以下说明对应当前开发分支。你安装的 APK 包含哪些功能，请以该安装包的发布说明为准。</p>
+<section id="current">
+<h2>开发中 — 尚未发布</h2>
+<ul>
+<li>统一为播放已有立体与空间内容的媒体播放器。实时 AI 深度、人物抠像和基于模型的照片转换已下线。</li>
+<li>按视频保存明确选择的音轨和字幕，跨启动记住音量与静音。双击音量图标可静音或恢复声音。</li>
+<li>文字字幕提供五种配色，音频与字幕可分别校时。保存的播放队列支持循环、随机与自动连播。</li>
+<li>照片墙可排列为 1～3 行，按视频记住双眼对齐；悬停提示可展开显示长文件名。</li>
+<li>DLNA 元数据不完整时保留字幕，关闭视频后恢复之前的资料库浏览位置。</li>
+</ul>
+<p><a href="../#download">选择开发版 APK →</a> · <a href="../guide/">安装与操作指南 →</a></p>
+</section>
+<section id="compatibility">
+<h2>选择适合头显的安装包。</h2>
+<p>Quest 和 PICO 设备分别使用对应 APK。通用 OpenXR 属于实验支持，需要兼容的 Android 运行时。源码 ZIP／TAR 压缩包供开发者使用。</p>
+<p>PGS 位图字幕、原生空间格式和杜比媒体的支持取决于 APK 与片源。选择内容前请查看安装包说明；文件名本身不能证明兼容性。普通视频和打包立体视频使用标准媒体后端播放。</p>
+<p>覆盖更新需要匹配的 Android 应用身份与签名。由其他发布者或临时 CI 密钥签名的包，可能需要另行安装。</p>
+<p>当前没有 2D 转 3D 或人物抠像版本。历史发布说明可能记录已经下线的功能。</p>
+</section>
+<section id="history">
+<h2>历史与源码变化</h2>
+<p>Immivio 从原项目 0.6.0 基线起独立开发。<a href="https://github.com/NorthBoundWisdom/immivio/releases">正式发布版本</a>附带各自的安装包说明；<a href="https://github.com/NorthBoundWisdom/immivio/blob/main/CHANGELOG.md">源码更新日志（英文）</a>保留早期里程碑。</p>
+<p>开发环境现在预先安装基础工具和 Android 媒体库。FreeCM 管理已启用的项目依赖；可选原生源码保留固定提交，默认关闭。开发者可查看<a href="https://github.com/NorthBoundWisdom/immivio/blob/main/docs/BUILD.md">源码构建说明（英文）</a>。</p>
+</section>
+</article>
+</main>
+<footer class="site-footer wrap">
+<div class="footer-top">
+<p>基于 <a href="https://github.com/zerochocobo/Thru3D-Media-Player">zerochocobo/Thru3D-Media-Player</a> 的 0.6.0 版本继续开发。从 0.6.0 起独立维护与发布，由 NorthBoundWisdom 维护，保留原项目署名、历史和 GPL-3.0 许可。</p>
+<div class="footer-links">
+<a href="https://github.com/NorthBoundWisdom/immivio">GitHub ↗</a>
+<a href="../../zh/updates/">更新说明 ↗</a>
+<a href="https://github.com/NorthBoundWisdom/immivio/issues">反馈问题 ↗</a>
+<a href="https://github.com/NorthBoundWisdom/immivio/blob/main/LICENSE">GPL-3.0 ↗</a>
+</div>
+</div>
+<div class="copyright">
+<span>Immivio · NorthBoundWisdom</span>
+<span>开源 · 独立维护 · GitHub Pages 托管</span>
+</div>
+</footer>
+</body>
+</html>

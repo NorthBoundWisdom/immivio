@@ -6,6 +6,8 @@ on:
     paths:
       - 'website/**'
       - 'tools/check_website.py'
+      - 'tools/refresh_website_release.py'
+      - 'tests/website/**'
       - '.github/workflows/website-pages.yml'
   release:
     types: [published]
@@ -35,12 +37,12 @@ jobs:
       - name: Refresh public download choices
         env:
           GH_TOKEN: ${{ github.token }}
-        run: >-
-          gh api repos/${{ github.repository }}/releases/latest
-          --jq '{tag_name,html_url,assets:[.assets[] | select((.name | startswith("Immivio-")) and (.name | endswith(".apk"))) | {name,size,browser_download_url}]}'
-          > website/assets/releases.json
+        run: python3 tools/refresh_website_release.py
       - name: Check site links, languages and download choices
-        run: python3 tools/check_website.py
+        run: |
+          python3 tools/check_website.py
+          python3 -m unittest discover -s tests/website -v
+          node --check website/assets/site.js
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
         with:

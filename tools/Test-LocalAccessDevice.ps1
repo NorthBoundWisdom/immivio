@@ -66,7 +66,7 @@ finally {
     Write-Output "Evidence: $directory"
 }
 if ($result.state -ne 'collected_scoped_local_access_trace') { throw $result.error }
-& "$workspace/.venv/Scripts/python.exe" "$workspace/benchmarks/local_access_device.py" $directory
+& python "$workspace/benchmarks/local_access_device.py" $directory
 if ($LASTEXITCODE -ne 0) {
     $result.state='failed_independent_access_audit'
     $result | ConvertTo-Json -Depth 10 | Set-Content "$directory/result.json"

@@ -99,7 +99,7 @@ def main():
         'license_profile': 'Upstream default GPL MPV and FFmpeg gpl/version3; Debug candidate only',
         'reproducibility': 'Exact sources/options/toolchain recorded; independent second-build byte comparison pending',
     }
-    target_manifest = Path(os.environ.get('THRU3D_MPV_MANIFEST', str(ROOT/'third_party/mpv/source-build.json')))
+    target_manifest = Path(os.environ.get('THRU3D_MPV_MANIFEST', str(ROOT/'build/native-mpv/output/source-build.json')))
     target_manifest.parent.mkdir(parents=True, exist_ok=True)
     temporary = target_manifest.with_suffix('.json.tmp')
     temporary.write_text(json.dumps(manifest, indent=2)+'\n')

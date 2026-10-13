@@ -1,4 +1,3 @@
-param([string]$ToolRoot = '')
 $ErrorActionPreference = 'Stop'
 $workspace = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $toolchain = Get-Content "$workspace/configs/toolchain.json" -Raw | ConvertFrom-Json
@@ -6,3 +5,7 @@ if (-not $env:ANDROID_HOME) { $env:ANDROID_HOME = Join-Path $env:LOCALAPPDATA 'A
 $env:ANDROID_SDK_ROOT = $env:ANDROID_HOME
 $env:ANDROID_NDK_HOME = Join-Path $env:ANDROID_HOME "ndk/$($toolchain.android.ndk)"
 $env:PATH = "$env:ANDROID_HOME/platform-tools;$env:PATH"
+if (-not $env:GODOT_EXE) {
+    $godot = Get-Command godot -ErrorAction SilentlyContinue
+    if ($godot) { $env:GODOT_EXE = $godot.Source }
+}

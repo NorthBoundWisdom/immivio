@@ -103,7 +103,7 @@ try {
             if ($r.pixel_probe.state -eq 'failed') { throw ('Pixel capture failed: ' + ($r.pixel_probe | ConvertTo-Json -Depth 4 -Compress)) }
             $r.pixel_probe.state -eq 'captured' -and $r.pixel_probe.native_pin_released
         } 60
-        & "$workspace\.venv\Scripts\python.exe" "$workspace\benchmarks\mpv_godot_pixels.py" "$directory/pixels-report.json" --adb $adb --serial $Serial
+        & python "$workspace\benchmarks\mpv_godot_pixels.py" "$directory/pixels-report.json" --adb $adb --serial $Serial
         if ($LASTEXITCODE -ne 0) { throw 'Independent Godot pixel verifier failed' }
     }
     $generation = $sought.media.generation
@@ -115,7 +115,7 @@ try {
             if ($r.pixel_probe.state -eq 'failed') { throw 'Normal immutable pixel capture failed' }
             $r.pixel_probe.state -eq 'captured' -and $r.pixel_probe.native_pin_released
         } 60
-        & "$workspace\.venv\Scripts\python.exe" "$workspace\benchmarks\mpv_godot_pixels.py" "$directory/normal-pixels-report.json" --adb $adb --serial $Serial --output-name normal-pixels-verified.json --expect-normal
+        & python "$workspace\benchmarks\mpv_godot_pixels.py" "$directory/normal-pixels-report.json" --adb $adb --serial $Serial --output-name normal-pixels-verified.json --expect-normal
         if ($LASTEXITCODE -ne 0) { throw 'Normal source/opaque-mask independent verifier failed' }
         $numeric = Get-Content "$directory/normal-pixels-verified.json" -Raw | ConvertFrom-Json
         if ($numeric.alpha_min_byte -ne 255 -or $numeric.alpha_max_byte -ne 255) { throw 'Opaque mask must be exactly 255 in every pixel' }
@@ -129,7 +129,7 @@ try {
             if ($r.pixel_probe.state -eq 'failed') { throw 'Alpha after normal pixel capture failed' }
             $r.pixel_probe.state -eq 'captured' -and $r.pixel_probe.native_pin_released
         } 60
-        & "$workspace\.venv\Scripts\python.exe" "$workspace\benchmarks\mpv_godot_pixels.py" "$directory/alpha-after-normal-report.json" --adb $adb --serial $Serial --output-name alpha-after-normal-verified.json
+        & python "$workspace\benchmarks\mpv_godot_pixels.py" "$directory/alpha-after-normal-report.json" --adb $adb --serial $Serial --output-name alpha-after-normal-verified.json
         if ($LASTEXITCODE -ne 0) { throw 'Alpha after normal independent verifier failed' }
     }
     if ($Xr) {
@@ -195,6 +195,6 @@ if ($result.state -ne 'passed_scoped_owner_trace') { throw $result.error }
 if ($Xr) {
     $auditArgs = @($directory)
     if ($RequireLiveHead) { $auditArgs += '--require-live-head' }
-    & "$workspace\.venv\Scripts\python.exe" "$workspace\benchmarks\mpv_xr_owner.py" @auditArgs
+    & python "$workspace\benchmarks\mpv_xr_owner.py" @auditArgs
     if ($LASTEXITCODE -ne 0) { throw 'Independent XR runtime/owner audit failed' }
 }

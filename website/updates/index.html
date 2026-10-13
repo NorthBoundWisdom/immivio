@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="application-name" content="Immivio – VR &amp; Spatial Media Player">
+<title>Immivio — Release notes</title>
+<meta name="description" content="Immivio release notes: development changes, APK compatibility, and earlier versions.">
+<link rel="canonical" href="https://northboundwisdom.github.io/immivio/updates/">
+<link rel="alternate" hreflang="zh-CN" href="https://northboundwisdom.github.io/immivio/zh/updates/">
+<link rel="alternate" hreflang="x-default" href="https://northboundwisdom.github.io/immivio/updates/">
+<meta property="og:title" content="Immivio — Release notes">
+<meta property="og:description" content="Immivio release notes: development changes, APK compatibility, and earlier versions.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://northboundwisdom.github.io/immivio/updates/">
+<meta property="og:image" content="https://northboundwisdom.github.io/immivio/assets/screenshots/playback.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="../assets/icon.png" type="image/png">
+<link rel="apple-touch-icon" href="../assets/icon.png">
+<link rel="stylesheet" href="../assets/site.css">
+<script defer data-site-script src="../assets/site.js">
+</script>
+</head>
+<body data-theme="dark">
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+<div class="wrap header-inner">
+<a class="brand" href=".././">
+<img src="../assets/icon.png" alt="" width="39" height="39">Immivio</a>
+<nav class="nav" aria-label="Main navigation">
+<a class="optional" href=".././#experience">Experience</a>
+<a href=".././#download">Download</a>
+<a class="optional" href="../guide/">Guide</a>
+<a class="optional" href=".././updates/">Updates</a>
+<a class="locale" href="../zh/updates/" lang="zh-CN">中文</a>
+<button class="theme" type="button" data-theme-toggle aria-label="Toggle light theme" aria-pressed="false">◐</button>
+</nav>
+</div>
+</header>
+<main id="main" class="wrap guide-layout">
+<nav class="guide-nav" aria-label="Release notes sections">
+<p class="eyebrow">RELEASE NOTES</p>
+<a href="#current">In development</a>
+<a href="#compatibility">Package compatibility</a>
+<a href="#history">Earlier versions</a>
+</nav>
+<article class="guide-content">
+<p class="eyebrow">IMMIVIO / UPDATES</p>
+<h1>What’s changing in Immivio.</h1>
+<p>These notes describe the current development branch. Check the notes attached to your APK for the features in that build.</p>
+<section id="current">
+<h2>In development — unreleased</h2>
+<ul>
+<li>One media player for existing stereo and spatial content. Live AI depth, person matting and model-based photo conversion have been retired.</li>
+<li>Remember explicit audio and subtitle choices per video, volume and mute across launches. Double-tap the volume icon to mute or restore sound.</li>
+<li>Choose from five text-subtitle palettes and adjust audio/subtitle timing independently. Saved queues support repeat, shuffle and automatic advance.</li>
+<li>Arrange photo walls in 1–3 rows, retain per-video eye alignment and read long library filenames in expanded hover tips.</li>
+<li>Keep DLNA subtitles when metadata is incomplete, and recover the library position when closing a video.</li>
+</ul>
+<p><a href="../#download">Choose a development APK →</a> · <a href="../guide/">Installation and controls →</a></p>
+</section>
+<section id="compatibility">
+<h2>Choose the package for your headset.</h2>
+<p>Use the Quest or PICO APK for those devices. Generic OpenXR is experimental and needs a compatible Android runtime. Source ZIP/TAR archives are for developers.</p>
+<p>PGS bitmap subtitles, native spatial formats and Dolby media support vary with the APK and source. Read the package notes before choosing media; file names alone do not establish support. Ordinary and packed stereo playback use the standard media backend.</p>
+<p>Updates need a matching Android application identity and signing key. Packages signed by another distributor or temporary CI keys may require a separate installation.</p>
+<p>Immivio has no 2D-to-3D conversion or person-matting edition. Historical releases may describe features that have since been removed.</p>
+</section>
+<section id="history">
+<h2>History and source changes</h2>
+<p>Immivio continues independently from the original 0.6.0 baseline. <a href="https://github.com/NorthBoundWisdom/immivio/releases">Published releases</a> carry their own package notes; <a href="https://github.com/NorthBoundWisdom/immivio/blob/main/CHANGELOG.md">the source changelog</a> retains earlier milestones.</p>
+<p>Developer setup now uses preinstalled host tools and Android media libraries. FreeCM manages enabled project inputs; optional native sources remain pinned and disabled by default. See <a href="https://github.com/NorthBoundWisdom/immivio/blob/main/docs/BUILD.md">building from source</a>.</p>
+</section>
+</article>
+</main>
+<footer class="site-footer wrap">
+<div class="footer-top">
+<p>Continued from version 0.6.0 of <a href="https://github.com/zerochocobo/Thru3D-Media-Player">zerochocobo/Thru3D-Media-Player</a>. Independently developed and released by NorthBoundWisdom from that baseline, with the original attribution, history and GPL-3.0 license preserved.</p>
+<div class="footer-links">
+<a href="https://github.com/NorthBoundWisdom/immivio">GitHub ↗</a>
+<a href=".././updates/">Release notes ↗</a>
+<a href="https://github.com/NorthBoundWisdom/immivio/issues">Report an issue ↗</a>
+<a href="https://github.com/NorthBoundWisdom/immivio/blob/main/LICENSE">GPL-3.0 ↗</a>
+</div>
+</div>
+<div class="copyright">
+<span>Immivio · NorthBoundWisdom</span>
+<span>Open source · Independently maintained · Hosted on GitHub Pages</span>
+</div>
+</footer>
+</body>
+</html>

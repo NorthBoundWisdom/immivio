@@ -122,7 +122,7 @@ finally {
     Write-Output "Evidence: $directory"
 }
 if ($result.state -ne 'collected_scoped_external_uri_trace') { throw $result.error }
-& "$workspace/.venv/Scripts/python.exe" "$workspace/benchmarks/external_uri_device.py" $directory
+& python "$workspace/benchmarks/external_uri_device.py" $directory
 if ($LASTEXITCODE -ne 0) {
     $result.state='failed_independent_external_uri_audit'
     $result | ConvertTo-Json -Depth 10 | Set-Content "$directory/result.json"
