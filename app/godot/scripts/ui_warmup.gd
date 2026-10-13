@@ -4,7 +4,7 @@ extends Node
 const Menu := preload("res://scripts/player_menu.gd")
 const Library := preload("res://scripts/library_menu.gd")
 const Icons := preload("res://scripts/menu_icons.gd")
-const STATE := {"has_video": true, "title": "Thru3D", "source_uri": "warmup://synthetic",
+const STATE := {"has_video": true, "title": "Immivio", "source_uri": "warmup://synthetic",
 	"geometry": 0, "stereo": true, "ai_enabled": false, "duration_ms": 60000,
 	"position_ms": 30000, "audio_available": true, "playing": true}
 const PAGES := ["bar", "screen", "playback", "sync", "queue", "info", "color0", "color1", "color2", "stereo", "mode", "subtitles", "volume",
@@ -53,7 +53,7 @@ func prepare(menu: Node3D, page: String) -> void:
 	menu._state["viewing_eye"] = 1 if name == "stereo_left" else 0
 	menu._state["geometry"] = 1 if name in ["screen_immersive", "subtitle_immersive", "playback_alpha"] else 0
 	if name == "queue_populated":
-		menu._state["queue_items"] = [{"uri":"warmup://synthetic", "title":"Thru3D synthetic"}]
+		menu._state["queue_items"] = [{"uri":"warmup://synthetic", "title":"Immivio synthetic"}]
 	if name in ["audio", "subtitle_immersive", "subtitles"]:
 		menu._state["audio_options"] = [{"id":1,"value":1,"label":"Synthetic audio"}]
 		menu._state["subtitle_options"] = [{"id":1,"codec":"subrip","title":"Synthetic subtitle"}]

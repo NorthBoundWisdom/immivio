@@ -1,204 +1,62 @@
-# Building from source
+# Building Immivio
 
-The Android player has a Python build entry point for macOS, Linux and Windows, including an AI mode for prepared models/native dependencies. Public model/native preparation is exercised on macOS; other hosts need compatible wheels or builds for the pinned converter/Python packages. The historical AI build also uses PowerShell 7 on Windows and a Linux source build of patched libmpv. Paths are configurable; source and build output must remain separate. This repository does not bundle SDKs, compiled libraries or runtime model weights.
+Immivio has one playback edition. Builds do not prepare, compile or package inference models, MNN or ncnn. The former AI/no-AI build switches and model preparation workflows have been retired.
 
-## Base player: no AI models
+## Host tools
+
+Use the versions pinned in `tools/environment/base-player.lock.json`: Godot 4.7.2 and matching Android export templates, the locked Android SDK/NDK/CMake, a compatible JDK, Go and Python. Hosted CI provisions these tools on Windows and macOS. Local builds use `JAVA_HOME`, `ANDROID_HOME` / `ANDROID_SDK_ROOT`, and optionally `GODOT_EXE` / `GODOT_TEMPLATES_DIR`.
+
+The builder verifies downloaded dependency hashes, builds the OpenList adapter from its pinned source, stages the Android plugin, runs JVM tests, imports the Godot project and exports the APK. Downloads and generated files are kept in ignored `.cache`, `build` and `artifacts` directories.
 
 ```sh
+git clone https://github.com/NorthBoundWisdom/immivio.git
+cd immivio
 python3 tools/build_player.py --vendor Quest --build-type Debug
-python3 tools/build_player.py --vendor Quest --build-type Release
 ```
 
-Use `--vendor Pico` or `--vendor OpenXR` for the other Android presets. These are **Android APKs**, not macOS/Windows desktop applications. The desktop Godot path remains a development preview.
+Use `Pico` or `OpenXR` for the other targets and `--build-type Release` for an optimized distributable package. The PowerShell wrapper calls the same builder:
 
-Supply Python 3.11+, curl, Go 1.27.x, Godot 4.7.2 with its Android export templates, and an Android SDK containing platform 36, build-tools 36.1.0, NDK 30.0.16248370 and CMake 4.1.2. Go 1.27.0 is verified on a Windows workstation; hosted CI provisions 1.27.1. The default Gradle fallback is 9.8.1 with AGP 9.2.0 and Kotlin 2.3.21; JDK 25 is supported by this workflow. Local builds reuse a compatible installation selected by `--gradle` or `GRADLE_HOME`, then the shared Gradle cache. They discover `JAVA_HOME`, `ANDROID_HOME`/`ANDROID_SDK_ROOT`, `GODOT_EXE`, `GODOT_TEMPLATES_DIR` and Android Studio's macOS JDK. Explicit paths/version overrides are available with `--java-home`, `--sdk`, `--godot`, `--templates`, `--gradle`, `--ndk` and `--cmake`. Shared Windows installations can therefore serve multiple users without copying SDKs into each checkout. Hosted Actions builds continue to use the locked Gradle fallback.
+```powershell
+./tools/Build-Player.ps1 -XrVendor Pico -BuildType Release
+```
 
-The script performs the following dependency preparation automatically:
+`--sdk`, `--java-home`, `--godot` and `--templates` can select explicit host locations. `--prepare-only` prepares dependencies; `--plugin-only` builds/tests the Android plugin without exporting the app.
 
-- Downloads the fixed official mpv-android APK from `third_party/mpv/manifest.json`, checks its SHA256 and every extracted ARM64 library, and uses the public libmpv render API. No custom mpv patch, MNN, ncnn, or model assets are required.
-- Downloads the fixed OpenList source archive, applies the project's encrypted credential storage adapter, and runs the pinned gomobile/gobind to build `cloudcore.aar` from source. Go resolves its versioned dependency graph with the upstream `go.mod`/`go.sum` and checksum database.
-- Installs the checksum-pinned OpenXR Vendors addon and assembles the matching Godot Android template. The installed SDKs/templates are not edited.
+## Playback backends
 
-Downloads and dependency sources live under ignored `.cache/`; generated plugin libraries and Android templates remain ignored. `--prepare-only` prepares dependencies; `--plugin-only` builds the Android AAR and runs JVM tests. An exclusive build lock protects this Python workflow's shared output. Do not run the historical PowerShell builder concurrently in the same checkout.
+| Backend | Preparation and capabilities |
+| --- | --- |
+| Standard libmpv (default) | Uses the checksum-pinned public Android libraries. Ordinary playback and existing stereo media use render-transaction timing; exact decoded-image PTS and the project-private PGS/spatial APIs are not claimed. |
+| Verified project libmpv | Optional independently prepared source-frame backend. Its receipt must match the pinned source revision, patch/header hashes, source lock and every packaged library. Private PGS, Dolby and spatial capabilities still depend on the actual source/device. No inference runtime is involved. |
 
-On restricted networks, `GRADLE_RO_DEP_CACHE` can point to a snapshot containing `modules-2` from a compatible Gradle installation. Keep the snapshot immutable while builds read it, omit lock/GC files, and retain a separate writable `GRADLE_USER_HOME`, following [Gradle's dependency-cache instructions](https://docs.gradle.org/current/userguide/dependency_caching.html#sec:copying_and_reusing_cache). Use short cache paths on Windows; platform-specific artifacts such as Windows AAPT2 still need their matching host binaries.
-
-No-AI Release builds use an explicitly supplied `GODOT_ANDROID_KEYSTORE_RELEASE_*` environment or the existing reusable local key under ignored `artifacts/signing/`. The Python builder reuses each variant’s local identity for both Debug and Release, so changing build type does not prevent local updates. AI builds use the separate stable `thru3d-ai-release.keystore` key. AI-specific overrides use `THRU3D_AI_KEYSTORE_RELEASE_PATH`, `_USER`, `_PASSWORD` (or the corresponding `DEBUG` names); they never inherit the no-AI signing environment. The PowerShell AI builder uses the same preparation helper; its no-AI workflow retains its validated Windows identity. Keep that directory private and back up the key if future builds must update existing installations. No original distribution signing key is available.
-
-AI and no-AI APKs can coexist: AI uses `com.wapok.thru3d.ai` / **Thru3D AI**, and no-AI retains `com.wapok.thru3d` / **Thru3D No AI**. Existing no-AI data and update signatures are preserved. AI is a separate installation with its own settings, account storage and Android permissions; data is not migrated automatically. A different signature alone cannot provide coexistence under the same package name. Build receipts include the exact package, launcher label and signing certificate SHA256.
-
-APKs and build receipts are written to `artifacts/`. The workflow verifies signing, 16 KiB ZIP alignment, required ARM64 libraries and absence of AI model/library payloads. Public libmpv supplies playback-clock estimates rather than verified decoded-frame PTS; this provenance is retained through the display path, and such tickets cannot authorize AI inference. Real-headset decoding, audio synchronization and seek behavior still require device verification.
-
-## Build modes and compatibility
-
-Prepared public AI models can also be built through the portable Python entry point. Use Python 3.13 and the Android SDK/NDK/CMake described above:
+To import a verified project backend:
 
 ```sh
-python3 tools/prepare_public_ai.py
-# Build/export source-frame mpv through the Linux workflow below first.
-python3 tools/build_player.py --ai --vendor Quest --build-type Debug \
-  --mnn-source .cache/ai/MNN-3.6.1-vrpp \
-  --mnn-lib .cache/ai/mnn-android/libMNN.a \
-  --ncnn-dir .cache/ai/ncnn/ncnn-20260526-android-vulkan/arm64-v8a \
-  --mpv-dir build/output/mpv-source/arm64-v8a
+python3 tools/build_player.py --vendor Quest --build-type Release \
+  --mpv-dir /path/to/verified/arm64-v8a \
+  --mpv-receipt /path/to/source-build.json
 ```
 
-Use `--vendor Pico` for PICO. `prepare_public_ai.py --models-only` reuses a separately prepared native runtime. Downloads and Python packages are versioned in `tools/environment/ai-player.lock.json`; downloaded weights must match the historical catalog's **upstream source** hashes. The RVM model remains non-distilled, with the existing ratio=1, RGBA and GPU graph adaptations. Two generated sample images are used if no depth conversion samples exist; these check numerical conversion, not real-media quality.
+Source pins, patches and corresponding-source information are under `third_party/mpv` and `native/mpv/patches`; `tools/environment/Prepare-MpvAndroid.ps1` contains the historical source-backend preparation path. Do not substitute arbitrary library bytes or bypass the receipt check.
 
-The AI builder verifies the installed model pack, imports only source-frame libraries matching their source/patch receipt, and checks model hashes, native dependency/symbol closure, the source-frame/PGS exports, signing and 16 KiB alignment in the final APK. It does not replace source-frame mpv with standard mpv. AI outputs use `-ai-` in their names and include the exact model pack in their `.build.json` receipt. Weights, build caches and APKs remain outside Git. Headset execution and sustained performance require device validation.
+## Output and identity
 
-The MNN preparation and inference wrapper force-include `native/rvm/libcxx_compat.h` when compiling for Android. It selects libc++'s own inline hashing fallback for newer NDK headers, so the AI library can use the Godot template's existing `libc++_shared.so` without requiring LLVM 21's additional hash export or packaging a second runtime.
+Artifacts are named `Immivio-<QUEST|PICO|OpenXR>-<version>-<debug|release>-<YYYYMMDD>.apk`. Each APK has a `.build.json` receipt containing the product, source commit, signing certificate, backend, hashes and toolchain versions. There is no edition suffix.
 
-Direct Gradle builds retain `enableAi=true` and `standardMpv=false` by default. The Python base-player entry point explicitly selects `enableAi=false` and `standardMpv=true`; it does not change the default AI build. `Build-Player.ps1 -WithoutAI` also selects the official mpv candidate unless another candidate is supplied explicitly.
+The visible app name is **Immivio**. The store listing name is **Immivio – VR & Spatial Media Player**. The existing ordinary player's `com.wapok.thru3d` application ID, native package namespace and user-data directory remain stable so compatible signed updates preserve data. These identifiers are compatibility contracts, not the public product name.
 
-| Capability | AI enabled + project mpv | AI disabled + project mpv | AI disabled + standard mpv |
-| --- | --- | --- | --- |
-| Build switches | Defaults | `-PenableAi=false` | `-PenableAi=false -PstandardMpv=true` |
-| MNN, ncnn and matching model assets | Required | Excluded | Excluded |
-| Ordinary video/photo playback, existing stereo, libraries and text subtitles | Available | Available | Available |
-| Live matting and inferred 2D-to-3D | Available with models/device support | Disabled | Disabled |
-| Precomputed stereo and packed masks | Available | Available | Available |
-| Verified decoded-image PTS | Project source-frame API | Project source-frame API | Unavailable; playback-clock estimates only |
-| Flat-video PGS bitmap subtitles | Project PGS API | Project PGS API | Unavailable; unsupported tracks are filtered out |
-| Project Dolby Vision Profile 5 conversion metadata | Project frame flags, subject to device/media support | Project frame flags, subject to device/media support | No project frame flags; standard mpv color handling requires separate validation |
+Existing local `artifacts/signing/thru3d-signing.json` credentials are reused. New installations of the build tool create an Immivio signing identity. Explicit `GODOT_ANDROID_KEYSTORE_RELEASE_*` or Debug counterparts take priority. Keep credentials and signing material out of Git. Different certificates cannot update one another merely because package names match.
 
-The standard backend never invents private source-frame or Dolby metadata and cannot authorize AI pairs. Its rendering counters describe render transactions, not independently verified unique decoded images. `standardMpv=true` with `enableAi=true` is rejected by Gradle and CMake.
+## CI and releases
 
-Model-free builds, host/JVM tests and package integrity checks are exercised by CI. A successful model-free job does not validate the AI-enabled build: that regression still requires the selected model/runtime dependencies and the documented AI workflow. Device playback, Dolby color correctness, PGS output and XR behavior need matching device evidence for each applicable backend.
+`.github/workflows/android-release.yml` runs one Windows/macOS matrix. Branch/PR builds default to Debug; tags force Release. Both hosts exercise the same builder. Release signing uses the existing `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD` secrets; Debug jobs do not receive them.
 
-## Windows/macOS CI
+The tag publisher requires successful Release jobs on both hosts, verifies the exact tag/commit and copies the three canonical macOS APKs. It checks all receipts and hashes before preparing any publishable assets. Historical pre-Immivio releases remain historical; the new publisher does not relabel old binaries.
 
-`.github/workflows/android-release.yml` exposes exactly four Android build checks: Windows and macOS without AI, plus Windows and macOS with AI. The no-AI checks retain the two-host matrix; the AI checks use `windows-2025` and `macos-15`. It runs on main pushes, all tags, pull requests and manual dispatch. Branch/PR pushes build Debug; tag pushes always build Release, including if a caller requests Debug. Manual dispatch can select Debug (default) or Release. Each host builds PICO, Quest and experimental OpenXR APKs; manual dispatch can select one target. These jobs build **Android packages on Windows/macOS**, not desktop editions.
+APK inspection rejects model assets and removed inference libraries, verifies ARM64 ELF dependencies/symbols and alignment, checks the app label/ID, and verifies signing and ZIP alignment. These checks establish packaging behavior, not headset playback performance.
 
-CI installs JDK 25, Go 1.27.1 and Python 3.13, provisions the locked Android SDK tools, and verifies Godot editor/template download hashes. Only Android templates are expanded from the full template archive. The macOS host also receives checksum-pinned Noto CJK SC/TC/JP fonts from the upstream Sans 2.004 revision so headless tests do not depend on Apple's on-demand fonts; they are host tooling, not APK assets. Godot source tests, dependency boundary tests and Android JVM tests must pass before packages are exported. The same `tools/build_player.py` performs native-library, signing and 16 KiB packaging checks. Actions are pinned to commit SHAs. Dependencies are cached per host OS/architecture; signing material is excluded from caches and uploaded artifacts.
+## Branding and website
 
-Each of the four checks builds the requested targets in its own runner. The three targets share dependency preparation and editor configuration within one locked invocation. Subsequent targets reuse imported resources; the cross-run cache includes only `.godot/imported`, not editor/export credentials. Cache hits avoid rebuilding the verified OpenList AAR. A small Gradle copy check catches Windows export-URI incompatibilities before the Android build. Godot import/configuration is limited to 10 minutes and each export to 15 minutes; engine errors stop the process tree immediately and preserve logs instead of leaving a failed export hanging. Build receipts also record each target's build/verification duration.
+The source artwork is `app/godot/branding/immivio-icon.png`. Run `godot --headless --xr-mode off --path app/godot --script ../../tools/prepare_branding.gd` to generate the adaptive foreground and transparent-corner website icon. All export presets share the source and themed monochrome assets.
 
-Shared provisioning lives in `.github/actions/android-setup/action.yml`. The macOS AI job compiles source-frame mpv/FFmpeg using the pinned Android NDK and source archives, validates its exports/alignment/dependencies, then publishes a small current-run ARM64 dependency bundle. The Windows AI job waits for that job and verifies the bundle's recipe fingerprint and every file before import. Both AI hosts independently prepare public models/MNN and compile/test their Android plugin/APKs. This dependency does not add a fifth CI check; the no-AI checks run independently. No Linux source build or private model download is required in the hosted workflow.
-
-Build receipts and summaries record the build type and Git ref; a Release job rejects Debug receipts. AI caches also retain verified downloads, upstream ONNX sources, fingerprinted RVM conversion outputs and the validated source-frame backend. They exclude Python environments and platform-specific native build trees. A changed graph/checking recipe invalidates the restored RVM conversion cache. `ci-summary.json` and the package receipts explicitly record AI mode; an AI job rejects a model-free receipt.
-
-CI caches Maven dependencies, Gradle distributions, verified downloads, Android templates, imported resources and the OpenList AAR plus its input/hash receipt. It omits Go's compiled/module caches and Gradle transformation caches: unchanged OpenList inputs reuse the verified AAR, while changes rebuild it from the locked source. Hosted jobs stop Gradle before archival so Windows file locks cannot prevent saving the cache.
-
-On Windows, Android export launches the paired Godot engine `.exe` directly with captured output. The `_console.exe` launcher can remain alive after the engine has completed an Android/Gradle export; using the engine directly avoids that wait. Version checks, editor preparation and host tests retain the configured CLI executable. This behavior was reproduced and the direct-engine export verified on a Windows workstation before applying the CI fix.
-
-Successful jobs publish `Android-noai-<Debug|Release>-Windows`, `Android-noai-<Debug|Release>-macOS`, `Android-ai-<Debug|Release>-Windows` and `Android-ai-<Debug|Release>-macOS` artifacts containing APKs, per-package build receipts, SHA256 sums and a CI summary. Test/build logs are uploaded separately even on failure. GitHub Releases are not published automatically.
-
-Debug builds use a locally generated variant key and do not decode repository release signing material. For Release builds without signing secrets, each hosted job creates an ephemeral local CI signing key and records `ephemeral-ci-key` in its receipts. Such packages can be installed, but cannot update an app signed by a different key, including the local PICO installation. For stable update signatures, configure all three no-AI repository Actions secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`. AI jobs independently use `ANDROID_AI_KEYSTORE_BASE64`, `ANDROID_AI_KEY_ALIAS` and `ANDROID_AI_KEY_PASSWORD`; provide a different AI key. Missing AI secrets do not fall back to the no-AI key. Use a keystore whose store and key passwords match. The key is decoded only into the runner's temporary directory; pull-request jobs never receive these secrets. No local signing key is uploaded automatically.
-
-## Source-only verification
-
-Python 3.10+ is sufficient for `python tools/Check-PublicSource.py`. Godot host tests require the matching Godot executable but no Android toolchain or models:
-
-```powershell
-$env:GODOT_EXE = (Get-Command godot).Source
-./tools/Test-Source.ps1
-```
-
-## AI workflow: pinned toolchain
-
-The versions/hashes used by this source snapshot are in `tools/environment/toolchain.lock.json`, the Gradle wrapper, and third-party source locks. The application build checks Godot `4.7.2.stable.official.ed1daf0bf`; use its corresponding Android templates and Godot OpenXR Vendors `5.1.0`. Android plugin configuration uses Java 17, compile SDK 36, build-tools 36.1.0, NDK 29.0.14206865 and CMake 3.31.6. The current Quest export uses min SDK 32 / target SDK 34; PICO and experimental standard OpenXR use 29 / 36. The separately built mpv dependency uses its own locked Linux NDK r30. Do not silently mix these toolchains.
-
-Set your own paths:
-
-```powershell
-$env:THRU3D_TOOL_ROOT = Join-Path $HOME '.cache/thru3d-toolchain'
-$env:GODOT_EXE = (Get-Command godot).Source
-```
-
-Prepare this layout beneath `THRU3D_TOOL_ROOT`:
-
-```text
-jdk/jdk-17.0.20.1+1/
-android-sdk/                       platform 36, tools, NDK and CMake above
-godot-templates/4.7.2.stable/       matching extracted templates incl. android_source.zip
-openxr-vendors/5.1.0/asset/addons/godotopenxrvendors/
-ncnn/20260526/ncnn-20260526-android-vulkan/arm64-v8a/
-mnn/source-3.6.1/                  pristine MNN source
-mnn/source-3.6.1-vrpp/             generated patched source
-mnn/build-android-arm64-lib-vrpp/libMNN.a
-mpv/source-frame/arm64-v8a/        eight rebuilt/exported libraries
-```
-
-The build is a dependency assembly workflow, not an unattended SDK installer. Download exact-version tools from their upstream projects, accept applicable terms yourself, and retain their notices. Godot template Android export configuration must point at your JDK/SDK; the scripts supply the release signing environment when building Release.
-
-## MNN
-
-The matting graph depends on project-patched MNN 3.6.1. In Git Bash, with `THRU3D_TOOL_ROOT` pointing at your tool directory:
-
-```bash
-bash tools/Build-MnnAndroid.sh
-```
-
-This uses `tools/mnn/patch_mnn_vrpp.py` to copy/patch the pristine source and build the static ARM64 library. The unmodified upstream MNN runtime cannot be assumed equivalent. Keep the upstream Apache-2.0 notice with redistributed outputs.
-
-## libmpv / FFmpeg
-
-`third_party/mpv/source-plan.json` and `source-lock.json` identify the dependencies; `native/mpv/patches` contains the source-frame extension. The AI-enabled workflow requires that extension. The model-free standard backend instead uses the separately verified official libraries described above; the two backends have the capability differences listed in the build-mode table.
-
-1. Fetch the locked dependency archives with `python tools/environment/mpv-linux/fetch_sources.py --cache <downloads>`.
-2. On Linux, set `THRU3D_MPV_WORK` and `THRU3D_MPV_DOWNLOADS`; run the included bootstrap script in a disposable build environment with permission to install its host packages. Obtain Android NDK r30 from the official Android NDK distribution and the mpv-android builder at revision `fdf74f6830c47dbaa8a22ac79726e8303f1db5af`. Name the archives `android-ndk-r30-linux.zip` and `mpv-android-fdf74f6.tar.gz`; the bootstrap script records and verifies their exact SHA256. The dependency source archives are a separate locked set.
-3. Run `bash tools/environment/mpv-linux/build_source.sh`. The build applies and verifies the exact mpv patch.
-4. Set `THRU3D_MPV_EXPORT` to your chosen output directory, then run `python3 tools/environment/mpv-linux/export_candidate.py`. It verifies the extension, ARM64 ELF, 16 KiB alignment and dependency closure, then writes a new `third_party/mpv/source-build.json` for your library hashes.
-5. Place the eight outputs under your Windows tool root's `mpv/source-frame/arm64-v8a`. Build in the same source checkout, or transfer the generated receipt to it together with the libraries.
-
-The committed source-build receipt records reference library bytes. A different machine/toolchain may produce different binaries; rebuild/export a valid receipt instead of bypassing integrity checks. WSL is not asserted to have upstream mpv build support.
-
-## Runtime models and APK
-
-AI is enabled by default. Prepare/import a selected model pack as explained in [MODELS.md](MODELS.md). RVM conversion defaults to public upstream weights; the historical student remains optional and is not hosted. Custom packs use `Import-ModelAssets.ps1 -Manifest PATH` and `Build-Player.ps1 -UsePreparedModelAssets -ModelManifest PATH`.
-
-For a base player without AI, use:
-
-```powershell
-./tools/Build-Player.ps1 -ToolRoot $env:THRU3D_TOOL_ROOT -WithoutAI -XrVendor Quest -BuildType Debug
-```
-
-`-WithoutAI` also supports Pico, OpenXR and Release. It skips model preparation/import and the ncnn/MNN requirements, omits the inference JNI library and model assets, and disables live person matting and video/photo 2D-to-3D controls. Ordinary playback, existing stereo videos, projected subtitles, media browsing, photo viewing, and precomputed packed alpha masks remain available. Saved AI preferences cannot reactivate inference in this build. Do not combine this option with `-IncludeDiagnostics` or `-UsePreparedModelAssets`.
-
-The historical PowerShell base build still requires prepared Godot Android templates, OpenXR Vendors and OpenList's `cloudcore.aar`. With `-WithoutAI`, it defaults to checksum-pinned official mpv and the standard render API. Explicit `-MpvCandidate SourceFrame` remains available for a prepared private backend. The Python entry point above automates these base-player dependency preparation steps.
-
-For direct Gradle plugin builds on macOS/Linux, use the shell wrapper and prepared dependencies. Pass an absolute Godot template AAR path:
-
-```sh
-sh android/gradlew -p android -PenableAi=false -PstandardMpv=true \
-  -PgodotAarPath=/absolute/path/to/godot-lib.template_debug.aar \
-  -PandroidNdkVersion=30.0.16248370 -PandroidCmakeVersion=4.1.2 \
-  :player-plugin:assembleDebug :player-plugin:testDebugUnitTest
-```
-
-The NDK and CMake properties are optional overrides; their defaults retain the original versions. Use a JDK supported by the Gradle wrapper (Java 17 is the reference configuration). This command builds the plugin AAR, not the complete Godot APK. AI-enabled direct builds retain the ncnn/MNN properties and prepared model requirements. Rebuilding in the same checkout with `enableAi=false` synchronizes the asset staging directory and excludes stale inference libraries left in `jniLibs` by earlier builds.
-
-```powershell
-./tools/Import-ModelAssets.ps1 -FromDirectory ./external-model-assets
-./tools/Build-Player.ps1 -ToolRoot $env:THRU3D_TOOL_ROOT -UsePreparedModelAssets -XrVendor Quest -BuildType Debug
-./tools/Build-Player.ps1 -ToolRoot $env:THRU3D_TOOL_ROOT -UsePreparedModelAssets -XrVendor Pico -BuildType Debug
-./tools/Build-Player.ps1 -ToolRoot $env:THRU3D_TOOL_ROOT -UsePreparedModelAssets -XrVendor OpenXR -BuildType Debug
-```
-
-The build creates/validates the Kotlin plugin AARs, imports/exports Godot, checks manifest/vendor settings, ELF/JNI linkage, model hashes, signing and 16 KiB packaging. These are build checks, not a headset playback acceptance test.
-
-Compatibility targets start at Quest 2 and PICO Neo3. PICO/OpenXR retain min SDK 29 for older Android devices; Quest retains 32/34. Version 0.3.1 packaging checks preserve the legacy-storage flag and existing read/all-files declarations. Android 10 uses the runtime read grant with legacy storage; newer Android versions use the separate all-files access path.
-
-Release builds use `-BuildType Release`. `Prepare-ReleaseSigning.ps1` validates your persistent PKCS12 identity. Missing, damaged or mismatched keys stop the normal build; it does not create a replacement or fall back to a Debug identity. Back up your own signing material separately. No distribution key, password or original user's settings are provided in this repository.
-
-Distribution filenames identify platforms as `QUEST`, `PICO` and `OpenXR`, retaining the version and requested build date; for example `Thru3D-QUEST-0.3.1-release-20261009.apk`. Internal export-preset names and older debug fixture filenames can retain their existing names.
-
-The historical full conversion/diagnostic path remains available without `-UsePreparedModelAssets`. It defaults to `-RvmVariant upstream` and requires upstream/reference models, converter tools, both prepared depth models and generated numerical oracles. `-RvmVariant distilled` additionally requires the pinned project student. It is not the minimal build path and does not fetch the missing student automatically. AI-enabled Gradle staging validates the selected pack through Python 3.11+ (`THRU3D_PYTHON` overrides the interpreter).
-
-Model conversion additionally uses ONNX Runtime, NumPy, ONNX simplification, Pillow/OpenCV and the matching MNN converter/Python bindings; distillation uses PyTorch and onnx2torch. These tools belong in separate local environments. The small model-tools requirements lock covers reference conversion packages, not every optional training/analysis tool.
-
-## OpenList Android core
-
-Build-Player invokes tools/environment/Prepare-OpenList.ps1. It downloads checksum-pinned OpenList and Go archives, applies the recorded encrypted Storage.Addition tag, and binds the local cloud/openlist adapter as an arm64 AAR using the fixed gomobile revision and 16KiB linker alignment. The generated AAR is exported alongside the Kotlin plugin. Only its private JNI management API and loopback media router are enabled. Test-CloudCore.ps1 uses a local synthetic WebDAV server to check encryption, original-file ranges and fresh-process persistence without personal accounts.
-
-
-## Portable signing
-
-Use your own standard PKCS12 keystores in the persistent `keystore/signing/` directory. Keep aliases and public certificate/file SHA-256 fingerprints in `signing-identities.json` (schema_version 1, debug/release entries with keystore, alias, certificate_sha256 and keystore_sha256). Exported source does not contain official private keys or their backups.
-
-Provide the ordinary password through `THRU3D_SIGNING_PASSWORD` or the signing helper prompt. Windows processes can also read the current user/system setting of that variable; macOS and Linux use their normal process environment and JAVA_HOME/PATH. Signing has no Windows credential-store dependency and never generates replacement keys during a normal build.
-
-`build/` and `tmp/` are disposable. Keep signing material, unique source inputs and permanent backups outside them.
-
-All public builds use caller-owned keys and identity metadata. No official signing identity, encrypted key archive, password or personal backup is included. Keep unique inputs and backups outside disposable build/tmp directories.
+The bilingual static site is in `website/`. `python3 tools/check_website.py` checks local links, languages, screenshots and any published Immivio download choices. GitHub Pages publishes from `main`; until a branded Release exists, the download selector links to current development workflow artifacts.

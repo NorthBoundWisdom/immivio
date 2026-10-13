@@ -26,7 +26,7 @@ func _run() -> void:
 	quad.mesh.size = Vector2(4, 4)
 	viewport.add_child(quad)
 	var material := ShaderMaterial.new()
-	material.shader = load("res://shaders/video_rvm_pair.gdshader")
+	material.shader = load("res://shaders/video_pair.gdshader")
 	quad.material_override = material
 	var color := Image.create(2, 2, false, Image.FORMAT_RGB8)
 	color.fill(Color(0.2, 0.3, 0.4))

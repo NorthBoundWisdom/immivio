@@ -16,47 +16,46 @@ def sha256(path):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
-def prepare(noai, ai, output, tag, commit):
+def prepare(packages, output, tag, commit):
     if not tag or tag.startswith('-') or any(c in tag for c in '\r\n'):
         raise ValueError('Invalid release tag')
     if not re.fullmatch(r'[0-9a-f]{40}', commit):
         raise ValueError('Release commit must be a full Git SHA')
     assets = []
     records = []
-    for enabled, directory in [(False, Path(noai)), (True, Path(ai))]:
-        mode = 'ai' if enabled else 'noai'
-        seen = set()
-        receipts = sorted(directory.glob('*.build.json'))
-        if len(receipts) != len(PLATFORMS):
-            raise ValueError(f'Expected three {mode} build receipts')
-        for receipt in receipts:
-            record = json.loads(receipt.read_text(encoding='utf-8'))
-            vendor = record.get('vendor')
-            if vendor not in PLATFORMS or vendor in seen:
-                raise ValueError(f'Unexpected/duplicate release platform: {vendor}')
-            seen.add(vendor)
-            if record.get('ai_enabled') is not enabled or record.get('build_type') != 'Release':
-                raise ValueError('Only correctly labelled AI/no-AI Release packages can be published')
-            if record.get('source_commit') != commit or record.get('ci_ref') != 'refs/tags/' + tag:
-                raise ValueError('Release receipt belongs to a different tag or commit')
-            if record.get('ci_host') != 'macOS':
-                raise ValueError('Release assets must come from the canonical macOS builds')
-            name = record.get('apk', '')
-            pattern = rf'Thru3D-{PLATFORMS[vendor]}-[A-Za-z0-9._-]+-{mode}-release-\d{{8}}\.apk'
-            if not re.fullmatch(pattern, name) or receipt.name != Path(name).with_suffix('.build.json').name:
-                raise ValueError('Unsafe or mismatched release APK filename')
-            apk = directory / name
-            if apk.is_symlink() or not apk.is_file() or sha256(apk) != record.get('sha256'):
-                raise ValueError('Release APK is missing or differs from its verified receipt')
-            certificate = record.get('signing_certificate_sha256')
-            # Earlier tag builders verified signatures but did not record the
-            # certificate fingerprint. Preserve those original receipts.
-            if certificate is not None and not re.fullmatch(r'[0-9a-f]{64}', certificate):
-                raise ValueError('Release receipt has an invalid signing certificate')
-            records.append(record)
-            assets.extend([apk, receipt])
-        if {p.name for p in directory.glob('*.apk')} != {r['apk'] for r in records if r['ai_enabled'] is enabled}:
-            raise ValueError('Unexpected APKs in the release input directory')
+    directory = Path(packages)
+    seen = set()
+    receipts = sorted(directory.glob('*.build.json'))
+    if len(receipts) != len(PLATFORMS):
+        raise ValueError('Expected three Immivio build receipts')
+    for receipt in receipts:
+        record = json.loads(receipt.read_text(encoding='utf-8'))
+        vendor = record.get('vendor')
+        if vendor not in PLATFORMS or vendor in seen:
+            raise ValueError(f'Unexpected/duplicate release platform: {vendor}')
+        seen.add(vendor)
+        if record.get('product') != 'Immivio' or record.get('build_type') != 'Release':
+            raise ValueError('Only Immivio Release packages can be published')
+        if record.get('source_commit') != commit or record.get('ci_ref') != 'refs/tags/' + tag:
+            raise ValueError('Release receipt belongs to a different tag or commit')
+        if record.get('ci_host') != 'macOS':
+            raise ValueError('Release assets must come from the canonical macOS builds')
+        name = record.get('apk', '')
+        pattern = rf'Immivio-{PLATFORMS[vendor]}-[A-Za-z0-9._-]+-release-\d{{8}}\.apk'
+        if not re.fullmatch(pattern, name) or receipt.name != Path(name).with_suffix('.build.json').name:
+            raise ValueError('Unsafe or mismatched release APK filename')
+        apk = directory / name
+        if apk.is_symlink() or not apk.is_file() or sha256(apk) != record.get('sha256'):
+            raise ValueError('Release APK is missing or differs from its verified receipt')
+        certificate = record.get('signing_certificate_sha256')
+        # Earlier tag builders verified signatures but did not record the
+        # certificate fingerprint. Preserve those original receipts.
+        if certificate is not None and not re.fullmatch(r'[0-9a-f]{64}', certificate):
+            raise ValueError('Release receipt has an invalid signing certificate')
+        records.append(record)
+        assets.extend([apk, receipt])
+    if {p.name for p in directory.glob('*.apk')} != {r['apk'] for r in records}:
+        raise ValueError('Unexpected APKs in the release input directory')
     # Validate the entire set before copying any publishable package.
     output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -64,12 +63,12 @@ def prepare(noai, ai, output, tag, commit):
         stage = Path(temporary)
         for asset in assets:
             shutil.copy2(asset, stage / asset.name)
-        records.sort(key=lambda r: (r['ai_enabled'], r['vendor']))
+        records.sort(key=lambda r: r['vendor'])
         (stage / 'SHA256SUMS.txt').write_text(''.join(f'{r["sha256"]}  {r["apk"]}\n' for r in records), encoding='utf-8')
         manifest = {'tag': tag, 'source_commit': commit, 'host': 'macOS', 'packages': records}
         (stage / 'release-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
         notes = [f'Android APKs for `{tag}` (`{commit[:7]}`).', '',
-                 'Choose the PICO, QUEST or OpenXR APK matching your headset. Each platform has AI and No AI variants.', '',
+                 'Choose the PICO, QUEST or OpenXR APK matching your headset. Immivio has one playback edition.', '',
                  'APK hashes and build receipts are included. Both Windows and macOS CI builds passed; release assets use the macOS packages.', '']
         if any(r.get('ci_signing') == 'ephemeral-ci-key' for r in records):
             notes += ['These packages use CI-generated signing keys. An existing installation signed with a different key cannot be updated with these APKs.', '']
@@ -87,13 +86,12 @@ def prepare(noai, ai, output, tag, commit):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--noai', required=True, type=Path)
-    parser.add_argument('--ai', required=True, type=Path)
+    parser.add_argument('--packages', required=True, type=Path)
     parser.add_argument('--output', required=True, type=Path)
     parser.add_argument('--tag', required=True)
     parser.add_argument('--commit', required=True)
     args = parser.parse_args()
-    prepare(args.noai, args.ai, args.output, args.tag, args.commit)
+    prepare(args.packages, args.output, args.tag, args.commit)
 
 
 if __name__ == '__main__':

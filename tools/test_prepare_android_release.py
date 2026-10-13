@@ -13,31 +13,25 @@ COMMIT = 'a' * 40
 
 class ReleaseAssets(unittest.TestCase):
     def fixture(self, root):
-        inputs = []
-        for enabled in [False, True]:
-            mode = 'ai' if enabled else 'noai'
-            directory = root / mode
-            directory.mkdir()
-            for vendor, platform in release.PLATFORMS.items():
-                name = f'Thru3D-{platform}-0.6.0-{mode}-release-20261012.apk'
-                data = (vendor + mode).encode()
-                (directory / name).write_bytes(data)
-                record = {'vendor': vendor, 'apk': name, 'sha256': hashlib.sha256(data).hexdigest(),
-                          'ai_enabled': enabled, 'build_type': 'Release', 'source_commit': COMMIT,
-                          'ci_ref': 'refs/tags/' + TAG, 'ci_host': 'macOS',
-                          'signing_certificate_sha256': 'b' * 64, 'ci_signing': 'ephemeral-ci-key'}
-                (directory / Path(name).with_suffix('.build.json')).write_text(json.dumps(record))
-            inputs.append(directory)
-        return inputs
+        directory = root / 'packages'; directory.mkdir()
+        for vendor, platform in release.PLATFORMS.items():
+            name = f'Immivio-{platform}-0.6.0-release-20261013.apk'
+            data = vendor.encode(); (directory / name).write_bytes(data)
+            record = {'vendor':vendor, 'apk':name, 'sha256':hashlib.sha256(data).hexdigest(),
+                      'product':'Immivio', 'build_type':'Release', 'source_commit':COMMIT,
+                      'ci_ref':'refs/tags/'+TAG, 'ci_host':'macOS',
+                      'signing_certificate_sha256':'b'*64, 'ci_signing':'ephemeral-ci-key'}
+            (directory/Path(name).with_suffix('.build.json')).write_text(json.dumps(record))
+        return directory
 
-    def test_complete_tag_build_prepares_six_apks_receipts_hashes_and_notes(self):
+    def test_complete_tag_build_prepares_three_apks_receipts_hashes_and_notes(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            noai, ai = self.fixture(root)
+            packages = self.fixture(root)
             output = root / 'release'
-            manifest = release.prepare(noai, ai, output, TAG, COMMIT)
-            self.assertEqual(len(list(output.glob('*.apk'))), 6)
-            self.assertEqual(len(list(output.glob('*.build.json'))), 6)
+            manifest = release.prepare(packages, output, TAG, COMMIT)
+            self.assertEqual(len(list(output.glob('*.apk'))), 3)
+            self.assertEqual(len(list(output.glob('*.build.json'))), 3)
             self.assertEqual(manifest['source_commit'], COMMIT)
             for line in (output / 'SHA256SUMS.txt').read_text().splitlines():
                 digest, name = line.split('  ')
@@ -47,63 +41,63 @@ class ReleaseAssets(unittest.TestCase):
 
     def test_wrong_tag_commit_host_mode_and_debug_packages_cannot_publish(self):
         for key, value in [('source_commit', 'c' * 40), ('ci_ref', 'refs/heads/main'),
-                           ('ci_host', 'Windows'), ('ai_enabled', False),
+                           ('ci_host', 'Windows'), ('product', 'Other'),
                            ('build_type', 'Debug'), ('signing_certificate_sha256', '')]:
             with self.subTest(key=key), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)
-                noai, ai = self.fixture(root)
-                receipt = sorted(ai.glob('*.build.json'))[-1]
+                packages = self.fixture(root)
+                receipt = sorted(packages.glob('*.build.json'))[-1]
                 record = json.loads(receipt.read_text())
                 record[key] = value
                 receipt.write_text(json.dumps(record))
                 with self.assertRaises(ValueError):
-                    release.prepare(noai, ai, root / 'release', TAG, COMMIT)
+                    release.prepare(packages, root / 'release', TAG, COMMIT)
                 self.assertFalse((root / 'release').exists())
 
     def test_legacy_tag_receipts_without_certificate_metadata_remain_publishable(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            noai, ai = self.fixture(root)
-            for receipt in [*noai.glob('*.build.json'), *ai.glob('*.build.json')]:
+            packages = self.fixture(root)
+            for receipt in packages.glob('*.build.json'):
                 record = json.loads(receipt.read_text())
                 del record['signing_certificate_sha256']
                 receipt.write_text(json.dumps(record))
-            manifest = release.prepare(noai, ai, root / 'release', TAG, COMMIT)
-            self.assertEqual(len(manifest['packages']), 6)
+            manifest = release.prepare(packages, root / 'release', TAG, COMMIT)
+            self.assertEqual(len(manifest['packages']), 3)
             self.assertNotIn('signing_certificate_sha256', manifest['packages'][0])
 
     def test_corrupt_late_apk_does_not_copy_any_other_valid_assets(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            noai, ai = self.fixture(root)
-            sorted(ai.glob('*.apk'))[-1].write_bytes(b'corrupted')
+            packages = self.fixture(root)
+            sorted(packages.glob('*.apk'))[-1].write_bytes(b'corrupted')
             with self.assertRaisesRegex(ValueError, 'differs'):
-                release.prepare(noai, ai, root / 'release', TAG, COMMIT)
+                release.prepare(packages, root / 'release', TAG, COMMIT)
             self.assertFalse((root / 'release').exists())
 
     def test_incomplete_or_extra_packages_are_rejected(self):
         for extra in [False, True]:
             with self.subTest(extra=extra), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)
-                noai, ai = self.fixture(root)
+                packages = self.fixture(root)
                 if extra:
-                    (ai / 'unverified.apk').write_bytes(b'extra')
+                    (packages / 'unverified.apk').write_bytes(b'extra')
                 else:
-                    next(ai.glob('*.build.json')).unlink()
+                    next(packages.glob('*.build.json')).unlink()
                 with self.assertRaises(ValueError):
-                    release.prepare(noai, ai, root / 'release', TAG, COMMIT)
+                    release.prepare(packages, root / 'release', TAG, COMMIT)
                 self.assertFalse((root / 'release').exists())
 
     def test_apk_path_cannot_escape_input_directory(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            noai, ai = self.fixture(root)
-            receipt = next(ai.glob('*.build.json'))
+            packages = self.fixture(root)
+            receipt = next(packages.glob('*.build.json'))
             record = json.loads(receipt.read_text())
             record['apk'] = '../outside.apk'
             receipt.write_text(json.dumps(record))
             with self.assertRaisesRegex(ValueError, 'filename'):
-                release.prepare(noai, ai, root / 'release', TAG, COMMIT)
+                release.prepare(packages, root / 'release', TAG, COMMIT)
             self.assertFalse((root / 'release').exists())
 
 

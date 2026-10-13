@@ -172,16 +172,17 @@ func _run() -> void:
 			{"geometry": 3, "layout": 2, "depth": false, "fisheye_fov": 180}]:
 		video.load_mode_lock(lock)
 		video.auto_depth = lock.depth
+		var expected: Dictionary = lock.duplicate(); expected.depth = false
 		check(video.open_local("file:///v/locked_%d.mp4" % lock.geometry, "locked_%d.mp4" % lock.geometry)
-			and video.current_lock() == lock and video._layout_pending == null, "Unmarked source opens with locked mode %d" % lock.geometry)
+			and video.current_lock() == expected and video._layout_pending == null, "Unmarked source opens with locked mode %d" % lock.geometry)
 		video.media.format = {"width": 8192, "height": 4096, "pixel_aspect": 1.0}
 		video._complete_layout()
-		check(video.current_lock() == lock and video.mode_lock == lock and video._pending_revision.is_empty(),
+		check(video.current_lock() == expected and video.mode_lock == expected and video._pending_revision.is_empty(),
 			"First 2:1 frame preserves locked mode %d" % lock.geometry)
 	video.load_mode_lock({})
 	video.auto_depth = false
-	check(video.open_local("file:///v/clip_alpha.mp4", "clip_alpha.mp4") and host.calls.back()[4] == true and not video.packed_file,
-		"Alpha in the name opens with live Alpha")
+	check(video.open_local("file:///v/clip_alpha.mp4", "clip_alpha.mp4") and host.calls.back()[4] == false and not video.packed_file,
+		"An old live-matting filename cannot request inference")
 	var packed_uri := "file:///v/clip_LR_180_FISHEYE_F180_alpha.mp4"
 	check(video.open_local(packed_uri, "clip_LR_180_FISHEYE_F180_alpha.mp4") and host.calls.back()[4] == false
 		and video.packed_file and video.alpha_wanted() and video.geometry == 2 and video.stereo_sbs, "Packed output shows its own mask without RVM")

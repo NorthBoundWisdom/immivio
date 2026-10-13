@@ -33,12 +33,12 @@ func _run() -> void:
 			picture.set_pixel(x,y,Color(v,v,v))
 	var mask := Image.create(64,32,false,Image.FORMAT_R8)
 	mask.fill(Color(.5,0,0))
-	for name in ["video_rvm_pair", "photo"]:
+	for name in ["video_pair", "photo"]:
 		var material := ShaderMaterial.new()
 		material.shader = load("res://shaders/%s.gdshader" % name)
 		material.set_shader_parameter("source_size",Vector2(32,32))
-		material.set_shader_parameter("color_texture" if name == "video_rvm_pair" else "photo_texture",ImageTexture.create_from_image(picture))
-		if name == "video_rvm_pair":
+		material.set_shader_parameter("color_texture" if name == "video_pair" else "photo_texture",ImageTexture.create_from_image(picture))
+		if name == "video_pair":
 			material.set_shader_parameter("alpha_texture",ImageTexture.create_from_image(mask))
 			material.set_shader_parameter("model_size",Vector2(32,32))
 		quad.material_override = material
@@ -63,7 +63,7 @@ func _run() -> void:
 		material.set_shader_parameter("stereo_sbs", true)
 		for y in 32:
 			for x in 32: picture.set_pixel(x,y,Color(.8,.1,.1) if x < 16 else Color(.1,.1,.8))
-		material.set_shader_parameter("color_texture" if name == "video_rvm_pair" else "photo_texture",ImageTexture.create_from_image(picture))
+		material.set_shader_parameter("color_texture" if name == "video_pair" else "photo_texture",ImageTexture.create_from_image(picture))
 		var seam_before := await frame(viewport)
 		material.set_shader_parameter("sharpness",0.6)
 		var seam_after := await frame(viewport)

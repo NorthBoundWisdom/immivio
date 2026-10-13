@@ -11,9 +11,6 @@ def prepare(tool_root: Path):
     output = root / "third_party/player-licenses"
     output.mkdir(exist_ok=True)
     copies = {
-        "mnn.txt": tool_root / "mnn/source-3.6.1-vrpp/LICENSE.txt",
-        "rvm.txt": root / "models/licenses/RVM_GPL-3.0.txt",
-        "depth.txt": root / "models/licenses/DepthAnythingV2_Apache-2.0.txt",
         "media3.txt": root / "third_party/gradle/LICENSE.txt",
         "jcifs.txt": root / "third_party/mpv/LICENSE.LGPL",
         "panorama-notice.txt": root / "app/godot/backgrounds/NOTICE.txt",
@@ -23,8 +20,6 @@ def prepare(tool_root: Path):
     (output / "hands.txt").write_bytes(
         (root / "app/godot/models/hands/NOTICE.txt").read_bytes() + b"\n\n" +
         (root / "app/godot/models/hands/LICENSE.txt").read_bytes())
-    with ZipFile(tool_root / "downloads/ncnn-1.0.20260526-cp313-cp313-win_amd64.whl") as archive:
-        (output / "ncnn.txt").write_bytes(archive.read("ncnn-1.0.20260526.dist-info/licenses/LICENSE.txt"))
     with ZipFile(tool_root / "downloads/godotopenxrvendorsaddon-5.1.0.zip") as archive:
         entries = sorted(n for n in archive.namelist() if "LICENSE" in n and not n.endswith("/"))
         (output / "vendors.txt").write_bytes(b"\n\n".join(n.encode() + b"\n\n" + archive.read(n) for n in entries).rstrip(b"\r\n") + b"\n")

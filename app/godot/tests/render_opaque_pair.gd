@@ -32,7 +32,7 @@ func _run() -> void:
 	var caption := Image.create(16, 16, false, Image.FORMAT_RGBA8)
 	caption.fill(Color(.2, .1, .05, .4)) # Premultiplied caption samples.
 	var caption_texture := ImageTexture.create_from_image(caption)
-	var old := ShaderMaterial.new(); old.shader = shader("res://shaders/video_rvm_pair.gdshader")
+	var old := ShaderMaterial.new(); old.shader = shader("res://shaders/video_pair.gdshader")
 	var fast := ShaderMaterial.new(); fast.shader = shader("res://shaders/video_opaque_pair.gdshader")
 	for material in [old, fast]:
 		material.set_shader_parameter("color_texture", texture)

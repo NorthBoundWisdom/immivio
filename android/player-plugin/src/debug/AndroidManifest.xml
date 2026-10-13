@@ -11,25 +11,16 @@
         <receiver android:name="org.vrpassthroughplayer.plugin.DebugDiagnosticsReceiver"
             android:exported="true" android:permission="android.permission.DUMP">
             <intent-filter>
-                <action android:name="${applicationId}.DEBUG_PHOTO_PORTRAIT" />
-                <action android:name="${applicationId}.DEBUG_RVM_STANDALONE" />
-                <action android:name="${applicationId}.DEBUG_RVM" />
                 <action android:name="${applicationId}.DEBUG_DLNA" />
                 <action android:name="${applicationId}.DEBUG_PLEX_NETWORK" />
                 <action android:name="${applicationId}.DEBUG_CLOUD" />
-                <action android:name="${applicationId}.DEBUG_DEPTH_BENCH" />
                 <action android:name="${applicationId}.DEBUG_MPV_CORE" />
                 <action android:name="${applicationId}.DEBUG_MPV_DOLBY" />
                 <action android:name="${applicationId}.DEBUG_MPV_GPU" />
                 <action android:name="${applicationId}.DEBUG_MPV_SOURCE" />
                 <action android:name="${applicationId}.DEBUG_PLAYER_MPV" />
                 <action android:name="${applicationId}.DEBUG_SMB_CRYPTO" />
-                <action android:name="${applicationId}.DEBUG_MPV_SHARED" />
                 <action android:name="${applicationId}.DEBUG_MPV_AUDIO" />
-                <action android:name="${applicationId}.DEBUG_MPV_MOTION" />
-                <action android:name="${applicationId}.DEBUG_CONTROLLED" />
-                <action android:name="${applicationId}.DEBUG_RVM_VIDEO" />
-                <action android:name="${applicationId}.DEBUG_CANCEL_CONTROLLED" />
                 <action android:name="${applicationId}.DEBUG_LAUNCH" />
                 <action android:name="${applicationId}.DEBUG_LAUNCH_2D" />
                 <action android:name="${applicationId}.DEBUG_LOCAL_ACCESS" />

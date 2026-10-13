@@ -6,6 +6,11 @@ Newest first, following product release milestones. Some development/source snap
 
 ## Unreleased
 
+- Rename the independently maintained project, application and build artifacts to Immivio; the repository is now `NorthBoundWisdom/immivio`. Retain ordinary-player app identity/signing compatibility.
+- Remove live AI depth, person matting, model preparation/training tools, inference libraries and AI-specific build jobs. Keep existing stereo/spatial media, ordinary photos and precomputed media masks.
+- Remove the AI edition selector and conversion controls. Migrate obsolete preferences without reactivating effects.
+- Make website/README icon corners transparent and apply the formal Immivio brand.
+
 - Replace the application and website icon with the supplied neon panorama artwork.
 - Rewrite the English/Chinese README for users and add a bilingual GitHub Pages website with emulator screenshots and installation guidance.
 

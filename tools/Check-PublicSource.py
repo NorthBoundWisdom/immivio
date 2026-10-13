@@ -17,7 +17,7 @@ PATTERNS = {
     'private machine path': re.compile(r'(?i)(?:[CG]:[/\\]+(?:Users[/\\]+dennis|devtools|GIT|code[/\\]+VRPassthroughPlayer)|/mnt/' + r'g/|/opt/' + r'quest-mpv)'),
     'GitHub credential': re.compile(r'\b(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{50,})\b'),
     'AWS access key': re.compile(r'\b(?:AKIA|ASIA)[A-Z0-9]{16}\b'),
-    'hardcoded signing password': re.compile(r'''(?im)(?:THRU3D_SIGNING_PASSWORD|GODOT_ANDROID_KEYSTORE_(?:DEBUG|RELEASE)_PASSWORD)\s*(?:=|:)\s*['"][^'"\r\n]+['"]|-(?:storepass|keypass)\s+['"][^'"$\r\n]+['"]'''),
+    'hardcoded signing password': re.compile(r'''(?im)(?:THRU3D_SIGNING_PASSWORD|IMMIVIO_SIGNING_PASSWORD|GODOT_ANDROID_KEYSTORE_(?:DEBUG|RELEASE)_PASSWORD)\s*(?:=|:)\s*['"][^'"\r\n]+['"]|-(?:storepass|keypass)\s+['"][^'"$\r\n]+['"]'''),
     'private signing key': re.compile(r'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----'),
     'private handover link': re.compile(r'(?i)(?:HANDOVER_\d{8}|docs/(?:store|archive|branding)/)'),
 }
@@ -38,7 +38,7 @@ def check_files(files):
             errors.append(f'{name}: private development or promotion content')
         if name.endswith('store_capture_debug.gd') or 'local.properties' == path.name:
             errors.append(f'{name}: local-only configuration/tool')
-        if path.name.lower() in {'signing-identities.json', '.env'} or (path.name.lower().startswith('thru3d') and path.name.lower().endswith('-signing.json')):
+        if path.name.lower() in {'signing-identities.json', '.env'} or (path.name.lower().startswith(('thru3d', 'immivio')) and path.name.lower().endswith('-signing.json')):
             errors.append(f'{name}: excluded signing identity or local credential configuration')
         if path.name.lower().startswith(('readme', 'changelog')) and name not in {'README.md', 'README.zh-CN.md', 'CHANGELOG.md', 'CHANGELOG.zh-CN.md', 'third_party/README.md'}:
             errors.append(f'{name}: internal documentation excluded')
@@ -67,8 +67,8 @@ def check_files(files):
                         errors.append(f'{gltf}: unexpected hand buffer reference')
                 except (ValueError, KeyError, TypeError):
                     errors.append(f'{gltf}: invalid hand buffer contract')
-    required = {'LICENSE', 'README.md', 'CHANGELOG.md', 'CHANGELOG.zh-CN.md', 'docs/BUILD.md', 'docs/MODELS.md', 'docs/LICENSING.md',
-                'app/godot/project.godot', 'android/player-plugin/build.gradle', 'native/mpv/CMakeLists.txt'}
+    required = {'LICENSE', 'README.md', 'CHANGELOG.md', 'CHANGELOG.zh-CN.md', 'docs/BUILD.md', 'docs/LICENSING.md',
+                'app/godot/project.godot', 'android/player-plugin/build.gradle', 'native/mpv/CMakeLists.txt', 'native/CMakeLists.txt'}
     errors.extend(f'{name}: required public file missing' for name in sorted(required - files.keys()))
     if 'LICENSE' in files and b'Version 3, 29 June 2007' not in files['LICENSE']:
         errors.append('LICENSE: expected complete GPL v3 text')

@@ -69,7 +69,7 @@ func _check_stereo_alpha(output: String) -> void:
 	quad.mesh = QuadMesh.new()
 	quad.mesh.size = Vector2(2, 2)
 	viewport.add_child(quad)
-	var code := FileAccess.get_file_as_string("res://shaders/video_rvm_pair.gdshader") \
+	var code := FileAccess.get_file_as_string("res://shaders/video_pair.gdshader") \
 		.replace('#include "res://shaders/video_coordinates.gdshaderinc"', FileAccess.get_file_as_string("res://shaders/video_coordinates.gdshaderinc")) \
 		.replace("varying flat int eye_index;", "uniform int test_eye = 0;\nuniform vec2 test_uv = vec2(0.5);\nvarying flat int eye_index;") \
 		.replace("eye_index = int(VIEW_INDEX);", "eye_index = test_eye;") \

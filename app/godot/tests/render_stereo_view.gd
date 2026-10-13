@@ -34,7 +34,7 @@ func _run() -> void:
 	quad.mesh = QuadMesh.new()
 	quad.mesh.size = Vector2(2, 2)
 	viewport.add_child(quad)
-	for variant in ["video_rvm_pair", "video_rvm_pair_oes"]:
+	for variant in ["video_pair", "video_pair_oes"]:
 		var code := FileAccess.get_file_as_string("res://shaders/" + variant + ".gdshader") \
 			.replace('#include "res://shaders/video_coordinates.gdshaderinc"', FileAccess.get_file_as_string("res://shaders/video_coordinates.gdshaderinc")) \
 			.replace("varying flat int eye_index;", "uniform int test_eye = 0;\nuniform vec2 test_uv = vec2(0.5);\nuniform vec3 test_direction = vec3(0.0, 0.0, -1.0);\nvarying flat int eye_index;") \

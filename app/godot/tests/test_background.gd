@@ -86,7 +86,7 @@ func _run() -> void:
 	var main := Main.new()
 	main.settings_path = folder.path_join("settings.cfg")
 	viewport.add_child(main)
-	check(main.settings.get_value("alpha", "model") == "fast" and main.video.profile == main.video.AUTOMATIC_PROFILE, "Legacy quality model migrates to the unified playback configuration")
+	check(not main.settings.has_section("alpha") and main.video.profile == main.video.AUTOMATIC_PROFILE, "Legacy model choice is removed while ordinary playback remains configured")
 	main.photo.history_enabled = false
 	main.background.directory = folder.path_join("backgrounds")
 	check(main.background.choice == "dark" and main.display.environment.background_mode == Environment.BG_COLOR, "Saved dark background applies at startup")

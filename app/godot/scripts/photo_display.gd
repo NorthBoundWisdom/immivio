@@ -237,9 +237,6 @@ func _ready() -> void:
 	if OS.get_name() == "Android" and Engine.has_singleton("QuestPlayer"):
 		platform = Engine.get_singleton("QuestPlayer")
 		platform.connect("photo_ready", _on_ready)
-		platform.connect("photo_depth", _on_depth)
-		if platform.has_signal("photo_portrait"): platform.connect("photo_portrait", _on_portrait)
-		if platform.has_signal("photo_preload_depth"): platform.connect("photo_preload_depth", _on_prefetch_depth)
 	_apply_geometry()
 
 func _source_size() -> Vector2:
@@ -517,20 +514,7 @@ static func _decode(job: Dictionary) -> Dictionary:
 	return {"image": image, "thumbnail": thumbnail, "info": info}
 
 func _process(delta: float) -> void:
-	_process_portrait()
 	if not _directory_result.is_empty() and not loading and not _thread: _replace_directory()
-	_process_depth_jobs()
-	if _depth_rebuild_seconds > 0:
-		_depth_rebuild_seconds = maxf(0, _depth_rebuild_seconds - delta)
-		if _depth_rebuild_seconds == 0 and depth_requested:
-			# A strength change during navigation belongs to the incoming photo.
-			var target_request := _request if loading else _display_request
-			if target_request > 0:
-				_depth_busy = _prepare_depth(target_request)
-				if not _depth_busy:
-					depth_error = "3D unavailable"
-					if portrait_requested: set_portrait(false)
-					changed.emit()
 	if _thread and not _thread.is_alive():
 		var result: Dictionary = _thread.wait_to_finish()
 		_thread = null
@@ -607,7 +591,6 @@ func _drop_prefetch(target: int) -> void:
 	if int(_prefetch_decode.get("id", 0)) == id: _prefetch_decode = {}
 	if _prefetch_request == id: _prefetch_request = 0
 	if _prefetch_depth_request == id:
-		if Methods.supports(platform, "cancel_preloaded_photo_depth"): platform.cancel_preloaded_photo_depth()
 		_prefetch_depth_request = 0
 	if not _prefetch_decode.is_empty() and int(_prefetch_decode.id) == id: _prefetch_decode = {}
 	_release_photo(id, true)
@@ -616,7 +599,6 @@ func _pause_prefetch(except_id: int = 0) -> void:
 	if _prefetch_depth_request != 0:
 		if _prefetch_depth_request == except_id:
 			_promoted_depth_request = except_id
-		elif Methods.supports(platform, "cancel_preloaded_photo_depth"): platform.cancel_preloaded_photo_depth()
 		_prefetch_depth_request = 0
 	if _prefetch_request != 0 and _prefetch_request != except_id:
 		for target in _prefetched.keys():
@@ -703,29 +685,10 @@ func _resolved_mode(target: int, info: Dictionary) -> Dictionary:
 	return mode
 
 func _requires_depth(target: int, info: Dictionary) -> bool:
-	var mode := _resolved_mode(target, info)
-	return ai_available() and auto_depth and not info.get("native_stereo", false) and platform != null and int(mode.geometry) == Geometry.Geometry.FLAT and not mode.stereo_sbs
+	return false
 
 func _prepare_display(result: Dictionary, job: Dictionary) -> void:
-	if result.has("error") or not _requires_depth(int(job.index), result.info):
-		_accept(result, job)
-		return
-	var depth_data: Dictionary = result.get("depth_data", job.get("depth_data", {}))
-	if int(_incoming_depth_result.get("id", 0)) == int(job.id):
-		depth_data = _incoming_depth_result.data
-		_incoming_depth_result = {}
-		if depth_data.is_empty():
-			_fail_pending_depth()
-			return
-	if not depth_data.is_empty() and (not Methods.supports(platform, "prepare_photo_3d") or
-		(depth_data.has("stereo_image") and is_equal_approx(float(depth_data.get("strength", -1)), depth_strength))):
-		result["depth_data"] = depth_data
-		_accept(result, job)
-		return
-	_pending_display = {"result": result, "job": job, "serial": _serial}
-	if _promoted_depth_request == int(job.id): changed.emit()
-	elif not _prepare_depth(int(job.id)): _fail_pending_depth()
-	else: changed.emit()
+	_accept(result, job)
 
 func _fail_pending_depth() -> void:
 	_promoted_depth_request = 0; _incoming_depth_result = {}
@@ -766,12 +729,7 @@ func _accept(result: Dictionary, job: Dictionary) -> void:
 	var mode := _resolved_mode(index, _metadata)
 	geometry = int(mode.geometry); stereo_sbs = bool(mode.stereo_sbs)
 	top_bottom = stereo_sbs and bool(mode.top_bottom); swap_eyes = bool(mode.swap_eyes); fisheye_fov = int(mode.fisheye_fov)
-	_display_depth_data = result.get("depth_data", {}) if geometry == Geometry.Geometry.FLAT and not stereo_sbs else {}
-	if not _display_depth_data.is_empty():
-		_depth_texture = ImageTexture.create_from_image(_display_depth_data.image)
-		_depth_rect = _display_depth_data.rect
-		if _display_depth_data.has("stereo_image"): _stereo_texture = ImageTexture.create_from_image(_display_depth_data.stereo_image)
-		depth_requested = ai_available() and auto_depth; depth_enabled = depth_requested
+	_display_depth_data = {}
 	_display_info = result.info
 	_display_result = result if geometry == Geometry.Geometry.FLAT and result.image.get_data_size() <= CACHE_IMAGE_BYTES else {}
 	_prefetch_failed.erase(index)
@@ -944,7 +902,7 @@ func load_mode_lock(value: Variant) -> void:
 		if not (number is int or number is float) or not is_finite(float(number)) or float(number) != floorf(float(number)): return
 	if int(value.geometry) not in [0, 1, 2, 3] or int(value.layout) not in [0, 1, 2] or int(value.fisheye_fov) not in FISHEYE_FOVS: return
 	mode_lock = {"geometry": int(value.geometry), "layout": int(value.layout),
-		"depth": bool(value.depth) and int(value.layout) == 0 and int(value.geometry) == 0, "fisheye_fov": int(value.fisheye_fov)}
+		"depth": false and int(value.geometry) == 0, "fisheye_fov": int(value.fisheye_fov)}
 
 func toggle_inspect() -> void:
 	if portrait_requested: return
@@ -1138,177 +1096,26 @@ func _update_inspect() -> void:
 	_detail_material.set_shader_parameter("detail_up", right.cross(forward).normalized())
 
 func ai_available() -> bool:
-	return preload("res://scripts/ai_features.gd").available(platform)
+	return false
 
 func set_depth(enabled: bool) -> bool:
-	if enabled and not ai_available(): return false
-	if not enabled and portrait_requested: set_portrait(false)
-	if enabled and (_metadata.get("native_stereo", false) or stereo_sbs or geometry != 0 or not platform or _display_request <= 0): return false
-	if enabled != depth_requested: _unlock_mode()
-	auto_depth = enabled
-	depth_requested = enabled
-	depth_enabled = enabled and _depth_texture != null and (not Methods.supports(platform, "prepare_photo_3d") or _stereo_texture != null)
-	depth_error = ""
-	if enabled and (not depth_enabled or (Methods.supports(platform, "prepare_photo_3d") and
-		 not is_equal_approx(float(_display_depth_data.get("strength", -1)), depth_strength))) and not _depth_busy:
-		_depth_busy = _prepare_depth(_display_request)
-		if not _depth_busy: depth_error = "3D unavailable"
-	_apply_geometry(); changed.emit(); return true
-
-func _on_prefetch_depth(id: int, payload: String) -> void:
-	if _queue_depth_payload(id, payload, true): return
-	_finish_depth(id, _read_depth(payload), true)
+	# Legacy settings cannot enable removed conversion features.
+	auto_depth = false; depth_requested = false; depth_enabled = false
+	return not enabled
 
 func _prepare_depth(id: int, background: bool = false) -> bool:
-	if not background: _depth_rebuild_seconds = 0.0
-	var method := "prepare_preloaded_photo_3d" if background else "prepare_photo_3d"
-	if Methods.supports(platform, method): return bool(platform.call(method, id, depth_strength))
-	method = "prepare_preloaded_photo_depth" if background else "prepare_photo_depth"
-	return Methods.supports(platform, method) and bool(platform.call(method, id))
+	return false
 
 static func _cache_depth(data: Dictionary) -> Dictionary:
 	var cached := data.duplicate()
 	if cached.has("stereo_image") and cached.stereo_image.get_data_size() > CACHE_IMAGE_BYTES: cached.erase("stereo_image")
 	return cached
 
-func _queue_depth_payload(id: int, payload: String, background: bool) -> bool:
-	var info: Variant = JSON.parse_string(payload)
-	if not info is Dictionary or not info.has("stereo_path"): return false
-	# At most one queued result per source; pair loading and mip generation run off the frame thread.
-	_depth_queue = _depth_queue.filter(func(job): return int(job.id) != id)
-	_depth_queue.append({"id":id, "payload":payload, "background":background, "serial":_serial})
-	return true
-
-func _process_depth_jobs() -> void:
-	if _depth_thread and not _depth_thread.is_alive():
-		var data: Dictionary = _depth_thread.wait_to_finish()
-		_depth_thread = null
-		var id := int(_depth_job.id)
-		if bool(_depth_job.background) or int(_depth_job.serial) == _serial: _finish_depth(id, data, bool(_depth_job.background))
-		_depth_job = {}
-		if _deferred_release_ids.erase(id) and id not in [_request, _display_request]: _release_photo(id)
-	if _depth_thread: return
-	while not _depth_queue.is_empty():
-		var job: Dictionary = _depth_queue.pop_front()
-		if bool(job.background):
-			if int(job.id) not in [_prefetch_depth_request, _promoted_depth_request]: continue
-		elif int(job.serial) != _serial or int(job.id) not in [_request, _display_request]: continue
-		_depth_job = job
-		_depth_thread = Thread.new()
-		if _depth_thread.start(_read_depth.bind(str(job.payload))) != OK:
-			_depth_thread = null; _finish_depth(int(job.id), {}, bool(job.background)); _depth_job = {}
-		break
-
-func _finish_depth(id: int, data: Dictionary, background: bool) -> void:
-	if background and id == _promoted_depth_request and id != 0: background = false
-	if not background and id not in [_request, _display_request]: return
-	if not background and id == _promoted_depth_request: _promoted_depth_request = 0
-	if not background and data.has("strength") and not is_equal_approx(float(data.strength), depth_strength):
-		_depth_busy = _prepare_depth(id)
-		return
-	if not background and data.has("strength"): _depth_rebuild_seconds = 0.0
-	if background:
-	# A cancelled background error must not fail a foreground retry of the same file ID.
-		if id != _prefetch_depth_request or id == 0: return
-		_prefetch_depth_request = 0
-		for target in _prefetched:
-			if int(_prefetched[target].id) != id: continue
-			if data.is_empty(): _prefetched[target]["depth_failed"] = true
-			else: _prefetched[target]["depth_data"] = _cache_depth(data)
-			return
-		return
-	if id == _request and loading and _pending_display.is_empty():
-		# The joined conversion can finish before the colour decoder. Keep its matching result.
-		_incoming_depth_result = {"id": id, "data": data}
-		return
-	if not _pending_display.is_empty() and int(_pending_display.job.id) == id and int(_pending_display.serial) == _serial:
-		if data.is_empty(): _fail_pending_depth(); return
-		var pending := _pending_display; _pending_display = {}
-		pending.result["depth_data"] = data
-		_accept(pending.result, pending.job)
-		return
-	if id != _display_request: return
-	_depth_busy = false
-	if data.is_empty():
-		depth_error = "3D unavailable"
-		if portrait_requested: set_portrait(false)
-		changed.emit(); return
-	if portrait_requested:
-		# Keep the visible colour/matte pair until both replacements share the latest strength.
-		_portrait_pending_depth = data
-		_request_portrait_mask()
-		_apply_geometry(); changed.emit(); return
-	_commit_depth_data(data)
-	_apply_geometry(); changed.emit()
-
-func _commit_depth_data(data: Dictionary) -> void:
-	_display_depth_data = data
-	if not _display_result.is_empty(): _display_result["depth_data"] = data
-	_depth_texture = ImageTexture.create_from_image(data.image)
-	_depth_rect = data.rect
-	_stereo_texture = ImageTexture.create_from_image(data.stereo_image) if data.has("stereo_image") else null
-	depth_enabled = depth_requested and geometry == 0 and not stereo_sbs
-
-func _on_depth(id: int, payload: String) -> void:
-	if _queue_depth_payload(id, payload, false): return
-	_finish_depth(id, _read_depth(payload), false)
-
-static func _read_depth(payload: String) -> Dictionary:
-	var result: Variant = JSON.parse_string(payload)
-	if not result is Dictionary or result.get("state") != "ready": return {}
-	var w := int(result.get("width", 0)); var h := int(result.get("height", 0))
-	var rect: Variant = result.get("rect")
-	# Accept the independent photo model and legacy cached/test depth, with bounded allocation.
-	if Vector2i(w, h) not in [Vector2i(518, 518), Vector2i(252, 140)] or not rect is Array or rect.size() != 4: return {}
-	for value in rect:
-		if not (value is float or value is int) or not is_finite(float(value)): return {}
-	if rect[0] < 0 or rect[1] < 0 or rect[2] <= 0 or rect[3] <= 0 or rect[0] + rect[2] > 1.000001 or rect[1] + rect[3] > 1.000001: return {}
-	if not FileAccess.file_exists(str(result.get("path", ""))): return {}
-	var bytes := FileAccess.get_file_as_bytes(str(result.path))
-	if bytes.size() != w * h * 4: return {}
-	var depth := Image.create_from_data(w, h, false, Image.FORMAT_RF, bytes)
-	var data := {"image": depth, "rect": Vector4(rect[0], rect[1], rect[2], rect[3]), "cache_bytes":int(result.get("cache_bytes", 0))}
-	if result.has("stereo_path"):
-		if not (result.get("stereo_strength") is float or result.get("stereo_strength") is int): return {}
-		var strength := float(result.get("stereo_strength", -1))
-		var sw := int(result.get("stereo_width", 0)); var sh := int(result.get("stereo_height", 0))
-		if result.get("stereo_strategy", "") != "video_soft_shift_gpu" or not is_finite(strength) or strength < 0 or strength > 2 \
-			or sw < 2 or sw % 2 != 0 or sw > 8192 or sh < 1 or sh > 4096 or sw * sh > 16 * 1024 * 1024: return {}
-		var stereo := Image.new()
-		if str(result.stereo_path).get_extension() == "rgba":
-			# Raw RGBA rows straight from the GPU pair: no PNG encode on Android, no decode here.
-			var pixels := FileAccess.get_file_as_bytes(str(result.stereo_path))
-			if pixels.size() != sw * sh * 4: return {}
-			stereo = Image.create_from_data(sw, sh, false, Image.FORMAT_RGBA8, pixels)
-		else:
-			var header := Info.read_header(str(result.stereo_path))
-			if header.is_empty() or int(header.width) != sw or int(header.height) != sh: return {}
-			if stereo.load_png_from_buffer(FileAccess.get_file_as_bytes(str(result.stereo_path))) != OK or stereo.get_size() != Vector2i(sw, sh): return {}
-		stereo.generate_mipmaps()
-		data.merge({"stereo_image":stereo, "strength":strength, "strategy":str(result.stereo_strategy)})
-	return data
-
 func cycle_depth_strength() -> void:
-	set_depth_strength(0.5 if depth_strength >= DepthStrength.PHOTO_MAX else depth_strength + 0.5)
+	pass
 
 func set_depth_strength(value: float) -> bool:
-	var strength := DepthStrength.clamp_value(value, DepthStrength.PHOTO_MAX)
-	# Zero disparity keeps the cutout active; the portrait button remains the explicit exit.
-	if strength <= 0.0 and not portrait_requested: return set_depth(false)
-	if _metadata.get("native_stereo", false) or stereo_sbs or geometry != 0 or not platform or _display_request <= 0: return false
-	if is_equal_approx(strength,depth_strength) and depth_requested: return true
-	if portrait_requested: _invalidate_portrait_mask()
-	depth_strength = strength
-	if Methods.supports(platform, "update_photo_3d_strength"):
-		platform.update_photo_3d_strength(depth_strength)
-	if not depth_requested: return set_depth(true)
-	# Reuse cached depth/person inference; coalesce slider changes before warping both eyes.
-	if not portrait_requested:
-		material.set_shader_parameter("depth_strength", depth_strength)
-		_detail_material.set_shader_parameter("depth_strength", depth_strength)
-	if Methods.supports(platform, "prepare_photo_3d"): _depth_rebuild_seconds = 0.15
-	changed.emit()
-	return true
+	return false
 
 func snapshot() -> Dictionary:
 	var position := pending_index if pending_index >= 0 else index
@@ -1386,7 +1193,6 @@ func close_image(notify: bool = true) -> void:
 	if platform:
 		if _request > 0: _release_photo(_request, true)
 		if _display_request > 0: _release_photo(_display_request)
-		if Methods.supports(platform, "release_photo_depth_runtime"): platform.release_photo_depth_runtime()
 	_request = 0; _display_request = 0; _next_decode = {}
 	_texture = null; _depth_texture = null; _stereo_texture = null; _depth_busy = false; depth_requested = false; depth_enabled = false
 	material.set_shader_parameter("photo_texture", null); material.set_shader_parameter("depth_texture", null)
@@ -1409,84 +1215,14 @@ func _exit_tree() -> void:
 
 
 func can_portrait() -> bool:
-	var selected: bool = gallery.mode in [Gallery.Layout.SINGLE, Gallery.Layout.SIDES] or (gallery.focus == index and gallery.progress >= 1 and not gallery.returning)
-	return ai_available() and selected and not loading and _texture != null and geometry == 0 and not stereo_sbs \
-		and not _metadata.get("native_stereo",false) and _display_request > 0 \
-		and Methods.supports(platform,"prepare_photo_3d") and Methods.supports(platform,"prepare_photo_portrait")
+	return false
 
 func _invalidate_portrait_mask() -> void:
-	if Methods.supports(platform,"cancel_photo_portrait"): platform.cancel_photo_portrait(_portrait_epoch)
-	_portrait_epoch += 1; _portrait_next = {}; _portrait_pending_depth = {}; _portrait_sent_epoch = -1
+	pass
 
 func set_portrait(enabled: bool) -> bool:
-	if enabled == portrait_requested: return true
-	if enabled and not can_portrait(): return false
-	if not enabled and not _portrait_pending_depth.is_empty(): _commit_depth_data(_portrait_pending_depth)
-	_invalidate_portrait_mask(); portrait_error = ""
-	if not enabled:
-		portrait_requested = false; portrait_enabled = false
-		set_screen_curve(_portrait_curve); _apply_geometry()
-		gallery.synchronize(); gallery._refresh_visibility()
-		changed.emit(); return true
-	finish_transition(); close_inspect(); gallery.cancel_all(); _pause_prefetch()
-	_portrait_curve = screen_curve
-	portrait_requested = true; portrait_enabled = false; set_screen_curve(0)
-	gallery.visible = false; panel.visible = true; set_target_feedback(0)
-	depth_strength = DepthStrength.remembered(depth_strength,DepthStrength.PHOTO_MAX)
-	if not set_depth(true):
-		set_portrait(false); portrait_error = "3D unavailable"; changed.emit(); return false
-	var accepted := _request_portrait_mask()
-	_apply_geometry(); changed.emit(); return accepted
+	portrait_requested = false; portrait_enabled = false
+	return not enabled
 
 func _request_portrait_mask() -> bool:
-	if not portrait_requested or _depth_busy or _depth_rebuild_seconds > 0: return true
-	if not depth_error.is_empty():
-		set_portrait(false); portrait_error = "3D unavailable"; changed.emit(); return false
-	var data: Dictionary = _portrait_pending_depth if not _portrait_pending_depth.is_empty() else _display_depth_data
-	if not data.has("stereo_image") or not is_equal_approx(float(data.get("strength",-1)),depth_strength): return true
-	if _portrait_texture != null and is_equal_approx(_portrait_strength,depth_strength):
-		if not _portrait_pending_depth.is_empty(): _commit_depth_data(_portrait_pending_depth); _portrait_pending_depth = {}
-		portrait_enabled = true
-	elif _portrait_sent_epoch != _portrait_epoch:
-		_portrait_sent_epoch = _portrait_epoch
-		if not platform.prepare_photo_portrait(_display_request,_portrait_epoch,depth_strength):
-			set_portrait(false); portrait_error = "Portrait unavailable"; changed.emit(); return false
-	return true
-
-func _on_portrait(id: int, payload: String) -> void:
-	var result: Variant = JSON.parse_string(payload)
-	if not result is Dictionary or not portrait_requested or id != _display_request or int(result.get("token",-1)) != _portrait_epoch: return
-	if result.get("state") != "ready":
-		set_portrait(false); portrait_error = "No person detected" if result.get("error") == "PHOTO_NO_PERSON" else "Portrait unavailable"; changed.emit(); return
-	_portrait_next = {"id":id,"token":_portrait_epoch,"payload":result}
-
-static func _read_portrait(result: Dictionary) -> Dictionary:
-	var w := int(result.get("width",0)); var h := int(result.get("height",0))
-	if result.get("format") != "r8_sbs" or result.get("strategy") != "video_soft_shift_gpu" or w < 2 or w % 2 != 0 \
-		or w > 8192 or h < 1 or h > 4096 or w*h > 16*1024*1024: return {}
-	var strength := float(result.get("strength",-1))
-	if not is_finite(strength) or strength < 0 or strength > 2: return {}
-	var file := FileAccess.open(str(result.get("path","")),FileAccess.READ)
-	if not file or file.get_length() != w*h: return {}
-	var image := Image.create_from_data(w,h,false,Image.FORMAT_R8,file.get_buffer(w*h))
-	image.generate_mipmaps()
-	return {"image":image,"strength":strength}
-
-func _process_portrait() -> void:
-	if _portrait_thread and not _portrait_thread.is_alive():
-		var data: Dictionary = _portrait_thread.wait_to_finish(); _portrait_thread = null
-		var id := int(_portrait_job.id)
-		if portrait_requested and id == _display_request and int(_portrait_job.token) == _portrait_epoch:
-			var pair: Image = _portrait_pending_depth.get("stereo_image",_display_depth_data.get("stereo_image"))
-			if data.is_empty() or pair == null or data.image.get_size() != pair.get_size() or not is_equal_approx(float(data.strength),depth_strength):
-				set_portrait(false); portrait_error = "Portrait unavailable"
-			else:
-				if not _portrait_pending_depth.is_empty(): _commit_depth_data(_portrait_pending_depth); _portrait_pending_depth = {}
-				_portrait_texture = ImageTexture.create_from_image(data.image); _portrait_strength = float(data.strength); portrait_enabled = true
-			_apply_geometry(); changed.emit()
-		_portrait_job = {}
-		if _deferred_release_ids.erase(id) and id not in [_request,_display_request]: _release_photo(id)
-	if not _portrait_thread and not _portrait_next.is_empty():
-		_portrait_job = _portrait_next; _portrait_next = {}; _portrait_thread = Thread.new()
-		if _portrait_thread.start(_read_portrait.bind(_portrait_job.payload)) != OK:
-			_portrait_thread = null; set_portrait(false); portrait_error = "Portrait unavailable"; changed.emit()
+	return false

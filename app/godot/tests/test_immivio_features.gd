@@ -1,0 +1,43 @@
+extends SceneTree
+const Main := preload("res://scripts/main.gd")
+const Menu := preload("res://scripts/player_menu.gd")
+const PhotoMenu := preload("res://scripts/photo_menu.gd")
+var failures: Array[String] = []
+func check(value: bool, message: String) -> void:
+	if not value: failures.append(message)
+func _initialize() -> void: _run.call_deferred()
+func _run() -> void:
+	var path := "user://immivio-migration-%d.cfg" % Time.get_ticks_usec()
+	var old := ConfigFile.new()
+	old.set_value("effects", "auto_3d", true)
+	old.set_value("photo", "depth_strength", 2.0)
+	old.set_value("video", "depth_strength", 2.0)
+	old.set_value("alpha", "model", "quality")
+	old.set_value("video", "mode_lock", {"geometry":0, "layout":0, "depth":true, "fisheye_fov":180})
+	old.set_value("audio", "volume", 37.0)
+	old.set_value("audio", "muted", true)
+	old.save(path)
+	var main := Main.new(); main.settings_path = path; root.add_child(main)
+	main.set_process(false); main.video.set_process(false); main.photo.set_process(false); main.report_timer.stop()
+	check(not main.video.auto_depth and not main.photo.auto_depth, "Old automatic conversion choices cannot become active")
+	check(not main.video.set_depth(true) and not main.photo.set_depth(true) and not main.photo.set_portrait(true), "Legacy effect calls are rejected")
+	check(not main.settings.has_section("alpha") and not main.settings.has_section_key("effects", "auto_3d"), "Retired model preferences are removed in memory")
+	var persisted := ConfigFile.new(); persisted.load(path)
+	check(not persisted.has_section("alpha") and not persisted.get_value("video", "mode_lock").depth, "Migration persists removal and clears generated-depth locks")
+	check(main.video.audio_volume == 37 and main.video.audio_muted, "Removing effects preserves ordinary playback preferences")
+	var menu := Menu.new(); root.add_child(menu)
+	menu.state_provider = func(): return {"has_video": true, "geometry": 0, "ai_enabled": true, "audio_available": true}
+	menu.visible = true; menu.refresh()
+	check(not menu._buttons.any(func(button): return button.target == 112), "Even stale capability data cannot expose conversion controls")
+	menu._mode_open = true; menu.refresh()
+	check(not menu._buttons.any(func(button): return button.target == Menu.MODE_STEREO + 3), "Mode picker has no generated-3D tile")
+	check(menu._buttons.any(func(button): return button.target == Menu.MODE_STEREO + 1 and button.enabled), "Native SBS remains selectable")
+	var photo := PhotoMenu.new(); root.add_child(photo)
+	photo.state_provider = func(): return {"has_image": true, "geometry": 0, "depth_available": true, "portrait_available": true}
+	photo.visible = true; photo.refresh()
+	check(not photo._buttons.any(func(button): return button.target in [PhotoMenu.PHOTO_DEPTH, PhotoMenu.PHOTO_PORTRAIT]), "Photo controls have no live conversion or matting")
+	menu.queue_free(); photo.queue_free(); main.queue_free(); await process_frame
+	DirAccess.remove_absolute(path)
+	for failure in failures: push_error(failure)
+	print("Immivio feature migration: %d failures" % failures.size())
+	quit(0 if failures.is_empty() else 1)

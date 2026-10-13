@@ -2,12 +2,12 @@
   'use strict';
   const zh = document.documentElement.lang.startsWith('zh');
   const theme = document.querySelector('[data-theme-toggle]');
-  try { const saved = localStorage.getItem('thru3d-theme'); if (saved === 'light' || saved === 'dark') document.body.dataset.theme = saved; } catch (_) {}
+  try { const saved = localStorage.getItem('immivio-theme'); if (saved === 'light' || saved === 'dark') document.body.dataset.theme = saved; } catch (_) {}
   function reflectTheme() { if (theme) theme.setAttribute('aria-pressed', String(document.body.dataset.theme === 'light')); }
   reflectTheme();
   theme?.addEventListener('click', () => {
     document.body.dataset.theme = document.body.dataset.theme === 'light' ? 'dark' : 'light';
-    try { localStorage.setItem('thru3d-theme', document.body.dataset.theme); } catch (_) {}
+    try { localStorage.setItem('immivio-theme', document.body.dataset.theme); } catch (_) {}
     reflectTheme();
   });
   const dialog = document.querySelector('.lightbox');
@@ -24,19 +24,16 @@
   }
   const form = document.querySelector('#download-picker');
   if (!form) return;
-  const link = document.querySelector('#download-link'), meta = document.querySelector('#download-meta'), help = document.querySelector('#edition-help');
-  const releases = 'https://github.com/NorthBoundWisdom/Thru3D-Media-Player/releases/latest';
+  const link = document.querySelector('#download-link'), meta = document.querySelector('#download-meta');
+  const builds = 'https://github.com/NorthBoundWisdom/immivio/actions/workflows/android-release.yml';
   let release = null;
   function renderDownload() {
     const platform = form.querySelector('select').value;
-    const edition = form.querySelector('input:checked').value;
-    const experimental = platform === 'OpenXR';
-    help.textContent = (edition === 'noai' ? (zh ? '普通视频、照片与已有立体媒体；安装体积更小，不含实时 AI 转换。' : 'Ordinary videos, photos and existing stereo media. A smaller install without live AI conversion.') : (zh ? '增加支持内容的深度和人物抠像。安装包更大，性能因设备而异。' : 'Adds depth and person matting for supported media. A larger download; performance varies by device.')) + (experimental ? (zh ? ' 通用 OpenXR 为实验性支持。' : ' Generic OpenXR support is experimental.') : '');
-    const pattern = new RegExp('^Thru3D-' + platform + '-.*-' + edition + '-release-.*\\.apk$', 'i');
-    const asset = release?.assets?.find(item => pattern.test(item.name) && /^https:\/\/github\.com\/NorthBoundWisdom\/Thru3D-Media-Player\/releases\/download\//.test(item.browser_download_url || item.url || ''));
-    link.href = asset ? (asset.browser_download_url || asset.url) : releases;
-    link.textContent = asset ? ((zh ? '下载 ' : 'Download ') + platform + ' · ' + (edition === 'ai' ? 'AI' : 'No AI') + ' ↗') : (zh ? '前往 GitHub Releases ↗' : 'Open GitHub Releases ↗');
-    meta.textContent = asset ? release.tag_name + ' · ' + Math.round(asset.size / 1048576) + ' MB · APK' : (zh ? '在 Assets 中选择对应设备的 APK。' : 'Choose the matching headset APK under Assets.');
+    const pattern = new RegExp('^Immivio-' + platform + '-[0-9][A-Za-z0-9._-]*-release-[0-9]{8}\\.apk$', 'i');
+    const asset = release?.assets?.find(item => pattern.test(item.name) && /^https:\/\/github\.com\/NorthBoundWisdom\/immivio\/releases\/download\//.test(item.browser_download_url || ''));
+    link.href = asset ? asset.browser_download_url : builds;
+    link.textContent = asset ? ((zh ? '下载 ' : 'Download ') + platform + ' APK ↗') : (zh ? '获取开发版构建 ↗' : 'Get a development build ↗');
+    meta.textContent = asset ? release.tag_name + ' · ' + Math.round(asset.size / 1048576) + ' MB · APK' : (zh ? '选择成功运行的 Artifacts，下载 Immivio-' + platform + ' 安装包。需要登录 GitHub。' : 'Choose Artifacts in a successful run, then the Immivio-' + platform + ' package. GitHub sign-in is required.');
   }
   form.addEventListener('change', renderDownload); renderDownload();
   const local = document.querySelector('script[data-site-script]').src.replace(/site\.js$/, 'releases.json');

@@ -435,8 +435,6 @@ func _draw_bar() -> void:
 		{"target": QUICK_SPEED, "icon": "time", "tip": "Playback speed", "enabled": _state.get("has_video", false)},
 		{"target": QUICK_LOOP, "icon": "loop", "tip": "Loop", "enabled": _enabled("loop")},
 		{"target": 11, "icon": "settings", "tip": "Settings", "enabled": true}]
-	if not spatial and _enabled("depth"):
-		shortcuts.insert(2, {"target": 112, "icon": "depth", "tip": "Auto 3D", "enabled": true})
 	var active_shortcuts := shortcuts.filter(func(item): return item.enabled)
 	var pitch := 0.07 if active_shortcuts.size() == 6 else 0.08
 	var left := 0.53 - pitch * (active_shortcuts.size() - 1)
@@ -600,7 +598,7 @@ func _scroll_subtitles(rows: int) -> void:
 		refresh()
 
 func _can_depth() -> bool:
-	return _state.get("ai_enabled", true) and _state.get("has_video", false) and not _state.get("spatial_video", false) and int(_state.get("geometry", 0)) == 0 and not _state.get("stereo", false)
+	return false
 
 func _toggle_depth_slider() -> void:
 	if not _can_depth(): return
@@ -815,7 +813,7 @@ func release_pointer(hand: String, _origin: Vector3, _direction: Vector3, _track
 
 func _bar_key() -> String:
 	return str([_state.get("clone_voice", false), _state.get("geometry", 0), _state.get("has_video", false),
-		_state.get("spatial_video", false), _state.get("stereo", false), _state.get("ai_enabled", true),
+		_state.get("spatial_video", false), _state.get("stereo", false), false,
 		_state.get("source_uri", ""), _subtitle_tracks(), _state.get("subtitle_track", 0), bookmarks.key(), _state.get("audio_options", []), _state.get("audio_track_id", -1),
 		_state.get("subtitle_distance", SubtitleDepth.DEFAULT), _state.get("subtitle_position", SubtitleDepth.DEFAULT_POSITION), _state.get("subtitle_direction", 0), _state.get("subtitle_size", 100), _state.get("subtitle_flat_position", 0), _state.get("subtitle_loading", false), _state.get("subtitle_palette", 0)])
 
@@ -881,7 +879,6 @@ func _draw_modes() -> void:
 	var controls_y := top - (0.15 if half_choices else 0.09)
 	# Photos retain their existing controls; video depth is on the bar, eye order in Settings.
 	if not half_choices:
-		_mode_tile(MODE_STEREO + 3, I18n.t("Auto 3D"), "depth", Vector2(0.2, controls_y), depth, not stereo and projection == 0)
 		_mode_tile(MODE_STEREO + 2, _caption("eyes"), "eyes", Vector2(0.4, controls_y), false, stereo)
 	if fisheye:
 		for i in LENS_FOVS.size():
@@ -934,14 +931,6 @@ func _draw_panel() -> void:
 		_adjustment_row(453, "playback_speed", "Playback speed", Vector3(0.25, 3.0, 0.05), y)
 		_inline_reset(SPEED_RESET, "Restore 1×", "playback_speed", 1.0, y)
 		_slider_tick(453, 1.0, "1×", y)
-		if _enabled("alpha"):
-			y -= 0.105
-			_adjustment_row(454, "alpha_fps", "Alpha passthrough FPS limit", Vector3(10, 40, 1), y)
-			_slider_tick(454, 20, "20", y)
-			var hint := _label(I18n.t("Passthrough uses lots of GPU, so FPS may be lower"), Vector3(-0.66, y - 0.045, 0.004), 14)
-			hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-			hint.modulate = MUTED
-			y -= 0.03
 		y -= 0.09
 		var fps := _label(I18n.t("Show FPS"), Vector3(-0.66, y, 0.004), CONTROL_FONT_SIZE)
 		fps.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -1273,12 +1262,12 @@ func _enabled(operation: String) -> bool:
 	match operation:
 		"play", "loop", "stop": return has_video
 		"previous_video", "next_video": return has_video and _state.get("has_" + operation, false)
-		"alpha": return (_state.get("ai_enabled", true) or _state.get("packed_file", false)) and has_video and (_state.get("spatial_video", false) or int(_state.get("geometry", 0)) in [1, 2])
+		"alpha": return (false or _state.get("packed_file", false)) and has_video and (_state.get("spatial_video", false) or int(_state.get("geometry", 0)) in [1, 2])
 		"eyes", "stereo_view": return has_video and _state.get("stereo", false)
 		"volume_down", "volume_up", "mute": return has_video and _state.get("audio_available", false)
 		"audio": return has_video
 		"clone_voice": return has_video and _state.get("clone_voice", false)
-		"depth": return _state.get("ai_enabled", true) and has_video and not _state.get("spatial_video", false) and int(_state.get("geometry", 0)) == 0 and not _state.get("stereo", false)
+		"depth": return false and has_video and not _state.get("spatial_video", false) and int(_state.get("geometry", 0)) == 0 and not _state.get("stereo", false)
 		"depth_strength": return _can_depth()
 		"subtitles": return has_video
 		"capabilities": return _state.get("capabilities_available", false)

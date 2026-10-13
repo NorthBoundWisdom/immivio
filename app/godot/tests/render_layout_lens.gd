@@ -27,7 +27,7 @@ func _run() -> void:
 	quad.mesh = QuadMesh.new()
 	quad.mesh.size = Vector2(2, 2)
 	viewport.add_child(quad)
-	var code := FileAccess.get_file_as_string("res://shaders/video_rvm_pair.gdshader") \
+	var code := FileAccess.get_file_as_string("res://shaders/video_pair.gdshader") \
 		.replace('#include "res://shaders/video_coordinates.gdshaderinc"', FileAccess.get_file_as_string("res://shaders/video_coordinates.gdshaderinc")) \
 		.replace("varying flat int eye_index;", "uniform int test_eye = 0;\nuniform vec3 test_direction = vec3(0.0, 0.0, -1.0);\nvarying flat int eye_index;") \
 		.replace("eye_index = int(VIEW_INDEX);", "eye_index = test_eye;") \
@@ -76,7 +76,7 @@ func _run() -> void:
 			failures.append("Fisheye %d at %d degrees: %s, expected stripe %d" % [case[0], int(case[1]), got, case[2]])
 	# Compressed fisheye gradients: expected normalized UV comes from the viewing angle,
 	# independently of shader view_size(). Test both axes, eye orders and production variants.
-	for variant in ["video_rvm_pair", "video_rvm_pair_oes"]:
+	for variant in ["video_pair", "video_pair_oes"]:
 		var half_shader := Shader.new()
 		half_shader.code = FileAccess.get_file_as_string("res://shaders/" + variant + ".gdshader") \
 			.replace('#include "res://shaders/video_coordinates.gdshaderinc"', FileAccess.get_file_as_string("res://shaders/video_coordinates.gdshaderinc")) \
@@ -146,7 +146,7 @@ func _sample_preview() -> void:
 	sphere.mesh = preload("res://scripts/video_geometry.gd").hemisphere(4.0)
 	viewport.add_child(sphere)
 	var shader := Shader.new()
-	shader.code = FileAccess.get_file_as_string("res://shaders/video_rvm_pair.gdshader").replace("eye_index = int(VIEW_INDEX);", "eye_index = 0;")
+	shader.code = FileAccess.get_file_as_string("res://shaders/video_pair.gdshader").replace("eye_index = int(VIEW_INDEX);", "eye_index = 0;")
 	var material := ShaderMaterial.new()
 	material.shader = shader
 	sphere.material_override = material

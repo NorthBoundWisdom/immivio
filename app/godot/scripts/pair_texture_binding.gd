@@ -3,8 +3,8 @@ extends RefCounted
 ## and keep the native display lease until unbind() plus the post-draw fence.
 ## This helper neither claims nor retires native slots.
 
-const PAIR_SHADER := preload("res://shaders/video_rvm_pair.gdshader")
-const DECODER_SHADER := preload("res://shaders/video_rvm_pair_oes.gdshader")
+const PAIR_SHADER := preload("res://shaders/video_pair.gdshader")
+const DECODER_SHADER := preload("res://shaders/video_pair_oes.gdshader")
 const OPAQUE_SHADER := preload("res://shaders/video_opaque_pair.gdshader")
 var opaque := false # Display opts in only for ordinary, non-packed, non-inferred RGBA.
 

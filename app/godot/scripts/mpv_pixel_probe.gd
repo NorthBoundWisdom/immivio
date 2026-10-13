@@ -6,7 +6,7 @@ const MaterialProbe := preload("res://scripts/pair_material_probe.gd")
 static func capture(parent: Node, pair: Dictionary, request: int) -> Dictionary:
 	var result := {"state": "failed", "request_id": request, "pair": pair.duplicate(true), "images": [],
 		"scope": "Adreno Godot SubViewport using production shader and pinned MPV/RVM native textures; XR and main viewport unverified",
-		"renderer": RenderingServer.get_video_adapter_name(), "shader": "res://shaders/video_rvm_pair.gdshader"}
+		"renderer": RenderingServer.get_video_adapter_name(), "shader": "res://shaders/video_pair.gdshader"}
 	var viewport := SubViewport.new()
 	# Square input eye: a full-screen orthographic quad gives known pixel-center UVs.
 	viewport.size = Vector2i(640, 640)
@@ -29,7 +29,7 @@ static func capture(parent: Node, pair: Dictionary, request: int) -> Dictionary:
 	quad.mesh.size = Vector2(2, 2)
 	viewport.add_child(quad)
 	var material := ShaderMaterial.new()
-	material.shader = load("res://shaders/video_rvm_pair.gdshader")
+	material.shader = load("res://shaders/video_pair.gdshader")
 	quad.material_override = material
 	var binding := Binding.new()
 	if not binding.bind(material, pair):

@@ -120,7 +120,7 @@ func _initialize() -> void:
 		"Seek immediately clears text while replacement processing is pending")
 	video.subtitles.text = "old cue"
 	video.set_alpha(true)
-	check(video.subtitles.text.is_empty() and video.subtitles.requested_track == 12, "Alpha switch clears old cue and retains selected native track")
+	check(video.subtitles.text == "old cue" and video.subtitles.requested_track == 12, "Rejected removed effect cannot disturb the current subtitle")
 	video.media.playback = {"details": {"subtitle_tracks": []}}
 	check(not video.cycle_subtitle_track(), "Source without text subtitles cannot advertise a track")
 	# External tracks arrive after FILE_LOADED. CC must become available using the

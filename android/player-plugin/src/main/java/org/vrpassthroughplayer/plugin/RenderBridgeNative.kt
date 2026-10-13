@@ -7,8 +7,6 @@ internal object RenderBridgeNative {
     init { System.loadLibrary("quest_render_bridge") }
     /** Worker-only still-image path. RGBA row 0 is top, near is mono RF; output is packed SBS RGBA.
      * Reuses video's forward warp, z-buffer, hole fill, rim and sliver cleanup. Returns elapsed us. */
-    @JvmStatic external fun photoStereo(rgba: ByteBuffer, width: Int, height: Int, near: ByteBuffer,
-        modelWidth: Int, modelHeight: Int, content: FloatArray, strength: Float, output: ByteBuffer): Long
     /** stereo: two views, side by side unless topBottom (top half is the left eye). */
     fun create(width: Int, height: Int, inputWidth: Int, inputHeight: Int, stereo: Boolean, topBottom: Boolean = false): Long =
         createLayout(width, height, inputWidth, inputHeight, if (!stereo) 0 else if (topBottom) 2 else 1)
@@ -58,7 +56,6 @@ internal object RenderBridgeNative {
     @JvmStatic external fun alphaReady(handle: Long, token: Long): Boolean
     /** 2D->3D: renders the held mono color's stereo pair (2W x H) from the near map just uploaded
      * (PTMediaServer soft_shift with its hole fill); readiness follows alphaReady. 0: unsupported. */
-    @JvmStatic external fun warp(handle: Long, token: Long, shift: Float, convergence: Float): Int
     @JvmStatic external fun alphaTexture(handle: Long, token: Long): Int
     /** Development only: exact-size model-height rows of left/right packed R8 bytes. */
     @JvmStatic external fun readAlpha(handle: Long, token: Long, output: ByteBuffer): Boolean

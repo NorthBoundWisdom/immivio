@@ -10,22 +10,6 @@ var failures: Array[String] = []
 var checks := 0
 var folder := "user://photo_test_%d" % Time.get_ticks_usec()
 
-class PhotoHost extends RefCounted:
-	var ready: Callable
-	var depth: Callable
-	var depth_path := ""
-	var requests := 100
-	var inference := 0
-	func open_photo(uri: String) -> int:
-		requests += 1
-		ready.call_deferred(requests, JSON.stringify({"state":"ready", "path":uri.trim_prefix("file://")}))
-		return requests
-	func prepare_photo_depth(id: int) -> bool:
-		inference += 1
-		depth.call_deferred(id, JSON.stringify({"state":"ready", "path":depth_path, "width":252, "height":140, "rect":[0,0,1,1]}))
-		return true
-	func cancel_photo(_id: int) -> void: pass
-	func release_photo(_id: int) -> void: pass
 
 func check(value: bool, message: String) -> void:
 	checks += 1
@@ -244,44 +228,10 @@ func _run() -> void:
 	main.photo.set_projection(0)
 	main._on_library_chosen("file://fake.mp4", "fake.mp4")
 	check(not main.photo_active and main.player_menu == main.video_menu and not main.photo.panel.visible, "Video reopen restores video controller and hides photos")
-	var host := PhotoHost.new()
-	host.ready = main.photo._on_ready; host.depth = main.photo._on_depth
-	host.depth_path = folder.path_join("near.bin")
-	var near := Image.create(252,140,false,Image.FORMAT_RF)
-	near.fill(Color(.8,0,0))
-	FileAccess.open(host.depth_path, FileAccess.WRITE).store_buffer(near.get_data())
-	main.photo.platform = host
 	main._on_library_chosen(entries[0].uri, entries[0].title)
 	await settle(main.photo)
-	main.photo_menu._activate(Menu.PHOTO_DEPTH)
-	await process_frame
-	check(main.photo.depth_requested and main.photo.depth_enabled and main.photo_menu._depth_open, "Photo icon opens slider and prepares one depth map")
-	var original_knob: Object = main.photo_menu._depth_knob
-	var original_texture: Object = main.photo._depth_texture
-	var y := Menu.DEPTH_SPAN.y
-	var controls: Node3D = main.photo_menu
-	controls.press_pointer("left_hand", controls.to_global(Vector3(Menu.DEPTH_X,y,1)), -controls.global_basis.z, true)
-	check(is_equal_approx(main.photo.depth_strength, 2.0) and is_equal_approx(main.photo.material.get_shader_parameter("depth_strength"),2.0)
-		and is_equal_approx(main.photo._detail_material.get_shader_parameter("depth_strength"),2.0), "Slider top gives photo and detail shaders live 200% strength")
-	check(host.inference == 1 and main.photo._depth_texture == original_texture and controls._depth_knob == original_knob, "Dragging reuses depth map and UI meshes")
-	controls.release_pointer("left_hand",Vector3.ZERO,Vector3.ZERO,false)
-	main._on_photo_action("photo_next")
-	await settle(main.photo); await process_frame
-	check(main.photo.index == 1 and main.photo.depth_requested and main.photo.depth_enabled and main.photo.depth_strength == 2.0 and host.inference == 2,
-		"Next photo retains 3D choice and strength, estimates the new image once")
-	main.photo.set_projection(3)
-	check(not main.photo.depth_enabled and main.photo.auto_depth, "Panorama temporarily bypasses 3D without clearing preference")
-	main.photo.set_projection(0)
-	check(main.photo.depth_enabled and main.photo.depth_strength == 2.0, "Returning to flat photo restores 3D")
-	main._on_depth_strength(0.0,true)
-	main._on_photo_action("photo_next")
-	await settle(main.photo); await process_frame
-	check(not main.photo.depth_requested and not main.photo.auto_depth and not main.video.auto_depth and host.inference == 2,
-		"Manual Off applies to both media types and stays off on the next photo")
-	main._on_depth_strength(1.5,true); main._save_depth_strength()
-	var saved := ConfigFile.new(); saved.load(main.settings_path)
-	check(is_equal_approx(saved.get_value("photo","depth_strength"), 1.5) and saved.get_value("effects","auto_3d") and main.video.auto_depth,
-		"Photo preference also enables following videos and saves independent photo strength")
+	check(not main.photo.set_depth(true) and not main.photo.can_portrait(), "Photos have no live conversion or person matting")
+	var saved := ConfigFile.new()
 	main.photo.set_projection(3)
 	main._on_photo_action("lock_mode")
 	saved.load(main.settings_path)
@@ -289,8 +239,8 @@ func _run() -> void:
 	var restored := Main.new()
 	restored.settings_path = main.settings_path
 	root.add_child(restored)
-	check(restored.video.auto_depth and restored.photo.auto_depth and is_equal_approx(restored.photo.depth_strength, 1.5) and restored.video.depth_strength == 1.0,
-		"Restart restores shared auto-3D choice and separate strengths")
+	check(not restored.video.auto_depth and not restored.photo.auto_depth,
+		"Restart leaves removed conversion preferences inactive")
 	check(restored.photo.mode_lock.geometry == 3 and restored.video.mode_lock.is_empty(), "Restart restores panorama photo lock without locking videos")
 	main._on_photo_action("lock_mode"); saved.load(main.settings_path)
 	check(saved.get_value("photo", "mode_lock").is_empty(), "Unlock is saved across restarts")

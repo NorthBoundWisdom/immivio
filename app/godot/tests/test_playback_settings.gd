@@ -163,14 +163,7 @@ func _run() -> void:
 	video.geometry = 1
 	video._apply_geometry()
 	menu.refresh()
-	check(menu._adjust_rows.has(454) and menu._adjust_rows[454].label.text == "20 FPS", "VR180 playback settings show the Alpha frame rate at 20")
-	drag(menu, 454, 1.0)
-	check(host.alpha_fps.back() == 40 and main._menu_state().alpha_fps == 40 and menu._adjust_rows[454].label.text == "40 FPS", "Alpha frame rate reaches the bridge while dragging")
-	drag(menu, 454, 0.0)
-	var stored := ConfigFile.new()
-	check(host.alpha_fps.back() == 10 and stored.load(main.settings_path) == OK and stored.get_value("video", "alpha_fps") == 10, "Alpha frame rate persists on release at the 10 FPS minimum")
-	main._apply_alpha_fps(500)
-	check(host.alpha_fps.back() == 40, "Alpha frame rate is clamped to 40")
+	check(not menu._adjust_rows.has(454), "Immersive playback has no inference rate controls")
 	video.geometry = 0
 	video._apply_geometry()
 	video.stereo_sbs = true

@@ -39,24 +39,16 @@ jobs:
       SOURCE_RUN_ID: ${{ inputs.run_id }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - name: Check tag source and all four build results
+      - name: Check tag source and both build results
         id: source
         run: >-
           python3 tools/select_android_release.py
           --repository "$GH_REPO" --tag "$RELEASE_TAG" --run-id "$SOURCE_RUN_ID"
-      - name: Download canonical model-free Release packages
+      - name: Download canonical Immivio Release packages
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
         with:
-          name: Android-noai-Release-macOS
-          path: artifacts/release-input/noai
-          run-id: ${{ inputs.run_id }}
-          repository: ${{ github.repository }}
-          github-token: ${{ github.token }}
-      - name: Download canonical AI Release packages
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
-        with:
-          name: Android-ai-Release-macOS
-          path: artifacts/release-input/ai
+          name: Immivio-Android-Release-macOS
+          path: artifacts/release-input/packages
           run-id: ${{ inputs.run_id }}
           repository: ${{ github.repository }}
           github-token: ${{ github.token }}
@@ -65,7 +57,7 @@ jobs:
           SOURCE_COMMIT: ${{ steps.source.outputs.commit }}
         run: >-
           python3 tools/prepare_android_release.py
-          --noai artifacts/release-input/noai --ai artifacts/release-input/ai
+          --packages artifacts/release-input/packages
           --output artifacts/release --tag "$RELEASE_TAG" --commit "$SOURCE_COMMIT"
       - name: Publish APKs on the tag's GitHub Release
         run: |
@@ -74,5 +66,5 @@ jobs:
             gh release upload "$RELEASE_TAG" "${assets[@]}" --repo "$GH_REPO" --clobber
           else
             gh release create "$RELEASE_TAG" "${assets[@]}" --repo "$GH_REPO" --verify-tag \
-              --title "Thru3D $RELEASE_TAG" --notes-file artifacts/release/release-notes.md
+              --title "Immivio $RELEASE_TAG" --notes-file artifacts/release/release-notes.md
           fi

@@ -69,9 +69,9 @@ func _run() -> void:
 	check(video.geometry == 0 and video.stereo_layout() == 1 and video.mode_lock == saved_lock and video.fisheye_fov == 180,
 		"Keyboard/controller cycling and mode locks cannot override the source or saved preference")
 	video.auto_depth = true
-	check(not video.set_depth(false) and not video.set_depth(true) and not video.set_depth_strength(0),
+	check(video.set_depth(false) and not video.set_depth(true) and not video.set_depth_strength(0),
 		"Spatial source cannot change global mono depth preference")
-	check(video.auto_depth, "The user's automatic 3D preference is retained for ordinary files")
+	check(not video.auto_depth, "Removed conversion preference is cleared")
 	# Saved/manual mode has no pending filename detection, but MV-HEVC still needs unpacking.
 	video.geometry = 3
 	video.top_bottom = true
@@ -86,16 +86,12 @@ func _run() -> void:
 	main._on_menu_action("depth")
 	main._on_menu_action("projection_1")
 	main._on_menu_action("lock_mode")
-	check(video.auto_depth and main.settings.get_value("effects", "auto_3d") and video.mode_lock == saved_lock,
+	check(not video.auto_depth and main.settings.get_value("effects", "auto_3d") and video.mode_lock == saved_lock,
 		"Rejected menu commands have no preference-saving side effects")
 	check(main._menu_state().spatial_video, "Main exposes decoded source type to the menu")
 	video.advance_session = true
 	main._on_menu_action("alpha")
-	check(video.alpha_requested and video.requests.back() == {"alpha": true, "stereo": true, "depth": false, "geometry": 0},
-		"Spatial passthrough reuses the stereo Alpha pipeline without mono depth")
-	check(video.is_spatial_video() and not video.media.format.has("spatial_video"), "Alpha session replacement cannot temporarily unlock the source")
-	main._on_menu_action("alpha")
-	check(not video.alpha_requested and video.is_spatial_video(), "Turning passthrough off retains spatial playback mode")
+	check(not video.alpha_requested and video.is_spatial_video(), "Rejecting removed matting leaves the native stereo source intact")
 	video._request_revision(1000)
 	check(video.is_spatial_video(), "Seek session replacement retains the source type")
 	var menu := Menu.new()
@@ -104,8 +100,8 @@ func _run() -> void:
 	menu.action_requested.connect(main._on_menu_action)
 	root.add_child(menu)
 	menu.toggle()
-	check(not menu._buttons.any(func(b): return b.target == 112) and menu._enabled("alpha"),
-		"Spatial video hides the mono 2D-to-3D action and enables passthrough")
+	check(not menu._buttons.any(func(b): return b.target == 112) and not menu._enabled("alpha"),
+		"Spatial video hides the mono 2D-to-3D action without live matting")
 	check(click(menu, Menu.MODE), "Spatial mode panel opens")
 	var texts: Array = menu._labels.map(func(label): return label.text)
 	check(texts.has("Spatial video · MV-HEVC") and texts.has("Mode fixed"), "Source format and fixed-mode reason are visible")
@@ -128,7 +124,7 @@ func _run() -> void:
 	video.set_stereo_layout(0)
 	check(video.stereo_layout() == 0, "An ordinary next video regains manual mono layout")
 	menu.refresh_values()
-	check(menu._buttons.any(func(b): return b.target == 112) and not menu._enabled("alpha"), "Ordinary flat video restores Auto 3D and its existing Alpha policy")
+	check(not menu._buttons.any(func(b): return b.target == 112) and not menu._enabled("alpha"), "Ordinary video does not restore removed effects")
 	check(not menu._labels.any(func(label): return label.text.contains("MV-HEVC")), "Changing to ordinary video removes the source badge in an open mode panel")
 	check(menu._buttons.filter(func(b): return b.target in range(130, 134)).all(func(b): return b.enabled), "Ordinary projection choices become clickable again")
 	menu._depth_open = true # A source can be recognized while this popup is open.

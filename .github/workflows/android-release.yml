@@ -1,4 +1,4 @@
-name: Android Release (AI and no AI)
+name: Immivio Android
 
 on:
   push:
@@ -31,7 +31,7 @@ concurrency:
 
 jobs:
   build:
-    name: ${{ startsWith(github.ref, 'refs/tags/') && 'Release' || inputs.build_type || 'Debug' }} / no AI / ${{ matrix.os }}
+    name: ${{ startsWith(github.ref, 'refs/tags/') && 'Release' || inputs.build_type || 'Debug' }} / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     strategy:
@@ -48,8 +48,6 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - uses: ./.github/actions/android-setup
-        with:
-          ai: 'false'
       - name: Check source, dependency boundaries and Godot behavior
         run: python tools/ci_android.py test
       - name: Build and verify Android ${{ env.CI_BUILD_TYPE }} packages
@@ -66,10 +64,10 @@ jobs:
       - name: Upload installable packages and build receipts
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          name: Android-noai-${{ env.CI_BUILD_TYPE }}-${{ runner.os }}
+          name: Immivio-Android-${{ env.CI_BUILD_TYPE }}-${{ runner.os }}
           path: |
-            artifacts/*-noai-*.apk
-            artifacts/*-noai-*.build.json
+            artifacts/Immivio-*.apk
+            artifacts/Immivio-*.build.json
             artifacts/SHA256SUMS.txt
             artifacts/ci-summary.json
           if-no-files-found: error
@@ -79,76 +77,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          name: Android-noai-Logs-${{ runner.os }}
-          path: |
-            artifacts/logs/
-            artifacts/ci-logs/
-            artifacts/source-tests/
-            android/player-plugin/build/test-results/
-          if-no-files-found: warn
-          retention-days: 7
-
-  build-ai-macos:
-    name: ${{ startsWith(github.ref, 'refs/tags/') && 'Release' || inputs.build_type || 'Debug' }} / AI / macos-15
-    runs-on: macos-15
-    timeout-minutes: 180
-    defaults:
-      run:
-        shell: bash
-    env:
-      PYTHONUTF8: '1'
-      GOMAXPROCS: '2'
-      CI_VENDOR: ${{ inputs.vendor || 'all' }}
-      HOMEBREW_NO_AUTO_UPDATE: '1'
-      HOMEBREW_NO_INSTALL_CLEANUP: '1'
-    steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - uses: ./.github/actions/android-setup
-        with:
-          ai: 'true'
-      - name: Check source, dependency boundaries and Godot behavior
-        run: python tools/ci_android.py test
-      - name: Prepare macOS source-build tools
-        run: brew install autoconf automake libtool pkg-config gperf nasm bison flex gettext gnu-sed coreutils findutils gnu-tar wget bash
-      - name: Build and verify source-frame mpv for both AI hosts
-        run: python tools/ci_ai.py prepare-mpv --jobs 2
-      - name: Share verified Android ARM64 backend with Windows
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        with:
-          name: Android-AI-source-frame-mpv
-          path: artifacts/ai-dependencies/mpv-source.zip
-          overwrite: true
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 14
-      - name: Download, convert and verify public AI models and runtime
-        run: python tools/prepare_public_ai.py --jobs 2
-      - name: Build and verify AI Android ${{ env.CI_BUILD_TYPE }} packages
-        env:
-          CI_ANDROID_AI_KEYSTORE_BASE64: ${{ env.CI_BUILD_TYPE == 'Release' && github.event_name != 'pull_request' && secrets.ANDROID_AI_KEYSTORE_BASE64 || '' }}
-          CI_ANDROID_AI_KEY_ALIAS: ${{ env.CI_BUILD_TYPE == 'Release' && github.event_name != 'pull_request' && secrets.ANDROID_AI_KEY_ALIAS || '' }}
-          CI_ANDROID_AI_KEY_PASSWORD: ${{ env.CI_BUILD_TYPE == 'Release' && github.event_name != 'pull_request' && secrets.ANDROID_AI_KEY_PASSWORD || '' }}
-        run: python tools/ci_android.py build --ai
-      - name: Stop Gradle daemons before cache archival
-        if: always()
-        run: python tools/ci_android.py stop-gradle
-      - name: Upload AI packages and build receipts
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        with:
-          name: Android-ai-${{ env.CI_BUILD_TYPE }}-macOS
-          path: |
-            artifacts/*-ai-*.apk
-            artifacts/*-ai-*.build.json
-            artifacts/SHA256SUMS.txt
-            artifacts/ci-summary.json
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 14
-      - name: Upload AI build and test logs
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        with:
-          name: Android-ai-Logs-macOS
+          name: Immivio-Android-Logs-${{ runner.os }}
           path: |
             artifacts/logs/
             artifacts/ci-logs/
@@ -160,7 +89,7 @@ jobs:
   publish-release:
     name: Publish tagged Android APKs
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [build, build-ai-macos, build-ai-windows]
+    needs: [build]
     permissions:
       contents: write
       actions: read
@@ -168,65 +97,3 @@ jobs:
     with:
       tag: ${{ github.ref_name }}
       run_id: ${{ format('{0}', github.run_id) }}
-
-  build-ai-windows:
-    name: ${{ startsWith(github.ref, 'refs/tags/') && 'Release' || inputs.build_type || 'Debug' }} / AI / windows-2025
-    needs: build-ai-macos
-    runs-on: windows-2025
-    timeout-minutes: 120
-    defaults:
-      run:
-        shell: bash
-    env:
-      PYTHONUTF8: '1'
-      GOMAXPROCS: '2'
-      CI_VENDOR: ${{ inputs.vendor || 'all' }}
-    steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - uses: ./.github/actions/android-setup
-        with:
-          ai: 'true'
-      - name: Download current-run source-frame backend
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
-        with:
-          name: Android-AI-source-frame-mpv
-          path: artifacts/ai-dependencies
-      - name: Verify and import source-frame backend
-        run: python tools/ci_ai.py import-mpv
-      - name: Check source, dependency boundaries and Godot behavior
-        run: python tools/ci_android.py test
-      - name: Download, convert and verify public AI models and runtime
-        run: python tools/prepare_public_ai.py --jobs 2
-      - name: Build and verify AI Android ${{ env.CI_BUILD_TYPE }} packages
-        env:
-          CI_ANDROID_AI_KEYSTORE_BASE64: ${{ env.CI_BUILD_TYPE == 'Release' && github.event_name != 'pull_request' && secrets.ANDROID_AI_KEYSTORE_BASE64 || '' }}
-          CI_ANDROID_AI_KEY_ALIAS: ${{ env.CI_BUILD_TYPE == 'Release' && github.event_name != 'pull_request' && secrets.ANDROID_AI_KEY_ALIAS || '' }}
-          CI_ANDROID_AI_KEY_PASSWORD: ${{ env.CI_BUILD_TYPE == 'Release' && github.event_name != 'pull_request' && secrets.ANDROID_AI_KEY_PASSWORD || '' }}
-        run: python tools/ci_android.py build --ai
-      - name: Stop Gradle daemons before cache archival
-        if: always()
-        run: python tools/ci_android.py stop-gradle
-      - name: Upload AI packages and build receipts
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        with:
-          name: Android-ai-${{ env.CI_BUILD_TYPE }}-Windows
-          path: |
-            artifacts/*-ai-*.apk
-            artifacts/*-ai-*.build.json
-            artifacts/SHA256SUMS.txt
-            artifacts/ci-summary.json
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 14
-      - name: Upload AI build and test logs
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        with:
-          name: Android-ai-Logs-Windows
-          path: |
-            artifacts/logs/
-            artifacts/ci-logs/
-            artifacts/source-tests/
-            android/player-plugin/build/test-results/
-          if-no-files-found: warn
-          retention-days: 7

@@ -28,7 +28,7 @@ internal object MpvAudioDiagnostics {
             .put("consumer_context_origin", "debug_offscreen_GLES_pbuffer")
             .put("godot_display_verified", false).put("xr_verified", false).put("rvm_verified", false)
             .put("audible_output_verified", false).put("av_sync_verified", false).put("performance_verified", false)
-        val owner = MpvSharedDiagnostics.Owner(); var source = 0L
+        val owner = OffscreenGlOwner(); var source = 0L
         var focus: MpvAudioFocus? = null
         val focusChanges = ConcurrentLinkedQueue<String>()
         val eofTimeline = JSONArray()

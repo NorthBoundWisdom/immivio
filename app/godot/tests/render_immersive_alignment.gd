@@ -49,9 +49,9 @@ func _run() -> void:
 		if baseline.reload() != OK: push_error("Could not load baseline surface"); quit(1); return
 		surface = baseline.new()
 	parent.add_child(surface); surface.view_camera = head
-	surface.initialize_surface(shader_for("res://shaders/video_rvm_pair.gdshader")); surface.panel.visible = true
+	surface.initialize_surface(shader_for("res://shaders/video_pair.gdshader")); surface.panel.visible = true
 	surface.material.set_shader_parameter("alpha_enabled", false); surface.sharpness = 0
-	for pipeline in ["video_rvm_pair", "video_rvm_pair_oes"]:
+	for pipeline in ["video_pair", "video_pair_oes"]:
 		surface.material.shader = shader_for("res://shaders/" + pipeline + ".gdshader")
 		surface.material.set_shader_parameter("alpha_enabled", false); surface.sharpness = 0
 		for projection in [0, 1, 2, 3]:

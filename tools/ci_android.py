@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Provision and exercise AI and model-free Android Release builders on hosted CI."""
+"""Provision and verify Immivio Android builds on hosted CI."""
 import argparse
 import base64
 import hashlib
@@ -115,12 +115,8 @@ def host_tests(godot):
     player.run([sys.executable, player.ROOT/'tools/Check-PublicSource.py'])
     player.run([sys.executable, player.ROOT/'tools/test_build_player.py'])
     player.run([sys.executable, player.ROOT/'tools/test_ci_android.py'])
-    player.run([sys.executable, player.ROOT/'tools/test_ci_ai.py'])
     player.run([sys.executable, player.ROOT/'tools/test_prepare_android_release.py'])
-    player.run([sys.executable, player.ROOT/'tools/test_model_assets.py'])
     sdk = os.environ.get('ANDROID_HOME') or os.environ.get('ANDROID_SDK_ROOT')
-    if sdk:
-        player.run([sys.executable, player.ROOT/'tools/test_ai_native_compat.py', '--ndk', Path(sdk)/'ndk'/player.LOCK['ndk']])
     logs = player.ROOT/'artifacts/source-tests'
     logs.mkdir(parents=True, exist_ok=True)
     env = os.environ.copy()
@@ -155,9 +151,9 @@ def host_tests(godot):
         raise RuntimeError(f'Godot source tests failed: {failures}')
 
 
-def signing_env(environ, *, ai=False):
+def signing_env(environ):
     env = environ.copy()
-    transport = 'CI_ANDROID_AI_' if ai else 'CI_ANDROID_'
+    transport = 'CI_ANDROID_'
     names = tuple(transport+key for key in ('KEYSTORE_BASE64', 'KEY_ALIAS', 'KEY_PASSWORD'))
     values = [env.get(name, '') for name in names]
     env = {key: value for key, value in env.items() if not key.startswith('CI_ANDROID_')}
@@ -165,12 +161,12 @@ def signing_env(environ, *, ai=False):
         return env, 'ephemeral-ci-key'
     if not all(values):
         raise RuntimeError('Configure all three Android signing secrets, or none')
-    key = Path(env.get('RUNNER_TEMP', player.ROOT/'artifacts/signing'))/('thru3d-ai-ci-release.keystore' if ai else 'thru3d-ci-release.keystore')
+    key = Path(env.get('RUNNER_TEMP', player.ROOT/'artifacts/signing'))/'immivio-ci-release.keystore'
     key.parent.mkdir(parents=True, exist_ok=True)
     key.write_bytes(base64.b64decode(values[0], validate=True))
     if os.name != 'nt':
         key.chmod(0o600)
-    prefix = 'THRU3D_AI_KEYSTORE_RELEASE' if ai else 'GODOT_ANDROID_KEYSTORE_RELEASE'
+    prefix = 'GODOT_ANDROID_KEYSTORE_RELEASE'
     env.update({prefix+'_PATH': str(key), prefix+'_USER': values[1], prefix+'_PASSWORD': values[2]})
     return env, 'repository-signing-key'
 
@@ -221,10 +217,10 @@ def build_type_for_ref(requested=None, environment=None):
     return selected
 
 
-def build(vendor, godot, templates, *, ai=False, build_type=None):
+def build(vendor, godot, templates, *, build_type=None):
     build_type = build_type_for_ref(build_type)
     if build_type == 'Release':
-        env, signing = signing_env(os.environ, ai=ai)
+        env, signing = signing_env(os.environ)
     else:
         env = {key: value for key, value in os.environ.items() if not key.startswith('CI_ANDROID_')}
         signing = 'local-variant-key'
@@ -232,9 +228,7 @@ def build(vendor, godot, templates, *, ai=False, build_type=None):
     receipts = []
     args = argparse.Namespace(vendor=vendors[0], build_type=build_type, godot=godot, templates=Path(templates),
         sdk=None, java_home=None, gradle=None, ndk=player.LOCK['ndk'], cmake=player.LOCK['cmake'], plugin_only=False,
-        ai=ai, mnn_source=player.CACHE/'ai/MNN-3.6.1-vrpp', mnn_lib=player.CACHE/'ai/mnn-android/libMNN.a',
-        ncnn_dir=player.CACHE/'ai/ncnn/ncnn-20260526-android-vulkan/arm64-v8a',
-        mpv_dir=player.CACHE/'ci-ai/mpv/arm64-v8a', mpv_receipt=player.CACHE/'ci-ai/mpv/source-build.json')
+        mpv_dir=None, mpv_receipt=None)
     # Keep a single lock and toolchain for all targets; reuse only within this invocation.
     with player.build_lock():
         env, sdk = player.environment(args, env)
@@ -252,14 +246,13 @@ def build(vendor, godot, templates, *, ai=False, build_type=None):
                 if player.LOGS.exists():
                     shutil.copytree(player.LOGS, player.ROOT/'artifacts/ci-logs'/target, dirs_exist_ok=True)
             platform = {'Pico': 'PICO', 'Quest': 'QUEST', 'OpenXR': 'OpenXR'}[target]
-            mode = 'ai' if ai else 'noai'
-            candidates = list((player.ROOT/'artifacts').glob(f'Thru3D-{platform}-*-{mode}-{build_type.lower()}-*.build.json'))
+            candidates = list((player.ROOT/'artifacts').glob(f'Immivio-{platform}-*-{build_type.lower()}-*.build.json'))
             if not candidates:
-                raise RuntimeError('Missing receipt for the selected AI/build target')
+                raise RuntimeError('Missing receipt for the selected build target')
             path = max(candidates, key=lambda p: p.stat().st_mtime)
             receipt = json.loads(path.read_text(encoding='utf-8'))
-            if receipt.get('ai_enabled') is not ai:
-                raise RuntimeError('Build receipt AI mode differs from the selected CI job')
+            if receipt.get('product') != 'Immivio':
+                raise RuntimeError('Build receipt product differs from Immivio')
             if receipt.get('build_type') != build_type:
                 raise RuntimeError('Build receipt type differs from the selected CI build type')
             receipt.update(ci_ref=os.environ.get('GITHUB_REF', ''), ci_signing=signing, ci_host=os.environ.get('RUNNER_OS', sys.platform),
@@ -272,8 +265,8 @@ def build(vendor, godot, templates, *, ai=False, build_type=None):
     (artifacts/'ci-summary.json').write_text(json.dumps(receipts, indent=2)+'\n', encoding='utf-8')
     if os.environ.get('GITHUB_STEP_SUMMARY'):
         with Path(os.environ['GITHUB_STEP_SUMMARY']).open('a', encoding='utf-8') as summary:
-            summary.write(f'### Android {build_type}, {"AI" if ai else "no AI"} — {os.environ.get("RUNNER_OS", sys.platform)}\n\n')
-            contents = 'Public upstream models and the inference runtime are included.' if ai else 'CI packages contain no AI models or inference libraries.'
+            summary.write(f'### Immivio Android {build_type} — {os.environ.get("RUNNER_OS", sys.platform)}\n\n')
+            contents = 'Standalone XR media playback; no inference runtime or models.'
             summary.write(f'Signing: `{signing}`. {contents}\n\n')
             summary.write('| Platform | APK | SHA256 |\n|---|---|---|\n')
             for receipt in receipts:
@@ -291,7 +284,6 @@ def main():
     package.add_argument('--vendor', choices=['all', 'Pico', 'Quest', 'OpenXR'], default=os.environ.get('CI_VENDOR', 'all'))
     package.add_argument('--godot', default=os.environ.get('GODOT_EXE', 'godot'))
     package.add_argument('--templates', default=os.environ.get('GODOT_TEMPLATES_DIR'))
-    package.add_argument('--ai', action='store_true')
     package.add_argument('--build-type', choices=['Debug', 'Release'])
     args = parser.parse_args()
     if args.command == 'setup':
@@ -303,7 +295,7 @@ def main():
     else:
         if not args.templates:
             parser.error('--templates or GODOT_TEMPLATES_DIR is required')
-        build(args.vendor, args.godot, args.templates, ai=args.ai, build_type=args.build_type)
+        build(args.vendor, args.godot, args.templates, build_type=args.build_type)
 
 
 if __name__ == '__main__':

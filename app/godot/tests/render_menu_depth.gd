@@ -143,7 +143,7 @@ func _run() -> void:
 	media.mesh.size = Vector2(1, 1)
 	media.position.z = 0.2
 	viewport.add_child(media)
-	for shader_name in ["video_rvm_pair", "photo"]:
+	for shader_name in ["video_pair", "photo"]:
 		var material := ShaderMaterial.new()
 		material.shader = load("res://shaders/" + shader_name + ".gdshader")
 		material.render_priority = -10

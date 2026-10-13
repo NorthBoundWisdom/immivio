@@ -6,7 +6,7 @@
   ],
   "source_included": false,
   "application_commit": "388b30da1230b31f7297f619a4910d052344accd",
-  "application": "Thru3D No AI development Debug build",
+  "application": "Historical Thru3D playback build, captured before the Immivio rename",
   "capture_environment": "Android 16 ARM64 emulator, 2D diagnostic entry with the real application renderer",
   "projection": "Fisheye 180, SBS",
   "frame_size": [

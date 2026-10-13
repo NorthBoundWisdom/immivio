@@ -13,7 +13,7 @@
   },
   {
     "id": "project",
-    "name": "Thru3D / MPV / FFmpeg",
+    "name": "Immivio / MPV / FFmpeg",
     "license": "GPL-3.0",
     "assets": [
       "mpv/LICENSE.GPL",
@@ -26,38 +26,6 @@
     "license": "Vendor license notices",
     "assets": [
       "player-licenses/vendors.txt"
-    ]
-  },
-  {
-    "id": "rvm",
-    "name": "RVM MobileNetV3",
-    "license": "GPL-3.0",
-    "assets": [
-      "player-licenses/rvm.txt"
-    ]
-  },
-  {
-    "id": "mnn",
-    "name": "MNN 3.6.1",
-    "license": "Apache-2.0",
-    "assets": [
-      "player-licenses/mnn.txt"
-    ]
-  },
-  {
-    "id": "ncnn",
-    "name": "ncnn 20260526",
-    "license": "BSD-3-Clause",
-    "assets": [
-      "player-licenses/ncnn.txt"
-    ]
-  },
-  {
-    "id": "depth",
-    "name": "Depth Anything V2 Small",
-    "license": "Apache-2.0",
-    "assets": [
-      "player-licenses/depth.txt"
     ]
   },
   {

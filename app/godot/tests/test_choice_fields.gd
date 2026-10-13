@@ -63,8 +63,8 @@ func _run() -> void:
 	menu._activate(Library.TAB_BASE + Library.VIDEO_TAB)
 	menu.release_pointer("left_hand", point, -menu.global_basis.z, true)
 	check(events.size() == 1 and menu.choices.capture.is_empty() and menu.choices.opened.is_empty(), "Tab switch cancels old dropdown ownership and stale release")
-	check(menu.rows.size() == 3 and menu.rows[0].choices.size() == 2 and menu.rows[1].compact, "Two seek choices and short resolution choices are compact radios")
-	check(menu.rows[2].key == "alpha_fps" and menu.rows[2].slider and menu.rows[2].span == Vector3(10, 40, 1) and menu.rows[2].value == 20 and not str(menu.rows[2].hint).is_empty(), "Alpha frame rate is a 10-40 FPS slider defaulting to 20 with a passthrough hint")
+	check(menu.rows.size() == 2 and menu.rows[0].choices.size() == 2 and menu.rows[1].compact, "Two seek choices and short resolution choices are compact radios")
+	check(not menu.rows.any(func(row): return row.get("key") == "alpha_fps"), "Removed inference controls are absent")
 	tap(menu, target(menu, "seek_mode", "exact"))
 	check(state.seek_mode == "exact" and events.back() == ["seek_mode", "exact"], "Radio selection chooses precision directly")
 	var selected := 0

@@ -41,7 +41,7 @@ func run(parent: Node) -> Dictionary:
 			mask.set_pixel(x, y, Color((0.15 if x < 16 else 0.6) + 0.2 * y / 15 if inside else 0, 0, 0))
 	var rgb_owner := ImageTexture.create_from_image(rgb)
 	var mask_owner := ImageTexture.create_from_image(mask)
-	var code := FileAccess.get_file_as_string("res://shaders/video_rvm_pair.gdshader").replace(
+	var code := FileAccess.get_file_as_string("res://shaders/video_pair.gdshader").replace(
 		'#include "res://shaders/video_coordinates.gdshaderinc"', FileAccess.get_file_as_string("res://shaders/video_coordinates.gdshaderinc"))
 	code = code.replace("varying flat int eye_index;", "uniform int test_eye = 0;\nuniform vec2 test_uv = vec2(0.5);\nvarying flat int eye_index;")
 	code = code.replace("eye_index = int(VIEW_INDEX);", "eye_index = test_eye;").replace("eye_uv(UV, media_direction)", "test_uv")

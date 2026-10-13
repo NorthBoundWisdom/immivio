@@ -4,10 +4,6 @@ $workspace = Split-Path -Parent $PSScriptRoot
 . "$PSScriptRoot\environment\Activate-QuestEnvironment.ps1" -ToolRoot $ToolRoot
 $projectDirectory = Join-Path $workspace 'app\godot'
 New-Item -ItemType Directory -Path (Join-Path $workspace 'build/output') -Force | Out-Null
-& $env:GODOT_EXE --headless --xr-mode off --path $projectDirectory --quit-after 1800 --script res://tests/test_photo_portrait.gd 2>&1 | Tee-Object -FilePath (Join-Path $workspace 'build/output/photo-portrait-host.log')
-if ($LASTEXITCODE -ne 0 -or (Get-Content (Join-Path $workspace 'build/output/photo-portrait-host.log') -Raw) -match '(?m)^(SCRIPT ERROR:|ERROR:)') { throw 'Photo portrait regression failed.' }
-& $env:GODOT_EXE --xr-mode off --rendering-method gl_compatibility --rendering-driver opengl3 --path $projectDirectory --quit-after 1800 --script res://tests/render_photo_portrait.gd 2>&1 | Tee-Object -FilePath (Join-Path $workspace 'build/output/photo-portrait-render.log')
-if ($LASTEXITCODE -ne 0 -or (Get-Content (Join-Path $workspace 'build/output/photo-portrait-render.log') -Raw) -match '(?m)^(SCRIPT ERROR:|SHADER ERROR:|ERROR:)') { throw 'Photo portrait pixels failed.' }
 $logDirectory = Join-Path $workspace 'build\output\logs'
 New-Item -ItemType Directory -Path $logDirectory -Force | Out-Null
 & $env:GODOT_EXE --headless --xr-mode off --path $projectDirectory --quit-after 1800 --script res://tests/test_view_follow.gd 2>&1 | Tee-Object -FilePath (Join-Path $logDirectory 'view-follow-host.log')
@@ -24,10 +20,6 @@ if ($LASTEXITCODE -ne 0 -or (Get-Content (Join-Path $logDirectory 'spatial-photo
 if ($LASTEXITCODE -ne 0 -or (Get-Content (Join-Path $logDirectory 'spatial-photos-render.log') -Raw) -match '(?m)^(SCRIPT ERROR:|SHADER ERROR:|ERROR:)') { throw 'Spatial eye/disparity rendering failed.' }
 & $env:GODOT_EXE --headless --xr-mode off --path $projectDirectory --quit-after 1800 --script res://tests/test_photo_loading.gd 2>&1 | Tee-Object -FilePath (Join-Path $logDirectory 'photo-loading-host.log')
 if ($LASTEXITCODE -ne 0 -or (Get-Content (Join-Path $logDirectory 'photo-loading-host.log') -Raw) -match '(?m)^(SCRIPT ERROR:|ERROR:)') { throw 'Photo loading feedback regression failed.' }
-& $env:GODOT_EXE --headless --xr-mode off --path $projectDirectory --quit-after 1800 --script res://tests/test_photo_depth_payload.gd 2>&1 | Tee-Object -FilePath (Join-Path $logDirectory 'photo-depth-payload.log')
-if ($LASTEXITCODE -ne 0 -or (Get-Content (Join-Path $logDirectory 'photo-depth-payload.log') -Raw) -match '(?m)^(SCRIPT ERROR:|ERROR:)') { throw 'Photo depth payload regression failed.' }
-& $env:GODOT_EXE --xr-mode off --rendering-method gl_compatibility --rendering-driver opengl3 --path $projectDirectory --quit-after 1800 --script res://tests/render_photo_depth_resolution.gd 2>&1 | Tee-Object -FilePath (Join-Path $logDirectory 'photo-depth-resolution.log')
-if ($LASTEXITCODE -ne 0 -or (Get-Content (Join-Path $logDirectory 'photo-depth-resolution.log') -Raw) -match '(?m)^(SCRIPT ERROR:|SHADER ERROR:|ERROR:)') { throw 'Photo depth resolution rendering failed.' }
 & $env:GODOT_EXE --headless --xr-mode off --path $projectDirectory --quit-after 1800 --script res://tests/test_input_visuals.gd 2>&1 | Tee-Object -FilePath (Join-Path $logDirectory 'input-visuals-host.log')
 if ($LASTEXITCODE -ne 0 -or (Get-Content (Join-Path $logDirectory 'input-visuals-host.log') -Raw) -match '(?m)^(SCRIPT ERROR:|ERROR:)') { throw 'Input model visibility regression failed.' }
 & $env:GODOT_EXE --xr-mode off --rendering-method gl_compatibility --rendering-driver opengl3 --path $projectDirectory --quit-after 1800 --script res://tests/render_menu_depth.gd 2>&1 | Tee-Object -FilePath (Join-Path $logDirectory 'menu-depth-render.log')
@@ -91,9 +83,6 @@ if ($LASTEXITCODE -ne 0 -or (Get-Content (Join-Path $logDirectory 'color-grade-r
 & $env:GODOT_EXE --xr-mode off --rendering-driver opengl3 --path $projectDirectory --quit-after 1800 --script res://tests/test_thumbnails.gd 2>&1 | Tee-Object -FilePath (Join-Path $logDirectory 'thumbnails-host.log')
 if ($LASTEXITCODE -ne 0) { throw 'Library picture host regression failed.' }
 if ((Get-Content (Join-Path $logDirectory 'thumbnails-host.log') -Raw) -match '(?m)^(SCRIPT ERROR:|SHADER ERROR:|ERROR:)') { throw 'Library picture host regression reported runtime errors.' }
-# 2D->3D per-eye parallax from the near map (desktop OpenGL; XR multiview not covered).
-& $env:GODOT_EXE --xr-mode off --rendering-method gl_compatibility --rendering-driver opengl3 --path $projectDirectory --quit-after 1800 --script res://tests/render_depth_parallax.gd 2>&1 | Tee-Object -FilePath (Join-Path $logDirectory 'depth-parallax-host.log')
-if ($LASTEXITCODE -ne 0) { throw 'Depth parallax render regression failed.' }
 & $env:GODOT_EXE --headless --xr-mode off --path $projectDirectory --quit-after 1800 --script res://tests/test_dlna_menu.gd 2>&1 | Tee-Object -FilePath (Join-Path $logDirectory 'dlna-menu-host.log')
 if ($LASTEXITCODE -ne 0 -or (Get-Content (Join-Path $logDirectory 'dlna-menu-host.log') -Raw) -match '(?m)^(SCRIPT ERROR:|ERROR:)') { throw 'DLNA menu regression failed.' }
 & $env:GODOT_EXE --headless --xr-mode off --path $projectDirectory --quit-after 1800 --script res://tests/test_library_menu.gd 2>&1 | Tee-Object -FilePath (Join-Path $logDirectory 'library-menu-host.log')

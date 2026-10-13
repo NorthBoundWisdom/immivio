@@ -23,20 +23,9 @@
     "android_gradle_plugin": "8.6.1",
     "kotlin": "2.1.21"
   },
-  "ncnn": {
-    "version": "20260526",
-    "vulkan": true
-  },
   "python": {
     "version": "3.13.5",
-    "onnx": "1.23.1",
-    "onnxruntime": "1.30.0",
-    "numpy": "2.5.3",
-    "ncnn": "1.0.20260526"
-  },
-  "pnnx": {
-    "version": "20260704",
-    "exe_sha256": "57140e8c34ef150e1b0e1c2238515c1228e2a800d5f146fb0dc962b4fc624aec"
+    "numpy": "2.5.3"
   },
   "mpv_linux_build": {
     "ndk": "30.0.16248370",

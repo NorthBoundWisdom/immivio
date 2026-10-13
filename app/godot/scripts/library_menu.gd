@@ -704,8 +704,6 @@ func _rebuild_rows() -> void:
 					"Faster jumps, less precise" if seek == SeekPolicy.SPEED else "Accurate jumps, may take longer"))
 				rows.append(_choice_row("Resolution", "output_width", int(settings.get("output_width", Quality.AUTO_OUTPUT)),
 					[{"value": Quality.AUTO_OUTPUT, "label": "Auto"}, {"value": 0, "label": "Original size"}, {"value": 5760, "label": "6K"}, {"value": 4096, "label": "4K"}], true))
-				rows.append({"title": I18n.t("Alpha passthrough FPS limit"), "key": "alpha_fps", "value": int(settings.get("alpha_fps", 20)),
-					"slider": true, "span": Vector3(10, 40, 1), "unit": " FPS", "hint": "Passthrough uses lots of GPU, so FPS may be lower"})
 			elif tab == GENERAL_TAB:
 				var languages: Array = []
 				for value in I18n.CHOICES: languages.append({"value": value, "label": LANGUAGE_NAMES[value]})
@@ -774,7 +772,7 @@ func _rebuild_rows() -> void:
 						["AndroidX Media3", "Apache-2.0"], ["CodeLibs JCIFS", "LGPL-2.1"], ["p115rsacipher", "MIT"]]:
 						rows.append(_about_info(I18n.t(credit[0]), I18n.t(credit[1])))
 				else:
-					rows.append(_about_info("Thru3D Media Player", str(settings.get("version", ""))))
+					rows.append(_about_info("Immivio", str(settings.get("version", ""))))
 					rows.append(_about_info("FFSky Studio", "© 2026 FFSky Studio"))
 					rows.append(_about_info(I18n.t("Support"), "ffskyteam@gmail.com"))
 					rows.append(_about_info(I18n.t("Official website"), "https://thru3d.com"))

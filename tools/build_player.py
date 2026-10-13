@@ -302,12 +302,10 @@ def template_directory(args, env):
     return base/name, version
 
 
-def signing_environment(env, *, ai=False, build_type='Release'):
+def signing_environment(env, *, build_type='Release'):
     env = env.copy()
     prefix = 'GODOT_ANDROID_KEYSTORE_'+build_type.upper()
-    ai_prefix = 'THRU3D_AI_KEYSTORE_'+build_type.upper()
-    # An AI build never inherits the base player's signing identity.
-    selected = ai_prefix if ai else prefix
+    selected = prefix
     if any(env.get(selected+'_'+key) for key in ('PATH', 'USER', 'PASSWORD')):
         if not all(env.get(selected+'_'+key) for key in ('PATH', 'USER', 'PASSWORD')):
             raise RuntimeError('Provide all '+selected+'_* variables')
@@ -315,19 +313,20 @@ def signing_environment(env, *, ai=False, build_type='Release'):
         return env
     directory = ROOT/'artifacts/signing'
     directory.mkdir(parents=True, exist_ok=True, mode=0o700)
-    stem = 'thru3d-ai' if ai else 'thru3d'
+    # Preserve the existing ordinary-player signing key for upgrade compatibility.
+    stem = 'thru3d' if (directory/'thru3d-signing.json').exists() else 'immivio'
     credentials = directory/(stem+'-signing.json')
     keystore = directory/(stem+'-release.keystore')
-    alias = 'thru3d-ai' if ai else 'thru3d'
+    alias = 'immivio'
     if not credentials.exists():
         if keystore.exists():
             raise RuntimeError('Signing key exists without credentials; restore its credentials')
         password = secrets.token_hex(32)
-        key_env = env.copy(); key_env['THRU3D_KEYSTORE_PASSWORD'] = password
+        key_env = env.copy(); key_env['IMMIVIO_KEYSTORE_PASSWORD'] = password
         run([Path(env['JAVA_HOME'])/'bin'/('keytool.exe' if os.name == 'nt' else 'keytool'),
              '-genkeypair', '-keystore', keystore, '-storetype', 'PKCS12', '-alias', alias,
-             '-keyalg', 'RSA', '-keysize', '3072', '-validity', '10000', '-dname', 'CN=Thru3D AI' if ai else 'CN=Thru3D',
-             '-storepass:env', 'THRU3D_KEYSTORE_PASSWORD', '-keypass:env', 'THRU3D_KEYSTORE_PASSWORD'],
+             '-keyalg', 'RSA', '-keysize', '3072', '-validity', '10000', '-dname', 'CN=Immivio',
+             '-storepass:env', 'IMMIVIO_KEYSTORE_PASSWORD', '-keypass:env', 'IMMIVIO_KEYSTORE_PASSWORD'],
             env=key_env, log=stem+'-key-generation.log')
         credentials.write_text(json.dumps({'keystore': str(keystore), 'alias': alias, 'password': password}))
         if os.name != 'nt':
@@ -339,16 +338,16 @@ def signing_environment(env, *, ai=False, build_type='Release'):
     return env
 
 
-def android_identity(ai):
-    return {'application_id': 'com.wapok.thru3d.ai' if ai else 'com.wapok.thru3d',
-            'application_label': 'Thru3D AI' if ai else 'Thru3D No AI'}
+def android_identity():
+    # Keep the installed ordinary player's ID and data through the rename.
+    return {'application_id': 'com.wapok.thru3d', 'application_label': 'Immivio'}
 
 
 @contextmanager
-def variant_export_presets(ai):
+def variant_export_presets():
     path = PROJECT/'export_presets.cfg'
     original = path.read_bytes()
-    identity = android_identity(ai)
+    identity = android_identity()
     text = original.decode('utf-8')
     for field, value in [('package/unique_name', identity['application_id']), ('package/name', identity['application_label'])]:
         text, count = re.subn(r'(?m)^'+re.escape(field)+r'="[^"]*"\r?$', field+'='+json.dumps(value), text)
@@ -361,7 +360,7 @@ def variant_export_presets(ai):
         path.write_bytes(original)
 
 
-def inspect_package(path, env, sdk, *, ai=False):
+def inspect_package(path, env, sdk):
     native = ROOT/'artifacts/native-inspection'/path.stem
     native.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(path) as archive:
@@ -372,23 +371,8 @@ def inspect_package(path, env, sdk, *, ai=False):
                     ('libquest_media.so', 'libquest_mpv.so', 'libquest_render_bridge.so', 'libgodot_android.so', 'libgojni.so', 'libmpv.so')}
         if not required <= names:
             raise RuntimeError(f'Missing packaged libraries: {required-names}')
-        if ai:
-            import model_assets
-            catalog = json.loads(archive.read('assets/ai-models/manifest.json'))
-            model_assets.validate_runtime_pack(catalog)
-            installed = ROOT/'android/player-plugin/src/main/assets/ai-models/manifest.json'
-            if archive.read('assets/ai-models/manifest.json') != installed.read_bytes():
-                raise RuntimeError('Packaged model selection differs from the verified build input')
-            if 'lib/arm64-v8a/libquest_rvm.so' not in names:
-                raise RuntimeError('AI APK is missing its inference library')
-            for model in catalog['models']:
-                data = archive.read('assets/'+model['path'])
-                if len(data) != model['bytes'] or hashlib.sha256(data).hexdigest() != model['sha256']:
-                    raise RuntimeError('Packaged model differs from its contract: '+model['id'])
-            if 'assets/rvm-mnn/rvm_quality.mnn' in names or any(n.startswith('assets/rvm/reference/') for n in names):
-                raise RuntimeError('Normal AI APK contains unused diagnostic models/oracles')
-        elif any(re.match(r'assets/(rvm|rvm-mnn|depth-mnn|ai-models)/|lib/[^/]+/lib(quest_rvm|MNN[^/]*|ncnn)\.so$', n) for n in names):
-            raise RuntimeError('Base player APK contains inference libraries/models')
+        if any(re.match(r'assets/(rvm|rvm-mnn|depth-mnn|ai-models)/|lib/[^/]+/lib(quest_rvm|MNN[^/]*|ncnn)\.so$', n) for n in names):
+            raise RuntimeError('Immivio APK contains removed inference libraries/models')
         if any(n.startswith('lib/') and not n.startswith('lib/arm64-v8a/') for n in names):
             raise RuntimeError('Unexpected APK architecture')
         for name in names:
@@ -405,10 +389,6 @@ def inspect_package(path, env, sdk, *, ai=False):
     exports, closure = set(), []
     for library in libraries + system:
         output = subprocess.check_output([str(llvm/'bin'/('llvm-nm'+suffix)), '-D', '--defined-only', str(library)], text=True)
-        if ai and library.name == 'libmpv.so':
-            for symbol in ('mpv_quest_source_frame_api_version', 'mpv_quest_pgs_api_version', 'mpv_quest_get_pgs'):
-                if not re.search(r'\bT\s+'+symbol+r'(?:@@?[^\s]+)?\s*$', output, re.M):
-                    raise RuntimeError('AI APK has no source-frame/PGS handshake: '+symbol)
         exports.update(line.split()[-1].split('@')[0] for line in output.splitlines() if len(line.split()) >= 2)
     for library in libraries:
         output = subprocess.check_output([str(llvm/'bin'/('llvm-readelf'+suffix)), '-W', '-h', '-l', '-d', str(library)], text=True)
@@ -433,16 +413,15 @@ def inspect_package(path, env, sdk, *, ai=False):
     run([tools/('aapt2.exe' if os.name == 'nt' else 'aapt2'), 'dump', 'badging', path],
         env=env, log='base-apk-manifest.log')
     badging = (LOGS/'base-apk-manifest.log').read_text()
-    identity = android_identity(ai)
+    identity = android_identity()
     if not re.search(r"(?m)^package: name='"+re.escape(identity['application_id'])+r"'", badging):
-        raise RuntimeError('APK package differs from the selected AI mode')
+        raise RuntimeError('APK package differs from the Immivio identity')
     if "application-label:'"+identity['application_label']+"'" not in badging:
-        raise RuntimeError('APK launcher label differs from the selected AI mode')
+        raise RuntimeError('APK launcher label differs from the Immivio identity')
     return digest(path)
 
 
 def build(args, env, sdk, *, configure_editor=True):
-    ai = getattr(args, 'ai', False)
     templates, engine = template_directory(args, env)
     source_zip = templates/'android_source.zip'
     if not source_zip.exists():
@@ -454,11 +433,8 @@ def build(args, env, sdk, *, configure_editor=True):
     gradle = gradle_executable(args)
     properties = [f'-PandroidGradlePluginVersion={LOCK["android_gradle_plugin"]}',
                   f'-PkotlinPluginVersion={LOCK["kotlin"]}', '-Pandroid.builtInKotlin=false', '-Pandroid.newDsl=false',
-                  f'-PenableAi={str(ai).lower()}', f'-PstandardMpv={str(not ai).lower()}', f'-PandroidNdkVersion={args.ndk}',
+                  f'-PstandardMpv={str(not bool(getattr(args, "mpv_dir", None))).lower()}', f'-PandroidNdkVersion={args.ndk}',
                   f'-PandroidCmakeVersion={args.cmake}', f'-PgodotAarPath={api}', '--console=plain']
-    if ai:
-        properties += [f'-PncnnDir={Path(args.ncnn_dir).resolve()}', f'-PmnnSource={Path(args.mnn_source).resolve()}',
-                       f'-PmnnLib={Path(args.mnn_lib).resolve()}']
     print('Building Android plugin and running JVM tests', flush=True)
     run([gradle, '-p', ROOT/'android', *properties,
          ':player-plugin:assemble'+args.build_type, ':player-plugin:testDebugUnitTest'], env=env, log='base-plugin-build.log')
@@ -497,18 +473,17 @@ def build(args, env, sdk, *, configure_editor=True):
         configure_android_editor(args, env, sdk)
     else:
         print('Reusing editor configuration and imported resources from the previous target', flush=True)
-    env = signing_environment(env, ai=ai, build_type=args.build_type)
+    env = signing_environment(env, build_type=args.build_type)
     version = re.search(r'(?m)^config/version="([^"]+)"', (PROJECT/'project.godot').read_text())[1]
     platform_name = {'Quest': 'QUEST', 'Pico': 'PICO', 'OpenXR': 'OpenXR'}[args.vendor]
-    mode = 'ai' if ai else 'noai'
-    output = ROOT/f'artifacts/Thru3D-{platform_name}-{version}-{mode}-{variant}-{datetime.now():%Y%m%d}.apk'
+    output = ROOT/f'artifacts/Immivio-{platform_name}-{version}-{variant}-{datetime.now():%Y%m%d}.apk'
     preset = {'Quest': 'Quest 3', 'Pico': 'PICO 4', 'OpenXR': 'OpenXR (Experimental)'}[args.vendor]
     # An early/failed export must not leave a previous package looking current.
     output.unlink(missing_ok=True)
     output.with_suffix('.build.json').unlink(missing_ok=True)
     print(f'Exporting {output.name}', flush=True)
     try:
-        with variant_export_presets(ai):
+        with variant_export_presets():
             run([export_executable(args.godot), '--headless', '--xr-mode', 'off', '--path', PROJECT,
                  '--export-release' if variant == 'release' else '--export-debug', preset, output],
                 env=env, log='base-godot-export.log', timeout=900, fail_on_engine_error=True)
@@ -518,21 +493,19 @@ def build(args, env, sdk, *, configure_editor=True):
             log = LOGS/'base-godot-export.log'; log.write_text(log.read_text().replace(password, '<redacted>'))
     if re.search(r'(?m)^(SCRIPT ERROR:|SHADER ERROR:|ERROR:)', (LOGS/'base-godot-export.log').read_text()):
         raise RuntimeError('Godot export reported errors; see artifacts/logs/base-godot-export.log')
-    sha = inspect_package(output, env, sdk, ai=ai)
+    sha = inspect_package(output, env, sdk)
     revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
     dirty = bool(subprocess.check_output(['git', 'status', '--porcelain'], cwd=ROOT, text=True).strip())
     certificate = re.search(r'Signer #1 certificate SHA-256 digest: ([0-9a-f]{64})', (LOGS/'base-apk-signature.log').read_text())
     if not certificate: raise RuntimeError('APK signing certificate is missing')
-    receipt = {**android_identity(ai), 'signing_certificate_sha256': certificate[1],
-        'apk': output.name, 'sha256': sha, 'ai_enabled': ai,
-        'mpv_backend': 'source_frame' if ai else 'standard_libmpv_render', 'godot': engine, 'vendor': args.vendor, 'build_type': args.build_type,
+    receipt = {**android_identity(), 'signing_certificate_sha256': certificate[1],
+        'apk': output.name, 'sha256': sha, 'product': 'Immivio',
+        'mpv_backend': 'source_frame' if getattr(args, 'mpv_dir', None) else 'standard_libmpv_render', 'godot': engine, 'vendor': args.vendor, 'build_type': args.build_type,
         'source_commit': revision, 'source_dirty': dirty, 'ndk': args.ndk, 'cmake': args.cmake,
         'dependency_lock_sha256': digest(ROOT/'tools/environment/base-player.lock.json'),
         'openlist_aar_sha256': digest(BIN/'cloudcore.aar'), 'device_execution': 'not_verified'}
-    if ai:
-        receipt['model_pack'] = json.loads((ROOT/'android/player-plugin/src/main/assets/ai-models/manifest.json').read_text())
+    if getattr(args, 'mpv_dir', None):
         receipt['mpv_receipt_sha256'] = digest(args.mpv_receipt)
-        receipt['mnn_library_sha256'] = digest(args.mnn_lib)
     (output.with_suffix('.build.json')).write_text(json.dumps(receipt, indent=2)+'\n')
     print(f'Built {output}\nSHA256 {sha}', flush=True)
 
@@ -559,8 +532,7 @@ def configure_android_editor(args, env, sdk):
 
 
 def prepare_dependencies(env, args=None):
-    if args is not None and getattr(args, 'ai', False):
-        run([sys.executable, ROOT/'tools/model_assets.py', '--verify-only'], env=env)
+    if args is not None and getattr(args, 'mpv_dir', None):
         prepare_source_mpv(args.mpv_dir, args.mpv_receipt)
     else:
         prepare_mpv()
@@ -578,25 +550,10 @@ def main():
     parser.add_argument('--godot', default=os.environ.get('GODOT_EXE', 'godot'))
     parser.add_argument('--templates', type=Path)
     parser.add_argument('--ndk', default=LOCK['ndk']); parser.add_argument('--cmake', default=LOCK['cmake'])
-    parser.add_argument('--signing-env-file', type=Path, help='private signing environment for the PowerShell AI builder')
     parser.add_argument('--prepare-only', action='store_true'); parser.add_argument('--plugin-only', action='store_true')
-    parser.add_argument('--ai', action='store_true', help='build the verified, prepared model pack with source-frame mpv')
-    parser.add_argument('--mnn-source', type=Path); parser.add_argument('--mnn-lib', type=Path)
-    parser.add_argument('--ncnn-dir', type=Path); parser.add_argument('--mpv-dir', type=Path)
+    parser.add_argument('--mpv-dir', type=Path, help='optional verified spatial/source-frame libmpv directory')
     parser.add_argument('--mpv-receipt', type=Path, default=ROOT/'third_party/mpv/source-build.json')
     args = parser.parse_args()
-    if args.signing_env_file:
-        if not args.ai: parser.error('--signing-env-file is only for the separate AI identity')
-        with build_lock():
-            env = signing_environment(os.environ, ai=args.ai, build_type=args.build_type)
-            prefix = 'GODOT_ANDROID_KEYSTORE_'+args.build_type.upper()
-            values = {prefix+'_'+key: env[prefix+'_'+key] for key in ('PATH', 'USER', 'PASSWORD')}
-            args.signing_env_file.parent.mkdir(parents=True, exist_ok=True)
-            with args.signing_env_file.open('w', encoding='utf-8', opener=lambda path, flags: os.open(path, flags, 0o600)) as stream:
-                json.dump(values, stream)
-        return
-    if args.ai and not all((args.mnn_source, args.mnn_lib, args.ncnn_dir, args.mpv_dir)):
-        parser.error('--ai requires --mnn-source, --mnn-lib, --ncnn-dir and --mpv-dir')
     env, sdk = environment(args)
     with build_lock():
         prepare_dependencies(env, args)

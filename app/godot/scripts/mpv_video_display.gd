@@ -164,7 +164,7 @@ var _pixel_busy := false
 func _ready() -> void:
 	mode_memory.load_saved()
 	recent_files.load_saved()
-	initialize_surface(load("res://shaders/video_rvm_pair.gdshader"))
+	initialize_surface(load("res://shaders/video_pair.gdshader"))
 	color_grade.apply(material)
 	caption = Label3D.new()
 	caption.name = "Subtitles"
@@ -200,22 +200,16 @@ func _ready() -> void:
 		platform.connect("mpv_debug_command", _on_debug_command)
 		platform.connect("mpv_pixel_mask", _on_pixel_mask)
 		platform.connect("mpv_frozen_pair", _on_frozen_pair)
-		if platform.has_signal("rvm_warmup"):
-			platform.connect("rvm_warmup", _on_rvm_warmup)
 	# First photo use should not queue behind unrelated video-model cold compilation.
 	_apply_geometry()
 
 # First use of an Alpha profile compiles/tunes GPU kernels; start it before playback.
 var rvm_warmup := {}
 func ai_available() -> bool:
-	return preload("res://scripts/ai_features.gd").available(platform)
+	return false
 
 func _warm_rvm() -> void:
-	if not ai_available(): return
-	if local_uri.is_empty(): return
-	# JNISingleton.has_method() does not see Java plugin methods; test doubles never set this singleton.
-	if OS.get_name() == "Android" and Engine.has_singleton("QuestPlayer"):
-		Engine.get_singleton("QuestPlayer").warm_rvm(profile)
+	pass
 
 ## The RVM model changed: warm it and reopen an Alpha session so it takes effect now.
 ## First usable displayed source frame, for every stable library URI. No second video decoder.
@@ -288,17 +282,6 @@ func reload_rvm() -> void:
 	_warm_rvm()
 	if alpha_requested:
 		_request_revision()
-
-func _on_rvm_warmup(payload: String) -> void:
-	var result: Variant = JSON.parse_string(payload)
-	if result is Dictionary:
-		rvm_warmup = result
-		if str(result.get("state", "")) == "warming":
-			warming[str(result.get("profile_key", ""))] = true
-		else:
-			warming.erase(str(result.get("profile_key", "")))
-		DiagnosticLog.record("rvm_warmup", result)
-		changed.emit()
 
 func pick_file() -> void:
 	cancel_pending_open()
@@ -492,7 +475,7 @@ func open_local(uri: String, title: String, start_ms: int = 0, restore_mode: boo
 	local_uri = uri
 	_warm_rvm()
 	if ai_available() and auto_depth and OS.get_name() == "Android" and Engine.has_singleton("QuestPlayer"):
-		Engine.get_singleton("QuestPlayer").warm_depth()
+		pass
 	display_name = title
 	_bookmark_metadata = metadata.duplicate(true)
 	if not basename.is_empty(): _bookmark_metadata.basename = basename
@@ -746,35 +729,16 @@ func has_active_presentation() -> bool:
 		or _waiting_first or not _pending_revision.is_empty()
 
 func set_alpha(enabled: bool) -> bool:
-	if enabled and not packed_file and not ai_available(): return false
-	if packed_file:
-		packed_alpha = enabled
-		_apply_packed()
-		changed.emit()
-		return true
-	alpha_requested = enabled
-	if enabled:
-		depth_requested = false
-	_remember_mode()
-	_request_revision()
-	changed.emit()
+	# Precomputed alpha is media data; there is no live matting pipeline.
+	if not packed_file: return false
+	packed_alpha = enabled
+	_apply_packed(); changed.emit()
 	return true
 
 ## 2D->3D for mono sources; switching it on ends Alpha.
 func set_depth(enabled: bool) -> bool:
-	if is_spatial_video(): return false
-	if enabled and not ai_available(): return false
-	if enabled and (stereo_sbs or geometry != Geometry.Geometry.FLAT):
-		return false
-	if enabled != depth_requested: _unlock_mode()
-	auto_depth = enabled
-	depth_requested = enabled
-	if enabled:
-		alpha_requested = false
-	_remember_mode()
-	_request_revision()
-	changed.emit()
-	return true
+	auto_depth = false; depth_requested = false; depth_enabled = false
+	return not enabled
 
 ## The bridge renders the stereo pair: tell it the strength once per session and change.
 func _send_depth_view() -> void:
@@ -793,25 +757,13 @@ func depth_ready() -> bool:
 
 ## Depth compiled for this device: 3D starts at once (otherwise frames show flat until it is).
 func depth_model_ready() -> bool:
-	if OS.get_name() == "Android" and Engine.has_singleton("QuestPlayer"):
-		return bool(Engine.get_singleton("QuestPlayer").depth_ready())
-	return true
+	return false
 
 func cycle_depth_strength() -> void:
-	set_depth_strength(DEPTH_STRENGTHS[(DEPTH_STRENGTHS.find(depth_strength) + 1) % DEPTH_STRENGTHS.size()])
+	pass
 
 func set_depth_strength(value: float) -> bool:
-	if is_spatial_video(): return false
-	var strength := DepthStrength.clamp_value(value)
-	if strength > 0.0 and (stereo_sbs or geometry != 0 or local_uri.is_empty() or media.state == "closed"): return false
-	if strength > 0.0: depth_strength = strength
-	auto_depth = strength > 0.0
-	material.set_shader_parameter("depth_shift", DEPTH_SHIFT * strength)
-	if depth_requested != (strength > 0.0): set_depth(strength > 0.0)
-	# Nonzero changes only update parallax; never revise/restart the processing session.
-	_send_depth_view()
-	changed.emit()
-	return true
+	return false
 
 ## The extra track titled "Clone voice" (see SidecarAudio.kt); 0 when this video has none.
 func clone_voice_track() -> int:
@@ -1178,7 +1130,7 @@ func load_mode_lock(value: Variant) -> void:
 	var numbers := ["geometry", "layout", "fisheye_fov"].all(func(k): return value.get(k) is int or value.get(k) is float)
 	if not numbers or not value.get("depth") is bool or int(value.geometry) not in [0, 1, 2, 3] 		or int(value.layout) not in [0, 1, 2, 3, 4] or int(value.fisheye_fov) not in FISHEYE_FOVS:
 		return
-	mode_lock = {"geometry": int(value.geometry), "layout": int(value.layout), "depth": bool(value.depth) and int(value.layout) == 0,
+	mode_lock = {"geometry": int(value.geometry), "layout": int(value.layout), "depth": false,
 		"fisheye_fov": int(value.fisheye_fov)}
 
 func toggle_loop() -> void:

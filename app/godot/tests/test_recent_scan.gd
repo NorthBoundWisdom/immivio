@@ -53,7 +53,7 @@ func _run() -> void:
 	add(catalog, live_uri)
 	add(catalog, missing_uri)
 	add(catalog, "file://" + folder.path_join("unavailable/movie.mp4"))
-	add(catalog, "file:///Volumes/Thru3D-Synthetic-Unmounted/movie.mp4")
+	add(catalog, "file:///Volumes/Immivio-Synthetic-Unmounted/movie.mp4")
 	add(catalog, "https://example.invalid/offline.mp4")
 	add(catalog, "smb://offline/share/movie.mp4")
 	add(catalog, "content://offline/document/unknown")

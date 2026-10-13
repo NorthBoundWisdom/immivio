@@ -34,7 +34,7 @@ internal object MpvDolbyDiagnostics {
             .put("fixture", fixture).put("hardware_requested", hardware).put("direct_requested", direct)
             .put("pixels_only", pixelsOnly)
             .put("audio_requested", audio).put("scope", "production Source in offscreen GLES; Godot/XR not exercised")
-        val owner = MpvSharedDiagnostics.Owner()
+        val owner = OffscreenGlOwner()
         val directory = File(context.filesDir, "diagnostics").apply { mkdirs() }
         var source = 0L
         var held = 0L

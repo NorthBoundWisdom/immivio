@@ -44,13 +44,16 @@ def main():
             if uri.fragment and target.suffix == '.html':
                 assert unquote(uri.fragment) in pages[target].ids, f'{path}: missing anchor {link}'
     release = json.loads((SITE / 'assets/releases.json').read_text())
-    assert release['tag_name'] and release['html_url'].startswith('https://github.com/NorthBoundWisdom/Thru3D-Media-Player/releases/')
-    for platform in ['QUEST', 'PICO', 'OpenXR']:
-        for edition in ['ai', 'noai']:
-            matches = [asset for asset in release['assets'] if re.fullmatch(rf'Thru3D-{platform}-.+-{edition}-release-.+\.apk', asset['name'], re.I)]
-            assert len(matches) == 1, f'Missing or ambiguous APK: {platform}/{edition}'
+    assert release['html_url'].startswith('https://github.com/NorthBoundWisdom/immivio/releases')
+    # Until the first branded release, the site links to current development builds.
+    assert len(release['assets']) in [0, 3]
+    if release['assets']:
+        assert release['tag_name']
+        for platform in ['QUEST', 'PICO', 'OpenXR']:
+            matches = [asset for asset in release['assets'] if re.fullmatch(rf'Immivio-{platform}-[0-9][A-Za-z0-9._-]*-release-\d{{8}}\.apk', asset['name'], re.I)]
+            assert len(matches) == 1, f'Missing or ambiguous APK: {platform}'
             assert matches[0]['size'] > 0
-            assert matches[0]['browser_download_url'].startswith('https://github.com/NorthBoundWisdom/Thru3D-Media-Player/releases/download/')
+            assert matches[0]['browser_download_url'].startswith('https://github.com/NorthBoundWisdom/immivio/releases/download/')
     for name in ['playback', 'settings', 'display']:
         data = (SITE / f'assets/screenshots/{name}.png').read_bytes()
         assert data[:8] == b'\x89PNG\r\n\x1a\n' and struct.unpack('>II', data[16:24]) == (1920, 1080)
@@ -58,7 +61,7 @@ def main():
     capture = json.loads((SITE / 'assets/screenshots/capture.json').read_text())
     for shot in capture['screenshots']:
         assert hashlib.sha256((SITE / 'assets/screenshots' / shot['file']).read_bytes()).hexdigest() == shot['sha256']
-    print(f'Website checks passed: {len(pages)} pages, 2 languages, 6 APK choices, 3 emulator screenshots.')
+    print(f'Website checks passed: {len(pages)} pages, 2 languages, single-edition downloads, 3 emulator screenshots.')
 
 if __name__ == '__main__':
     main()

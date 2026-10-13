@@ -16,22 +16,8 @@ class Host extends RefCounted:
 	var pending := {}
 	var cancelled: Array[int] = []
 	var activated: Array[int] = []
-	var depth: Callable
-	var preload_depth: Callable
-	var depth_pending := {}
-	var background_depth := {}
-	var depth_paths := {}
-	var depth_values := {}
-	var depth_calls := 0
-	var model_calls := 0
-	var use_stereo := false
-	var strengths := {}
-	var pair_paths := {}
-	var runtime_releases := 0
 	func has_java_method(method: String) -> bool:
-		return method in ["preload_photo", "activate_photo", "prepare_photo_depth", "prepare_preloaded_photo_depth", "cancel_preloaded_photo_depth"] \
-			or method == "release_photo_depth_runtime" \
-			or (use_stereo and method in ["prepare_photo_3d", "prepare_preloaded_photo_3d", "update_photo_3d_strength"])
+		return method in ["preload_photo", "activate_photo"]
 	func make_file(uri: String) -> Dictionary:
 		next_id += 1
 		var path := folder.path_join("cache_%d.jpg" % next_id)
@@ -58,52 +44,7 @@ class Host extends RefCounted:
 		return true
 	func release_photo(id: int) -> void:
 		if held.has(id): DirAccess.remove_absolute(str(held[id])); held.erase(id)
-		if depth_paths.has(id): DirAccess.remove_absolute(str(depth_paths[id])); depth_paths.erase(id)
-		if pair_paths.has(id): DirAccess.remove_absolute(str(pair_paths[id])); pair_paths.erase(id)
-		depth_pending.erase(id); background_depth.erase(id)
 	func cancel_photo(id: int) -> void: cancelled.append(id); release_photo(id)
-	func prepare_photo_depth(id: int) -> bool:
-		if not held.has(id): return false
-		if depth_pending.has(id): return true
-		depth_calls += 1; depth_pending[id] = true
-		if not depth_paths.has(id): model_calls += 1
-		return true
-	func prepare_preloaded_photo_depth(id: int) -> bool:
-		if not prepare_photo_depth(id): return false
-		background_depth[id] = true
-		return true
-	func prepare_photo_3d(id: int, strength: float) -> bool:
-		strengths[id] = strength
-		return prepare_photo_depth(id)
-	func prepare_preloaded_photo_3d(id: int, strength: float) -> bool:
-		strengths[id] = strength
-		return prepare_preloaded_photo_depth(id)
-	func cancel_preloaded_photo_depth() -> void:
-		for id in background_depth: depth_pending.erase(id)
-		background_depth.clear()
-	func update_photo_3d_strength(strength: float) -> void:
-		for id in depth_pending: strengths[id] = strength
-	func release_photo_depth_runtime() -> void: runtime_releases += 1
-	func complete_depth(id: int, success: bool = true) -> void:
-		var callback: Callable = preload_depth if background_depth.has(id) else depth
-		depth_pending.erase(id); background_depth.erase(id)
-		if not success:
-			callback.call_deferred(id, '{"state":"error"}')
-			return
-		var image := Image.create(518,518,false,Image.FORMAT_RF)
-		var value := .2 + float(id % 6) * .1
-		image.fill(Color(value,0,0))
-		var path := folder.path_join("depth_%d.bin" % id)
-		FileAccess.open(path,FileAccess.WRITE).store_buffer(image.get_data())
-		depth_paths[id] = path; depth_values[id] = value
-		var payload := {"state":"ready", "path":path, "width":518, "height":518, "rect":[76.0/518.0,0,366.0/518.0,1]}
-		if use_stereo:
-			var pair := Image.create(640,160,false,Image.FORMAT_RGB8)
-			pair.fill(Color(value,.3,.4))
-			var pair_path := folder.path_join("pair_%d.png" % id)
-			pair.save_png(pair_path); pair_paths[id] = pair_path
-			payload.merge({"stereo_path":pair_path,"stereo_width":640,"stereo_height":160,"stereo_strength":strengths[id],"stereo_strategy":"video_soft_shift_gpu"})
-		callback.call_deferred(id, JSON.stringify(payload))
 
 func check(ok: bool, message: String) -> void:
 	checks += 1
@@ -121,7 +62,6 @@ func warm(photo: Node3D, host: RefCounted) -> void:
 	var deadline := Time.get_ticks_msec() + 4000
 	while Time.get_ticks_msec() < deadline:
 		host.complete()
-		for id in host.depth_pending.keys(): host.complete_depth(int(id))
 		photo._pump_prefetch()
 		if preloads_ready(photo,host): break
 		await create_timer(.01).timeout
@@ -225,178 +165,6 @@ func _run() -> void:
 	var bounded := Photo._decode({"prefetch":true, "info":{"path":large_path, "thumbnail_path":str(entries[0].uri).trim_prefix("file://"), "orientation":6}})
 	check(bounded.get("uncached", false) and not bounded.has("image"), "8K predecode is skipped before allocating pixels above the cache budget")
 	check(bounded.has("thumbnail") and bounded.thumbnail.get_height() > bounded.thumbnail.get_width(), "Large-file thumbnail remains available with EXIF orientation")
-	await check_converted(entries)
-	await check_baked(entries)
-	await check_joined(entries, false)
-	await check_joined(entries, true)
-	await check_recent_files(entries)
 	for failure in failures: push_error(failure)
 	print("Photo preload/cycle: %d checks, %d failures" % [checks, failures.size()])
 	quit(0 if failures.is_empty() else 1)
-
-func wait_depth(photo: Node3D) -> void:
-	var deadline := Time.get_ticks_msec() + 4000
-	while photo._pending_display.is_empty() and Time.get_ticks_msec() < deadline: await create_timer(.01).timeout
-	check(not photo._pending_display.is_empty(), "Decoded photo waits for its conversion result")
-
-func check_converted(entries: Array[Dictionary]) -> void:
-	var photo := Photo.new(); photo.auto_depth = true; photo.history_enabled = false
-	photo.mode_memory = Memory.new(folder.path_join("converted_modes"))
-	root.add_child(photo)
-	var host := Host.new(); host.folder = ProjectSettings.globalize_path(folder)
-	host.ready = photo._on_ready; host.depth = photo._on_depth; host.preload_depth = photo._on_prefetch_depth; photo.platform = host
-	photo.open_image(entries[0].uri, entries[0].title, entries)
-	await wait_depth(photo)
-	check(photo.loading and not photo.panel.visible and photo.index == -1, "First photo cannot appear as 2D while conversion is pending")
-	host.complete_depth(photo._request); await settle(photo)
-	check(photo.depth_enabled and photo.material.get_shader_parameter("photo_depth"), "Initial display starts with its colour and depth together")
-	await warm(photo,host)
-	var original_id: int = photo._display_request
-	var original_value: float = host.depth_values[original_id]
-	var next_id: int = photo._prefetched[3].id
-	var next_value: float = host.depth_values[next_id]
-	var calls: int = host.depth_calls
-	photo.navigate(-1)
-	check(not photo.loading and photo.index == 3 and photo.depth_enabled and host.depth_calls == calls, "Preconverted neighbour switches immediately without another inference")
-	check(is_equal_approx(photo._depth_texture.get_image().get_pixel(0,0).r, next_value), "Incoming photo uses its own preloaded depth map")
-	check(photo._departing.material_override.get_shader_parameter("photo_depth") \
-		and is_equal_approx(photo._departing.material_override.get_shader_parameter("depth_texture").get_image().get_pixel(0,0).r, original_value),
-		"Departing transition keeps the previous photo's depth")
-	photo.set_hand_scale(2)
-	var depth_texture: Texture2D = photo._depth_texture
-	photo.pan_hand(Vector2(.1,.05))
-	check(photo.depth_enabled and photo._depth_texture == depth_texture and host.depth_calls == calls, "Whole-photo zoom and pan preserve depth without reinference")
-	photo.finish_transition()
-	photo.navigate(1)
-	check(photo.index == 0 and photo.depth_enabled and is_equal_approx(photo._depth_texture.get_image().get_pixel(0,0).r, original_value), "Wrapping back restores original depth with its colour")
-	photo.finish_transition()
-	photo._drop_prefetch(1)
-	photo.navigate(1)
-	await wait_depth(photo)
-	check(photo.index == 0 and photo.depth_enabled and photo.loading, "Uncached conversion keeps the previous 3D photo visible")
-	photo._on_prefetch_depth(photo._request, '{"state":"error"}')
-	check(photo.loading and not photo._pending_display.is_empty(), "Late background error cannot fail a foreground retry with the same file ID")
-	host.complete_depth(photo._request, false); await process_frame
-	check(photo.index == 0 and photo.depth_enabled and photo.error == "3D unavailable" and not photo.loading, "Conversion failure never flashes a new 2D photo")
-	photo.close_image(); photo.queue_free(); await process_frame
-	check(host.held.is_empty() and host.depth_paths.is_empty(), "Converted colour and depth caches release together")
-
-func check_baked(entries: Array[Dictionary]) -> void:
-	var photo := Photo.new(); photo.auto_depth = true; photo.history_enabled = false
-	photo.mode_memory = Memory.new(folder.path_join("baked_modes")); root.add_child(photo)
-	var host := Host.new(); host.use_stereo = true; host.folder = ProjectSettings.globalize_path(folder)
-	host.ready = photo._on_ready; host.depth = photo._on_depth; host.preload_depth = photo._on_prefetch_depth; photo.platform = host
-	photo.open_image(entries[0].uri,entries[0].title,entries)
-	await wait_depth(photo)
-	check(not photo.panel.visible, "Native first photo remains hidden until repaired eyes decode")
-	host.complete_depth(photo._request); await settle(photo)
-	check(photo.depth_enabled and photo._stereo_texture != null and photo.material.get_shader_parameter("photo_stereo"), "Native photo atomically starts with a repaired stereo pair")
-	await warm(photo,host)
-	var calls: int = host.depth_calls
-	var original: Texture2D = photo._stereo_texture
-	photo.navigate(-1)
-	check(photo.index == 3 and not photo.loading and host.depth_calls == calls and photo._stereo_texture != original, "Preloaded generated eyes wrap immediately with the matching source")
-	check(photo._departing.material_override.get_shader_parameter("stereo_texture") == original and photo._departing.material_override.get_shader_parameter("photo_stereo"), "Departing transition retains its own repaired eyes")
-	photo.finish_transition(); original = photo._stereo_texture
-	photo.set_hand_scale(2); photo.pan_hand(Vector2(.1,.05))
-	check(photo._stereo_texture == original and host.depth_calls == calls, "Pinch pan/zoom reuse repaired eyes")
-	photo.set_depth_strength(0.75)
-	check(photo._stereo_texture == original, "Strength adjustment keeps the previous repaired pair during rebuilding")
-	await create_timer(.2).timeout
-	var id: int = photo._display_request
-	check(host.strengths[id] == 0.75, "Debounced strength rebuild requests the selected strength")
-	host.complete_depth(id)
-	var until := Time.get_ticks_msec()+4000
-	while photo.snapshot().render_strength != 0.75 and Time.get_ticks_msec()<until: await create_timer(.01).timeout
-	check(photo.snapshot().render_strength == 0.75 and photo._stereo_texture != original, "Latest rebuilt pair replaces the old pair after decoding")
-	await warm(photo,host)
-	check(photo._neighbors(photo.index).all(func(target): return is_equal_approx(float(photo._prefetched[target].depth_data.strength), .75)),
-		"Strength changes refresh preloaded stereo pairs to the selected value")
-	photo.set_projection(3)
-	check(not photo.material.get_shader_parameter("photo_stereo"), "Panorama bypasses generated eyes")
-	photo.close_image(); photo.queue_free(); await process_frame
-	check(host.held.is_empty() and host.pair_paths.is_empty(), "Generated pair files release with their source")
-	check(host.runtime_releases > 0, "Closing the viewer releases the resident photo model")
-
-func check_joined(entries: Array[Dictionary], baked: bool) -> void:
-	var photo := Photo.new(); photo.auto_depth = true; photo.history_enabled = false
-	photo.mode_memory = Memory.new(folder.path_join("joined_%s_modes" % baked)); root.add_child(photo)
-	var host := Host.new(); host.use_stereo = baked; host.folder = ProjectSettings.globalize_path(folder)
-	host.ready = photo._on_ready; host.depth = photo._on_depth; host.preload_depth = photo._on_prefetch_depth; photo.platform = host
-	photo.open_image(entries[0].uri,entries[0].title,entries)
-	await wait_depth(photo); host.complete_depth(photo._request); await settle(photo)
-	photo.finish_transition()
-	var deadline := Time.get_ticks_msec()+4000
-	while photo._prefetch_depth_request == 0 and Time.get_ticks_msec()<deadline:
-		host.complete(); photo._pump_prefetch(); await create_timer(.01).timeout
-	var id: int = photo._prefetch_depth_request
-	check(id != 0 and host.depth_pending.has(id), "Background conversion is in flight before promotion")
-	while photo._thread: await create_timer(.01).timeout
-	photo.set_process(false)
-	photo._prefetched[1].erase("result") # Force colour decoding to finish after the joined depth.
-	var calls: int = host.depth_calls
-	photo.navigate(1)
-	check(photo._promoted_depth_request == id and host.depth_pending.has(id) and host.depth_calls == calls,
-		"Selecting a converting neighbour retains its original work")
-	if baked:
-		photo.set_depth_strength(.65)
-		check(is_equal_approx(float(host.strengths[id]), .65), "Promoted work receives the latest strength without restarting depth")
-	host.complete_depth(id)
-	await process_frame
-	if baked:
-		photo._process_depth_jobs()
-		while photo._depth_thread and photo._depth_thread.is_alive(): await create_timer(.01).timeout
-		photo._process_depth_jobs()
-	check(int(photo._incoming_depth_result.get("id", 0)) == id, "Early joined result waits for its matching colour decoder")
-	photo.set_process(true); await settle(photo)
-	check(photo.index == 1 and photo.depth_enabled and host.depth_calls == calls,
-		"Joined preload becomes the displayed photo with no duplicate conversion")
-	if baked: check(is_equal_approx(float(photo.snapshot().render_strength), .65), "Promoted eyes use the new strength")
-	photo.finish_transition()
-	deadline = Time.get_ticks_msec()+4000
-	while photo._prefetch_depth_request == 0 and Time.get_ticks_msec()<deadline:
-		host.complete(); photo._pump_prefetch(); await create_timer(.01).timeout
-	var late: int = photo._prefetch_depth_request
-	photo.navigate(1); photo.navigate(-1)
-	photo._on_prefetch_depth(late, '{"state":"error"}')
-	check(photo.index == 1 and not photo.loading and photo.depth_enabled, "Reversing a promoted selection rejects its late result and keeps the displayed photo")
-	photo.finish_transition()
-	photo._navigation_direction = -1
-	check(photo._neighbors(1) == [0,2], "Previous direction gets preload priority")
-	photo.close_image(); photo.queue_free(); await process_frame
-	check(host.held.is_empty() and host.depth_pending.is_empty(), "Joined work and source ownership release together")
-
-func check_recent_files(entries: Array[Dictionary]) -> void:
-	var photo := Photo.new(); photo.auto_depth = true; photo.history_enabled = false
-	photo.mode_memory = Memory.new(folder.path_join("recent_modes")); root.add_child(photo)
-	var host := Host.new(); host.use_stereo = true; host.folder = ProjectSettings.globalize_path(folder)
-	host.ready = photo._on_ready; host.depth = photo._on_depth; host.preload_depth = photo._on_prefetch_depth; photo.platform = host
-	photo.open_image(entries[0].uri,entries[0].title,entries)
-	await wait_depth(photo); host.complete_depth(photo._request); await settle(photo); await warm(photo,host)
-	var original: int = photo._display_request
-	photo.navigate(1); await warm(photo,host)
-	photo.navigate(1); await warm(photo,host)
-	check(photo._recent_files.has(0) and int(photo._recent_files[0].id) == original, "Recently viewed source survives outside the adjacent window")
-	check(not photo._recent_files[0].has("result") and not photo._recent_files[0].has("depth_data"), "Recent cache retains files without decoded images")
-	var opens: int = host.opens; var models: int = host.model_calls
-	photo._select(0,-1); await wait_depth(photo)
-	host.complete_depth(photo._request); await settle(photo)
-	check(photo.index == 0 and photo._display_request == original and host.opens == opens and host.model_calls == models,
-		"Returning to a recent file reuses its source and depth without transfer or model inference")
-	photo.finish_transition()
-	var neighbours: Array = photo._neighbors(photo.index)
-	await warm(photo,host)
-	for target in neighbours:
-		photo._prefetched[target].info.cache_bytes = Photo.RECENT_FILE_BYTES
-		photo._remember_files(int(target))
-	check(photo._recent_files.size() == 1, "Recent disk cache evicts older files at its byte limit")
-	photo.close_image()
-	check(host.held.is_empty() and photo._recent_files.is_empty(), "Closing removes recent source and converted files")
-	for target in range(10,16):
-		var cached: Dictionary = host.make_file(entries[0].uri)
-		photo._prefetched[target] = {"id":cached.id, "info":{"path":cached.path,"cache_bytes":4096}}
-		photo._remember_files(target)
-	check(photo._recent_files.size() == Photo.RECENT_FILE_COUNT and not photo._recent_files.has(10), "Recent file count evicts the oldest entries")
-	photo.close_image()
-	check(host.held.is_empty(), "Count-evicted and retained file leases all close")
-	photo.queue_free(); await process_frame

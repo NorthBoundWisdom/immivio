@@ -7,8 +7,7 @@ from pathlib import Path
 import subprocess
 from urllib.parse import quote
 
-BUILD_JOBS = {f'Release / {mode} / {host}' for mode in ['AI', 'no AI']
-              for host in ['windows-2025', 'macos-15']}
+BUILD_JOBS = {f'Release / {host}' for host in ['windows-2025', 'macos-15']}
 
 
 def validate(repository, tag, run, commit, jobs, current_run_id=''):
@@ -25,7 +24,7 @@ def validate(repository, tag, run, commit, jobs, current_run_id=''):
         raise ValueError('Source Android workflow did not succeed')
     results = {job['name']: job.get('conclusion') for job in jobs}
     if any(results.get(name) != 'success' for name in BUILD_JOBS):
-        raise ValueError('All four AI/no-AI Windows/macOS Release builds must succeed')
+        raise ValueError('Both Windows/macOS Release builds must succeed')
     return commit
 
 

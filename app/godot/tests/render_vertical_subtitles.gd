@@ -17,7 +17,7 @@ func _run() -> void:
 	var caption := Label3D.new()
 	caption.visible = true
 	var material := ShaderMaterial.new()
-	material.shader = load("res://shaders/video_rvm_pair.gdshader")
+	material.shader = load("res://shaders/video_pair.gdshader")
 	var samples := {"alignment_wrapped": "田".repeat(40), "alignment": "田田田田\n田田田田", "bilingual": "今天的风景很美。\nBeautiful scenery today.",
 		"wrapped": "今天的风景很美，我们继续向前走，一起欣赏远处的群山和湖泊。\nWe keep walking and enjoy the mountains and the lake.",
 		"punctuation": "你好（世界）！\nこんにちは、世界。\nVR 2026 😀 é", "empty_line": "第一列\n\n第三列"}

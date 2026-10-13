@@ -110,7 +110,7 @@ func check_main(origin: Vector3, left: Vector3) -> void:
 	main.recent_menu.dismiss(); main.video_menu.dismiss(); main.photo_menu.dismiss()
 	main.photo_active = true; main.player_menu = main.photo_menu
 	var photo: Node3D = main.photo
-	check(photo.auto_depth and not main.video.auto_depth, "Fresh photo viewing defaults to conversion without enabling video conversion")
+	check(not photo.auto_depth and not main.video.auto_depth, "Photo and video viewing never enable removed conversion defaults")
 	photo.auto_depth = false # Input-only fixture; conversion has a separate asynchronous suite.
 	photo.history_enabled = false
 	photo.platform = Host.new()

@@ -51,10 +51,10 @@ func _run() -> void:
 	grade.reset_custom()
 	check(grade.values() == Grade.DEFAULTS, "Explicit custom reset")
 	var material := ShaderMaterial.new()
-	material.shader = load("res://shaders/video_rvm_pair.gdshader")
+	material.shader = load("res://shaders/video_pair.gdshader")
 	grade.adjust("exposure", 1)
 	grade.apply(material)
-	preload("res://scripts/pair_texture_binding.gd")._use_shader(material, load("res://shaders/video_rvm_pair_oes.gdshader"))
+	preload("res://scripts/pair_texture_binding.gd")._use_shader(material, load("res://shaders/video_pair_oes.gdshader"))
 	check(material.get_shader_parameter("grade_enabled") and material.get_shader_parameter("grade_gain").is_equal_approx(Vector3.ONE * 2), "OES switch preserves grading")
 	var video := Video.new()
 	video.subtitle_distance = 1

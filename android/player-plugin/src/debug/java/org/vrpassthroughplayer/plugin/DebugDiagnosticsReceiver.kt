@@ -21,9 +21,7 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                 val report = JSONObject().put("request", request).put("action", intent.action)
                     .put("diagnostic_process", DiagnosticRequests.processId)
                 try {
-                    val id = if (intent.action == "${context.packageName}.DEBUG_PHOTO_PORTRAIT") {
-                        PhotoPortraitProbe.request(context.applicationContext,request)
-                    } else if (intent.action in setOf("${context.packageName}.DEBUG_LAUNCH", "${context.packageName}.DEBUG_LAUNCH_2D")) {
+                    val id = if (intent.action in setOf("${context.packageName}.DEBUG_LAUNCH", "${context.packageName}.DEBUG_LAUNCH_2D")) {
                         // XR probes must enter through the normal VR launcher. Starting
                         // GodotApp directly produced focused views but no live head pose.
                         val launch = if (intent.action!!.endsWith("_2D")) {
@@ -36,9 +34,6 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                         context.startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                         report.put("launch_entry", if (intent.action!!.endsWith("_2D")) "diagnostic_2d" else "normal_vr_launcher")
                         1
-                    } else if (intent.action == "${context.packageName}.DEBUG_RVM_STANDALONE") {
-                        RvmStandaloneProbe.request(context.applicationContext, intent.getStringExtra("mode") ?: "resident",
-                            intent.getStringExtra("profile") ?: "256x144")
                     } else if (intent.action == "${context.packageName}.DEBUG_SMB_CRYPTO") {
                         report.put("smb", SmbCryptoProbe.run())
                         1
@@ -62,9 +57,6 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                             finally { lock.release() }
                         }.start()
                         1
-                    } else if (intent.action == "${context.packageName}.DEBUG_DEPTH_BENCH") {
-                        // 2D->3D model timing on the GPU; no player, no XR session needed.
-                        DepthBenchmarkProbe.request(context.applicationContext, intent.getIntExtra("runs", 60))
                     } else if (intent.action == "${context.packageName}.DEBUG_LOCAL_ACCESS") {
                         LocalAccessProbe.request(context.applicationContext, intent.getStringExtra("case") ?: "file_present")
                     } else if (intent.action == "${context.packageName}.DEBUG_LOCAL_SELECTION") {
@@ -76,11 +68,6 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                             intent.getBooleanExtra("hardware", true), intent.getBooleanExtra("pixels_only", false))
                     } else if (intent.action == "${context.packageName}.DEBUG_MPV_URI") {
                         MpvDiagnostics.requestExternal(context.applicationContext)
-                    } else if (intent.action == "${context.packageName}.DEBUG_MPV_SHARED") {
-                        MpvSharedDiagnostics.request(context.applicationContext, intent.getBooleanExtra("hardware", true))
-                    } else if (intent.action == "${context.packageName}.DEBUG_MPV_MOTION") {
-                        MpvMotionDiagnostics.request(context.applicationContext, intent.getStringExtra("profile") ?: "384x216",
-                            intent.getBooleanExtra("ordered", false))
                     } else if (intent.action == "${context.packageName}.DEBUG_MPV_AUDIO") {
                         MpvAudioDiagnostics.request(context.applicationContext, intent.getBooleanExtra("hardware", true))
                     } else if (intent.action in setOf("${context.packageName}.DEBUG_MPV_CORE",
@@ -95,7 +82,7 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                         when (intent.action) {
                         "${context.packageName}.DEBUG_PLAYER_MPV" -> {
                             val operation = intent.getStringExtra("operation") ?: "open"
-                            require(operation in setOf("open", "alpha", "depth", "playing", "seek", "hold_pixels", "observe", "stereo", "profile", "close", "pixels", "subtitle", "display_quality", "sharpness", "cloud_accounts", "cloud_page_probe", "display_menu", "player_menu", "restart_app", "quit_app", "seek_policy_ui", "media_library_ui"))
+                            require(operation in setOf("open", "playing", "seek", "hold_pixels", "observe", "stereo", "profile", "close", "pixels", "subtitle", "display_quality", "sharpness", "cloud_accounts", "cloud_page_probe", "display_menu", "player_menu", "restart_app", "quit_app", "seek_policy_ui", "media_library_ui"))
                             val command = JSONObject().put("operation", operation).put("request_key", request)
                                 .put("value", intent.getFloatExtra("value", 0f).toDouble())
                                 .put("benchmark", intent.getBooleanExtra("benchmark", false))
@@ -112,7 +99,7 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                 .put("loop", intent.getBooleanExtra("loop", false))
                                 // 2D->3D: a mono open with depth (stereo=false) or the "depth" operation.
                                 .put("stereo", intent.getBooleanExtra("stereo", true))
-                                .put("depth", intent.getBooleanExtra("depth", false))
+                                .put("depth", false)
                             if (intent.hasExtra("seek_mode")) {
                                 val mode = intent.getStringExtra("seek_mode")
                                 require(mode in setOf("speed", "exact"))
@@ -182,22 +169,6 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                 command.put("track_id", track)
                             }
                             plugin.requestMpvPlayerCommand(command.toString())
-                        }
-                        "${context.packageName}.DEBUG_CANCEL_CONTROLLED" ->
-                            plugin.cancelControlledProbe(intent.getIntExtra("id", -1))
-                        "${context.packageName}.DEBUG_RVM" -> plugin.request_rvm_profile_benchmark(
-                            intent.getBooleanExtra("vulkan", false), intent.getStringExtra("profile") ?: "256x144")
-                        "${context.packageName}.DEBUG_CONTROLLED", "${context.packageName}.DEBUG_RVM_VIDEO" -> {
-                            val fixture = intent.getStringExtra("fixture") ?: "c03_sbs_grid"
-                            require(fixture in listOf("c03_sbs_grid", "c04_alpha_f180", "c04_independent_alpha"))
-                            val directory = File(context.filesDir, "fixtures").apply { mkdirs() }
-                            val target = File(directory, "$fixture.mp4")
-                            context.assets.open("media/$fixture.mp4").use { input -> target.outputStream().use { input.copyTo(it) } }
-                            if (intent.action == "${context.packageName}.DEBUG_RVM_VIDEO")
-                                plugin.requestRvmVideoProbe("file://${target.absolutePath}", true,
-                                    intent.getStringExtra("profile") ?: "256x144", intent.getBooleanExtra("vulkan", true))
-                            else plugin.request_controlled_probe("file://${target.absolutePath}", 0, true,
-                                intent.getStringExtra("profile") ?: "256x256")
                         }
                         else -> error("Unknown debug action")
                         }

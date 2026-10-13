@@ -107,10 +107,10 @@ func _run() -> void:
 	check(state.muted and not menu._volume_open, "Double volume tap actually mutes and closes its popup")
 	menu._activate_hit({"target": 112, "enabled": true})
 	menu._activate_hit({"target": 112, "enabled": true})
-	check(state.depth_requested and is_equal_approx(state.depth_strength, 0.7), "Double 3D tap from off restores remembered strength")
+	check(not state.depth_requested, "A forged old 3D button event cannot enable the removed effect")
 	menu._activate_hit({"target": 112, "enabled": true})
 	menu._activate_hit({"target": 112, "enabled": true})
-	check(not state.depth_requested and is_equal_approx(state.depth_strength, 0.7), "Double 3D tap disables without discarding strength")
+	check(not state.depth_requested and is_equal_approx(state.depth_strength, 0.7), "Removed conversion remains unavailable")
 	var library := preload("res://scripts/library_menu.gd").new(); root.add_child(library)
 	library.visible = true
 	var title := "A long media filename with Chinese 字幕 and details ".repeat(5) + ".mp4"

@@ -317,7 +317,7 @@ func _run() -> void:
 	check(settings_events.back()[0] == "subtitle_distance" and is_equal_approx(settings_events.back()[1], 0.1), "Distance slider reaches 0.1 m: %s" % str(settings_events.back()))
 	menu._activate(Menu.TAB_BASE + Menu.ABOUT_TAB)
 	var about_text := "\n".join(menu.find_children("*", "Label3D", true, false).map(func(label): return label.text))
-	check(about_text.contains("Thru3D Media Player") and about_text.contains("FFSky Studio")
+	check(about_text.contains("Immivio") and about_text.contains("FFSky Studio")
 		and about_text.contains("ffskyteam@gmail.com") and about_text.contains("https://thru3d.com")
 		and about_text.contains("https://github.com/zerochocobo/Thru3D-Media-Player"), "About brand and support")
 	menu._activate(Menu.ROW_BASE + 5)
@@ -336,7 +336,7 @@ func _run() -> void:
 	menu._draw()
 	check(menu.text_snapshot().contains("p115rsacipher") and menu._max_scroll() > 0, "Copyright list scrolls to its final component")
 	menu._activate(Menu.ABOUT_HOME)
-	check(menu.rows[0].title == "Thru3D Media Player" and menu.scroll == 0, "Return from credits resets scrolling")
+	check(menu.rows[0].title == "Immivio" and menu.scroll == 0, "Return from credits resets scrolling")
 	# Long lists scroll with the stick (whole rows) and the scrollbar track; no pages.
 	menu._activate(Menu.NAV_BASE + Menu.Section.LOCAL)
 	await settle()

@@ -1,4 +1,4 @@
-name: Publish Thru3D website
+name: Publish Immivio website
 
 on:
   push:
@@ -37,7 +37,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: >-
           gh api repos/${{ github.repository }}/releases/latest
-          --jq '{tag_name,html_url,assets:[.assets[] | select(.name | endswith(".apk")) | {name,size,browser_download_url}]}'
+          --jq '{tag_name,html_url,assets:[.assets[] | select((.name | startswith("Immivio-")) and (.name | endswith(".apk"))) | {name,size,browser_download_url}]}'
           > website/assets/releases.json
       - name: Check site links, languages and download choices
         run: python3 tools/check_website.py

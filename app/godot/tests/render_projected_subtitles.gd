@@ -46,7 +46,7 @@ func _run():
 	video.caption.visible = true
 	video.caption.text = "I"
 	var shader := Shader.new()
-	var source: String = load("res://shaders/video_rvm_pair.gdshader").code
+	var source: String = load("res://shaders/video_pair.gdshader").code
 	shader.code = source.replace("void vertex() {", "uniform int probe_eye = 0;\nvoid vertex() {").replace("eye_index = int(VIEW_INDEX);", "eye_index = probe_eye;")
 	video.material.shader = shader
 	var colour := Image.create(2, 2, false, Image.FORMAT_RGB8); colour.fill(Color(0.1, 0.2, 0.35))

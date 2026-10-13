@@ -205,7 +205,7 @@ func _run() -> void:
 	footer_check(main.recent_menu, "File confirmation")
 	main.recent_menu.file_actions.modal = ""
 	main.recent_menu.refresh()
-	main._on_library_chosen("file:///follow/alpha_2D.mp4", "alpha_2D.mp4")
+	main._on_library_chosen("file:///follow/clip_LR_180_FISHEYE_F180_alpha.mp4", "clip_LR_180_FISHEYE_F180_alpha.mp4")
 	for original in [false,true]:
 		main.temporary_passthrough = original
 		main.video.set_alpha(true)

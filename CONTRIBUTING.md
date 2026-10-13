@@ -1,6 +1,6 @@
 # Contributing
 
-Use [NorthBoundWisdom/Thru3D-Media-Player](https://github.com/NorthBoundWisdom/Thru3D-Media-Player) for this independently maintained edition. Open an issue or pull request with a concrete problem, the affected source path and a reproducible example. Keep one change focused on one behavior. Contributions to project-owned source are submitted under GPL-3.0-only; preserve existing third-party notices and identify any imported code's origin/license.
+Use [NorthBoundWisdom/immivio](https://github.com/NorthBoundWisdom/immivio) for this independently maintained edition. Open an issue or pull request with a concrete problem, the affected source path and a reproducible example. Keep one change focused on one behavior. Contributions to project-owned source are submitted under GPL-3.0-only; preserve existing third-party notices and identify any imported code's origin/license.
 
 Run the source boundary and applicable host tests described in [TESTING.md](docs/TESTING.md). Android changes also need JVM/build checks; headset-specific claims need device evidence with matching versions. State what you have and have not verified.
 
@@ -14,4 +14,4 @@ For every version update, maintain both `CHANGELOG.md` and `CHANGELOG.zh-CN.md` 
 
 The user website lives in `website/`, with an English home/guide and matching pages under `website/zh/`. Run `python3 tools/check_website.py` and `node --check website/assets/site.js` after editing it. The Pages workflow publishes this directory from `main` and refreshes the APK selector when a GitHub Release is published. Keep actual screenshots and their capture manifest together; do not commit the source video or device diagnostics.
 
-The supplied application artwork is `app/godot/branding/thru3d-icon.png`. After replacing it, run `godot --headless --xr-mode off --path app/godot --script ../../tools/prepare_branding.gd` for adaptive safe-area sizing and the website icon. Keep the separate Android monochrome mask consistent with the mark. All three Android export presets share these assets.
+The supplied application artwork is `app/godot/branding/immivio-icon.png`. After replacing it, run `godot --headless --xr-mode off --path app/godot --script ../../tools/prepare_branding.gd` for adaptive safe-area sizing and the website icon. Keep the separate Android monochrome mask consistent with the mark. All three Android export presets share these assets.

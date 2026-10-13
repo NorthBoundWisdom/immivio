@@ -70,8 +70,7 @@ func refresh_values() -> void:
 			_update_highlights()
 
 func _can_depth() -> bool:
-	return _state.get("has_image", false) and not _state.get("loading", false) and int(_state.get("geometry", 0)) == 0 \
-		and not _state.get("stereo", false) and _state.get("depth_available", false)
+	return false
 
 func _draw_bar() -> void:
 	_set_backdrop(Vector2(1.16, 0.27), Vector2.ZERO)
@@ -89,9 +88,6 @@ func _draw_bar() -> void:
 	_glyph(PHOTO_PREVIOUS, "previous", Vector2(-0.14, 0.025), 0.085, _state.get("can_previous", false) and not swapping, I18n.t("Previous group" if groups else "Previous image"))
 	_label("%d / %d" % [maxi(0, int(_state.get("index", -1)) + 1), int(_state.get("count", 0))], Vector3(0, 0.025, 0.004), 18)
 	_glyph(PHOTO_NEXT, "next", Vector2(0.14, 0.025), 0.085, _state.get("can_next", false) and not swapping, I18n.t("Next group" if groups else "Next image"))
-	_glyph(PHOTO_PORTRAIT, "alpha", Vector2(0.23, 0.025), 0.075, portrait or _state.get("portrait_available",false), I18n.t("Exit portrait" if portrait else "Portrait passthrough"))
-	if int(_state.get("geometry", 0)) == 0:
-		_glyph(PHOTO_DEPTH, "depth", Vector2(DEPTH_X, 0.025), 0.075, _can_depth(), I18n.t("Auto 3D"))
 	_glyph(MODE, "view_mode", Vector2(0.41, 0.025), 0.075, has and not portrait, I18n.t("Image mode"))
 	_glyph(11, "settings", Vector2(0.5, 0.025), 0.075, has, I18n.t("Settings"))
 	_status = _label(_photo_status(), Vector3(0, -0.075, 0.004), 15)
@@ -113,7 +109,7 @@ func _draw_bar() -> void:
 	elif _mode_open:
 		_draw_modes()
 		for button in _buttons:
-			if button.target == MODE_STEREO + 3: button.enabled = bool(button.enabled) and _state.get("depth_available", false)
+			if button.target == MODE_STEREO + 3: button.enabled = bool(button.enabled) and false
 	elif _gallery_open:
 		_draw_gallery()
 	elif _depth_open:
@@ -180,7 +176,6 @@ func _draw_panel() -> void:
 	_set_backdrop(Vector2(1.16, 0.55))
 	_control_button(10, "", Vector2(-0.48, 0.2), CONTROL_HEIGHT, true, "up")
 	_label(I18n.t("Images"), Vector3(0, 0.2, 0.004), 21)
-	_control_button(PHOTO_STRENGTH, I18n.t("3D depth") + "  " + _depth_caption(), Vector2(-0.26, 0.035), 0.49, _can_depth(), "depth")
 	var names := ["Off", "Slight", "Medium", "Full"]
 	var curve := [0.0, 0.35, 0.7, 1.0].find(float(_state.get("screen_curve", 0)))
 	_control_button(PHOTO_CURVE, I18n.t("Screen curve") + "  " + I18n.t(names[maxi(0, curve)]), Vector2(0.26, 0.035), 0.49, int(_state.get("geometry", 0)) == 0 and not _state.get("portrait_requested",false), "screen")

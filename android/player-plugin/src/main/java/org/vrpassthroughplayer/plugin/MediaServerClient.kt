@@ -71,7 +71,7 @@ internal class MediaServerHttp(private val account: MediaServerAccount,
                 when (account.provider) {
                     "plex" -> {
                         c.setRequestProperty("Accept", "application/json")
-                        c.setRequestProperty("X-Plex-Product", "Thru3D")
+                        c.setRequestProperty("X-Plex-Product", "Immivio")
                         c.setRequestProperty("X-Plex-Version", "0.5.0")
                         c.setRequestProperty("X-Plex-Platform", "Android")
                         c.setRequestProperty("X-Plex-Device", "VR headset")

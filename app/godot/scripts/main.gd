@@ -25,7 +25,6 @@ const PlatformMethods := preload("res://scripts/platform_methods.gd")
 const FpsOverlay := preload("res://scripts/fps_overlay.gd")
 const Background := preload("res://scripts/app_background.gd")
 const ViewFollow := preload("res://scripts/view_follow.gd")
-const RVM_PROFILES := ["256x144", "384x216", "512x288", "256x256", "384x384", "512x512", "320x320"]
 const ALPHA_FPS_DEFAULT := 20
 const ALPHA_FPS_LIMITS := Vector2i(10, 40)
 
@@ -53,9 +52,6 @@ var _queue_add_mode := false
 var _queue_end_key := ""
 var calibration_board: Node3D
 var last_rvm_request := 0
-var next_rvm_case := 0
-var rvm_report: Dictionary = {}
-var rvm_status := "RVM benchmark not run"
 var right_controller: XRController3D
 var left_controller: XRController3D
 var hand_pointers := {}
@@ -91,9 +87,6 @@ var background: Node
 var view_follow := ViewFollow.new()
 var temporary_passthrough := false
 var reclining_mode := false
-var controlled_request := 0
-var controlled_report: Dictionary = {}
-var controlled_status := "Controlled decoder probe not run"
 
 func _ready() -> void:
 	var world := WorldEnvironment.new()
@@ -178,12 +171,19 @@ func _ready() -> void:
 		openxr.connect("pose_recentered", _on_system_recentered)
 	_head_placed = desktop
 	# Everyday playback uses the validated default model, including migrated settings.
-	if str(settings.get_value("alpha", "model", "fast")) != "fast":
-		settings.set_value("alpha", "model", "fast")
-		settings.save(settings_path)
-	# The video node warms the RVM model when it enters the tree: select the model first.
-	if Engine.has_singleton("QuestPlayer"):
-		Engine.get_singleton("QuestPlayer").set_rvm_model("fast")
+	# Persist a one-time cleanup without changing ordinary playback/library settings.
+	var retired_settings := false
+	for item in [["effects", "auto_3d"], ["video", "depth_strength"], ["photo", "depth_strength"], ["video", "alpha_fps"]]:
+		if settings.has_section_key(item[0], item[1]):
+			settings.erase_section_key(item[0], item[1]); retired_settings = true
+	if settings.has_section("alpha"):
+		settings.erase_section("alpha"); retired_settings = true
+	for section in ["video", "photo"]:
+		var previous: Variant = settings.get_value(section, "mode_lock", {})
+		if previous is Dictionary and previous.get("depth", false):
+			var migrated: Dictionary = previous.duplicate(true); migrated.depth = false
+			settings.set_value(section, "mode_lock", migrated); retired_settings = true
+	if retired_settings: settings.save(settings_path)
 	video = Video.new()
 	video.reclining_mode = reclining_mode
 	video.name = "VideoDisplay"
@@ -195,8 +195,7 @@ func _ready() -> void:
 	video.prefer_clone_voice = bool(settings.get_value("audio", "prefer_clone_voice", false))
 	video.history_enabled = bool(settings.get_value("library", "history", true))
 	_restore_seek_settings()
-	video.depth_strength = video.DepthStrength.remembered(float(settings.get_value("video", "depth_strength", 1.0)))
-	video.auto_depth = bool(settings.get_value("effects", "auto_3d", false))
+	video.auto_depth = false
 	video.load_mode_lock(settings.get_value("video", "mode_lock", {}))
 	video.subtitle_distance = float(settings.get_value("subtitles", "distance", 5.0))
 	video.subtitle_position = video.SubtitleDepth.restore_position(settings)
@@ -216,8 +215,7 @@ func _ready() -> void:
 	video.view_camera = camera
 	photo = PhotoDisplay.new()
 	photo.name = "PhotoDisplay"
-	photo.depth_strength = photo.DepthStrength.remembered(float(settings.get_value("photo", "depth_strength", 1.0)), photo.DepthStrength.PHOTO_MAX)
-	photo.auto_depth = bool(settings.get_value("effects", "auto_3d", true))
+	photo.auto_depth = false
 	photo.load_mode_lock(settings.get_value("photo", "mode_lock", {}))
 	photo.catalog = video.recent_files
 	photo.history_enabled = video.history_enabled
@@ -304,9 +302,7 @@ func _ready() -> void:
 			platform_plugin.set_ui_language(I18n.choice)
 		platform_plugin.connect("capabilities_ready", _on_capabilities_ready)
 		platform_plugin.connect("android_lifecycle", _on_android_lifecycle)
-		platform_plugin.connect("rvm_benchmark_result", _on_rvm_result)
-		for kind in ["state", "frame", "error"]:
-			platform_plugin.connect("controlled_" + kind, _on_controlled_event.bind(kind))
+		pass
 		request_capabilities()
 	else:
 		Log.record("android_plugin_unavailable", {"desktop_preview": desktop})
@@ -434,14 +430,6 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				video.toggle_eye_order()
 			KEY_V:
 				video.play_calibration_clip()
-			KEY_F8:
-				_request_rvm_benchmark(false)
-			KEY_F9:
-				_request_rvm_benchmark(true)
-			KEY_F6:
-				_request_rvm_benchmark(next_rvm_case % 2 == 1, RVM_PROFILES[next_rvm_case >> 1])
-			KEY_F7:
-				_request_controlled_probe()
 
 # Menus are ray + trigger only. A list row clicks on release unless the ray dragged to scroll.
 # Controller grip drags placement; grip plus the same hand's stick adjusts distance.
@@ -1896,11 +1884,8 @@ func _on_depth_strength(strength: float, for_photo: bool) -> void:
 		_remember_auto_depth(viewer.auto_depth)
 
 func _remember_auto_depth(enabled: bool) -> void:
-	if video: video.auto_depth = enabled
-	if photo: photo.auto_depth = enabled
-	if settings.get_value("effects", "auto_3d", false) != enabled:
-		settings.set_value("effects", "auto_3d", enabled)
-		settings.save(settings_path)
+	if settings.has_section_key("effects", "auto_3d"): settings.erase_section_key("effects", "auto_3d")
+	video.auto_depth = false; photo.auto_depth = false
 
 func _on_mode_lock_changed(lock: Dictionary, media_kind: String) -> void:
 	settings.set_value(media_kind, "mode_lock", lock)
@@ -1926,7 +1911,7 @@ func _menu_state() -> Dictionary:
 	var result := {"has_video": not video.local_uri.is_empty() and video.media.accepts(video.media.session_id),
 		"has_previous_video": not _adjacent_video(-1).is_empty(), "has_next_video": not _adjacent_video(1).is_empty(),
 		"playing": video.requested_play, "playback_state": video.media.state,
-		"ai_enabled": video.ai_available(), "packed_file": video.packed_file,
+		"ai_enabled": false, "packed_file": video.packed_file,
 		"alpha_requested": video.alpha_wanted(), "alpha_enabled": video.alpha_enabled,
 		"loop": video.loop_enabled, "stereo": video.stereo_sbs, "swap_eyes": video.swap_eyes,
 		"viewing_eye": video.viewing_eye, "stereo_horizontal": video.stereo_horizontal, "stereo_vertical": video.stereo_vertical,
@@ -2014,65 +1999,6 @@ func _apply_stick_actions(actions: Array[Dictionary], delta: float = 1.0 / 72.0)
 			"mute": video.toggle_mute()
 			"subtitle": video.cycle_subtitle_track(int(action.direction))
 			"swap_eyes": video.toggle_eye_order()
-
-func _request_rvm_benchmark(vulkan: bool, profile: String = "256x144") -> void:
-	if not platform_plugin:
-		rvm_status = "Android RVM benchmark requires Quest"
-		_update_status()
-		return
-	var id: int = platform_plugin.request_rvm_profile_benchmark(vulkan, profile)
-	if id <= 0:
-		rvm_status = "RVM benchmark busy or unavailable"
-	else:
-		last_rvm_request = id
-		var profile_index := RVM_PROFILES.find(profile)
-		next_rvm_case = (profile_index * 2 + (2 if vulkan else 1)) % (RVM_PROFILES.size() * 2)
-		rvm_status = "RVM %s %s validation running" % [profile, "Vulkan" if vulkan else "CPU"]
-	_update_status()
-
-func _on_rvm_result(id: int, payload: String) -> void:
-	if id != last_rvm_request:
-		return
-	var parser := JSON.new()
-	if parser.parse(payload) != OK or not parser.data is Dictionary:
-		rvm_status = "RVM benchmark report invalid"
-		_update_status()
-		return
-	rvm_report = parser.data
-	rvm_status = "RVM %s %s: %s" % [rvm_report.get("profile_key", rvm_report.get("requested_profile", "?")),
-		rvm_report.get("backend", "native"), rvm_report.get("state", "unknown")]
-	Log.record("rvm_validation_result", rvm_report)
-	_save_report()
-
-func _request_controlled_probe() -> void:
-	if not platform_plugin or not video or video.local_uri.is_empty():
-		controlled_status = "Select a video or calibration clip first"
-		_update_status()
-		return
-	if controlled_request > 0:
-		platform_plugin.close_controlled_video(controlled_request)
-	# The probe has a video-only clock. Pause normal audio/video while validating it.
-	platform_plugin.set_mpv_playing(video.media.session_id, false)
-	controlled_report = {}
-	controlled_request = platform_plugin.request_controlled_probe(video.local_uri, 0, video.stereo_sbs,
-		"256x256" if video.stereo_sbs else "256x144")
-	controlled_status = "Controlled decode probe running" if controlled_request > 0 else "Controlled decode probe unavailable"
-	_update_status()
-
-func _on_controlled_event(id: int, payload: String, kind: String) -> void:
-	if id != controlled_request:
-		return
-	var parser := JSON.new()
-	if parser.parse(payload) != OK or not parser.data is Dictionary:
-		controlled_status = "Controlled probe invalid report"
-		return
-	controlled_report[kind] = parser.data
-	if kind == "frame":
-		controlled_status = "Controlled frames: %s | PTS matched | immutable slot" % parser.data.get("captured_frames", 0)
-	else:
-		controlled_status = "Controlled probe: %s" % parser.data.get("state", parser.data.get("code", "unknown"))
-		Log.record("controlled_" + kind, parser.data)
-	_update_status()
 
 func _toggle_display() -> void:
 	if photo_active:
@@ -2275,10 +2201,9 @@ func _save_report() -> void:
 		"background": background.choice if background else "",
 		"photo": photo.snapshot() if photo else {},
 		"rvm_implemented": true,
-		"rvm_benchmark": rvm_report,
+
 		"rvm_video_integrated": true,
 		"mpv_rvm_device_validation": "pending",
-		"controlled_decode": controlled_report,
 	}
 	var encoded := JSON.stringify(report, "\t")
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("user://diagnostics"))
@@ -2301,11 +2226,9 @@ func _update_status() -> void:
 	calibration_board.visible = status_label.visible and not (video and video.panel and video.panel.visible)
 	if not status_label.visible:
 		return
-	status_label.text = "Thru3D Media Player - MPV\n%s | %s\nLeft Menu / Tab: player menu\nPoint with a controller and press trigger to select\nA,X / O: open file   Grip / Space: play,pause\nLeft click / P: projection   Right click: reset view\nLeft stick: seek 20s, volume   Right stick / arrows: seek 10s   L: loop\nB / R: recenter   Trigger / T: Alpha,background\nV: fixture" % [mode, detail]
+	status_label.text = "Immivio - MPV\n%s | %s\nLeft Menu / Tab: player menu\nPoint with a controller and press trigger to select\nA,X / O: open file   Grip / Space: play,pause\nLeft click / P: projection   Right click: reset view\nLeft stick: seek 20s, volume   Right stick / arrows: seek 10s   L: loop\nB / R: recenter   Trigger / T: Alpha,background\nV: fixture" % [mode, detail]
 	if video:
 		status_label.text += "\n%s | %s | %s | %s\n%s | RVM %s" % [video.display_name.left(42), video.media.state, "SBS" if video.stereo_sbs else "2D", video.layout_snapshot().geometry, "Alpha on" if video.alpha_enabled else ("Preparing Alpha" if video.alpha_requested else "Normal playback"), video.profile]
-		status_label.text += "\n" + rvm_status
-		status_label.text += "\n" + controlled_status
 		status_label.text += "\n%.1f / %.1f s | %s | loop %s" % [video.control.observed_position_ms / 1000.0, video.control.duration_ms / 1000.0, video.control.snapshot().state, "on" if video.loop_enabled else "off"]
 		status_label.text += "\nAudio: %s | %.0f%% | %s\nL up/down: volume | L left/right: track" % [str(video.media.playback.get("details", {}).get("audio_track_id", "none")), video.audio_volume, "muted" if video.audio_muted else "on"]
 		status_label.text += "\nSubtitles: %s | C: track" % ("off" if video.subtitles.requested_track == 0 else str(video.subtitles.requested_track))

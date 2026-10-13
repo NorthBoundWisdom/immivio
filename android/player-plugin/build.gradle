@@ -3,45 +3,16 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
-def enableAi = providers.gradleProperty('enableAi').map { it.toBoolean() }.getOrElse(true)
-def standardMpv = providers.gradleProperty('standardMpv').map { it.toBoolean() }.getOrElse(false)
-if (standardMpv && enableAi) { throw new GradleException('Standard libmpv requires -PenableAi=false.') }
-def ncnnRoot = providers.gradleProperty('ncnnDir').orElse(providers.environmentVariable('QUEST_NCNN_ROOT'))
-if (enableAi && !ncnnRoot.isPresent()) { throw new GradleException('Pass -PncnnDir=<ncnn arm64 root> or activate the Quest environment.') }
-def mnnSource = providers.gradleProperty('mnnSource').orElse(providers.environmentVariable('QUEST_MNN_SOURCE'))
-def mnnLib = providers.gradleProperty('mnnLib').orElse(providers.environmentVariable('QUEST_MNN_LIB'))
-if (enableAi && (!mnnSource.isPresent() || !mnnLib.isPresent())) { throw new GradleException('Activate the Quest environment (QUEST_MNN_SOURCE/QUEST_MNN_LIB).') }
-
-// Keep the full numerical oracles on disk for device diagnostics, but never
-// include them in a normal player APK (including ordinary Debug builds).
-def includeDiagnostics = providers.gradleProperty('includeDiagnostics').map { it.toBoolean() }.getOrElse(false)
-if (!enableAi && includeDiagnostics) { throw new GradleException('AI diagnostics require -PenableAi=true.') }
-def verifyModelPack = tasks.register('verifyModelPack') {
-    onlyIf { enableAi }
-    doLast {
-        def python = providers.environmentVariable('THRU3D_PYTHON').getOrElse(
-            System.getProperty('os.name').toLowerCase().contains('windows') ? 'python' : 'python3')
-        def verification = providers.exec {
-            commandLine python, rootProject.file('../tools/model_assets.py').absolutePath, '--verify-only'
-            ignoreExitValue = true
-        }
-        if (verification.result.get().exitValue != 0) {
-            throw new GradleException('Selected model pack verification failed:\n' +
-                verification.standardOutput.asText.get() + verification.standardError.asText.get())
-        }
-    }
+// Immivio ships a single playback edition. Reject obsolete inference requests.
+if (providers.gradleProperty('enableAi').orNull == 'true') {
+    throw new GradleException('Immivio no longer supports inference builds.')
 }
+def standardMpv = providers.gradleProperty('standardMpv').map { it.toBoolean() }.getOrElse(true)
 def playerAssets = layout.buildDirectory.dir('playerAssets')
 def stagePlayerAssets = tasks.register('stagePlayerAssets', Sync) {
-    // Keep validation independent: Sync skips its actions when all source assets are absent.
-    dependsOn verifyModelPack
-    inputs.property('enableAi', enableAi)
     from('src/main/assets')
     into(playerAssets)
-    if (!enableAi) { exclude 'rvm/**', 'rvm-mnn/**', 'depth-mnn/**', 'ai-models/**' }
-    if (!includeDiagnostics) {
-        exclude 'rvm/reference/**', 'rvm/**/*.bin', 'rvm/**/*.param', 'rvm-mnn/rvm_quality.mnn'
-    }
+    exclude 'rvm/**', 'rvm-mnn/**', 'depth-mnn/**', 'ai-models/**'
 }
 
 android {
@@ -53,35 +24,22 @@ android {
     sourceSets.main.assets.setSrcDirs([playerAssets])
     sourceSets.main.assets.srcDir '../../third_party'
     sourceSets.main.assets.srcDir '../../app/godot/i18n'
-    if (!enableAi) {
-        // Defense at the merger as well as Sync, including an empty source tree or stale staging.
-        sourceSets.main.assets.exclude 'rvm/**', 'rvm-mnn/**', 'depth-mnn/**', 'ai-models/**'
-    }
+    sourceSets.main.assets.exclude 'rvm/**', 'rvm-mnn/**', 'depth-mnn/**', 'ai-models/**'
     defaultConfig {
         minSdk 29
         consumerProguardFiles 'consumer-rules.pro'
-        buildConfigField 'boolean', 'INCLUDE_DIAGNOSTIC_MODELS', includeDiagnostics.toString()
-        buildConfigField 'boolean', 'ENABLE_AI', enableAi.toString()
         ndk { abiFilters 'arm64-v8a' }
         externalNativeBuild {
             cmake {
-                arguments '-DANDROID_STL=c++_shared', "-DQUEST_ENABLE_AI=${enableAi ? 'ON' : 'OFF'}",
-                    "-DQUEST_STANDARD_MPV=${standardMpv ? 'ON' : 'OFF'}",
-                    "-DQUEST_DIAGNOSTIC_MODELS=${includeDiagnostics ? 'ON' : 'OFF'}"
-                if (enableAi) {
-                    arguments "-Dncnn_DIR=${ncnnRoot.get().replace('\\', '/')}/lib/cmake/ncnn",
-                        "-DMNN_SOURCE=${mnnSource.get().replace('\\', '/')}", "-DMNN_LIB=${mnnLib.get().replace('\\', '/')}"
-                }
+                arguments '-DANDROID_STL=c++_shared', "-DQUEST_STANDARD_MPV=${standardMpv ? 'ON' : 'OFF'}"
             }
         }
     }
-    externalNativeBuild { cmake { path '../../native/rvm/CMakeLists.txt'; version providers.gradleProperty('androidCmakeVersion').getOrElse('3.31.6') } }
+    externalNativeBuild { cmake { path '../../native/CMakeLists.txt'; version providers.gradleProperty('androidCmakeVersion').getOrElse('3.31.6') } }
     // The Godot APK provides the matching NDK C++ shared runtime.
     packagingOptions { jniLibs { excludes += ['**/libc++_shared.so'] } }
-    if (!enableAi) {
-        // Also exclude stale libraries left in jniLibs by an earlier AI build.
-        packagingOptions { jniLibs { excludes += ['**/libquest_rvm.so', '**/libMNN*.so', '**/libncnn.so'] } }
-    }
+    // A stale prior build must not reintroduce removed runtime libraries.
+    packagingOptions { jniLibs { excludes += ['**/libquest_rvm.so', '**/libMNN*.so', '**/libncnn.so'] } }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
