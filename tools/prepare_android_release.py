@@ -40,8 +40,10 @@ def prepare(packages, output, tag, commit):
             raise ValueError('Release receipt belongs to a different tag or commit')
         if record.get('ci_host') != 'macOS':
             raise ValueError('Release assets must come from the canonical macOS builds')
-        if record.get('schema_version') != 2 or record.get('dependency_mode') != 'pinned':
-            raise ValueError('Release requires a version 2 pinned dependency receipt')
+        if record.get('schema_version') not in (2, 3) or record.get('dependency_mode') != 'pinned':
+            raise ValueError('Release requires a pinned dependency receipt')
+        if record.get('schema_version') == 3 and not re.fullmatch(r'[0-9a-f]{64}', record.get('dependency_catalog_sha256', '')):
+            raise ValueError('Release is missing its master dependency lock digest')
         if not re.fullmatch(r'[0-9a-f]{40}', record.get('freecm_commit', '')):
             raise ValueError('Release receipt is missing the FreeCM commit')
         if not record.get('dependency_commits') or not record.get('dependency_assets') or not record.get('gradle_locks'):

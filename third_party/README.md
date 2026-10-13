@@ -13,3 +13,5 @@ FreeCM prepares Godot and Godot OpenXR Vendors assets; Gradle prepares locked Ma
 The repository includes only synthetic test media. Private human-video fixtures and model weights are excluded.
 
 The CodeLibs JCIFS jar is staged by Gradle with unused HTTP/HTTPS NTLM adapters removed. Retained classes/resources keep upstream bytes and notices; SMB functions remain available. The combined binary OpenList obligations are recorded in the licensing scope above.
+
+All dependency versions, source commits and integrity records are managed in `source_roots.lock.jsonc.in`. Native JSON receipt records are generated compatibility inputs, not independently maintained source locks. Full Git source roots are materialized through FreeCM.

@@ -9,13 +9,14 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
-import tarfile
 import tempfile
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from configs.dependencies import asset_file, digest, lock_data
+from configs.dependencies import asset_file, digest
+from configs.dependency_manifest import catalog
+from configs.source_roots import workflow
 from configs import player_build as player
 
 WORK = ROOT / "build/native-mpv"
@@ -65,9 +66,16 @@ def environment():
     if not sys.platform.startswith("linux"):
         raise RuntimeError("The optional source backend requires a Linux build host")
     env = os.environ.copy()
+    from configs.python_tools import python_path
+
+    native_python = python_path("native-build")
+    if not native_python.is_file():
+        raise RuntimeError(
+            "Run FreeCM --init --native-mpv to prepare native build tools"
+        )
+    env["PATH"] = os.pathsep.join([str(native_python.parent), env.get("PATH", "")])
     env.update(
         THRU3D_MPV_WORK=str(WORK),
-        THRU3D_MPV_DOWNLOADS=str(ROOT / "build/dependency_seed_repos/MpvSources"),
         THRU3D_MPV_EXPORT=str(WORK / "output/arm64-v8a"),
         THRU3D_MPV_MANIFEST=str(WORK / "output/source-build.json"),
     )
@@ -89,18 +97,28 @@ def configure(env):
         "flex",
         "gettext",
     ):
-        if not shutil.which(tool):
+        if not shutil.which(tool, path=env["PATH"]):
             raise RuntimeError(f"Install Linux build prerequisite: {tool}")
-    if subprocess.check_output(["meson", "--version"], text=True).strip() != "1.11.0":
-        raise RuntimeError("Install Meson 1.11.0 before configuring native mpv")
-    archive = asset_file("MpvBuilder")
+    if (
+        subprocess.check_output(["meson", "--version"], text=True, env=env).strip()
+        != catalog()["native"]["meson"]
+    ):
+        raise RuntimeError(
+            "Install the Meson version pinned in source_roots.lock.jsonc.in"
+        )
+    roots = workflow.require_dependency_roots()
     WORK.mkdir(parents=True, exist_ok=True)
     destination = WORK / "mpv-android"
-    if not destination.exists():
-        with tarfile.open(archive) as source:
-            source.extractall(WORK / "builder-extract", filter="data")
-        extracted = next((WORK / "builder-extract").iterdir())
-        shutil.move(extracted, destination)
+    identity = WORK / "builder-commit.txt"
+    commit = roots.resolved_commits["MpvAndroidSource"]
+    if not identity.exists() or identity.read_text() != commit:
+        shutil.rmtree(destination, ignore_errors=True)
+        destination.mkdir()
+        shutil.copytree(
+            roots.dependency_root_for("MpvAndroidSource") / "buildscripts",
+            destination / "buildscripts",
+        )
+        identity.write_text(commit)
     if not (WORK / "android-ndk-r30/source.properties").exists():
         with tempfile.TemporaryDirectory(prefix="ndk-", dir=WORK) as pending:
             extract_ndk(asset_file("MpvLinuxNdk"), pending)
@@ -110,22 +128,16 @@ def configure(env):
     link = sdk / "android-ndk-r30"
     if not link.exists():
         link.symlink_to(WORK / "android-ndk-r30", target_is_directory=True)
-    # Locked sources are already fetched by FreeCM --init --native-mpv.
-    records = json.loads((ROOT / "third_party/mpv/source-lock.json").read_text())[
-        "sources"
-    ]
-    assets = {r["fileName"]: r for r in lock_data()["assets"]["MpvSources"]["files"]}
-    for record in records:
-        asset = assets[record["archive"]]
-        if (asset["sha256"], asset["sizeBytes"]) != (record["sha256"], record["bytes"]):
-            raise RuntimeError(
-                "Native receipt provenance differs from the FreeCM source lock"
-            )
-        asset_file("MpvSources", record["archive"])
+    # The FreeCM materialized roots are copied into disposable build trees below.
     player.run(
         [sys.executable, ROOT / "tools/environment/mpv-linux/prepare_sources.py"],
         env=env,
     )
+    # Git checkouts omit distribution-generated Autotools files; bootstrap in build copies.
+    for dependency in ("unibreak", "curl"):
+        directory = destination / "buildscripts/deps" / dependency
+        if not (directory / "configure").is_file():
+            player.run(["autoreconf", "-fi"], cwd=directory, env=env)
     if shutil.which("dpkg-query"):
         (WORK / "host-packages.tsv").write_bytes(
             subprocess.check_output(["dpkg-query", "-W"])

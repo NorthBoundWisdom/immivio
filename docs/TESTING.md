@@ -8,6 +8,7 @@ python3 tools/test_prepare_android_release.py
 python3 FreeCM/tools/validate_repo_commands.py .
 python3 tools/Check-PublicSource.py
 python3 configs/source_roots.py verify
+python3 configs/dependency_manifest.py verify
 python3 configs/android_workflow.py test --vendor Quest --build-type Debug
 ```
 
@@ -16,3 +17,5 @@ The Android workflow offers `--level l0` (workflow and publication boundaries), 
 Workflow tests cover corrupt assets, offline acquisition boundaries, configuration staleness, separate Build/Package stages, safe cleanup, verified optional backend imports, process timeouts and signing identity preservation. Release tests reject incomplete dependency provenance and mismatched tag/commit/host/variant or APK bytes.
 
 Build and package each target before device verification. Existing device probes and media benchmarks remain available. Use the optional backend and its checked receipt for private PGS, spatial-video or Dolby tests; host/APK checks alone do not establish those capabilities on a headset.
+
+Master-lock tests cover complete input generation, drift detection, single-file version updates, idempotence, checksum validation and safe output paths.

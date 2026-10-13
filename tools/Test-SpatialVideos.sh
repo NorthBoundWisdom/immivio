@@ -3,21 +3,10 @@
 set -euo pipefail
 repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 samples=${1:?Supply your licensed spatial-video sample directory}
-archive=${2:?Supply the locked FFmpeg archive path}
-source="$repo/tmp/spatial-video/ffmpeg"
+source=$(cd "$repo" && python3 -c "from configs.native_sources import source_root; print(source_root('FFmpeg'))")
 build="$repo/build/spatial-video-host"
 logs="$repo/build/output"
-python3 - "$repo/third_party/mpv/source-lock.json" "$archive" <<'PY'
-import hashlib, json, sys
-from pathlib import Path
-record = next(s for s in json.loads(Path(sys.argv[1]).read_text())['sources'] if s['name'] == 'ffmpeg')
-if hashlib.sha256(Path(sys.argv[2]).read_bytes()).hexdigest() != record['sha256']:
-    raise SystemExit('FFmpeg archive does not match the locked decoder')
-PY
-mkdir -p "$source" "$build" "$logs"
-if [[ ! -f "$source/configure" ]]; then
-    tar -xf "$archive" --strip-components=1 -C "$source"
-fi
+mkdir -p "$build" "$logs"
 cd "$build"
 if [[ ! -f config.h ]]; then
     "$source/configure" --disable-doc --disable-programs --disable-autodetect \

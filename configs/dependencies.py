@@ -6,7 +6,6 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
-import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "FreeCM"))
@@ -14,8 +13,10 @@ from freecm.asset_seeds import asset_seed_root, require_asset_seeds
 from freecm.jsonc import loads_jsonc
 from freecm.workspace_lock import workspace_mutation_lock as workspace_lock
 
-TOOLCHAIN = json.loads((ROOT / "configs/toolchain.json").read_text())
-CATALOG = tomllib.loads((ROOT / "android/gradle/libs.versions.toml").read_text())
+from configs.dependency_manifest import catalog, generate, verify, capture_gradle
+
+TOOLCHAIN = catalog()["toolchain"]
+CATALOG = catalog()["gradle"]["catalog"]
 TOOLCHAIN.update(
     android_gradle_plugin=CATALOG["versions"]["agp"],
     kotlin=CATALOG["versions"]["kotlin"],
@@ -70,6 +71,12 @@ def select_assets(*, native=False):
             (ROOT / "source_roots.lock.jsonc.in").read_text(),
             path_label="source_roots.lock.jsonc.in",
         )
+        # Add newly declared Git roots without changing existing manual/pin choices.
+        for name, entry in template["dependencies"].items():
+            data["dependencies"].setdefault(name, entry)
+            data["depsManualPath"].setdefault(name, "")
+        if "immivio" in template:
+            data["immivio"] = template["immivio"]
         names = {"Gradle", "GodotTemplates", "OpenXRVendors", "MpvAndroid"}
         if sys.platform == "darwin":
             names |= {
@@ -86,11 +93,13 @@ def select_assets(*, native=False):
             native_marker.parent.mkdir(parents=True, exist_ok=True)
             native_marker.touch()
         if native_marker.exists():
-            names |= {"MpvSources", "MpvBuilder", "MpvLinuxNdk"}
+            names |= {"MpvLinuxNdk"}
         data["assets"] = {name: template["assets"][name] for name in sorted(names)}
         pending = ROOT / "source_roots.lock.jsonc.pending"
         pending.write_text(json.dumps(data, indent=2) + "\n")
         pending.replace(ROOT / "source_roots.lock.jsonc")
+    if "immivio" in template:
+        generate(ROOT)
 
 
 def go_environment(env, *, online=False):
@@ -179,6 +188,8 @@ def prepare_host_assets():
     """Materialize only already verified assets; no network operations."""
     from configs import player_build as player
 
+    generate(ROOT)
+    verify(ROOT)
     require_asset_seeds(ROOT)
     output = ROOT / "build/host-tools"
     output.mkdir(parents=True, exist_ok=True)
@@ -238,7 +249,9 @@ def initialize_packages(*, refresh_packages=False):
         subprocess.check_output(["go", "version"], env=env, text=True).split()[2]
         != "go" + TOOLCHAIN["go"]
     ):
-        raise RuntimeError("Install the Go version specified in configs/toolchain.json")
+        raise RuntimeError(
+            "Install the Go version specified in source_roots.lock.jsonc.in"
+        )
     env["IMMIVIO_OFFLINE_BUILD"] = "0"
     online = go_environment(env, online=True)
     with workspace_lock(ROOT):
@@ -249,13 +262,17 @@ def initialize_packages(*, refresh_packages=False):
         env=online,
         log="go-download.log",
     )
+    from configs.source_roots import workflow
+
+    mobile_root = workflow.require_dependency_roots().dependency_root_for("GoMobile")
     for tool in ("gomobile", "gobind"):
         player.run(
             [
                 "go",
                 "install",
-                f'golang.org/x/mobile/cmd/{tool}@{TOOLCHAIN["gomobile"]}',
+                f"./cmd/{tool}",
             ],
+            cwd=mobile_root,
             env=online,
             log=f"{tool}-install.log",
         )
@@ -326,3 +343,6 @@ def initialize_packages(*, refresh_packages=False):
                 ROOT / "android/gradle/verification-metadata.xml",
                 player.PROJECT / "android/build/gradle/verification-metadata.xml",
             )
+
+    if refresh_packages:
+        capture_gradle(ROOT)

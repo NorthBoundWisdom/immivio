@@ -7,8 +7,8 @@ runs:
       id: toolchain
       shell: python
       run: |
-        import json, os, pathlib
-        requirements = json.loads(pathlib.Path('configs/toolchain.json').read_text())
+        import os, runpy
+        requirements = runpy.run_path('configs/dependency_manifest.py')['catalog']()['toolchain']
         with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
             for name in ('python', 'java', 'go'):
                 output.write(name + '=' + requirements[name] + '\n')
@@ -42,11 +42,8 @@ runs:
     - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
       with:
         path: ${{ steps.paths.outputs.paths }}
-        key: ${{ runner.os }}-${{ runner.arch }}-immivio-freecm-v2-${{ hashFiles('FreeCM', 'source_roots.lock.jsonc.in', 'configs/**', 'cloud/openlist/go.*', 'android/gradle/**', 'third_party/mpv/*.json', 'native/mpv/patches/*', 'cloud/openlist/*.go', 'android/*.gradle', 'android/player-plugin/build.gradle') }}
+        key: ${{ runner.os }}-${{ runner.arch }}-immivio-freecm-v2-${{ hashFiles('FreeCM', 'source_roots.lock.jsonc.in', 'configs/*.py', 'cloud/openlist/*.go', 'native/mpv/patches/*', 'cloud/openlist/*.go', 'android/*.gradle', 'android/player-plugin/build.gradle') }}
         restore-keys: ${{ runner.os }}-${{ runner.arch }}-immivio-freecm-v2-
     - name: Install locked Android SDK components
       shell: bash
-      run: |
-        python -c "import json,pathlib; t=json.loads(pathlib.Path('configs/toolchain.json').read_text()); print('\n'.join(['platform-tools','platforms;android-'+str(t['android']['platform']),'build-tools;'+t['android']['build_tools'],'ndk;'+t['android']['ndk'],'cmake;'+t['android']['cmake']]))" > sdk-packages.txt
-        while IFS= read -r package; do sdkmanager "$package"; done < sdk-packages.txt
-        rm sdk-packages.txt
+      run: python configs/sdk_environment.py --install

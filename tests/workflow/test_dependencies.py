@@ -33,7 +33,10 @@ class DependencyLifecycle(unittest.TestCase):
                 self.assertEqual(source.main(argv), 0)
                 script.assert_called_once_with(argv)
                 network.assert_not_called()
-                assets.assert_not_called()
+                if argv[0] in ("--update", "--refreshpin"):
+                    assets.assert_called_once_with(native=False)
+                else:
+                    assets.assert_not_called()
 
     def test_host_asset_selection_keeps_native_downloads_opt_in(self):
         with tempfile.TemporaryDirectory() as tmp, patch.object(
@@ -72,10 +75,14 @@ class DependencyLifecycle(unittest.TestCase):
                 "configs.source_roots.workflow.ensure_active_lock_file"
             ), patch.object(deps.sys, "platform", "darwin"):
                 deps.select_assets()
-                self.assertNotIn("MpvSources", deps.lock_data(root)["assets"])
+                self.assertNotIn("MpvLinuxNdk", deps.lock_data(root)["assets"])
                 deps.select_assets(native=True)
-                self.assertIn("MpvSources", deps.lock_data(root)["assets"])
+                self.assertIn("MpvLinuxNdk", deps.lock_data(root)["assets"])
                 self.assertTrue((root / ".cache/native-mpv-enabled").exists())
+
+    def test_python_package_download_requires_explicit_init(self):
+        with self.assertRaisesRegex(ValueError, "requires --init"):
+            source.main(["--update", "--python-tools"])
 
     def test_package_refresh_requires_explicit_init(self):
         with self.assertRaisesRegex(ValueError, "requires --init"):

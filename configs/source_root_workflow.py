@@ -50,6 +50,14 @@ script = SourceRootWorkflowScript(
 
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    python_tools = "--python-tools" in argv
+    if python_tools:
+        argv.remove("--python-tools")
+        if "--init" not in argv:
+            raise ValueError("--python-tools requires --init")
+        marker = ROOT / ".cache/python-tools-enabled"
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        marker.touch()
     refresh = "--refresh-packages" in argv
     if refresh:
         argv.remove("--refresh-packages")
@@ -60,7 +68,7 @@ def main(argv=None):
         argv.remove("--native-mpv")
         if "--init" not in argv:
             raise ValueError("--native-mpv requires --init")
-    if "--init" in argv:
+    if "--init" in argv or "--update" in argv or "--refreshpin" in argv:
         select_assets(native=native)
     result = script.main(argv)
     if result == 0 and "--init" in argv:
@@ -68,6 +76,14 @@ def main(argv=None):
         workflow.materialize_source_roots(allow_network=False)
         with workspace_mutation_lock(ROOT):
             initialize_packages(refresh_packages=refresh)
+            if (ROOT / ".cache/python-tools-enabled").exists():
+                from configs.python_tools import prepare
+
+                prepare("media-tools", online=True)
+            if native:
+                from configs.python_tools import prepare
+
+                prepare("native-build", online=True)
     return result
 
 

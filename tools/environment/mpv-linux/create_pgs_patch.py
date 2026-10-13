@@ -1,13 +1,14 @@
-"""Generate an independent PGS client patch against the locked mpv archive."""
+"""Generate an independent PGS client patch against the commit-pinned mpv source root."""
 import difflib
 import hashlib
 import json
-import os
+import sys
 from pathlib import Path
-import tarfile
 
 ROOT = Path(__file__).resolve().parents[3]
-ARCHIVE = Path(str(Path(os.environ.get('THRU3D_MPV_DOWNLOADS', str(Path.home() / '.cache/thru3d-mpv/downloads'))) / 'mpv-0b7ed67.tar.gz'))
+sys.path.insert(0,str(ROOT))
+from configs.native_sources import source_root, archived_receipt_hash
+
 
 
 def sha(data):
@@ -15,13 +16,8 @@ def sha(data):
 
 
 def main():
-    lock = json.loads((ROOT/'third_party/mpv/source-lock.json').read_text())
-    expected = next(p['sha256'] for p in lock['sources'] if p['name'] == 'mpv')
-    if sha(ARCHIVE.read_bytes()) != expected:
-        raise ValueError('PGS archive differs from locked mpv')
-    with tarfile.open(ARCHIVE) as archive:
-        member = next(p for p in archive.getnames() if p.endswith('/player/client.c'))
-        original = archive.extractfile(member).read().decode()
+    expected=archived_receipt_hash('mpv')
+    original=(source_root('Mpv')/'player/client.c').read_text()
     anchor = '#include "client.h"\n'
     if original.count(anchor) != 1:
         raise ValueError('PGS client include anchor changed')

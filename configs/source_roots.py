@@ -10,6 +10,8 @@ FREECM_ROOT = REPO_ROOT / "FreeCM"
 if not (FREECM_ROOT / "freecm").is_dir():
     raise RuntimeError("Initialize FreeCM: git submodule update --init FreeCM")
 sys.path.insert(0, str(FREECM_ROOT))
+sys.path.insert(0, str(REPO_ROOT))
+from configs.dependency_manifest import template
 from freecm.dependency_roots import (
     DependencyRootConfig,
     DependencyRootSpec,
@@ -21,13 +23,18 @@ workflow = bind_dependency_root_workflow(
     DependencyRootConfig(
         repo_root=REPO_ROOT,
         repo_display_name="Immivio",
-        dependency_root_specs=(
+        dependency_root_specs=tuple(
             DependencyRootSpec(
-                "OpenList",
-                "OpenList",
-                "OPENLIST_SOURCE_ROOT",
-                ("go.mod", "go.sum", "internal/model/storage.go", "LICENSE"),
-            ),
+                name,
+                name,
+                name.upper() + "_SOURCE_ROOT",
+                (
+                    ("go.mod", "go.sum", "internal/model/storage.go", "LICENSE")
+                    if name == "OpenList"
+                    else ()
+                ),
+            )
+            for name in template(REPO_ROOT)["dependencies"]
         ),
         default_required_relative_paths=(),
     ),

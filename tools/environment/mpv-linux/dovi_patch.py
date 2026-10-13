@@ -2,12 +2,13 @@
 import difflib
 import hashlib
 import json
-import os
+import sys
 from pathlib import Path
-import tarfile
 
 ROOT = Path(__file__).resolve().parents[3]
 HEADERS = ROOT / "native/mpv/dovi"
+sys.path.insert(0,str(ROOT))
+from configs.native_sources import source_root, source_commit, archived_receipt_hash
 
 
 def apply_mpv_dovi(edited, replace):
@@ -63,14 +64,9 @@ def apply_mpv_dovi(edited, replace):
 
 
 def create_ffmpeg_patch():
-    archive_path = Path(str(Path(os.environ.get('THRU3D_MPV_DOWNLOADS', str(Path.home() / '.cache/thru3d-mpv/downloads'))) / 'ffmpeg-094a2f8a.tar.gz'))
-    names = ("libavcodec/mediacodecdec.c", "configure")
-    original = {}
-    with tarfile.open(archive_path) as archive:
-        members = archive.getnames()
-        for name in names:
-            entry = next(p for p in members if p.endswith("/" + name))
-            original[name] = archive.extractfile(entry).read().decode()
+    names=("libavcodec/mediacodecdec.c","configure")
+    source=source_root('FFmpeg')
+    original={name:(source/name).read_text() for name in names}
     from create_frame_patch import replace_once as replace
     edited = dict(original)
     p = "libavcodec/mediacodecdec.c"
@@ -116,8 +112,8 @@ def create_ffmpeg_patch():
     (patch_dir / "0002-ffmpeg-profile5-rpu.patch").write_text(patch, encoding="utf-8", newline="\n")
     sha = lambda data: hashlib.sha256(data).hexdigest()
     record = {
-        "base_ffmpeg_revision": "094a2f8a2a5e7fa64736e067de224ce28fdf5979",
-        "base_archive_sha256": sha(archive_path.read_bytes()),
+        "base_ffmpeg_revision": source_commit("FFmpeg"),
+        "base_archive_sha256": archived_receipt_hash("ffmpeg"),
         "base_files_sha256": {p: sha(s.encode()) for p, s in original.items()},
         "patched_files_sha256": {p: sha(s.encode()) for p, s in edited.items()},
         "patch_sha256": sha(patch.encode()),

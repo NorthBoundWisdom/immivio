@@ -1,4 +1,4 @@
-"""Validate/extract locked archives onto Linux ext4 and apply the frame patch."""
+"""Stage FreeCM commit-pinned source roots and apply patches only in build copies."""
 import os
 from pathlib import Path
 import argparse
@@ -6,7 +6,8 @@ import hashlib
 import json
 from pathlib import Path, PurePosixPath
 import subprocess
-import tarfile
+import shutil
+import sys
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -52,42 +53,25 @@ def apply_dovi_patch(ffmpeg):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--cache", type=Path, default=Path(os.environ.get('THRU3D_MPV_DOWNLOADS', str(Path.home() / '.cache/thru3d-mpv/downloads'))))
     parser.add_argument("--builder", type=Path, default=Path(str(Path(os.environ.get('THRU3D_MPV_WORK', str(Path.home() / '.cache/thru3d-mpv'))) / 'mpv-android/buildscripts')))
     args = parser.parse_args()
-    lock = json.loads((ROOT/"third_party/mpv/source-lock.json").read_text())
-    plan = json.loads((ROOT/"third_party/mpv/source-plan.json").read_text())
-    if {p["name"] for p in lock["sources"]} != {p["name"] for p in plan["sources"]}:
-        raise ValueError("Source resolution incomplete")
-    base = (args.builder/"deps").resolve()
-    base.mkdir(parents=True, exist_ok=True)
-    for record in lock["sources"]:
-        source = args.cache/record["archive"]
-        if sha(source) != record["sha256"]:
-            raise ValueError(f"Source SHA256 mismatch: {record['name']}")
-        destination = (base/record["name"]).resolve()
-        if not destination.is_relative_to(base):
-            raise ValueError("Source path escapes the owned dependency directory")
-        marker = destination/".quest-source.json"
-        if marker.exists():
-            if json.loads(marker.read_text()) != record:
-                raise ValueError("Existing source tree belongs to a different locked archive")
-            continue
-        destination.mkdir(parents=True, exist_ok=True)
-        with tarfile.open(source) as archive:
-            for member in archive.getmembers():
-                parts = PurePosixPath(member.name).parts
-                if not parts or ".." in parts or PurePosixPath(member.name).is_absolute():
-                    raise ValueError("Source archive path is unsafe")
-        with tarfile.open(source) as archive:
-            for member in archive.getmembers():
-                parts = PurePosixPath(member.name).parts[1:]
-                if not parts:
-                    continue
-                member.name = str(PurePosixPath(*parts))
-                archive.extract(member, destination, filter='data')
-        marker.write_text(json.dumps(record, indent=2)+"\n")
-        print(f"Extracted {record['name']} {record['revision']}", flush=True)
+    sys.path.insert(0,str(ROOT))
+    from configs.source_roots import workflow
+    from configs.dependency_manifest import catalog
+    roots=workflow.require_dependency_roots()
+    base=(args.builder/'deps').resolve();base.mkdir(parents=True,exist_ok=True)
+    for name,relative in catalog()['native']['sourceRoots'].items():
+        destination=(base/relative).resolve()
+        if not destination.is_relative_to(base):raise ValueError('Native source directory escapes builder')
+        record={'dependency':name,'commit':roots.resolved_commits[name]}
+        marker=destination/'.quest-source.json'
+        if marker.is_file() and json.loads(marker.read_text())==record:continue
+        shutil.rmtree(destination,ignore_errors=True)
+        shutil.copytree(roots.dependency_root_for(name),destination,ignore=shutil.ignore_patterns('.git'))
+        if name=='Lua' and (destination/'src/luaconf.h.orig').exists():
+            shutil.copy2(destination/'src/luaconf.h.orig',destination/'src/luaconf.h')
+        marker.write_text(json.dumps(record,indent=2)+'\n')
+        print(f'Materialized {name} {record["commit"]}',flush=True)
     mpv = base/"mpv"
     patch = ROOT/"native/mpv/patches/0001-quest-source-frame.patch"
     record = json.loads((patch.parent/"source-frame-manifest.json").read_text())

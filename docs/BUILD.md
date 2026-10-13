@@ -4,7 +4,13 @@ Immivio has one playback edition. Inference models, MNN and ncnn are excluded.
 
 ## Dependency and toolchain ownership
 
-`FreeCM/` is a pinned submodule. `source_roots.lock.jsonc.in` owns Git source pins and download URLs, SHA-256 hashes and exact sizes. `configs/toolchain.json` owns host tool requirements; `android/gradle/libs.versions.toml`, Gradle dependency locks and verification metadata own Maven packages; `cloud/openlist/go.mod` and `go.sum` own the embedded core's Go modules. Native mpv source records under `third_party/mpv` remain corresponding-source and receipt provenance, not a separate downloader.
+`source_roots.lock.jsonc.in` is the sole reviewed dependency authority. FreeCM's standard `dependencies` entries pin source repositories by full Git commit, matching the source-root workflow used by PCBAtlas Android. The namespaced `immivio` section holds toolchain requirements, Maven resolution/checksums, Go module/checksum data, Python wheel pins and vendored-resource provenance. FreeCM core remains unmodified.
+
+`configs/dependency_manifest.py generate` renders Gradle catalogs/locks/verification metadata, Go manifests, native receipt compatibility records and Python requirements. These generated inputs are ignored by Git and must not be edited independently. `verify` rejects drift and verifies embedded hand/background/license bytes against the master lock. `--init` and `--update` render inputs automatically; builds verify them.
+
+mpv, FFmpeg and native helper libraries use commit-pinned FreeCM source roots. The optional Linux build copies those roots into a disposable tree and reuses the pinned upstream mpv-android build recipes. Source roots remain unmodified. The Lua 5.2.4 source uses a pinned LuaDist mirror because the official Lua Git repository has no 5.2.4 release tag. Official Godot and mpv Android binaries remain checksum-pinned distribution assets with their corresponding source commits recorded; this does not imply those binaries are compiled by this repository.
+
+Maven/Go/Python package versions retain their native ecosystem identities and integrity checks. Their entire reviewed lock data lives inside the master lock rather than independent package-version files. The old native archive records are generated only to validate historical source-frame receipts; they no longer acquire or materialize native source trees.
 
 Install the Python, JDK, Go and Android SDK components specified in the toolchain configuration. Local builds use `JAVA_HOME` and `ANDROID_HOME` / `ANDROID_SDK_ROOT`. Windows/macOS initialization prepares the locked Godot editor; `GODOT_EXE` can select an editor with the exact locked version. Linux uses a supplied matching editor. CI provisions the SDK and host runtimes before dependency initialization.
 
@@ -21,7 +27,7 @@ python3 configs/android_workflow.py package --vendor Quest --build-type Debug
 
 Use `Pico` or `OpenXR` for the other targets and `Release` for distributable packages. The same Python commands run in PowerShell. The previous build and preparation commands have been removed.
 
-Only dependency `--init` accesses the network. After intentional Maven upgrades, maintainers can use `--init --refresh-packages` to regenerate the committed Gradle locks and verification metadata, review their diff, then configure again. It selects host assets into the ignored active lock, prepares FreeCM seeds and prefetches Go/Gradle packages. `--update`, diagnostics, configuration, compilation, testing and packaging consume verified local inputs offline. Missing inputs require another initialization. Initialization selects current template assets while preserving local source-root settings; `--refreshpin` updates only Git commit pins. Release requires pinned source dependencies.
+Only dependency `--init` accesses the network. After intentional Maven upgrades, maintainers can use `--init --refresh-packages` to harvest resolution and checksum changes back into the master lock, review its diff, then configure again. It selects host assets into the ignored active lock, prepares FreeCM seeds and prefetches Go/Gradle packages. `--update`, diagnostics, configuration, compilation, testing and packaging consume verified local inputs offline. Missing inputs require another initialization. Initialization selects current template assets while preserving local source-root settings; `--refreshpin` updates only Git commit pins. Release requires pinned source dependencies.
 
 Configure is explicit. Build/Test/Package reject missing or stale configuration. Package requires a successful current Build. `run` installs an already packaged APK on the attached Android device. The FreeCM editor command manifest exposes these same actions.
 
@@ -54,10 +60,22 @@ The source backend uses `build/native-mpv/`; its library output and receipt are 
 
 ## Outputs, signing and CI
 
-APKs keep the `Immivio-<QUEST|PICO|OpenXR>-<version>-<debug|release>-<YYYYMMDD>.apk` naming contract. Each version 2 `.build.json` receipt includes source commit, FreeCM commit, resolved dependency commits, asset and package-lock digests, toolchain, backend, APK hash and signing certificate.
+APKs keep the `Immivio-<QUEST|PICO|OpenXR>-<version>-<debug|release>-<YYYYMMDD>.apk` naming contract. Each version 3 `.build.json` receipt includes source commit, FreeCM commit, resolved dependency commits, asset and package-lock digests, toolchain, backend, APK hash and signing certificate.
 
 The application ID remains `com.wapok.thru3d`, preserving upgrades and user data with a compatible signing certificate. Existing `artifacts/signing/thru3d-signing.json` credentials are reused. Explicit `GODOT_ANDROID_KEYSTORE_<DEBUG|RELEASE>_*` variables take priority; partial overrides fail. Keep keys and credentials outside Git.
 
-Windows/macOS CI uses these same explicit stages for all three targets. Tags build Release and use repository signing secrets when supplied. Publishing requires successful jobs on both hosts, complete pinned version 2 receipts and matching tag/commit; canonical APKs come from macOS.
+Windows/macOS CI uses these same explicit stages for all three targets. Tags build Release and use repository signing secrets when supplied. Publishing requires successful jobs on both hosts, complete pinned dependency receipts and matching tag/commit; canonical APKs come from macOS.
 
 APK checks retain ARM64, ELF symbol/dependency closure and 16KB alignment, signature, ZIP alignment, application identity and exclusion of inference components. These checks do not establish headset playback performance.
+
+## Python media tools
+
+Optional fixture/benchmark packages (NumPy, OpenCV, Pillow, pillow-heif, ONNX Runtime and their dependencies) are fixed in `immivio.python`. Prepare them explicitly:
+
+```sh
+python3 configs/source_root_workflow.py --init --python-tools
+python3 configs/python_tools.py verify --profile media-tools
+python3 configs/python_tools.py run --profile media-tools tools/Generate-StereoFixtures.py --help
+```
+
+The native profile additionally pins Meson, Jinja2, MarkupSafe and packaging. `--init --native-mpv` prepares it. Python downloads require the hashes in the master lock; installs and script runs use local wheel caches offline.

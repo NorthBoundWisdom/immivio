@@ -23,6 +23,10 @@ from configs.dependencies import (
     stage_vendors,
 )
 from configs.source_roots import workflow
+from configs.dependency_manifest import (
+    verify as verify_manifest,
+    catalog as master_catalog,
+)
 from freecm.asset_seeds import require_asset_seeds
 from freecm.repo_commands import validate_repo_command_manifest
 from repomgrandroid.workflow import AndroidWorkflowConfig, run_test_level
@@ -67,6 +71,7 @@ def configuration_path(vendor, build_type):
 
 
 def input_signature(args):
+    verify_manifest(ROOT)
     roots = workflow.require_dependency_roots()
     inputs = {name: digest(ROOT / name) for name in BUILD_INPUTS}
     for directory, pattern in [
@@ -101,7 +106,13 @@ def dependency_receipt():
     roots = workflow.require_dependency_roots()
     assets = lock_data()["assets"]
     return {
-        "schema_version": 2,
+        "schema_version": 3,
+        "dependency_catalog_sha256": digest(ROOT / "source_roots.lock.jsonc.in"),
+        "package_groups": {
+            "maven_components": len(master_catalog()["gradle"]["verification"]),
+            "go_checksums": len(master_catalog()["go"]["OpenList"]["sum"]),
+            "python_profiles": sorted(master_catalog()["python"]),
+        },
         "freecm_commit": subprocess.check_output(
             ["git", "-C", str(ROOT / "FreeCM"), "rev-parse", "HEAD"], text=True
         ).strip(),
@@ -134,6 +145,7 @@ def dependency_receipt():
 
 
 def configure(args, env, sdk):
+    verify_manifest(ROOT)
     require_asset_seeds(ROOT)
     (
         player.prepare_mpv()

@@ -1,14 +1,15 @@
-"""Generate the small source-frame patch against the exact pinned mpv archive."""
-import os
+"""Generate the small source-frame patch against the FreeCM commit-pinned mpv source root."""
 from pathlib import Path
 import difflib
 import hashlib
 import json
+import sys
 from pathlib import Path
-import tarfile
 
 ROOT = Path(__file__).resolve().parents[3]
-ARCHIVE = Path(str(Path(os.environ.get('THRU3D_TOOL_ROOT', str(Path.home() / '.cache/thru3d-toolchain'))) / 'linux-build/downloads/mpv-0b7ed67.tar.gz'))
+sys.path.insert(0,str(ROOT))
+from configs.native_sources import source_root, source_commit, archived_receipt_hash
+
 TARGETS = ("video/out/vo_libmpv.c", "video/out/gpu/libmpv_gpu.c",
            "video/out/gpu/video.c", "video/out/gpu/video.h",
            "video/decode/vd_lavc.c", "video/out/hwdec/hwdec_aimagereader.c", "audio/out/buffer.c",
@@ -24,11 +25,8 @@ def replace_once(text, old, new):
 
 
 def main():
-    original = {}
-    with tarfile.open(ARCHIVE) as archive:
-        for name in TARGETS:
-            entry = next(p for p in archive.getnames() if p.endswith("/"+name))
-            original[name] = archive.extractfile(entry).read().decode()
+    source=source_root('Mpv')
+    original={name:(source/name).read_text() for name in TARGETS}
     edited = dict(original)
     p = "video/out/vo_libmpv.c"
     s = edited[p]
@@ -284,8 +282,8 @@ void gl_video_screenshot(struct gl_video *p, struct vo_frame *frame,
             fromfile="a/"+name if name in original else "/dev/null", tofile="b/"+name))
     output.write_text(patch, encoding="utf-8", newline="\n")
     record = {
-        "base_mpv_revision": "0b7ed670f7c353dd3dd4f8ae0fc788a181a15aa6",
-        "base_archive_sha256": hashlib.sha256(ARCHIVE.read_bytes()).hexdigest(),
+        "base_mpv_revision": source_commit("Mpv"),
+        "base_archive_sha256": archived_receipt_hash("mpv"),
         "base_files_sha256": {p: hashlib.sha256(s.encode()).hexdigest() for p,s in original.items()},
         "patched_files_sha256": {p: hashlib.sha256(s.encode()).hexdigest() for p,s in edited.items()},
         "patch_sha256": hashlib.sha256(patch.encode()).hexdigest(),
