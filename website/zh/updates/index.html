@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark light">
 <meta name="application-name" content="Immivio – VR &amp; Spatial Media Player">
-<title>Immivio — v0.9.1 更新说明与 APK 兼容性</title>
-<meta name="description" content="免费开源 VR 播放器 Immivio v0.9.1 更新说明，了解 Meta Quest、PICO 与 OpenXR 安装包的播放功能、兼容性及历史版本。">
+<title>Immivio — v0.9.2 更新说明与 APK 兼容性</title>
+<meta name="description" content="免费开源 VR 播放器 Immivio v0.9.2 更新说明，了解 Meta Quest、PICO 与 OpenXR 安装包的播放功能、兼容性及历史版本。">
 <link rel="canonical" href="https://northboundwisdom.github.io/immivio/zh/updates/">
 <link rel="alternate" hreflang="zh-CN" href="https://northboundwisdom.github.io/immivio/zh/updates/">
 <link rel="alternate" hreflang="en" href="https://northboundwisdom.github.io/immivio/updates/">
 <link rel="alternate" hreflang="x-default" href="https://northboundwisdom.github.io/immivio/updates/">
-<meta property="og:title" content="Immivio — v0.9.1 更新说明与 APK 兼容性">
-<meta property="og:description" content="免费开源 VR 播放器 Immivio v0.9.1 更新说明，了解 Meta Quest、PICO 与 OpenXR 安装包的播放功能、兼容性及历史版本。">
+<meta property="og:title" content="Immivio — v0.9.2 更新说明与 APK 兼容性">
+<meta property="og:description" content="免费开源 VR 播放器 Immivio v0.9.2 更新说明，了解 Meta Quest、PICO 与 OpenXR 安装包的播放功能、兼容性及历史版本。">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://northboundwisdom.github.io/immivio/zh/updates/">
 <meta property="og:image" content="https://northboundwisdom.github.io/immivio/assets/screenshots/playback.png">
@@ -23,8 +23,8 @@
 <meta property="og:image:width" content="1920">
 <meta property="og:image:height" content="1080">
 <meta property="og:image:alt" content="Immivio 视频播放界面">
-<meta name="twitter:title" content="Immivio — v0.9.1 更新说明与 APK 兼容性">
-<meta name="twitter:description" content="免费开源 VR 播放器 Immivio v0.9.1 更新说明，了解 Meta Quest、PICO 与 OpenXR 安装包的播放功能、兼容性及历史版本。">
+<meta name="twitter:title" content="Immivio — v0.9.2 更新说明与 APK 兼容性">
+<meta name="twitter:description" content="免费开源 VR 播放器 Immivio v0.9.2 更新说明，了解 Meta Quest、PICO 与 OpenXR 安装包的播放功能、兼容性及历史版本。">
 <meta name="twitter:image" content="https://northboundwisdom.github.io/immivio/assets/screenshots/playback.png">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <link rel="icon" href="../../assets/icon.png" type="image/png">
@@ -40,8 +40,8 @@
       "@type": "WebPage",
       "@id": "https://northboundwisdom.github.io/immivio/zh/updates/#webpage",
       "url": "https://northboundwisdom.github.io/immivio/zh/updates/",
-      "name": "Immivio — v0.9.1 更新说明与 APK 兼容性",
-      "description": "免费开源 VR 播放器 Immivio v0.9.1 更新说明，了解 Meta Quest、PICO 与 OpenXR 安装包的播放功能、兼容性及历史版本。",
+      "name": "Immivio — v0.9.2 更新说明与 APK 兼容性",
+      "description": "免费开源 VR 播放器 Immivio v0.9.2 更新说明，了解 Meta Quest、PICO 与 OpenXR 安装包的播放功能、兼容性及历史版本。",
       "inLanguage": "zh-CN",
       "about": {
         "@id": "https://northboundwisdom.github.io/immivio/#software"
@@ -91,7 +91,8 @@
 <main id="main" class="wrap guide-layout">
 <nav class="guide-nav" aria-label="更新说明目录">
 <p class="eyebrow">更新说明</p>
-<a href="#current">v0.9.1</a>
+<a href="#current">v0.9.2</a>
+<a href="#v0-9-1">v0.9.1</a>
 <a href="#v0-9-0">v0.9.0</a>
 <a href="#compatibility">安装包兼容性</a>
 <a href="#history">历史版本</a>
@@ -99,8 +100,21 @@
 <article class="guide-content">
 <p class="eyebrow">IMMIVIO / 更新</p>
 <h1>Immivio 的新变化。</h1>
-<p>以下说明对应 v0.9.1 源码里程碑。你安装的 APK 包含哪些功能，请以该安装包的发布说明为准。</p>
+<p>以下说明对应 v0.9.2 源码里程碑。你安装的 APK 包含哪些功能，请以该安装包的发布说明为准。</p>
 <section id="current">
+<h2>v0.9.2 — 2026 年 10 月 14 日</h2>
+<ul>
+<li>播放页改为紧凑的单行工具栏，字幕、速度、调色、瞳距、校时、播放队列与来源信息各自打开小弹窗。</li>
+<li>视频名称与电量、时钟并列，长名称省略中间内容；关闭按钮独立，上一条／播放／下一条居中。控制条靠近 20%，进度条略向下并缩减留白。</li>
+<li>播放完最后一帧后自动切换下一条，队列结束返回文件页。移除循环、添加书签与跳转方式控制，保留已存书签。</li>
+<li>音量跟随系统，移除播放工具栏上的音量、音轨、帧率、屏幕旋转与重新居中按钮。</li>
+<li>长按 Home 后在同一帧取得更新的追踪位置，只定位一次；窗口保持记忆的水平距离，不再隐藏窗口。</li>
+<li>关于页更新为当前仓库地址，并移除联系邮箱。</li>
+</ul>
+<p>本机主机、JVM、Go、工作流、发布与网站回归已通过，PICO 安装包已装到真机。推送标签会自动创建 Release；两端 Android 构建通过后自动附加校验过的 APK。</p>
+<p><a href="https://github.com/NorthBoundWisdom/immivio/releases">已发布 APK →</a> · <a href="../guide/">安装与操作指南 →</a></p>
+</section>
+<section id="v0-9-1">
 <h2>v0.9.1 — 2026 年 10 月 13 日</h2>
 <ul>
 <li>PICO 自动追踪空间重置通知不再让窗口跳位。需要把内容移回面前时，可使用应用内手动居中。</li>

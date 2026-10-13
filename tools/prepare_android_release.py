@@ -86,6 +86,12 @@ def prepare(packages, output, tag, commit):
         notes = [f'Android APKs for `{tag}` (`{commit[:7]}`).', '',
                  'Choose the PICO, QUEST or OpenXR APK matching your headset. Immivio has one playback edition.', '',
                  'APK hashes and build receipts are included. Both Windows and macOS CI builds passed; release assets use the macOS packages.', '']
+        changelog = Path(__file__).resolve().parents[1] / 'CHANGELOG.md'
+        section = re.search(r'^## ' + re.escape(tag.removeprefix('v')) + r'[^\n]*\n(.*?)(?=^## |\Z)',
+                            changelog.read_text(encoding='utf-8'), re.M | re.S)
+        if section:
+            notes += [section.group(1).strip(), '']
+        notes += ['[English release notes](https://northboundwisdom.github.io/immivio/updates/) · [中文更新说明](https://northboundwisdom.github.io/immivio/zh/updates/)', '']
         if any(r.get('ci_signing') == 'ephemeral-ci-key' for r in records):
             notes += ['These packages use CI-generated signing keys. An existing installation signed with a different key cannot be updated with these APKs.', '']
         notes += ['CI build/package verification does not establish physical headset playback validation.', '']

@@ -64,6 +64,7 @@ jobs:
           assets=(artifacts/release/*.apk artifacts/release/*.build.json artifacts/release/SHA256SUMS.txt artifacts/release/release-manifest.json)
           if gh release view "$RELEASE_TAG" --repo "$GH_REPO" >/dev/null 2>&1; then
             gh release upload "$RELEASE_TAG" "${assets[@]}" --repo "$GH_REPO" --clobber
+            gh release edit "$RELEASE_TAG" --repo "$GH_REPO" --notes-file artifacts/release/release-notes.md
           else
             gh release create "$RELEASE_TAG" "${assets[@]}" --repo "$GH_REPO" --verify-tag \
               --title "Immivio $RELEASE_TAG" --notes-file artifacts/release/release-notes.md

@@ -6,6 +6,10 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 ## Unreleased
 
+## 0.9.2 — 2026-10-14
+
+- Set the application version to 0.9.2 / versionCode 16 for all Android targets. Create GitHub Releases on tag push independently of the Android build runners; attach verified APKs after both builds pass.
+
 - Replace the separate video settings pages with one compact toolbar and mutually exclusive popups for subtitles, speed, grading, IPD, synchronization, queues and source information.
 - Centre previous/play/next, move the middle-elided filename beside the battery/clock capsule, separate Close video, reduce padding and omit unavailable actions. Bring controls 20% closer and lower their timeline by 8 cm.
 - Automatically advance after the final presented frame; return to the previous file-browser location at queue end. Remove user-facing looping, bookmark addition and seek-precision selection while retaining stored bookmarks.
