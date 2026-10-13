@@ -6,7 +6,7 @@ Immivio is a Godot/OpenXR interface over an Android media-library plugin, libmpv
 
 `app/godot/scripts/main.gd` assembles the scene and connects lifecycle/events. Input, photo, playback/queue, preferences and XR presentation coordinators own their respective behavior/state. The main scene retains narrow adapters for existing integrations; controllers access it through weak references. `player_settings_migration.gd` owns the idempotent cleanup of retired effect preferences; ordinary audio, subtitles, queues and native stereo locks are preserved. Controller rays/triggers and supported hand gestures select controls. Grip placement, reclining mode, follow behavior and recentering retain their existing contracts. Lists and captured sliders suppress playback shortcuts until the stick returns to center.
 
-`xr_menu_compositor.gd` owns the Android-Surface menu presenter, its acknowledged presentation queue, curved mapping and scene fallback. Sustained low frame rates latch the fallback until restart. Menu pose and ray targets use the same presented layout.
+`xr_menu_compositor.gd` owns the Android-Surface menu presenter, its acknowledged presentation queue and curved mapping. Native layers are selected by runtime support; frame rate does not switch off native UI composition. Unsupported layers use the scene fallback. Menu pose and ray targets use the same presented layout.
 
 PICO runtime space-reset notifications preserve existing menu/media placement: these notifications also occur automatically and do not expose user intent. Explicit in-app recenter still places content in front of the current gaze. Other runtimes retain deferred system recenter after tracked scene frames. Focus recovery alone never requests placement changes.
 
