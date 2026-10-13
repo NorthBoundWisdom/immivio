@@ -52,14 +52,14 @@ func _run() -> void:
 	check(menu.visible, "Trigger tap opens controls on release")
 	var centre := video.subtitle_transform()
 	var timeline := menu.to_global(Vector3(0, Menu.BAR_SEEK_Y, 0))
-	check((timeline - camera.global_position).normalized().is_equal_approx((centre.origin - camera.global_position).normalized()),
-		"Timeline centre visually overlays relocated canvas, not head forward")
+	check((timeline + Vector3.UP * Menu.EXTRA_DROP - camera.global_position).normalized().is_equal_approx((centre.origin - camera.global_position).normalized()),
+		"Timeline sits below the relocated canvas centre, not head forward")
 	check(menu.global_basis.y.normalized().is_equal_approx(Vector3.UP) and absf(menu.global_basis.z.y) < .00001,
 		"Controls are vertical relative to the floor despite head/canvas tilt")
 	var horizontal_eye := camera.global_position - centre.origin; horizontal_eye.y = 0
 	check(menu.global_basis.z.is_equal_approx(horizontal_eye.normalized()), "Controls face the eye horizontally")
 	check(is_equal_approx(menu._backdrop.mesh.size.x * menu._backdrop.global_basis.x.length(), .87)
-		and is_equal_approx(menu._backdrop.mesh.size.y * menu._backdrop.global_basis.y.length(), .34 * 2.0/3.0), "Visible playback backdrop measures 3/4 width and 2/3 height")
+		and is_equal_approx(menu._backdrop.mesh.size.y * menu._backdrop.global_basis.y.length(), .20 * 2.0/3.0), "Visible playback backdrop measures 3/4 width and 2/3 height")
 	var stable_pose := menu.global_transform
 	camera.rotation.z = .2; camera.position.x += .02
 	main._update_player_menu_anchor()
@@ -125,8 +125,8 @@ func _run() -> void:
 	main._on_pointer_release("trigger_click", "right_hand")
 	check(not menu.has_pointer_capture(), "Trigger release ends slider capture")
 	main._update_player_menu_anchor()
-	check((menu.to_global(Vector3(0, Menu.BAR_SEEK_Y, 0)) - camera.global_position).normalized().is_equal_approx(
-		(video.panel.global_position - camera.global_position).normalized()), "Released controls reattach to the changed canvas centre in view")
+	check((menu.to_global(Vector3(0, Menu.BAR_SEEK_Y, 0)) + Vector3.UP * Menu.EXTRA_DROP - camera.global_position).normalized().is_equal_approx(
+		(video.panel.global_position - camera.global_position).normalized()), "Released controls reattach below the changed canvas centre in view")
 	video.geometry = 1; video.view_yaw = .6; video.view_pitch = .1
 	video._apply_geometry()
 	main._update_player_menu_anchor()
@@ -162,7 +162,7 @@ func _run() -> void:
 			main._recenter()
 			var delta := library.global_position - camera.global_position
 			check(library.global_basis.y.is_equal_approx(Vector3.UP), "Library reset filters head pitch and roll")
-			check(is_equal_approx(delta.y, -.05) and absf(Vector2(delta.x, delta.z).length() - 1.4) < .0001,
+			check(is_equal_approx(delta.y, 0.0) and absf(Vector2(delta.x, delta.z).length() - 1.4) < .0001,
 				"Library reset uses fixed horizontal distance and eye-relative height")
 			check(delta.normalized().dot(-camera.global_basis.z) > 0, "Library reset chooses the current horizontal direction")
 	for pitch in [-PI / 2, PI / 2]:

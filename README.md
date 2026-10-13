@@ -22,7 +22,7 @@ Immivio continues development of [zerochocobo/Thru3D-Media-Player](https://githu
 
 ![The playback interface displaying the supplied VR180 stereo video](website/assets/screenshots/playback.png)
 
-*Actual Android emulator capture using `blandscape-60mbps.mp4`, recorded before the Immivio rename. The 2D diagnostic view demonstrates the interface, not headset stereoscopy, passthrough or frame rate. The original video is not bundled.*
+*Actual Android emulator capture using `blandscape-60mbps.mp4`, recorded before the Immivio rename. The 2D diagnostic view demonstrates the interface, not headset stereoscopy, passthrough or frame rate. The original video is not bundled. Current playback controls use toolbar popups; these captures predate that layout.*
 
 | Playback settings | Display preferences |
 | --- | --- |
@@ -32,8 +32,8 @@ Immivio continues development of [zerochocobo/Thru3D-Media-Player](https://githu
 - **Free and open source.** Download, use and build the player under GPL-3.0; third-party services follow their own terms and may have their own fees.
 - **Bring your own library.** Local files, SMB, WebDAV, DLNA, supported media servers and cloud sources. Available operations depend on the source and your account permissions.
 - **Get comfortable.** Move the picture and panels, adjust supported screen size/distance/curvature, and use reclining mode or head-follow when you want them.
-- **Keep control.** Audio and subtitle selection, playback speed, timestamp bookmarks, per-video audio/subtitle timing, persistent queues, repeat and shuffle.
-- **Return to familiar settings.** Remembered per-video track choices and stereo alignment, persistent volume/mute, and full filename hover tips.
+- **Keep control.** Compact playback popups, subtitles, playback speed, per-video audio/subtitle timing, automatic queue advance and optional shuffle.
+- **Return to familiar settings.** Remembered per-video track choices and stereo alignment, system-controlled volume, and full filename hover tips.
 - **Explore photos.** Single images, side previews, 1–3-row photo walls and memory fragments. Spatial-media decoding depends on the selected playback backend and source format.
 
 Immivio has **one playback edition**. It displays existing stereo/spatial content; it does not generate 3D from 2D. The earlier live AI depth, person-matting, model preparation and inference features have been removed.
@@ -65,8 +65,8 @@ Quest 2 and PICO Neo3 are compatibility targets. Actual performance depends on h
 | Show or hide playback controls | Left Menu button, or tap the picture with the trigger |
 | Select a control | Controller ray + trigger; supported hand pointing/pinching also works |
 | Move the picture or library window | Hold grip; use the same hand's thumbstick for distance where supported |
-| Seek or change volume | Playback controls, or thumbstick shortcuts while lists/sliders are inactive |
-| Mute or restore sound | Double-tap the volume icon |
+| Seek | Drag the timeline or use horizontal thumbstick shortcuts while lists/sliders are inactive |
+| Change volume | Use the headset’s system volume controls |
 | Scroll a library or settings list | Use the thumbstick while the list is open |
 | Return to the library | Choose **Close video** |
 | Watch while reclined | **Settings → General → Reclining mode**; Follow is a separate setting |

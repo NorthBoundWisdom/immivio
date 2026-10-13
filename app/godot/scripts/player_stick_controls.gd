@@ -12,7 +12,7 @@ func suspend() -> void:
 	right_zooming = false
 
 # One command per deflection; return to center before changing direction/action.
-# With [zoom] (immersive views) the right stick's up/down zooms continuously instead of volume.
+# With [zoom] (immersive views) the right stick's up/down zooms continuously.
 func poll(left: Vector2, right: Vector2, zoom: bool = false) -> Array[Dictionary]:
 	var actions: Array[Dictionary] = []
 	for hand in ["left", "right"]:
@@ -35,14 +35,11 @@ func poll(left: Vector2, right: Vector2, zoom: bool = false) -> Array[Dictionary
 		if latched:
 			continue
 		# Cardinal pushes only: a diagonal does nothing (a stray diagonal once swapped the eyes).
-		# Left up/down is the volume (up also unmutes); mute lives on the menu's volume slider.
 		var action: Dictionary = {}
 		if absf(stick.x) > 0.75 and absf(stick.y) < 0.3:
 			var direction := 1 if stick.x > 0 else -1
 			action = {"operation": "seek", "hand": hand, "direction": direction,
 				"delta_ms": direction * (20000 if hand == "left" else 10000)}
-		elif absf(stick.y) > 0.75 and absf(stick.x) < 0.3:
-			action = {"operation": "volume", "direction": 1 if stick.y > 0 else -1}
 		if not action.is_empty():
 			actions.append(action)
 			if hand == "left":

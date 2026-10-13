@@ -22,4 +22,4 @@ Use the Android workflow for host tests and package verification. Rendering fixt
 
 Dependency-selection tests verify that disabled source entries need no seed or download, and explicitly enabling them requires prepared inputs. Host-environment checks inspect installations without installing or downloading tools.
 
-The current refactor checkpoint was compiled without running the test matrix or APK packaging tests, as requested by the owner. Use [ACCEPTANCE.md](ACCEPTANCE.md) for the deferred verification sequence and [FRAME_CONTRACT.md](FRAME_CONTRACT.md) when adapting device reports. Earlier passing results do not certify the current changes.
+Use [ACCEPTANCE.md](ACCEPTANCE.md) for recorded local checks and the remaining device verification sequence, and [FRAME_CONTRACT.md](FRAME_CONTRACT.md) when adapting device reports. Historical results do not certify later source changes.

@@ -24,15 +24,14 @@ func _initialize() -> void:
 	check(host.calls.back()[1] == 2, "Track selection uses MPV track id")
 	video.media.playback.details.audio_track_id = "2"
 	check(video.cycle_audio_track() and host.calls.back()[1] == 0, "Track cycle includes disabled audio")
-	check(video.set_audio_options(-1, 40, true), "Auto selection, volume and mute share one request")
-	check(video.change_volume(-50) and video.audio_volume == 0 and video.audio_muted, "Volume clamp preserves mute")
-	check(video.toggle_mute() and not video.audio_muted, "Mute toggles independently")
-	check(video.toggle_mute() and video.change_volume(10) and video.audio_volume == 10 and not video.audio_muted, "Raising the volume unmutes")
-	check(video.change_volume(-10) and video.audio_volume == 0 and not video.audio_muted, "Lowering does not mute by itself")
-	check(video.media.session_id == 7 and video.media.generation == 3, "Audio controls preserve media and processing generation")
+	check(video._apply_audio_track(-1), "Automatic track selection is retained")
+	check(host.calls.all(func(call): return call[2] == 100.0 and call[3] == false), "Every audio request uses unity gain and leaves volume to the system")
+	check(video.media.session_id == 7 and video.media.generation == 3, "Track selection preserves the decoder generation")
 	host.accepted = false
-	check(not video.set_audio_options(1, 90, true) and video.audio_volume == 0 and not video.audio_muted, "Rejected native request must not update desired controls")
-	check(not video.set_audio_options(-2, 50, false) and not video.set_audio_options(1, NAN, false), "Invalid controls cannot reach the host")
+	var track := video.audio_track_id
+	check(not video._apply_audio_track(1) and video.audio_track_id == track, "Rejected native request leaves the current track intact")
+	var before := host.calls.size()
+	check(not video._apply_audio_track(-2) and host.calls.size() == before, "Invalid track cannot reach the host")
 	video.media.playback = {"details": {"audio_tracks": []}}
 	check(not video.cycle_audio_track(), "Silent source has no audio choice")
 	video.requested_play = true

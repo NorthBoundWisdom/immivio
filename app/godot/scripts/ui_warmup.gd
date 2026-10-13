@@ -7,9 +7,9 @@ const Icons := preload("res://scripts/menu_icons.gd")
 const STATE := {"has_video": true, "title": "Immivio", "source_uri": "warmup://synthetic",
 	"geometry": 0, "stereo": true, "ai_enabled": false, "duration_ms": 60000,
 	"position_ms": 30000, "audio_available": true, "playing": true}
-const PAGES := ["bar", "screen", "playback", "sync", "queue", "info", "color0", "color1", "color2", "stereo", "mode", "subtitles", "volume",
-	"screen_immersive", "stereo_left", "screen_mono", "playback_mono", "sync_mono", "queue_mono", "color0_mono", "color1_mono", "color2_mono", "ipd_mono",
-	"depth", "audio", "subtitle_immersive", "queue_populated", "bookmarks", "playback_alpha", "stereo_tb", "info_available", "quick_screen", "quick_speed", "quick_loop"]
+const PAGES := ["bar", "playback", "sync", "queue", "info", "color0", "color1", "color2", "color3", "color4", "stereo", "mode", "subtitles",
+	"stereo_left", "playback_mono", "sync_mono", "queue_mono", "color0_mono", "color1_mono", "color2_mono", "ipd_mono",
+	"depth", "subtitle_immersive", "queue_populated", "bookmarks", "playback_alpha", "stereo_tb", "info_available", "quick_speed"]
 var playback_menu: Node3D
 
 const SESSION_STATE := {"follow": false, "passthrough_visible": true, "passthrough": false, "alpha": false}
@@ -30,28 +30,21 @@ func _ready() -> void: _run.call_deferred()
 func prepare(menu: Node3D, page: String) -> void:
 	menu._reset_navigation()
 	var name := page.trim_suffix("_mono")
-	match name:
-		"bar", "mode", "subtitles", "volume", "depth", "audio", "subtitle_immersive", "bookmarks", "quick_screen", "quick_speed", "quick_loop":
-			menu.section = 0
-		"info", "info_available": menu.section = 2
-		_: menu.section = 1
-	match name:
-		"screen", "screen_immersive": menu._adjustment = "screen"
-		"stereo", "stereo_left", "stereo_tb", "ipd": menu._adjustment = "stereo_view"
-		"sync": menu._adjustment = "sync"
-		"queue", "queue_populated": menu._adjustment = "queue"
-		_: menu._adjustment = "color_grade" if name.begins_with("color") else ""
+	menu.section = 0; menu._adjustment = ""
 	menu._grade_page = int(name.trim_prefix("color")) if name.begins_with("color") else 0
 	menu._mode_open = name == "mode"; menu._subtitle_open = name in ["subtitles", "subtitle_immersive"]
-	menu._quick_open = name.trim_prefix("quick_") if name.begins_with("quick_") else ""
-	menu._volume_open = name == "volume"; menu._depth_open = name == "depth"
+	var popup_names := {
+		"info": "info", "info_available": "info", "stereo": "ipd", "stereo_left": "ipd", "stereo_tb": "ipd", "ipd": "ipd",
+		"sync": "sync", "queue": "queue", "queue_populated": "queue"}
+	menu._quick_open = "color" if name.begins_with("color") else ("speed" if name == "quick_speed" else popup_names.get(name, ""))
+	menu._depth_open = name == "depth"
 	menu._state = STATE.duplicate(true)
 	menu._state["stereo"] = not page.ends_with("_mono") and name != "depth"
 	menu._state["ai_enabled"] = name in ["depth", "playback_alpha"]
 	menu._state["top_bottom"] = name == "stereo_tb"
 	menu._state["capabilities_available"] = name == "info_available"
 	menu._state["viewing_eye"] = 1 if name == "stereo_left" else 0
-	menu._state["geometry"] = 1 if name in ["screen_immersive", "subtitle_immersive", "playback_alpha"] else 0
+	menu._state["geometry"] = 1 if name in ["subtitle_immersive", "playback_alpha"] else 0
 	if name == "queue_populated":
 		menu._state["queue_items"] = [{"uri":"warmup://synthetic", "title":"Immivio synthetic"}]
 	if name in ["audio", "subtitle_immersive", "subtitles"]:
@@ -64,8 +57,6 @@ func prepare(menu: Node3D, page: String) -> void:
 		menu._state["bookmarks"] = [{"id":"synthetic","position_ms":10000}]
 		menu.bookmarks.opened = true; menu.bookmarks.scope = "warmup://synthetic"
 	menu._draw()
-	if name == "audio":
-		menu.choices.opened = "audio_track"; menu._draw()
 
 func _run() -> void:
 	# Spread SVG decoding/texture uploads across startup frames.

@@ -102,18 +102,10 @@ func _run() -> void:
 	menu.toggle()
 	check(not menu._buttons.any(func(b): return b.target == 112) and not menu._enabled("alpha"),
 		"Spatial video hides the mono 2D-to-3D action without live matting")
-	check(click(menu, Menu.MODE), "Spatial mode panel opens")
-	var texts: Array = menu._labels.map(func(label): return label.text)
-	check(texts.has("Spatial video · MV-HEVC") and texts.has("Mode fixed"), "Source format and fixed-mode reason are visible")
+	check(not menu._buttons.any(func(button): return button.target == Menu.MODE), "Fixed spatial source omits unavailable mode controls")
 	var before := video.revisions
-	for button in menu._buttons:
-		if button.target in range(Menu.MODE_PROJECTION, Menu.MODE_PROJECTION + 4) or button.target in [140, 141, 144, 145, 146]:
-			check(not button.enabled and not click(menu, button.target), "Fixed mode tile rejects trigger: %d" % button.target)
-			menu._activate(button.target)
-	check(video.revisions == before and video.mode_lock == saved_lock, "Disabled tiles cannot switch mode or toggle a remembered lock")
-	var selected: Array = menu._buttons.filter(func(b): return b.get("fixed_current", false))
-	check(selected.size() == 2 and selected.all(func(b): return b.node.material_override.get_shader_parameter("surface_color") == Menu.SELECTED),
-		"Flat and native stereo remain visibly selected while read-only")
+	for target in [130, 131, 132, 133, 140, 141, 144, 145, 146]: menu._activate(target)
+	check(video.revisions == before and video.mode_lock == saved_lock, "Forged old mode events cannot change the fixed spatial source")
 	video.close_video()
 	check(not video.is_spatial_video(), "Closing the source clears its format lock")
 	video.media.begin(10)
@@ -131,7 +123,7 @@ func _run() -> void:
 	video.media.format = {"width": 3840, "height": 1080, "spatial_video": true}
 	video._complete_layout()
 	menu.refresh_values()
-	check(menu._mode_open and menu._labels.any(func(label): return label.text.contains("MV-HEVC")) \
+	check(not menu._mode_open and not menu._buttons.any(func(button): return button.target == Menu.MODE) \
 		and not menu._buttons.any(func(b): return b.target == 112), "Late format detection updates an already-open panel and hides Auto 3D")
 	check(not menu._depth_open and not menu._buttons.any(func(b): return b.target == Menu.DEPTH), "Late spatial detection dismisses the mono depth slider too")
 	main.video = null

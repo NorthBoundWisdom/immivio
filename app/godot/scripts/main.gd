@@ -79,9 +79,6 @@ var memory_swipe := preload("res://scripts/memory_swipe.gd").new()
 var _gallery_save_after: int:
 	get: return _photos._gallery_save_after
 	set(value): _photos._gallery_save_after = value
-var _audio_save_after: int:
-	get: return _preferences._audio_save_after
-	set(value): _preferences._audio_save_after = value
 var _gallery_saved_state: String:
 	get: return _photos._gallery_saved_state
 	set(value): _photos._gallery_saved_state = value
@@ -116,13 +113,9 @@ var library_distance: float:
 var _library_grab: Dictionary:
 	get: return _input._library_grab
 	set(value): _input._library_grab = value
-const SYSTEM_RECENTER_TRACKED_FRAMES := 3
 var _system_recenter_pending: bool:
 	get: return _presentation._system_recenter_pending
 	set(value): _presentation._system_recenter_pending = value
-var _system_recenter_frames: int:
-	get: return _presentation._system_recenter_frames
-	set(value): _presentation._system_recenter_frames = value
 var settings: ConfigFile:
 	get: return _preferences.settings
 	set(value): _preferences.settings = value
@@ -197,8 +190,7 @@ func _ready() -> void:
 	var saved_queue: Variant = settings.get_value("playback", "queue", [])
 	if saved_queue is Array: playback_queue.replace(saved_queue)
 	playback_queue.custom = bool(settings.get_value("playback", "custom_queue", false))
-	for key in ["queue_autoplay", "queue_repeat", "queue_shuffle"]:
-		playback_queue.configure(key, bool(settings.get_value("playback", key, false)))
+	playback_queue.configure("queue_shuffle", bool(settings.get_value("playback", "queue_shuffle", false)))
 	reclining_mode = bool(settings.get_value("ui", "reclining_mode", false))
 	I18n.use(str(settings.get_value("ui", "language", "auto")))
 	fps_overlay = FpsOverlay.new()
@@ -216,8 +208,7 @@ func _ready() -> void:
 	input_visuals = InputVisuals.new()
 	input_visuals.name = "InputVisuals"
 	origin.add_child(input_visuals)
-	# Runtime space notifications are handled by the presentation policy. PICO
-	# automatic notifications preserve placement; explicit app recenter still works.
+	# The runtime emits this after updating tracking; re-place content in the same frame.
 	var openxr := XRServer.find_interface("OpenXR")
 	if not desktop and openxr and openxr.has_signal("pose_recentered"):
 		openxr.connect("pose_recentered", _on_system_recentered)
@@ -228,8 +219,6 @@ func _ready() -> void:
 	video.changed.connect(_on_video_changed)
 	video.mode_lock_changed.connect(_on_mode_lock_changed.bind("video"))
 	video.thumbnail_ready.connect(_on_video_thumbnail_ready)
-	video.restore_audio_preferences(settings.get_value("audio", "volume", 100.0), settings.get_value("audio", "muted", false))
-	video.audio_preferences_changed.connect(_save_audio_preferences)
 	video.prefer_clone_voice = bool(settings.get_value("audio", "prefer_clone_voice", false))
 	video.history_enabled = bool(settings.get_value("library", "history", true))
 	_restore_seek_settings()
@@ -296,9 +285,7 @@ func _ready() -> void:
 	player_menu.recent_requested.connect(_show_recent_menu)
 	player_menu.seek_requested.connect(_on_menu_seek)
 	player_menu.bookmark_requested.connect(_on_bookmark_request)
-	player_menu.bookmark_mode_requested.connect(_on_bookmark_mode_requested)
 	player_menu.setting_requested.connect(_on_player_setting)
-	player_menu.volume_requested.connect(_on_menu_volume)
 	player_menu.adjustment_requested.connect(_on_playback_adjustment)
 	player_menu.adjustment_committed.connect(_save_playback_adjustments)
 	player_menu.subtitle_requested.connect(video.set_subtitle_track)
@@ -400,7 +387,6 @@ func _apply_system_recenter() -> void:
 	_presentation._apply_system_recenter()
 
 func _process(delta: float) -> void:
-	if _audio_save_after > 0 and Time.get_ticks_msec() >= _audio_save_after: _flush_audio_preferences()
 	_apply_system_recenter()
 	_update_view_follow()
 	_refresh_session_controls()
@@ -733,22 +719,10 @@ func _on_menu_seek(position_ms: int) -> void:
 func _on_player_setting(key: String, value: Variant) -> void:
 	_playback._on_player_setting(key, value)
 
-func _on_bookmark_mode_requested(mode: String, scope: String) -> void:
-	_playback._on_bookmark_mode_requested(mode, scope)
-
 func _on_bookmark_request(operation: String, marker_id: String, scope: String) -> void:
 	_playback._on_bookmark_request(operation, marker_id, scope)
 
-## Coalesce slider updates; lifecycle notifications flush the accepted level.
-func _save_audio_preferences(volume: float, muted: bool) -> void:
-	_preferences._save_audio_preferences(volume, muted)
-
-func _flush_audio_preferences() -> void:
-	_preferences._flush_audio_preferences()
-
-func _on_menu_volume(volume: float, muted: bool) -> void:
-	_playback._on_menu_volume(volume, muted)
-
+## Persist accepted depth adjustments for the current media.
 func _on_depth_strength(strength: float, for_photo: bool) -> void:
 	var viewer: Node3D = photo if for_photo else video
 	if viewer.set_depth_strength(strength):
@@ -898,11 +872,11 @@ func _update_status() -> void:
 	calibration_board.visible = status_label.visible and not (video and video.panel and video.panel.visible)
 	if not status_label.visible:
 		return
-	status_label.text = "Immivio - MPV\n%s | %s\nLeft Menu / Tab: player menu\nPoint with a controller and press trigger to select\nA,X / O: open file   Grip / Space: play,pause\nLeft click / P: projection   Right click: reset view\nLeft stick: seek 20s, volume   Right stick / arrows: seek 10s   L: loop\nB / R: recenter   Trigger / T: Alpha,background\nV: fixture" % [mode, detail]
+	status_label.text = "Immivio - MPV\n%s | %s\nLeft Menu / Tab: player menu\nPoint with a controller and press trigger to select\nA,X / O: open file   Grip / Space: play,pause\nLeft click / P: projection   Right click: reset view\nLeft stick: seek 20s   Right stick / arrows: seek 10s\nB / R: recenter   Trigger / T: Alpha,background\nV: fixture" % [mode, detail]
 	if video:
 		status_label.text += "\n%s | %s | %s | %s\n%s | RVM %s" % [video.display_name.left(42), video.media.state, "SBS" if video.stereo_sbs else "2D", video.layout_snapshot().geometry, "Alpha on" if video.alpha_enabled else ("Preparing Alpha" if video.alpha_requested else "Normal playback"), video.profile]
 		status_label.text += "\n%.1f / %.1f s | %s | loop %s" % [video.control.observed_position_ms / 1000.0, video.control.duration_ms / 1000.0, video.control.snapshot().state, "on" if video.loop_enabled else "off"]
-		status_label.text += "\nAudio: %s | %.0f%% | %s\nL up/down: volume | L left/right: track" % [str(video.media.playback.get("details", {}).get("audio_track_id", "none")), video.audio_volume, "muted" if video.audio_muted else "on"]
+		status_label.text += "\nAudio track: %s · System volume" % str(video.media.playback.get("details", {}).get("audio_track_id", "none"))
 		status_label.text += "\nSubtitles: %s | C: track" % ("off" if video.subtitles.requested_track == 0 else str(video.subtitles.requested_track))
 		status_label.text += "\nEyes: %s | E: swap" % ("R/L" if video.swap_eyes else "L/R")
 		if not video.picker_error.is_empty():
@@ -976,7 +950,5 @@ func _finish_app(restart: bool) -> void:
 		get_tree().quit()
 
 func _notification(what: int) -> void:
-	if what in [NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_WM_CLOSE_REQUEST, NOTIFICATION_PREDELETE]:
-		_flush_audio_preferences()
 	if what == NOTIFICATION_APPLICATION_PAUSED and photo and _gallery_save_after > 0:
 		_save_photo_adjustments()

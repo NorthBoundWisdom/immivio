@@ -1,9 +1,7 @@
 extends SceneTree
-
 const Main := preload("res://scripts/main.gd")
 var failures: Array[String] = []
 var checks := 0
-
 class RecenterMain extends Main:
 	var tracked := true
 	var centres := 0
@@ -11,127 +9,49 @@ class RecenterMain extends Main:
 	func _recenter() -> void:
 		centres += 1
 		super._recenter()
-
 func check(value: bool, message: String) -> void:
 	checks += 1
 	if not value: failures.append(message)
-
+func home(main: Node3D) -> void:
+	# A new gesture occurs after the duplicate-notification window.
+	main._presentation._system_recenter_last_notification_ms = -main._presentation.SYSTEM_RECENTER_REPEAT_MS
+	main._on_system_recentered()
 func _initialize() -> void: _run.call_deferred()
-
 func _run() -> void:
-	var folder := ProjectSettings.globalize_path("res://../../build/output/system-recenter")
-	DirAccess.make_dir_recursive_absolute(folder)
-	var main := RecenterMain.new(); main.settings_path = folder.path_join("settings-%d.cfg" % Time.get_ticks_usec())
+	var main := RecenterMain.new(); main.settings_path = "user://home-ring-%d.cfg" % Time.get_ticks_usec()
 	root.add_child(main); main.set_process(false); main.report_timer.stop(); main.menu_compositor.set_process(false)
 	main.video.set_process(false); main.photo.set_process(false)
 	main.display.preview = false; main.display.session_state = "session_focussed"; main._head_placed = true
-	main._presentation._runtime_is_pico = false
 	var menu: Node3D = main.recent_menu
-	var old_head := Transform3D(Basis(Vector3.UP, .25), Vector3(.5, 1.7, .2))
-	var new_head := Transform3D(Basis.from_euler(Vector3(.45, .25 + PI, .2)), Vector3(-.3, 1.8, .4))
-	for follow in [false, true]:
-		for reclining in [false, true]:
-			main.view_follow.set_enabled(follow); main.reclining_mode = reclining; main.video.reclining_mode = reclining
-			main.xr_camera.global_transform = old_head
-			main.video.local_uri = "file:///synthetic-recenter.mp4"
-			main.video.geometry = 0; main.video._apply_geometry()
-			main._recenter()
-			var before := menu.global_transform
-			var calls := main.centres
-			main._on_system_recentered()
-			check(main._system_recenter_pending and main.centres == calls and menu.global_transform.is_equal_approx(before), "Long Home notification cannot use the old camera pose synchronously")
-			main._apply_system_recenter()
-			main.xr_camera.global_transform = new_head
-			main._apply_system_recenter()
-			check(main.centres == calls, "Recenter waits for subsequent tracked scene frames")
-			main._apply_system_recenter()
-			var centre: Vector2 = menu.capture_envelope().get_center()
-			var expected_centre: Vector3 = new_head.origin - new_head.basis.z * main.library_distance
-			check(not main._system_recenter_pending and main.centres == calls + 1 and menu.to_global(Vector3(centre.x, centre.y, 0)).is_equal_approx(expected_centre), "Long Home places the complete browser centre on the new gaze ray")
-			check(menu.global_basis.is_equal_approx(main._menu_head_pose(new_head).basis), "Library orientation retains the upright/reclining preference")
-			check((menu.global_position - new_head.origin).dot(-new_head.basis.z) > 0, "A 180-degree reference-space change puts the window in front, never behind")
-			var screen: Transform3D = main.video.global_transform * main.video.flat_pose
-			check((screen.origin-new_head.origin).dot(-new_head.basis.z) > 0 and is_equal_approx(screen.origin.distance_to(new_head.origin), main.video.screen_distance), "Flat video returns in front at its remembered distance")
-			if follow:
-				check(main.view_follow.pose(main._menu_key(menu), main._menu_head_pose(new_head)).is_equal_approx(menu.global_transform), "Long Home replaces stale follow offsets with centred placement")
-			before = menu.global_transform
-			main._notification(Main.NOTIFICATION_APPLICATION_PAUSED)
-			main.display.session_state = "session_visible"; main._on_input_session_changed()
-			main.display.session_state = "session_focussed"; main._on_input_session_changed()
-			main._notification(Main.NOTIFICATION_APPLICATION_RESUMED)
-			for frame in 5: main._apply_system_recenter()
-			check(main.centres == calls + 1 and menu.global_transform.is_equal_approx(before), "Short Home dialog/focus recovery does not request another recenter")
-	main.view_follow.set_enabled(false); main.reclining_mode = false; main.video.reclining_mode = false
-	var calls := main.centres
-	main._on_system_recentered(); main.display.session_state = "session_visible"
-	for frame in 5: main._apply_system_recenter()
-	check(main.centres == calls and main._system_recenter_pending, "A long Home request waits while the system owns focus")
-	main.display.session_state = "session_focussed"; main.tracked = false
-	for frame in 5: main._apply_system_recenter()
-	check(main.centres == calls and main._system_recenter_frames == 0, "Missing tracking cannot centre at a world-origin fallback")
-	main.tracked = true
-	for frame in 2: main._apply_system_recenter()
-	main._on_system_recentered() # Coalesce another reset while camera updates are pending.
-	main._apply_system_recenter()
-	check(main.centres == calls, "Duplicate system resets restart the camera-update wait")
-	for frame in 2: main._apply_system_recenter()
-	check(main.centres == calls + 1 and not main._system_recenter_pending, "Multiple reset notifications apply exactly one centred placement")
-	main._on_system_recentered(); main._recenter(); calls = main.centres
-	for frame in 5: main._apply_system_recenter()
-	check(main.centres == calls and not main._system_recenter_pending, "Manual recenter consumes a pending system request")
-	# Playback controls stay aligned to recentered flat and immersive content.
-	menu.visible = false; main.player_menu.visible = true
-	main.video.media.begin(1); main.video.media.state = "playing"
-	for projection in [0, 1, 2, 3]:
-		main.video.geometry = projection; main.video.view_yaw = .7; main.video.view_pitch = .2; main.video.view_zoom = .3
-		main.video._apply_geometry(); main.video.panel.visible = true
-		main.xr_camera.global_transform = new_head
-		main._on_system_recentered()
-		for frame in 3: main._apply_system_recenter()
-		check((main.player_menu.global_position-new_head.origin).dot(-new_head.basis.z) > 0, "Long Home centres playback controls in front for projection %d" % projection)
-		if projection != 0:
-			check(main.video.view_yaw == 0 and main.video.view_pitch == 0 and main.video.view_zoom == 0, "Long Home resets immersive view offsets")
-	# PICO runtime notifications do not distinguish automatic space changes from
-	# a user's system recenter. They must not pull an idle window to the new gaze.
-	main._presentation._runtime_is_pico = true
-	menu.visible = true; main.player_menu.visible = false
-	main.video.geometry = 0; main.video._apply_geometry(); main.video.panel.visible = true
-	main.view_follow.set_enabled(false)
-	for reclining in [false, true]:
-		main.reclining_mode = reclining
-		for pitch in [-.45, 0.0, .35]:
-			var gaze := Transform3D(Basis.from_euler(Vector3(pitch, .6, .12)), Vector3(.2, 1.7, -.3))
-			main.xr_camera.global_transform = gaze
-			main._place_menu(menu)
-			var centre: Vector2 = menu.capture_envelope().get_center()
-			var centre_world: Vector3 = menu.to_global(Vector3(centre.x, centre.y, 0))
-			check(centre_world.is_equal_approx(gaze.origin - gaze.basis.z * main.library_distance), "Opening the file browser centres its visual envelope for pitched gaze")
-			check(menu.global_basis.is_equal_approx(main._menu_head_pose(gaze).basis), "Gaze-centred browser retains upright/reclining orientation")
-			var fixed_pose := menu.global_transform
-			main.xr_camera.global_transform = new_head
-			main._update_view_follow()
-			main._on_system_recentered()
-			for frame in 5: main._apply_system_recenter()
-			check(menu.global_transform.is_equal_approx(fixed_pose), "An opened browser stays fixed when the head moves and PICO emits a runtime reset")
-	for follow in [false, true]:
-		for reclining in [false, true]:
-			main.view_follow.set_enabled(follow); main.reclining_mode = reclining
-			main.xr_camera.global_transform = old_head
-			main._recenter()
-			main.view_follow.capture(main._menu_key(menu), main._menu_head_pose(old_head), menu.global_transform)
-			var before: Transform3D = menu.global_transform
-			var screen_before: Transform3D = main.video.flat_pose
-			var offsets: Dictionary = main.view_follow._poses.duplicate(true)
-			calls = main.centres
-			for notification in 4:
-				main._on_system_recentered()
-				main.xr_camera.global_transform = new_head
-				for frame in 5: main._apply_system_recenter()
-			check(main.centres == calls and not main._system_recenter_pending, "Repeated PICO space notifications do not request content recentering")
-			check(menu.global_transform.is_equal_approx(before) and main.video.flat_pose.is_equal_approx(screen_before), "PICO notifications preserve existing menu and screen placement")
-			check(main.view_follow._poses == offsets, "PICO notifications preserve explicit follow offsets")
-			main._recenter()
-			check(main.centres == calls + 1 and not menu.global_transform.is_equal_approx(before), "Explicit in-app recenter still moves PICO content in front of the user")
+	for pico in [false, true]:
+		main._presentation._runtime_is_pico = pico
+		for follow in [false, true]:
+			main.view_follow.set_enabled(follow)
+			for reclining in [false, true]:
+				main.reclining_mode = reclining
+				for pitch in [-.7, 0.0, .7]:
+					var pose := Transform3D(Basis.from_euler(Vector3(pitch, .9, .2)), Vector3(.4, 1.7, -.3))
+					main.xr_camera.global_transform = pose
+					var before := main.centres
+					home(main)
+					var centre: Vector2 = menu.capture_envelope().get_center()
+					var offset: Vector3 = menu.to_global(Vector3(centre.x, centre.y, 0)) - pose.origin
+					check(main.centres == before + 1 and not main._system_recenter_pending, "Updated tracking is used synchronously for Home")
+					check(is_zero_approx(offset.y) and is_equal_approx(offset.length(), main.library_distance), "Home puts the complete window on the fixed eye-height ring")
+					check(offset.normalized().is_equal_approx(-Main._upright_pose(pose).basis.z), "Ring direction follows horizontal gaze only")
+					var fixed := menu.global_transform
+					main._on_system_recentered(); main._apply_system_recenter()
+					check(main.centres == before + 1 and menu.global_transform.is_equal_approx(fixed) and menu.visible, "Duplicate Home notification neither follows the head nor hides or repositions the window")
+	main.library_distance = 1.9; main.display.session_state = "session_visible"
+	var before := main.centres; var fixed := menu.global_transform
+	home(main); main._apply_system_recenter()
+	check(main._system_recenter_pending and main.centres == before and menu.global_transform.is_equal_approx(fixed), "System focus loss defers one placement without moving content")
+	main.display.session_state = "session_focussed"; main.tracked = false; main._apply_system_recenter()
+	check(main.centres == before and main._system_recenter_pending, "Tracking loss cannot use a world-origin fallback")
+	main.tracked = true; main._apply_system_recenter()
+	var centre: Vector2 = menu.capture_envelope().get_center()
+	check(main.centres == before + 1 and is_equal_approx(menu.to_global(Vector3(centre.x, centre.y, 0)).distance_to(main.xr_camera.global_position), 1.9), "Recovered tracking applies once and retains manual distance")
+	main._apply_system_recenter(); check(main.centres == before + 1, "Subsequent frames do not repeat the placement")
 	main.queue_free(); await process_frame
 	for failure in failures: push_error(failure)
 	print("System recenter: %d checks, %d failures" % [checks, failures.size()])

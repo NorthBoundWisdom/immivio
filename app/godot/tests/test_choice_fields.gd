@@ -63,13 +63,13 @@ func _run() -> void:
 	menu._activate(Library.TAB_BASE + Library.VIDEO_TAB)
 	menu.release_pointer("left_hand", point, -menu.global_basis.z, true)
 	check(events.size() == 1 and menu.choices.capture.is_empty() and menu.choices.opened.is_empty(), "Tab switch cancels old dropdown ownership and stale release")
-	check(menu.rows.size() == 2 and menu.rows[0].choices.size() == 2 and menu.rows[1].compact, "Two seek choices and short resolution choices are compact radios")
+	check(menu.rows.size() == 1 and menu.rows[0].compact and not menu.rows.any(func(row): return row.get("key") == "seek_mode"), "Resolution retains compact choices and retired seek preference is absent")
 	check(not menu.rows.any(func(row): return row.get("key") == "alpha_fps"), "Removed inference controls are absent")
-	tap(menu, target(menu, "seek_mode", "exact"))
-	check(state.seek_mode == "exact" and events.back() == ["seek_mode", "exact"], "Radio selection chooses precision directly")
+	tap(menu, target(menu, "output_width", 4096))
+	check(state.output_width == 4096 and events.back() == ["output_width", 4096], "Radio selection chooses output resolution directly")
 	var selected := 0
 	for button in menu._buttons:
-		if menu.choices.targets.has(button.target) and menu.choices.targets[button.target].get("key") == "seek_mode" and button.base_color == menu.SELECTED: selected += 1
+		if menu.choices.targets.has(button.target) and menu.choices.targets[button.target].get("key") == "output_width" and button.base_color == menu.SELECTED: selected += 1
 	check(selected == 1, "Exactly one radio is visibly selected")
 	menu._activate(Library.TAB_BASE + Library.BACKGROUND_TAB)
 	tap(menu, target(menu, "background_yaw", null, "open"))

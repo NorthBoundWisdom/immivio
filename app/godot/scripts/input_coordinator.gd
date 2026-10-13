@@ -104,14 +104,6 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				host.video.seek_relative(-10000)
 			KEY_RIGHT:
 				host.video.seek_relative(10000)
-			KEY_L:
-				host.video.toggle_loop()
-			KEY_M:
-				host.video.toggle_mute()
-			KEY_U:
-				host.video.change_volume(10.0)
-			KEY_J:
-				host.video.change_volume(-10.0)
 			KEY_H:
 				host.video.cycle_audio_track()
 			KEY_C:
@@ -298,7 +290,7 @@ func _update_controls_visibility(menu: Node3D) -> void:
 		host._menu_touched_ms = now
 		return
 	# Keep popups, sliders and pending seeks visible; use media state, not the seek queue's state.
-	if menu.section != 0 or menu._mode_open or not menu._quick_open.is_empty() or not menu._adjustment.is_empty() or menu._volume_open or menu._depth_open: return
+	if menu.section != 0 or menu._mode_open or not menu._quick_open.is_empty() or not menu._adjustment.is_empty() or menu._depth_open: return
 	if host.photo_active and host.photo_menu._layout_open: return
 	if host.photo_active:
 		if host.photo_menu._gallery_open: return
@@ -721,8 +713,6 @@ func _apply_stick_actions(actions: Array[Dictionary], delta: float = 1.0 / 72.0)
 		match action.operation:
 			"zoom": host.video.zoom_view(float(action.amount) * host.ZOOM_SPEED * delta)
 			"seek": host.video.seek_relative(int(action.get("delta_ms", int(action.direction) * 10000)))
-			"volume": host.video.change_volume(float(action.direction) * 10)
 			"audio_track": host.video.cycle_audio_track(int(action.direction))
-			"mute": host.video.toggle_mute()
 			"subtitle": host.video.cycle_subtitle_track(int(action.direction))
 			"swap_eyes": host.video.toggle_eye_order()

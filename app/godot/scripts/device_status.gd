@@ -114,6 +114,9 @@ func clock_text() -> String:
 func text_snapshot() -> String:
 	return _label.text
 
+func pill_width() -> float:
+	return _pill.mesh.size.x if is_instance_valid(_pill) else minimum_width
+
 func _icon(key: String, color: Color) -> MeshInstance3D:
 	var node := MeshInstance3D.new()
 	var mesh := QuadMesh.new()

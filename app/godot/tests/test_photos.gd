@@ -165,7 +165,7 @@ func _run() -> void:
 	menu.queue_provider = func(): return photo.queue
 	root.add_child(menu)
 	menu.toggle()
-	check(not menu._buttons.any(func(b): return b.target in [menu.SEEK, menu.VOLUME, 102, 109]), "Photo controls have no playback/timeline/volume controls")
+	check(not menu._buttons.any(func(b): return b.target in [menu.SEEK, 160, 102, 109]), "Photo controls have no playback/timeline/volume controls")
 	var commands: Array[String] = []
 	menu.action_requested.connect(func(op): commands.append(op))
 	menu._activate(menu.PHOTO_INSPECT)

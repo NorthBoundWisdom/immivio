@@ -119,7 +119,7 @@ func _check_device_status() -> void:
 	check(pill.text_snapshot() == "13:05" and not pill._battery.visible and not pill._bolt.visible, "Status pill: clock only without a battery source")
 	pill.free()
 
-func setting_click(menu: Node3D, target: int) -> bool:
+static func setting_click(menu: Node3D, target: int) -> bool:
 	for button in menu._buttons:
 		if button.target == target:
 			var centre: Vector2 = button.rect.get_center()
@@ -129,7 +129,7 @@ func setting_click(menu: Node3D, target: int) -> bool:
 			return true
 	return false
 
-func choose_setting(menu: Node3D, key: String, value: Variant) -> bool:
+static func choose_setting(menu: Node3D, key: String, value: Variant) -> bool:
 
 	for target in menu.choices.sliders:
 		if menu.choices.targets[target].key != key: continue
@@ -179,7 +179,6 @@ func _run() -> void:
 	menu.adjustment_committed.connect(main._save_playback_adjustments)
 	menu.recent_requested.connect(main._show_recent_menu)
 	menu.seek_requested.connect(main._on_menu_seek)
-	menu.volume_requested.connect(main._on_menu_volume)
 	menu.subtitle_requested.connect(video.set_subtitle_track)
 	menu.depth_strength_requested.connect(main._on_depth_strength.bind(false))
 	menu.depth_strength_committed.connect(main._save_depth_strength)
@@ -276,17 +275,15 @@ func _run() -> void:
 	video.control.duration_ms = 60000
 	menu.refresh_values()
 	check(not menu.text_snapshot().contains("Press trigger") and not menu.text_snapshot().contains("controller"), "Product controls omit implementation and interaction instruction text")
-	check(click(menu, 11) and menu.section == 1 and menu._adjustment == "screen" and click(menu, Menu.PLAYBACK_SETTINGS) and choose_setting(menu, "loop", true) and video.loop_enabled and menu.visible and menu.text_snapshot().contains("On"), "Loop radio selection applies without closing menu")
-	check(click(menu, 10) and menu.section == 0, "Arrow returns from the settings panel to the slim bar")
-	check(click(menu, 11) and menu.section == 1 and menu.visible and click(menu, Menu.PLAYBACK_SETTINGS), "Settings tab selected by ray")
-	check(not menu.text_snapshot().contains("Test video") and not Menu.OPERATIONS[1].has("calibration"), "Settings no longer offers test videos")
-	check(not menu.text_snapshot().contains("Alpha resolution") and not menu.text_snapshot().contains("Eye order"), "Mono settings hide eye order")
-	var eye_order_target := 100 + Menu.OPERATIONS[1].find("stereo_view")
-	check(not click(menu, eye_order_target), "Settings eye order is disabled for mono video")
-	check(click(menu, 10) and click(menu, 111) and choose_setting(menu, "audio_track", 2) and video.audio_track_id == 2 and click(menu, 11), "Audio dropdown selects native track IDs directly")
+	check(not menu._buttons.any(func(button): return button.target in [11, 109, 111, 108, 210, 215, 216]), "Toolbar omits retired settings, audio, recenter, screen and FPS actions")
+	check(click(menu, Menu.QUICK_COLOR) and menu._quick_open == "color" and menu.section == 0 and menu.visible, "Color settings open a popup over the unchanged toolbar")
+	check(click(menu, Menu.QUICK_CLOSE) and menu._quick_open.is_empty(), "Popup close returns to the same toolbar")
+	var eye_order_target := Menu.IPD_SETTINGS
+	check(not click(menu, eye_order_target), "Mono playback omits unavailable IPD controls")
+	check(video.select_audio_track(2) and video.audio_track_id == 2, "Retained track preferences use native track IDs without an audio toolbar button")
 	check(not Menu.OPERATIONS[1].has("subtitle_back") and not Menu.OPERATIONS[1].has("subtitle_next")
 		and not Menu.HEADINGS.has("Subtitles") and not Menu.OPERATIONS[1].has("audio") and not Menu.OPERATIONS[1].has("depth_strength"), "Settings omit duplicate track and depth controls")
-	check(click(menu, 10) and click(menu, 110) and menu._subtitle_open and video.subtitles.requested_track == 0, "CC opens choices without changing subtitle selection")
+	check(click(menu, 110) and menu._subtitle_open and video.subtitles.requested_track == 0, "CC opens choices without changing subtitle selection")
 	check(menu._subtitle_ids.values() == [0, 1, 3], "Picker shows Off and every supported text track, skipping bitmap subtitles")
 	check(click(menu, Menu.SUBTITLE_ROW + 2) and video.subtitles.requested_track == 3 and host.calls.back() == ["subtitle", 7, 3]
 		and not menu._subtitle_open, "Ray selects the actual nonconsecutive ASS track ID and closes picker")
@@ -324,8 +321,8 @@ func _run() -> void:
 	check(menu._subtitle_ids.has(Menu.SUBTITLE_ROW) and menu._subtitle_ids.size() == 4, "Off stays visible while a long track list scrolls")
 	check(click(menu, Menu.SUBTITLE_DOWN) and menu._subtitle_offset > 3, "Ray arrow scrolls further subtitle choices")
 	check(click(menu, Menu.SUBTITLE_UP), "Ray arrow scrolls earlier subtitle choices")
-	check(click(menu, 109) and not menu._subtitle_open and menu._subtitle_ids.is_empty(), "Opening volume closes subtitle picker")
-	check(click(menu, 110) and menu._subtitle_open and not menu._volume_open, "Opening subtitles closes volume")
+	check(click(menu, Menu.QUICK_SPEED) and not menu._subtitle_open and menu._subtitle_ids.is_empty(), "Opening speed closes subtitle picker")
+	check(click(menu, 110) and menu._subtitle_open and menu._quick_open.is_empty(), "Opening subtitles closes speed")
 	check(click(menu, 110) and not menu._subtitle_open, "Pressing CC again dismisses picker without changing track")
 	video.media.playback.details.subtitle_tracks = saved_tracks
 	menu.refresh_values()
@@ -336,26 +333,26 @@ func _run() -> void:
 	check(host.calls.size() == full_sbs_calls, "Full-to-half SBS changes display without rebuilding decoder")
 	check(click(menu, Menu.MODE_STEREO + 6) and video.stereo_layout() == 4 and video.top_bottom, "Half TB tile changes packing axis")
 	check(click(menu, Menu.MODE_PROJECTION + 2) and video.geometry == 2 and video.stereo_layout() == 4, "Fisheye preserves a half top-bottom source")
-	check(click(menu, 11) and click(menu, Menu.PLAYBACK_SETTINGS) and menu._caption("eyes") == "T / B", "Settings describes top-bottom eye order")
+	check(menu._caption("eyes") == "T / B", "Settings describes top-bottom eye order")
 	var order_calls := host.calls.size()
-	check(click(menu, eye_order_target) and menu._adjustment == "stereo_view" and click(menu, Menu.EYE_SWAP) and video.swap_eyes and menu._caption("eyes") == "B / T", "Settings swaps actual top-bottom eye order")
+	check(click(menu, eye_order_target) and menu._quick_open == "ipd" and click(menu, Menu.EYE_SWAP) and video.swap_eyes and menu._caption("eyes") == "B / T", "Settings swaps actual top-bottom eye order")
 	check(host.calls.size() == order_calls and click(menu, Menu.EYE_SWAP) and not video.swap_eyes, "Swapping eye order needs no decoder rebuild and can restore normal")
-	check(click(menu, 400) and click(menu, 10) and click(menu, Menu.MODE), "Return from eye settings to the format popup")
+	check(click(menu, Menu.MODE), "Return from eye settings to the format popup")
 	check(click(menu, Menu.MODE_STEREO + 6) and video.mode_lock.layout == 4, "Half TB selection locks and saves")
 	check(click(menu, Menu.MODE_STEREO + 6) and video.mode_lock.is_empty(), "Half TB lock toggles off")
 	check(click(menu, Menu.MODE_STEREO + 1) and not video.stereo_half and not video.top_bottom, "Full SBS clears both half and TB")
 	check(not shown.call(112) and not click(menu, 112) and not video.depth_requested, "Native stereo hides the unavailable depth shortcut")
-	check(click(menu, 11) and click(menu, Menu.PLAYBACK_SETTINGS) and menu._caption("eyes") == "L / R" and click(menu, eye_order_target) and click(menu, Menu.EYE_SWAP) and video.swap_eyes and menu._caption("eyes") == "R / L", "Settings swaps actual SBS eye order")
-	check(click(menu, Menu.VIEWING_EYE + 1) and video.viewing_eye == 1 and menu._adjust_rows.is_empty(), "Left-eye viewing uses the actual controller and hides alignment sliders")
-	check(click(menu, Menu.VIEWING_EYE + 2) and video.viewing_eye == 2, "Right-eye viewing uses the actual controller")
-	check(click(menu, Menu.VIEWING_EYE) and video.viewing_eye == 0 and menu._adjust_rows.has(Menu.ALIGNMENT_HORIZONTAL), "Binocular viewing restores alignment controls")
-	menu._adjust_target = Menu.ALIGNMENT_HORIZONTAL
-	menu._set_adjustment_at(0.39)
+	check(menu._caption("eyes") == "L / R" and click(menu, eye_order_target) and click(menu, Menu.EYE_SWAP) and video.swap_eyes and menu._caption("eyes") == "R / L", "Settings swaps actual SBS eye order")
+	check(choose_setting(menu, "viewing_eye", 1) and video.viewing_eye == 1 and not menu.choices.targets.values().any(func(item): return item.get("key") == "stereo_horizontal"), "Left-eye viewing uses the actual controller and hides alignment sliders")
+	check(choose_setting(menu, "viewing_eye", 2) and video.viewing_eye == 2, "Right-eye viewing uses the actual controller")
+	check(choose_setting(menu, "viewing_eye", 0) and video.viewing_eye == 0 and menu.choices.targets.values().any(func(item): return item.get("key") == "stereo_horizontal"), "Binocular viewing restores alignment controls")
+	check(choose_setting(menu, "stereo_horizontal", 1.0), "Alignment slider is selectable")
 	check(is_equal_approx(video.stereo_horizontal, 1.0) and not menu.allows_playback_sticks(), "Alignment slider reaches production controller and blocks playback sticks")
 	check(click(menu, Menu.ALIGNMENT_RESET) and video.stereo_horizontal == 0.0 and video.stereo_vertical == 0.0, "Alignment reset reaches production controller")
-	check(click(menu, 400) and click(menu, 10) and click(menu, Menu.MODE), "Eye settings return to the mode popup")
+	check(click(menu, Menu.MODE), "Eye settings return to the mode popup")
 	check(click(menu, Menu.MODE_PROJECTION + 1) and video.geometry == 1, "Projection tile sets actual video geometry")
-	check(click(menu, 108), "Recenter routed through preview-safe Main")
+	main._recenter()
+	check(not shown.call(108), "Recenter is reserved for Home and no longer occupies the toolbar")
 	var layout_calls := host.calls.size()
 	check(click(menu, 110) and menu._subtitle_open and menu.choices.sliders.size() == 3,
 		"VR CC popup includes distance, angle and size sliders")
@@ -392,23 +389,9 @@ func _run() -> void:
 		and locks.call() == 2 and main.settings.get_value("video", "mode_lock") == video.mode_lock, "Second press on 180 locks 180 + SBS, both tiles marked, saved")
 	check(click(menu, Menu.MODE_STEREO + 1) and video.mode_lock.is_empty() and locks.call() == 0, "Pressing a locked tile unlocks")
 	check(click(menu, Menu.MODE_STEREO + 1) and video.mode_lock.layout == 1 and click(menu, Menu.MODE), "Either lit tile locks")
-	# Volume: the sound icon raises a vertical slider; its bottom mutes and keeps the level.
-	check(click(menu, 109) and menu._volume_open and menu._buttons.any(func(b): return b.target == Menu.VOLUME), "Sound icon opens the volume slider")
-	var span: Vector2 = Menu.VOLUME_SPAN
-	check(press_at(menu, Menu.VOLUME_X, span.x + (span.y - span.x) * 0.9) and video.audio_volume == 90.0 and host.calls.back() == ["audio", 7, video.audio_track_id, 90.0, false], "Slider press sets the MPV volume")
-	menu.update_pointer("right_hand", menu.to_global(Vector3(Menu.VOLUME_X, span.x + (span.y - span.x) * 0.4, 1)), -menu.global_basis.z, true)
-	check(video.audio_volume == 40.0 and not video.audio_muted, "Dragging with the trigger held follows the ray")
-	menu.update_pointer("right_hand", menu.to_global(Vector3(Menu.VOLUME_X, span.x - 0.2, 1)), -menu.global_basis.z, true)
-	check(video.audio_muted and video.audio_volume == 40.0 and menu._sound_icon() == "mute", "Dragging past the bottom mutes and keeps the level")
-	menu.release_pointer("right_hand", Vector3.ZERO, Vector3.ZERO, false)
-	var calls_after_release := host.calls.size()
-	menu.update_pointer("right_hand", menu.to_global(Vector3(Menu.VOLUME_X, span.y, 1)), -menu.global_basis.z, true)
-	check(host.calls.size() == calls_after_release, "Released trigger stops the drag")
-	check(press_at(menu, Menu.VOLUME_X, span.x + (span.y - span.x) * 0.3) and not video.audio_muted and video.audio_volume == 30.0 and menu._sound_icon() == "volume_low", "Raising the slider unmutes")
-	menu.release_pointer("right_hand", Vector3.ZERO, Vector3.ZERO, false)
-	check(click(menu, 109) and not menu._volume_open, "Sound icon closes the slider")
-	check(click(menu, 11) and click(menu, 12) and menu.section == 2 and menu.text_snapshot().contains("3840 x 1920 | hevc"), "Info tab shows source properties from actual player")
-	check(not click(menu, 100), "Unavailable Android plugin disables device refresh")
+	check(not shown.call(109), "System volume has no in-app slider")
+	check(click(menu, 12) and menu._quick_open == "info" and menu.section == 0 and menu.text_snapshot().contains("3840 x 1920 | hevc"), "Info tab shows source properties from actual player")
+	check(not click(menu, Menu.INFO_REFRESH), "Unavailable Android plugin disables device refresh")
 	video.picker_error = "PERMISSION_LOST"
 	menu.refresh_values()
 	check(menu.text_snapshot().contains("PERMISSION_LOST"), "Action error remains visible in Info")
@@ -421,8 +404,9 @@ func _run() -> void:
 	main._on_controller_button("ax_button", "right_hand")
 	check(menu.visible and host.calls.back()[0] != "pick", "Controller A cannot open a file through menu")
 	main._process(1.0 / 72.0)
-	check(menu.section == 2, "Menu ignores absent/zero tracking axes")
-	check(click(menu, Menu.CLOSE) and not menu.visible, "Close button dismisses controls overlay")
+	check(menu.section == 0 and menu._quick_open == "info", "Menu ignores absent/zero tracking axes")
+	main._toggle_player_menu()
+	check(not menu.visible, "Menu toggle dismisses controls overlay")
 	main._on_controller_button("menu_button", "left_hand")
 	check(menu.visible and menu.section == 0, "Menu button reopens controls on Playback")
 	main._on_controller_button("menu_button", "left_hand")
@@ -513,10 +497,9 @@ func _run() -> void:
 	check(not click(menu, 101), "First video disables previous")
 	check(click(menu, 103) and video.local_uri == "file:///next.mp4" and host.calls.any(func(c): return c[0] == "open" and c[1] == "file:///next.mp4"), "Pointer next opens the next video through the production backend")
 	check(not click(menu, 103) and menu.visible, "Last video disables next and keeps controls open")
+	check(menu._tips.get(101) == "Previous video" and menu._buttons.filter(func(button): return button.target == 101)[0].node.get_child(1).material_override.albedo_texture == menu.Icons.texture("previous_video"), "Available previous uses the skip icon and tooltip")
 	check(click(menu, 101) and video.local_uri == "file:///menu.mp4", "Pointer previous returns to the original video")
-	check(menu._tips[101] == "Previous video" and menu._tips[103] == "Next video", "Navigation tooltips replace seek labels")
-	check(menu._buttons.filter(func(b): return b.target == 101)[0].node.get_child(1).material_override.albedo_texture == menu.Icons.texture("previous_video"), "Previous button uses the skip icon")
-	check(menu._buttons.filter(func(b): return b.target == 103)[0].node.get_child(1).material_override.albedo_texture == menu.Icons.texture("next_video"), "Next button uses the skip icon")
+	check(not menu._tips.has(101) and menu._tips.get(103) == "Next video" and menu._buttons.filter(func(button): return button.target == 103)[0].node.get_child(1).material_override.albedo_texture == menu.Icons.texture("next_video"), "Unavailable previous is omitted and next retains its skip icon")
 	main.video_queue.clear()
 	menu.refresh_values()
 	var navigation_calls := host.calls.size()
@@ -557,9 +540,9 @@ func _check_control_sticks(main: Node3D, video: Node3D, menu: Node3D, host: RefC
 	main._process_sticks(Vector2(-.99, 0), Vector2(.99, 0), 0.1)
 	check(video.control.target_ms == 40000 and menu._elapsed.text == "00:40", "Recentered sticks reverse direction with their original step sizes")
 	main._process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
-	video.audio_volume = 50.0
+	var volume_calls: int = host.calls.size()
 	main._process_sticks(Vector2(0, .99), Vector2.ZERO, 0.1)
-	check(video.audio_volume == 60.0, "Visible transport bar retains left vertical volume")
+	check(host.calls.size() == volume_calls, "Vertical stick cannot change system-controlled audio")
 	main._process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
 	video.geometry = 1
 	var zoom: float = video.view_zoom
@@ -579,10 +562,10 @@ func _check_control_sticks(main: Node3D, video: Node3D, menu: Node3D, host: RefC
 	main._process_sticks(Vector2.ZERO, Vector2(.99, 0), 0.1)
 	check(host.calls.size() == calls, "Closing a list with a held stick cannot cause a seek")
 	main._process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
-	menu._activate(111)
+	menu._activate(Menu.QUEUE_SETTINGS)
 	main._process_sticks(Vector2(0, -.99), Vector2(.99, 0), 0.5)
-	check(menu.choices.opened == "audio_track" and host.calls.size() == calls, "Audio track popup owns sticks without selecting, seeking or changing volume")
-	menu.choices.reset(); menu.refresh()
+	check(menu._quick_open == "queue" and host.calls.size() == calls, "Audio track popup owns sticks without selecting, seeking or changing volume")
+	menu._quick_open = ""; menu.choices.reset(); menu.refresh()
 	main._process_sticks(Vector2.ZERO, Vector2(.99, 0), 0.1)
 	check(host.calls.size() == calls, "Audio popup exit also requires stick recenter before playback shortcuts")
 	main._process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
@@ -592,10 +575,11 @@ func _check_control_sticks(main: Node3D, video: Node3D, menu: Node3D, host: RefC
 	main._process_sticks(Vector2(.99, 0), Vector2(0, .99), 0.2)
 	check(host.calls.size() == calls and not main.stick_controls.right_zooming, "Bookmark list also owns the sticks")
 	menu.bookmarks.opened = false
-	menu.section = 1
+	menu._quick_open = "sync"
 	menu.refresh()
 	main._process_sticks(Vector2(.99, 0), Vector2(.99, 0), 0.1)
 	check(host.calls.size() == calls, "Expanded settings cannot seek")
+	menu._quick_open = ""
 	menu.section = 0
 	menu._mode_open = true
 	menu.refresh()
@@ -630,7 +614,7 @@ func _check_control_sticks(main: Node3D, video: Node3D, menu: Node3D, host: RefC
 	calls = host.calls.size()
 	main._process_sticks(Vector2.ZERO, Vector2(.99, 0), 0.1)
 	check(video.control.target_ms == 60000 and host.calls.size() == calls, "Capture release submits its own target; held stick remains blocked until center")
-	for property in ["_volume_hand", "_depth_hand", "_adjust_hand"]:
+	for property in ["_depth_hand", "_adjust_hand"]:
 		menu.set(property, "left_hand")
 		check(menu.has_pointer_capture() and not menu.allows_playback_sticks(), "Slider capture disables playback sticks: " + property)
 		menu.set(property, "")

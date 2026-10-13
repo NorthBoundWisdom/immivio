@@ -11,7 +11,8 @@ const ViewFollow := preload("res://scripts/view_follow.gd")
 
 var _head_placed := false
 var _system_recenter_pending := false
-var _system_recenter_frames := 0
+var _system_recenter_last_notification_ms := -500
+const SYSTEM_RECENTER_REPEAT_MS := 500
 var _runtime_is_pico := OS.has_feature("pico")
 var library_distance := 1.4
 var view_follow := ViewFollow.new()
@@ -34,31 +35,29 @@ func _head_tracked() -> bool:
 func _on_system_recentered() -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host): return
-	# PICO also sends this notification during automatic tracking-space changes.
-	# OpenXR does not identify user intent here. Keep world placement instead of
-	# turning an idle runtime notification into an application recenter request.
-	if _runtime_is_pico:
-		host._system_recenter_pending = false
-		host._system_recenter_frames = 0
-		Log.record("system_recenter_placement_preserved", {"runtime": "pico"})
-		return
-	Log.record("system_recentered")
+	var now := Time.get_ticks_msec()
+	var repeated := now - _system_recenter_last_notification_ms < SYSTEM_RECENTER_REPEAT_MS
+	_system_recenter_last_notification_ms = now
+	# A held Home button can send repeated notifications. Keep one request and
+	# one placement; never enter a temporary head-follow or repeated placement.
+	if host._system_recenter_pending or repeated: return
+	Log.record("system_recentered", {"runtime": "pico" if _runtime_is_pico else "openxr"})
+	host._library_grab.clear()
+	host._grab.clear()
+	host.stick_controls.suspend()
 	host._system_recenter_pending = true
-	host._system_recenter_frames = 0
+	_apply_system_recenter(true)
 
-func _apply_system_recenter() -> void:
+func _apply_system_recenter(same_frame: bool = false) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host): return
 	if not host._system_recenter_pending: return
-	if not host._input_focused() or host._head_pose() == null:
-		host._system_recenter_frames = 0
-		return
-	# OpenXR updates its tracker before signalling, but XRCamera3D can still hold
-	# the previous reference-space pose. Use subsequent tracked scene frames.
-	host._system_recenter_frames += 1
-	if host._system_recenter_frames < host.SYSTEM_RECENTER_TRACKED_FRAMES: return
+	var head: Variant = host._head_pose()
+	if not host._input_focused() or head == null: return
+	# Godot 4.7.2 publishes pose_recentered after updating the head tracker and
+	# XRCamera3D. Apply in that same frame, before the new space is rendered.
 	host._recenter()
-	Log.record("system_recenter_applied")
+	Log.record("system_recenter_applied", {"same_frame": same_frame})
 
 func _turn_picture(yaw: float, pitch: float) -> void:
 	var host := _host_ref.get_ref() as Node3D
@@ -228,6 +227,7 @@ func _capture_follow_screen(surface: Node3D, head: Variant) -> void:
 func _update_view_follow() -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host): return
+	if host._system_recenter_pending: return
 	if not host.view_follow.enabled: return
 	var head: Variant = host._head_pose()
 	if head == null: return
@@ -260,6 +260,9 @@ func _place_menu(menu: Node3D) -> void:
 		var pose: Transform3D
 		var eye = host._eye()
 		if host._viewer().geometry == Geometry.Geometry.FLAT:
+			if menu is PlayerMenu:
+				# Lower the transport bar while keeping expanded panels centred.
+				host.player_menu.panel_lift += PlayerMenu.EXTRA_DROP / ui_scale.y
 			pose = host._viewer().subtitle_transform()
 			var toward_eye = eye - pose.origin
 			var facing = pose.basis.orthonormalized()
@@ -276,12 +279,16 @@ func _place_menu(menu: Node3D) -> void:
 				var offset = clearance / maxf(.1, absf(canvas_normal.dot(normal)))
 				if is_instance_valid(host.menu_compositor) and host.menu_compositor.native_placement_available():
 					offset = maxf(.025, toward_eye.length() - 1.4)
+				if menu is PlayerMenu:
+					offset += (toward_eye.length() - offset) * (1.0 - PlayerMenu.DISTANCE_SCALE)
 				pose.origin += normal * minf(offset, maxf(.025, toward_eye.length() - .4))
 			pose.basis = facing
 		else:
 			# Use the reset/content gaze, including pitch, but never later head tilt.
 			pose = Transform3D(host._viewer().subtitle_transform().basis.orthonormalized(), eye)
-			pose.origin += pose.basis * Vector3(0, -PlayerMenu.IMMERSIVE_DROP, -PlayerMenu.IMMERSIVE_DISTANCE)
+			var distance: float = PlayerMenu.IMMERSIVE_DISTANCE if menu is PlayerMenu else 1.4
+			var drop: float = PlayerMenu.IMMERSIVE_DROP if menu is PlayerMenu else 0.28
+			pose.origin += pose.basis * Vector3(0, -drop, -distance)
 		pose.basis *= Basis.from_scale(ui_scale)
 		var bar_offset: float = -host.player_menu.panel_lift if host.player_menu.section == 0 else 0.0
 		menu.global_transform = pose * Transform3D(Basis.IDENTITY, Vector3(0, bar_offset, 0))
@@ -297,11 +304,11 @@ func _place_menu(menu: Node3D) -> void:
 	var distance = host.library_distance if menu == host.recent_menu else 1.4
 	var pose: Variant = host._view_pose(distance, drop)
 	if menu == host.recent_menu and head != null:
-		# Place the complete browser's visual centre on the current gaze ray.
-		# Its asymmetric navigation/footer envelope is offset from the node origin.
-		# Upright mode controls orientation, not the direction of initial placement.
+		# Keep the complete browser centre on an eye-height horizontal ring.
+		# Pitch/roll affect orientation in reclining mode, never placement radius.
 		var centre: Vector2 = menu.capture_envelope().get_center()
-		pose = Transform3D(host._menu_head_pose(head).basis, head.origin - head.basis.z * distance)
+		var horizontal: Basis = host._upright_pose(head).basis
+		pose = Transform3D(host._menu_head_pose(head).basis, head.origin - horizontal.z * distance)
 		pose.origin -= pose.basis * Vector3(centre.x, centre.y, 0)
 	if pose == null:
 		menu.transform = Transform3D(Basis.from_scale(ui_scale), Vector3(0, 1.6 - drop, -1.55))
@@ -322,6 +329,7 @@ func _active_menu() -> Node3D:
 func _update_player_menu_anchor() -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host): return
+	if host._system_recenter_pending: return
 	# Explicit head-follow owns menu placement, including captured interactions.
 	if host.view_follow.enabled and host._viewer().geometry == Geometry.Geometry.FLAT: return
 	# Keep controls attached when projection/distance/content changes. Freeze
@@ -433,14 +441,13 @@ func _menu_state() -> Dictionary:
 		"projection": ["Flat", "VR180", "Fisheye", "360"][host.video.geometry], "geometry": host.video.geometry, "profile": host.video.profile,
 		"mode_lock": host.video.mode_lock,
 		"spatial_video": host.video.is_spatial_video(),
-		"volume": host.video.audio_volume, "muted": host.video.audio_muted,
 		"audio_available": details.get("audio_tracks", []).size() > 0,
 		"audio_options": audio_options, "audio_track_id": host.video.audio_track_id,
 		"subtitle_delay_ms": host.video.subtitle_delay_ms, "audio_delay_ms": host.video.audio_delay_ms,
 		"external_subtitle": not host.video.external_subtitle_uri.is_empty(),
 		"subtitle_loading": host.video._subtitle_loading or host.video._subtitle_pick > 0,
 		"queue_items": host.video_queue, "queue_revision": host.playback_queue.revision,
-		"queue_autoplay": host.playback_queue.autoplay, "queue_repeat": host.playback_queue.repeat_all, "queue_shuffle": host.playback_queue.shuffle,
+		"queue_shuffle": host.playback_queue.shuffle,
 		"audio_tracks": details.get("audio_tracks", []).size(), "audio_track": host._audio_track_name(details),
 		"clone_voice": host.video.clone_voice_track() > 0, "clone_voice_active": host.video.clone_voice_active(),
 		"depth_requested": host.video.depth_requested, "depth_enabled": host.video.depth_enabled, "depth_strength": host.video.depth_strength,
@@ -591,7 +598,6 @@ func _recenter() -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host): return
 	host._system_recenter_pending = false
-	host._system_recenter_frames = 0
 	host._library_grab.clear()
 	host._grab.clear()
 	host.photo_hands.cancel()
@@ -606,4 +612,5 @@ func _recenter() -> void:
 	for menu in [host.recent_menu, host.player_menu]:
 		if menu and menu.visible:
 			host._place_menu(menu)
+	if is_instance_valid(host.menu_compositor): host.menu_compositor.refresh_placement()
 	Log.record("recenter_requested")

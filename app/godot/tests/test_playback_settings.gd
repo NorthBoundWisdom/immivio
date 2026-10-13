@@ -67,6 +67,7 @@ func _run() -> void:
 	menu.setting_requested.connect(main._on_player_setting)
 	root.add_child(menu)
 	menu.set_process(false)
+	video.changed.connect(menu.refresh_values)
 	main.player_menu = menu
 	var camera := Camera3D.new()
 	camera.position = Vector3(0, 1.6, 0)
@@ -78,97 +79,25 @@ func _run() -> void:
 	var bottom_width := camera.unproject_position(menu.to_global(Vector3(0.5, 0, 0))).x - camera.unproject_position(menu.to_global(Vector3(-0.5, 0, 0))).x
 	check(is_equal_approx(top_width, bottom_width), "Upper popup rows are not compressed by menu tilt")
 	menu.toggle()
-	check(click(menu, 11) and menu._adjustment == "screen", "Settings opens Screen directly")
-	check(is_equal_approx(menu.global_position.y, camera.global_position.y), "Full settings rise to eye level")
-	check(menu._adjust_rows.size() == 3 and menu.text_snapshot().contains("Screen size"), "Flat panel includes distance, size and rotation")
-	check(not menu.text_snapshot().contains("Audio track") and not menu.text_snapshot().contains("Subtitles") and not menu.text_snapshot().contains("3D depth"), "Screen panel contains no duplicate controls")
-	check(not reset_shown(menu, Menu.ROTATION_RESET) and not click(menu, Menu.ROTATION_RESET), "Zero rotation hides and disables reset")
-	for scale in [0.4, 1.0, 1.5, 3.0]:
-		video.set_screen_scale(scale)
-		menu.refresh_values()
-		var row: Dictionary = menu._adjust_rows[451]
-		var percent: float = scale * 100
-		check(is_equal_approx(main._menu_state().screen_scale, percent) and row.label.text == "%d%%" % roundi(percent), "Physical scale, menu state and percentage agree")
-		check(is_equal_approx(row.knob.position.x, 0.03 + (percent - 40) / 260 * 0.6), "Screen size thumb matches displayed percentage")
-	drag(menu, 451, 0)
-	check(is_equal_approx(video.screen_scale, 0.4) and video.screen_distance == 2, "Minimum screen size changes no distance")
-	check(menu._adjust_rows[451].label.text == "40%" and is_equal_approx(menu._adjust_rows[451].knob.position.x, 0.03), "Minimum drag displays 40% at the start")
-	drag(menu, 451, 1)
-	check(video.screen_scale == 3 and is_equal_approx(video._flat.size.x / video._flat.size.y, 16.0 / 9), "Maximum screen size preserves aspect")
-	check(menu._adjust_rows[451].label.text == "300%" and is_equal_approx(menu._adjust_rows[451].knob.position.x, 0.63), "Maximum drag displays 300% at the end")
-	drag(menu, 452, 1)
-	check(video.screen_rotation == 90 and absf(video.panel.global_basis.x.y) > 0.99, "Rotation slider reaches clockwise 90 degrees")
-	check(reset_shown(menu, Menu.ROTATION_RESET) and is_equal_approx(button(menu, Menu.ROTATION_RESET).rect.get_center().y, button(menu, 452).rect.get_center().y), "Rotation reset appears on its slider row")
-	check(not button(menu, Menu.ROTATION_RESET).rect.intersects(button(menu, 452).rect), "Rotation reset does not overlap slider hit area")
-	video.caption.text = "第一行字幕\nSecond subtitle line"
-	video.caption.visible = true
-	video._place_caption()
-	check(video.caption.global_basis.is_equal_approx(Basis.IDENTITY), "Flat subtitle remains horizontal at 90 degrees")
-	main._push_screen(1.0)
-	check(video.screen_rotation == 90 and video.subtitle_transform().basis.is_equal_approx(Basis.IDENTITY), "Changing distance does not bake or double rotation")
-	main._push_screen(-1.0)
-	var bottom := video.caption.global_position.y
-	main._on_playback_adjustment("subtitle_flat_position", 100)
-	video._place_caption()
-	check(video.caption.global_position.y > bottom and video.subtitle_position == 0, "Flat position rises without changing VR angle")
-	main._on_playback_adjustment("subtitle_size", 200)
-	video._place_caption()
-	check(video.caption.font_size == 80 and video.caption.outline_size == 16, "Font and outline grow together")
-	check(is_equal_approx(video.caption.pixel_size, 0.0016 * video.screen_scale), "Flat text scales with the screen")
-	main._save_playback_adjustments()
-	var saved := ConfigFile.new()
-	check(saved.load(main.settings_path) == OK and saved.get_value("subtitles", "size") == 2 and saved.get_value("subtitles", "flat_position") == 1, "Text size and flat position persist")
-	check(click(menu, Menu.ROTATION_RESET) and video.screen_rotation == 0 and video.screen_scale == 3 and video.screen_distance == 2, "Straighten changes only rotation")
-	check(not reset_shown(menu, Menu.ROTATION_RESET) and not menu.text_snapshot().contains("Straighten"), "Rotation reset disappears immediately after restoration")
-	for geometry in [1, 2, 3]:
-		video.geometry = geometry
-		video._apply_geometry()
-		menu.refresh()
-		check(menu._adjust_rows.size() == 1 and menu._adjust_rows[452].key == "screen_rotation", "Immersive mode offers rotation and hides flat controls")
-		video.turn_view(0.2, 0.1)
-		video.zoom_view(0.1)
-		var yaw: float = video.view_yaw
-		var pitch: float = video.view_pitch
-		var zoom: float = video.view_zoom
-		video.screen_rotation = 0
-		video._apply_geometry()
-		var pose: Transform3D = video.subtitle_transform()
-		video.set_screen_rotation(-90)
-		menu.refresh_values()
-		video._place_caption()
-		video._sync_subtitle_surface()
-		check(video._subtitle_surface.visible and video._subtitle_surface.global_transform.is_equal_approx(pose), "VR captions keep their pose while the picture rolls")
-		check(click(menu, Menu.ROTATION_RESET) and video.view_yaw == yaw and video.view_pitch == pitch and video.view_zoom == zoom, "VR straighten preserves direction and zoom")
-	video.geometry = 0
-	video._apply_geometry()
-	menu.refresh()
-	check(click(menu, Menu.PLAYBACK_SETTINGS) and not menu.text_snapshot().contains("Eye order"), "Mono playback settings hide eye order")
-	check(not menu._adjust_rows.has(454), "Flat video has no Alpha frame rate")
-	check(not reset_shown(menu, Menu.SPEED_RESET) and not click(menu, Menu.SPEED_RESET), "Default playback rate hides and disables reset")
-	for fraction in [0.0, 1.0]:
-		drag(menu, 453, fraction)
-		check(is_equal_approx(video.playback_speed, (0.25 if fraction == 0 else 3.0)) and host.rates.back() == [7, video.playback_speed], "Speed slider changes actual bridge rate at endpoint")
-		check(reset_shown(menu, Menu.SPEED_RESET), "Non-default rate shows reset while dragging")
-	check(is_equal_approx(button(menu, Menu.SPEED_RESET).rect.get_center().y, button(menu, 453).rect.get_center().y) and not button(menu, Menu.SPEED_RESET).rect.intersects(button(menu, 453).rect), "Speed reset shares its row without overlapping the rail")
-	check(click(menu, Menu.SPEED_RESET) and video.playback_speed == 1.0 and host.rates.back() == [7, 1.0], "Restore 1x reaches bridge")
-	check(not reset_shown(menu, Menu.SPEED_RESET) and not menu.text_snapshot().contains("Restore 1×"), "Speed reset disappears immediately at 1x")
-	check(not video.set_playback_speed(NAN) and not video.set_playback_speed(0) and not video.set_playback_speed(3.1), "Invalid rates are rejected")
+	check(not menu._buttons.any(func(item): return item.target in [11, 109, 111, 108, 210, 215, 216]), "Retired controls have no UI entry")
+	var fixed := menu.global_transform
+	check(click(menu, Menu.QUICK_SPEED) and menu.section == 0 and menu.global_transform == fixed, "Speed popup keeps the toolbar fixed")
+	for speed in [.25, 3.0, 1.25]:
+		var selected: bool = preload("res://tests/test_player_menu.gd").choose_setting(menu, "playback_speed", speed)
+		check(selected and is_equal_approx(video.playback_speed, speed) and host.rates.back()[0] == 7 and is_equal_approx(host.rates.back()[1], speed), "Popup slider sends actual native speed")
+	check(button(menu, Menu.SPEED_RESET).node.visible, "Dragging away from unity reveals the reset immediately")
+	check(click(menu, Menu.SPEED_RESET) and video.playback_speed == 1.0, "Speed reset sends unity rate")
+	check(not video.set_playback_speed(NAN) and not video.set_playback_speed(0), "Invalid native rates are rejected")
 	host.accept = false
-	check(not video.set_playback_speed(2) and video.playback_speed == 1, "Rejected native change leaves displayed rate unchanged")
-	main.platform_plugin = host
-	video.geometry = 1
-	video._apply_geometry()
-	menu.refresh()
-	check(not menu._adjust_rows.has(454), "Immersive playback has no inference rate controls")
-	video.geometry = 0
-	video._apply_geometry()
-	video.stereo_sbs = true
-	menu.refresh()
-	check(menu.text_snapshot().contains("Stereo viewing") and button(menu, 103).enabled, "Flat native stereo exposes stereo viewing controls")
-	video.stereo_sbs = false
-	click(menu, 10)
+	check(not video.set_playback_speed(2) and video.playback_speed == 1, "Rejected native rate leaves state intact")
+	host.accept = true
+	video.stereo_sbs = true; menu.refresh()
+	check(click(menu, Menu.IPD_SETTINGS) and menu._quick_open == "ipd" and menu.global_transform == fixed, "IPD replaces speed without moving the toolbar")
+	check(menu.choices.targets.values().any(func(item): return item.get("key") == "stereo_horizontal"), "Binocular popup exposes native alignment")
+	video.stereo_sbs = false; menu.refresh()
+	check(not menu._buttons.any(func(item): return item.target == Menu.IPD_SETTINGS), "Mono omits unavailable alignment")
 	click(menu, 110)
-	check(menu.choices.sliders.size() == 2 and menu.text_snapshot().contains("External subtitles must match the video filename."), "Flat CC provides size, vertical position and naming guidance")
+	check(menu.choices.sliders.size() == 2 and menu.text_snapshot().contains("External subtitles must match the video filename."), "CC retains size, position and external-file guidance")
 	video.subtitles.select(2)
 	menu.refresh()
 	check(menu.choices.sliders.is_empty(), "PGS preserves source layout and hides text controls")

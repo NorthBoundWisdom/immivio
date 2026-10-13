@@ -92,14 +92,21 @@ func _run() -> void:
 	menu.press_pointer("right", distance_origin(menu, 0.5), -menu.global_basis.z, true)
 	check(absf(distance - 5.05) < 0.06, "Slider midpoint maps linearly to metres")
 	menu.release_pointer("right", Vector3.ZERO, Vector3.ZERO, true)
-	menu._subtitle_open = false; menu.section = 1; menu.refresh()
-	menu._activate(100 + Menu.OPERATIONS[1].find("color_grade"))
-	menu._activate(411)
-	check(grade.preset == "Warm", "Preset selection")
-	menu.press_pointer("right", menu.to_global(Vector3(0.33, -0.05, 1)), -menu.global_basis.z, true)
-	check(grade.preset == "Custom", "Dragging exposure selects custom")
+	menu._activate(Menu.QUICK_COLOR)
+	for target in menu.choices.targets:
+		var item: Dictionary = menu.choices.targets[target]
+		if item.get("key") == "grade_preset" and item.get("value") == "Warm": menu.choices.action(target); break
+	check(grade.preset == "Warm", "Popup preset selection")
+	var exposure_target := -1
+	for target in menu.choices.sliders:
+		if menu.choices.targets[target].key == "exposure": exposure_target = target; break
+	var slider: Dictionary = menu.choices.sliders[exposure_target]
+	var at: Vector3 = slider.node.to_global(Vector3(slider.left + slider.width * .75, 0, 1))
+	menu.press_pointer("right", at, -menu.global_basis.z, true)
+	check(grade.preset == "Custom" and is_equal_approx(grade.values().exposure, 1.0), "Popup drag previews the actual grade")
+	var before := commits
 	menu.dismiss()
-	check(commits == 5 and menu._adjust_hand.is_empty(), "Dismiss saves active drag")
+	check(commits == before + 1 and menu.choices.capture.is_empty(), "Dismiss commits the active color slider once")
 	menu.free()
 	for failure in failures: push_error(failure)
 	print("Color grading and distance controls: ", "passed" if failures.is_empty() else failures)

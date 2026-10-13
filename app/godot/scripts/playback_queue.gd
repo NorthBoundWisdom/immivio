@@ -2,8 +2,6 @@ extends RefCounted
 ## Session queue. Entries retain stable library URIs; decoded sessions remain owned by the player.
 const LIMIT := 500
 var items: Array[Dictionary] = []
-var autoplay := false
-var repeat_all := false
 var shuffle := false
 var revision := 0
 var custom := false
@@ -36,8 +34,6 @@ func append(entries: Array) -> void:
 func configure(key: String, enabled: bool, current_uri: String = "") -> void:
 	if not current_uri.is_empty(): anchor = current_uri
 	match key:
-		"queue_autoplay": autoplay = enabled
-		"queue_repeat": repeat_all = enabled
 		"queue_shuffle": shuffle = enabled
 	_changed()
 
@@ -57,7 +53,6 @@ func adjacent(uri: String, direction: int) -> Dictionary:
 		if uri == _removed_uri: return find(_continuation)
 		return find(_order[0]) if uri == anchor else {}
 	var next := index + (1 if direction > 0 else -1)
-	if repeat_all: next = posmod(next, _order.size())
 	if next < 0 or next >= _order.size(): return {}
 	return find(_order[next])
 

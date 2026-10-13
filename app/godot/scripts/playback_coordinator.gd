@@ -90,7 +90,7 @@ func _queue_action(operation: String) -> void:
 	if operation == "queue_done":
 		host._queue_add_mode = false; host.recent_menu.queue_add_mode = false
 		host._show_player_menu()
-		host.video_menu._adjustment = "queue"; host.video_menu.section = 1; host.video_menu.refresh()
+		host.video_menu._adjustment = ""; host.video_menu.section = 0; host.video_menu._quick_open = "queue"; host.video_menu.refresh()
 		return
 	if operation == "queue_add_list":
 		host.playback_queue.custom = true; host.playback_queue.append(host.recent_menu.video_queue())
@@ -126,9 +126,11 @@ func _advance_queue(session_id: int, uri: String) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host): return
 	if host.photo_active or host.video.media.session_id != session_id or host.video.local_uri != uri or not host.video.completed_presentation(): return
-	if host.video.loop_enabled or not host.playback_queue.autoplay: return
+	if host.video.loop_enabled: return
 	var item = host.playback_queue.adjacent(uri, 1)
-	if item.is_empty(): return
+	if item.is_empty():
+		host._on_menu_action("stop")
+		return
 	# An automatic next entry starts at zero; manual navigation retains its resume policy.
 	host.video.requested_play = true
 	host.video.open_library(str(item.uri), str(item.title), item.get("metadata", {}), true)
@@ -139,7 +141,7 @@ func _on_video_changed() -> void:
 	if not is_instance_valid(host): return
 	if host.photo_active: return
 	if host.video.media.state != "ended": host._queue_end_key = ""
-	elif host.playback_queue.autoplay and not host.video.loop_enabled and host.video.completed_presentation():
+	elif not host.video.loop_enabled and host.video.completed_presentation():
 		var key = "%s/%s/%s" % [host.video.media.session_id, host.video.local_uri, host.video.media.last_pair.get("source_epoch", 0)]
 		if key != host._queue_end_key:
 			host._queue_end_key = key
@@ -175,8 +177,6 @@ func _on_menu_action(operation: String) -> void:
 	if host.video and not host.video.mode_action_allowed(operation): return
 	match operation:
 		"open_file": host._show_recent_menu()
-		"seek_mode":
-			host._on_setting_changed("seek_mode", host.video.SeekPolicy.EXACT if host.video.seek_mode == host.video.SeekPolicy.SPEED else host.video.SeekPolicy.SPEED)
 		"play": host.video.toggle_play()
 		"alpha": host.video.set_alpha(not host.video.alpha_wanted())
 		"depth":
@@ -191,7 +191,6 @@ func _on_menu_action(operation: String) -> void:
 				host.settings.save(host.settings_path)
 		"previous_video": host._navigate_video(-1)
 		"next_video": host._navigate_video(1)
-		"loop": host.video.toggle_loop()
 		"stop":
 			host._grab.clear(); host._trigger_taps.clear(); host.stick_controls.suspend()
 			host.video.close_video()
@@ -216,9 +215,6 @@ func _on_menu_action(operation: String) -> void:
 			host.video.cycle_screen_curve()
 			host._save_screen()
 		"calibration": host.video.play_calibration_clip()
-		"volume_down": host.video.change_volume(-10.0)
-		"volume_up": host.video.change_volume(10.0)
-		"mute": host.video.toggle_mute()
 		"audio": host.video.cycle_audio_track()
 		"capabilities": host.request_capabilities()
 
@@ -231,16 +227,15 @@ func _on_menu_seek(position_ms: int) -> void:
 func _on_player_setting(key: String, value: Variant) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host): return
-	if key in ["queue_autoplay", "queue_repeat", "queue_shuffle"]:
+	if key == "queue_shuffle":
 		host.playback_queue.configure(key, bool(value), host.video.local_uri)
 		host.settings.set_value("playback", key, bool(value)); host.settings.save(host.settings_path)
 		return
 	if host.photo_active: return
 	match key:
-		"seek_mode", "subtitle_distance", "subtitle_position", "subtitle_direction": host._on_setting_changed(key, value)
+		"subtitle_distance", "subtitle_position", "subtitle_direction": host._on_setting_changed(key, value)
 		"viewing_eye": host.video.set_viewing_eye(int(value))
 		"subtitle_size", "subtitle_flat_position", "subtitle_palette": host._on_playback_adjustment(key, value); host._save_playback_adjustments()
-		"loop": host.video.loop_enabled = bool(value); host.video.changed.emit()
 		"show_fps": host._on_setting_changed(key, value)
 		"screen_curve": host.video.set_screen_curve(float(value)); host._save_screen(); host.video.changed.emit()
 		"audio_track":
@@ -248,32 +243,14 @@ func _on_player_setting(key: String, value: Variant) -> void:
 				host.settings.set_value("audio", "prefer_clone_voice", host.video.prefer_clone_voice)
 				host.settings.save(host.settings_path)
 
-func _on_bookmark_mode_requested(mode: String, scope: String) -> void:
-	var host := _host_ref.get_ref() as Node3D
-	if not is_instance_valid(host): return
-	if host.photo_active or scope != host.video.bookmark_scope() or mode not in [host.video.SeekPolicy.GLOBAL, host.video.SeekPolicy.SPEED, host.video.SeekPolicy.EXACT]: return
-	host._menu_touched_ms = Time.get_ticks_msec()
-	host.video.bookmark_seek_mode = mode
-	host.settings.set_value("video", "bookmark_seek_mode", mode)
-	host.settings.save(host.settings_path)
-	Log.record("setting_changed", {"key": "bookmark_seek_mode", "value": mode})
-
 func _on_bookmark_request(operation: String, marker_id: String, scope: String) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host): return
-	if host.photo_active: return
+	if host.photo_active or operation not in ["seek", "delete", "undo"]: return
 	host._menu_touched_ms = Time.get_ticks_msec()
 	var message: String = host.video.bookmark_action(operation, marker_id, scope)
-	if message == "Bookmark added":
-		host.player_menu.bookmarks.notify(I18n.t(message) + " · " + host.player_menu._time(int(host.video.bookmark_last_added.position_ms)), str(host.video.bookmark_last_added.id))
-	elif not message.is_empty(): host.player_menu.bookmarks.notify(I18n.t(message))
+	if not message.is_empty(): host.player_menu.bookmarks.notify(I18n.t(message))
 	else: host.player_menu.refresh_values()
-
-func _on_menu_volume(volume: float, muted: bool) -> void:
-	var host := _host_ref.get_ref() as Node3D
-	if not is_instance_valid(host): return
-	if host.photo_active: return
-	host.video.set_audio_options(host.video.audio_track_id, host.video.audio_volume if muted else volume, muted)
 
 func _audio_option_label(track: Dictionary) -> String:
 	var host := _host_ref.get_ref() as Node3D

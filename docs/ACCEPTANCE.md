@@ -4,6 +4,25 @@ R2–R5 code migration has reached local acceptance. The owner subsequently auth
 
 Host tools are no longer pinned to exact versions. Required language/library features, Godot editor/template matching, Android application targets and native library integrity remain enforced.
 
+## UI iteration regression results — 2026-10-13
+
+The owner authorized completing the checks skipped during live PICO UI iteration and submitting the complete source changes. The final local test run uses `Pico` / `Release`; other build hosts and headset vendors remain CI/device follow-up.
+
+| Check | Result |
+| --- | --- |
+| Godot host regressions | 75/75 passed |
+| JVM tests | 234 passed; 11 optional credential-dependent cases skipped |
+| Go `cloudcore` tests | Passed |
+| Python workflow tests | 31 passed |
+| Release selection/publication tests | 13 passed |
+| Website tests | 4 passed; bilingual page, JavaScript and metadata checks passed |
+| Source/environment | Public-source boundary, command manifest, source-root verification and installed tool compatibility passed |
+| Visual QA | Synthetic English/Chinese toolbar, title/status header and popup renders inspected |
+
+The regressions retain source, storage, decoder, stereo, photo, subtitle, pointer-capture and stick-latching coverage. Obsolete volume, bookmark-addition, precision-selector and full-settings-page expectations now verify retirement or their replacement behavior. Tests cover queue EOF after acknowledged drawing, return to files, fixed-distance Home reset and duplicate notification coalescing. The speed-reset visibility bug found during validation was corrected and its real slider interaction checked.
+
+JUnit, build/package receipts, synthetic renders and physical PICO installation records are retained under ignored `artifacts/`. Host tests and synthetic images do not establish physical controller accuracy, source-service availability or sustained headset performance. Historical checks below belong to the earlier refactor checkpoint.
+
 ## Local acceptance results — 2026-10-13
 
 | Check | Result |

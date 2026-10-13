@@ -33,18 +33,14 @@ func _run() -> void:
 	for language in ["en", "zh"]:
 		menu.I18n.use(language); library.visible = false; photo.visible = false; menu.visible = true
 		camera.size = 1.35; camera.position.x = 0
-		for page in ["screen", "playback", "sync", "queue_populated", "info_available", "color0", "stereo", "audio"]:
+		for page in ["bar", "quick_speed", "sync", "queue_populated", "info_available", "color0", "stereo"]:
 			warmer.prepare(menu, page)
-			if page == "audio":
-				for id in range(2, 8):
-					menu._state.audio_options.append({"id": id, "value": id, "label": "Synthetic audio " + str(id)})
-				menu._draw()
 			await _save(viewport, output.path_join(language + "-" + page + ".png"))
 		menu.visible = false; library.visible = true
 		camera.size = 1.75; camera.position.x = -0.15
 		library.section = Library.Section.SETTINGS
 		for tab in [Library.GENERAL_TAB, Library.VIDEO_TAB, Library.ABOUT_TAB]:
-			library.tab = tab; library.refresh()
+			library._activate(Library.TAB_BASE + tab)
 			await _save(viewport, output.path_join(language + "-library-" + str(tab) + ".png"))
 		library.visible = false; photo.visible = true; photo.section = 1; photo.refresh()
 		camera.size = 1.35; camera.position.x = 0

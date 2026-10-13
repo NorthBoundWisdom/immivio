@@ -25,7 +25,7 @@ func _run() -> void:
 	check(not main.settings.has_section("alpha") and not main.settings.has_section_key("effects", "auto_3d"), "Retired model preferences are removed in memory")
 	var persisted := ConfigFile.new(); persisted.load(path)
 	check(not persisted.has_section("alpha") and not persisted.get_value("video", "mode_lock").depth, "Migration persists removal and clears generated-depth locks")
-	check(main.video.audio_volume == 37 and main.video.audio_muted, "Removing effects preserves ordinary playback preferences")
+	check(not main._menu_state().has("volume") and not main._menu_state().has("muted"), "Legacy application volume and mute cannot affect system-volume playback")
 	main._on_setting_changed("alpha_fps", 40)
 	main._on_playback_adjustment("alpha_fps", 10)
 	check(not main.settings.has_section_key("video", "alpha_fps"), "Stale effect controls cannot recreate retired preferences")

@@ -1,6 +1,6 @@
 extends RefCounted
 const BASE := 20000
-const ROWS := 4
+const ROWS := 3
 var menu: Node3D
 var offset := 0
 var _scroll := 0.0
@@ -9,39 +9,38 @@ var actions := {}
 func _init(owner: Node3D) -> void: menu = owner
 
 func draw() -> void:
-	menu._set_backdrop(Vector2(1.55, 1.08))
-	menu._draw_settings_tabs(0.38)
-	menu._place_device_status(Vector2(0, -0.585))
+	var panel: MeshInstance3D = menu._quad(Vector2(1.12, 0.445), Vector3(0, 0.4975, 0.001), Color(menu.PANEL, 0.94), 10)
+	menu.add_child(panel); menu._decorations.append(panel)
+	var heading: Label3D = menu._label(menu.I18n.t("Queue"), Vector3(-0.49, 0.68, 0.004), 19)
+	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	menu._glyph(menu.QUICK_CLOSE, "close", Vector2(0.49, 0.68), 0.06, true, menu.I18n.t("Close"))
 	actions.clear()
 	var entries: Array = menu._state.get("queue_items", [])
 	offset = clampi(offset, 0, maxi(0, ((entries.size() - 1) / ROWS) * ROWS))
-	var keys := ["queue_autoplay", "queue_repeat", "queue_shuffle"]
-	var names := ["Auto-play next", "Repeat queue", "Shuffle"]
-	for i in keys.size():
-		var y := 0.25 - i * 0.095
-		var label: Label3D = menu._label(menu.I18n.t(names[i]), Vector3(-0.65, y, 0.004), 18)
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-		menu.choices.field(null, {"key": keys[i], "value": menu._state.get(keys[i], false),
-			"choices": [{"value": false, "label": "Off"}, {"value": true, "label": "On"}]}, Vector2(0.33, y), 0.6, 0.065)
+	var shuffle: Label3D = menu._label(menu.I18n.t("Shuffle"), Vector3(-0.49, 0.605, 0.004), 16)
+	shuffle.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	menu.choices.field(null, {"key": "queue_shuffle", "value": menu._state.get("queue_shuffle", false), "compact": true,
+		"choices": [{"value": false, "label": "Off"}, {"value": true, "label": "On"}]}, Vector2(0.28, 0.605), 0.48, 0.055)
 	for i in range(offset, mini(entries.size(), offset + ROWS)):
-		var y := -0.065 - (i - offset) * 0.102
-		button("queue_play_" + str(i), str(i + 1) + " · " + menu._fit_title(str(entries[i].title), "", 0.72, 18), Vector2(-0.18, y), Vector2(0.95, 0.085))
+		var y := 0.53 - (i - offset) * 0.07
+		button("queue_play_" + str(i), str(i + 1) + " · " + str(entries[i].title), Vector2(-0.18, y), Vector2(0.72, 0.06))
 		if entries[i].uri == menu._state.get("source_uri", ""): menu._buttons.back().base_color = menu.SELECTED
-		button("queue_up_" + str(i), "↑", Vector2(0.35, y), Vector2(0.08, 0.08), i > 0)
-		button("queue_down_" + str(i), "↓", Vector2(0.45, y), Vector2(0.08, 0.08), i + 1 < entries.size())
-		button("queue_remove_" + str(i), "×", Vector2(0.57, y), Vector2(0.10, 0.08))
-	if entries.is_empty(): menu._label(menu.I18n.t("Queue is empty"), Vector3(0, -0.1, 0.004), 20)
-	button("page_previous", "‹", Vector2(-0.60, -0.48), Vector2(0.09, 0.065), offset > 0)
-	menu._label("%d / %d" % [offset / ROWS + 1, maxi(1, ceili(float(entries.size()) / ROWS))], Vector3(-0.40, -0.48, 0.004), 16)
-	button("page_next", "›", Vector2(-0.24, -0.48), Vector2(0.07, 0.065), offset + ROWS < entries.size())
-	button("queue_add", menu.I18n.t("Add videos"), Vector2(0.05, -0.48), Vector2(0.34, 0.065))
-	button("queue_clear", menu.I18n.t("Clear queue"), Vector2(0.45, -0.48), Vector2(0.35, 0.065), not entries.is_empty())
+		button("queue_up_" + str(i), "↑", Vector2(0.25, y), Vector2(0.07, 0.06), i > 0)
+		button("queue_down_" + str(i), "↓", Vector2(0.34, y), Vector2(0.07, 0.06), i + 1 < entries.size())
+		button("queue_remove_" + str(i), "×", Vector2(0.46, y), Vector2(0.08, 0.06))
+	if entries.is_empty(): menu._label(menu.I18n.t("Queue is empty"), Vector3(0, 0.46, 0.004), 18)
+	button("page_previous", "‹", Vector2(-0.49, 0.315), Vector2(0.07, 0.06), offset > 0)
+	menu._label("%d / %d" % [offset / ROWS + 1, maxi(1, ceili(float(entries.size()) / ROWS))], Vector3(-0.38, 0.315, 0.004), 14)
+	button("page_next", "›", Vector2(-0.27, 0.315), Vector2(0.07, 0.06), offset + ROWS < entries.size())
+	button("queue_add", menu.I18n.t("Add videos"), Vector2(-0.03, 0.315), Vector2(0.30, 0.06))
+	button("queue_clear", menu.I18n.t("Clear queue"), Vector2(0.38, 0.315), Vector2(0.30, 0.06), not entries.is_empty())
 	menu.choices.finish()
 
 func button(operation: String, title: String, centre: Vector2, size: Vector2, enabled: bool = true) -> void:
 	var id := BASE + actions.size()
 	actions[id] = operation
-	menu._control_button(id, title, centre, size.x, enabled)
+	menu._button(id, menu._fit_title(title, "", size.x - 0.04, 16), centre, size, enabled)
+	(menu._buttons.back().node.get_child(0) as Label3D).font_size = 16
 
 func action(target: int) -> bool:
 	if not actions.has(target): return false

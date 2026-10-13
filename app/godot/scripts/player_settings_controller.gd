@@ -10,7 +10,6 @@ const PlatformMethods := preload("res://scripts/platform_methods.gd")
 
 var settings := ConfigFile.new()
 var settings_path := "user://player_settings.cfg"
-var _audio_save_after := 0
 
 func _init(host: Node3D) -> void:
 	_host_ref = weakref(host)
@@ -22,8 +21,8 @@ func load_preferences() -> void:
 func _restore_seek_settings() -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host): return
-	host.video.seek_mode = host.video.SeekPolicy.normalize(host.settings.get_value("video", "seek_mode", host.video.SeekPolicy.DEFAULT))
-	host.video.bookmark_seek_mode = host.video.SeekPolicy.bookmark_override(host.settings.get_value("video", "bookmark_seek_mode", host.video.SeekPolicy.GLOBAL))
+	host.video.seek_mode = host.video.SeekPolicy.DEFAULT
+	host.video.bookmark_seek_mode = host.video.SeekPolicy.GLOBAL
 
 func _library_settings() -> Dictionary:
 	var host := _host_ref.get_ref() as Node3D
@@ -34,7 +33,6 @@ func _library_settings() -> Dictionary:
 		"sharpness": Quality.load_sharpness(host.settings, host.low_end_gpu),
 		"history": host.video.history_enabled,
 		"reclining_mode": host.reclining_mode,
-		"seek_mode": host.video.SeekPolicy.normalize(host.video.seek_mode),
 		"subtitle_distance": host.video.subtitle_distance,
 		"subtitle_position": host.video.subtitle_position,
 		"subtitle_direction": host.video.subtitle_direction,
@@ -61,10 +59,6 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 			host.settings.save(host.settings_path)
 		"library_orders":
 			host.settings.set_value("library", "orders", value)
-			host.settings.save(host.settings_path)
-		"seek_mode":
-			host.video.seek_mode = host.video.SeekPolicy.normalize(value)
-			host.settings.set_value("video", "seek_mode", host.video.seek_mode)
 			host.settings.save(host.settings_path)
 		"restart_app", "quit_app":
 			host._finish_app(key == "restart_app")
@@ -128,20 +122,6 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 			host.settings.set_value("subtitles", "elevation_degrees", host.video.subtitle_position)
 			host.settings.save(host.settings_path)
 	Log.record("setting_changed", {"key": key, "value": value})
-
-func _save_audio_preferences(volume: float, muted: bool) -> void:
-	var host := _host_ref.get_ref() as Node3D
-	if not is_instance_valid(host): return
-	host.settings.set_value("audio", "volume", volume)
-	host.settings.set_value("audio", "muted", muted)
-	host._audio_save_after = Time.get_ticks_msec() + 350
-
-func _flush_audio_preferences() -> void:
-	var host := _host_ref.get_ref() as Node3D
-	if not is_instance_valid(host): return
-	if host._audio_save_after <= 0: return
-	host._audio_save_after = 0
-	host.settings.save(host.settings_path)
 
 func _on_mode_lock_changed(lock: Dictionary, media_kind: String) -> void:
 	var host := _host_ref.get_ref() as Node3D

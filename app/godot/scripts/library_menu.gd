@@ -38,7 +38,6 @@ var cloud_accounts: RefCounted = CloudAccountActions.new(self)
 const AccountPanel := preload("res://scripts/account_panel.gd")
 var account_panel: RefCounted = AccountPanel.new(self)
 const Quality := preload("res://scripts/display_quality.gd")
-const SeekPolicy := preload("res://scripts/seek_policy.gd")
 const ChoiceFields := preload("res://scripts/choice_fields.gd")
 var choices := ChoiceFields.new(self)
 const SETTING_TABS := ["Video", "VR subtitles", "Background", "About", "Display", "General"]
@@ -588,9 +587,6 @@ func _rebuild_rows() -> void:
 		Section.SETTINGS:
 			var settings: Dictionary = settings_provider.call() if settings_provider.is_valid() else {}
 			if tab == VIDEO_TAB:
-				var seek: String = SeekPolicy.normalize(settings.get("seek_mode", SeekPolicy.DEFAULT))
-				rows.append(_choice_row("Seek mode", "seek_mode", seek, SeekPolicy.choices(), false,
-					"Faster jumps, less precise" if seek == SeekPolicy.SPEED else "Accurate jumps, may take longer"))
 				rows.append(_choice_row("Resolution", "output_width", int(settings.get("output_width", Quality.AUTO_OUTPUT)),
 					[{"value": Quality.AUTO_OUTPUT, "label": "Auto"}, {"value": 0, "label": "Original size"}, {"value": 5760, "label": "6K"}, {"value": 4096, "label": "4K"}], true))
 			elif tab == GENERAL_TAB:
@@ -663,9 +659,8 @@ func _rebuild_rows() -> void:
 				else:
 					rows.append(_about_info("Immivio", str(settings.get("version", ""))))
 					rows.append(_about_info("FFSky Studio", "© 2026 FFSky Studio"))
-					rows.append(_about_info(I18n.t("Support"), "ffskyteam@gmail.com"))
 					rows.append(_about_info(I18n.t("Official website"), "https://thru3d.com"))
-					rows.append(_about_info(I18n.t("Source code"), "https://github.com/zerochocobo/Thru3D-Media-Player"))
+					rows.append(_about_info(I18n.t("Source code"), "https://github.com/NorthBoundWisdom/immivio"))
 					rows.append({"title": I18n.t("Credits"), "icon": "info", "about_page": 2})
 					rows.append({"title": I18n.t("Open source licenses"), "icon": "info", "open_licenses": true})
 		Section.CLOUD:

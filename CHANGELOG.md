@@ -4,6 +4,15 @@
 
 Newest first, following product release milestones. Entries under 0.6.0 and earlier describe the original project; removed conversion features are historical, not current Immivio capabilities. Some development/source snapshots contained features before their product release. Original APK identifiers `0.2` and `0.4` are retained; `0.4` was also called `0.4.0` in release notes. Availability depends on device, server and media capabilities.
 
+## Unreleased
+
+- Replace the separate video settings pages with one compact toolbar and mutually exclusive popups for subtitles, speed, grading, IPD, synchronization, queues and source information.
+- Centre previous/play/next, move the middle-elided filename beside the battery/clock capsule, separate Close video, reduce padding and omit unavailable actions. Bring controls 20% closer and lower their timeline by 8 cm.
+- Automatically advance after the final presented frame; return to the previous file-browser location at queue end. Remove user-facing looping, bookmark addition and seek-precision selection while retaining stored bookmarks.
+- Follow system volume at unity player gain; remove application volume/mute preferences and their pointer, stick and keyboard controls.
+- Apply Home recentering after the runtime publishes updated tracking in the same frame, refresh the native UI layer immediately and keep the file-browser centre on its remembered horizontal distance ring.
+- Update the About repository URL and remove the contact email. Refresh regressions and guides for the supported controls, including immediate visibility of speed reset after slider edits.
+
 ## 0.9.1 — 2026-10-13
 
 - Set the application version to 0.9.1 / versionCode 15 for all Android targets.

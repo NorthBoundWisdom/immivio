@@ -56,7 +56,6 @@ var _bounds_due := 0
 var _configured := false
 var _clear_frames := 0
 var _session_state := Callable()
-
 func configure(values: Array, view_camera: Camera3D, xr_enabled: bool, session_state: Callable = Callable()) -> void:
 	menus = values; head = view_camera
 	_original_mask = head.cull_mask
@@ -257,6 +256,16 @@ func _apply_presented_layer() -> void:
 	else:
 		layer.global_transform = pose * Transform3D(Basis.IDENTITY, Vector3(rect.get_center().x, rect.get_center().y, 0))
 		layer.quad_size = rect.size
+
+## Recenter signals can arrive during XR processing, after the scene callback.
+## Move the existing image's layer immediately so it cannot render at the old
+## coordinates for one frame before the next compositor _process call.
+func refresh_placement() -> void:
+	if not is_instance_valid(active_menu): return
+	if native_supported:
+		_apply_presented_layer()
+	elif scene_curved:
+		_apply_curved_mesh(capture_pose(active_menu), surface_rect, active_menu.curve_radius)
 
 func _set_native_ready(value: bool) -> void:
 	if native_supported == value: return

@@ -318,9 +318,9 @@ func _run() -> void:
 	menu._activate(Menu.TAB_BASE + Menu.ABOUT_TAB)
 	var about_text := "\n".join(menu.find_children("*", "Label3D", true, false).map(func(label): return label.text))
 	check(about_text.contains("Immivio") and about_text.contains("FFSky Studio")
-		and about_text.contains("ffskyteam@gmail.com") and about_text.contains("https://thru3d.com")
-		and about_text.contains("https://github.com/zerochocobo/Thru3D-Media-Player"), "About brand and support")
-	menu._activate(Menu.ROW_BASE + 5)
+		and not about_text.contains("ffskyteam@gmail.com") and about_text.contains("https://thru3d.com")
+		and about_text.contains("https://github.com/NorthBoundWisdom/immivio"), "About brand and support")
+	menu._activate(Menu.ROW_BASE + 4)
 	check(menu.rows[0].title == "Belfast Sunset (Pure Sky)" and menu.rows[0].detail.contains("Poly Haven · CC0 1.0")
 		and menu.rows[0].detail.contains("Dimitrios Savva / Greg Zaal / Jarod Guest") and menu.rows[1].title == "Godot",
 		"One panorama entry contains its source, license and all authors")

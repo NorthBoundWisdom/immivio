@@ -31,7 +31,6 @@ var _bookmark_media_id := ""
 var _bookmark_scope_sequence := 0
 var _bookmark_cache_revision := -1
 var _bookmark_rows: Array = []
-var bookmark_last_added: Dictionary = {}
 const Naming := preload("res://scripts/media_naming.gd")
 const AUTOMATIC_PROFILE := "320x320"
 const PROFILES := ["320x320", "384x216", "512x288", "384x384", "512x512", "256x144", "256x256"]
@@ -69,13 +68,10 @@ var _rvm_alpha := false # the bound pair carries an inferred Alpha
 var _clone_applied := false
 var loop_enabled := false
 var requested_play := true
-signal audio_preferences_changed(volume: float, muted: bool)
 const TrackPreference := preload("res://scripts/track_preference.gd")
 var _track_choices := {}
 var _tracks_pending := {}
 var audio_track_id := -1
-var audio_volume := 100.0
-var audio_muted := false
 var subtitle_delay_ms := 0
 var audio_delay_ms := 0
 var external_subtitle_uri := ""
@@ -838,39 +834,22 @@ func forget_external_subtitle() -> void:
 	if picker_error.contains("subtitle"): picker_error = ""
 	_remember_mode(); changed.emit()
 
-func restore_audio_preferences(volume: Variant, muted: Variant) -> void:
-	audio_volume = clampf(float(volume), 0.0, 100.0) if (volume is float or volume is int) and is_finite(float(volume)) else 100.0
-	audio_muted = muted if muted is bool else false
-
-func set_audio_options(track_id: int, volume: float, muted: bool) -> bool:
-	if track_id < -1 or not is_finite(volume) or volume < 0.0 or volume > 100.0 or not platform or not media.accepts(media.session_id):
-		return false
-	if not platform.set_mpv_audio(media.session_id, track_id, volume, muted):
-		return false
-	var sound_changed := audio_volume != volume or audio_muted != muted
+## Keep MPV at unity gain and unmuted; Android's media stream owns volume.
+func _apply_audio_track(track_id: int) -> bool:
+	if track_id < -1 or not platform or not media.accepts(media.session_id): return false
+	if not platform.set_mpv_audio(media.session_id, track_id, 100.0, false): return false
 	audio_track_id = track_id
-	audio_volume = volume
-	audio_muted = muted
 	_audio_pending = false
-	if sound_changed: audio_preferences_changed.emit(volume, muted)
 	changed.emit()
 	return true
 
 ## An explicit menu choice wins over automatic dubbing, including before the first frame.
 func select_audio_track(track_id: int) -> bool:
-	if not set_audio_options(track_id, audio_volume, audio_muted): return false
+	if not _apply_audio_track(track_id): return false
 	_remember_track("audio", track_id)
 	_clone_applied = true
 	prefer_clone_voice = clone_voice_track() > 0 and track_id == clone_voice_track()
 	return true
-
-## Raising the volume unmutes (a muted slider shows 0, so a silent step up would look ignored);
-## lowering keeps mute.
-func change_volume(delta: float) -> bool:
-	return set_audio_options(audio_track_id, clampf(audio_volume + delta, 0.0, 100.0), audio_muted and delta <= 0.0)
-
-func toggle_mute() -> bool:
-	return set_audio_options(audio_track_id, audio_volume, not audio_muted)
 
 func _remember_track(kind: String, id: int) -> void:
 	var tracks: Array = subtitle_tracks() if kind == "subtitle" else media.playback.get("details", {}).get("audio_tracks", [])
@@ -892,7 +871,7 @@ func _restore_track_choices() -> void:
 		var tracks: Array = subtitle_tracks() if kind == "subtitle" else details.audio_tracks
 		var id: Variant = TrackPreference.resolve(_tracks_pending[kind], tracks)
 		if id == null: continue
-		var accepted := set_subtitle_track(int(id), false) if kind == "subtitle" else set_audio_options(int(id), audio_volume, audio_muted)
+		var accepted := set_subtitle_track(int(id), false) if kind == "subtitle" else _apply_audio_track(int(id))
 		if accepted:
 			_tracks_pending.erase(kind)
 			if kind == "audio": _clone_applied = true
@@ -945,19 +924,13 @@ func bookmarks_snapshot() -> Dictionary:
 		_bookmark_cache_revision = bookmark_store.revision
 	return {"bookmark_scope": bookmark_scope(), "bookmarks": _bookmark_rows,
 		"bookmark_revision": bookmark_store.revision, "bookmark_undo": bookmark_store.can_undo(),
-		"bookmark_ready": not bookmark_snapshot().is_empty(), "bookmark_seekable": bookmark_seekable(),
+		"bookmark_ready": false, "bookmark_seekable": bookmark_seekable(),
 		"seek_mode": SeekPolicy.normalize(seek_mode), "bookmark_seek_mode": SeekPolicy.bookmark_override(bookmark_seek_mode),
 		"bookmark_effective_seek_mode": SeekPolicy.effective(seek_mode, bookmark_seek_mode)}
 
 func bookmark_action(operation: String, marker_id: String, scope: String) -> String:
 	if scope != bookmark_scope(): return ""
 	match operation:
-		"add":
-			var snapshot := bookmark_snapshot()
-			if snapshot.is_empty(): return ""
-			var item := bookmark_store.add(local_uri, str(_bookmark_metadata.get("basename", "")), _bookmark_metadata.get("size", -1), int(snapshot.position_ms))
-			bookmark_last_added = item
-			return "Bookmark added" if not item.is_empty() else bookmark_store.last_error
 		"delete":
 			return "Bookmark deleted" if bookmark_store.remove(_bookmark_media_id, marker_id) else "Bookmark save failed"
 		"undo":
@@ -1463,7 +1436,7 @@ func _on_debug_command(id: int, payload: String) -> void:
 	elif command.operation == "depth":
 		command["accepted"] = set_depth_strength(float(command.strength)) if command.has("strength") else set_depth(bool(command.enabled))
 	elif command.operation == "audio":
-		command["accepted"] = set_audio_options(int(command.track_id), audio_volume, audio_muted)
+		command["accepted"] = _apply_audio_track(int(command.track_id))
 	elif command.operation == "subtitle":
 		command["accepted"] = set_subtitle_track(int(command.track_id))
 	elif command.operation == "playing":
@@ -1671,9 +1644,9 @@ func _process(_delta: float) -> void:
 			_subtitle_import_floor = int(media.playback.get("details", {}).get("subtitle_import_command", 0))
 			_pending_external_uri = ""; _subtitle_loading = true
 	if _audio_pending:
-		set_audio_options(audio_track_id, audio_volume, audio_muted)
+		_apply_audio_track(audio_track_id)
 	elif not _track_choices.has("audio") and prefer_clone_voice and not _clone_applied and clone_voice_track() > 0:
-		_clone_applied = set_audio_options(clone_voice_track(), audio_volume, audio_muted)
+		_clone_applied = _apply_audio_track(clone_voice_track())
 	if panel and geometry != Geometry.Geometry.FLAT:
 		_center_on_view()
 	if not _pending_revision.is_empty():

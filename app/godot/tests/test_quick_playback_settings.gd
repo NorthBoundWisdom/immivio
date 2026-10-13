@@ -52,10 +52,10 @@ func _run() -> void:
 	main.video._waiting_first = false; main.video.requested_play = true
 	var menu: Node3D = main.video_menu; menu.set_process(false); menu.toggle()
 	check(not menu._buttons.any(func(item): return item.target in [104, Menu.TEMP_PASSTHROUGH]), "Video toolbar has no passthrough controls")
-	var right := [Menu.MODE, Menu.QUICK_SCREEN, Menu.QUICK_SPEED, Menu.QUICK_LOOP, 11]
+	var right := [Menu.MODE, Menu.QUICK_SPEED, Menu.QUICK_COLOR, Menu.QUEUE_SETTINGS, 12]
 	for target in right:
 		var item := button(menu, target)
-		check(not item.is_empty() and item.node.visible and item.rect.get_center().x > .15 and item.rect.end.x < .58, "Quick controls occupy the right side of play: %d" % target)
+		check(not item.is_empty() and item.node.visible and is_equal_approx(item.rect.get_center().y, .025) and item.rect.end.x < .58, "Quick controls share the toolbar row: %d" % target)
 	for index in right.size() - 1:
 		check(not button(menu, right[index]).rect.intersects(button(menu, right[index + 1]).rect), "Right-side controls do not overlap")
 	check(click(menu, Menu.QUICK_SPEED) and menu.section == 0 and menu._quick_open == "speed" and not menu.allows_playback_sticks(), "Speed opens a small popup on the playback page and suspends stick shortcuts")
@@ -79,26 +79,16 @@ func _run() -> void:
 	menu.release_pointer("left_hand", origin, ray, true)
 	check(not menu.has_pointer_capture() and commits.size() == 1, "Speed slider release commits preferences once")
 	check(is_equal_approx(float(menu._state.playback_speed), 1.25), "Quick speed matches the actual playback state after release")
-	check(click(menu, Menu.QUICK_SCREEN) and menu._quick_open == "screen" and menu.section == 0, "Screen shortcut replaces speed popup without opening full settings")
-	check(choose(menu, "screen_curve", .7) and is_equal_approx(main.video.screen_curve, .7), "Compact screen curve controls change the actual video surface")
-	check(menu.choices.sliders.size() == 2, "Screen popup exposes distance and size sliders")
-	for target in menu.choices.targets:
-		if menu.choices.targets[target].key == "screen_scale": slider_target = target; break
-	slider = menu.choices.sliders[slider_target]
-	x = slider.node.position.x + slider.left + slider.width * inverse_lerp(40.0, 300.0, 150.0)
-	origin = menu.to_global(Vector3(x, slider.node.position.y, .5))
-	menu.press_pointer("left_hand", origin, ray, true); menu.release_pointer("left_hand", origin, ray, true)
-	var saved := ConfigFile.new(); saved.load(main.settings_path)
-	check(is_equal_approx(main.video.screen_scale, 1.5) and is_equal_approx(float(saved.get_value("screen", "scale", 0)), 1.5), "Quick screen-size slider adjusts the video and saves existing screen preferences")
-	check(click(menu, Menu.QUICK_LOOP) and menu._quick_open == "loop", "Loop shortcut replaces the screen popup")
-	check(choose(menu, "loop", true) and main.video.loop_enabled and choose(menu, "loop", false) and not main.video.loop_enabled, "Loop choices apply both on and off")
+	check(click(menu, Menu.QUICK_COLOR) and menu._quick_open == "color" and menu.section == 0, "Color popup replaces speed without switching pages")
+	check(click(menu, Menu.QUEUE_SETTINGS) and menu._quick_open == "queue", "Queue replaces color in the same toolbar plane")
+	check(not menu._tips.values().has("Loop") and not menu.choices.targets.values().any(func(item): return item.get("key") == "loop"), "Playback exposes no loop control")
 	check(click(menu, Menu.MODE) and menu._quick_open.is_empty() and menu._mode_open, "Mode picker replaces quick settings")
 	check(click(menu, Menu.QUICK_SPEED) and not menu._mode_open and menu._quick_open == "speed", "Quick settings replace the mode picker")
 	check(click(menu, Menu.QUICK_CLOSE) and menu._quick_open.is_empty() and menu.visible and menu.allows_playback_sticks(), "Popup close returns to playback and restores stick shortcuts")
 	click(menu, Menu.QUICK_SPEED); click(menu, 102)
 	check(menu._quick_open.is_empty() and not main.video.requested_play and menu.choices.targets.is_empty(), "Play/pause closes the popup and removes its old controls")
 	main.video.geometry = 1; menu.refresh()
-	check(button(menu, Menu.QUICK_SCREEN).is_empty() and not button(menu, Menu.QUICK_SPEED).is_empty(), "Immersive playback hides flat-screen settings and retains speed")
+	check(not menu._buttons.any(func(item): return item.target == 210) and not button(menu, Menu.QUICK_SPEED).is_empty(), "Immersive playback hides flat-screen settings and retains speed")
 	click(menu, Menu.QUICK_SPEED); menu.dismiss(); menu.toggle()
 	check(menu._quick_open.is_empty(), "Reopening playback never retains a stale popup")
 	main.queue_free(); await process_frame

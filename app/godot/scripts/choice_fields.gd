@@ -106,7 +106,7 @@ func _slider(parent: Node3D, row: Dictionary, centre: Vector2, width: float, hei
 	label.position = Vector3(width / 2 - 0.005, 0, 0.006)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	sliders[target] = {"span": row.span, "left": left, "width": rail_width, "fill": fill, "knob": knob,
-		"label": label, "unit": row.unit, "node": node}
+		"label": label, "unit": row.unit, "node": node, "precision": int(row.get("precision", -1)), "signed": row.get("signed", false)}
 	# Capture retains the last preview through ordinary menu redraws.
 	var value := float(capture.value) if capture.get("item", {}).get("key", "") == row.key and capture.has("value") else float(row.value)
 	_refresh_slider(target, value)
@@ -122,6 +122,9 @@ func _refresh_slider(target: int, value: float) -> void:
 	slider.knob.position.x = slider.left + fraction * slider.width
 	slider.label.text = ("%.0f" % value if slider.unit in ["%", " FPS"] else ("%+.0f" % value if slider.unit == "°" and value != 0 else ("%.0f" % value if slider.unit == "°" else "%.1f" % value))) + slider.unit
 	if slider.unit == "×": slider.label.text = "%.2f×" % value
+	if int(slider.precision) >= 0:
+		var format := ("%+" if slider.signed else "%") + "." + str(slider.precision) + "f"
+		slider.label.text = (format % value) + slider.unit
 
 func _preview_slider(point: Vector3) -> void:
 	var span: Vector3 = capture.item.span

@@ -158,18 +158,12 @@ func _run() -> void:
 	check(placement(main, main.video).is_equal_approx(before), "Menu summons do not move screen")
 	check(main.video_menu.global_basis.y.normalized().is_equal_approx(Vector3.UP), "Player summon remains vertical with head tilt and roll")
 	footer_check(main.video_menu, "Player bar")
-	for section in [1,2]:
-		main.video_menu.section = section; main.video_menu.refresh()
-		footer_check(main.video_menu, "Player section " + str(section))
-	main.video_menu.section = 0; main.video_menu.refresh()
 	var bar_local: Transform3D = Main._upright_pose(main.xr_camera.global_transform).affine_inverse() * main.video_menu.global_transform
-	main.video_menu.section = 1; main.video_menu.refresh()
-	main._update_view_follow()
-	var lifted_local: Transform3D = Main._upright_pose(main.xr_camera.global_transform).affine_inverse() * main.video_menu.global_transform
-	check(lifted_local.origin.is_equal_approx(bar_local.origin + Vector3(0,main.video_menu.panel_lift * main.video_menu.PANEL_SCALE.y,0)), "Settings lift follows menu up axis while lying and is retained in follow")
-	main.video_menu.section = 0; main.video_menu.refresh()
-	main._update_view_follow()
-	check((Main._upright_pose(main.xr_camera.global_transform).affine_inverse() * main.video_menu.global_transform).is_equal_approx(bar_local), "Returning to playback restores local menu position")
+	for target in [main.video_menu.QUICK_SPEED, main.video_menu.QUICK_COLOR, main.video_menu.SYNC_SETTINGS, main.video_menu.QUEUE_SETTINGS, 12]:
+		main.video_menu._activate(target); main._update_view_follow()
+		check((Main._upright_pose(main.xr_camera.global_transform).affine_inverse() * main.video_menu.global_transform).is_equal_approx(bar_local), "Popup switching does not lift or move the toolbar")
+		footer_check(main.video_menu, "Player popup")
+	main.video_menu._activate(main.video_menu.QUICK_CLOSE)
 	main.video_menu._seek_hand = "left_hand"
 	var captured_menu: Transform3D = Main._upright_pose(main.xr_camera.global_transform).affine_inverse() * main.video_menu.global_transform
 	var captured_screen := placement(main,main.video)
@@ -244,8 +238,9 @@ func _run() -> void:
 	main.xr_camera.position += Vector3(4,0,0); main._update_view_follow(); main._recenter()
 	check(main.recent_menu.global_transform.is_equal_approx(frozen), "Invalid head tracking does not recapture or move panels")
 	main.tracked = true
+	main._presentation._system_recenter_last_notification_ms = -main._presentation.SYSTEM_RECENTER_REPEAT_MS
 	main._on_system_recentered()
-	check(main._system_recenter_pending and main.recent_menu.global_transform.is_equal_approx(frozen), "System reset waits for fresh tracking before repositioning panels")
+	check(not main._system_recenter_pending and not main.recent_menu.global_transform.is_equal_approx(frozen), "System reset uses the already-updated tracked pose in the same frame")
 	main.display.preview = true
 	main._on_session_control("follow")
 	var world: Transform3D = main.video.global_transform * main.video.flat_pose

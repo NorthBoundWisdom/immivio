@@ -69,7 +69,8 @@ func _run() -> void:
 	settings.load(main.settings_path)
 	check(is_equal_approx(float(settings.get_value("ui", "library_distance")),1.5), "Released distance is persisted")
 	main._place_menu(library)
-	check(is_equal_approx(Vector2(library.global_position.x-main._eye().x,library.global_position.z-main._eye().z).length(),1.5), "Reopened library uses remembered distance")
+	var ring_centre: Vector2 = library.capture_envelope().get_center()
+	check(is_equal_approx(library.to_global(Vector3(ring_centre.x,ring_centre.y,0)).distance_to(main._eye()),1.5), "Reopened library visual centre uses remembered ring distance")
 	main.reclining_mode = true; main._place_menu(library)
 	main.test_ray = [main._eye(), (library.global_position-main._eye()).normalized()]
 	main._on_pointer_button("grip_click", "right_hand")
