@@ -116,6 +116,7 @@ def host_tests(godot):
     player.run([sys.executable, player.ROOT/'tools/test_build_player.py'])
     player.run([sys.executable, player.ROOT/'tools/test_ci_android.py'])
     player.run([sys.executable, player.ROOT/'tools/test_ci_ai.py'])
+    player.run([sys.executable, player.ROOT/'tools/test_prepare_android_release.py'])
     player.run([sys.executable, player.ROOT/'tools/test_model_assets.py'])
     sdk = os.environ.get('ANDROID_HOME') or os.environ.get('ANDROID_SDK_ROOT')
     if sdk:

@@ -8,6 +8,8 @@
 
 最低兼容目标为 **Quest 2、PICO Neo3**。源码和构建兼容不等于所有机型的性能、显示及交互均已实机验收。
 
+可安装 APK 位于 [GitHub Releases](https://github.com/NorthBoundWisdom/Thru3D-Media-Player/releases) 中每个版本的 **Assets**。Tags 页面中的 ZIP/TAR 是源码压缩包。Release 附件包含 PICO、QUEST、OpenXR 的 AI 和非 AI APK，以及 SHA256 校验值和构建记录；签名与安装兼容性见对应版本说明。
+
 ## 功能
 
 - 视频和照片：平面、180°、360°，单目和左右立体。

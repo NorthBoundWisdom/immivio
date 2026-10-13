@@ -8,6 +8,8 @@ Current source version: **0.6.0** (Android versionCode **13**). An experimental 
 
 Minimum compatibility targets are **Quest 2** and **PICO Neo3**. Source/build compatibility does not establish hardware performance or interaction acceptance on every device.
 
+Download installable APKs from [GitHub Releases](https://github.com/NorthBoundWisdom/Thru3D-Media-Player/releases), under each release's **Assets**. Tag ZIP/TAR downloads contain source code. Release assets include PICO, QUEST and OpenXR APKs in AI and No AI variants, with SHA256 hashes and build receipts. See the release notes for signing and installation compatibility.
+
 ## Features
 
 - Video and photo viewing: flat, 180° and 360° projections; mono and side-by-side stereo.
