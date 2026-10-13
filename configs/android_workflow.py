@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Usage: python3 configs/android_workflow.py configure --vendor Quest --build-type Debug
-# Usage: python3 configs/android_workflow.py build|test|package|run --vendor Quest --build-type Debug
+# Usage: python3 configs/android_workflow.py prepare-packages|build|test|package|run --vendor Quest --build-type Debug
 """Explicit, offline Android build workflow shared by local use and CI."""
 
 import argparse
@@ -21,12 +21,9 @@ from configs.dependencies import (
     go_environment,
     openlist_workspace,
     stage_vendors,
+    host_tools,
 )
 from configs.source_roots import workflow
-from configs.dependency_manifest import (
-    verify as verify_manifest,
-    catalog as master_catalog,
-)
 from freecm.asset_seeds import require_asset_seeds
 from freecm.repo_commands import validate_repo_command_manifest
 from repomgrandroid.workflow import AndroidWorkflowConfig, run_test_level
@@ -41,7 +38,8 @@ BUILD_INPUTS = (
     "android/settings.gradle",
     "android/gradle/libs.versions.toml",
     "android/gradle/dependency-cache.gradle",
-    "android/gradle/wrapper/gradle-wrapper.properties",
+    "third_party/mpv/manifest.json",
+    "third_party/mpv/source-lock.json",
     "android/gradle/verification-metadata.xml",
     "cloud/openlist/go.mod",
     "cloud/openlist/go.sum",
@@ -71,7 +69,6 @@ def configuration_path(vendor, build_type):
 
 
 def input_signature(args):
-    verify_manifest(ROOT)
     roots = workflow.require_dependency_roots()
     inputs = {name: digest(ROOT / name) for name in BUILD_INPUTS}
     for directory, pattern in [
@@ -92,6 +89,10 @@ def input_signature(args):
     ).strip()
     inputs["resolved_commits"] = roots.resolved_commits
     inputs["backend"] = "source_frame" if args.mpv_dir else "standard_libmpv_render"
+    if not args.mpv_dir:
+        inputs["mpv_libraries"] = {
+            name: digest(path) for name, path in player.standard_mpv_libraries().items()
+        }
     if args.mpv_dir:
         inputs["mpv_receipt"] = digest(args.mpv_receipt)
         record = json.loads(Path(args.mpv_receipt).read_text())
@@ -104,15 +105,8 @@ def input_signature(args):
 
 def dependency_receipt():
     roots = workflow.require_dependency_roots()
-    assets = lock_data()["assets"]
     return {
-        "schema_version": 3,
-        "dependency_catalog_sha256": digest(ROOT / "source_roots.lock.jsonc.in"),
-        "package_groups": {
-            "maven_components": len(master_catalog()["gradle"]["verification"]),
-            "go_checksums": len(master_catalog()["go"]["OpenList"]["sum"]),
-            "python_profiles": sorted(master_catalog()["python"]),
-        },
+        "schema_version": 2,
         "freecm_commit": subprocess.check_output(
             ["git", "-C", str(ROOT / "FreeCM"), "rev-parse", "HEAD"], text=True
         ).strip(),
@@ -120,10 +114,14 @@ def dependency_receipt():
         "dependency_commits": roots.resolved_commits,
         "dependency_assets": {
             name: [
-                {"id": r["id"], "sha256": r["sha256"], "sizeBytes": r["sizeBytes"]}
-                for r in spec["files"]
+                {
+                    "id": item["id"],
+                    "sha256": item["sha256"],
+                    "sizeBytes": item["sizeBytes"],
+                }
+                for item in spec["files"]
             ]
-            for name, spec in assets.items()
+            for name, spec in lock_data().get("assets", {}).items()
         },
         "dependency_manifests": {
             name: digest(ROOT / name)
@@ -141,11 +139,11 @@ def dependency_receipt():
             for p in (ROOT / "android").glob("**/*gradle.lockfile")
         },
         "toolchain": TOOLCHAIN,
+        "native_manifest_sha256": digest(ROOT / "third_party/mpv/manifest.json"),
     }
 
 
 def configure(args, env, sdk):
-    verify_manifest(ROOT)
     require_asset_seeds(ROOT)
     (
         player.prepare_mpv()
@@ -225,6 +223,25 @@ def require_configuration(args, env, sdk):
         raise RuntimeError("Release builds require pinned dependencies")
 
 
+def prepare_packages(args, env):
+    """Resolve application packages with Go/Gradle; host tools remain untouched."""
+    source, _ = openlist_workspace()
+    online = go_environment(env, online=True)
+    online["IMMIVIO_OFFLINE_BUILD"] = "0"
+    player.run(
+        ["go", "list", "-deps", "-test", "./cloudcore"],
+        cwd=source,
+        env=online,
+        log="go-dependencies.log",
+    )
+    for directory in (ROOT / "android", player.PROJECT / "android/build"):
+        player.run(
+            [args.gradle, "-p", directory, "--console=plain", "prepareDependencyCache"],
+            env=online,
+            log="gradle-dependencies-" + directory.parent.name + ".log",
+        )
+
+
 def build(args, env, sdk):
     player.prepare_openlist(env)
     player.build_plugin(args, env, sdk)
@@ -290,19 +307,16 @@ def test(args, env, sdk, level):
 
         check_export_path(args.templates, args.gradle, env)
     if level in ("l1", "all"):
-        run_test_level(
-            AndroidWorkflowConfig(
-                repo_root=ROOT,
-                gradle_wrapper=ROOT / "android/gradlew",
-                l1_gradle_tasks=(
-                    "-p",
-                    str(ROOT / "android"),
-                    "--offline",
-                    ":player-plugin:testDebugUnitTest",
-                ),
-            ),
-            "l1",
+        player.run(
+            [
+                args.gradle,
+                "-p",
+                ROOT / "android",
+                "--offline",
+                ":player-plugin:testDebugUnitTest",
+            ],
             env=env,
+            log="jvm-tests.log",
         )
         source, _ = openlist_workspace()
         goenv = go_environment(env)
@@ -323,7 +337,15 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "command",
-        choices=("configure", "build", "test", "package", "run", "stop-gradle"),
+        choices=(
+            "configure",
+            "prepare-packages",
+            "build",
+            "test",
+            "package",
+            "run",
+            "stop-gradle",
+        ),
     )
     parser.add_argument("--vendor", choices=VENDORS, default="Quest")
     parser.add_argument(
@@ -340,22 +362,14 @@ def main(argv=None):
     opts.build_type = build_type_for_ref(opts.build_type)
     if bool(opts.mpv_dir) != bool(opts.mpv_receipt):
         parser.error("--mpv-dir and --mpv-receipt must be supplied together")
-    paths = ROOT / "build/host-tools/paths.json"
     if opts.command == "stop-gradle":
-        if not paths.is_file():
-            print("No initialized Gradle installation to stop")
-            return 0
-        tools = json.loads(paths.read_text())
-        if not Path(tools["gradle"]).is_file():
-            print("No initialized Gradle installation to stop")
-            return 0
-        env = os.environ.copy()
-        env["GRADLE_USER_HOME"] = str(ROOT / ".cache/gradle")
-        player.run([tools["gradle"], "--stop"], env=env, timeout=60)
+        import shutil
+
+        gradle = os.environ.get("GRADLE_EXE") or shutil.which("gradle")
+        if gradle and Path(gradle).is_file():
+            player.run([gradle, "--stop"], env=os.environ.copy(), timeout=60)
         return 0
-    if not paths.exists():
-        raise RuntimeError("Run FreeCM --init and --update first")
-    tools = json.loads(paths.read_text())
+    tools = host_tools()
     args = arguments_for(
         opts.vendor,
         opts.build_type,
@@ -369,7 +383,9 @@ def main(argv=None):
             configure(args, env, sdk)
             return 0
         require_configuration(args, env, sdk)
-        if opts.command == "build":
+        if opts.command == "prepare-packages":
+            prepare_packages(args, env)
+        elif opts.command == "build":
             build(args, env, sdk)
         elif opts.command == "test":
             test(args, env, sdk, opts.level)

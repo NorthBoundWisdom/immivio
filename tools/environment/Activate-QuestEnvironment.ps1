@@ -1,12 +1,8 @@
 param([string]$ToolRoot = '')
 $ErrorActionPreference = 'Stop'
 $workspace = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-$toolchain = python "$workspace/configs/dependency_manifest.py" toolchain-json | ConvertFrom-Json
-$paths = Get-Content "$workspace/build/host-tools/paths.json" -Raw | ConvertFrom-Json
+$toolchain = Get-Content "$workspace/configs/toolchain.json" -Raw | ConvertFrom-Json
 if (-not $env:ANDROID_HOME) { $env:ANDROID_HOME = Join-Path $env:LOCALAPPDATA 'Android/Sdk' }
 $env:ANDROID_SDK_ROOT = $env:ANDROID_HOME
 $env:ANDROID_NDK_HOME = Join-Path $env:ANDROID_HOME "ndk/$($toolchain.android.ndk)"
-$env:GRADLE_USER_HOME = Join-Path $workspace '.cache/gradle'
-$env:GODOT_EXE = $paths.godot
-$env:GODOT_TEMPLATES_DIR = $paths.templates
 $env:PATH = "$env:ANDROID_HOME/platform-tools;$env:PATH"

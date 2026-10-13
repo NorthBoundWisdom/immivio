@@ -11,7 +11,6 @@ if not (FREECM_ROOT / "freecm").is_dir():
     raise RuntimeError("Initialize FreeCM: git submodule update --init FreeCM")
 sys.path.insert(0, str(FREECM_ROOT))
 sys.path.insert(0, str(REPO_ROOT))
-from configs.dependency_manifest import template
 from freecm.dependency_roots import (
     DependencyRootConfig,
     DependencyRootSpec,
@@ -28,13 +27,33 @@ workflow = bind_dependency_root_workflow(
                 name,
                 name,
                 name.upper() + "_SOURCE_ROOT",
-                (
-                    ("go.mod", "go.sum", "internal/model/storage.go", "LICENSE")
-                    if name == "OpenList"
-                    else ()
-                ),
+                ("go.mod", "go.sum", "internal/model/storage.go", "LICENSE")
+                if name == "OpenList"
+                else (),
             )
-            for name in template(REPO_ROOT)["dependencies"]
+            for name in (
+                "OpenList",
+                "MbedTLS",
+                "FreeType",
+                "FriBidi",
+                "HarfBuzz",
+                "Libunibreak",
+                "Libxml2",
+                "Fontconfig",
+                "Curl",
+                "Dav1d",
+                "FFmpeg",
+                "Libass",
+                "Libplacebo",
+                "Mpv",
+                "FastFloat",
+                "Glad",
+                "GodotOpenXRHands",
+                "Lua",
+                "MpvAndroidSource",
+                "MbedTLSFramework",
+                "FreeTypeDlg",
+            )
         ),
         default_required_relative_paths=(),
     ),

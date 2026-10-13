@@ -1,4 +1,4 @@
-// Only FreeCM --init invokes this task online. Build/test/package use --offline.
+// Native Gradle dependency cache preparation. Build/test/package use --offline.
 allprojects {
     dependencyLocking {
         lockAllConfigurations()

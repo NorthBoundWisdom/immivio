@@ -8,7 +8,7 @@ python3 tools/test_prepare_android_release.py
 python3 FreeCM/tools/validate_repo_commands.py .
 python3 tools/Check-PublicSource.py
 python3 configs/source_roots.py verify
-python3 configs/dependency_manifest.py verify
+python3 configs/check_environment.py
 python3 configs/android_workflow.py test --vendor Quest --build-type Debug
 ```
 
@@ -18,4 +18,4 @@ Workflow tests cover corrupt assets, offline acquisition boundaries, configurati
 
 Build and package each target before device verification. Existing device probes and media benchmarks remain available. Use the optional backend and its checked receipt for private PGS, spatial-video or Dolby tests; host/APK checks alone do not establish those capabilities on a headset.
 
-Master-lock tests cover complete input generation, drift detection, single-file version updates, idempotence, checksum validation and safe output paths.
+Dependency-selection tests verify that disabled source entries need no seed or download, and explicitly enabling them requires prepared inputs. Host-environment checks inspect installations without installing or downloading tools.

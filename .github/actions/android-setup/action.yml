@@ -1,49 +1,38 @@
-name: Prepare Android CI
-description: Provision shared tools and playback caches for Windows and macOS
+name: Check Android CI environment
+description: Load the prepared runner toolchain and verify tools without installing them
 runs:
   using: composite
   steps:
-    - name: Read toolchain requirements
-      id: toolchain
-      shell: python
-      run: |
-        import os, runpy
-        requirements = runpy.run_path('configs/dependency_manifest.py')['catalog']()['toolchain']
-        with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
-            for name in ('python', 'java', 'go'):
-                output.write(name + '=' + requirements[name] + '\n')
-            output.write('android_command_line_tools=' + requirements['android']['command_line_tools'] + '\n')
-    - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
-      with:
-        python-version: ${{ steps.toolchain.outputs.python }}
-    - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
-      with:
-        distribution: temurin
-        java-version: ${{ steps.toolchain.outputs.java }}
-    - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
-      with:
-        go-version: ${{ steps.toolchain.outputs.go }}
-        cache: false
-    - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4
-      with:
-        cmdline-tools-version: ${{ steps.toolchain.outputs.android_command_line_tools }}
-        packages: platform-tools
-        log-accepted-android-sdk-licenses: false
-    - name: Locate playback caches
-      id: paths
-      shell: python
-      run: |
-        import os
-        paths = ['.cache/gradle', '.cache/go', 'build/dependency_seed_repos', 'build/host-tools',
-                 'build/openlist-output', 'app/godot/addons/quest_player/bin/cloudcore.aar',
-                 'app/godot/.godot/imported']
-        with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
-            output.write('paths<<CACHE_PATHS\n' + '\n'.join(paths) + '\nCACHE_PATHS\n')
-    - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
-      with:
-        path: ${{ steps.paths.outputs.paths }}
-        key: ${{ runner.os }}-${{ runner.arch }}-immivio-freecm-v2-${{ hashFiles('FreeCM', 'source_roots.lock.jsonc.in', 'configs/*.py', 'cloud/openlist/*.go', 'native/mpv/patches/*', 'cloud/openlist/*.go', 'android/*.gradle', 'android/player-plugin/build.gradle') }}
-        restore-keys: ${{ runner.os }}-${{ runner.arch }}-immivio-freecm-v2-
-    - name: Install locked Android SDK components
+    - name: Load prepared macOS environment
+      if: runner.os == 'macOS'
       shell: bash
-      run: python configs/sdk_environment.py --install
+      run: |
+        source "${IMMIVIO_TOOLCHAIN_ENV:-$HOME/github-runners/toolchains/env.sh}"
+        export GODOT_EXE="${GODOT_EXE:-${GODOT_BIN:-godot}}"
+        python3 - <<'PY'
+        import os
+        with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as output:
+            for name in ('PATH', 'JAVA_HOME', 'ANDROID_HOME', 'ANDROID_SDK_ROOT',
+                         'GODOT_EXE', 'GODOT_TEMPLATES_DIR', 'GRADLE_EXE',
+                         'IMMIVIO_MPV_LIB_DIR', 'GOMODCACHE', 'GOCACHE', 'GOPATH',
+                         'GRADLE_USER_HOME'):
+                if os.environ.get(name):
+                    output.write(name + '=' + os.environ[name] + '\n')
+        PY
+    - name: Load prepared Windows environment
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $environment = if ($env:IMMIVIO_TOOLCHAIN_ENV) { $env:IMMIVIO_TOOLCHAIN_ENV } else { Join-Path $env:SystemDrive 'github-runners/toolchains/env.ps1' }
+        . $environment
+        if (-not $env:GODOT_EXE -and $env:GODOT_BIN) { $env:GODOT_EXE = $env:GODOT_BIN }
+        foreach ($name in @('PATH', 'JAVA_HOME', 'ANDROID_HOME', 'ANDROID_SDK_ROOT',
+                            'GODOT_EXE', 'GODOT_TEMPLATES_DIR', 'GRADLE_EXE',
+                            'IMMIVIO_MPV_LIB_DIR', 'GOMODCACHE', 'GOCACHE', 'GOPATH',
+                            'GRADLE_USER_HOME')) {
+          $value = [Environment]::GetEnvironmentVariable($name)
+          if ($value) { "$name=$value" | Out-File $env:GITHUB_ENV -Append -Encoding utf8 }
+        }
+    - name: Check preinstalled tools and Android libraries
+      shell: bash
+      run: python configs/check_environment.py

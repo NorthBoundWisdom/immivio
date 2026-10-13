@@ -1,4 +1,4 @@
-# Internal: FreeCM asset consumption and host dependency preparation.
+# Internal: project source/asset consumption and preinstalled host tools.
 import hashlib
 import json
 import os
@@ -9,14 +9,13 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "FreeCM"))
-from freecm.asset_seeds import asset_seed_root, require_asset_seeds
+from freecm.asset_seeds import asset_seed_root
 from freecm.jsonc import loads_jsonc
-from freecm.workspace_lock import workspace_mutation_lock as workspace_lock
 
-from configs.dependency_manifest import catalog, generate, verify, capture_gradle
+import tomllib
 
-TOOLCHAIN = catalog()["toolchain"]
-CATALOG = catalog()["gradle"]["catalog"]
+TOOLCHAIN = json.loads((ROOT / "configs/toolchain.json").read_text())
+CATALOG = tomllib.loads((ROOT / "android/gradle/libs.versions.toml").read_text())
 TOOLCHAIN.update(
     android_gradle_plugin=CATALOG["versions"]["agp"],
     kotlin=CATALOG["versions"]["kotlin"],
@@ -60,60 +59,10 @@ def asset_file(name, filename=None):
     return path
 
 
-def select_assets(*, native=False):
-    """Select the host's asset subset in the machine-local active lock."""
-    from configs.source_roots import workflow
-
-    workflow.ensure_active_lock_file(ROOT)
-    with workspace_lock(ROOT):
-        data = lock_data()
-        template = loads_jsonc(
-            (ROOT / "source_roots.lock.jsonc.in").read_text(),
-            path_label="source_roots.lock.jsonc.in",
-        )
-        # Add newly declared Git roots without changing existing manual/pin choices.
-        for name, entry in template["dependencies"].items():
-            data["dependencies"].setdefault(name, entry)
-            data["depsManualPath"].setdefault(name, "")
-        if "immivio" in template:
-            data["immivio"] = template["immivio"]
-        names = {"Gradle", "GodotTemplates", "OpenXRVendors", "MpvAndroid"}
-        if sys.platform == "darwin":
-            names |= {
-                "GodotMacOS",
-                "NotoLicense",
-                "NotoSansCJKSC",
-                "NotoSansCJKTC",
-                "NotoSansCJKJP",
-            }
-        elif os.name == "nt":
-            names.add("GodotWindows")
-        native_marker = ROOT / ".cache/native-mpv-enabled"
-        if native:
-            native_marker.parent.mkdir(parents=True, exist_ok=True)
-            native_marker.touch()
-        if native_marker.exists():
-            names |= {"MpvLinuxNdk"}
-        data["assets"] = {name: template["assets"][name] for name in sorted(names)}
-        pending = ROOT / "source_roots.lock.jsonc.pending"
-        pending.write_text(json.dumps(data, indent=2) + "\n")
-        pending.replace(ROOT / "source_roots.lock.jsonc")
-    if "immivio" in template:
-        generate(ROOT)
-
-
 def go_environment(env, *, online=False):
     env = env.copy()
-    cache = ROOT / ".cache/go"
-    env.update(
-        GOBIN=str(cache / "bin"),
-        GOMODCACHE=str(cache / "modules"),
-        GOCACHE=str(cache / "build"),
-        GOPATH=str(cache / "gopath"),
-        GOTOOLCHAIN="local",
-        GOFLAGS="-mod=readonly",
-    )
-    env["PATH"] = os.pathsep.join([str(cache / "bin"), env.get("PATH", "")])
+    # Respect the preconfigured Go environment and its normal package caches.
+    env.update(GOTOOLCHAIN="local", GOFLAGS="-mod=readonly")
     if not online:
         env.update(GOPROXY="off", GOSUMDB="off")
     return env
@@ -184,165 +133,37 @@ def stage_vendors():
     )
 
 
-def prepare_host_assets():
-    """Materialize only already verified assets; no network operations."""
+def host_tools():
+    """Find installed tools; never install or download a host dependency."""
+    from types import SimpleNamespace
     from configs import player_build as player
 
-    generate(ROOT)
-    verify(ROOT)
-    require_asset_seeds(ROOT)
-    output = ROOT / "build/host-tools"
-    output.mkdir(parents=True, exist_ok=True)
-    gradle_record = lock_data()["assets"]["Gradle"]["files"][0]
-    gradle_archive = asset_file("Gradle")
-    version = gradle_record["fileName"].removeprefix("gradle-").removesuffix("-bin.zip")
-    gradle = (
-        output
-        / f"gradle-{version}/bin"
-        / ("gradle.bat" if os.name == "nt" else "gradle")
-    )
-    if not gradle.exists():
-        player.extract(gradle_archive, output)
-    if os.name != "nt":
-        gradle.chmod(0o755)
-    godot = os.environ.get("GODOT_EXE")
-    if not godot and sys.platform in ("darwin", "win32"):
-        name = "GodotMacOS" if sys.platform == "darwin" else "GodotWindows"
-        editor = output / "godot"
-        executable = TOOLCHAIN["godot"]["executables"][
-            "macos" if sys.platform == "darwin" else "windows"
-        ]
-        path = editor / executable
-        if not path.exists():
-            player.extract(asset_file(name), editor)
-        if os.name != "nt":
-            path.chmod(0o755)
-        godot = str(path)
-    godot = godot or shutil.which("godot")
-    if not godot:
-        raise RuntimeError("Set GODOT_EXE to the locked Godot editor")
+    def executable(variable, fallback):
+        value = os.environ.get(variable) or shutil.which(fallback)
+        path = (
+            Path(shutil.which(value) or value).expanduser().absolute()
+            if value
+            else None
+        )
+        if path is None or not path.is_file():
+            raise RuntimeError(
+                f"Preinstall {fallback} or set {variable}; see docs/BUILD.md"
+            )
+        return str(path)
+
+    godot = executable("GODOT_EXE", "godot")
+    gradle = executable("GRADLE_EXE", "gradle")
     observed = subprocess.check_output(
         [godot, "--headless", "--version"], text=True
     ).strip()
     if observed != TOOLCHAIN["godot"]["version"]:
         raise RuntimeError(
-            f'Expected {TOOLCHAIN["godot"]["version"]}, observed {observed}'
+            f"Expected Godot {TOOLCHAIN['godot']['version']}, observed {observed}"
         )
-    result = {
-        "godot": str(Path(godot).absolute()),
-        "templates": str(asset_seed_root(ROOT, "GodotTemplates")),
-        "gradle": str(gradle.absolute()),
-    }
-    (output / "paths.json").write_text(json.dumps(result, indent=2) + "\n")
-    return result
-
-
-def initialize_packages(*, refresh_packages=False):
-    """Network-capable package cache preparation, called exclusively by --init."""
-    from configs import player_build as player
-    from configs.android_workflow import arguments_for
-
-    tools = prepare_host_assets()
-    args = arguments_for("Quest", "Debug", tools)
-    env, sdk = player.environment(args)
-    if (
-        subprocess.check_output(["go", "version"], env=env, text=True).split()[2]
-        != "go" + TOOLCHAIN["go"]
-    ):
+    args = SimpleNamespace(godot=godot, templates=os.environ.get("GODOT_TEMPLATES_DIR"))
+    templates, _ = player.template_directory(args, os.environ)
+    if not (templates / "android_source.zip").is_file():
         raise RuntimeError(
-            "Install the Go version specified in source_roots.lock.jsonc.in"
+            f"Preinstall matching Godot Android export templates in {templates}"
         )
-    env["IMMIVIO_OFFLINE_BUILD"] = "0"
-    online = go_environment(env, online=True)
-    with workspace_lock(ROOT):
-        workspace, _ = openlist_workspace()
-    player.run(
-        ["go", "list", "-deps", "-test", "./cloudcore"],
-        cwd=workspace,
-        env=online,
-        log="go-download.log",
-    )
-    from configs.source_roots import workflow
-
-    mobile_root = workflow.require_dependency_roots().dependency_root_for("GoMobile")
-    for tool in ("gomobile", "gobind"):
-        player.run(
-            [
-                "go",
-                "install",
-                f"./cmd/{tool}",
-            ],
-            cwd=mobile_root,
-            env=online,
-            log=f"{tool}-install.log",
-        )
-    tool_receipt = {
-        name: {
-            "sha256": digest(
-                Path(online["GOBIN"]) / (name + (".exe" if os.name == "nt" else ""))
-            ),
-            "module": TOOLCHAIN["gomobile"],
-        }
-        for name in ("gomobile", "gobind")
-    }
-    (ROOT / ".cache/go/tools.json").write_text(
-        json.dumps(tool_receipt, indent=2) + "\n"
-    )
-    stage_vendors()
-    # Initialization prepares the same generated projects for package resolution.
-    if refresh_packages:
-        (ROOT / "android/gradle/verification-metadata.xml").write_text(
-            """<?xml version="1.0" encoding="UTF-8"?>
-<verification-metadata xmlns="https://schema.gradle.org/dependency-verification">
-<configuration><verify-metadata>true</verify-metadata><verify-signatures>false</verify-signatures></configuration>
-<components/>
-</verification-metadata>
-"""
-        )
-    player.configure_project(args, env, sdk)
-    if sys.platform == "darwin":
-        from configs.ci_support import install_macos_fonts
-
-        install_macos_fonts(args.godot)
-    player.run(
-        [ROOT / "android/gradlew", "--version"], env=env, log="gradle-wrapper-init.log"
-    )
-    # Resolve plugin and matching Godot export configurations, including native tools.
-    for directory in (ROOT / "android", player.PROJECT / "android/build"):
-        flags = (
-            ["--write-locks", "--write-verification-metadata", "sha256"]
-            if refresh_packages
-            else []
-        )
-        player.run(
-            [
-                tools["gradle"],
-                "-p",
-                directory,
-                "--console=plain",
-                *flags,
-                "prepareDependencyCache",
-            ],
-            env=env,
-            log="gradle-cache-" + directory.parent.name + ".log",
-        )
-        if refresh_packages and directory != ROOT / "android":
-            shutil.copy2(
-                directory / "gradle/verification-metadata.xml",
-                ROOT / "android/gradle/verification-metadata.xml",
-            )
-            output = ROOT / "android/export-locks"
-            output.mkdir(exist_ok=True)
-            for path in directory.glob("**/*gradle.lockfile"):
-                relative = path.relative_to(directory)
-                target = output / relative
-                target.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(path, target)
-        elif refresh_packages:
-            shutil.copy2(
-                ROOT / "android/gradle/verification-metadata.xml",
-                player.PROJECT / "android/build/gradle/verification-metadata.xml",
-            )
-
-    if refresh_packages:
-        capture_gradle(ROOT)
+    return {"godot": godot, "templates": str(templates), "gradle": gradle}

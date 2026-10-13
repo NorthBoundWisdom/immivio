@@ -57,12 +57,14 @@ def main():
     args = parser.parse_args()
     sys.path.insert(0,str(ROOT))
     from configs.source_roots import workflow
-    from configs.dependency_manifest import catalog
     roots=workflow.require_dependency_roots()
     base=(args.builder/'deps').resolve();base.mkdir(parents=True,exist_ok=True)
-    for name,relative in catalog()['native']['sourceRoots'].items():
+    source_paths = {'MbedTLS': 'mbedtls', 'FreeType': 'freetype2', 'FriBidi': 'fribidi', 'HarfBuzz': 'harfbuzz', 'Libunibreak': 'unibreak', 'Libxml2': 'libxml2', 'Fontconfig': 'fontconfig', 'Curl': 'curl', 'Dav1d': 'dav1d', 'FFmpeg': 'ffmpeg', 'Libass': 'libass', 'Libplacebo': 'libplacebo', 'Mpv': 'mpv', 'FastFloat': 'libplacebo/3rdparty/fast_float', 'Glad': 'libplacebo/3rdparty/glad', 'Lua': 'lua', 'MbedTLSFramework': 'mbedtls/framework', 'FreeTypeDlg': 'freetype2/subprojects/dlg'}
+    for name,relative in source_paths.items():
         destination=(base/relative).resolve()
         if not destination.is_relative_to(base):raise ValueError('Native source directory escapes builder')
+        if name not in roots.resolved_commits:
+            raise ValueError(f"Optional source {name} is disabled. Enable native backend dependencies in source_roots.lock.jsonc explicitly.")
         record={'dependency':name,'commit':roots.resolved_commits[name]}
         marker=destination/'.quest-source.json'
         if marker.is_file() and json.loads(marker.read_text())==record:continue

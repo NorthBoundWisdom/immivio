@@ -1,5 +1,5 @@
 # Internal: CI signing, host tests and package receipt summaries.
-"""Provision and verify Immivio Android builds on hosted CI."""
+"""Verify builds on prepared CI runners."""
 
 import base64
 import json
@@ -9,75 +9,11 @@ import re
 import shutil
 import subprocess
 import sys
-import time
 from urllib.parse import quote
 import xml.etree.ElementTree as ET
 import zipfile
 
 from configs import player_build as player
-
-
-def install_macos_fonts(executable):
-    # Hosted macOS images can advertise unavailable on-demand Apple CJK fonts.
-    # Supply the application's preferred Noto families without changing app UI code.
-    directory = Path.home() / "Library/Fonts"
-    directory.mkdir(parents=True, exist_ok=True)
-    records = player.TOOLCHAIN["fonts"]
-    for record in records:
-        source = player.asset_file(record["family"].replace(" ", ""))
-        shutil.copy2(source, directory / record["filename"])
-    license_file = player.asset_file("NotoLicense")
-    shutil.copy2(license_file, directory / license_file.name)
-    probe = player.ROOT / "build/ci_font_probe.gd"
-    probe.parent.mkdir(parents=True, exist_ok=True)
-    families = json.dumps([record["family"] for record in records])
-    probe.write_text(
-        "extends SceneTree\nfunc _initialize():\n\tvar available = OS.get_system_fonts()\n"
-        + "\tfor family in "
-        + families
-        + ":\n\t\tif not family in available:\n"
-        + '\t\t\tprinterr("Missing CI font: " + family)\n\t\t\tquit(1)\n\t\t\treturn\n'
-        + '\tprint("CI_CJK_FONTS_READY")\n\tquit()\n',
-        encoding="utf-8",
-    )
-    player.LOGS.mkdir(parents=True, exist_ok=True)
-    for attempt in range(10):
-        try:
-            result = subprocess.run(
-                [
-                    str(executable),
-                    "--headless",
-                    "--xr-mode",
-                    "off",
-                    "--path",
-                    str(player.PROJECT),
-                    "--quit-after",
-                    "120",
-                    "--script",
-                    str(probe),
-                ],
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                timeout=30,
-            )
-        except subprocess.TimeoutExpired as error:
-            output = (error.stdout or b"") + (error.stderr or b"")
-            (player.LOGS / "ci-macos-fonts.log").write_bytes(output)
-            raise RuntimeError(
-                "macOS font probe timed out; see artifacts/logs/ci-macos-fonts.log"
-            ) from error
-        (player.LOGS / "ci-macos-fonts.log").write_text(
-            result.stdout + result.stderr, encoding="utf-8"
-        )
-        if result.returncode == 0 and "CI_CJK_FONTS_READY" in result.stdout:
-            print("Registered pinned Noto CJK fonts for macOS host tests", flush=True)
-            return
-        if attempt < 9:
-            time.sleep(1)
-    raise RuntimeError(
-        "macOS did not register CI fonts; see artifacts/logs/ci-macos-fonts.log"
-    )
 
 
 def host_tests(godot):

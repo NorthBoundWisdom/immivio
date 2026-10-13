@@ -22,13 +22,14 @@ def inputs():
     files = ['third_party/mpv/source-lock.json', 'native/mpv/patches/source-frame-manifest.json',
              'native/mpv/patches/pgs-bitmap-manifest.json',
              'native/mpv/patches/dovi-rpu-manifest.json',
-             'tools/environment/mpv-linux/host-tools.lock.txt']
+             'requirements-native-tools.txt']
     result = {name: sha(ROOT/name) for name in files}
     for directory in ['scripts', 'include']:
         for path in (BUILDER/directory).glob('*.sh'):
             result['builder/'+str(path.relative_to(BUILDER))] = sha(path)
     result['builder/buildall.sh'] = sha(BUILDER/'buildall.sh')
-    result['ndk/source.properties'] = sha(Path(str(Path(os.environ.get('THRU3D_MPV_WORK', str(Path.home() / '.cache/thru3d-mpv'))) / 'android-ndk-r30/source.properties')))
+    ndk = Path(os.environ.get('ANDROID_NDK_HOME', str(BUILDER/'sdk/android-ndk-r30')))
+    result['ndk/source.properties'] = sha(ndk/'source.properties')
     return result
 
 

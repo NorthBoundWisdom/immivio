@@ -10,87 +10,66 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from configs import source_root_workflow as source, android_workflow as android
-from configs import dependencies as deps
 from freecm.asset_seeds import prepare_asset_seeds, require_asset_seeds
 from freecm.build_cleanup import clean_build
 
 
 class DependencyLifecycle(unittest.TestCase):
-    def test_update_refresh_latest_and_diagnostics_never_initialize_packages(self):
-        for argv in (
-            ["--update"],
-            ["--refreshpin"],
-            ["--pinlatest"],
-            ["--cleanbuild", "--dry-run"],
-        ):
-            with self.subTest(argv=argv), patch.object(
-                source.script, "main", return_value=0
-            ) as script, patch.object(
-                source, "initialize_packages"
-            ) as network, patch.object(
-                source, "select_assets"
-            ) as assets:
-                self.assertEqual(source.main(argv), 0)
+    def test_source_workflow_does_not_install_host_tools_or_packages(self):
+        for argv in (["--init"], ["--update"], ["--refreshpin"], ["--pinlatest"]):
+            with (
+                self.subTest(argv=argv),
+                patch.object(source.script, "main", return_value=0) as script,
+            ):
+                with patch(
+                    "subprocess.run",
+                    side_effect=AssertionError("Unexpected host installer"),
+                ):
+                    self.assertEqual(source.main(argv), 0)
                 script.assert_called_once_with(argv)
-                network.assert_not_called()
-                if argv[0] in ("--update", "--refreshpin"):
-                    assets.assert_called_once_with(native=False)
-                else:
-                    assets.assert_not_called()
 
-    def test_host_asset_selection_keeps_native_downloads_opt_in(self):
-        with tempfile.TemporaryDirectory() as tmp, patch.object(
-            deps, "ROOT", Path(tmp)
-        ):
-            root = Path(tmp)
-            template = {
+    def test_disabled_sources_need_no_seed_and_can_be_enabled_explicitly(self):
+        from freecm.dependency_roots import DependencyRootConfig, DependencyRootSpec
+
+        with tempfile.TemporaryDirectory() as name:
+            root = Path(name)
+            lock = {
                 "schemaVersion": 5,
                 "depsMode": "pinned",
-                "depsManualPath": {},
-                "dependencies": {},
-                "assets": {
-                    name: {
-                        "seedPath": "build/dependency_seed_repos/" + name,
-                        "files": [],
+                "depsManualPath": {"Optional": ""},
+                "dependencies": {
+                    "Optional": {
+                        "remote": "https://example.invalid/never-clone.git",
+                        "commit": "a" * 40,
+                        "disabled": True,
                     }
-                    for name in (
-                        "Gradle",
-                        "GodotTemplates",
-                        "OpenXRVendors",
-                        "MpvAndroid",
-                        "GodotMacOS",
-                        "NotoLicense",
-                        "NotoSansCJKSC",
-                        "NotoSansCJKTC",
-                        "NotoSansCJKJP",
-                        "MpvSources",
-                        "MpvBuilder",
-                        "MpvLinuxNdk",
-                    )
                 },
             }
-            (root / "source_roots.lock.jsonc.in").write_text(json.dumps(template))
-            (root / "source_roots.lock.jsonc").write_text(json.dumps(template))
+            path = root / "source_roots.lock.jsonc"
+            path.write_text(json.dumps(lock))
+            (root / "source_roots.lock.jsonc.in").write_text(json.dumps(lock))
+            manager = source.Workflow(
+                DependencyRootConfig(
+                    repo_root=root,
+                    repo_display_name="Fixture",
+                    dependency_root_specs=(
+                        DependencyRootSpec("Optional", "Optional", "OPTIONAL_ROOT", ()),
+                    ),
+                    default_required_relative_paths=(),
+                )
+            )
             with patch(
-                "configs.source_roots.workflow.ensure_active_lock_file"
-            ), patch.object(deps.sys, "platform", "darwin"):
-                deps.select_assets()
-                self.assertNotIn("MpvLinuxNdk", deps.lock_data(root)["assets"])
-                deps.select_assets(native=True)
-                self.assertIn("MpvLinuxNdk", deps.lock_data(root)["assets"])
-                self.assertTrue((root / ".cache/native-mpv-enabled").exists())
-
-    def test_python_package_download_requires_explicit_init(self):
-        with self.assertRaisesRegex(ValueError, "requires --init"):
-            source.main(["--update", "--python-tools"])
-
-    def test_package_refresh_requires_explicit_init(self):
-        with self.assertRaisesRegex(ValueError, "requires --init"):
-            source.main(["--update", "--refresh-packages"])
-
-    def test_native_download_request_requires_explicit_init(self):
-        with self.assertRaisesRegex(ValueError, "requires --init"):
-            source.main(["--update", "--native-mpv"])
+                "urllib.request.urlopen",
+                side_effect=AssertionError("Unexpected download"),
+            ):
+                manager.init_seed_repositories()
+                roots = manager.materialize_source_roots(allow_network=False)
+            self.assertEqual(roots.dependency_roots.resolved_commits, {})
+            self.assertFalse((root / "build/dependency_seed_repos/Optional").exists())
+            lock["dependencies"]["Optional"]["disabled"] = False
+            path.write_text(json.dumps(lock))
+            with self.assertRaises((RuntimeError, FileNotFoundError)):
+                manager.materialize_source_roots(allow_network=False)
 
     def test_verified_asset_lifecycle_and_corruption_do_not_download_during_verify(
         self,
@@ -158,17 +137,21 @@ class DependencyLifecycle(unittest.TestCase):
                 self.assertTrue((root / relative / "marker").exists())
 
     def test_cleanup_can_stop_gradle_after_incomplete_setup(self):
-        with tempfile.TemporaryDirectory() as tmp, patch.object(
-            android, "ROOT", Path(tmp)
-        ), patch.object(android.player, "environment") as sdk:
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            patch.object(android, "ROOT", Path(tmp)),
+            patch.object(android.player, "environment") as sdk,
+            patch.object(android.player, "run"),
+        ):
             self.assertEqual(android.main(["stop-gradle"]), 0)
             sdk.assert_not_called()
 
     def test_missing_and_stale_configuration_cannot_build(self):
         from types import SimpleNamespace
 
-        with tempfile.TemporaryDirectory() as tmp, patch.object(
-            android, "ROOT", Path(tmp)
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            patch.object(android, "ROOT", Path(tmp)),
         ):
             args = SimpleNamespace(vendor="Quest", build_type="Debug")
             with self.assertRaisesRegex(RuntimeError, "Configure"):
@@ -195,8 +178,9 @@ class DependencyLifecycle(unittest.TestCase):
         from types import SimpleNamespace
 
         args = SimpleNamespace(vendor="Quest", build_type="Debug")
-        with tempfile.TemporaryDirectory() as tmp, patch.object(
-            android, "ROOT", Path(tmp)
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            patch.object(android, "ROOT", Path(tmp)),
         ):
             with self.assertRaisesRegex(RuntimeError, "Run build"):
                 android.require_build(args)

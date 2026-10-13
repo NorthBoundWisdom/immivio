@@ -17,9 +17,45 @@ from configs import player_build as builder
 
 
 class DependencyBoundaries(unittest.TestCase):
+    def test_preinstalled_standard_libraries_are_verified_before_staging(self):
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch.object(builder, "ROOT", Path(directory)),
+        ):
+            root = Path(directory)
+            native = root / "prepared"
+            native.mkdir()
+            records = []
+            for name in ("libmpv.so", "libavcodec.so"):
+                path = native / name
+                path.write_bytes(b"original")
+                records.append(
+                    {
+                        "name": name,
+                        "bytes": path.stat().st_size,
+                        "sha256": builder.digest(path),
+                    }
+                )
+            manifest = root / "third_party/mpv/manifest.json"
+            manifest.parent.mkdir(parents=True)
+            manifest.write_text(
+                json.dumps(
+                    {
+                        "packaged_libraries": [item["name"] for item in records],
+                        "libraries": records,
+                    }
+                )
+            )
+            (native / "libavcodec.so").write_bytes(b"modified")
+            with patch.dict(os.environ, {"IMMIVIO_MPV_LIB_DIR": str(native)}):
+                with self.assertRaisesRegex(RuntimeError, "incompatible"):
+                    builder.prepare_mpv()
+            self.assertFalse((root / "android").exists())
+
     def test_spatial_source_libraries_are_all_verified_before_any_are_imported(self):
-        with tempfile.TemporaryDirectory() as directory, patch.object(
-            builder, "ROOT", Path(directory)
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch.object(builder, "ROOT", Path(directory)),
         ):
             root = Path(directory)
             metadata = root / "native/mpv/patches/source-frame-manifest.json"
@@ -69,8 +105,9 @@ class DependencyBoundaries(unittest.TestCase):
             self.assertFalse((root / "android").exists())
 
     def test_spatial_source_receipt_cannot_relabel_the_standard_backend(self):
-        with tempfile.TemporaryDirectory() as directory, patch.object(
-            builder, "ROOT", Path(directory)
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch.object(builder, "ROOT", Path(directory)),
         ):
             root = Path(directory)
             metadata = root / "native/mpv/patches/source-frame-manifest.json"
@@ -86,8 +123,9 @@ class DependencyBoundaries(unittest.TestCase):
             self.assertFalse((root / "android").exists())
 
     def test_engine_failure_terminates_a_hung_export_and_keeps_its_log(self):
-        with tempfile.TemporaryDirectory() as directory, patch.object(
-            builder, "LOGS", Path(directory)
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch.object(builder, "LOGS", Path(directory)),
         ):
             started = time.monotonic()
             with self.assertRaisesRegex(RuntimeError, "Godot reported an error"):
@@ -108,8 +146,9 @@ class DependencyBoundaries(unittest.TestCase):
             )
 
     def test_silent_hung_command_is_bounded(self):
-        with tempfile.TemporaryDirectory() as directory, patch.object(
-            builder, "LOGS", Path(directory)
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch.object(builder, "LOGS", Path(directory)),
         ):
             started = time.monotonic()
             with self.assertRaisesRegex(RuntimeError, "timed out"):
@@ -137,7 +176,11 @@ class DependencyBoundaries(unittest.TestCase):
             (jdk / "bin").mkdir(parents=True)
             (jdk / "bin" / ("java.exe" if os.name == "nt" else "java")).touch()
             args = argparse.Namespace(
-                sdk=str(alias), java_home=str(jdk), ndk=ndk, cmake=cmake
+                sdk=str(alias),
+                java_home=str(jdk),
+                ndk=ndk,
+                cmake=cmake,
+                gradle="gradle",
             )
             env, observed = builder.environment(args)
             self.assertEqual(observed, alias.absolute())
@@ -161,6 +204,7 @@ class DependencyBoundaries(unittest.TestCase):
                 java_home=str(root / "jdk"),
                 ndk="ndk",
                 cmake="cmake",
+                gradle="gradle",
             )
             env, _ = builder.environment(
                 args,
@@ -204,8 +248,9 @@ class DependencyBoundaries(unittest.TestCase):
 
 class VariantIdentityBoundaries(unittest.TestCase):
     def test_package_and_label_are_separate_and_presets_restore_after_failure(self):
-        with tempfile.TemporaryDirectory() as directory, patch.object(
-            builder, "PROJECT", Path(directory)
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch.object(builder, "PROJECT", Path(directory)),
         ):
             path = Path(directory) / "export_presets.cfg"
             original = b"\r\n".join(
@@ -243,9 +288,11 @@ class VariantIdentityBoundaries(unittest.TestCase):
             )
 
     def test_relocated_legacy_workspace_reuses_the_same_named_key(self):
-        with tempfile.TemporaryDirectory() as directory, patch.object(
-            builder, "ROOT", Path(directory)
-        ), patch.object(builder, "run") as run:
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch.object(builder, "ROOT", Path(directory)),
+            patch.object(builder, "run") as run,
+        ):
             signing = Path(directory) / "artifacts/signing"
             signing.mkdir(parents=True)
             key = signing / "thru3d-release.keystore"
@@ -264,9 +311,11 @@ class VariantIdentityBoundaries(unittest.TestCase):
             run.assert_not_called()
 
     def test_missing_legacy_key_cannot_silently_create_a_new_identity(self):
-        with tempfile.TemporaryDirectory() as directory, patch.object(
-            builder, "ROOT", Path(directory)
-        ), patch.object(builder, "run") as run:
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch.object(builder, "ROOT", Path(directory)),
+            patch.object(builder, "run") as run,
+        ):
             signing = Path(directory) / "artifacts/signing"
             signing.mkdir(parents=True)
             (signing / "thru3d-signing.json").write_text(

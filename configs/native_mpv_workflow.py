@@ -9,71 +9,24 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
-import tempfile
-import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from configs.dependencies import asset_file, digest
-from configs.dependency_manifest import catalog
+from configs.dependencies import digest
 from configs.source_roots import workflow
 from configs import player_build as player
 
 WORK = ROOT / "build/native-mpv"
 
 
-def extract_ndk(archive, destination):
-    """Extract verified NDK bytes, allowing only contained links and restoring executable bits."""
-    destination = Path(destination).resolve()
-    with zipfile.ZipFile(archive) as source:
-        members = source.infolist()
-        links = {}
-        paths = set()
-        for entry in members:
-            path = (destination / entry.filename).resolve()
-            if not path.is_relative_to(destination) or path in paths:
-                raise RuntimeError("Unsafe or duplicate NDK archive path")
-            paths.add(path)
-            if (entry.external_attr >> 16) & 0o170000 == 0o120000:
-                target = source.read(entry).decode("utf-8")
-                if Path(target).is_absolute() or not (
-                    path.parent / target
-                ).resolve().is_relative_to(destination):
-                    raise RuntimeError("NDK archive link escapes destination")
-                links[path] = target
-        for path in paths:
-            if any(parent in links for parent in path.parents):
-                raise RuntimeError("NDK archive member is nested below a symbolic link")
-        for entry in members:
-            path = destination / entry.filename
-            if path.resolve() in links:
-                continue
-            if entry.is_dir():
-                path.mkdir(parents=True, exist_ok=True)
-                continue
-            path.parent.mkdir(parents=True, exist_ok=True)
-            with source.open(entry) as data, path.open("wb") as output:
-                shutil.copyfileobj(data, output)
-            mode = (entry.external_attr >> 16) & 0o777
-            if mode:
-                path.chmod(mode)
-        for path, target in links.items():
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.symlink_to(target)
-
-
 def environment():
     if not sys.platform.startswith("linux"):
         raise RuntimeError("The optional source backend requires a Linux build host")
     env = os.environ.copy()
-    from configs.python_tools import python_path
-
-    native_python = python_path("native-build")
-    if not native_python.is_file():
-        raise RuntimeError(
-            "Run FreeCM --init --native-mpv to prepare native build tools"
+    if env.get("ANDROID_NDK_HOME"):
+        env["THRU3D_MPV_TOOLCHAIN_BIN"] = str(
+            Path(env["ANDROID_NDK_HOME"]) / "toolchains/llvm/prebuilt/linux-x86_64/bin"
         )
-    env["PATH"] = os.pathsep.join([str(native_python.parent), env.get("PATH", "")])
     env.update(
         THRU3D_MPV_WORK=str(WORK),
         THRU3D_MPV_EXPORT=str(WORK / "output/arm64-v8a"),
@@ -101,15 +54,17 @@ def configure(env):
             raise RuntimeError(f"Install Linux build prerequisite: {tool}")
     if (
         subprocess.check_output(["meson", "--version"], text=True, env=env).strip()
-        != catalog()["native"]["meson"]
+        != "1.11.0"
     ):
-        raise RuntimeError(
-            "Install the Meson version pinned in source_roots.lock.jsonc.in"
-        )
+        raise RuntimeError("Preinstall Meson 1.11.0 in the native build environment")
     roots = workflow.require_dependency_roots()
     WORK.mkdir(parents=True, exist_ok=True)
     destination = WORK / "mpv-android"
     identity = WORK / "builder-commit.txt"
+    if "MpvAndroidSource" not in roots.resolved_commits:
+        raise RuntimeError(
+            "Native source dependencies are disabled; enable them explicitly in source_roots.lock.jsonc"
+        )
     commit = roots.resolved_commits["MpvAndroidSource"]
     if not identity.exists() or identity.read_text() != commit:
         shutil.rmtree(destination, ignore_errors=True)
@@ -119,15 +74,20 @@ def configure(env):
             destination / "buildscripts",
         )
         identity.write_text(commit)
-    if not (WORK / "android-ndk-r30/source.properties").exists():
-        with tempfile.TemporaryDirectory(prefix="ndk-", dir=WORK) as pending:
-            extract_ndk(asset_file("MpvLinuxNdk"), pending)
-            shutil.move(Path(pending) / "android-ndk-r30", WORK / "android-ndk-r30")
+    ndk = Path(env.get("ANDROID_NDK_HOME", ""))
+    if not (ndk / "source.properties").is_file():
+        raise RuntimeError("Preinstall Linux Android NDK r30 and set ANDROID_NDK_HOME")
+    if "30.0.16248370" not in (ndk / "source.properties").read_text():
+        raise RuntimeError("Optional native backend requires Android NDK 30.0.16248370")
+    ndk = ndk.resolve()
     sdk = destination / "buildscripts/sdk"
     sdk.mkdir(exist_ok=True)
     link = sdk / "android-ndk-r30"
-    if not link.exists():
-        link.symlink_to(WORK / "android-ndk-r30", target_is_directory=True)
+    if link.is_symlink():
+        link.unlink()
+    if link.exists():
+        raise RuntimeError(f"Expected an SDK link, found a directory: {link}")
+    link.symlink_to(ndk, target_is_directory=True)
     # The FreeCM materialized roots are copied into disposable build trees below.
     player.run(
         [sys.executable, ROOT / "tools/environment/mpv-linux/prepare_sources.py"],

@@ -1,81 +1,97 @@
 # Building Immivio
 
-Immivio has one playback edition. Inference models, MNN and ncnn are excluded.
+Immivio uses FreeCM for project source roots and the Android OpenXR addon. Tools and large native libraries belong to a prepared development environment, following MonsterRPG's approach. Configure, Build, Test and Package never install tools.
 
-## Dependency and toolchain ownership
+## Dependency ownership
 
-`source_roots.lock.jsonc.in` is the sole reviewed dependency authority. FreeCM's standard `dependencies` entries pin source repositories by full Git commit, matching the source-root workflow used by PCBAtlas Android. The namespaced `immivio` section holds toolchain requirements, Maven resolution/checksums, Go module/checksum data, Python wheel pins and vendored-resource provenance. FreeCM core remains unmodified.
+| Input | Managed by |
+| --- | --- |
+| OpenList adapter source | FreeCM, fixed Git commit |
+| OpenXR vendor Android addon | FreeCM, verified release archive |
+| Optional mpv/FFmpeg backend sources and hand-model maintenance sources | FreeCM declarations with `disabled: true` by default |
+| Android application/plugin packages | Gradle version catalog, lockfiles and verification metadata under `android/` |
+| OpenList's Go modules | `cloud/openlist/go.mod` and `go.sum` |
+| Python, JDK, Go, Gradle, Godot and export templates, Android SDK/NDK/CMake, gomobile/gobind | Preinstalled host environment; required versions in `configs/toolchain.json` |
+| Android ARM64 libmpv/FFmpeg libraries | Prepared host SDK directory, checked against `third_party/mpv/manifest.json` |
+| Optional Python media/native tools | Preinstalled environment; `requirements-media-tools.txt` and `requirements-native-tools.txt` |
 
-`configs/dependency_manifest.py generate` renders Gradle catalogs/locks/verification metadata, Go manifests, native receipt compatibility records and Python requirements. These generated inputs are ignored by Git and must not be edited independently. `verify` rejects drift and verifies embedded hand/background/license bytes against the master lock. `--init` and `--update` render inputs automatically; builds verify them.
+`source_roots.lock.jsonc.in` is a source/asset lock, not an embedded copy of package-manager manifests or a host installer. Edit Gradle/Go files directly and commit their native lock/checksum changes. Python wheel inventories and tool download URLs are not stored in FreeCM. If upgrading from the previous embedded master lock, replace the ignored machine-local `source_roots.lock.jsonc` with the new template once, preserving any wanted manual paths.
 
-mpv, FFmpeg and native helper libraries use commit-pinned FreeCM source roots. The optional Linux build copies those roots into a disposable tree and reuses the pinned upstream mpv-android build recipes. Source roots remain unmodified. The Lua 5.2.4 source uses a pinned LuaDist mirror because the official Lua Git repository has no 5.2.4 release tag. Official Godot and mpv Android binaries remain checksum-pinned distribution assets with their corresponding source commits recorded; this does not imply those binaries are compiled by this repository.
+## Prepare the host once
 
-Maven/Go/Python package versions retain their native ecosystem identities and integrity checks. Their entire reviewed lock data lives inside the master lock rather than independent package-version files. The old native archive records are generated only to validate historical source-frame receipts; they no longer acquire or materialize native source trees.
+Install the versions listed in `configs/toolchain.json`. Use `JAVA_HOME`, `ANDROID_HOME` / `ANDROID_SDK_ROOT`, and `PATH` for the installed tools. `GODOT_EXE`, `GODOT_TEMPLATES_DIR` and `GRADLE_EXE` can select nonstandard installation paths. Godot's matching Android export templates must already contain `android_source.zip` and `version.txt`.
 
-Install the Python, JDK, Go and Android SDK components specified in the toolchain configuration. Local builds use `JAVA_HOME` and `ANDROID_HOME` / `ANDROID_SDK_ROOT`. Windows/macOS initialization prepares the locked Godot editor; `GODOT_EXE` can select an editor with the exact locked version. Linux uses a supplied matching editor. CI provisions the SDK and host runtimes before dependency initialization.
+Large desktop media libraries and ordinary native build tools can be installed with the operating system's package manager, for example:
+
+```sh
+# macOS desktop/native development
+brew install ffmpeg mpv pkgconf ninja meson
+# Debian/Ubuntu desktop/native development
+sudo apt install ffmpeg libmpv-dev pkg-config ninja-build meson
+```
+
+The desktop libraries installed by these commands cannot be packaged into Android. Prepare the eight Android ARM64 libraries listed in `third_party/mpv/manifest.json` in a separate SDK directory, then set `IMMIVIO_MPV_LIB_DIR` to it. The manifest records the supported upstream mpv-android release, download location and each library's checksum. A maintainer can unpack `lib/arm64-v8a/*.so` from that release APK once, outside the project build. The build verifies all selected library bytes before copying them. It does not download mpv, FFmpeg or their full Git histories.
+
+Preinstall both Go binding tools using the `gomobile` module version recorded in `configs/toolchain.json`, and add their installation directory to `PATH`. For example, replace `<gomobile-version>` with that value during environment preparation:
+
+```sh
+go install golang.org/x/mobile/cmd/gomobile@<gomobile-version>
+go install golang.org/x/mobile/cmd/gobind@<gomobile-version>
+python3 configs/check_environment.py
+```
+
+Optional fixture/benchmark scripts use the active Python environment. If needed, install `requirements-media-tools.txt` there beforehand; this is not part of FreeCM initialization or CI. Native backend developers also prepare `requirements-native-tools.txt`. Host tests require working CJK system fonts, such as Noto Sans CJK; install them with the host environment.
+
+## Build
 
 ```sh
 git clone --recurse-submodules https://github.com/NorthBoundWisdom/immivio.git
 cd immivio
+python3 configs/check_environment.py
 python3 configs/source_root_workflow.py --init
 python3 configs/source_root_workflow.py --update
 python3 configs/android_workflow.py configure --vendor Quest --build-type Debug
+python3 configs/android_workflow.py prepare-packages --vendor Quest --build-type Debug
 python3 configs/android_workflow.py build --vendor Quest --build-type Debug
 python3 configs/android_workflow.py test --vendor Quest --build-type Debug
 python3 configs/android_workflow.py package --vendor Quest --build-type Debug
 ```
 
-Use `Pico` or `OpenXR` for the other targets and `Release` for distributable packages. The same Python commands run in PowerShell. The previous build and preparation commands have been removed.
+Use `Pico` or `OpenXR` for the other targets and `Release` for distributable packages. The same Python commands run in PowerShell.
 
-Only dependency `--init` accesses the network. After intentional Maven upgrades, maintainers can use `--init --refresh-packages` to harvest resolution and checksum changes back into the master lock, review its diff, then configure again. It selects host assets into the ignored active lock, prepares FreeCM seeds and prefetches Go/Gradle packages. `--update`, diagnostics, configuration, compilation, testing and packaging consume verified local inputs offline. Missing inputs require another initialization. Initialization selects current template assets while preserving local source-root settings; `--refreshpin` updates only Git commit pins. Release requires pinned source dependencies.
+FreeCM `--init` accesses the network for enabled source roots and assets only. `--update`, diagnostics and materialization remain offline. `prepare-packages` independently prepares ordinary Go/Gradle application package caches using their native manifests; it does not install Go, Gradle, Python or any other host tool. Build/Test/Package consume those caches offline. Go and Gradle respect the host's normal cache locations and environment overrides. A prepared package cache lets subsequent builds skip `prepare-packages`.
 
-Configure is explicit. Build/Test/Package reject missing or stale configuration. Package requires a successful current Build. `run` installs an already packaged APK on the attached Android device. The FreeCM editor command manifest exposes these same actions.
+Configure is explicit. Build/Test/Package reject missing or stale configuration; Package requires a successful current Build. `run` installs an already packaged APK on the attached device. Generated source roots, projects and outputs stay under ignored build directories. Cleanup preserves dependency seeds and signing material, but removes generated configuration; configure again afterward.
 
-Generated host tools, source roots and configuration live under ignored `build/`; Gradle and Go use repository-local `.cache/` stores. `--cleanbuild --dry-run` previews cleanup. Cleanup preserves dependency seed/source roots and signing material, but removes generated configurations and build outputs; run `--update` and Configure afterward.
+## Optional dependencies and playback backends
 
-## Playback backends
+The default backend consumes the prepared, unmodified upstream **mpv-android release libraries** through libmpv's public render API. Ordinary and packed stereo playback are supported. Private decoded-frame PTS, PGS bitmap, MV-HEVC and Dolby capabilities use the optional project backend and still require media/device validation.
 
-The default backend uses checksum-pinned, unmodified **mpv-android upstream release libraries**, through libmpv's public render API. mpv-android is the Android distribution, rather than a standalone Android SDK released by the mpv main project. Ordinary and packed stereo playback are supported by this path; it does not claim the private backend's decoded-frame PTS, PGS bitmap, MV-HEVC or Dolby capabilities.
+Optional sources remain declared with a fixed `remote`, `commit` and `disabled: true`, as in PcbDemo. FreeCM skips them during initialization, update, verification and dependency resolution. To develop the private backend, set `disabled` to `false` for the native dependency group in the machine-local `source_roots.lock.jsonc`: all optional entries except `GodotOpenXRHands`. Keep the template defaults disabled. Then run `--init` and `--update`. Enable `GodotOpenXRHands` separately only when maintaining the already checked-in hand models.
 
-The optional project backend remains isolated while public-API replacements are evaluated. Import it with both receipt and directory at every stage:
+The optional Linux build consumes preinstalled Autoconf, Automake, Libtool, pkg-config, gperf, NASM, CMake, Bison, Flex, gettext, Meson 1.11.0, Ninja and Python packages. Preinstall NDK `30.0.16248370` and set `ANDROID_NDK_HOME`; enable unprivileged user/network namespaces. It copies enabled source roots into disposable build trees and runs compilation without network access:
+
+```sh
+python3 configs/native_mpv_workflow.py configure
+python3 configs/native_mpv_workflow.py build
+python3 configs/native_mpv_workflow.py package
+```
+
+Import its output using both options at every Android stage:
 
 ```sh
 python3 configs/android_workflow.py configure --vendor Quest --build-type Debug \
   --mpv-dir /path/to/arm64-v8a --mpv-receipt /path/to/source-build.json
 ```
 
-Supply the same two arguments to Build, Test and Package. The importer verifies source revision, source-lock identity, patches, headers and every library before staging any bytes. PGS/spatial/Dolby capabilities still require media and device validation.
-
-To build the optional backend on Linux, install the native build prerequisites (Autoconf, Automake, Libtool, pkg-config, gperf, NASM, CMake, Bison, Flex, gettext, Meson 1.11.0 and Ninja), and enable unprivileged user/network namespaces. The build runs in a network namespace with no network access. Then use:
-
-```sh
-python3 configs/source_root_workflow.py --init --native-mpv
-python3 configs/source_root_workflow.py --update
-python3 configs/native_mpv_workflow.py configure
-python3 configs/native_mpv_workflow.py build
-python3 configs/native_mpv_workflow.py package
-```
-
-The source backend uses `build/native-mpv/`; its library output and receipt are under `build/native-mpv/output/`. No upstream source roots are patched in place. Public-API replacements will be validated one capability at a time before removing corresponding project patches.
+Supply the same options to Build, Test and Package. The importer verifies revision, historical source-lock identity, patches, headers and every library. `third_party/mpv/source-lock.json` exists for receipt compatibility; it does not acquire source archives. Standard builds do not initialize or compile the optional backend.
 
 ## Outputs, signing and CI
 
-APKs keep the `Immivio-<QUEST|PICO|OpenXR>-<version>-<debug|release>-<YYYYMMDD>.apk` naming contract. Each version 3 `.build.json` receipt includes source commit, FreeCM commit, resolved dependency commits, asset and package-lock digests, toolchain, backend, APK hash and signing certificate.
+APKs retain `Immivio-<QUEST|PICO|OpenXR>-<version>-<debug|release>-<YYYYMMDD>.apk`. Each `.build.json` receipt includes source/FreeCM commits, resolved enabled dependencies, asset and native package-lock digests, toolchain, backend, APK checksum and signing certificate. Release requires pinned dependencies.
 
-The application ID remains `com.wapok.thru3d`, preserving upgrades and user data with a compatible signing certificate. Existing `artifacts/signing/thru3d-signing.json` credentials are reused. Explicit `GODOT_ANDROID_KEYSTORE_<DEBUG|RELEASE>_*` variables take priority; partial overrides fail. Keep keys and credentials outside Git.
+The application ID remains `com.wapok.thru3d`. Existing `artifacts/signing/thru3d-signing.json` credentials are reused. Complete `GODOT_ANDROID_KEYSTORE_<DEBUG|RELEASE>_*` overrides take priority. Keep keys outside Git.
 
-Windows/macOS CI uses these same explicit stages for all three targets. Tags build Release and use repository signing secrets when supplied. Publishing requires successful jobs on both hosts, complete pinned dependency receipts and matching tag/commit; canonical APKs come from macOS.
+Windows/macOS CI uses the same prepared self-hosted runner labels and shared environment files as MonsterRPG. Defaults are `$HOME/github-runners/toolchains/env.sh` and `%SystemDrive%\github-runners\toolchains\env.ps1`; `IMMIVIO_TOOLCHAIN_ENV` can override the file. The runner's environment must also expose the Android SDK, binding tools, Gradle, templates and `IMMIVIO_MPV_LIB_DIR`. CI loads and checks these installations, initializes enabled project inputs, resolves application packages, and runs the three Android targets. It has no toolchain/SDK/Python installer steps. Fork pull requests do not run on these private runners.
 
-APK checks retain ARM64, ELF symbol/dependency closure and 16KB alignment, signature, ZIP alignment, application identity and exclusion of inference components. These checks do not establish headset playback performance.
-
-## Python media tools
-
-Optional fixture/benchmark packages (NumPy, OpenCV, Pillow, pillow-heif, ONNX Runtime and their dependencies) are fixed in `immivio.python`. Prepare them explicitly:
-
-```sh
-python3 configs/source_root_workflow.py --init --python-tools
-python3 configs/python_tools.py verify --profile media-tools
-python3 configs/python_tools.py run --profile media-tools tools/Generate-StereoFixtures.py --help
-```
-
-The native profile additionally pins Meson, Jinja2, MarkupSafe and packaging. `--init --native-mpv` prepares it. Python downloads require the hashes in the master lock; installs and script runs use local wheel caches offline.
+Tags use Release and repository signing secrets when supplied. Publishing requires successful builds on both hosts and matching tag/commit; canonical APKs come from macOS. APK checks cover ARM64, ELF symbol/dependency closure and 16KB alignment, signatures, ZIP alignment and application identity. They do not establish headset playback performance.

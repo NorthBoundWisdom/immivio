@@ -1,6 +1,9 @@
 # Internal: source input lookup for native patch maintenance and regression probes.
 from configs.source_roots import workflow
-from configs.dependency_manifest import catalog
+import json
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def source_root(name):
@@ -15,6 +18,8 @@ def archived_receipt_hash(name):
     """Historical distribution identity retained only for existing receipt compatibility."""
     return next(
         record["sha256"]
-        for record in catalog()["native"]["sourceLock"]["sources"]
+        for record in json.loads(
+            (ROOT / "third_party/mpv/source-lock.json").read_text()
+        )["sources"]
         if record["name"] == name
     )

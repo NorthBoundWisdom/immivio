@@ -61,17 +61,3 @@ thru3d*-signing.json
 /source_roots.lock.jsonc.pending
 /.freecm.workspace.lock*
 __pycache__/
-
-# Dependency-manager inputs rendered from source_roots.lock.jsonc.in
-/configs/toolchain.json
-/android/gradle/libs.versions.toml
-/android/gradle/verification-metadata.xml
-/android/*gradle.lockfile
-/android/player-plugin/*gradle.lockfile
-/android/export-locks/
-/cloud/openlist/go.mod
-/cloud/openlist/go.sum
-/third_party/mpv/source-lock.json
-/third_party/mpv/source-plan.json
-/third_party/mpv/manifest.json
-/tools/environment/mpv-linux/host-tools.lock.txt

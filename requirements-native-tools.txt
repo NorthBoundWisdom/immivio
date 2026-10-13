@@ -1,0 +1,5 @@
+# Optional Linux native-backend tools; preinstall in the host environment.
+meson==1.11.0
+Jinja2==3.1.6
+MarkupSafe==3.0.4
+packaging==26.3

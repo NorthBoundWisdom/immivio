@@ -1,13 +1,12 @@
 # Internal: Godot export, Android JNI build and verified APK packaging.
 """Build the Android player on macOS, Linux or Windows.
 
-Tools/SDKs are supplied by the host. Downloads are locked application dependencies,
-not replacements for the host's JDK/Android SDK. Generated files stay outside Git.
+Tools/SDKs and Android libmpv are supplied by the host.
+Only project source roots and the OpenXR addon use FreeCM.
 """
 
 from contextlib import contextmanager
 from datetime import datetime
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -28,14 +27,12 @@ BIN = PROJECT / "addons/quest_player/bin"
 LOGS = ROOT / "artifacts/logs"
 from configs.dependencies import (
     TOOLCHAIN,
-    asset_file,
     digest,
     go_environment,
-    lock_data,
     openlist_workspace,
     export_dependencies,
 )
-from repomgrandroid.workflow import android_environment, gradlew_command
+from repomgrandroid.workflow import android_environment
 
 LOCK = {**TOOLCHAIN, **TOOLCHAIN["android"]}
 
@@ -189,9 +186,7 @@ def environment(args, base_env=None):
         ANDROID_SDK_ROOT=str(sdk),
         ANDROID_NDK_HOME=str(ndk),
     )
-    env["PATH"] = os.pathsep.join(
-        [str(Path(java) / "bin"), str(CACHE / "go/bin"), env["PATH"]]
-    )
+    env["PATH"] = os.pathsep.join([str(Path(java) / "bin"), env["PATH"]])
     # Java/Gradle do not honor HTTP(S)_PROXY themselves. Use only credential-free proxies.
     proxy_options = []
     for scheme in ("http", "https"):
@@ -214,32 +209,49 @@ def environment(args, base_env=None):
         [env.get("JAVA_TOOL_OPTIONS", ""), *proxy_options]
     ).strip()
     env["ORG_GRADLE_PROJECT_android.jetifier.ignorelist"] = "bcprov-jdk18on"
-    env["GRADLE_USER_HOME"] = str(ROOT / ".cache/gradle")
+    env.setdefault("GRADLE_USER_HOME", str(Path.home() / ".gradle"))
+    env["GRADLE_EXE"] = str(args.gradle)
     env["IMMIVIO_OFFLINE_BUILD"] = "1"
     return env, sdk
 
 
-def prepare_mpv():
+def standard_mpv_directory():
+    value = os.environ.get("IMMIVIO_MPV_LIB_DIR")
+    if not value:
+        raise RuntimeError(
+            "Preinstall Android ARM64 libmpv and set IMMIVIO_MPV_LIB_DIR; see docs/BUILD.md"
+        )
+    return Path(value).expanduser().absolute()
+
+
+def standard_mpv_libraries():
     record = json.loads((ROOT / "third_party/mpv/manifest.json").read_text())
-    apk = asset_file("MpvAndroid")
+    directory = standard_mpv_directory()
+    libraries = {}
+    for library in record["libraries"]:
+        if library["name"] not in record["packaged_libraries"]:
+            continue
+        path = directory / library["name"]
+        if (
+            not path.is_file()
+            or path.stat().st_size != library["bytes"]
+            or digest(path) != library["sha256"]
+        ):
+            raise RuntimeError(
+                f"Missing or incompatible Android libmpv library: {path}"
+            )
+        libraries[library["name"]] = path
+    return libraries
+
+
+def prepare_mpv():
+    libraries = (
+        standard_mpv_libraries()
+    )  # Validate every input before staging any file.
     destination = ROOT / "android/player-plugin/src/main/jniLibs/arm64-v8a"
     destination.mkdir(parents=True, exist_ok=True)
-    verified = {}
-    with zipfile.ZipFile(apk) as archive:
-        for library in record["libraries"]:
-            if library["name"] not in record["packaged_libraries"]:
-                continue
-            data = archive.read("lib/arm64-v8a/" + library["name"])
-            if (
-                len(data) != library["bytes"]
-                or hashlib.sha256(data).hexdigest() != library["sha256"]
-            ):
-                raise RuntimeError(
-                    f'Unexpected Android library bytes: {library["name"]}'
-                )
-            verified[library["name"]] = data
-    for name, data in verified.items():
-        (destination / name).write_bytes(data)
+    for name, path in libraries.items():
+        shutil.copy2(path, destination / name)
 
 
 def prepare_source_mpv(directory, receipt_path):
@@ -294,32 +306,22 @@ def prepare_openlist(env):
         "ndk": env["ANDROID_NDK_HOME"],
         "go": subprocess.check_output(["go", "version"], env=env, text=True).strip(),
         "recipe": digest(Path(__file__)),
+        "binding_tools": {
+            name: digest(shutil.which(name, path=env["PATH"]))
+            for name in ("gomobile", "gobind")
+            if shutil.which(name, path=env["PATH"])
+        },
     }
     stamp, output = cache / "android-build.json", BIN / "cloudcore.aar"
     if output.exists() and stamp.exists():
         receipt = json.loads(stamp.read_text())
         if receipt.get("inputs") == inputs and receipt.get("sha256") == digest(output):
             return
-    executable = Path(env["GOBIN"]) / (
-        "gomobile.exe" if os.name == "nt" else "gomobile"
-    )
-    if not executable.is_file():
+    executable = shutil.which("gomobile", path=env["PATH"])
+    if not executable:
         raise RuntimeError(
-            "Missing gomobile. Run configs/source_root_workflow.py --init"
+            "Preinstall gomobile and gobind in PATH; see configs/toolchain.json"
         )
-    tools_receipt_path = ROOT / ".cache/go/tools.json"
-    if not tools_receipt_path.exists():
-        raise RuntimeError(
-            "Go binding tool receipt is missing; run dependency initialization"
-        )
-    tool_receipt = json.loads(tools_receipt_path.read_text())
-    for tool, record in tool_receipt.items():
-        path = Path(env["GOBIN"]) / (tool + (".exe" if os.name == "nt" else ""))
-        if (
-            record["module"] != TOOLCHAIN["gomobile"]
-            or digest(path) != record["sha256"]
-        ):
-            raise RuntimeError("Go binding tool differs from its initialized receipt")
     pending = cache / "cloudcore.pending.aar"
     before = {name: digest(source / name) for name in ("go.mod", "go.sum")}
     run(
@@ -358,7 +360,7 @@ def prepare_openlist(env):
 def gradle_executable(args):
     path = Path(args.gradle)
     if not path.is_file():
-        raise RuntimeError("Locked Gradle is missing; run dependency initialization")
+        raise RuntimeError("Preinstall Gradle and set GRADLE_EXE or PATH")
     return path
 
 
@@ -517,7 +519,7 @@ def inspect_package(path, env, sdk):
             )
         }
         if not required <= names:
-            raise RuntimeError(f"Missing packaged libraries: {required-names}")
+            raise RuntimeError(f"Missing packaged libraries: {required - names}")
         if any(
             re.match(
                 r"assets/(rvm|rvm-mnn|depth-mnn|ai-models)/|lib/[^/]+/lib(quest_rvm|MNN[^/]*|ncnn)\.so$",
@@ -593,7 +595,7 @@ def inspect_package(path, env, sdk):
             raise RuntimeError(f"Invalid ELF architecture/alignment: {library.name}")
         if not set(needed) <= supplied:
             raise RuntimeError(
-                f"Unpackaged ELF dependency: {library.name}: {set(needed)-supplied}"
+                f"Unpackaged ELF dependency: {library.name}: {set(needed) - supplied}"
             )
         symbols = subprocess.check_output(
             [
@@ -674,11 +676,11 @@ def configure_project(args, env, sdk):
         api.write_bytes(archive.read("libs/debug/godot-lib.template_debug.aar"))
     gradle_executable(args)
     properties = [
-        f'-PandroidGradlePluginVersion={LOCK["android_gradle_plugin"]}',
-        f'-PkotlinPluginVersion={LOCK["kotlin"]}',
+        f"-PandroidGradlePluginVersion={LOCK['android_gradle_plugin']}",
+        f"-PkotlinPluginVersion={LOCK['kotlin']}",
         "-Pandroid.builtInKotlin=false",
         "-Pandroid.newDsl=false",
-        f'-PstandardMpv={str(not bool(getattr(args, "mpv_dir", None))).lower()}',
+        f"-PstandardMpv={str(not bool(getattr(args, 'mpv_dir', None))).lower()}",
         f"-PandroidNdkVersion={args.ndk}",
         f"-PandroidCmakeVersion={args.cmake}",
         f"-PandroidCompileSdk={TOOLCHAIN['android']['platform']}",
@@ -713,21 +715,10 @@ def configure_project(args, env, sdk):
         if count != 1:
             raise RuntimeError(f"Godot Android template configuration changed: {name}")
     config.write_text(patch_export_path(text))
-    wrapper = android / "gradle/wrapper/gradle-wrapper.properties"
-    text = wrapper.read_text()
-    text = re.sub(
-        r"(?m)^distributionUrl=.*$",
-        "distributionUrl="
-        + lock_data()["assets"]["Gradle"]["files"][0]["url"].replace(":", r"\:"),
-        text,
-    )
-    text = re.sub(r"(?m)^distributionSha256Sum=.*\n?", "", text)
-    wrapper.write_text(
-        text
-        + "\ndistributionSha256Sum="
-        + lock_data()["assets"]["Gradle"]["files"][0]["sha256"]
-        + "\n"
-    )
+    # Godot invokes gradlew itself. Forward it to the installed Gradle instead
+    # of letting the template wrapper download a distribution during export.
+    for name in ("gradlew", "gradlew.bat"):
+        shutil.copy2(ROOT / "android" / name, android / name)
     with (android / "gradle.properties").open("a") as stream:
         stream.write(
             "\nandroid.builtInKotlin=false\nandroid.newDsl=false\nandroid.jetifier.ignorelist=bcprov-jdk18on\n"
@@ -777,17 +768,14 @@ def build_plugin(args, env, sdk):
     gradle_executable(args)
     print("Building Android plugin", flush=True)
     run(
-        gradlew_command(
-            ROOT,
-            [
-                "-p",
-                str(ROOT / "android"),
-                "--offline",
-                "--console=plain",
-                ":player-plugin:assemble" + args.build_type,
-            ],
-            gradle_wrapper=ROOT / "android/gradlew",
-        ),
+        [
+            args.gradle,
+            "-p",
+            str(ROOT / "android"),
+            "--offline",
+            "--console=plain",
+            ":player-plugin:assemble" + args.build_type,
+        ],
         env=env,
         log="base-plugin-build.log",
     )
