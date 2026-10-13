@@ -6,12 +6,12 @@
 <meta name="color-scheme" content="dark light">
 <meta name="application-name" content="Immivio – VR &amp; Spatial Media Player">
 <title>Immivio — Release notes</title>
-<meta name="description" content="Immivio release notes: development changes, APK compatibility, and earlier versions.">
+<meta name="description" content="Immivio v0.9.0 release notes, APK compatibility, and earlier versions.">
 <link rel="canonical" href="https://northboundwisdom.github.io/immivio/updates/">
 <link rel="alternate" hreflang="zh-CN" href="https://northboundwisdom.github.io/immivio/zh/updates/">
 <link rel="alternate" hreflang="x-default" href="https://northboundwisdom.github.io/immivio/updates/">
 <meta property="og:title" content="Immivio — Release notes">
-<meta property="og:description" content="Immivio release notes: development changes, APK compatibility, and earlier versions.">
+<meta property="og:description" content="Immivio v0.9.0 release notes, APK compatibility, and earlier versions.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://northboundwisdom.github.io/immivio/updates/">
 <meta property="og:image" content="https://northboundwisdom.github.io/immivio/assets/screenshots/playback.png">
@@ -41,24 +41,27 @@
 <main id="main" class="wrap guide-layout">
 <nav class="guide-nav" aria-label="Release notes sections">
 <p class="eyebrow">RELEASE NOTES</p>
-<a href="#current">In development</a>
+<a href="#current">v0.9.0</a>
 <a href="#compatibility">Package compatibility</a>
 <a href="#history">Earlier versions</a>
 </nav>
 <article class="guide-content">
 <p class="eyebrow">IMMIVIO / UPDATES</p>
 <h1>What’s changing in Immivio.</h1>
-<p>These notes describe the current development branch. Check the notes attached to your APK for the features in that build.</p>
+<p>These notes describe the v0.9.0 source milestone. Check the notes attached to your APK for the features in that build.</p>
 <section id="current">
-<h2>In development — unreleased</h2>
+<h2>v0.9.0 — October 13, 2026</h2>
 <ul>
 <li>One media player for existing stereo and spatial content. Live AI depth, person matting and model-based photo conversion have been retired.</li>
 <li>Remember explicit audio and subtitle choices per video, volume and mute across launches. Double-tap the volume icon to mute or restore sound.</li>
 <li>Choose from five text-subtitle palettes and adjust audio/subtitle timing independently. Saved queues support repeat, shuffle and automatic advance.</li>
 <li>Arrange photo walls in 1–3 rows, retain per-video eye alignment and read long library filenames in expanded hover tips.</li>
 <li>Keep DLNA subtitles when metadata is incomplete, and recover the library position when closing a video.</li>
+<li>Refactor playback frame validation and resource ownership, remove retired inference buffers, and split application controllers for continued maintenance.</li>
+<li>Simplify dependency management with FreeCM and preinstalled development tools; optional native sources stay disabled by default.</li>
 </ul>
-<p><a href="../#download">Choose a development APK →</a> · <a href="../guide/">Installation and controls →</a></p>
+<p>Local regression and Android Debug/Release packaging checks passed before this version update. Other build hosts are checked by CI; physical-headset acceptance is still pending. The v0.9.0 APKs will appear in published releases after the tag build succeeds.</p>
+<p><a href="https://github.com/NorthBoundWisdom/immivio/releases">Published APKs →</a> · <a href="../guide/">Installation and controls →</a></p>
 </section>
 <section id="compatibility">
 <h2>Choose the package for your headset.</h2>

@@ -4,11 +4,13 @@
 
 Newest first, following product release milestones. Entries under 0.6.0 and earlier describe the original project; removed conversion features are historical, not current Immivio capabilities. Some development/source snapshots contained features before their product release. Original APK identifiers `0.2` and `0.4` are retained; `0.4` was also called `0.4.0` in release notes. Availability depends on device, server and media capabilities.
 
-## Unreleased
+## 0.9.0 — 2026-10-13
+
+- Set the application version to 0.9.0 / versionCode 14 for Quest, PICO and experimental OpenXR packages.
 
 - Complete local refactor regression and six Android package checks; migrate obsolete EOF/stereo fixtures to frame contract v2. Remove exact host-tool version requirements and select installed Android SDK components.
 
-- Continue the refactor: remove native inference/warp buffers, introduce version-2 playback descriptors, split Godot application controllers and Kotlin source/display ownership, and retire inference-specific verification matrices. Runtime/package acceptance is deferred.
+- Remove native inference/warp buffers, introduce version-2 playback descriptors, split Godot application controllers and Kotlin source/display ownership, and retire inference-specific verification matrices. Local regression and Debug/Release packaging passed; CI on other hosts and physical-headset acceptance remain pending.
 
 - Start the architecture refactor: isolate retired-settings migration, remove dormant model-preheat/Alpha-FPS paths and unused inference JNI entry points, and preserve the current playback lease/fence contracts.
 
@@ -25,7 +27,7 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 - Maintain this edition independently; retain the original license and history, and direct contributions/releases to NorthBoundWisdom.
 - Reimplement selected original 0.7.0 behaviors: persist explicit audio/subtitle choices per video (with metadata matching after track renumbering), and retain volume/mute across launches.
-- Double-tap the video 3D/volume icons to toggle depth/mute; keep the remembered depth strength and existing single-tap controls. Muted volume uses a red icon.
+- Double-tap the volume icon to toggle mute; keep existing single-tap controls. Muted volume uses a red icon.
 - Offer five text-caption palettes across flat and projected/vertical captions without recoloring PGS bitmaps. Show complete long library filenames in wrapped hover tips.
 - Add persisted 1–3-row photo walls with ordered groups, aspect-preserving cards and bounded vertical placement.
 - Retain DLNA subtitle links when metadata is incomplete, refresh from the containing directory and match by server object ID when resource URLs change. Identify playback HTTP requests as Thru3D rather than a generic libmpv client.
