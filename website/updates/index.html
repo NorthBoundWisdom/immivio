@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark light">
 <meta name="application-name" content="Immivio – VR &amp; Spatial Media Player">
-<title>Immivio — v0.9.0 Release Notes &amp; APK Compatibility</title>
-<meta name="description" content="What changed in Immivio v0.9.0, the free, open-source VR player for Meta Quest and PICO. Read playback updates, APK compatibility and version history.">
+<title>Immivio — v0.9.1 Release Notes &amp; APK Compatibility</title>
+<meta name="description" content="What changed in Immivio v0.9.1, the free, open-source VR player for Meta Quest and PICO. Read playback updates, APK compatibility and version history.">
 <link rel="canonical" href="https://northboundwisdom.github.io/immivio/updates/">
 <link rel="alternate" hreflang="en" href="https://northboundwisdom.github.io/immivio/updates/">
 <link rel="alternate" hreflang="zh-CN" href="https://northboundwisdom.github.io/immivio/zh/updates/">
 <link rel="alternate" hreflang="x-default" href="https://northboundwisdom.github.io/immivio/updates/">
-<meta property="og:title" content="Immivio — v0.9.0 Release Notes &amp; APK Compatibility">
-<meta property="og:description" content="What changed in Immivio v0.9.0, the free, open-source VR player for Meta Quest and PICO. Read playback updates, APK compatibility and version history.">
+<meta property="og:title" content="Immivio — v0.9.1 Release Notes &amp; APK Compatibility">
+<meta property="og:description" content="What changed in Immivio v0.9.1, the free, open-source VR player for Meta Quest and PICO. Read playback updates, APK compatibility and version history.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://northboundwisdom.github.io/immivio/updates/">
 <meta property="og:image" content="https://northboundwisdom.github.io/immivio/assets/screenshots/playback.png">
@@ -23,8 +23,8 @@
 <meta property="og:image:width" content="1920">
 <meta property="og:image:height" content="1080">
 <meta property="og:image:alt" content="Immivio video playback interface">
-<meta name="twitter:title" content="Immivio — v0.9.0 Release Notes &amp; APK Compatibility">
-<meta name="twitter:description" content="What changed in Immivio v0.9.0, the free, open-source VR player for Meta Quest and PICO. Read playback updates, APK compatibility and version history.">
+<meta name="twitter:title" content="Immivio — v0.9.1 Release Notes &amp; APK Compatibility">
+<meta name="twitter:description" content="What changed in Immivio v0.9.1, the free, open-source VR player for Meta Quest and PICO. Read playback updates, APK compatibility and version history.">
 <meta name="twitter:image" content="https://northboundwisdom.github.io/immivio/assets/screenshots/playback.png">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <link rel="icon" href="../assets/icon.png" type="image/png">
@@ -40,8 +40,8 @@
       "@type": "WebPage",
       "@id": "https://northboundwisdom.github.io/immivio/updates/#webpage",
       "url": "https://northboundwisdom.github.io/immivio/updates/",
-      "name": "Immivio — v0.9.0 Release Notes & APK Compatibility",
-      "description": "What changed in Immivio v0.9.0, the free, open-source VR player for Meta Quest and PICO. Read playback updates, APK compatibility and version history.",
+      "name": "Immivio — v0.9.1 Release Notes & APK Compatibility",
+      "description": "What changed in Immivio v0.9.1, the free, open-source VR player for Meta Quest and PICO. Read playback updates, APK compatibility and version history.",
       "inLanguage": "en",
       "about": {
         "@id": "https://northboundwisdom.github.io/immivio/#software"
@@ -91,15 +91,26 @@
 <main id="main" class="wrap guide-layout">
 <nav class="guide-nav" aria-label="Release notes sections">
 <p class="eyebrow">RELEASE NOTES</p>
-<a href="#current">v0.9.0</a>
+<a href="#current">v0.9.1</a>
+<a href="#v0-9-0">v0.9.0</a>
 <a href="#compatibility">Package compatibility</a>
 <a href="#history">Earlier versions</a>
 </nav>
 <article class="guide-content">
 <p class="eyebrow">IMMIVIO / UPDATES</p>
 <h1>What’s changing in Immivio.</h1>
-<p>These notes describe the v0.9.0 source milestone. Check the notes attached to your APK for the features in that build.</p>
+<p>These notes describe the v0.9.1 source milestone. Check the notes attached to your APK for the features in that build.</p>
 <section id="current">
+<h2>v0.9.1 — October 13, 2026</h2>
+<ul>
+<li>Keep PICO windows fixed when the runtime emits automatic tracking-space reset notifications. Use in-app recenter when you want to move content back in front of you.</li>
+<li>Remove the low-frame-rate fallback that permanently disabled supported native menu layers. Retain high-resolution native UI and MSDF text rendering.</li>
+<li>Centre the complete file-browser window on the current gaze when opening or explicitly recentering it. Keep your upright/reclining preference and leave the placed window fixed unless Follow is enabled.</li>
+</ul>
+<p>The fixes were verified on a physical PICO 4: stable windows, clear menu text and comfortable file-browser placement. Other build hosts are checked by CI. Published APKs appear after the tag build succeeds.</p>
+<p><a href="https://github.com/NorthBoundWisdom/immivio/releases">Published APKs →</a> · <a href="../guide/">Installation and controls →</a></p>
+</section>
+<section id="v0-9-0">
 <h2>v0.9.0 — October 13, 2026</h2>
 <ul>
 <li>One media player for existing stereo and spatial content. Live AI depth, person matting and model-based photo conversion have been retired.</li>
@@ -110,7 +121,7 @@
 <li>Refactor playback frame validation and resource ownership, remove retired inference buffers, and split application controllers for continued maintenance.</li>
 <li>Simplify dependency management with FreeCM and preinstalled development tools; optional native sources stay disabled by default.</li>
 </ul>
-<p>Local regression and Android Debug/Release packaging checks passed before this version update. Other build hosts are checked by CI; physical-headset acceptance is still pending. The v0.9.0 APKs will appear in published releases after the tag build succeeds.</p>
+<p>This milestone completed the playback refactor and dependency-management simplification, with local regression and Android packaging checks. See v0.9.1 above for the subsequent PICO device fixes.</p>
 <p><a href="https://github.com/NorthBoundWisdom/immivio/releases">Published APKs →</a> · <a href="../guide/">Installation and controls →</a></p>
 </section>
 <section id="compatibility">

@@ -4,7 +4,10 @@
 
 Newest first, following product release milestones. Entries under 0.6.0 and earlier describe the original project; removed conversion features are historical, not current Immivio capabilities. Some development/source snapshots contained features before their product release. Original APK identifiers `0.2` and `0.4` are retained; `0.4` was also called `0.4.0` in release notes. Availability depends on device, server and media capabilities.
 
-## Unreleased
+## 0.9.1 — 2026-10-13
+
+- Set the application version to 0.9.1 / versionCode 15 for all Android targets.
+- Verify the PICO 4 fixes on the physical headset: stable windows, clear menu text and gaze-centred file-browser placement. Related host regressions passed; other build hosts remain delegated to CI.
 
 - Centre the complete file-browser window on the current gaze when opening or explicitly recentering it, removing the downward offset while retaining upright/reclining orientation and fixed placement afterward.
 - Remove the low-frame-rate UI fallback detector and persistent latch. Supported native menu layers remain active independently of application frame rate.

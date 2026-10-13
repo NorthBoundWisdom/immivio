@@ -4,6 +4,8 @@ Use [NorthBoundWisdom/immivio](https://github.com/NorthBoundWisdom/immivio) for 
 
 Run the source boundary and applicable host tests described in [TESTING.md](docs/TESTING.md). Android changes also need JVM/build checks; headset-specific claims need device evidence with matching versions. State what you have and have not verified.
 
+For maintainer Android/XR fixes, install the build on the target headset and obtain the owner's device acceptance before pushing the changes or a release tag. Keep local verification focused on the affected device; other build hosts are covered by CI.
+
 Do not commit model weights, generated APKs/libraries, signing material, credentials, personal media or device logs containing user data. Provide synthetic reproduction fixtures or generation instructions. Do not send account tokens in public issues.
 
 VR menus use controller ray/trigger selection or hand interaction, never thumbstick selection. Libraries, settings, list popups and photo menus reserve thumbsticks for scrolling and suppress playback shortcuts. The ordinary video control bar allows the same seek, volume and immersive zoom shortcuts as hidden controls. Pointer capture suppresses shortcuts; after leaving a list or ending capture, the stick must return to center before reactivation. Keep visible UI text concise and place implementation notes in technical documentation.
