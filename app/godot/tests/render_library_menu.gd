@@ -46,14 +46,14 @@ func _run() -> void:
 		["smb_editor", [Menu.BACK, Menu.BACK, Menu.ADD, Menu.KEY_BASE + 1, Menu.KEY_BASE + 9]],
 		["dlna", [Menu.CANCEL, Menu.NAV_BASE + Menu.Section.DLNA]], ["cloud", [Menu.NAV_BASE + Menu.Section.CLOUD]],
 		["cloud_folder", [Menu.ROW_BASE]], ["settings", [Menu.NAV_BASE + Menu.Section.SETTINGS]], ["video", [Menu.TAB_BASE + Menu.VIDEO_TAB]], ["subtitles", [Menu.TAB_BASE + Menu.SUBTITLES_TAB]], ["about", [Menu.TAB_BASE + Menu.ABOUT_TAB]],
-		["language", [Menu.TAB_BASE + Menu.GENERAL_TAB]], ["display", [Menu.TAB_BASE + Menu.DISPLAY_TAB]], ["credits", [Menu.TAB_BASE + Menu.ABOUT_TAB, Menu.ABOUT_HOME, Menu.ROW_BASE + 5]], ["credits_end", []]]
+		["language", [Menu.TAB_BASE + Menu.GENERAL_TAB]], ["display", [Menu.TAB_BASE + Menu.DISPLAY_TAB]], ["credits", [Menu.TAB_BASE + Menu.ABOUT_TAB, Menu.ABOUT_HOME, Menu.ROW_BASE + 3]], ["credits_end", []]]
 	if OS.get_environment("QUEST_ABOUT_PREVIEW_ONLY") == "1":
 		steps = [["about", [Menu.NAV_BASE + Menu.Section.SETTINGS, Menu.TAB_BASE + Menu.ABOUT_TAB]],
-			["language", [Menu.TAB_BASE + Menu.GENERAL_TAB]], ["display", [Menu.TAB_BASE + Menu.DISPLAY_TAB]], ["credits", [Menu.TAB_BASE + Menu.ABOUT_TAB, Menu.ABOUT_HOME, Menu.ROW_BASE + 5]], ["credits_end", []]]
+			["language", [Menu.TAB_BASE + Menu.GENERAL_TAB]], ["display", [Menu.TAB_BASE + Menu.DISPLAY_TAB]], ["credits", [Menu.TAB_BASE + Menu.ABOUT_TAB, Menu.ABOUT_HOME, Menu.ROW_BASE + 3]], ["credits_end", []]]
 	if OS.get_environment("QUEST_MODELS_PREVIEW_ONLY") == "1":
 		steps = [["settings", [Menu.NAV_BASE + Menu.Section.SETTINGS]], ["subtitles", [Menu.TAB_BASE + Menu.SUBTITLES_TAB]],
 			["background", [Menu.TAB_BASE + Menu.BACKGROUND_TAB]], ["about", [Menu.TAB_BASE + Menu.ABOUT_TAB]],
-			["language", [Menu.TAB_BASE + Menu.GENERAL_TAB]], ["display", [Menu.TAB_BASE + Menu.DISPLAY_TAB]], ["credits", [Menu.TAB_BASE + Menu.ABOUT_TAB, Menu.ABOUT_HOME, Menu.ROW_BASE + 5]], ["credits_end", []]]
+			["language", [Menu.TAB_BASE + Menu.GENERAL_TAB]], ["display", [Menu.TAB_BASE + Menu.DISPLAY_TAB]], ["credits", [Menu.TAB_BASE + Menu.ABOUT_TAB, Menu.ABOUT_HOME, Menu.ROW_BASE + 3]], ["credits_end", []]]
 	if OS.get_environment("QUEST_STORAGE_PREVIEW_ONLY") == "1":
 		steps = [["local_all",[Menu.NAV_BASE+Menu.Section.LOCAL]],["local_folder",[Menu.ROW_BASE]],
 			["local_usb",[Menu.USB_STORAGE]],["local_usb_eject",[Menu.EJECT_STORAGE]]]

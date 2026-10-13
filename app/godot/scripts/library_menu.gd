@@ -658,8 +658,7 @@ func _rebuild_rows() -> void:
 						rows.append(_about_info(I18n.t(credit[0]), I18n.t(credit[1])))
 				else:
 					rows.append(_about_info("Immivio", str(settings.get("version", ""))))
-					rows.append(_about_info("FFSky Studio", "© 2026 FFSky Studio"))
-					rows.append(_about_info(I18n.t("Official website"), "https://thru3d.com"))
+					rows.append(_about_info(I18n.t("Official website"), "https://northboundwisdom.github.io/immivio/"))
 					rows.append(_about_info(I18n.t("Source code"), "https://github.com/NorthBoundWisdom/immivio"))
 					rows.append({"title": I18n.t("Credits"), "icon": "info", "about_page": 2})
 					rows.append({"title": I18n.t("Open source licenses"), "icon": "info", "open_licenses": true})
