@@ -198,7 +198,6 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     }
     @UsedByGodot fun mpv_supported(): Boolean = !closed.get() && mpv.supported()
     @UsedByGodot fun set_mpv_output_width(width: Int) { if (width in 0..8192) mpv.outputWidthCap = width }
-    /** Alpha source frame rate; applies to the running Alpha session as well. */
     // Library sources: each returns a request id; the result arrives as media_list(id, json).
     /** Headset storage: path "" lists the volumes, otherwise one folder's subfolders and videos. */
     @UsedByGodot fun media_local_browse(path: String): Int {
@@ -251,10 +250,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     @UsedByGodot fun media_smb_save(json: String): Int = if (closed.get()) -1 else sources.smbSave(json)
     @UsedByGodot fun media_smb_remove(id: String): Int = if (closed.get()) -1 else sources.smbRemove(id)
     @UsedByGodot fun media_smb_browse(server: String, path: String): Int = if (closed.get()) -1 else sources.smbBrowse(server, path)
-    /** Background OpenCL compile/tune for an Alpha profile; progress via "rvm_warmup". */
-    /** The selected model's kernels for [profile] are compiled; otherwise Alpha waits ~40 s for warm_rvm. */
-    /** "fast" (default) or "quality"; Alpha sessions opened afterwards use it. */
-    /** depth: realtime 2D->3D (mono sources only, never with alpha). */
+    /** Legacy alpha/depth arguments must be false; generated effects are retired. */
     /** topBottom: a stereo source with the views above each other (top = left eye) instead of side by side. */
     @UsedByGodot fun open_mpv_video(uri: String, startMs: Int, stereo: Boolean, profile: String, alpha: Boolean, vulkan: Boolean,
                                     depth: Boolean, topBottom: Boolean, exactSeek: Boolean): Int =
@@ -263,7 +259,6 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     @UsedByGodot fun revise_mpv_video(id: Int, stereo: Boolean, alpha: Boolean, profile: String, positionMs: Int, depth: Boolean,
                                       topBottom: Boolean, exactSeek: Boolean): Int =
         if (closed.get()) -1 else mpv.revise(id, stereo, alpha, profile, positionMs, depth, topBottom, exactSeek)
-    /** Background OpenCL compile of the 2D->3D depth model; progress via "rvm_warmup" (profile_key "depth"). */
     @UsedByGodot fun set_mpv_playing(id: Int, playing: Boolean) { if (!closed.get()) mpv.setPlaying(id, playing) }
     @UsedByGodot fun set_mpv_audio(id: Int, trackId: Int, volume: Double, muted: Boolean): Boolean =
         !closed.get() && mpv.setAudio(id, trackId, volume, muted)

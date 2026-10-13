@@ -7,10 +7,6 @@ var failures: Array[String] = []
 
 class Host extends RefCounted:
 	var rates: Array = []
-	var alpha_fps: Array = []
-	func set_mpv_alpha_fps(fps: int) -> bool:
-		alpha_fps.append(fps)
-		return true
 	var accept := true
 	func set_mpv_speed(id: int, rate: float) -> bool:
 		if not accept: return false

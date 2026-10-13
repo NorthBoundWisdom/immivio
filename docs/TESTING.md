@@ -12,6 +12,8 @@ python3 configs/check_environment.py
 python3 configs/android_workflow.py test --vendor Quest --build-type Debug
 ```
 
+Settings migration tests preserve ordinary preferences, source masks and stereo locks, reject reactivation by stale UI controls, and verify repeated cleanup needs no additional write.
+
 The Android workflow offers `--level l0` (workflow and publication boundaries), `l1` (JVM and Go integration), `l2` (Godot host behavior), and `all`. JVM/Go tests use the configured dependencies offline. The Godot suite writes isolated test user data and JUnit results under `artifacts/`.
 
 Workflow tests cover corrupt assets, offline acquisition boundaries, configuration staleness, separate Build/Package stages, safe cleanup, verified optional backend imports, process timeouts and signing identity preservation. Release tests reject incomplete dependency provenance and mismatched tag/commit/host/variant or APK bytes.

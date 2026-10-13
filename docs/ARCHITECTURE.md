@@ -4,7 +4,7 @@ Immivio is a Godot/OpenXR interface over an Android media-library plugin, libmpv
 
 ## Application and input
 
-`app/godot/scripts/main.gd` coordinates libraries, playback, photos, settings and XR input. Controller rays/triggers and supported hand gestures select controls. Grip placement, reclining mode, follow behavior and recentering retain their existing contracts. Lists and captured sliders suppress playback shortcuts until the stick returns to center.
+`app/godot/scripts/main.gd` coordinates libraries, playback, photos, settings and XR input. `player_settings_migration.gd` owns the idempotent cleanup of retired effect preferences; ordinary audio, subtitles, queues and native stereo locks are preserved. Controller rays/triggers and supported hand gestures select controls. Grip placement, reclining mode, follow behavior and recentering retain their existing contracts. Lists and captured sliders suppress playback shortcuts until the stick returns to center.
 
 `xr_menu_compositor.gd` owns the Android-Surface menu presenter, its acknowledged presentation queue, curved mapping and scene fallback. Sustained low frame rates latch the fallback until restart. Menu pose and ray targets use the same presented layout.
 
@@ -31,3 +31,7 @@ The Android plugin owns local grants, SMB, WebDAV, DLNA, media-server adapters a
 The MNN/ncnn runtime, RVM matting, monocular depth, photo conversion/portrait jobs, model catalogs, training/conversion scripts, model diagnostics and AI CI matrix have been removed. Ordinary rendering/native stereo remain supported. The build has one product identity and three headset targets.
 
 `native/CMakeLists.txt` builds the media-delete library, render bridge and MPV bridge. It has no inference dependencies. Packaging excludes obsolete cached model directories/libraries and rejects an APK if they are accidentally reintroduced.
+
+## Refactoring status
+
+[REFACTOR_PLAN.md](REFACTOR_PLAN.md) records the current analysis and ordered migration batches. R1 removes dormant Godot model-preheat/Alpha-FPS controls and the unused RenderBridge inference JNI surface. The current color/mask lease, fence, freeze and context ownership rules remain. Native internal ROI/scout/warp implementation is scheduled for R2; the historical frame identity fields are migrated jointly in R3.

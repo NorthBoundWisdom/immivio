@@ -25,8 +25,7 @@ const PlatformMethods := preload("res://scripts/platform_methods.gd")
 const FpsOverlay := preload("res://scripts/fps_overlay.gd")
 const Background := preload("res://scripts/app_background.gd")
 const ViewFollow := preload("res://scripts/view_follow.gd")
-const ALPHA_FPS_DEFAULT := 20
-const ALPHA_FPS_LIMITS := Vector2i(10, 40)
+const SettingsMigration := preload("res://scripts/player_settings_migration.gd")
 
 var display := DisplayController.new()
 var display_quality := Quality.DEFAULT
@@ -51,7 +50,6 @@ var video_queue: Array[Dictionary]:
 var _queue_add_mode := false
 var _queue_end_key := ""
 var calibration_board: Node3D
-var last_rvm_request := 0
 var right_controller: XRController3D
 var left_controller: XRController3D
 var hand_pointers := {}
@@ -170,20 +168,7 @@ func _ready() -> void:
 	if not desktop and openxr and openxr.has_signal("pose_recentered"):
 		openxr.connect("pose_recentered", _on_system_recentered)
 	_head_placed = desktop
-	# Everyday playback uses the validated default model, including migrated settings.
-	# Persist a one-time cleanup without changing ordinary playback/library settings.
-	var retired_settings := false
-	for item in [["effects", "auto_3d"], ["video", "depth_strength"], ["photo", "depth_strength"], ["video", "alpha_fps"]]:
-		if settings.has_section_key(item[0], item[1]):
-			settings.erase_section_key(item[0], item[1]); retired_settings = true
-	if settings.has_section("alpha"):
-		settings.erase_section("alpha"); retired_settings = true
-	for section in ["video", "photo"]:
-		var previous: Variant = settings.get_value(section, "mode_lock", {})
-		if previous is Dictionary and previous.get("depth", false):
-			var migrated: Dictionary = previous.duplicate(true); migrated.depth = false
-			settings.set_value(section, "mode_lock", migrated); retired_settings = true
-	if retired_settings: settings.save(settings_path)
+	if SettingsMigration.apply(settings): settings.save(settings_path)
 	video = Video.new()
 	video.reclining_mode = reclining_mode
 	video.name = "VideoDisplay"
@@ -252,8 +237,6 @@ func _ready() -> void:
 		recent_menu.attach_platform(plugin)
 		plugin.connect("mpv_debug_command", _on_display_debug_command)
 		plugin.set_mpv_output_width(Quality.output_width(Quality.load_output_choice(settings), low_end_gpu))
-		if PlatformMethods.supports(plugin, "set_mpv_alpha_fps"):
-			plugin.set_mpv_alpha_fps(_alpha_fps())
 	player_menu = PlayerMenu.new()
 	player_menu.state_provider = _menu_state
 	player_menu.action_requested.connect(_on_menu_action)
@@ -1663,7 +1646,7 @@ func _restore_seek_settings() -> void:
 	video.bookmark_seek_mode = video.SeekPolicy.bookmark_override(settings.get_value("video", "bookmark_seek_mode", video.SeekPolicy.GLOBAL))
 
 func _library_settings() -> Dictionary:
-	return {"output_width": Quality.load_output_choice(settings), "alpha_fps": _alpha_fps(),
+	return {"output_width": Quality.load_output_choice(settings),
 		"show_fps": fps_overlay != null and fps_overlay.visible,
 		"display_quality": display_quality, "display_quality_pending": not is_equal_approx(display.render_scale, Quality.render_scale(display_quality, low_end_gpu)),
 		"sharpness": Quality.load_sharpness(settings, low_end_gpu),
@@ -1722,9 +1705,6 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 			if value is bool: background.cycle_brightness()
 			else: background.set_brightness(float(value))
 			_save_background()
-		"alpha_fps":
-			_apply_alpha_fps(value)
-			settings.save(settings_path)
 		"show_fps":
 			if fps_overlay: fps_overlay.set_shown(bool(value))
 			settings.set_value("ui", "show_fps", bool(value))
@@ -1932,7 +1912,7 @@ func _menu_state() -> Dictionary:
 		"depth_requested": video.depth_requested, "depth_enabled": video.depth_enabled, "depth_strength": video.depth_strength,
 		"screen_curve": video.screen_curve, "screen_distance": video.screen_distance,
 		"screen_scale": video.screen_scale * 100.0, "screen_rotation": video.screen_rotation, "playback_speed": video.playback_speed,
-		"alpha_fps": _alpha_fps(), "show_fps": fps_overlay != null and fps_overlay.visible,
+		"show_fps": fps_overlay != null and fps_overlay.visible,
 		"subtitle_palette": video.subtitle_palette, "subtitle_size": video.subtitle_size * 100, "subtitle_flat_position": video.subtitle_flat_position * 100,
 		"subtitle_distance": video.subtitle_distance, "color_grade": video.color_grade.snapshot(),
 		"subtitle_position": video.subtitle_position,
@@ -2267,9 +2247,6 @@ func _on_playback_adjustment(key: String, value: Variant) -> void:
 		if photo_active: return
 		video.set_playback_speed(float(value))
 		return
-	elif key == "alpha_fps":
-		_apply_alpha_fps(value)
-		return
 	elif key == "subtitle_palette":
 		video.subtitle_palette = video.CaptionPalette.index(value)
 	elif key == "subtitle_size":
@@ -2306,18 +2283,8 @@ func _save_playback_adjustments() -> void:
 
 func _fps_sample() -> Dictionary:
 	if not video or photo_active or not video.panel or not video.panel.visible: return {}
-	return {"frames": video.media.frame_counter, "target": _alpha_fps() if video.alpha_enabled else 0,
+	return {"frames": video.media.frame_counter, "target": 0,
 		"active": video.media.state == "playing"}
-
-## Alpha source frame rate (RVM runs once per presented frame); MPV follows it live.
-func _alpha_fps() -> int:
-	return clampi(int(settings.get_value("video", "alpha_fps", ALPHA_FPS_DEFAULT)), ALPHA_FPS_LIMITS.x, ALPHA_FPS_LIMITS.y)
-
-func _apply_alpha_fps(value: Variant) -> void:
-	if not is_finite(float(value)): return
-	settings.set_value("video", "alpha_fps", clampi(roundi(float(value)), ALPHA_FPS_LIMITS.x, ALPHA_FPS_LIMITS.y))
-	if PlatformMethods.supports(platform_plugin, "set_mpv_alpha_fps"):
-		platform_plugin.set_mpv_alpha_fps(_alpha_fps())
 
 var seek_policy_probe_result: Dictionary = {}
 

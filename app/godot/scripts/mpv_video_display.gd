@@ -200,18 +200,11 @@ func _ready() -> void:
 		platform.connect("mpv_debug_command", _on_debug_command)
 		platform.connect("mpv_pixel_mask", _on_pixel_mask)
 		platform.connect("mpv_frozen_pair", _on_frozen_pair)
-	# First photo use should not queue behind unrelated video-model cold compilation.
 	_apply_geometry()
 
-# First use of an Alpha profile compiles/tunes GPU kernels; start it before playback.
-var rvm_warmup := {}
 func ai_available() -> bool:
 	return false
 
-func _warm_rvm() -> void:
-	pass
-
-## The RVM model changed: warm it and reopen an Alpha session so it takes effect now.
 ## First usable displayed source frame, for every stable library URI. No second video decoder.
 var _thumb_after_ms := -1          # media position to try; -1: already cached/not wanted
 var _thumb_tries := 0
@@ -268,20 +261,6 @@ func _maybe_capture_thumbnail() -> void:
 		"width": image.get_width(), "height": image.get_height(), "source_epoch": int(pair.source_epoch)}
 	if stored: thumbnail_ready.emit(uri)
 	_write_debug_report()
-
-## Profiles compiling right now (any model), from the warmup reports.
-var warming := {}
-
-## Alpha on [value] starts at once; a cold profile first compiles for ~40 s per model.
-func profile_ready(value: String) -> bool:
-	if OS.get_name() == "Android" and Engine.has_singleton("QuestPlayer"):
-		return bool(Engine.get_singleton("QuestPlayer").rvm_profile_ready(value))
-	return true
-
-func reload_rvm() -> void:
-	_warm_rvm()
-	if alpha_requested:
-		_request_revision()
 
 func pick_file() -> void:
 	cancel_pending_open()
@@ -473,9 +452,6 @@ func open_local(uri: String, title: String, start_ms: int = 0, restore_mode: boo
 	if not _debug_benchmark and _thumbnail_source(uri) and Thumbnails.texture(uri) == null:
 		_thumb_after_ms = 0
 	local_uri = uri
-	_warm_rvm()
-	if ai_available() and auto_depth and OS.get_name() == "Android" and Engine.has_singleton("QuestPlayer"):
-		pass
 	display_name = title
 	_bookmark_metadata = metadata.duplicate(true)
 	if not basename.is_empty(): _bookmark_metadata.basename = basename
@@ -1209,33 +1185,6 @@ func set_projection(value: int) -> void:
 	_remember_mode()
 	changed.emit()
 
-func set_profile(value: String) -> void:
-	if value == profile or not value in PROFILES:
-		return
-	profile = value
-	_warm_rvm()
-	_remember_mode()
-	_request_revision()
-	changed.emit()
-
-## Quick switch (button / quick bar): only between compiled profiles. Cold ones are chosen in
-## settings, which asks for a second press before starting a compile.
-func cycle_profile() -> void:
-	var start := PROFILES.find(profile)
-	var next := profile
-	for step in range(1, PROFILES.size()):
-		var candidate: String = PROFILES[(start + step) % PROFILES.size()]
-		if profile_ready(candidate):
-			next = candidate
-			break
-	if next == profile:
-		return
-	profile = next
-	_warm_rvm()
-	_remember_mode()
-	_request_revision()
-	changed.emit()
-
 func toggle_eye_order() -> bool:
 	if not stereo_sbs:
 		return false
@@ -1543,7 +1492,6 @@ func _on_debug_command(id: int, payload: String) -> void:
 			toggle_stereo()
 	elif command.operation == "profile":
 		profile = str(command.profile)
-		_warm_rvm() # as set_profile: a cold profile starts its background compile
 		_request_revision()
 	elif command.operation == "close":
 		close_video()

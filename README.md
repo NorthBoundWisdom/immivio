@@ -84,7 +84,7 @@ The interface supports English, Simplified Chinese, Traditional Chinese and Japa
 
 - Store listing name: **Immivio – VR & Spatial Media Player**
 - [Changelog](CHANGELOG.md) · [Release notes / 更新说明](https://northboundwisdom.github.io/immivio/updates/)
-- [Build from source](docs/BUILD.md) · [Architecture](docs/ARCHITECTURE.md) · [Testing](docs/TESTING.md) · [Contributing](CONTRIBUTING.md)
+- [Build from source](docs/BUILD.md) · [Architecture](docs/ARCHITECTURE.md) · [Refactor plan](docs/REFACTOR_PLAN.md) · [Testing](docs/TESTING.md) · [Contributing](CONTRIBUTING.md)
 - Project source is [GPL-3.0-only](LICENSE). Third-party components retain their licenses, including the embedded OpenList component's AGPL-3.0 obligations. See [licensing details](docs/LICENSING.md).
 
 [**Ravo Studio**](https://northboundwisdom.github.io/Ravo/) — organize, review and develop photographs.

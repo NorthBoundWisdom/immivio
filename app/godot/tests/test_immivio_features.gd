@@ -12,6 +12,7 @@ func _run() -> void:
 	old.set_value("effects", "auto_3d", true)
 	old.set_value("photo", "depth_strength", 2.0)
 	old.set_value("video", "depth_strength", 2.0)
+	old.set_value("video", "alpha_fps", 30)
 	old.set_value("alpha", "model", "quality")
 	old.set_value("video", "mode_lock", {"geometry":0, "layout":0, "depth":true, "fisheye_fov":180})
 	old.set_value("audio", "volume", 37.0)
@@ -25,6 +26,10 @@ func _run() -> void:
 	var persisted := ConfigFile.new(); persisted.load(path)
 	check(not persisted.has_section("alpha") and not persisted.get_value("video", "mode_lock").depth, "Migration persists removal and clears generated-depth locks")
 	check(main.video.audio_volume == 37 and main.video.audio_muted, "Removing effects preserves ordinary playback preferences")
+	main._on_setting_changed("alpha_fps", 40)
+	main._on_playback_adjustment("alpha_fps", 10)
+	check(not main.settings.has_section_key("video", "alpha_fps"), "Stale effect controls cannot recreate retired preferences")
+	check(not main._library_settings().has("alpha_fps") and not main._menu_state().has("alpha_fps"), "Current UI state exposes no inference-rate capability")
 	var menu := Menu.new(); root.add_child(menu)
 	menu.state_provider = func(): return {"has_video": true, "geometry": 0, "ai_enabled": true, "audio_available": true}
 	menu.visible = true; menu.refresh()

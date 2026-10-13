@@ -44,6 +44,7 @@ BUILD_INPUTS = (
     "cloud/openlist/go.mod",
     "cloud/openlist/go.sum",
     "app/godot/export_presets.cfg",
+    "app/godot/project.godot",
 )
 
 
@@ -74,6 +75,17 @@ def input_signature(args):
     for directory, pattern in [
         ("configs", "*.py"),
         ("cloud/openlist", "*.go"),
+        ("android/player-plugin/src/main", "**/*.kt"),
+        ("android/player-plugin/src/main", "**/*.java"),
+        ("android/player-plugin/src/main", "**/*.xml"),
+        ("native", "**/*.cpp"),
+        ("native", "**/*.h"),
+        ("native", "**/*.hpp"),
+        ("native", "**/CMakeLists.txt"),
+        ("app/godot/scripts", "**/*.gd"),
+        ("app/godot/shaders", "**/*.gdshader"),
+        ("app/godot", "*.tscn"),
+        ("app/godot/addons/quest_player", "*.gd"),
         ("native/mpv/patches", "*"),
         ("android", "**/*gradle.lockfile"),
     ]:

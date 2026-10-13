@@ -16,8 +16,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
-/** Production MPV -> shared GPU color -> immutable RVM inputs -> complete display
- * pairs. Native MPV survives mode/layout/seek generations; old display claims
+/** Production MPV -> immutable shared GPU color -> complete display pairs. Native MPV survives mode/layout/seek generations; old display claims
  * survive invalidation only until Godot detaches them after its last draw.
  */
 internal class MpvVideoBridge(
@@ -44,13 +43,10 @@ internal class MpvVideoBridge(
     @Volatile private var debugFrameCapOverride = -1
     /** Debug cadence verification only: -1 keeps the mode default. */
     internal fun debugFrameCap(fps: Int) { if (BuildConfig.DEBUG) debugFrameCapOverride = fps }
-    /** Debug A/B only: run Alpha on the whole eye instead of the ROI window. */
-    /** Debug A/B only: CPU readback/upload transport instead of AHardwareBuffer zero-copy. */
     @Volatile private var debugBorrowDisabled = false
     /** Debug A/B only: copy every captured 8K color instead of holding the MPV slot. */
     internal fun debugBorrowColor(enabled: Boolean) { if (BuildConfig.DEBUG) debugBorrowDisabled = !enabled }
     /** Debug A/B only: MPV renders an 8K RGBA copy instead of handing over the decoder's image. */
-    /** Alpha pairs show the decoder's own YUV image (no full-resolution RGBA render); needs borrowing. */
     private fun direct(session: Session) = false
     private var audioFocus: MpvAudioFocus? = null // worker only
     @Volatile private var audioFocusState = "none"
@@ -90,10 +86,9 @@ internal class MpvVideoBridge(
         var nextStatusNs = 0L // GL only
     }
     private data class Lease(val ticket: DecodedFrameGate.Ticket, val pair: JSONObject,
-                             val left: ByteBuffer, val right: ByteBuffer,
                              val producer: Long = 0L) // Borrowed MPV slot, released when this lease retires.
-    private data class Alpha(val pair: JSONObject, val left: ByteBuffer, val right: ByteBuffer)
-    /** depth: realtime 2D->3D on a mono source; its near map rides in the Alpha mask slot. Never with alpha. */
+    private data class Alpha(val pair: JSONObject)
+    /** Current sessions display source media; legacy effect fields stay false until contract migration. */
     private class Session(val scope: MediaSessionGate.Scope, val host: Host, private val requestedStereo: Boolean,
                           val profile: String, val alpha: Boolean, val vulkan: Boolean, val normalFastPath: Boolean,
                           private val requestedDepth: Boolean = false, private val requestedTopBottom: Boolean = false) {
@@ -120,8 +115,6 @@ internal class MpvVideoBridge(
         var pendingSource: JSONObject? = null // Retain producer lease until a consumer slot accepts the copy.
         var deferredCopies = 0L
         val leases = HashMap<Long, Lease>()
-        val buffers = HashMap<Int, Pair<ByteBuffer, ByteBuffer>>()
-        val scoutBuffers = HashMap<Int, Pair<ByteBuffer, ByteBuffer>>()
         val alphaUploads = HashMap<Long, Alpha>()
         val pairs = HashMap<Long, JSONObject>()
         val retiring = HashSet<Long>()
@@ -147,7 +140,6 @@ internal class MpvVideoBridge(
     fun supported() = !stopped && MpvSourceNative.supported()
     /** User setting: decoded color width cap for sources opened from now on (0 = source size). */
     @Volatile var outputWidthCap = 0
-    /** User setting: Alpha passthrough reads the source at this rate, one RVM pair per presented frame. */
     private fun frameCap(session: Session) = if (BuildConfig.DEBUG && debugFrameCapOverride >= 0) debugFrameCapOverride else 0
     private fun active(session: Session) = !stopped && !session.disposed.get() && gate.accepts(session.id)
     private fun event(name: String, session: Session, json: JSONObject) {
@@ -492,7 +484,7 @@ internal class MpvVideoBridge(
             if (buffer != 0L) return true
             val token = if (session.normalFastPath)
                 RenderBridgeNative.captureOpaqueTexture(session.renderer, source.getInt("color_texture_id"))
-            else RenderBridgeNative.captureTexture(session.renderer, source.getInt("color_texture_id"), false)
+            else RenderBridgeNative.captureTexture(session.renderer, source.getInt("color_texture_id"))
             if (token == 0L) {
                 // A full consumer ring must not consume the only remaining EOF
                 // frame. Keep the immutable producer lease and retry next draw.
@@ -531,16 +523,14 @@ internal class MpvVideoBridge(
         session.captureReadyUs += readyUs
         session.captureReadyMaxUs = maxOf(session.captureReadyMaxUs, readyUs)
         val texture = RenderBridgeNative.texture(session.renderer, copying.second)
-        val bytes = session.dims[0]*session.dims[1]*3*4
         val pair = session.copyingPair ?: error("Immutable copy descriptor missing")
         // Decoder images get a new texture each frame and always use zero-copy: no CPU planes.
-        val buffers = NO_PLANES
         pair.put("color_texture_id", texture).put("consumer_copy_fence_ready", true)
         val image = RenderBridgeNative.colorImage(session.renderer, copying.second)
         // A string: Godot's JSON parses numbers as doubles, which cannot hold a 64-bit (tagged) pointer.
         if (image != 0L) pair.put("color_target", "external").put("color_egl_image", image.toString()).put("color_uv_scale", JSONArray(listOf(
             pair.getInt("width").toDouble() / pair.getInt("buffer_width"), pair.getInt("height").toDouble() / pair.getInt("buffer_height"))))
-        val lease = Lease(copying.first, pair, buffers.first, buffers.second, session.copyingProducer)
+        val lease = Lease(copying.first, pair, session.copyingProducer)
         session.copyingProducer = 0L
         session.leases[copying.second] = lease
         session.copying = null; session.copyingPair = null; session.captured++
@@ -548,14 +538,14 @@ internal class MpvVideoBridge(
             .put("alpha_kind", "opaque_numeric_mask")
         if (session.normalFastPath) {
             check(RenderBridgeNative.alphaReady(session.renderer, copying.second)) { "Opaque mask must share the completed color fence" }
-            session.alphaUploads[copying.second] = Alpha(pair, session.opaque.first, session.opaque.second)
+            session.alphaUploads[copying.second] = Alpha(pair)
         } else upload(session, pair, session.opaque.first, session.opaque.second)
     }
     private fun upload(session: Session, pair: JSONObject, left: ByteBuffer, right: ByteBuffer) {
         val token = pair.getLong("slot_token")
         check(session.leases.containsKey(token)) { "Alpha color lease unavailable" }
         check(RenderBridgeNative.uploadAlpha(session.renderer, token, left, right))
-        session.alphaUploads[token] = Alpha(pair, left, right)
+        session.alphaUploads[token] = Alpha(pair)
     }
     private fun finishUploads(session: Session) {
         val iterator = session.alphaUploads.iterator()
@@ -763,7 +753,7 @@ internal class MpvVideoBridge(
         }
         if (session.display.heldClaims() > 0 || session.retiring.isNotEmpty()) return
         if (session.renderer > 0) RenderBridgeNative.close(session.renderer)
-        session.renderer = 0; session.buffers.clear(); session.scoutBuffers.clear(); session.leases.clear(); session.pairs.clear()
+        session.renderer = 0; session.leases.clear(); session.pairs.clear()
         sessions.remove(session.id)
         event("mpv_released", session, JSONObject().put("renderer_closed", true).put("held_slots", 0))
     }
@@ -798,7 +788,6 @@ internal class MpvVideoBridge(
     }
     companion object {
         private val BUFFER_SHAPES = setOf("320x320", "384x216", "512x288", "384x384", "512x512", "256x144", "256x256")
-        private val NO_PLANES: Pair<ByteBuffer, ByteBuffer> = ByteBuffer.allocateDirect(0) to ByteBuffer.allocateDirect(0)
     }
     fun shutdown() {
         stopped = true; gate.shutdown(); sessions.values.forEach { dispose(it, true) }
@@ -815,6 +804,6 @@ internal class MpvVideoBridge(
             }
         }, "QuestMpvDispose").start()
         // Session resources close above; the shared playback worker survives
-        // Activity recreation so libomp never loses its final root thread.
+        // Activity recreation so playback callbacks retain one worker owner.
     }
 }

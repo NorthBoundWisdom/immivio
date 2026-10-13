@@ -6,6 +6,8 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 ## Unreleased
 
+- Start the architecture refactor: isolate retired-settings migration, remove dormant model-preheat/Alpha-FPS paths and unused inference JNI entry points, and preserve the current playback lease/fence contracts.
+
 - Simplify FreeCM management: keep OpenList and the OpenXR addon active, declare optional native sources at fixed commits with `disabled: true`, restore Gradle/Go manifests and use prepared host tools and Android libraries.
 - Retire superseded Windows test/package wrappers and the checked-in machine-specific mpv build receipt; retain device probes and optional native build recipes.
 

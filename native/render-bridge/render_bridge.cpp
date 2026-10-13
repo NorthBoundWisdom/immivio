@@ -1107,77 +1107,18 @@ Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_createLayout(JNIEnv* env,
         const auto id = ++sequence; registry.emplace(id, std::move(bridge)); return id;
     } catch (const std::exception& e) { error(env, e.what()); return 0; }
 }
-extern "C" JNIEXPORT jint JNICALL
-Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_oesTexture(JNIEnv* env, jclass, jlong id) {
-    try { std::lock_guard<std::mutex> guard(registry_mutex); return find(id).oes; }
-    catch (const std::exception& e) { error(env, e.what()); return 0; }
-}
-extern "C" JNIEXPORT jlong JNICALL
-Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_capture(JNIEnv* env, jclass, jlong id, jfloatArray matrix) {
-    try {
-        if (!matrix || env->GetArrayLength(matrix) != 16) throw std::runtime_error("Render bridge transform invalid");
-        std::array<float, 16> transform; env->GetFloatArrayRegion(matrix, 0, 16, transform.data());
-        if (env->ExceptionCheck()) return 0;
-        for (float value : transform) if (!std::isfinite(value)) throw std::runtime_error("Render bridge transform nonfinite");
-        std::lock_guard<std::mutex> guard(registry_mutex);
-        if (token_sequence == std::numeric_limits<jlong>::max()) throw std::runtime_error("Render bridge lease space exhausted");
-        return find(id).capture(transform.data(), ++token_sequence);
-    } catch (const std::exception& e) { error(env, e.what()); return 0; }
-}
 extern "C" JNIEXPORT jboolean JNICALL
 Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_ready(JNIEnv* env, jclass, jlong id, jlong token) {
     try { std::lock_guard<std::mutex> guard(registry_mutex); auto& bridge = find(id); return bridge.poll(bridge.find(token)) ? JNI_TRUE : JNI_FALSE; }
     catch (const std::exception& e) { error(env, e.what()); return JNI_FALSE; }
 }
 extern "C" JNIEXPORT jlong JNICALL
-Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_captureTexture(JNIEnv* env, jclass, jlong id, jint texture, jboolean inputs) {
+Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_captureTexture(JNIEnv* env, jclass, jlong id, jint texture) {
     try {
         if (texture <= 0) throw std::runtime_error("Shared MPV texture name invalid");
         std::lock_guard<std::mutex> guard(registry_mutex);
         if (token_sequence == std::numeric_limits<jlong>::max()) throw std::runtime_error("Render bridge lease space exhausted");
-        return find(id).capture_texture(static_cast<GLuint>(texture), ++token_sequence, inputs == JNI_TRUE);
-    } catch (const std::exception& e) { error(env, e.what()); return 0; }
-}
-extern "C" JNIEXPORT jlong JNICALL
-Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_captureTextureRoi(JNIEnv* env, jclass, jlong id, jint texture,
-                                                                        jfloatArray rect, jboolean scout) {
-    try {
-        if (texture <= 0) throw std::runtime_error("Shared MPV texture name invalid");
-        if (!rect || env->GetArrayLength(rect) != 4) throw std::runtime_error("ROI rect must have four values");
-        std::array<float, 4> window; env->GetFloatArrayRegion(rect, 0, 4, window.data());
-        if (env->ExceptionCheck()) return 0;
-        for (float v : window) if (!std::isfinite(v)) throw std::runtime_error("ROI rect nonfinite");
-        // Window in eye UV is [-xy/zw, (1-xy)/zw]; it must overlap the eye and zoom at most 8x.
-        for (int axis = 0; axis < 2; ++axis) {
-            const float scale = window[axis + 2], start = -window[axis] / scale, end = (1.f - window[axis]) / scale;
-            if (!(scale > 0.f && scale <= 8.f && end > 0.f && start < 1.f)) throw std::runtime_error("ROI rect outside the eye");
-        }
-        std::lock_guard<std::mutex> guard(registry_mutex);
-        if (token_sequence == std::numeric_limits<jlong>::max()) throw std::runtime_error("Render bridge lease space exhausted");
-        return find(id).capture_texture(static_cast<GLuint>(texture), ++token_sequence, true, false, window.data(), scout == JNI_TRUE);
-    } catch (const std::exception& e) { error(env, e.what()); return 0; }
-}
-extern "C" JNIEXPORT jboolean JNICALL
-Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_enableZeroCopy(JNIEnv* env, jclass, jlong id) {
-    try {
-        std::lock_guard<std::mutex> guard(registry_mutex); auto& bridge = find(id);
-        if (!egl_image().available()) return JNI_FALSE;
-        bridge.zero_copy = true;
-        return JNI_TRUE;
-    } catch (const std::exception& e) { error(env, e.what()); return JNI_FALSE; }
-}
-extern "C" JNIEXPORT jlong JNICALL
-Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_captureBufferRoi(JNIEnv* env, jclass, jlong id, jlong buffer,
-    jint buffer_width, jint buffer_height, jfloatArray rect, jboolean scout) {
-    try {
-        if (!rect || env->GetArrayLength(rect) != 4) throw std::runtime_error("Decoder capture window invalid");
-        std::array<float, 4> window; env->GetFloatArrayRegion(rect, 0, 4, window.data());
-        if (env->ExceptionCheck()) return 0;
-        for (float value : window) if (!std::isfinite(value)) throw std::runtime_error("Decoder capture window nonfinite");
-        std::lock_guard<std::mutex> guard(registry_mutex);
-        if (token_sequence == std::numeric_limits<jlong>::max()) throw std::runtime_error("Render bridge lease space exhausted");
-        return find(id).capture_buffer(reinterpret_cast<AHardwareBuffer*>(static_cast<uintptr_t>(buffer)), buffer_width, buffer_height,
-                                       ++token_sequence, window.data(), scout == JNI_TRUE);
+        return find(id).capture_texture(static_cast<GLuint>(texture), ++token_sequence, false);
     } catch (const std::exception& e) { error(env, e.what()); return 0; }
 }
 // EGLImage of a held decoder-buffer slot (0 for copied/borrowed RGBA colors).
@@ -1197,59 +1138,6 @@ Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_enableBorrowedColor(JNIEn
         std::lock_guard<std::mutex> guard(registry_mutex); find(id).borrow = true;
         return JNI_TRUE;
     } catch (const std::exception& e) { error(env, e.what()); return JNI_FALSE; }
-}
-// {input L, input R, alpha L, alpha R} AHardwareBuffer handles of a held slot (or its scout set).
-extern "C" JNIEXPORT jlongArray JNICALL
-Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_zeroCopyBuffers(JNIEnv* env, jclass, jlong id, jlong token, jboolean scout) {
-    try {
-        std::array<jlong, 4> handles{};
-        {
-            std::lock_guard<std::mutex> guard(registry_mutex); auto& bridge = find(id); auto& slot = bridge.find(token);
-            bridge.current();
-            if (slot.phase != Phase::held || !bridge.zero_copy) throw std::runtime_error("Zero-copy buffers need a held color");
-            if (scout && !slot.scout_staged) throw std::runtime_error("No ROI scout input was staged for this color");
-            if (scout) bridge.ensure_shared(bridge.zc_scout_out, kOutputUsage);
-            const auto& input = scout ? slot.zc_scout_in : slot.zc_in;
-            const auto& output = scout ? bridge.zc_scout_out : slot.zc_out;
-            for (int eye = 0; eye < 2; ++eye)
-                if (!input[eye].buffer || !output[eye].buffer) throw std::runtime_error("Zero-copy buffers missing");
-            // The inference worker may still use these after this bridge closes (session revision):
-            // each handle carries its own reference, released with releaseBuffers().
-            for (int eye = 0; eye < 2; ++eye) {
-                AHardwareBuffer_acquire(input[eye].buffer); AHardwareBuffer_acquire(output[eye].buffer);
-                handles[eye] = static_cast<jlong>(reinterpret_cast<uintptr_t>(input[eye].buffer));
-                handles[eye + 2] = static_cast<jlong>(reinterpret_cast<uintptr_t>(output[eye].buffer));
-            }
-        }
-        auto result = env->NewLongArray(4);
-        if (result) env->SetLongArrayRegion(result, 0, 4, handles.data());
-        return result;
-    } catch (const std::exception& e) { error(env, e.what()); return nullptr; }
-}
-// Drops the references zeroCopyBuffers() handed out. Any thread; the bridge may be gone.
-extern "C" JNIEXPORT void JNICALL
-Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_releaseBuffers(JNIEnv* env, jclass, jlongArray buffers) {
-    if (!buffers) return;
-    const auto count = env->GetArrayLength(buffers);
-    std::vector<jlong> values(static_cast<size_t>(count));
-    env->GetLongArrayRegion(buffers, 0, count, values.data());
-    for (jlong value : values)
-        if (value) AHardwareBuffer_release(reinterpret_cast<AHardwareBuffer*>(static_cast<uintptr_t>(value)));
-}
-extern "C" JNIEXPORT jboolean JNICALL
-Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_commitZeroCopyAlpha(JNIEnv* env, jclass, jlong id, jlong token) {
-    try { std::lock_guard<std::mutex> guard(registry_mutex); find(id).commit_zero_copy_alpha(token); return JNI_TRUE; }
-    catch (const std::exception& e) { error(env, e.what()); return JNI_FALSE; }
-}
-extern "C" JNIEXPORT jfloatArray JNICALL
-Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_fullInputRect(JNIEnv* env, jclass, jlong id) {
-    try {
-        std::array<float, 4> rect;
-        { std::lock_guard<std::mutex> guard(registry_mutex); rect = find(id).content_rect; }
-        auto result = env->NewFloatArray(4);
-        if (result) env->SetFloatArrayRegion(result, 0, 4, rect.data());
-        return result;
-    } catch (const std::exception& e) { error(env, e.what()); return nullptr; }
 }
 extern "C" JNIEXPORT jint JNICALL
 Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_texture(JNIEnv* env, jclass, jlong id, jlong token) {
@@ -1302,36 +1190,6 @@ Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_stats(JNIEnv* env, jclass
             ",\"held_slots\":" + std::to_string(phases[2]) + ",\"retiring_slots\":" + std::to_string(phases[3]) + "}";
         return env->NewStringUTF(json.c_str());
     } catch (const std::exception& e) { error(env, e.what()); return nullptr; }
-}
-static jboolean read_inputs(JNIEnv* env, jlong id, jlong token, jobject left, jobject right, bool scout) {
-    try {
-        std::lock_guard<std::mutex> guard(registry_mutex); auto& bridge = find(id); auto& slot = bridge.find(token);
-        if (slot.phase != Phase::held) return JNI_FALSE;
-        if (scout && !slot.scout_staged) throw std::runtime_error("No ROI scout input was staged for this color");
-        const auto& pbos = scout ? slot.scout_pbo : slot.pbo;
-        const size_t plane = static_cast<size_t>(bridge.input_width)*bridge.input_height;
-        const size_t output_bytes = plane*3*sizeof(float);
-        std::array<float*, 2> outputs{{float_buffer(env, left, output_bytes), float_buffer(env, right, output_bytes)}};
-        const auto a = reinterpret_cast<uintptr_t>(outputs[0]), b = reinterpret_cast<uintptr_t>(outputs[1]);
-        if ((a <= b && b-a < output_bytes) || (b < a && a-b < output_bytes)) throw std::runtime_error("Render bridge CHW outputs overlap");
-        State state;
-        for (int eye = 0; eye < 2; ++eye) {
-            glBindBuffer(GL_PIXEL_PACK_BUFFER, pbos[eye]);
-            const auto* rgba = static_cast<const unsigned char*>(glMapBufferRange(GL_PIXEL_PACK_BUFFER, 0, plane*4, GL_MAP_READ_BIT));
-            if (!rgba) throw std::runtime_error("Render bridge PBO map failed");
-            for (int channel = 0; channel < 3; ++channel) for (size_t i = 0; i < plane; ++i) outputs[eye][channel*plane+i] = rgba[i*4+channel]/255.f;
-            if (!glUnmapBuffer(GL_PIXEL_PACK_BUFFER)) throw std::runtime_error("Render bridge PBO storage corrupted");
-        }
-        return JNI_TRUE;
-    } catch (const std::exception& e) { error(env, e.what()); return JNI_FALSE; }
-}
-extern "C" JNIEXPORT jboolean JNICALL
-Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_readInputs(JNIEnv* env, jclass, jlong id, jlong token, jobject left, jobject right) {
-    return read_inputs(env, id, token, left, right, false);
-}
-extern "C" JNIEXPORT jboolean JNICALL
-Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_readScoutInputs(JNIEnv* env, jclass, jlong id, jlong token, jobject left, jobject right) {
-    return read_inputs(env, id, token, left, right, true);
 }
 extern "C" JNIEXPORT void JNICALL
 Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_retire(JNIEnv* env, jclass, jlong id, jlong token) {
