@@ -28,6 +28,7 @@ const MODE_STEREO := 140
 const MODE_LENS := 150
 const DepthStrength := preload("res://scripts/depth_strength.gd")
 const DEPTH := 161
+const SLIDER_RESET_BASE := 10000
 const DEPTH_X := 0.32
 const DEPTH_SPAN := Vector2(0.2, 0.44)
 const LENS_FOVS := [180, 190, 200, 220]
@@ -530,8 +531,8 @@ func _subtitle_controls() -> Array:
 		rows.append({"title": "Horizontal position" if int(_state.get("subtitle_direction", 0)) == 1 else "Subtitle position", "field": SubtitleDepth.slider_row("subtitle_position", float(_state.get("subtitle_position", 0.0)))})
 		rows.append({"title": "Distance", "field": SubtitleDepth.slider_row("subtitle_distance", float(_state.get("subtitle_distance", 5.0)))})
 	else:
-		rows.append({"title": "Vertical position", "field": {"key": "subtitle_flat_position", "value": _state.get("subtitle_flat_position", 0.0), "slider": true, "span": Vector3(0, 100, 1), "unit": "%"}})
-	rows.append({"title": "Text size", "field": {"key": "subtitle_size", "value": _state.get("subtitle_size", 100.0), "slider": true, "span": Vector3(50, 200, 5), "unit": "%"}})
+		rows.append({"title": "Vertical position", "field": {"key": "subtitle_flat_position", "value": _state.get("subtitle_flat_position", 0.0), "slider": true, "span": Vector3(0, 100, 1), "unit": "%", "reset_value": 0.0}})
+	rows.append({"title": "Text size", "field": {"key": "subtitle_size", "value": _state.get("subtitle_size", 100.0), "slider": true, "span": Vector3(50, 200, 5), "unit": "%", "reset_value": 100.0}})
 	rows.append({"title": "Text color", "field": preload("res://scripts/caption_palette.gd").choices(int(_state.get("subtitle_palette", 0)))})
 	return rows
 
@@ -954,6 +955,7 @@ func _activate_hit(hit: Dictionary) -> void:
 		super._activate_hit(hit)
 
 func _activate(target: int) -> void:
+	if _activate_slider_reset(target): return
 	if target == QUICK_CLOSE:
 		_toggle_popup(""); return
 	if POPUP_TARGETS.has(target):
@@ -1184,12 +1186,43 @@ func _adjustment_row(target: int, key: String, title: String, span: Vector3, y: 
 	_button(target, "", Vector2(0.33, y), Vector2(0.7, CONTROL_HEIGHT))
 	_buttons.back().enabled = _state.get("has_video", false)
 	_buttons.back().base_color = Color(TILE, 0)
+	var slider_button: Dictionary = _buttons.back()
 	_decoration(Vector2(0.6, 0.009), Vector2(0.33, y), MUTED)
 	var fill := _decoration(Vector2(0.6, 0.009), Vector2(0.33, y), ACCENT)
 	fill.material_override.render_priority = 13
 	var knob := _decoration(Vector2(0.025, 0.025), Vector2(0.03, y), Color.WHITE)
 	knob.material_override.render_priority = 14
-	_adjust_rows[target] = {"key": key, "span": span, "label": value, "fill": fill, "knob": knob}
+	_adjust_rows[target] = {"key": key, "span": span, "label": value, "fill": fill, "knob": knob, "button": slider_button}
+	var default_value: Variant = _adjustment_default(key)
+	if default_value != null:
+		_glyph(SLIDER_RESET_BASE + target, "refresh", Vector2(0.715, y), 0.065, true, I18n.t("Reset"))
+		var reset_button: Dictionary = _buttons.back()
+		reset_button["keep_visible"] = true
+		reset_button["reset_slider"] = target
+		reset_button["reset_value"] = float(default_value)
+		_adjust_rows[target]["reset"] = reset_button
+
+func _adjustment_default(key: String) -> Variant:
+	if Grade.DEFAULTS.has(key): return Grade.DEFAULTS[key]
+	return {"screen_distance": Surface.SCREEN_DISTANCE, "screen_scale": 100.0,
+		"screen_rotation": 0.0, "playback_speed": 1.0, "stereo_horizontal": 0.0, "stereo_vertical": 0.0}.get(key)
+
+func _activate_slider_reset(target: int) -> bool:
+	for button in _buttons:
+		if button.target != target or not button.has("reset_slider"): continue
+		if button.enabled and _adjust_rows.has(button.reset_slider):
+			_finish_adjustment()
+			adjustment_requested.emit(str(_adjust_rows[button.reset_slider].key), button.reset_value)
+			adjustment_committed.emit()
+			refresh_values()
+		return true
+	return false
+
+func _refresh_slider_resets() -> void:
+	for row in _adjust_rows.values():
+		if not row.has("reset"): continue
+		row.reset.enabled = row.button.enabled and not is_equal_approx(float(row.get("value", row.reset.reset_value)), row.reset.reset_value)
+		row.reset.node.get_child(1).material_override.albedo_color = ACCENT if row.reset.enabled else MUTED
 
 func _inline_reset(target: int, title: String, key: String, default_value: float, y: float) -> void:
 	_control_button(target, "", Vector2(-0.315, y), 0.22)
@@ -1206,6 +1239,7 @@ func _refresh_adjustments() -> void:
 		var position: bool = row.key == "subtitle_position"
 		var defaults := {"screen_scale": 100.0, "screen_rotation": 0.0, "playback_speed": 1.0, "alpha_fps": 20.0, "stereo_horizontal": 0.0, "stereo_vertical": 0.0, "subtitle_delay_ms": 0.0, "audio_delay_ms": 0.0}
 		var value := float(_state.get(row.key, defaults[row.key])) if defaults.has(row.key) else (float(_state.get(row.key, 5.0 if row.key == "subtitle_distance" else Surface.SCREEN_DISTANCE)) if distance else (float(_state.get(row.key, SubtitleDepth.DEFAULT_POSITION)) if position else float(values.get(row.key, Grade.DEFAULTS[row.key]))))
+		row["value"] = value
 		var fraction := clampf((value - row.span.x) / (row.span.y - row.span.x), 0, 1)
 		if row.key == "subtitle_distance": fraction = SubtitleDepth.slider_fraction(value)
 		row.label.text = "%.1f m" % value if distance else ("%+.0f°" % value if position else ("%d K" % value if row.key == "temperature" else ("%+.2f EV" % value if row.key == "exposure" else "%.3f" % value)))
@@ -1220,6 +1254,7 @@ func _refresh_adjustments() -> void:
 		row.fill.position.x = 0.03 + fraction * 0.3
 		row.fill.material_override.set_shader_parameter("surface_size", row.fill.mesh.size)
 		row.knob.position.x = 0.03 + fraction * 0.6
+	_refresh_slider_resets()
 	var selected := str(_state.get("color_grade", {}).get("preset", "Original"))
 	for name in _preset_buttons:
 		_preset_buttons[name].base_color = SELECTED if name == selected else TILE
@@ -1258,7 +1293,7 @@ func _activate_adjustment(target: int) -> void:
 		elif target == ALIGNMENT_RESET:
 			adjustment_requested.emit("stereo_reset", true)
 	elif _adjustment == "color_grade":
-		if target >= 410 and target < 415:
+		if target >= 410 and target < 410 + Grade.PRESETS.size():
 			adjustment_requested.emit("grade_preset", Grade.PRESETS[target - 410])
 			adjustment_committed.emit()
 		elif target >= 430 and target < 433:

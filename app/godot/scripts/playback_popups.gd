@@ -2,6 +2,7 @@ extends RefCounted
 ## Small, mutually exclusive controls above the persistent playback timeline.
 const GRADE_PREVIOUS := 218
 const GRADE_NEXT := 219
+const GRADE_PAGE_RESET := 220
 const GRADE_PAGES := [
 	["temperature", "tint", "exposure"], ["contrast", "gamma", "saturation"],
 	["red_gain", "green_gain", "blue_gain"], ["red_gamma", "green_gamma", "blue_gamma"],
@@ -27,8 +28,11 @@ func _row(title: String, field: Dictionary, y: float) -> void:
 	menu.choices.field(null, field, Vector2(0.22, y), 0.64)
 
 func _slider(title: String, key: String, span: Vector3, fallback: float, unit: String, y: float, precision: int = 1, signed: bool = false) -> void:
-	_row(title, {"key": key, "value": menu._state.get(key, fallback), "slider": true,
-		"span": span, "unit": unit, "precision": precision, "signed": signed}, y)
+	var field := {"key": key, "value": menu._state.get(key, fallback), "slider": true,
+		"span": span, "unit": unit, "precision": precision, "signed": signed}
+	# Speed keeps its familiar, separate Restore 1× action.
+	if key != "playback_speed": field["reset_value"] = fallback
+	_row(title, field, y)
 
 func _button(target: int, title: String, centre: Vector2, width: float, enabled: bool = true) -> void:
 	menu._control_button(target, menu.I18n.t(title), centre, width, enabled)
@@ -42,14 +46,10 @@ func draw(key: String) -> void:
 				"choices": [{"value": 0.5, "label": "0.5×"}, {"value": 1.0, "label": "1×"}, {"value": 1.5, "label": "1.5×"}, {"value": 2.0, "label": "2×"}]}, Vector2(0, y - 0.08), 1.0)
 			_button(menu.SPEED_RESET, "Restore 1×", Vector2(0, 0.335), 0.40, not is_equal_approx(float(menu._state.get("playback_speed", 1)), 1))
 		"sync":
-			var y := _panel("Synchronization", 0.48)
+			var y := _panel("Synchronization", 0.40)
 			_slider("Subtitle delay", "subtitle_delay_ms", Vector3(-10000, 10000, 50), 0, " ms", y, 0, true)
 			_slider("Audio delay", "audio_delay_ms", Vector3(-10000, 10000, 50), 0, " ms", y - 0.085, 0, true)
-			_button(menu.SUBTITLE_DELAY_RESET, "Reset", Vector2(-0.26, y - 0.165), 0.46)
-			_button(menu.AUDIO_DELAY_RESET, "Reset", Vector2(0.26, y - 0.165), 0.46)
-			menu._tips[menu.SUBTITLE_DELAY_RESET] = menu.I18n.t("Subtitle delay") + " · " + menu.I18n.t("Reset")
-			menu._tips[menu.AUDIO_DELAY_RESET] = menu.I18n.t("Audio delay") + " · " + menu.I18n.t("Reset")
-			menu._label(menu.I18n.t("Positive: later · Negative: earlier"), Vector3(0, y - 0.23, 0.004), 14).modulate = menu.MUTED
+			menu._label(menu.I18n.t("Positive: later · Negative: earlier"), Vector3(0, y - 0.155, 0.004), 14).modulate = menu.MUTED
 			_button(menu.SUBTITLE_LOAD, "Load subtitle file", Vector2(-0.26, 0.335), 0.49, not menu._state.get("subtitle_loading", false))
 			_button(menu.SUBTITLE_FORGET, "Forget subtitle file", Vector2(0.26, 0.335), 0.49, menu._state.get("external_subtitle", false) and not menu._state.get("subtitle_loading", false))
 		"ipd":
@@ -81,8 +81,9 @@ func draw(key: String) -> void:
 			for i in GRADE_PAGES[page].size():
 				var field: String = GRADE_PAGES[page][i]
 				_row(menu.Grade.NAMES[field], {"key": field, "value": values.get(field, menu.Grade.DEFAULTS[field]), "slider": true,
-					"span": menu.Grade.limits(field), "unit": " K" if field == "temperature" else "", "precision": 0 if field in ["temperature", "tint"] else (3 if field.ends_with("offset") else 2)}, y - 0.16 - i * 0.075)
-			_button(440, "Reset custom", Vector2(0, 0.335), 0.45)
+						"span": menu.Grade.limits(field), "unit": " K" if field == "temperature" else "", "precision": 0 if field in ["temperature", "tint"] else (3 if field.ends_with("offset") else 2), "reset_value": menu.Grade.DEFAULTS[field]}, y - 0.16 - i * 0.075)
+			_button(GRADE_PAGE_RESET, "Reset page", Vector2(-0.26, 0.335), 0.46, _grade_page_needs_reset())
+			_button(440, "Reset custom", Vector2(0.26, 0.335), 0.46)
 		"info":
 			var y := _panel("Info", 0.47)
 			menu._info = menu._label(info_text(), Vector3(-0.49, y + 0.025, 0.004), 16)
@@ -105,10 +106,19 @@ func refresh_values() -> void:
 		if menu._state.has(key): menu.choices._refresh_slider(target, float(menu._state[key]))
 		elif grades.has(key): menu.choices._refresh_slider(target, float(grades[key]))
 	for button in menu._buttons:
+		if button.target == GRADE_PAGE_RESET:
+			button.enabled = _grade_page_needs_reset()
+			button.node.visible = button.enabled
+			button.node.get_child(0).modulate = button.foreground if button.enabled else menu.MUTED
 		if button.target == menu.SPEED_RESET:
 			button.enabled = not is_equal_approx(float(menu._state.get("playback_speed", 1)), 1)
 			button.node.visible = button.enabled
 			button.node.get_child(0).modulate = button.foreground if button.enabled else menu.MUTED
+
+func _grade_page_needs_reset() -> bool:
+	var page := clampi(menu._grade_page, 0, GRADE_PAGES.size() - 1)
+	var values: Dictionary = menu._state.get("grade_values", menu.Grade.DEFAULTS)
+	return menu._state.get("has_video", false) and GRADE_PAGES[page].any(func(key): return not is_equal_approx(float(values.get(key, menu.Grade.DEFAULTS[key])), menu.Grade.DEFAULTS[key]))
 
 func action(target: int) -> bool:
 	var key: String = menu._quick_open
@@ -120,6 +130,9 @@ func action(target: int) -> bool:
 	elif key == "ipd" and target == menu.ALIGNMENT_RESET: adjustment = "stereo_reset"; value = true
 	elif key == "color" and target in [GRADE_PREVIOUS, GRADE_NEXT]: menu._grade_page = clampi(menu._grade_page + (-1 if target == GRADE_PREVIOUS else 1), 0, GRADE_PAGES.size() - 1)
 	elif key == "color" and target == 440: adjustment = "grade_reset"; value = true
+	elif key == "color" and target == GRADE_PAGE_RESET:
+		if not _grade_page_needs_reset(): return true
+		adjustment = "grade_reset_fields"; value = GRADE_PAGES[clampi(menu._grade_page, 0, GRADE_PAGES.size() - 1)].duplicate()
 	elif key == "info" and target == menu.INFO_REFRESH: menu.action_requested.emit("capabilities")
 	else: return false
 	if not adjustment.is_empty():

@@ -191,6 +191,8 @@ func _on_playback_adjustment(key: String, value: Variant) -> void:
 		host.video.color_grade.select(str(value))
 	elif key == "grade_reset":
 		host.video.color_grade.reset_custom()
+	elif key == "grade_reset_fields":
+		if not value is Array or not host.video.color_grade.reset_fields(value): return
 	else:
 		host.video.color_grade.adjust(key, value)
 	host.video.color_grade.apply(host.video.material)

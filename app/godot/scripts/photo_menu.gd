@@ -156,13 +156,24 @@ func _draw_adjustments() -> void:
 	_place_device_status(Vector2(0, -0.385))
 	_refresh_adjustments()
 
+func _adjustment_row(target: int, key: String, title: String, span: Vector3, y: float) -> void:
+	super._adjustment_row(target, key, title, span, y)
+	_adjust_rows[target].button.enabled = int(_state.get("count", 0)) > 0 if key.begins_with("gallery_") or key == "wall_rows" else _state.get("has_image", false)
+
+func _adjustment_default(key: String) -> Variant:
+	if _adjustment != "photo_view": return super._adjustment_default(key)
+	if key == "gallery_distance": return Photo.Gallery.DEFAULT_DISTANCES[clampi(int(_state.get("layout", 0)), 0, 3)]
+	return {"screen_distance": Photo.DEFAULT_DISTANCE, "screen_scale": 1.0,
+		"gallery_scale": 1.0, "wall_rows": 1.0, "inspect_magnification": Photo.DEFAULT_MAGNIFICATION}.get(key)
+
 func _refresh_adjustments() -> void:
 	if _adjustment != "photo_view":
 		super._refresh_adjustments()
 		return
 	for row in _adjust_rows.values():
-		var fallback := Photo.DEFAULT_DISTANCE if row.key in ["screen_distance", "gallery_distance"] else (1.0 if row.key == "screen_scale" else Photo.DEFAULT_MAGNIFICATION)
+		var fallback := float(_adjustment_default(row.key))
 		var value := float(_state.get(row.key, fallback))
+		row["value"] = value
 		var fraction := clampf((value - row.span.x) / (row.span.y - row.span.x), 0.0, 1.0)
 		row.label.text = "%.1f m" % value if row.key in ["screen_distance", "gallery_distance"] else ("%d%%" % roundi(value * 100) if row.key in ["screen_scale", "gallery_scale"] else "%.1f×" % value)
 		if row.key == "wall_rows": row.label.text = str(roundi(value))
@@ -171,6 +182,7 @@ func _refresh_adjustments() -> void:
 		row.fill.position.x = 0.03 + fraction * 0.3
 		row.fill.material_override.set_shader_parameter("surface_size", row.fill.mesh.size)
 		row.knob.position.x = 0.03 + fraction * 0.6
+	_refresh_slider_resets()
 
 func _draw_panel() -> void:
 	_set_backdrop(Vector2(1.16, 0.55))
@@ -220,6 +232,7 @@ func stick_scroll(amount: float, delta: float) -> void:
 var _scroll_after := 0
 
 func _activate(target: int) -> void:
+	if _activate_slider_reset(target): return
 	if _activate_footer(target): return
 	if target >= PHOTO_LAYOUT_BASE and target < PHOTO_LAYOUT_BASE + 4:
 		_layout_open = false

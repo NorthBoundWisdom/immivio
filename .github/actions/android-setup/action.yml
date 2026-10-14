@@ -1,38 +1,38 @@
-name: Check Android CI environment
-description: Load the prepared runner toolchain and verify tools without installing them
+name: Prepare Android CI environment
+description: Install and verify the Android toolchain on GitHub-hosted runners
 runs:
   using: composite
   steps:
-    - name: Load prepared macOS environment
-      if: runner.os == 'macOS'
+    - name: Read CI tool versions
+      id: versions
+      shell: python
+      run: |
+        import json, os
+        from pathlib import Path
+        config = json.loads(Path('configs/ci_toolchain.json').read_text())
+        with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
+            for name in ('python', 'java'):
+                output.write(f'{name}={config[name]}\n')
+            output.write('command_line_tools=' + config['android']['command_line_tools'] + '\n')
+    - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      with:
+        python-version: ${{ steps.versions.outputs.python }}
+    - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
+      with:
+        distribution: temurin
+        java-version: ${{ steps.versions.outputs.java }}
+    - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+      with:
+        go-version-file: cloud/openlist/go.mod
+        cache: false
+    - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4
+      with:
+        cmdline-tools-version: ${{ steps.versions.outputs.command_line_tools }}
+        packages: platform-tools
+        log-accepted-android-sdk-licenses: false
+    - name: Install CI tools, Android components and playback libraries
       shell: bash
-      run: |
-        source "${IMMIVIO_TOOLCHAIN_ENV:-$HOME/github-runners/toolchains/env.sh}"
-        export GODOT_EXE="${GODOT_EXE:-${GODOT_BIN:-godot}}"
-        python3 - <<'PY'
-        import os
-        with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as output:
-            for name in ('PATH', 'JAVA_HOME', 'ANDROID_HOME', 'ANDROID_SDK_ROOT',
-                         'GODOT_EXE', 'GODOT_TEMPLATES_DIR', 'GRADLE_EXE',
-                         'IMMIVIO_MPV_LIB_DIR', 'GOMODCACHE', 'GOCACHE', 'GOPATH',
-                         'GRADLE_USER_HOME'):
-                if os.environ.get(name):
-                    output.write(name + '=' + os.environ[name] + '\n')
-        PY
-    - name: Load prepared Windows environment
-      if: runner.os == 'Windows'
-      shell: pwsh
-      run: |
-        $environment = if ($env:IMMIVIO_TOOLCHAIN_ENV) { $env:IMMIVIO_TOOLCHAIN_ENV } else { Join-Path $env:SystemDrive 'github-runners/toolchains/env.ps1' }
-        . $environment
-        if (-not $env:GODOT_EXE -and $env:GODOT_BIN) { $env:GODOT_EXE = $env:GODOT_BIN }
-        foreach ($name in @('PATH', 'JAVA_HOME', 'ANDROID_HOME', 'ANDROID_SDK_ROOT',
-                            'GODOT_EXE', 'GODOT_TEMPLATES_DIR', 'GRADLE_EXE',
-                            'IMMIVIO_MPV_LIB_DIR', 'GOMODCACHE', 'GOCACHE', 'GOPATH',
-                            'GRADLE_USER_HOME')) {
-          $value = [Environment]::GetEnvironmentVariable($name)
-          if ($value) { "$name=$value" | Out-File $env:GITHUB_ENV -Append -Encoding utf8 }
-        }
-    - name: Check preinstalled tools and Android libraries
+      run: python configs/setup_hosted_ci.py
+    - name: Check installed tools and Android libraries
       shell: bash
       run: python configs/check_environment.py

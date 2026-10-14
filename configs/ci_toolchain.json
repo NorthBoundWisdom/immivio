@@ -1,0 +1,52 @@
+{
+  "python": "3.13",
+  "java": "25",
+  "android": {
+    "build_tools": "36.1.0",
+    "ndk": "30.0.16248370",
+    "cmake": "4.1.2",
+    "command_line_tools": "15859902"
+  },
+  "assets": {
+    "Gradle": {
+      "url": "https://services.gradle.org/distributions/gradle-9.8.1-bin.zip",
+      "fileName": "gradle-9.8.1-bin.zip",
+      "sha256": "dce76f55f8e251a3a1f130eb120f30b3d271de2b76c9b0729d316b5a1b6dc01f"
+    },
+    "GodotWindows": {
+      "url": "https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_win64.exe.zip",
+      "fileName": "godot-windows.zip",
+      "sha256": "731980f9608d61333e5baf54a2ef17210acc7a538446c0cb9969f002aca1e953"
+    },
+    "GodotMacOS": {
+      "url": "https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_macos.universal.zip",
+      "fileName": "godot-macos.zip",
+      "sha256": "c58a24e31d720be9d62f60cb5627c4e695fb72f21b0cfe1bc9ccaa9a3b3ba63e"
+    },
+    "GodotTemplates": {
+      "url": "https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_export_templates.tpz",
+      "fileName": "godot-templates.tpz",
+      "sha256": "f298490b8d44d934be425a5a65a51bf15f422428b229a06a6e11d9ffea248011"
+    }
+  },
+  "fonts": [
+    {
+      "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/f8d157532fbfaeda587e826d4cd5b21a49186f7c/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf",
+      "fileName": "NotoSansCJKsc-Regular.otf",
+      "family": "Noto Sans CJK SC",
+      "git_blob_sha1": "dc15562470b4f842321894787a0d066879ccff8b"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/f8d157532fbfaeda587e826d4cd5b21a49186f7c/Sans/OTF/TraditionalChinese/NotoSansCJKtc-Regular.otf",
+      "fileName": "NotoSansCJKtc-Regular.otf",
+      "family": "Noto Sans CJK TC",
+      "git_blob_sha1": "f9376bae1d421520f73a3c6c9d50b22f89548301"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/f8d157532fbfaeda587e826d4cd5b21a49186f7c/Sans/OTF/Japanese/NotoSansCJKjp-Regular.otf",
+      "fileName": "NotoSansCJKjp-Regular.otf",
+      "family": "Noto Sans CJK JP",
+      "git_blob_sha1": "f56224957fb13a81b4c14bac34f2f058a017f9fb"
+    }
+  ]
+}

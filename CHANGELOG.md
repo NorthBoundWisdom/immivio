@@ -6,6 +6,9 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 ## Unreleased
 
+- Add independent reset actions to existing grading, subtitle, timing, eye-alignment and photo sliders. Reset only the current three-field grading popup page, retain whole-custom reset, and preserve disabled effects and unavailable controls. Adapt the upstream 0.8.0 behavior to the compact toolbar without restoring removed settings pages or conversion features.
+- Keep only Original, Warm, Cool and Custom grading presets. Restore legacy Daylight saves as Original while retaining their custom parameters.
+
 ## 0.9.2 — 2026-10-14
 
 - Set the application version to 0.9.2 / versionCode 16 for all Android targets. Create GitHub Releases on tag push independently of the Android build runners; attach verified APKs after both builds pass.
