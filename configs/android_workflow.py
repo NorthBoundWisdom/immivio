@@ -7,6 +7,8 @@ import argparse
 import json
 import os
 from pathlib import Path
+import re
+import shutil
 import subprocess
 import sys
 from types import SimpleNamespace
@@ -237,6 +239,74 @@ def prepare_go_packages(source, env):
         cwd=source,
         env=online,
         log="go-dependencies.log",
+    )
+    prepare_binding_module_graph(source, online)
+
+
+def prepare_binding_module_graph(source, env):
+    """Warm gomobile's expanded module graph without compiling the bindings."""
+    graph = subprocess.check_output(
+        ["go", "list", "-m", "-json", "-tags=android", "all"],
+        cwd=source,
+        env=dict(env, GOOS="android", GOARCH="arm64"),
+        text=True,
+    )
+    version = (
+        subprocess.check_output(
+            ["go", "env", "GOVERSION"],
+            cwd=source,
+            env=env,
+            text=True,
+        )
+        .strip()
+        .removeprefix("go")
+    )
+    if not re.fullmatch(r"\d+\.\d+(?:\.\d+)?", version):
+        raise RuntimeError("Binding cache preparation requires a released Go toolchain")
+    decoder = json.JSONDecoder()
+    requires, replaces = [], []
+    while graph.strip():
+        module, end = decoder.raw_decode(graph.lstrip())
+        graph = graph.lstrip()[end:]
+        path, selected = module["Path"], module.get("Version", "")
+        replacement = module.get("Replace")
+        if replacement:
+            target = (
+                replacement.get("Dir")
+                if not replacement.get("Version")
+                else replacement["Path"]
+            )
+            replaces.append(
+                f'{path} => {json.dumps(target, ensure_ascii=False)} {replacement.get("Version", "")}'
+            )
+        elif not selected:
+            replaces.append(
+                f'{path} => {json.dumps(Path(module["Dir"]).as_posix(), ensure_ascii=False)}'
+            )
+            # Tidy adds this requirement after seeing the generated wrapper's import.
+            major = re.search(r"/v(\d+)$", path)
+            selected = f'v{major[1] if major else "0"}.0.0'
+        if selected:
+            requires.append(f"{path} {selected}")
+    directory = source.parent / "openlist-binding-modules"
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / "go.mod").write_text(
+        f"module gobind\n\ngo {version}\n\nrequire (\n"
+        + "\n".join(requires)
+        + "\n)\n\nreplace (\n"
+        + "\n".join(replaces)
+        + "\n)\n",
+        encoding="utf-8",
+    )
+    if (source / "go.sum").exists():
+        shutil.copy2(source / "go.sum", directory / "go.sum")
+    # gomobile promotes every listed module to a root requirement. This can
+    # select newer transitive versions than `go mod download all` in the app.
+    player.run(
+        ["go", "mod", "download", "all"],
+        cwd=directory,
+        env=dict(env, GOFLAGS="-mod=mod"),
+        log="go-binding-modules.log",
     )
 
 

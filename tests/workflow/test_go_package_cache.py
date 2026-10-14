@@ -22,26 +22,39 @@ class GoPackageCache(unittest.TestCase):
             root = Path(directory)
             proxy, source = root / "proxy", root / "source"
             source.mkdir()
-            for name in ("used", "unimported"):
+            records = [
+                ("leaf", "v1.0.0", "", "package leaf\nconst Value = 1\n"),
+                ("leaf", "v1.1.0", "", "package leaf\nconst Value = 2\n"),
+                (
+                    "unimported",
+                    "v1.0.0",
+                    "require example.com/leaf v1.1.0\n",
+                    "package unimported\n",
+                ),
+                (
+                    "used",
+                    "v1.0.0",
+                    "require (\nexample.com/leaf v1.0.0\nexample.com/unimported v1.0.0\n)\n",
+                    'package used\nimport "example.com/leaf"\nvar Value = leaf.Value\n',
+                ),
+            ]
+            for name, version, dependencies, code in records:
                 module = "example.com/" + name
-                version = "v1.0.0"
                 record = proxy / module / "@v"
-                record.mkdir(parents=True)
-                mod = f"module {module}\n\ngo 1.20\n"
+                record.mkdir(parents=True, exist_ok=True)
+                mod = f"module {module}\n\ngo 1.20\n\n{dependencies}"
                 (record / (version + ".mod")).write_text(mod)
                 (record / (version + ".info")).write_text(
-                    '{"Version":"v1.0.0","Time":"2020-01-01T00:00:00Z"}'
+                    '{"Version":"' + version + '","Time":"2020-01-01T00:00:00Z"}'
                 )
-                (record / "list").write_text(version + "\n")
+                with (record / "list").open("a") as versions:
+                    versions.write(version + "\n")
                 with zipfile.ZipFile(record / (version + ".zip"), "w") as archive:
                     archive.writestr(f"{module}@{version}/go.mod", mod)
-                    archive.writestr(
-                        f"{module}@{version}/value.go",
-                        f"package {name}\nconst Value = 1\n",
-                    )
+                    archive.writestr(f"{module}@{version}/value.go", code)
             (source / "go.mod").write_text(
                 "module example.com/fixture\n\ngo 1.20\n\nrequire (\n"
-                " example.com/used v1.0.0\n example.com/unimported v1.0.0\n)\n"
+                " example.com/used v1.0.0\n example.com/leaf v1.0.0 // indirect\n)\n"
             )
             (source / "fixture.go").write_text(
                 'package fixture\nimport "example.com/used"\nvar Value = used.Value\n'
@@ -62,7 +75,7 @@ class GoPackageCache(unittest.TestCase):
             (source / "fixture.go").rename(source / "cloudcore/fixture.go")
             online = go_environment(env, online=True)
             subprocess.run(
-                ["go", "mod", "download", "example.com/used"],
+                ["go", "mod", "download", "example.com/used", "example.com/leaf"],
                 cwd=source,
                 env=online,
                 check=True,
@@ -89,17 +102,37 @@ class GoPackageCache(unittest.TestCase):
             )
             with patch.object(player, "LOGS", root / "logs"):
                 android.prepare_go_packages(source, env)
+            self.assertEqual(
+                (source / "go.mod")
+                .read_text()
+                .split("example.com/leaf ")[1]
+                .split()[0],
+                "v1.0.0",
+            )
             shutil.rmtree(proxy)
             offline = dict(go_environment(env), GOOS="android", GOARCH="arm64")
             graph = subprocess.check_output(
                 ["go", "list", "-m", "all"], cwd=source, env=offline, text=True
             )
             self.assertIn("example.com/unimported v1.0.0", graph)
-            # gomobile may import packages that ordinary host package discovery skipped.
-            packages = subprocess.check_output(
-                ["go", "list", "example.com/unimported"],
-                cwd=source,
+            # Promoting an otherwise unused module to a root requirement changes
+            # MVS: gomobile's tidy selects leaf v1.1.0, not the app's leaf v1.0.0.
+            binding = source.parent / "openlist-binding-modules"
+            (binding / "wrapper.go").write_text(
+                'package gobind\nimport _ "example.com/fixture/cloudcore"\n'
+            )
+            subprocess.run(
+                ["go", "mod", "tidy"],
+                cwd=binding,
+                env=offline,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            selected = subprocess.check_output(
+                ["go", "list", "-m", "example.com/leaf"],
+                cwd=binding,
                 env=offline,
                 text=True,
             )
-            self.assertEqual(packages.strip(), "example.com/unimported")
+            self.assertEqual(selected.strip(), "example.com/leaf v1.1.0")
