@@ -1,9 +1,12 @@
 package org.vrpassthroughplayer.plugin
+
 import org.junit.Assert.*
 import org.junit.Test
 import java.nio.file.Files
+
 class DeleteTreeTest {
-    @Test fun includesHiddenNonMediaAndDetectsChangedContents() {
+    @Test
+    fun includesHiddenNonMediaAndDetectsChangedContents() {
         val root = Files.createTempDirectory("tree-delete-plan").toFile().canonicalFile
         try {
             root.resolve("a.mp4").writeText("video")
@@ -18,6 +21,9 @@ class DeleteTreeTest {
             root.resolve("sub/notes.txt").appendText("changed")
             val next = DeleteTree.local(root)
             assertThrows(IllegalStateException::class.java) { next.verify(first.summary()) }
-        } finally { root.resolve("sub").listFiles()?.forEach { it.delete() }; root.listFiles()?.forEach { it.delete() }; root.delete() }
+        } finally {
+            root.resolve("sub").listFiles()?.forEach { it.delete() }; root.listFiles()
+                ?.forEach { it.delete() }; root.delete()
+        }
     }
 }

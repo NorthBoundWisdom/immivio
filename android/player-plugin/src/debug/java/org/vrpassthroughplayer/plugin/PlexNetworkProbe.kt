@@ -14,31 +14,64 @@ internal object PlexNetworkProbe {
         require(raw.length <= 16384)
         val server = PlexAuth.parseServers(JSONArray(raw)).single()
         val manager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val subnets = manager.activeNetwork?.let { manager.getLinkProperties(it) }?.linkAddresses.orEmpty()
-            .filter { it.address is Inet4Address }.map { MediaServerDiscovery.Subnet(it.address.hostAddress!!, it.prefixLength) }
+        val subnets =
+            manager.activeNetwork?.let { manager.getLinkProperties(it) }?.linkAddresses.orEmpty()
+                .filter { it.address is Inet4Address }
+                .map { MediaServerDiscovery.Subnet(it.address.hostAddress!!, it.prefixLength) }
         val connections = PlexAuth.preferredConnections(server.connections, subnets)
-        val attempts = JSONArray(); val report = JSONObject().put("request", request)
+        val attempts = JSONArray();
+        val report = JSONObject().put("request", request)
         val started = System.nanoTime()
         PlexAuth(UUID.randomUUID().toString()).use { auth ->
             try {
-                val selected = PlexConnectionSelector.select(connections, { false }, { auth.cancelProbes() }) { connection ->
+                val selected = PlexConnectionSelector.select(
+                    connections,
+                    { false },
+                    { auth.cancelProbes() }) { connection ->
                     val begin = System.nanoTime()
                     try {
-                        mediaRequire(auth.identify(connection.base, 2500, 3000) == server.id, "Wrong server type")
-                        synchronized(attempts) { attempts.put(JSONObject().put("base", connection.base).put("state", "identified")
-                            .put("elapsed_ms", (System.nanoTime() - begin) / 1000000)) }
+                        mediaRequire(
+                            auth.identify(connection.base, 2500, 3000) == server.id,
+                            "Wrong server type"
+                        )
+                        synchronized(attempts) {
+                            attempts.put(
+                                JSONObject().put("base", connection.base).put("state", "identified")
+                                    .put("elapsed_ms", (System.nanoTime() - begin) / 1000000)
+                            )
+                        }
                         // Only /identity: never send the supplied placeholder key to any endpoint.
-                        MediaServerAccount("debug-network", "Plex", connection.base, "", "plex", server.id)
+                        MediaServerAccount(
+                            "debug-network",
+                            "Plex",
+                            connection.base,
+                            "",
+                            "plex",
+                            server.id
+                        )
                     } catch (error: Exception) {
-                        synchronized(attempts) { attempts.put(JSONObject().put("base", connection.base).put("state", "failed")
-                            .put("error", (error as? MediaServerFailure)?.code ?: "Server unavailable")
-                            .put("transport", (error as? MediaServerFailure)?.transportError.orEmpty())
-                            .put("elapsed_ms", (System.nanoTime() - begin) / 1000000)) }
+                        synchronized(attempts) {
+                            attempts.put(
+                                JSONObject().put("base", connection.base).put("state", "failed")
+                                    .put(
+                                        "error",
+                                        (error as? MediaServerFailure)?.code ?: "Server unavailable"
+                                    )
+                                    .put(
+                                        "transport",
+                                        (error as? MediaServerFailure)?.transportError.orEmpty()
+                                    )
+                                    .put("elapsed_ms", (System.nanoTime() - begin) / 1000000)
+                            )
+                        }
                         throw error
                     }
                 }
                 report.put("state", "identity_selected").put("selected_base", selected.base)
-            } catch (error: Exception) { report.put("state", "error").put("error", (error as? MediaServerFailure)?.code ?: "Server unavailable") }
+            } catch (error: Exception) {
+                report.put("state", "error")
+                    .put("error", (error as? MediaServerFailure)?.code ?: "Server unavailable")
+            }
         }
         // Workers are cancelled by select; serialize a frozen snapshot, never live mutable data.
         val snapshot = synchronized(attempts) { JSONArray(attempts.toString()) }

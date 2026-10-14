@@ -2,14 +2,21 @@
     <!-- Hand tracking declarations come from the selected OpenXR vendor export
          preset in both Debug and Release; this shared AAR is platform neutral. -->
     <application>
-        <provider android:name="org.vrpassthroughplayer.plugin.LocalAccessTestProvider"
-            android:authorities="${applicationId}.accessfixture" android:exported="false" />
-        <activity android:name="org.vrpassthroughplayer.plugin.MpvDiagnosticActivity"
-            android:exported="true" android:permission="android.permission.DUMP" android:screenOrientation="landscape"
+        <provider
+            android:name="org.vrpassthroughplayer.plugin.LocalAccessTestProvider"
+            android:authorities="${applicationId}.accessfixture"
+            android:exported="false" />
+        <activity
+            android:name="org.vrpassthroughplayer.plugin.MpvDiagnosticActivity"
+            android:exported="true"
+            android:permission="android.permission.DUMP"
+            android:screenOrientation="landscape"
             android:configChanges="orientation|keyboardHidden|screenSize|smallestScreenSize|uiMode"
             android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
-        <receiver android:name="org.vrpassthroughplayer.plugin.DebugDiagnosticsReceiver"
-            android:exported="true" android:permission="android.permission.DUMP">
+        <receiver
+            android:name="org.vrpassthroughplayer.plugin.DebugDiagnosticsReceiver"
+            android:exported="true"
+            android:permission="android.permission.DUMP">
             <intent-filter>
                 <action android:name="${applicationId}.DEBUG_DLNA" />
                 <action android:name="${applicationId}.DEBUG_PLEX_NETWORK" />

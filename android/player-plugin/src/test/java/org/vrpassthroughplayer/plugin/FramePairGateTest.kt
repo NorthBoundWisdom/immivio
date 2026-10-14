@@ -8,7 +8,8 @@ class FramePairGateTest {
     private fun ticket(frame: Long = 10, pts: Long = 1000, revision: Int = 1) =
         DecodedFrameGate.Ticket(scope, frame, pts, revision, 1)
 
-    @Test fun runtimeMustMatchSourceAndPresentationRevision() {
+    @Test
+    fun runtimeMustMatchSourceAndPresentationRevision() {
         val gate = FramePairGate(scope)
         val id = gate.identify(ticket(), 42)!!
         assertTrue(gate.matchesRuntime(id, 3, 1, 10, 1000))
@@ -18,7 +19,9 @@ class FramePairGateTest {
         assertFalse(gate.matchesRuntime(id, 3, 1, 10, 1001))
         assertNull(gate.identify(ticket().copy(scope = MediaSessionGate.Scope(6, 3, 1)), 42))
     }
-    @Test fun modeChangeRejectsInFlightButCanProcessPausedColor() {
+
+    @Test
+    fun modeChangeRejectsInFlightButCanProcessPausedColor() {
         val gate = FramePairGate(scope)
         val normal = gate.identify(ticket(), 42)!!
         assertTrue(gate.presented(normal))
@@ -33,7 +36,9 @@ class FramePairGateTest {
         gate.revisePresentation()
         assertFalse(gate.accepts(masked))
     }
-    @Test fun formatChangeAndCloseRejectCompletion() {
+
+    @Test
+    fun formatChangeAndCloseRejectCompletion() {
         val gate = FramePairGate(scope)
         val old = gate.identify(ticket(), 42)!!
         gate.setFormat(2)
@@ -45,7 +50,9 @@ class FramePairGateTest {
         assertFalse(gate.presented(next))
         assertNull(gate.identify(ticket(revision = 2), 44))
     }
-    @Test fun olderCompletedPairCannotMovePresentationBackwards() {
+
+    @Test
+    fun olderCompletedPairCannotMovePresentationBackwards() {
         val gate = FramePairGate(scope)
         val old = gate.identify(ticket(), 42)!!
         val newer = gate.identify(ticket(12, 1200), 43)!!
@@ -53,9 +60,11 @@ class FramePairGateTest {
         assertFalse(gate.presented(old))
         assertFalse(gate.accepts(newer.copy(ptsUs = 1100)))
     }
-    @Test fun playbackClockEstimateCannotAuthorizeExactSourcePairs() {
+
+    @Test
+    fun playbackClockEstimateCannotAuthorizeExactSourcePairs() {
         val gate = FramePairGate(scope)
-        val id = gate.identify(ticket(), 42)!!.copy(playbackClockEstimate=true)
+        val id = gate.identify(ticket(), 42)!!.copy(playbackClockEstimate = true)
         assertFalse(gate.accepts(id)); assertFalse(gate.presented(id))
         assertFalse(gate.matchesRuntime(id, 3, 1, 10, 1000))
     }

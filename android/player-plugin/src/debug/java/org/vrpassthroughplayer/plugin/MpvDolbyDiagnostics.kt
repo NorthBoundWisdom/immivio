@@ -17,23 +17,45 @@ import java.util.concurrent.atomic.AtomicInteger
  * no readback. Accept only a pre-pushed fixture in this app's private directory. */
 internal object MpvDolbyDiagnostics {
     private val ids = AtomicInteger()
-    private val worker = ThreadPoolExecutor(1, 1, 0, TimeUnit.MILLISECONDS, ArrayBlockingQueue(1),
-        { task -> Thread(task, "QuestMpvDolbyProbe") }, ThreadPoolExecutor.AbortPolicy())
+    private val worker = ThreadPoolExecutor(
+        1, 1, 0, TimeUnit.MILLISECONDS, ArrayBlockingQueue(1),
+        { task -> Thread(task, "QuestMpvDolbyProbe") }, ThreadPoolExecutor.AbortPolicy()
+    )
 
-    fun request(context: Context, fixture: String, direct: Boolean, audio: Boolean,
-                hardware: Boolean = true, pixelsOnly: Boolean = false): Int {
+    fun request(
+        context: Context, fixture: String, direct: Boolean, audio: Boolean,
+        hardware: Boolean = true, pixelsOnly: Boolean = false
+    ): Int {
         require(fixture.matches(Regex("[a-z0-9_-]+\\.(mkv|mp4)")))
         val id = ids.incrementAndGet()
-        return try { worker.execute { run(context.applicationContext, id, fixture, direct, audio, hardware, pixelsOnly) }; id }
-        catch (_: Exception) { -1 }
+        return try {
+            worker.execute {
+                run(
+                    context.applicationContext,
+                    id,
+                    fixture,
+                    direct,
+                    audio,
+                    hardware,
+                    pixelsOnly
+                )
+            }; id
+        } catch (_: Exception) {
+            -1
+        }
     }
 
-    private fun run(context: Context, id: Int, fixture: String, direct: Boolean, audio: Boolean,
-                    hardware: Boolean, pixelsOnly: Boolean) {
-        val report = JSONObject().put("request_id", id).put("diagnostic_process", DiagnosticRequests.processId)
-            .put("fixture", fixture).put("hardware_requested", hardware).put("direct_requested", direct)
+    private fun run(
+        context: Context, id: Int, fixture: String, direct: Boolean, audio: Boolean,
+        hardware: Boolean, pixelsOnly: Boolean
+    ) {
+        val report = JSONObject().put("request_id", id)
+            .put("diagnostic_process", DiagnosticRequests.processId)
+            .put("fixture", fixture).put("hardware_requested", hardware)
+            .put("direct_requested", direct)
             .put("pixels_only", pixelsOnly)
-            .put("audio_requested", audio).put("scope", "production Source in offscreen GLES; Godot/XR not exercised")
+            .put("audio_requested", audio)
+            .put("scope", "production Source in offscreen GLES; Godot/XR not exercised")
         val owner = OffscreenGlOwner()
         val directory = File(context.filesDir, "diagnostics").apply { mkdirs() }
         var source = 0L
@@ -58,15 +80,19 @@ internal object MpvDolbyDiagnostics {
                 }
                 error("Frame timeout: ${MpvSourceNative.status(source)}")
             }
+
             fun savePixels(pair: JSONObject, label: String) {
                 if (pair.optLong("hardware_buffer") != 0L) return
-                val w = pair.getInt("width"); val h = pair.getInt("height")
+                val w = pair.getInt("width");
+                val h = pair.getInt("height")
                 val fbo = IntArray(1)
                 GLES30.glGenFramebuffers(1, fbo, 0)
                 try {
                     GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, fbo[0])
-                    GLES30.glFramebufferTexture2D(GLES30.GL_FRAMEBUFFER, GLES30.GL_COLOR_ATTACHMENT0,
-                        GLES30.GL_TEXTURE_2D, pair.getInt("color_texture_id"), 0)
+                    GLES30.glFramebufferTexture2D(
+                        GLES30.GL_FRAMEBUFFER, GLES30.GL_COLOR_ATTACHMENT0,
+                        GLES30.GL_TEXTURE_2D, pair.getInt("color_texture_id"), 0
+                    )
                     check(GLES30.glCheckFramebufferStatus(GLES30.GL_FRAMEBUFFER) == GLES30.GL_FRAMEBUFFER_COMPLETE)
                     val bytes = ByteBuffer.allocateDirect(w * h * 4)
                     GLES30.glReadPixels(0, 0, w, h, GLES30.GL_RGBA, GLES30.GL_UNSIGNED_BYTE, bytes)
@@ -83,12 +109,14 @@ internal object MpvDolbyDiagnostics {
                     GLES30.glDeleteFramebuffers(1, fbo, 0)
                 }
             }
+
             val first = nextFrame(20_000); held = first.getLong("producer_token")
             savePixels(first, "initial")
             check(MpvSourceNative.release(source, held)); held = 0
             val started = System.nanoTime()
             if (!pixelsOnly) MpvSourceNative.setPlaying(source, true)
-            var firstNs = 0L; var lastNs = 0L
+            var firstNs = 0L;
+            var lastNs = 0L
             var audioSequence = -1L
             val deadline = started + 30_000_000_000L
             while (!pixelsOnly && System.nanoTime() < deadline) {
@@ -134,7 +162,10 @@ internal object MpvDolbyDiagnostics {
             report.put("seek_frame", seek).put("state", "passed_native_checks")
         } catch (failure: Throwable) {
             report.put("state", "failed").put("error", failure.toString())
-            if (source != 0L) report.put("failure_native_status", JSONObject(MpvSourceNative.status(source)))
+            if (source != 0L) report.put(
+                "failure_native_status",
+                JSONObject(MpvSourceNative.status(source))
+            )
         } finally {
             if (source != 0L) {
                 if (held != 0L) runCatching { MpvSourceNative.release(source, held) }

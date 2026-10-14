@@ -7,27 +7,38 @@ var grade := Grade.new()
 var distance := 5.0
 var commits := 0
 
+
 func check(ok: bool, message: String) -> void:
-	if not ok: failures.append(message)
+	if not ok:
+		failures.append(message)
+
 
 func distance_origin(menu: Node3D, fraction: float) -> Vector3:
 	for target in menu.choices.targets:
 		var item: Dictionary = menu.choices.targets[target]
-		if item.get("kind") != "slider" or item.get("key") != "subtitle_distance": continue
+		if item.get("kind") != "slider" or item.get("key") != "subtitle_distance":
+			continue
 		var slider: Dictionary = menu.choices.sliders[target]
-		return slider.node.to_global(Vector3(float(slider.left) + float(slider.width) * fraction, 0, 1))
+		return slider.node.to_global(
+			Vector3(float(slider.left) + float(slider.width) * fraction, 0, 1)
+		)
 	return Vector3.ZERO
+
 
 func _initialize() -> void:
 	call_deferred("_run")
+
 
 func subtitle_slider_point(menu: Node3D, fraction: float) -> Vector3:
 	for target in menu.choices.sliders:
 		if menu.choices.targets[target].key == "subtitle_distance":
 			var slider: Dictionary = menu.choices.sliders[target]
 			var centre: Vector3 = menu.to_local(slider.node.global_position)
-			return menu.to_global(Vector3(centre.x + slider.left + slider.width * fraction, centre.y, 1))
+			return menu.to_global(
+				Vector3(centre.x + slider.left + slider.width * fraction, centre.y, 1)
+			)
 	return Vector3.ZERO
+
 
 func _run() -> void:
 	grade.adjust("exposure", 0.75)
@@ -42,20 +53,44 @@ func _run() -> void:
 	check(reloaded.parse(config.encode_to_text()) == OK, "Config round trip")
 	grade.restore(reloaded.get_value("video", "color_grade"))
 	check(grade.snapshot() == saved, "Restart restores preset and custom values")
-	grade.restore({"preset": "broken", "custom": {"exposure": INF, "gamma": -3, "red_gain": "bad", "blue_offset": 8}})
-	check(grade.preset == "Original" and grade.custom.exposure == 0 and grade.custom.gamma == 0.7
-		and grade.custom.red_gain == 1 and is_equal_approx(grade.custom.blue_offset, 0.2), "Invalid saved settings clamp safely")
+	grade.restore(
+		{
+			"preset": "broken",
+			"custom": {"exposure": INF, "gamma": -3, "red_gain": "bad", "blue_offset": 8}
+		}
+	)
+	check(
+		(
+			grade.preset == "Original"
+			and grade.custom.exposure == 0
+			and grade.custom.gamma == 0.7
+			and grade.custom.red_gain == 1
+			and is_equal_approx(grade.custom.blue_offset, 0.2)
+		),
+		"Invalid saved settings clamp safely"
+	)
 	grade.select("Cool")
 	grade.adjust("contrast", 1.2)
-	check(grade.preset == "Custom" and grade.custom.temperature == 8000, "Editing starts with displayed preset")
+	check(
+		grade.preset == "Custom" and grade.custom.temperature == 8000,
+		"Editing starts with displayed preset"
+	)
 	grade.reset_custom()
 	check(grade.values() == Grade.DEFAULTS, "Explicit custom reset")
 	var material := ShaderMaterial.new()
 	material.shader = load("res://shaders/video_pair.gdshader")
 	grade.adjust("exposure", 1)
 	grade.apply(material)
-	preload("res://scripts/pair_texture_binding.gd")._use_shader(material, load("res://shaders/video_pair_oes.gdshader"))
-	check(material.get_shader_parameter("grade_enabled") and material.get_shader_parameter("grade_gain").is_equal_approx(Vector3.ONE * 2), "OES switch preserves grading")
+	preload("res://scripts/pair_texture_binding.gd")._use_shader(
+		material, load("res://shaders/video_pair_oes.gdshader")
+	)
+	check(
+		(
+			material.get_shader_parameter("grade_enabled")
+			and material.get_shader_parameter("grade_gain").is_equal_approx(Vector3.ONE * 2)
+		),
+		"OES switch preserves grading"
+	)
 	var video := Video.new()
 	video.subtitle_distance = 1
 	check(video.subtitle_distance == 1, "Near subtitle distance is retained for close stereo video")
@@ -67,19 +102,43 @@ func _run() -> void:
 	check(video.subtitle_distance == 10, "Subtitle maximum")
 	video.free()
 	var menu := Menu.new()
-	menu.state_provider = func(): return {"has_video": true, "geometry": 1, "subtitle_distance": distance, "color_grade": grade.snapshot(), "grade_values": grade.values()}
-	menu.adjustment_requested.connect(func(key: String, value: Variant):
-		if key == "subtitle_distance": distance = value
-		elif key == "grade_preset": grade.select(value)
-		elif key == "grade_reset": grade.reset_custom()
-		else: grade.adjust(key, value))
+	menu.state_provider = func():
+		return {
+			"has_video": true,
+			"geometry": 1,
+			"subtitle_distance": distance,
+			"color_grade": grade.snapshot(),
+			"grade_values": grade.values()
+		}
+	menu.adjustment_requested.connect(
+		func(key: String, value: Variant):
+			if key == "subtitle_distance":
+				distance = value
+			elif key == "grade_preset":
+				grade.select(value)
+			elif key == "grade_reset":
+				grade.reset_custom()
+			else:
+				grade.adjust(key, value)
+	)
 	menu.adjustment_committed.connect(func(): commits += 1)
-	menu.setting_requested.connect(func(key, value):
-		if key == "subtitle_distance": distance = float(value); commits += 1)
+	menu.setting_requested.connect(
+		func(key, value):
+			if key == "subtitle_distance":
+				distance = float(value)
+				commits += 1
+	)
 	root.add_child(menu)
 	menu.toggle()
-	menu.section = 0; menu._subtitle_open = true; menu.refresh()
-	check(menu.choices.targets.values().any(func(item): return item.get("key") == "subtitle_distance"), "Subtitle popup contains the distance slider")
+	menu.section = 0
+	menu._subtitle_open = true
+	menu.refresh()
+	check(
+		menu.choices.targets.values().any(
+			func(item): return item.get("key") == "subtitle_distance"
+		),
+		"Subtitle popup contains the distance slider"
+	)
 	menu.press_pointer("right", distance_origin(menu, 1.0), -menu.global_basis.z, true)
 	check(distance == 10 and commits == 0, "Ray press previews subtitle depth")
 	menu.update_pointer("left", distance_origin(menu, 0.0), -menu.global_basis.z, true)
@@ -95,19 +154,30 @@ func _run() -> void:
 	menu._activate(Menu.QUICK_COLOR)
 	for target in menu.choices.targets:
 		var item: Dictionary = menu.choices.targets[target]
-		if item.get("key") == "grade_preset" and item.get("value") == "Warm": menu.choices.action(target); break
+		if item.get("key") == "grade_preset" and item.get("value") == "Warm":
+			menu.choices.action(target)
+			break
 	check(grade.preset == "Warm", "Popup preset selection")
 	var exposure_target := -1
 	for target in menu.choices.sliders:
-		if menu.choices.targets[target].key == "exposure": exposure_target = target; break
+		if menu.choices.targets[target].key == "exposure":
+			exposure_target = target
+			break
 	var slider: Dictionary = menu.choices.sliders[exposure_target]
 	var at: Vector3 = slider.node.to_global(Vector3(slider.left + slider.width * .75, 0, 1))
 	menu.press_pointer("right", at, -menu.global_basis.z, true)
-	check(grade.preset == "Custom" and is_equal_approx(grade.values().exposure, 1.0), "Popup drag previews the actual grade")
+	check(
+		grade.preset == "Custom" and is_equal_approx(grade.values().exposure, 1.0),
+		"Popup drag previews the actual grade"
+	)
 	var before := commits
 	menu.dismiss()
-	check(commits == before + 1 and menu.choices.capture.is_empty(), "Dismiss commits the active color slider once")
+	check(
+		commits == before + 1 and menu.choices.capture.is_empty(),
+		"Dismiss commits the active color slider once"
+	)
 	menu.free()
-	for failure in failures: push_error(failure)
+	for failure in failures:
+		push_error(failure)
 	print("Color grading and distance controls: ", "passed" if failures.is_empty() else failures)
 	quit(0 if failures.is_empty() else 1)

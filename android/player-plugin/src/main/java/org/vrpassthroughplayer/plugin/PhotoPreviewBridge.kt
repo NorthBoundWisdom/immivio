@@ -25,8 +25,10 @@ internal class PhotoPreviewBridge(
 ) : Closeable {
     private val worker = Executors.newSingleThreadExecutor { Thread(it, "PhotoGalleryPreview") }
     private val current = AtomicInteger()
-    @Volatile private var closed = false
-    @Volatile private var connection: HttpURLConnection? = null
+    @Volatile
+    private var closed = false
+    @Volatile
+    private var connection: HttpURLConnection? = null
     private val lock = PhotoCache.lock
     private val directories = mutableMapOf<Int, File>()
     private var prepared = false
@@ -38,13 +40,16 @@ internal class PhotoPreviewBridge(
             var resolved = ""
             var directory: File? = null
             var published = false
-            fun checkCurrent() { if (closed || current.get() != id) throw InterruptedException() }
+            fun checkCurrent() {
+                if (closed || current.get() != id) throw InterruptedException()
+            }
             try {
                 checkCurrent()
                 val app = context() ?: error("PHOTO_UNAVAILABLE")
                 synchronized(lock) {
                     if (!prepared) {
-                        File(app.cacheDir, "photo-gallery").listFiles()?.forEach { it.deleteRecursively() }
+                        File(app.cacheDir, "photo-gallery").listFiles()
+                            ?.forEach { it.deleteRecursively() }
                         prepared = true
                     }
                     directory = File(app.cacheDir, "photo-gallery/$id").apply { mkdirs() }
@@ -55,23 +60,30 @@ internal class PhotoPreviewBridge(
                 val location = Uri.parse(resolved)
                 val input = when (location.scheme) {
                     "file" -> File(location.path ?: error("PHOTO_UNAVAILABLE")).inputStream()
-                    "content" -> app.contentResolver.openInputStream(location) ?: error("PHOTO_UNAVAILABLE")
+                    "content" -> app.contentResolver.openInputStream(location)
+                        ?: error("PHOTO_UNAVAILABLE")
+
                     "http", "https" -> {
                         val http = URL(resolved).openConnection() as HttpURLConnection
                         connection = http; http.connectTimeout = 10000; http.readTimeout = 15000
                         require(http.responseCode in 200..299 && http.contentLengthLong <= PhotoBridge.MAX_BYTES)
                         http.inputStream
                     }
+
                     else -> error("PHOTO_UNAVAILABLE")
                 }
-                input.use { stream -> source.outputStream().use { output ->
-                    val buffer = ByteArray(65536); var bytes = 0L
-                    while (true) {
-                        checkCurrent(); val count = stream.read(buffer); if (count < 0) break
-                        bytes += count; require(bytes <= PhotoBridge.MAX_BYTES)
-                        output.write(buffer, 0, count)
+                input.use { stream ->
+                    source.outputStream().use { output ->
+                        val buffer = ByteArray(65536);
+                        var bytes = 0L
+                        while (true) {
+                            checkCurrent();
+                            val count = stream.read(buffer); if (count < 0) break
+                            bytes += count; require(bytes <= PhotoBridge.MAX_BYTES)
+                            output.write(buffer, 0, count)
+                        }
                     }
-                } }
+                }
                 checkCurrent()
                 val heif = HeifPhotoInfo.read(source)
                 val metadata = JSONObject().put("state", "ready").put("orientation", 1)
@@ -79,11 +91,12 @@ internal class PhotoPreviewBridge(
                 if (heif != null) {
                     // Select one eye before Android decodes; no packed stereo or full-size raw allocation.
                     heif.selectPrimary(source, heif.left)
-                    bitmap = ImageDecoder.decodeBitmap(ImageDecoder.createSource(source)) { decoder, info, _ ->
-                        val size = dimensions(info.size.width, info.size.height)
-                        HeifPhotoDecoder.configure8Bit(decoder)
-                        decoder.setTargetSize(size.first, size.second)
-                    }
+                    bitmap =
+                        ImageDecoder.decodeBitmap(ImageDecoder.createSource(source)) { decoder, info, _ ->
+                            val size = dimensions(info.size.width, info.size.height)
+                            HeifPhotoDecoder.configure8Bit(decoder)
+                            decoder.setTargetSize(size.first, size.second)
+                        }
                     metadata.put("native_stereo", heif.stereo).put("single_eye", true)
                 } else {
                     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -92,45 +105,84 @@ internal class PhotoPreviewBridge(
                     val size = dimensions(bounds.outWidth, bounds.outHeight)
                     var sample = 1
                     while (maxOf(bounds.outWidth, bounds.outHeight) / sample > EDGE * 2) sample *= 2
-                    val decoded = BitmapFactory.decodeFile(source.path, BitmapFactory.Options().apply { inSampleSize = sample })
+                    val decoded = BitmapFactory.decodeFile(
+                        source.path,
+                        BitmapFactory.Options().apply { inSampleSize = sample })
                         ?: error("PHOTO_DECODE_FAILED")
-                    try { bitmap = Bitmap.createScaledBitmap(decoded, size.first, size.second, true) }
-                    catch (error: Throwable) { decoded.recycle(); throw error }
+                    try {
+                        bitmap = Bitmap.createScaledBitmap(decoded, size.first, size.second, true)
+                    } catch (error: Throwable) {
+                        decoded.recycle(); throw error
+                    }
                     if (bitmap !== decoded) decoded.recycle()
-                    metadata.put("orientation", runCatching { ExifInterface(source.path).getAttributeInt(ExifInterface.TAG_ORIENTATION, 1) }.getOrDefault(1))
+                    metadata.put(
+                        "orientation",
+                        runCatching {
+                            ExifInterface(source.path).getAttributeInt(
+                                ExifInterface.TAG_ORIENTATION,
+                                1
+                            )
+                        }.getOrDefault(1)
+                    )
                     val header = source.inputStream().use { stream ->
-                        val bytes = ByteArray(minOf(source.length(), 1024L * 1024).toInt()); var count = 0
+                        val bytes = ByteArray(minOf(source.length(), 1024L * 1024).toInt());
+                        var count = 0
                         while (count < bytes.size) {
-                            checkCurrent(); val n = stream.read(bytes, count, bytes.size - count); if (n < 0) break
+                            checkCurrent();
+                            val n = stream.read(bytes, count, bytes.size - count); if (n < 0) break
                             count += n
                         }
                         String(bytes, 0, count, Charsets.ISO_8859_1)
                     }
-                    metadata.put("panorama", header.contains("GPano:ProjectionType=\"equirectangular\"") || header.contains("<GPano:ProjectionType>equirectangular</GPano:ProjectionType>"))
+                    metadata.put(
+                        "panorama",
+                        header.contains("GPano:ProjectionType=\"equirectangular\"") || header.contains(
+                            "<GPano:ProjectionType>equirectangular</GPano:ProjectionType>"
+                        )
+                    )
                 }
                 try {
                     checkCurrent()
                     val preview = File(directory, "preview.png")
-                    preview.outputStream().use { require(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
-                    metadata.put("path", preview.path).put("width", bitmap.width).put("height", bitmap.height)
+                    preview.outputStream()
+                        .use { require(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
+                    metadata.put("path", preview.path).put("width", bitmap.width)
+                        .put("height", bitmap.height)
                     source.delete()
                     checkCurrent(); published = true; emit(id, metadata.toString())
-                } finally { bitmap.recycle() }
-            } catch (_: InterruptedException) { }
-            catch (_: Throwable) {
-                if (!closed && current.get() == id) emit(id, "{\"state\":\"error\",\"error\":\"PHOTO_UNAVAILABLE\"}")
+                } finally {
+                    bitmap.recycle()
+                }
+            } catch (_: InterruptedException) {
+            } catch (_: Throwable) {
+                if (!closed && current.get() == id) emit(
+                    id,
+                    "{\"state\":\"error\",\"error\":\"PHOTO_UNAVAILABLE\"}"
+                )
             } finally {
                 connection?.disconnect(); connection = null
                 if (uri.startsWith("smb://") || uri.startsWith("cloud://")) releaseStream(resolved)
-                if (!published) { synchronized(lock) { directories.remove(id) }; directory?.deleteRecursively() }
+                if (!published) {
+                    synchronized(lock) { directories.remove(id) }; directory?.deleteRecursively()
+                }
             }
         }
         return true
     }
-    fun cancel(id: Int) { if (current.compareAndSet(id, 0)) connection?.disconnect() }
-    fun release(id: Int) { synchronized(lock) { directories.remove(id) }?.deleteRecursively() }
+
+    fun cancel(id: Int) {
+        if (current.compareAndSet(id, 0)) connection?.disconnect()
+    }
+
+    fun release(id: Int) {
+        synchronized(lock) { directories.remove(id) }?.deleteRecursively()
+    }
+
     fun cacheDirectories(): Set<File> = synchronized(lock) { directories.values.toSet() }
-    override fun close() { closed = true; current.set(0); connection?.disconnect(); worker.shutdownNow() }
+    override fun close() {
+        closed = true; current.set(0); connection?.disconnect(); worker.shutdownNow()
+    }
+
     companion object {
         const val EDGE = 512
         fun dimensions(width: Int, height: Int): Pair<Int, Int> {

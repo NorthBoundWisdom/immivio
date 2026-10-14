@@ -55,7 +55,10 @@ internal class LocalVideoPicker(
     }
 
     private fun report(state: String, error: String = "") {
-        event(JSONObject().put("state", state).put("error", error).put("picker_request", request).toString())
+        event(
+            JSONObject().put("state", state).put("error", error).put("picker_request", request)
+                .toString()
+        )
     }
 
     fun cancel(id: Int) {
@@ -65,5 +68,7 @@ internal class LocalVideoPicker(
         selection.cancel()
     }
 
-    fun close() { selection.close() }
+    fun close() {
+        selection.close()
+    }
 }

@@ -8,6 +8,7 @@ const RETIRED_KEYS := [
 	["video", "alpha_fps"],
 ]
 
+
 static func apply(settings: ConfigFile) -> bool:
 	var changed := false
 	for item in RETIRED_KEYS:

@@ -2,8 +2,10 @@ extends SceneTree
 
 const Probe := preload("res://scripts/pair_material_probe.gd")
 
+
 func _initialize() -> void:
 	call_deferred("_run")
+
 
 func _run() -> void:
 	var report: Dictionary = await Probe.new().run(root)
@@ -18,5 +20,10 @@ func _run() -> void:
 		report.state = "failed"
 	for failure in report.failures:
 		push_error(failure)
-	print("R03 native texture/shader samples: %d; failures: %d" % [report.samples.size(), report.failures.size()])
+	print(
+		(
+			"R03 native texture/shader samples: %d; failures: %d"
+			% [report.samples.size(), report.failures.size()]
+		)
+	)
 	quit(0 if report.state == "passed" else 1)

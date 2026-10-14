@@ -1,343 +1,526 @@
 <!doctype html>
 <html lang="zh-CN">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="color-scheme" content="dark light">
-<meta name="application-name" content="Immivio – VR &amp; Spatial Media Player">
-<title>Immivio — 免费开源 VR 视频播放器，支持 Meta Quest 与 PICO</title>
-<meta name="description" content="Immivio 是面向 Meta Quest 与 PICO 的免费开源 VR 视频播放器。硬件解码与 GPU 渲染，支持 VR180、360° 全景、3D 左右立体与空间媒体，连接本地、NAS、SMB、WebDAV、DLNA 媒体库。">
-<link rel="canonical" href="https://northboundwisdom.github.io/immivio/zh/">
-<link rel="alternate" hreflang="zh-CN" href="https://northboundwisdom.github.io/immivio/zh/">
-<link rel="alternate" hreflang="en" href="https://northboundwisdom.github.io/immivio/">
-<link rel="alternate" hreflang="x-default" href="https://northboundwisdom.github.io/immivio/">
-<meta property="og:title" content="Immivio — 免费开源 VR 视频播放器，支持 Meta Quest 与 PICO">
-<meta property="og:description" content="Immivio 是面向 Meta Quest 与 PICO 的免费开源 VR 视频播放器。硬件解码与 GPU 渲染，支持 VR180、360° 全景、3D 左右立体与空间媒体，连接本地、NAS、SMB、WebDAV、DLNA 媒体库。">
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://northboundwisdom.github.io/immivio/zh/">
-<meta property="og:image" content="https://northboundwisdom.github.io/immivio/assets/screenshots/playback.png">
-<meta name="twitter:card" content="summary_large_image">
-<meta property="og:site_name" content="Immivio">
-<meta property="og:locale" content="zh_CN">
-<meta property="og:locale:alternate" content="en_US">
-<meta property="og:image:width" content="1920">
-<meta property="og:image:height" content="1080">
-<meta property="og:image:alt" content="Immivio 视频播放界面">
-<meta name="twitter:title" content="Immivio — 免费开源 VR 视频播放器，支持 Meta Quest 与 PICO">
-<meta name="twitter:description" content="Immivio 是面向 Meta Quest 与 PICO 的免费开源 VR 视频播放器。硬件解码与 GPU 渲染，支持 VR180、360° 全景、3D 左右立体与空间媒体，连接本地、NAS、SMB、WebDAV、DLNA 媒体库。">
-<meta name="twitter:image" content="https://northboundwisdom.github.io/immivio/assets/screenshots/playback.png">
-<meta name="robots" content="index,follow,max-image-preview:large">
-<link rel="icon" href="../assets/icon.png" type="image/png">
-<link rel="apple-touch-icon" href="../assets/icon.png">
-<link rel="stylesheet" href="../assets/site.css">
-<script defer data-site-script src="../assets/site.js">
-</script>
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "WebPage",
-      "@id": "https://northboundwisdom.github.io/immivio/zh/#webpage",
-      "url": "https://northboundwisdom.github.io/immivio/zh/",
-      "name": "Immivio — 免费开源 VR 视频播放器，支持 Meta Quest 与 PICO",
-      "description": "Immivio 是面向 Meta Quest 与 PICO 的免费开源 VR 视频播放器。硬件解码与 GPU 渲染，支持 VR180、360° 全景、3D 左右立体与空间媒体，连接本地、NAS、SMB、WebDAV、DLNA 媒体库。",
-      "inLanguage": "zh-CN",
-      "mainEntity": {
-        "@id": "https://northboundwisdom.github.io/immivio/#software"
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <meta
+      name="application-name"
+      content="Immivio – VR &amp; Spatial Media Player"
+    />
+    <title>Immivio — 免费开源 VR 视频播放器，支持 Meta Quest 与 PICO</title>
+    <meta
+      name="description"
+      content="Immivio 是面向 Meta Quest 与 PICO 的免费开源 VR 视频播放器。硬件解码与 GPU 渲染，支持 VR180、360° 全景、3D 左右立体与空间媒体，连接本地、NAS、SMB、WebDAV、DLNA 媒体库。"
+    />
+    <link
+      rel="canonical"
+      href="https://northboundwisdom.github.io/immivio/zh/"
+    />
+    <link
+      rel="alternate"
+      hreflang="zh-CN"
+      href="https://northboundwisdom.github.io/immivio/zh/"
+    />
+    <link
+      rel="alternate"
+      hreflang="en"
+      href="https://northboundwisdom.github.io/immivio/"
+    />
+    <link
+      rel="alternate"
+      hreflang="x-default"
+      href="https://northboundwisdom.github.io/immivio/"
+    />
+    <meta
+      property="og:title"
+      content="Immivio — 免费开源 VR 视频播放器，支持 Meta Quest 与 PICO"
+    />
+    <meta
+      property="og:description"
+      content="Immivio 是面向 Meta Quest 与 PICO 的免费开源 VR 视频播放器。硬件解码与 GPU 渲染，支持 VR180、360° 全景、3D 左右立体与空间媒体，连接本地、NAS、SMB、WebDAV、DLNA 媒体库。"
+    />
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:url"
+      content="https://northboundwisdom.github.io/immivio/zh/"
+    />
+    <meta
+      property="og:image"
+      content="https://northboundwisdom.github.io/immivio/assets/screenshots/playback.png"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta property="og:site_name" content="Immivio" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:locale:alternate" content="en_US" />
+    <meta property="og:image:width" content="1920" />
+    <meta property="og:image:height" content="1080" />
+    <meta property="og:image:alt" content="Immivio 视频播放界面" />
+    <meta
+      name="twitter:title"
+      content="Immivio — 免费开源 VR 视频播放器，支持 Meta Quest 与 PICO"
+    />
+    <meta
+      name="twitter:description"
+      content="Immivio 是面向 Meta Quest 与 PICO 的免费开源 VR 视频播放器。硬件解码与 GPU 渲染，支持 VR180、360° 全景、3D 左右立体与空间媒体，连接本地、NAS、SMB、WebDAV、DLNA 媒体库。"
+    />
+    <meta
+      name="twitter:image"
+      content="https://northboundwisdom.github.io/immivio/assets/screenshots/playback.png"
+    />
+    <meta name="robots" content="index,follow,max-image-preview:large" />
+    <link rel="icon" href="../assets/icon.png" type="image/png" />
+    <link rel="apple-touch-icon" href="../assets/icon.png" />
+    <link rel="stylesheet" href="../assets/site.css" />
+    <script defer data-site-script src="../assets/site.js"></script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebPage",
+            "@id": "https://northboundwisdom.github.io/immivio/zh/#webpage",
+            "url": "https://northboundwisdom.github.io/immivio/zh/",
+            "name": "Immivio — 免费开源 VR 视频播放器，支持 Meta Quest 与 PICO",
+            "description": "Immivio 是面向 Meta Quest 与 PICO 的免费开源 VR 视频播放器。硬件解码与 GPU 渲染，支持 VR180、360° 全景、3D 左右立体与空间媒体，连接本地、NAS、SMB、WebDAV、DLNA 媒体库。",
+            "inLanguage": "zh-CN",
+            "mainEntity": {
+              "@id": "https://northboundwisdom.github.io/immivio/#software"
+            }
+          },
+          {
+            "@type": "SoftwareApplication",
+            "@id": "https://northboundwisdom.github.io/immivio/#software",
+            "name": "Immivio",
+            "url": "https://northboundwisdom.github.io/immivio/",
+            "description": "Immivio 是面向 Meta Quest 与 PICO 的免费开源 VR 视频播放器。硬件解码与 GPU 渲染，支持 VR180、360° 全景、3D 左右立体与空间媒体，连接本地、NAS、SMB、WebDAV、DLNA 媒体库。",
+            "applicationCategory": "MultimediaApplication",
+            "applicationSubCategory": "VR video and spatial media player",
+            "operatingSystem": "Android",
+            "isAccessibleForFree": true,
+            "license": "https://github.com/NorthBoundWisdom/immivio/blob/main/LICENSE",
+            "sameAs": ["https://github.com/NorthBoundWisdom/immivio"],
+            "image": "https://northboundwisdom.github.io/immivio/assets/icon.png",
+            "screenshot": "https://northboundwisdom.github.io/immivio/assets/screenshots/playback.png",
+            "installUrl": "https://northboundwisdom.github.io/immivio/zh/guide/#install",
+            "author": {
+              "@type": "Organization",
+              "name": "NorthBoundWisdom",
+              "url": "https://github.com/NorthBoundWisdom"
+            },
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD",
+              "url": "https://northboundwisdom.github.io/immivio/zh/#download"
+            },
+            "featureList": [
+              "VR180、360° 与 3D SBS 视频",
+              "支持的空间照片与视频",
+              "硬件视频解码与 GPU 渲染",
+              "本地、SMB、WebDAV 和 DLNA 媒体库",
+              "音轨、字幕和播放队列"
+            ]
+          }
+        ]
       }
-    },
-    {
-      "@type": "SoftwareApplication",
-      "@id": "https://northboundwisdom.github.io/immivio/#software",
-      "name": "Immivio",
-      "url": "https://northboundwisdom.github.io/immivio/",
-      "description": "Immivio 是面向 Meta Quest 与 PICO 的免费开源 VR 视频播放器。硬件解码与 GPU 渲染，支持 VR180、360° 全景、3D 左右立体与空间媒体，连接本地、NAS、SMB、WebDAV、DLNA 媒体库。",
-      "applicationCategory": "MultimediaApplication",
-      "applicationSubCategory": "VR video and spatial media player",
-      "operatingSystem": "Android",
-      "isAccessibleForFree": true,
-      "license": "https://github.com/NorthBoundWisdom/immivio/blob/main/LICENSE",
-      "sameAs": [
-        "https://github.com/NorthBoundWisdom/immivio"
-      ],
-      "image": "https://northboundwisdom.github.io/immivio/assets/icon.png",
-      "screenshot": "https://northboundwisdom.github.io/immivio/assets/screenshots/playback.png",
-      "installUrl": "https://northboundwisdom.github.io/immivio/zh/guide/#install",
-      "author": {
-        "@type": "Organization",
-        "name": "NorthBoundWisdom",
-        "url": "https://github.com/NorthBoundWisdom"
-      },
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "USD",
-        "url": "https://northboundwisdom.github.io/immivio/zh/#download"
-      },
-      "featureList": [
-        "VR180、360° 与 3D SBS 视频",
-        "支持的空间照片与视频",
-        "硬件视频解码与 GPU 渲染",
-        "本地、SMB、WebDAV 和 DLNA 媒体库",
-        "音轨、字幕和播放队列"
-      ]
-    }
-  ]
-}
-</script>
-</head>
-<body data-theme="dark">
-<a class="skip" href="#main">跳到正文</a>
-<header class="site-header">
-<div class="wrap header-inner">
-<a class="brand" href="../zh/">
-<img src="../assets/icon.png" alt="" width="39" height="39">Immivio</a>
-<nav class="nav" aria-label="主导航">
-<a class="optional" href="../zh/#experience">体验</a>
-<a href="../zh/#download">下载</a>
-<a class="optional" href="../zh/guide/">使用指南</a>
-<a class="optional" href="../zh/updates/">更新说明</a>
-<a class="locale" href=".././" lang="en">English</a>
-<button class="theme" type="button" data-theme-toggle aria-label="切换深浅主题" aria-pressed="false">◐</button>
-</nav>
-</div>
-</header>
-<main id="main" class="wrap">
-<section class="hero">
-<div class="hero-copy">
-<p class="eyebrow">免费开源 · Meta Quest / PICO</p>
-<h1>免费 VR 播放器，<br>
-<em>让影像环绕你。</em>
-</h1>
-<p>Immivio 是面向 Meta Quest 与 PICO 的免费开源 VR 视频播放器。观看 VR180、360° 全景与 3D 左右立体视频，浏览空间照片，把本地和网络媒体库带进私人虚拟影院。</p>
-<div class="actions">
-<a class="button" href="#download">免费下载 Immivio <span aria-hidden="true">↗</span>
-</a>
-<a class="text-link" href="../zh/guide/">第一次使用 →</a>
-</div>
-<p class="fine">VR180 · VR360 · 3D · Spatial Video · Photos</p>
-</div>
-<div class="hero-media">
-<div class="viewer-frame">
-<div class="frame-bar">
-<span>
-<i class="live-dot">
-</i>IMMIVIO / PLAYER</span>
-<span>ANDROID PREVIEW</span>
-</div>
-<a href="../assets/screenshots/playback.png" data-screenshot>
-<img src="../assets/screenshots/playback.png" width="1920" height="1080" fetchpriority="high" alt="Immivio 播放 blandscape-60mbps.mp4 时的真实播放控制界面">
-</a>
-</div>
-<p class="caption">真实软件画面 · Android 虚拟机开发版 · 点击查看原图</p>
-</div>
-</section>
-<div class="capabilities">
-<span>
-<strong>Meta Quest</strong> / PICO</span>
-<span>FLAT / 180° / 360°</span>
-<span>STEREO VIDEO &amp; PHOTOS</span>
-<span>免费 / 开源 / GPL-3.0</span>
-</div>
-<section class="section" id="why-immivio">
-<div class="section-head">
-<div>
-<p class="eyebrow">为什么选择 IMMIVIO</p>
-<h2>免费使用，<br><em>专注播放。</em></h2>
-</div>
-<p>为自己的视频与照片选择一款 VR 媒体播放器：注重播放性能，源码公开，使用自由。</p>
-</div>
-<div class="feature-list">
-<article>
-<span class="number">01 / 免费</span>
-<h3>无需购买播放器或订阅。</h3>
-<p>免费下载、使用和构建 Immivio。播放器以 GPL-3.0 协议开源；第三方服务的访问遵循各自的条款。</p>
-</article>
-<article>
-<span class="number">02 / 性能</span>
-<h3>面向高性能的播放设计。</h3>
-<p>libmpv 在支持的情况下使用 Android 硬件视频解码，并通过共享 GPU 纹理渲染画面。显示画质设置让你按头显能力平衡细节与负载。</p>
-</article>
-<article>
-<span class="number">03 / 媒体库</span>
-<h3>从本地文件，到家里的 NAS。</h3>
-<p>播放本地媒体，浏览 SMB、WebDAV、DLNA 来源，以及支持的 Plex、Emby 和 Jellyfin 媒体库，让自己的收藏随时可看。</p>
-</article>
-</div>
-</section>
-<section class="section" id="experience">
-<div class="section-head">
-<div>
-<p class="eyebrow">你的媒体，你的选择</p>
-<h2>换一种方式，<em>看自己的内容。</em>
-</h2>
-</div>
-<p>从一段熟悉的影片，到可以转头探索的场景，按内容选择观看方式。</p>
-</div>
-<div class="feature-list">
-<article>
-<span class="number">01 / 观看</span>
-<h3>平面影片，也能拥有大屏幕。</h3>
-<p>按需调整屏幕大小、距离和曲率。选择音轨和字幕，标记想再看一遍的时刻。</p>
-</article>
-<article>
-<span class="number">02 / 沉浸</span>
-<h3>把视野交还给画面。</h3>
-<p>180°、360° 与鱼眼投影，支持左右或上下立体布局；支持范围内的空间照片与视频可保留立体视图。</p>
-</article>
-<article>
-<span class="number">03 / 连接</span>
-<h3>资料库，就在你身边。</h3>
-<p>从本地文件开始，也可连接 SMB、WebDAV、DLNA 和支持的媒体服务器。来源与账号权限决定可用功能。</p>
-</article>
-</div>
-</section>
-<section class="section" id="screenshots">
-<div class="section-head">
-<div>
-<p class="eyebrow">软件实拍</p>
-<h2>看得见的操作。</h2>
-</div>
-<p>播放偏好与显示画质，在熟悉的控件中调整。</p>
-</div>
-<div class="gallery">
-<figure>
-<a href="../assets/screenshots/settings.png" data-screenshot>
-<img src="../assets/screenshots/settings.png" width="1920" height="1080" loading="lazy" alt="播放设置 — Immivio Android emulator">
-</a>
-<figcaption>
-<strong>播放设置</strong>
-<span>速度、循环和跳转方式</span>
-</figcaption>
-</figure>
-<figure>
-<a href="../assets/screenshots/display.png" data-screenshot>
-<img src="../assets/screenshots/display.png" width="1920" height="1080" loading="lazy" alt="显示设置 — Immivio Android emulator">
-</a>
-<figcaption>
-<strong>显示设置</strong>
-<span>清晰度与画质选择</span>
-</figcaption>
-</figure>
-</div>
-<p class="gallery-note">以上均为实际 Android 虚拟机截图，片源为 blandscape-60mbps.mp4。展示更名前版本的二维调试入口，不代表头显的双眼立体、透视效果或帧率表现。原始视频未随应用提供。</p>
-</section>
-<section class="section comfort">
-<div class="comfort-copy">
-<p class="eyebrow">让观看更自在</p>
-<h2>找到舒服的<br>
-<em>观看位置。</em>
-</h2>
-<p>位置、播放习惯和媒体来源各有不同。用简单的操作，把眼前的界面调整到适合自己的状态。</p>
-<a class="text-link" href="../zh/guide/#controls">了解常用操作 →</a>
-</div>
-<ol class="comfort-list">
-<li>
-<strong>移动到眼前</strong>
-<p>按住抓握键移动画面或窗口；支持的位置可用同手摇杆调整远近。</p>
-</li>
-<li>
-<strong>选择你的姿势</strong>
-<p>坐着观看，或开启躺卧模式。跟随是独立开关，可按需要选择。</p>
-</li>
-<li>
-<strong>继续上一次观看</strong>
-<p>逐文件观看偏好、时间点书签与播放队列，让再次打开内容更方便。</p>
-</li>
-</ol>
-</section>
-<section class="section download-section" id="download">
-<div class="download-copy"><p class="eyebrow">下载 IMMIVIO</p>
-<h2>选择设备，<br><em>开始观看。</em></h2>
-<p>免费下载适用于 Meta Quest 或 PICO 的 VR 视频播放器，也可选择实验性 Android OpenXR 安装包。只有一个播放版本，专注已有立体与空间媒体。</p>
-<p class="fine">正式版本发布在 GitHub Releases；最新开发 APK 位于成功工作流的 Artifacts 中，下载需要登录 GitHub。更名前的版本保留原名称。</p>
-<p class="fine">Quest 2、PICO Neo3 是兼容目标。表现取决于设备、编码和码率；通用 OpenXR 需要兼容的 Android 运行时。</p></div>
-<div class="download-card"><form id="download-picker"><label for="headset">你的设备</label><select id="headset" name="headset"><option value="QUEST">Meta Quest</option><option value="PICO">PICO</option><option value="OpenXR">OpenXR — 实验性</option></select></form>
-<a class="button" id="download-link" href="https://github.com/NorthBoundWisdom/immivio/actions/workflows/android-release.yml">获取开发版构建 ↗</a>
-<p id="download-meta" class="download-meta" aria-live="polite">文件名以 Immivio 开头，按头显选择 APK。</p>
-<a class="release-link" href="https://github.com/NorthBoundWisdom/immivio/releases">版本与发布说明 ↗</a></div></section>
-<section class="section" id="questions">
-<p class="eyebrow">常见问题</p>
-<h2>开始之前，你可能想知道。</h2>
-<div class="faq-list">
-
-<details>
-<summary>Immivio 真的免费吗？</summary>
-<p>是的。Immivio 可以免费下载、使用和构建，无需购买播放器或订阅。源码在 <a href="https://github.com/NorthBoundWisdom/immivio">GitHub</a> 上以 GPL-3.0 协议公开。第三方服务可能有自己的费用。</p>
-</details>
-<details>
-<summary>Immivio 怎样实现面向高性能的 VR 播放？</summary>
-<p>支持的格式通过 libmpv 使用 Android 硬件解码，并在 GPU 上渲染视频。你可以按设备调整显示画质。实际表现取决于头显、编码、分辨率和码率；遇到卡顿可查看<a href="../zh/guide/#troubleshooting">播放排查指南</a>。</p>
-</details>
-<details>
-<summary>能播放 VR180、360° 和 3D 左右立体视频吗？</summary>
-<p>可以。按片源选择平面、180°、360° 或鱼眼投影，以及左右（SBS）或上下立体布局。Immivio 也显示支持的空间视频与照片，格式支持取决于安装包和媒体文件。</p>
-</details>
-<details>
-<summary>怎样安装到头显？</summary>
-<p>启用设备开发者模式，连接电脑并允许 USB 调试，再使用侧载工具安装 APK。完成后从头显的侧载应用列表启动。<a href="../zh/guide/#install">查看安装步骤 →</a>
-</p>
-</details>
-<details>
-<summary>为什么画面分成两半，或者看起来变形？</summary>
-<p>先确认片源的投影和立体布局。普通视频用平面；VR180 鱼眼 SBS 片源选择鱼眼和 SBS。投影、左右／上下布局和左右眼顺序是不同设置。</p>
-</details>
-<details>
-<summary>每个安装包都支持空间格式和 PGS 字幕吗？</summary>
-<p>支持范围取决于安装包和片源。请查看所下载 APK 的发布说明；字幕不可用时可尝试 SRT、ASS、SSA 或 VTT 文本字幕。<a href="../zh/updates/#compatibility">查看兼容说明 →</a></p>
-</details>
-<details>
-<summary>这是原项目的后续版本吗？</summary>
-<p>本项目在原仓库 0.6.0 的基础上继续开发，从这一基线起独立维护和发布。请在 <a href="https://github.com/NorthBoundWisdom/immivio/issues">NorthBoundWisdom 仓库</a>反馈本版本问题。</p>
-</details>
-</div>
-</section>
-<section class="section">
-<p class="eyebrow">NORTHBOUNDWISDOM</p>
-<h2>同样珍惜你的媒体。</h2>
-<p class="caption">探索 NorthBoundWisdom 的兄弟项目。</p>
-<div class="family">
-<a href="https://northboundwisdom.github.io/Ravo/">
-<div>
-<strong>Ravo Studio</strong>
-<small>整理、浏览和处理照片</small>
-</div>
-<span class="arrow" aria-hidden="true">↗</span>
-</a>
-<a href="https://northboundwisdom.github.io/sonafolio/">
-<div>
-<strong>SonaFolio</strong>
-<small>将声音转为可回顾的知识</small>
-</div>
-<span class="arrow" aria-hidden="true">↗</span>
-</a>
-</div>
-</section>
-</main>
-<footer class="site-footer wrap">
-<div class="footer-top">
-<p>基于 <a href="https://github.com/zerochocobo/Thru3D-Media-Player">zerochocobo/Thru3D-Media-Player</a> 的 0.6.0 版本继续开发。从 0.6.0 起独立维护与发布，由 NorthBoundWisdom 维护，保留原项目署名、历史和 GPL-3.0 许可。</p>
-<div class="footer-links">
-<a href="https://github.com/NorthBoundWisdom/immivio">GitHub ↗</a>
-<a href="../zh/updates/">更新说明 ↗</a>
-<a href="https://github.com/NorthBoundWisdom/immivio/issues">反馈问题 ↗</a>
-<a href="https://github.com/NorthBoundWisdom/immivio/blob/main/LICENSE">GPL-3.0 ↗</a>
-</div>
-</div>
-<div class="copyright">
-<span>Immivio · NorthBoundWisdom</span>
-<span>开源 · 独立维护 · GitHub Pages 托管</span>
-</div>
-</footer>
-<dialog class="lightbox" aria-label="软件运行截图">
-<img alt="">
-<div class="lightbox-footer">
-<p>
-</p>
-<a href="../assets/screenshots/playback.png" target="_blank" rel="noopener">查看原图 ↗</a>
-<button type="button">关闭 ✕</button>
-</div>
-</dialog>
-</body>
+    </script>
+  </head>
+  <body data-theme="dark">
+    <a class="skip" href="#main">跳到正文</a>
+    <header class="site-header">
+      <div class="wrap header-inner">
+        <a class="brand" href="../zh/">
+          <img
+            src="../assets/icon.png"
+            alt=""
+            width="39"
+            height="39"
+          />Immivio</a
+        >
+        <nav class="nav" aria-label="主导航">
+          <a class="optional" href="../zh/#experience">体验</a>
+          <a href="../zh/#download">下载</a>
+          <a class="optional" href="../zh/guide/">使用指南</a>
+          <a class="optional" href="../zh/updates/">更新说明</a>
+          <a class="locale" href=".././" lang="en">English</a>
+          <button
+            class="theme"
+            type="button"
+            data-theme-toggle
+            aria-label="切换深浅主题"
+            aria-pressed="false"
+          >
+            ◐
+          </button>
+        </nav>
+      </div>
+    </header>
+    <main id="main" class="wrap">
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">免费开源 · Meta Quest / PICO</p>
+          <h1>
+            免费 VR 播放器，<br />
+            <em>让影像环绕你。</em>
+          </h1>
+          <p>
+            Immivio 是面向 Meta Quest 与 PICO 的免费开源 VR 视频播放器。观看
+            VR180、360° 全景与 3D
+            左右立体视频，浏览空间照片，把本地和网络媒体库带进私人虚拟影院。
+          </p>
+          <div class="actions">
+            <a class="button" href="#download"
+              >免费下载 Immivio <span aria-hidden="true">↗</span>
+            </a>
+            <a class="text-link" href="../zh/guide/">第一次使用 →</a>
+          </div>
+          <p class="fine">VR180 · VR360 · 3D · Spatial Video · Photos</p>
+        </div>
+        <div class="hero-media">
+          <div class="viewer-frame">
+            <div class="frame-bar">
+              <span> <i class="live-dot"> </i>IMMIVIO / PLAYER</span>
+              <span>ANDROID PREVIEW</span>
+            </div>
+            <a href="../assets/screenshots/playback.png" data-screenshot>
+              <img
+                src="../assets/screenshots/playback.png"
+                width="1920"
+                height="1080"
+                fetchpriority="high"
+                alt="Immivio 播放 blandscape-60mbps.mp4 时的真实播放控制界面"
+              />
+            </a>
+          </div>
+          <p class="caption">
+            真实软件画面 · Android 虚拟机开发版 · 点击查看原图
+          </p>
+        </div>
+      </section>
+      <div class="capabilities">
+        <span> <strong>Meta Quest</strong> / PICO</span>
+        <span>FLAT / 180° / 360°</span>
+        <span>STEREO VIDEO &amp; PHOTOS</span>
+        <span>免费 / 开源 / GPL-3.0</span>
+      </div>
+      <section class="section" id="why-immivio">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">为什么选择 IMMIVIO</p>
+            <h2>免费使用，<br /><em>专注播放。</em></h2>
+          </div>
+          <p>
+            为自己的视频与照片选择一款 VR
+            媒体播放器：注重播放性能，源码公开，使用自由。
+          </p>
+        </div>
+        <div class="feature-list">
+          <article>
+            <span class="number">01 / 免费</span>
+            <h3>无需购买播放器或订阅。</h3>
+            <p>
+              免费下载、使用和构建 Immivio。播放器以 GPL-3.0
+              协议开源；第三方服务的访问遵循各自的条款。
+            </p>
+          </article>
+          <article>
+            <span class="number">02 / 性能</span>
+            <h3>面向高性能的播放设计。</h3>
+            <p>
+              libmpv 在支持的情况下使用 Android 硬件视频解码，并通过共享 GPU
+              纹理渲染画面。显示画质设置让你按头显能力平衡细节与负载。
+            </p>
+          </article>
+          <article>
+            <span class="number">03 / 媒体库</span>
+            <h3>从本地文件，到家里的 NAS。</h3>
+            <p>
+              播放本地媒体，浏览 SMB、WebDAV、DLNA 来源，以及支持的 Plex、Emby
+              和 Jellyfin 媒体库，让自己的收藏随时可看。
+            </p>
+          </article>
+        </div>
+      </section>
+      <section class="section" id="experience">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">你的媒体，你的选择</p>
+            <h2>换一种方式，<em>看自己的内容。</em></h2>
+          </div>
+          <p>从一段熟悉的影片，到可以转头探索的场景，按内容选择观看方式。</p>
+        </div>
+        <div class="feature-list">
+          <article>
+            <span class="number">01 / 观看</span>
+            <h3>平面影片，也能拥有大屏幕。</h3>
+            <p>
+              按需调整屏幕大小、距离和曲率。选择音轨和字幕，标记想再看一遍的时刻。
+            </p>
+          </article>
+          <article>
+            <span class="number">02 / 沉浸</span>
+            <h3>把视野交还给画面。</h3>
+            <p>
+              180°、360°
+              与鱼眼投影，支持左右或上下立体布局；支持范围内的空间照片与视频可保留立体视图。
+            </p>
+          </article>
+          <article>
+            <span class="number">03 / 连接</span>
+            <h3>资料库，就在你身边。</h3>
+            <p>
+              从本地文件开始，也可连接 SMB、WebDAV、DLNA
+              和支持的媒体服务器。来源与账号权限决定可用功能。
+            </p>
+          </article>
+        </div>
+      </section>
+      <section class="section" id="screenshots">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">软件实拍</p>
+            <h2>看得见的操作。</h2>
+          </div>
+          <p>播放偏好与显示画质，在熟悉的控件中调整。</p>
+        </div>
+        <div class="gallery">
+          <figure>
+            <a href="../assets/screenshots/settings.png" data-screenshot>
+              <img
+                src="../assets/screenshots/settings.png"
+                width="1920"
+                height="1080"
+                loading="lazy"
+                alt="播放设置 — Immivio Android emulator"
+              />
+            </a>
+            <figcaption>
+              <strong>播放设置</strong>
+              <span>速度、循环和跳转方式</span>
+            </figcaption>
+          </figure>
+          <figure>
+            <a href="../assets/screenshots/display.png" data-screenshot>
+              <img
+                src="../assets/screenshots/display.png"
+                width="1920"
+                height="1080"
+                loading="lazy"
+                alt="显示设置 — Immivio Android emulator"
+              />
+            </a>
+            <figcaption>
+              <strong>显示设置</strong>
+              <span>清晰度与画质选择</span>
+            </figcaption>
+          </figure>
+        </div>
+        <p class="gallery-note">
+          以上均为实际 Android 虚拟机截图，片源为
+          blandscape-60mbps.mp4。展示更名前版本的二维调试入口，不代表头显的双眼立体、透视效果或帧率表现。原始视频未随应用提供。
+        </p>
+      </section>
+      <section class="section comfort">
+        <div class="comfort-copy">
+          <p class="eyebrow">让观看更自在</p>
+          <h2>
+            找到舒服的<br />
+            <em>观看位置。</em>
+          </h2>
+          <p>
+            位置、播放习惯和媒体来源各有不同。用简单的操作，把眼前的界面调整到适合自己的状态。
+          </p>
+          <a class="text-link" href="../zh/guide/#controls">了解常用操作 →</a>
+        </div>
+        <ol class="comfort-list">
+          <li>
+            <strong>移动到眼前</strong>
+            <p>按住抓握键移动画面或窗口；支持的位置可用同手摇杆调整远近。</p>
+          </li>
+          <li>
+            <strong>选择你的姿势</strong>
+            <p>坐着观看，或开启躺卧模式。跟随是独立开关，可按需要选择。</p>
+          </li>
+          <li>
+            <strong>继续上一次观看</strong>
+            <p>逐文件观看偏好、时间点书签与播放队列，让再次打开内容更方便。</p>
+          </li>
+        </ol>
+      </section>
+      <section class="section download-section" id="download">
+        <div class="download-copy">
+          <p class="eyebrow">下载 IMMIVIO</p>
+          <h2>选择设备，<br /><em>开始观看。</em></h2>
+          <p>
+            免费下载适用于 Meta Quest 或 PICO 的 VR 视频播放器，也可选择实验性
+            Android OpenXR 安装包。只有一个播放版本，专注已有立体与空间媒体。
+          </p>
+          <p class="fine">
+            正式版本发布在 GitHub Releases；最新开发 APK 位于成功工作流的
+            Artifacts 中，下载需要登录 GitHub。更名前的版本保留原名称。
+          </p>
+          <p class="fine">
+            Quest 2、PICO Neo3 是兼容目标。表现取决于设备、编码和码率；通用
+            OpenXR 需要兼容的 Android 运行时。
+          </p>
+        </div>
+        <div class="download-card">
+          <form id="download-picker">
+            <label for="headset">你的设备</label
+            ><select id="headset" name="headset">
+              <option value="QUEST">Meta Quest</option>
+              <option value="PICO">PICO</option>
+              <option value="OpenXR">OpenXR — 实验性</option>
+            </select>
+          </form>
+          <a
+            class="button"
+            id="download-link"
+            href="https://github.com/NorthBoundWisdom/immivio/actions/workflows/android-release.yml"
+            >获取开发版构建 ↗</a
+          >
+          <p id="download-meta" class="download-meta" aria-live="polite">
+            文件名以 Immivio 开头，按头显选择 APK。
+          </p>
+          <a
+            class="release-link"
+            href="https://github.com/NorthBoundWisdom/immivio/releases"
+            >版本与发布说明 ↗</a
+          >
+        </div>
+      </section>
+      <section class="section" id="questions">
+        <p class="eyebrow">常见问题</p>
+        <h2>开始之前，你可能想知道。</h2>
+        <div class="faq-list">
+          <details>
+            <summary>Immivio 真的免费吗？</summary>
+            <p>
+              是的。Immivio
+              可以免费下载、使用和构建，无需购买播放器或订阅。源码在
+              <a href="https://github.com/NorthBoundWisdom/immivio">GitHub</a>
+              上以 GPL-3.0 协议公开。第三方服务可能有自己的费用。
+            </p>
+          </details>
+          <details>
+            <summary>Immivio 怎样实现面向高性能的 VR 播放？</summary>
+            <p>
+              支持的格式通过 libmpv 使用 Android 硬件解码，并在 GPU
+              上渲染视频。你可以按设备调整显示画质。实际表现取决于头显、编码、分辨率和码率；遇到卡顿可查看<a
+                href="../zh/guide/#troubleshooting"
+                >播放排查指南</a
+              >。
+            </p>
+          </details>
+          <details>
+            <summary>能播放 VR180、360° 和 3D 左右立体视频吗？</summary>
+            <p>
+              可以。按片源选择平面、180°、360°
+              或鱼眼投影，以及左右（SBS）或上下立体布局。Immivio
+              也显示支持的空间视频与照片，格式支持取决于安装包和媒体文件。
+            </p>
+          </details>
+          <details>
+            <summary>怎样安装到头显？</summary>
+            <p>
+              启用设备开发者模式，连接电脑并允许 USB 调试，再使用侧载工具安装
+              APK。完成后从头显的侧载应用列表启动。<a
+                href="../zh/guide/#install"
+                >查看安装步骤 →</a
+              >
+            </p>
+          </details>
+          <details>
+            <summary>为什么画面分成两半，或者看起来变形？</summary>
+            <p>
+              先确认片源的投影和立体布局。普通视频用平面；VR180 鱼眼 SBS
+              片源选择鱼眼和 SBS。投影、左右／上下布局和左右眼顺序是不同设置。
+            </p>
+          </details>
+          <details>
+            <summary>每个安装包都支持空间格式和 PGS 字幕吗？</summary>
+            <p>
+              支持范围取决于安装包和片源。请查看所下载 APK
+              的发布说明；字幕不可用时可尝试 SRT、ASS、SSA 或 VTT 文本字幕。<a
+                href="../zh/updates/#compatibility"
+                >查看兼容说明 →</a
+              >
+            </p>
+          </details>
+          <details>
+            <summary>这是原项目的后续版本吗？</summary>
+            <p>
+              本项目在原仓库 0.6.0
+              的基础上继续开发，从这一基线起独立维护和发布。请在
+              <a href="https://github.com/NorthBoundWisdom/immivio/issues"
+                >NorthBoundWisdom 仓库</a
+              >反馈本版本问题。
+            </p>
+          </details>
+        </div>
+      </section>
+      <section class="section">
+        <p class="eyebrow">NORTHBOUNDWISDOM</p>
+        <h2>同样珍惜你的媒体。</h2>
+        <p class="caption">探索 NorthBoundWisdom 的兄弟项目。</p>
+        <div class="family">
+          <a href="https://northboundwisdom.github.io/Ravo/">
+            <div>
+              <strong>Ravo Studio</strong>
+              <small>整理、浏览和处理照片</small>
+            </div>
+            <span class="arrow" aria-hidden="true">↗</span>
+          </a>
+          <a href="https://northboundwisdom.github.io/sonafolio/">
+            <div>
+              <strong>SonaFolio</strong>
+              <small>将声音转为可回顾的知识</small>
+            </div>
+            <span class="arrow" aria-hidden="true">↗</span>
+          </a>
+        </div>
+      </section>
+    </main>
+    <footer class="site-footer wrap">
+      <div class="footer-top">
+        <p>
+          基于
+          <a href="https://github.com/zerochocobo/Thru3D-Media-Player"
+            >zerochocobo/Thru3D-Media-Player</a
+          >
+          的 0.6.0 版本继续开发。从 0.6.0 起独立维护与发布，由 NorthBoundWisdom
+          维护，保留原项目署名、历史和 GPL-3.0 许可。
+        </p>
+        <div class="footer-links">
+          <a href="https://github.com/NorthBoundWisdom/immivio">GitHub ↗</a>
+          <a href="../zh/updates/">更新说明 ↗</a>
+          <a href="https://github.com/NorthBoundWisdom/immivio/issues"
+            >反馈问题 ↗</a
+          >
+          <a
+            href="https://github.com/NorthBoundWisdom/immivio/blob/main/LICENSE"
+            >GPL-3.0 ↗</a
+          >
+        </div>
+      </div>
+      <div class="copyright">
+        <span>Immivio · NorthBoundWisdom</span>
+        <span>开源 · 独立维护 · GitHub Pages 托管</span>
+      </div>
+    </footer>
+    <dialog class="lightbox" aria-label="软件运行截图">
+      <img alt="" />
+      <div class="lightbox-footer">
+        <p></p>
+        <a
+          href="../assets/screenshots/playback.png"
+          target="_blank"
+          rel="noopener"
+          >查看原图 ↗</a
+        >
+        <button type="button">关闭 ✕</button>
+      </div>
+    </dialog>
+  </body>
 </html>

@@ -40,9 +40,9 @@ class Page(HTMLParser):
             self.capture = "json"
             self.json_text = ""
         if "id" in values:
-            assert values["id"] not in self.ids, (
-                f"{self.path}: duplicate ID {values['id']}"
-            )
+            assert (
+                values["id"] not in self.ids
+            ), f"{self.path}: duplicate ID {values['id']}"
             self.ids.add(values["id"])
         if tag == "link" and values.get("rel") == "canonical":
             self.canonical = values.get("href", "")
@@ -97,12 +97,12 @@ def main():
         relative = str(path.relative_to(SITE))
         zh = relative.startswith("zh/")
         counterpart = relative[3:] if zh else "zh/" + relative
-        assert page.canonical == ORIGIN + relative.removesuffix("index.html"), (
-            f"{path}: wrong canonical URL"
-        )
-        assert page.alternates.get(page.language) == page.canonical, (
-            f"{path}: missing self language alternate"
-        )
+        assert page.canonical == ORIGIN + relative.removesuffix(
+            "index.html"
+        ), f"{path}: wrong canonical URL"
+        assert (
+            page.alternates.get(page.language) == page.canonical
+        ), f"{path}: missing self language alternate"
         assert len(page.titles) == 1 and page.titles[0].strip()
         assert page.metadata.get("description", "").strip()
         for prefix in ("og:", "twitter:"):
@@ -132,9 +132,9 @@ def main():
             assert apps[0]["offers"]["price"] == "0"
         assert page.alternates.get(
             "en" if zh else "zh-CN"
-        ) == ORIGIN + counterpart.removesuffix("index.html"), (
-            f"{path}: wrong language alternate"
-        )
+        ) == ORIGIN + counterpart.removesuffix(
+            "index.html"
+        ), f"{path}: wrong language alternate"
         assert len(page.locales) == 1
         assert (path.parent / page.locales[0] / "index.html").resolve() == (
             SITE / counterpart
@@ -144,23 +144,23 @@ def main():
                 repo_path = (
                     ROOT / unquote(link[len(REPO_BLOB) :].split("#")[0])
                 ).resolve()
-                assert repo_path.is_relative_to(ROOT) and repo_path.is_file(), (
-                    f"{path}: missing repository document {link}"
-                )
+                assert (
+                    repo_path.is_relative_to(ROOT) and repo_path.is_file()
+                ), f"{path}: missing repository document {link}"
             uri = urlsplit(link)
             if uri.scheme or uri.netloc:
                 continue
             target = (path.parent / unquote(uri.path)).resolve() if uri.path else path
             if target.is_dir():
                 target /= "index.html"
-            assert target.is_relative_to(SITE), (
-                f"{path}: local link escapes website: {link}"
-            )
+            assert target.is_relative_to(
+                SITE
+            ), f"{path}: local link escapes website: {link}"
             assert target.is_file(), f"{path}: missing target {link}"
             if uri.fragment and target.suffix == ".html":
-                assert unquote(uri.fragment) in pages[target].ids, (
-                    f"{path}: missing anchor {link}"
-                )
+                assert (
+                    unquote(uri.fragment) in pages[target].ids
+                ), f"{path}: missing anchor {link}"
     release = json.loads((SITE / "assets/releases.json").read_text())
     assert release["html_url"].startswith(
         "https://github.com/NorthBoundWisdom/immivio/releases"
@@ -189,9 +189,9 @@ def main():
         assert data[:8] == b"\x89PNG\r\n\x1a\n" and struct.unpack(
             ">II", data[16:24]
         ) == (1920, 1080)
-        assert len(data) > 100000, (
-            f"{name}: unexpectedly small screenshot; inspect for blank playback"
-        )
+        assert (
+            len(data) > 100000
+        ), f"{name}: unexpectedly small screenshot; inspect for blank playback"
     capture = json.loads((SITE / "assets/screenshots/capture.json").read_text())
     for shot in capture["screenshots"]:
         assert (

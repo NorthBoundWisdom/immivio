@@ -4,6 +4,7 @@ const ALPHA_VALUES := [0.0, 0.25, 0.5, 0.75, 1.0]
 const ALPHA_SHADER := preload("res://shaders/alpha_calibration.gdshader")
 const EYE_SHADER := preload("res://shaders/eye_marker.gdshader")
 
+
 func _ready() -> void:
 	for index in ALPHA_VALUES.size():
 		var x := (index - 2) * 0.39
@@ -39,6 +40,7 @@ func _ready() -> void:
 	add_child(eye_marker)
 	_add_label("Left eye: red / 4 stripes   Right eye: blue / 8 stripes", Vector3(0, 0.65, -2), 24)
 
+
 func _add_label(text: String, position_value: Vector3, size_value: int) -> void:
 	var label := Label3D.new()
 	label.text = text
@@ -47,4 +49,3 @@ func _add_label(text: String, position_value: Vector3, size_value: int) -> void:
 	label.pixel_size = 0.003
 	label.outline_size = 5
 	add_child(label)
-

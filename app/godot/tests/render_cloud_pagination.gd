@@ -3,8 +3,10 @@ extends SceneTree
 const Menu := preload("res://scripts/library_menu.gd")
 const Test := preload("res://tests/test_cloud_pagination.gd")
 
+
 func _initialize() -> void:
 	call_deferred("_run")
+
 
 func _run() -> void:
 	var output := OS.get_environment("QUEST_CLOUD_PREVIEW_DIR")
@@ -38,7 +40,9 @@ func _run() -> void:
 			menu.refresh()
 			await process_frame
 			await RenderingServer.frame_post_draw
-			viewport.get_texture().get_image().save_png(output.path_join("%s-%s.png" % [language, state]))
+			viewport.get_texture().get_image().save_png(
+				output.path_join("%s-%s.png" % [language, state])
+			)
 	menu.queue_free()
 	viewport.queue_free()
 	platform.free()

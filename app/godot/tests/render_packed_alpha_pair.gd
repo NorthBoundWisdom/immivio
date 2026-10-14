@@ -4,16 +4,22 @@ extends SceneTree
 
 var failures: Array[String] = []
 
+
 func _initialize() -> void:
 	call_deferred("_run")
+
 
 func _bilinear(image: Image, uv: Vector2) -> float:
 	var p := uv * Vector2(image.get_size()) - Vector2(0.5, 0.5)
 	p = p.clamp(Vector2.ZERO, Vector2(image.get_size()) - Vector2.ONE)
 	var a := Vector2i(floori(p.x), floori(p.y))
 	var b := (a + Vector2i.ONE).min(image.get_size() - Vector2i.ONE)
-	return lerpf(lerpf(image.get_pixel(a.x, a.y).r, image.get_pixel(b.x, a.y).r, p.x - a.x),
-		lerpf(image.get_pixel(a.x, b.y).r, image.get_pixel(b.x, b.y).r, p.x - a.x), p.y - a.y)
+	return lerpf(
+		lerpf(image.get_pixel(a.x, a.y).r, image.get_pixel(b.x, a.y).r, p.x - a.x),
+		lerpf(image.get_pixel(a.x, b.y).r, image.get_pixel(b.x, b.y).r, p.x - a.x),
+		p.y - a.y
+	)
+
 
 func _run() -> void:
 	var viewport := SubViewport.new()
@@ -33,11 +39,20 @@ func _run() -> void:
 	viewport.add_child(quad)
 	var packed: Image = (load("res://media/c04_alpha_f180_rgb.png") as Texture2D).get_image()
 	var mask: Image = (load("res://media/c04_packed_mask_oracle.png") as Texture2D).get_image()
-	var code := FileAccess.get_file_as_string("res://shaders/video_pair.gdshader") \
-		.replace('#include "res://shaders/video_coordinates.gdshaderinc"', FileAccess.get_file_as_string("res://shaders/video_coordinates.gdshaderinc")) \
-		.replace("varying flat int eye_index;", "uniform int test_eye = 0;\nuniform vec2 test_uv = vec2(0.5);\nvarying flat int eye_index;") \
-		.replace("eye_index = int(VIEW_INDEX);", "eye_index = test_eye;") \
-		.replace("vec2 shown_uv = eye_uv(UV, media_direction);", "vec2 shown_uv = test_uv;")
+	var code := (
+		FileAccess
+		. get_file_as_string("res://shaders/video_pair.gdshader")
+		. replace(
+			'#include "res://shaders/video_coordinates.gdshaderinc"',
+			FileAccess.get_file_as_string("res://shaders/video_coordinates.gdshaderinc")
+		)
+		. replace(
+			"varying flat int eye_index;",
+			"uniform int test_eye = 0;\nuniform vec2 test_uv = vec2(0.5);\nvarying flat int eye_index;"
+		)
+		. replace("eye_index = int(VIEW_INDEX);", "eye_index = test_eye;")
+		. replace("vec2 shown_uv = eye_uv(UV, media_direction);", "vec2 shown_uv = test_uv;")
+	)
 	var shader := Shader.new()
 	shader.code = code
 	var material := ShaderMaterial.new()
@@ -61,7 +76,12 @@ func _run() -> void:
 				var expected := _bilinear(mask, Vector2(x * 0.5 + eye * 0.5, y))
 				checked += 1
 				if absf(pixel.a - expected) > 0.012:
-					failures.append("eye %d UV (%.1f, %.1f) alpha %.4f expected %.4f" % [eye, x, y, pixel.a, expected])
+					failures.append(
+						(
+							"eye %d UV (%.1f, %.1f) alpha %.4f expected %.4f"
+							% [eye, x, y, pixel.a, expected]
+						)
+					)
 	# RVM matte: transparent where Alpha is 0 (the decoder image is not read there), opaque with
 	# the source colour where Alpha is 1, and partial Alpha at the edge keeps its value.
 	var matte := Image.create(64, 64, false, Image.FORMAT_R8)
@@ -81,8 +101,16 @@ func _run() -> void:
 		if case[1] == 0.0 and shown.a > 0.004:
 			failures.append("Matte 0 must be transparent: %.4f" % shown.a)
 		elif case[1] == 1.0:
-			var source := packed.get_pixel(int(0.15 * packed.get_width()), int(case[0] * packed.get_height()))
-			if shown.a < 0.99 or Vector3(shown.r - source.r, shown.g - source.g, shown.b - source.b).length() > 0.08:
+			var source := packed.get_pixel(
+				int(0.15 * packed.get_width()), int(case[0] * packed.get_height())
+			)
+			if (
+				shown.a < 0.99
+				or (
+					Vector3(shown.r - source.r, shown.g - source.g, shown.b - source.b).length()
+					> 0.08
+				)
+			):
 				failures.append("Matte 1 must show the source colour: %s vs %s" % [shown, source])
 		elif case[1] == 0.5 and (shown.a < 0.2 or shown.a > 0.8):
 			failures.append("Matte edge keeps partial Alpha: %.4f" % shown.a)
@@ -96,6 +124,10 @@ func _run() -> void:
 		failures.append("Packed alpha off must be opaque")
 	for failure in failures:
 		push_error(failure)
-	print("Packed alpha pair render: %s (%d samples, %d failures). XR and Android not tested." % [
-		"passed" if failures.is_empty() else "FAILED", checked, failures.size()])
+	print(
+		(
+			"Packed alpha pair render: %s (%d samples, %d failures). XR and Android not tested."
+			% ["passed" if failures.is_empty() else "FAILED", checked, failures.size()]
+		)
+	)
 	quit(0 if failures.is_empty() else 1)

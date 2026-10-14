@@ -4,13 +4,18 @@ extends RefCounted
 var enabled := false
 var _poses: Dictionary = {}
 
+
 func set_enabled(value: bool) -> void:
-	if enabled == value: return
+	if enabled == value:
+		return
 	enabled = value
 	_poses.clear()
 
+
 func capture(key: StringName, head: Transform3D, world: Transform3D) -> void:
-	if enabled: _poses[key] = head.affine_inverse() * world
+	if enabled:
+		_poses[key] = head.affine_inverse() * world
+
 
 func pose(key: StringName, head: Transform3D) -> Variant:
 	return head * _poses[key] if enabled and _poses.has(key) else null

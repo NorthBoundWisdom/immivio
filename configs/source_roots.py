@@ -27,9 +27,11 @@ workflow = bind_dependency_root_workflow(
                 name,
                 name,
                 name.upper() + "_SOURCE_ROOT",
-                ("go.mod", "go.sum", "internal/model/storage.go", "LICENSE")
-                if name == "OpenList"
-                else (),
+                (
+                    ("go.mod", "go.sum", "internal/model/storage.go", "LICENSE")
+                    if name == "OpenList"
+                    else ()
+                ),
             )
             for name in (
                 "OpenList",

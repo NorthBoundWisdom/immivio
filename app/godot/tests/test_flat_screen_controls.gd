@@ -5,15 +5,24 @@ const Menu := preload("res://scripts/player_menu.gd")
 var checks := 0
 var failures: Array[String] = []
 
-class InputMain extends "res://scripts/main.gd":
+
+class InputMain:
+	extends "res://scripts/main.gd"
 	var test_ray: Variant
-	func _ray(_hand: String) -> Variant: return test_ray
+
+	func _ray(_hand: String) -> Variant:
+		return test_ray
+
 
 func check(ok: bool, message: String) -> void:
 	checks += 1
-	if not ok: failures.append(message)
+	if not ok:
+		failures.append(message)
 
-func _initialize() -> void: call_deferred("_run")
+
+func _initialize() -> void:
+	call_deferred("_run")
+
 
 func _run() -> void:
 	var main := InputMain.new()
@@ -35,15 +44,25 @@ func _run() -> void:
 	main.recent_menu = Node3D.new()
 	main.recent_menu.visible = false
 	# Verify the visible per-eye aspect, including anamorphic PAR without double correction.
-	for case in [[1920, 1080, 1.0, 1, 8.0/9.0], [1920, 1080, 1.0, 2, 32.0/9.0],
-		[1920, 1080, 1.0, 3, 16.0/9.0], [1920, 1080, 1.0, 4, 16.0/9.0],
-		[1920, 1080, 2.0, 1, 16.0/9.0], [1920, 1080, 2.0, 3, 16.0/9.0],
-		[1920, 1080, 0.5, 2, 16.0/9.0], [1920, 1080, 0.5, 4, 16.0/9.0],
-		[3840, 1080, 1.0, 1, 16.0/9.0], [1920, 2160, 1.0, 2, 16.0/9.0]]:
+	for case in [
+		[1920, 1080, 1.0, 1, 8.0 / 9.0],
+		[1920, 1080, 1.0, 2, 32.0 / 9.0],
+		[1920, 1080, 1.0, 3, 16.0 / 9.0],
+		[1920, 1080, 1.0, 4, 16.0 / 9.0],
+		[1920, 1080, 2.0, 1, 16.0 / 9.0],
+		[1920, 1080, 2.0, 3, 16.0 / 9.0],
+		[1920, 1080, 0.5, 2, 16.0 / 9.0],
+		[1920, 1080, 0.5, 4, 16.0 / 9.0],
+		[3840, 1080, 1.0, 1, 16.0 / 9.0],
+		[1920, 2160, 1.0, 2, 16.0 / 9.0]
+	]:
 		video.media.format = {"width": case[0], "height": case[1], "pixel_aspect": case[2]}
 		video.set_stereo_layout(case[3])
 		video._apply_geometry()
-		check(is_equal_approx(video._flat.size.x / video._flat.size.y, case[4]), "Flat visible aspect " + str(case))
+		check(
+			is_equal_approx(video._flat.size.x / video._flat.size.y, case[4]),
+			"Flat visible aspect " + str(case)
+		)
 	video.stereo_half = false
 	video.media.format = {"width": 1920, "height": 1080}
 	var eye := Vector3(0, 1.6, 0)
@@ -63,29 +82,65 @@ func _run() -> void:
 			menu.toggle() if not menu.visible else menu.refresh()
 			main.test_ray = [eye, Vector3.FORWARD]
 			main._on_pointer_button("grip_click", "right_hand")
-			check(not menu.visible and main._grab.get("action", "") == "grip_click", "%s grip closes controls" % mode)
+			check(
+				not menu.visible and main._grab.get("action", "") == "grip_click",
+				"%s grip closes controls" % mode
+			)
 			main._update_flat_grab_stick(Vector2(0, 1), Vector2.ZERO, 0.4)
 			check(video.screen_scale == 1.0, "Other hand cannot move held screen")
 			main._update_flat_grab_stick(Vector2.ZERO, Vector2(0, 1), 0.4)
-			check(video.screen_scale == 1.0 and is_equal_approx(video.screen_distance,2.6), "%s grip plus stick moves farther without scaling" % mode)
+			check(
+				video.screen_scale == 1.0 and is_equal_approx(video.screen_distance, 2.6),
+				"%s grip plus stick moves farther without scaling" % mode
+			)
 			var grown: float = video.screen_scale
-			video._apply_geometry() # Next native frame must retain the new mesh and pose.
-			check(video._flat.size.is_equal_approx(size * grown), "%s presented frame preserves size" % mode)
+			video._apply_geometry()  # Next native frame must retain the new mesh and pose.
+			check(
+				video._flat.size.is_equal_approx(size * grown),
+				"%s presented frame preserves size" % mode
+			)
 			main._update_flat_grab_stick(Vector2.ZERO, Vector2(0, -1), 0.4)
-			check(is_equal_approx(video.screen_distance,2.0) and video.screen_scale == 1.0, "%s grip plus stick down moves nearer symmetrically" % mode)
+			check(
+				is_equal_approx(video.screen_distance, 2.0) and video.screen_scale == 1.0,
+				"%s grip plus stick down moves nearer symmetrically" % mode
+			)
 			main._on_pointer_release("grip_click", "right_hand")
-			check(main._grab.is_empty() and not menu.visible, "Release finishes without reopening controls")
+			check(
+				main._grab.is_empty() and not menu.visible,
+				"Release finishes without reopening controls"
+			)
 			for corner in [0, 1]:
 				video.set_screen_scale(1)
 				var hit: Vector3 = video.panel.to_global(video.screen_corner(corner))
 				main.test_ray = [eye, (hit - eye).normalized()]
 				main._begin_grab("right_hand")
-				check(main._grab.has("resize"), "%s curve %s corner %s begins resize" % [mode, curve, corner])
+				check(
+					main._grab.has("resize"),
+					"%s curve %s corner %s begins resize" % [mode, curve, corner]
+				)
 				main._update_corner_hover()
 				check(video._handles[corner].visible, "Active corner bracket is visible")
-				main.test_ray = [eye, (video.panel.to_global(Vector3(video.screen_corner(corner).x * 1.5, video.screen_corner(corner).y * 1.5, 0)) - eye).normalized()]
+				main.test_ray = [
+					eye,
+					(
+						(
+							video.panel.to_global(
+								Vector3(
+									video.screen_corner(corner).x * 1.5,
+									video.screen_corner(corner).y * 1.5,
+									0
+								)
+							)
+							- eye
+						)
+						. normalized()
+					)
+				]
 				main._update_grab()
-				check(video.screen_scale > 1 and is_equal_approx(video.screen_distance, 2), "%s corner grows without moving distance" % mode)
+				check(
+					video.screen_scale > 1 and is_equal_approx(video.screen_distance, 2),
+					"%s corner grows without moving distance" % mode
+				)
 				main._on_pointer_release("grip_click", "right_hand")
 			video.set_screen_scale(1)
 			main._grab = {"hand": "right_hand", "moved": false}
@@ -93,25 +148,60 @@ func _run() -> void:
 			main._update_flat_grab_stick(Vector2.ZERO, Vector2(0, 1), 1)
 			check(video.screen_scale == 1, "Open menu blocks held stick playback action")
 			main._grab = {}
-			check(not menu._buttons.any(func(item): return item.target == 210), "Removed screen settings cannot be reopened")
-			main._push_screen(6.0); main._save_screen()
-			check(is_equal_approx(video.screen_distance, 8) and is_equal_approx(video.panel.global_position.distance_to(eye), 8) and video.screen_scale == 1, "Manual distance changes remain independent of size")
+			check(
+				not menu._buttons.any(func(item): return item.target == 210),
+				"Removed screen settings cannot be reopened"
+			)
+			main._push_screen(6.0)
+			main._save_screen()
+			check(
+				(
+					is_equal_approx(video.screen_distance, 8)
+					and is_equal_approx(video.panel.global_position.distance_to(eye), 8)
+					and video.screen_scale == 1
+				),
+				"Manual distance changes remain independent of size"
+			)
 			var saved := ConfigFile.new()
-			check(saved.load(main.settings_path) == OK and is_equal_approx(float(saved.get_value("screen", "distance")), 8), "Manual distance persists")
+			check(
+				(
+					saved.load(main.settings_path) == OK
+					and is_equal_approx(float(saved.get_value("screen", "distance")), 8)
+				),
+				"Manual distance persists"
+			)
 			main._push_screen(-6.0)
 			check(is_equal_approx(video.screen_distance, 2), "Manual distance can return to 2m")
 			menu.dismiss()
 	# Translation/dragging may move the screen vertically, but not tilt its plane.
-	video.global_transform = Transform3D(Basis.from_euler(Vector3(.2, .4, -.1)), Vector3(.1, .2, .3))
+	video.global_transform = Transform3D(
+		Basis.from_euler(Vector3(.2, .4, -.1)), Vector3(.1, .2, .3)
+	)
 	var tilted := Transform3D(Basis.from_euler(Vector3(.5, .7, .3)), eye + Vector3(0, 0, -2))
 	video.set_flat_world_pose(tilted)
-	check(absf(video.panel.global_basis.z.y) < .00001 and video.panel.global_position.is_equal_approx(tilted.origin), "Flat-video constraint is in world space and preserves position")
+	check(
+		(
+			absf(video.panel.global_basis.z.y) < .00001
+			and video.panel.global_position.is_equal_approx(tilted.origin)
+		),
+		"Flat-video constraint is in world space and preserves position"
+	)
 	video.set_screen_rotation(25)
-	check(absf(video.panel.global_basis.z.y) < .00001 and video.screen_rotation == 25, "Explicit picture rotation stays inside the vertical screen plane")
+	check(
+		absf(video.panel.global_basis.z.y) < .00001 and video.screen_rotation == 25,
+		"Explicit picture rotation stays inside the vertical screen plane"
+	)
 	var height := video.panel.global_position.y
 	main._turn_picture(.15, .2)
-	check(absf(video.panel.global_basis.z.y) < .00001 and not is_equal_approx(video.panel.global_position.y, height), "Grip pitch moves the screen up/down without leaning it")
-	video.global_transform = Transform3D.IDENTITY; video.set_screen_rotation(0)
+	check(
+		(
+			absf(video.panel.global_basis.z.y) < .00001
+			and not is_equal_approx(video.panel.global_position.y, height)
+		),
+		"Grip pitch moves the screen up/down without leaning it"
+	)
+	video.global_transform = Transform3D.IDENTITY
+	video.set_screen_rotation(0)
 	main._grab = {"hand": "right_hand", "moved": false}
 	main._update_flat_grab_stick(Vector2.ZERO, Vector2(0, 1), 10)
 	check(video.screen_scale == video.SCALE_LIMITS.y, "Upper scale limit")
@@ -123,10 +213,19 @@ func _run() -> void:
 	menu.section = 1
 	menu.refresh()
 	menu._activate(11)
-	check(menu._adjustment.is_empty() and not menu._adjust_rows.values().any(func(row): return row.key == "screen_distance"), "Immersive projection disables flat distance")
+	check(
+		(
+			menu._adjustment.is_empty()
+			and not menu._adjust_rows.values().any(func(row): return row.key == "screen_distance")
+		),
+		"Immersive projection disables flat distance"
+	)
 	main._on_playback_adjustment("screen_distance", 5)
-	check(is_equal_approx(video.screen_distance, 2), "Immersive adjustment cannot change flat screen")
-	menu.dismiss(); main._grab = {"hand": "right_hand", "action": "grip_click", "moved": false}
+	check(
+		is_equal_approx(video.screen_distance, 2), "Immersive adjustment cannot change flat screen"
+	)
+	menu.dismiss()
+	main._grab = {"hand": "right_hand", "action": "grip_click", "moved": false}
 	video.view_zoom = 0.0
 	main._update_flat_grab_stick(Vector2(0, 1), Vector2.ZERO, .5)
 	check(is_zero_approx(video.view_zoom), "Other hand cannot move held immersive view")
@@ -137,19 +236,28 @@ func _run() -> void:
 	check(video.view_zoom == held_zoom, "Grip blocks ordinary playback stick shortcuts")
 	main._update_flat_grab_stick(Vector2.ZERO, Vector2(0, -1), .5)
 	check(is_zero_approx(video.view_zoom), "Immersive grip plus stick down reverses depth movement")
-	main._grab.clear(); video.geometry = 0; video.reclining_mode = true
-	video.screen_distance = 2.0; video.screen_scale = 1.0
+	main._grab.clear()
+	video.geometry = 0
+	video.reclining_mode = true
+	video.screen_distance = 2.0
+	video.screen_scale = 1.0
 	video.flat_pose = Transform3D(Basis(Vector3.RIGHT, .6), eye + Vector3(0, .5, -1.93649))
-	video._apply_geometry(); main.test_ray = [eye,(video.panel.global_position-eye).normalized()]
+	video._apply_geometry()
+	main.test_ray = [eye, (video.panel.global_position - eye).normalized()]
 	main._begin_grab("right_hand")
 	var old_position: Vector3 = video.panel.global_position
-	main.test_ray[0] += Vector3.UP * .3; main._update_grab()
-	check(video.panel.global_position.y > old_position.y and is_equal_approx(video.screen_scale,1), "Physical grip translation moves reclining picture vertically without scaling")
+	main.test_ray[0] += Vector3.UP * .3
+	main._update_grab()
+	check(
+		video.panel.global_position.y > old_position.y and is_equal_approx(video.screen_scale, 1),
+		"Physical grip translation moves reclining picture vertically without scaling"
+	)
 	main._on_pointer_release("grip_click", "right_hand")
 	menu.free()
 	main.recent_menu.free()
 	main.free()
 	video.free()
-	for failure in failures: push_error(failure)
+	for failure in failures:
+		push_error(failure)
 	print("Flat screen controls: %s (%d)" % ["passed" if failures.is_empty() else "failed", checks])
 	quit(0 if failures.is_empty() else 1)

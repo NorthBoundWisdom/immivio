@@ -5,6 +5,7 @@ package org.vrpassthroughplayer.plugin
 internal class MpvAudioFocusGate {
     enum class State { NONE, REQUESTING, HELD, TRANSIENT, LOST, DENIED }
     enum class Change { GAIN, TRANSIENT_LOSS, LOSS }
+
     var state = State.NONE
         private set
     private var generation = 0L
@@ -12,14 +13,17 @@ internal class MpvAudioFocusGate {
 
     fun begin(explicit: Boolean = false): Long? {
         if (state in setOf(State.REQUESTING, State.HELD, State.TRANSIENT) ||
-            (state == State.LOST && !explicit)) return null
+            (state == State.LOST && !explicit)
+        ) return null
         state = State.REQUESTING
         return ++generation
     }
+
     fun resolved(token: Long, granted: Boolean) {
         if (token == generation && state == State.REQUESTING)
             state = if (granted) State.HELD else State.DENIED
     }
+
     fun changed(token: Long, change: Change): Boolean {
         if (token != generation || state !in setOf(State.HELD, State.TRANSIENT)) return false
         state = when (change) {
@@ -29,5 +33,8 @@ internal class MpvAudioFocusGate {
         }
         return true
     }
-    fun clear() { ++generation; state = State.NONE }
+
+    fun clear() {
+        ++generation; state = State.NONE
+    }
 }

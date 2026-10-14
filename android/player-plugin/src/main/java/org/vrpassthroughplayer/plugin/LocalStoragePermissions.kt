@@ -10,12 +10,16 @@ internal object LocalStoragePermissions {
     fun settingsActions(sdk: Int): List<String> = if (sdk >= 30) listOf(
         Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
         Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION,
-        Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-        else listOf(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+        Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+    )
+    else listOf(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
 
     fun openSettings(sdk: Int, launch: (String) -> Unit): Boolean {
         for (action in settingsActions(sdk)) {
-            try { launch(action); return true } catch (_: Exception) { /* Try the next supported page. */ }
+            try {
+                launch(action); return true
+            } catch (_: Exception) { /* Try the next supported page. */
+            }
         }
         return false
     }

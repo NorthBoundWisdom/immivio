@@ -36,6 +36,8 @@ const MUTED := Color(0.56, 0.62, 0.69)
 # File names and the menu are often Chinese/Japanese: fall back to the system CJK font.
 static var FONT: Font = _make_font()
 static var _font_language := I18n.language
+
+
 static func _make_font() -> Font:
 	var font := SystemFont.new()
 	var names := ["Noto Sans CJK SC", "Noto Sans SC", "Microsoft YaHei", "PingFang SC"]
@@ -57,11 +59,13 @@ static func _make_font() -> Font:
 	font.fallbacks = [fallback]
 	return font
 
+
 static func ui_font() -> Font:
 	if _font_language != I18n.language:
 		_font_language = I18n.language
 		FONT = _make_font()
 	return FONT
+
 
 var _buttons: Array[Dictionary] = []
 var _labels: Array[Label3D] = []
@@ -78,11 +82,13 @@ var session_controls_provider: Callable
 var _footer_state := {}
 var _footer_centre := Vector2.ZERO
 
+
 func _ready() -> void:
 	position = Vector3(0, -0.03, -1.55)
 	_backdrop = _quad(Vector2(1.55, 1.08), Vector3.ZERO, PANEL, 10)
 	add_child(_backdrop)
 	visible = false
+
 
 func toggle() -> void:
 	if visible:
@@ -92,6 +98,7 @@ func toggle() -> void:
 		_reset_navigation()
 		refresh()
 
+
 func dismiss() -> void:
 	visible = false
 	_hover.clear()
@@ -99,39 +106,59 @@ func dismiss() -> void:
 		pointer.line.visible = false
 		pointer.dot.visible = false
 
+
 func capture_envelope() -> Rect2:
 	return Rect2()
 
+
 func _reset_navigation() -> void:
 	pass
+
 
 func refresh() -> void:
 	_draw()
 	_update_highlights()
 
+
 func _activate(_target: int) -> void:
 	pass
 
+
 func _draw() -> void:
 	pass
+
 
 # Origins/directions are in world space, including recenter/origin/menu transforms. Each button is
 # tested on its own plane, so panels may be angled (the library's side column); the nearest wins.
 # "point" is in this menu's space.
 func ray_hit(origin: Vector3, direction: Vector3) -> Dictionary:
-	if not visible or not origin.is_finite() or not direction.is_finite() or direction.length_squared() < 0.000001:
+	if (
+		not visible
+		or not origin.is_finite()
+		or not direction.is_finite()
+		or direction.length_squared() < 0.000001
+	):
 		return {}
 	var world_origin := origin
 	var world_direction := direction
 	var mapped := {}
-	if xr_surface and (xr_surface.native_supported or xr_surface.get("scene_curved") == true) and xr_surface.active_menu == self:
+	if (
+		xr_surface
+		and (xr_surface.native_supported or xr_surface.get("scene_curved") == true)
+		and xr_surface.active_menu == self
+	):
 		mapped = xr_surface.map_ray(self, origin, direction)
-		if mapped.is_empty() or float(mapped.distance) > max_ray_metres: return {}
-		origin = mapped.origin; direction = mapped.direction
+		if mapped.is_empty() or float(mapped.distance) > max_ray_metres:
+			return {}
+		origin = mapped.origin
+		direction = mapped.direction
 	var ray := direction.normalized()
 	var best := {}
 	for button in _buttons:
-		if (not button.enabled and not button.get("hover_disabled", false)) or not button.node.is_visible_in_tree():
+		if (
+			(not button.enabled and not button.get("hover_disabled", false))
+			or not button.node.is_visible_in_tree()
+		):
 			continue
 		var inverse: Transform3D = button.node.global_transform.affine_inverse()
 		var start: Vector3 = inverse * origin
@@ -149,43 +176,72 @@ func ray_hit(origin: Vector3, direction: Vector3) -> Dictionary:
 		var distance := origin.distance_to(world)
 		if distance > max_ray_metres or (not best.is_empty() and distance >= float(best.distance)):
 			continue
-		best = {"target": button.target, "point": to_local(world), "distance": distance, "enabled": button.enabled}
+		best = {
+			"target": button.target,
+			"point": to_local(world),
+			"distance": distance,
+			"enabled": button.enabled
+		}
 	if not best.is_empty() and mapped.is_empty():
 		var panel_hit := ray_panel_hit(world_origin, world_direction)
-		if not panel_hit.is_empty() and float(panel_hit.distance) < float(best.distance) - 0.00001: return {}
+		if not panel_hit.is_empty() and float(panel_hit.distance) < float(best.distance) - 0.00001:
+			return {}
 	if not best.is_empty() and not mapped.is_empty():
 		best.point = to_local(mapped.get("canvas_point", mapped.point))
 		best["world_point"] = mapped.point
 		best.distance = mapped.distance
 	return best
 
+
 ## Panel feedback is independent of button activation: gaps and hidden controls
 ## still stop the laser, without becoming clickable or highlighted targets.
 func ray_panel_hit(origin: Vector3, direction: Vector3) -> Dictionary:
-	if not visible or not origin.is_finite() or not direction.is_finite() or direction.length_squared() < 0.000001:
+	if (
+		not visible
+		or not origin.is_finite()
+		or not direction.is_finite()
+		or direction.length_squared() < 0.000001
+	):
 		return {}
 	var mapped := {}
-	if xr_surface and (xr_surface.native_supported or xr_surface.get("scene_curved") == true) and xr_surface.active_menu == self:
+	if (
+		xr_surface
+		and (xr_surface.native_supported or xr_surface.get("scene_curved") == true)
+		and xr_surface.active_menu == self
+	):
 		mapped = xr_surface.map_ray(self, origin, direction)
-		if mapped.is_empty() or float(mapped.distance) > max_ray_metres: return {}
-		origin = mapped.origin; direction = mapped.direction
+		if mapped.is_empty() or float(mapped.distance) > max_ray_metres:
+			return {}
+		origin = mapped.origin
+		direction = mapped.direction
 	var best := {}
 	var panels: Array[Node3D] = [_backdrop]
 	panels.append_array(_decorations)
 	for panel in panels:
-		if not is_instance_valid(panel) or not panel.is_visible_in_tree() or not panel.get_meta("xr_ui_panel", false): continue
+		if (
+			not is_instance_valid(panel)
+			or not panel.is_visible_in_tree()
+			or not panel.get_meta("xr_ui_panel", false)
+		):
+			continue
 		var inverse := panel.global_transform.affine_inverse()
 		var start := inverse * origin
 		var delta := inverse.basis * direction.normalized()
-		if delta.z >= -0.00001 or start.z <= 0.0: continue
+		if delta.z >= -0.00001 or start.z <= 0.0:
+			continue
 		var local := start + delta * (-start.z / delta.z)
 		var half: Vector2 = panel.mesh.size * 0.5
-		var radius := minf(float(panel.material_override.get_shader_parameter("corner_radius")), minf(half.x, half.y))
+		var radius := minf(
+			float(panel.material_override.get_shader_parameter("corner_radius")),
+			minf(half.x, half.y)
+		)
 		var corner := Vector2(absf(local.x), absf(local.y)) - (half - Vector2.ONE * radius)
-		if corner.x > radius or corner.y > radius or corner.max(Vector2.ZERO).length() > radius: continue
+		if corner.x > radius or corner.y > radius or corner.max(Vector2.ZERO).length() > radius:
+			continue
 		var world: Vector3 = panel.global_transform * Vector3(local.x, local.y, 0)
 		var distance := origin.distance_to(world)
-		if distance > max_ray_metres or (not best.is_empty() and distance >= float(best.distance)): continue
+		if distance > max_ray_metres or (not best.is_empty() and distance >= float(best.distance)):
+			continue
 		best = {"target": NONE, "point": to_local(world), "distance": distance, "enabled": false}
 	if not best.is_empty() and not mapped.is_empty():
 		best.point = to_local(mapped.get("canvas_point", mapped.point))
@@ -193,18 +249,29 @@ func ray_panel_hit(origin: Vector3, direction: Vector3) -> Dictionary:
 		best.distance = mapped.distance
 	return best
 
+
 func update_pointer(hand: String, origin: Vector3, direction: Vector3, tracked: bool) -> void:
 	if not visible:
 		return
 	var hit := ray_hit(origin, direction) if tracked else {}
 	_hover[hand] = int(hit.get("target", NONE))
-	if tracked and hit.is_empty(): hit = ray_panel_hit(origin, direction)
+	if tracked and hit.is_empty():
+		hit = ray_panel_hit(origin, direction)
 	var pointer := _pointer(hand)
-	var valid := tracked and origin.is_finite() and direction.is_finite() and direction.length_squared() > 0.000001
+	var valid := (
+		tracked
+		and origin.is_finite()
+		and direction.is_finite()
+		and direction.length_squared() > 0.000001
+	)
 	pointer.line.visible = valid
 	pointer.dot.visible = not hit.is_empty()
 	if valid:
-		var endpoint: Vector3 = hit.get("world_point", to_global(hit.point)) if not hit.is_empty() else origin + direction.normalized() * max_ray_metres
+		var endpoint: Vector3 = (
+			hit.get("world_point", to_global(hit.point))
+			if not hit.is_empty()
+			else origin + direction.normalized() * max_ray_metres
+		)
 		var mesh: ImmediateMesh = pointer.line.mesh
 		mesh.clear_surfaces()
 		mesh.surface_begin(Mesh.PRIMITIVE_LINES)
@@ -215,8 +282,10 @@ func update_pointer(hand: String, origin: Vector3, direction: Vector3, tracked: 
 			pointer.dot.position = hit.point + Vector3(0, 0, 0.008)
 	_update_highlights()
 
+
 func cancel_pointer(hand: String) -> void:
 	update_pointer(hand, Vector3.ZERO, Vector3.ZERO, false)
+
 
 func press_pointer(hand: String, origin: Vector3, direction: Vector3, tracked: bool) -> bool:
 	# Recompute at trigger time. A stale hover or the other hand cannot click.
@@ -227,16 +296,22 @@ func press_pointer(hand: String, origin: Vector3, direction: Vector3, tracked: b
 	_activate_hit(hit)
 	return true
 
+
 func _activate_hit(hit: Dictionary) -> void:
-	if not hit.get("enabled", true): return
-	if _activate_footer(int(hit.target)): return
+	if not hit.get("enabled", true):
+		return
+	if _activate_footer(int(hit.target)):
+		return
 	_activate(int(hit.target))
+
 
 func _activate_footer(target: int) -> bool:
 	if target == CLOSE_MENU:
-		if allow_user_dismiss: dismiss()
+		if allow_user_dismiss:
+			dismiss()
 		return true
-	if target not in [FOLLOW, TEMP_PASSTHROUGH]: return false
+	if target not in [FOLLOW, TEMP_PASSTHROUGH]:
+		return false
 	var state := _session_controls()
 	if target == FOLLOW:
 		session_control_requested.emit("follow")
@@ -245,6 +320,7 @@ func _activate_footer(target: int) -> bool:
 	refresh_session_controls(true)
 	return true
 
+
 func _set_backdrop(size: Vector2, centre: Vector2 = Vector2.ZERO) -> void:
 	_backdrop.mesh.size = size
 	_backdrop.position = Vector3(centre.x, centre.y, 0)
@@ -252,9 +328,11 @@ func _set_backdrop(size: Vector2, centre: Vector2 = Vector2.ZERO) -> void:
 	# All views, including modal/web/adjustment branches, get the same footer.
 	_place_device_status(Vector2(centre.x, centre.y - size.y * 0.5 - 0.085))
 
+
 func _clear_layout() -> void:
 	layout_revision += 1
-	if xr_surface: xr_surface.invalidate()
+	if xr_surface:
+		xr_surface.invalidate()
 	for button in _buttons:
 		button.node.free()
 	_buttons.clear()
@@ -272,27 +350,63 @@ func _clear_layout() -> void:
 	for pointer in _pointers.values():
 		pointer.dot.visible = false
 
-func _button(target: int, text: String, centre: Vector2, size: Vector2, enabled: bool = true,
-		icon: String = "", primary: bool = false, parent: Node3D = null) -> void:
+
+func _button(
+	target: int,
+	text: String,
+	centre: Vector2,
+	size: Vector2,
+	enabled: bool = true,
+	icon: String = "",
+	primary: bool = false,
+	parent: Node3D = null
+) -> void:
 	var base := ACCENT if primary else TILE
 	var foreground := Color(0.045, 0.1, 0.085) if primary else Color(0.93, 0.95, 0.98)
 	var node := _quad(size, Vector3(centre.x, centre.y, 0.002), base, 11)
 	node.visible = enabled
 	(parent if parent else self).add_child(node)
-	var label := _label(text, Vector3(0, -size.y * 0.26 if not icon.is_empty() else 0, 0.004), 19 if not icon.is_empty() else 23, node)
+	var label := _label(
+		text,
+		Vector3(0, -size.y * 0.26 if not icon.is_empty() else 0, 0.004),
+		19 if not icon.is_empty() else 23,
+		node
+	)
 	label.modulate = foreground if enabled else MUTED * Color(0.7, 0.7, 0.7)
 	if not icon.is_empty():
 		# Icon-only buttons centre a larger glyph; captioned buttons stack icon over text.
 		var alone := text.is_empty()
-		_icon(icon, Vector3(0, 0 if alone else size.y * 0.15, 0.004), minf(size.y * (0.55 if alone else 0.38), 0.05 if alone else 0.045),
-			foreground if enabled else MUTED, node)
-	_buttons.append({"target": target, "rect": Rect2(centre - size / 2, size), "enabled": enabled, "node": node,
-		"base_color": base, "foreground": foreground})
+		_icon(
+			icon,
+			Vector3(0, 0 if alone else size.y * 0.15, 0.004),
+			minf(size.y * (0.55 if alone else 0.38), 0.05 if alone else 0.045),
+			foreground if enabled else MUTED,
+			node
+		)
+	_buttons.append(
+		{
+			"target": target,
+			"rect": Rect2(centre - size / 2, size),
+			"enabled": enabled,
+			"node": node,
+			"base_color": base,
+			"foreground": foreground
+		}
+	)
+
 
 ## Standard settings action: one text line, optional inline icon, shared height.
 ## Media tiles, transport controls and slider hit areas retain their own layouts.
-func _control_button(target: int, text: String, centre: Vector2, width: float, enabled: bool = true,
-		icon: String = "", primary: bool = false, parent: Node3D = null) -> void:
+func _control_button(
+	target: int,
+	text: String,
+	centre: Vector2,
+	width: float,
+	enabled: bool = true,
+	icon: String = "",
+	primary: bool = false,
+	parent: Node3D = null
+) -> void:
 	var inset := 0.075 if not icon.is_empty() and not text.is_empty() else 0.04
 	var caption := _fit_title(text, "", width - inset, CONTROL_FONT_SIZE)
 	_button(target, caption, centre, Vector2(width, CONTROL_HEIGHT), enabled, "", primary, parent)
@@ -302,26 +416,44 @@ func _control_button(target: int, text: String, centre: Vector2, width: float, e
 	if not icon.is_empty():
 		if not text.is_empty():
 			label.position.x = 0.02
-		_icon(icon, Vector3(-width / 2 + 0.03 if not text.is_empty() else 0.0, 0, 0.004), CONTROL_ICON_SIZE,
-			button.foreground if enabled else MUTED, button.node)
-	if caption != text: _tips[target] = text
+		_icon(
+			icon,
+			Vector3(-width / 2 + 0.03 if not text.is_empty() else 0.0, 0, 0.004),
+			CONTROL_ICON_SIZE,
+			button.foreground if enabled else MUTED,
+			button.node
+		)
+	if caption != text:
+		_tips[target] = text
+
 
 ## Icon-only round button (play, floating actions); [tip] names it while a ray hovers it.
-func _round(target: int, icon: String, centre: Vector2, diameter: float, enabled: bool = true,
-		primary: bool = false, tip: String = "") -> void:
+func _round(
+	target: int,
+	icon: String,
+	centre: Vector2,
+	diameter: float,
+	enabled: bool = true,
+	primary: bool = false,
+	tip: String = ""
+) -> void:
 	_button(target, "", centre, Vector2.ONE * diameter, enabled, icon, primary)
 	_buttons.back().node.material_override.set_shader_parameter("corner_radius", diameter * 0.5)
 	if not tip.is_empty():
 		_tips[target] = tip
 
+
 ## Icon over the panel without a tile of its own: only hover lights it up.
-func _glyph(target: int, icon: String, centre: Vector2, size: float, enabled: bool = true, tip: String = "") -> void:
+func _glyph(
+	target: int, icon: String, centre: Vector2, size: float, enabled: bool = true, tip: String = ""
+) -> void:
 	_button(target, "", centre, Vector2.ONE * size, enabled, icon)
 	var button: Dictionary = _buttons.back()
 	button.base_color = Color(TILE, 0.0)
 	button.node.material_override.set_shader_parameter("corner_radius", size * 0.5)
 	if not tip.is_empty():
 		_tips[target] = tip
+
 
 ## Puts the battery and clock pill centred at [centre], under the panel like SKYBOX.
 func _place_device_status(centre: Vector2) -> void:
@@ -333,13 +465,17 @@ func _place_device_status(centre: Vector2) -> void:
 	_footer_centre = Vector2(centre.x, minf(centre.y - 0.025, bottom - 0.085))
 	refresh_session_controls(true)
 
+
 func _session_controls() -> Dictionary:
 	return session_controls_provider.call() if session_controls_provider.is_valid() else {}
 
+
 func refresh_session_controls(force: bool = false) -> void:
-	if not device_status: return
+	if not device_status:
+		return
 	var state := _session_controls()
-	if not force and state == _footer_state: return
+	if not force and state == _footer_state:
+		return
 	_footer_state = state.duplicate()
 	for index in range(_buttons.size() - 1, -1, -1):
 		if _buttons[index].target in [CLOSE_MENU, FOLLOW, TEMP_PASSTHROUGH]:
@@ -350,25 +486,57 @@ func refresh_session_controls(force: bool = false) -> void:
 	var span := count * FOOTER_DIAMETER + (count - 1) * FOOTER_GAP
 	var width := span + FOOTER_GAP + STATUS_WIDTH
 	var left := _footer_centre.x - width * 0.5
-	device_status.position = Vector3(left + span + FOOTER_GAP + STATUS_WIDTH * 0.5, _footer_centre.y, 0.002)
-	_footer_button(FOLLOW, "head_follow", Vector2(left + FOOTER_DIAMETER * 0.5, _footer_centre.y),
-		state.get("follow", false), true, I18n.t("Disable follow" if state.get("follow", false) else "Enable follow"))
+	device_status.position = Vector3(
+		left + span + FOOTER_GAP + STATUS_WIDTH * 0.5, _footer_centre.y, 0.002
+	)
+	_footer_button(
+		FOLLOW,
+		"head_follow",
+		Vector2(left + FOOTER_DIAMETER * 0.5, _footer_centre.y),
+		state.get("follow", false),
+		true,
+		I18n.t("Disable follow" if state.get("follow", false) else "Enable follow")
+	)
 	if show_passthrough:
 		var alpha: bool = state.get("alpha", false)
-		_footer_button(TEMP_PASSTHROUGH, "passthrough", Vector2(left + span - FOOTER_DIAMETER * 0.5, _footer_centre.y),
-			state.get("passthrough", false), not alpha, I18n.t("Cannot switch during person passthrough" if alpha else
-			("Disable temporary passthrough" if state.get("passthrough", false) else "Enable temporary passthrough")))
+		_footer_button(
+			TEMP_PASSTHROUGH,
+			"passthrough",
+			Vector2(left + span - FOOTER_DIAMETER * 0.5, _footer_centre.y),
+			state.get("passthrough", false),
+			not alpha,
+			I18n.t(
+				(
+					"Cannot switch during person passthrough"
+					if alpha
+					else (
+						"Disable temporary passthrough"
+						if state.get("passthrough", false)
+						else "Enable temporary passthrough"
+					)
+				)
+			)
+		)
 	_update_highlights()
 
-func _footer_button(target: int, icon: String, centre: Vector2, active: bool, enabled: bool, tip: String) -> void:
+
+func _footer_button(
+	target: int, icon: String, centre: Vector2, active: bool, enabled: bool, tip: String
+) -> void:
 	_round(target, icon, centre, FOOTER_DIAMETER, enabled, active, tip)
 	var button: Dictionary = _buttons.back()
 	button.rect = Rect2(centre - Vector2.ONE * FOOTER_HIT_SIZE * 0.5, Vector2.ONE * FOOTER_HIT_SIZE)
 	button["hover_disabled"] = true
 	button["tip_below"] = true
 	if active:
-		var marker := _quad(Vector2(0.014, 0.004), Vector3(0, -0.032, 0.005), button.foreground if enabled else MUTED, 12)
+		var marker := _quad(
+			Vector2(0.014, 0.004),
+			Vector3(0, -0.032, 0.005),
+			button.foreground if enabled else MUTED,
+			12
+		)
 		button.node.add_child(marker)
+
 
 func _decoration(size: Vector2, centre: Vector2, color: Color) -> MeshInstance3D:
 	var node := _quad(size, Vector3(centre.x, centre.y, 0.003), color, 12)
@@ -376,7 +544,10 @@ func _decoration(size: Vector2, centre: Vector2, color: Color) -> MeshInstance3D
 	_decorations.append(node)
 	return node
 
-func _icon(key: String, location: Vector3, size: float, color: Color, parent: Node = self) -> MeshInstance3D:
+
+func _icon(
+	key: String, location: Vector3, size: float, color: Color, parent: Node = self
+) -> MeshInstance3D:
 	var node := MeshInstance3D.new()
 	var mesh := QuadMesh.new()
 	mesh.size = Vector2.ONE * size
@@ -388,12 +559,15 @@ func _icon(key: String, location: Vector3, size: float, color: Color, parent: No
 	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 	node.material_override = material
 	parent.add_child(node)
-	if parent == self: _decorations.append(node)
+	if parent == self:
+		_decorations.append(node)
 	return node
+
 
 func _quad(size: Vector2, location: Vector3, color: Color, priority: int) -> MeshInstance3D:
 	var node := MeshInstance3D.new()
-	if priority in [10, 30]: node.set_meta("xr_ui_panel", true)
+	if priority in [10, 30]:
+		node.set_meta("xr_ui_panel", true)
 	var mesh := QuadMesh.new()
 	mesh.size = size
 	node.mesh = mesh
@@ -407,6 +581,7 @@ func _quad(size: Vector2, location: Vector3, color: Color, priority: int) -> Mes
 	node.material_override = surface
 	return node
 
+
 func _material(color: Color, priority: int, overlay: bool = false) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -418,6 +593,7 @@ func _material(color: Color, priority: int, overlay: bool = false) -> StandardMa
 	material.no_depth_test = overlay
 	material.render_priority = priority
 	return material
+
 
 func _label(text: String, location: Vector3, size: int, parent: Node = self) -> Label3D:
 	var label := Label3D.new()
@@ -435,6 +611,7 @@ func _label(text: String, location: Vector3, size: int, parent: Node = self) -> 
 	if parent == self:
 		_labels.append(label)
 	return label
+
 
 func _pointer(hand: String) -> Dictionary:
 	if _pointers.has(hand):
@@ -457,20 +634,42 @@ func _pointer(hand: String) -> Dictionary:
 	_pointers[hand] = {"line": line, "dot": dot}
 	return _pointers[hand]
 
+
 func _update_highlights() -> void:
 	for button in _buttons:
-		button.node.visible = button.get("layout_visible", true) and (button.enabled or button.get("keep_visible", false) or button.get("fixed_current", false))
+		button.node.visible = (
+			button.get("layout_visible", true)
+			and (
+				button.enabled
+				or button.get("keep_visible", false)
+				or button.get("fixed_current", false)
+			)
+		)
 		var hovered: bool = button.enabled and _hover.values().has(button.target)
 		var color: Color = button.base_color
-		if not button.enabled: color = Color(0.26, 0.44, 0.38) if button.get("hover_disabled", false) and button.base_color == ACCENT else Color(0.085, 0.095, 0.115, button.base_color.a)
-		elif hovered: color = Color(0.67, 1.0, 0.86) if button.base_color == ACCENT else Color(0.23, 0.43, 0.38)
+		if not button.enabled:
+			color = (
+				Color(0.26, 0.44, 0.38)
+				if button.get("hover_disabled", false) and button.base_color == ACCENT
+				else Color(0.085, 0.095, 0.115, button.base_color.a)
+			)
+		elif hovered:
+			color = (
+				Color(0.67, 1.0, 0.86) if button.base_color == ACCENT else Color(0.23, 0.43, 0.38)
+			)
 		button.node.material_override.set_shader_parameter("surface_color", color)
 	_update_tooltip()
+
 
 func _update_tooltip() -> void:
 	var shown := {}
 	for button in _buttons:
-		if button.node.is_visible_in_tree() and (button.enabled or button.get("hover_disabled", false)) and not str(_tips.get(button.target, "")).strip_edges().is_empty() and _hover.values().has(button.target):
+		if (
+			button.node.is_visible_in_tree()
+			and (button.enabled or button.get("hover_disabled", false))
+			and not str(_tips.get(button.target, "")).strip_edges().is_empty()
+			and _hover.values().has(button.target)
+		):
 			shown = button
 			break
 	if shown.is_empty():
@@ -485,24 +684,44 @@ func _update_tooltip() -> void:
 		text.render_priority = 17
 	var label: Label3D = _tooltip.get_child(0)
 	var text := str(_tips[shown.target]).strip_edges()
-	var width := minf(TOOLTIP_MAX_WIDTH - 0.04, ui_font().get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 17).x * label.pixel_size)
-	label.font = ui_font(); label.text = text
+	var width := minf(
+		TOOLTIP_MAX_WIDTH - 0.04,
+		ui_font().get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 17).x * label.pixel_size
+	)
+	label.font = ui_font()
+	label.text = text
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.width = maxf(width, 0.01) / label.pixel_size
-	var measured := ui_font().get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, label.width, 17, -1,
-		TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE)
+	var measured := ui_font().get_multiline_string_size(
+		text,
+		HORIZONTAL_ALIGNMENT_CENTER,
+		label.width,
+		17,
+		-1,
+		TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE
+	)
 	var size := Vector2(width + 0.04, maxf(0.046, measured.y * label.pixel_size + 0.02))
 	_tooltip.mesh.size = size
 	_tooltip.material_override.set_shader_parameter("surface_size", size)
 	var rect: Rect2 = shown.rect
 	var centre := to_local(shown.node.global_position)
-	var at := Vector2(centre.x, centre.y + (-1.0 if shown.get("tip_below", false) else 1.0) * (rect.size.y * 0.5 + size.y * 0.5 + 0.017))
+	var at := Vector2(
+		centre.x,
+		(
+			centre.y
+			+ (
+				(-1.0 if shown.get("tip_below", false) else 1.0)
+				* (rect.size.y * 0.5 + size.y * 0.5 + 0.017)
+			)
+		)
+	)
 	var envelope := capture_envelope()
 	if envelope.has_area():
 		at.x = clampf(at.x, envelope.position.x + size.x * 0.5, envelope.end.x - size.x * 0.5)
 		at.y = clampf(at.y, envelope.position.y + size.y * 0.5, envelope.end.y - size.y * 0.5)
 	_tooltip.position = Vector3(at.x, at.y, 0.012)
 	_tooltip.visible = true
+
 
 ## Reserve hover text before it becomes visible. Hover must not resize/recentre
 ## the capture or its cylinder, which can move the target out from under the ray.
@@ -513,16 +732,24 @@ func tooltip_envelope() -> Rect2:
 		return Rect2(reserved.position - Vector2(0, 0.12), reserved.size + Vector2(0, 0.24))
 	var bounds := Rect2()
 	for button in _buttons:
-		if not _tips.has(button.target): continue
+		if not _tips.has(button.target):
+			continue
 		var rect: Rect2 = button.rect
 		var y := rect.position.y - 0.04 if button.get("tip_below", false) else rect.end.y + 0.04
-		var region := Rect2(Vector2(rect.get_center().x - TOOLTIP_MAX_WIDTH / 2, y - 0.023), Vector2(TOOLTIP_MAX_WIDTH, 0.046))
+		var region := Rect2(
+			Vector2(rect.get_center().x - TOOLTIP_MAX_WIDTH / 2, y - 0.023),
+			Vector2(TOOLTIP_MAX_WIDTH, 0.046)
+		)
 		bounds = bounds.merge(region) if bounds.has_area() else region
 	return bounds
 
+
 func _fit_title(title: String, suffix: String, width: float = 1.32, font_size: int = 26) -> String:
 	var fits := func(text: String) -> bool:
-		return ui_font().get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x * 0.0012 <= width
+		return (
+			ui_font().get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x * 0.0012
+			<= width
+		)
 	if title.is_empty() or fits.call(title + suffix):
 		return title + suffix
 	# Longest prefix that fits with the ellipsis, by bisection: every measure shapes the text.
@@ -535,6 +762,7 @@ func _fit_title(title: String, suffix: String, width: float = 1.32, font_size: i
 		else:
 			high = middle - 1
 	return title.left(low) + "…" + suffix
+
 
 func text_snapshot() -> String:
 	var lines := PackedStringArray()

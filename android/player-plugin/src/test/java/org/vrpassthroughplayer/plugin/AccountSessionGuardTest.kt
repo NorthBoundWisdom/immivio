@@ -8,9 +8,11 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 class AccountSessionGuardTest {
-    @Test fun cancelledNetworkResponseCannotSave() {
+    @Test
+    fun cancelledNetworkResponseCannotSave() {
         val gate = AccountSessionGuard()
-        val ready = CountDownLatch(1); val response = CountDownLatch(1)
+        val ready = CountDownLatch(1);
+        val response = CountDownLatch(1)
         val saved = AtomicInteger()
         val worker = Executors.newSingleThreadExecutor()
         try {
@@ -21,10 +23,15 @@ class AccountSessionGuardTest {
             assertTrue(ready.await(3, TimeUnit.SECONDS))
             gate.cancelSession {}; response.countDown()
             assertFalse(future.get(3, TimeUnit.SECONDS)); assertEquals(0, saved.get())
-        } finally { response.countDown(); worker.shutdownNow() }
+        } finally {
+            response.countDown(); worker.shutdownNow()
+        }
     }
-    @Test fun cancellationClearsInputsAndCannotBeReused() {
-        val gate = AccountSessionGuard(); val secret = AccountInput()
+
+    @Test
+    fun cancellationClearsInputsAndCannotBeReused() {
+        val gate = AccountSessionGuard();
+        val secret = AccountInput()
         secret.append("transient")
         gate.commitSession { assertEquals(9, secret.length) }
         gate.cancelSession { secret.clear() }

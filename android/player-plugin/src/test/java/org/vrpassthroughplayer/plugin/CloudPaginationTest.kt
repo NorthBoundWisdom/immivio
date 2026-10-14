@@ -9,17 +9,31 @@ import java.net.URLDecoder
 
 class CloudPaginationTest {
     private fun args(url: String) = URI(url).rawQuery.split('&').associate {
-        URLDecoder.decode(it.substringBefore('='), "UTF-8") to URLDecoder.decode(it.substringAfter('='), "UTF-8")
+        URLDecoder.decode(it.substringBefore('='), "UTF-8") to URLDecoder.decode(
+            it.substringAfter(
+                '='
+            ), "UTF-8"
+        )
     }
+
     private fun response(offset: Int, count: Int, size: Int = CloudDrive.PAGE_SIZE): CloudResponse {
         val data = JSONArray()
         for (i in offset until minOf(offset + size, count)) {
-            data.put(if (i % 2 == 0) JSONObject().put("cid", "${9007199254740993L + i}").put("n", "目录 $i")
-                else JSONObject().put("fid", "${9007199254740993L + i}").put("n", "片名 $i.mp4").put("s", 999).put("pc", "pick-$i"))
+            data.put(
+                if (i % 2 == 0) JSONObject().put("cid", "${9007199254740993L + i}")
+                    .put("n", "目录 $i")
+                else JSONObject().put("fid", "${9007199254740993L + i}").put("n", "片名 $i.mp4")
+                    .put("s", 999).put("pc", "pick-$i")
+            )
         }
-        return CloudResponse(JSONObject().put("state", true).put("offset", offset).put("count", count).put("data", data))
+        return CloudResponse(
+            JSONObject().put("state", true).put("offset", offset).put("count", count)
+                .put("data", data)
+        )
     }
-    @Test fun tenThousandEntriesFetchOnlyRequestedPagesAndReuseMetadataForPlaybackAndFolders() {
+
+    @Test
+    fun tenThousandEntriesFetchOnlyRequestedPagesAndReuseMetadataForPlaybackAndFolders() {
         val requests = ArrayList<Map<String, String>>()
         val drive = CloudDrive(CloudDrive.P115, "UID=test", CloudTransport { url, _, _ ->
             assertEquals("/files", URI(url).path) // Known folder IDs never need getid.
@@ -40,7 +54,9 @@ class CloudPaginationTest {
         val last = drive.page("/", 9984)
         assertEquals(17, last.files.size); assertEquals(-1, last.nextOffset)
     }
-    @Test fun laterFailureKeepsEarlierPageAndCanRetryWithoutRereadingIt() {
+
+    @Test
+    fun laterFailureKeepsEarlierPageAndCanRetryWithoutRereadingIt() {
         var fail = true
         var requests = 0
         val drive = CloudDrive(CloudDrive.P115, "UID=test", CloudTransport { url, _, _ ->
@@ -50,12 +66,17 @@ class CloudPaginationTest {
             response(offset, 3001)
         })
         val first = drive.page("/")
-        try { drive.page("/", 48); fail() } catch (_: CloudFailure) {}
+        try {
+            drive.page("/", 48); fail()
+        } catch (_: CloudFailure) {
+        }
         assertSame(first, drive.page("/")); assertEquals(2, requests)
         fail = false
         assertEquals(48, drive.page("/", 48).files.size); assertEquals(3, requests)
     }
-    @Test fun allThreeThousandMixedEntriesHaveNoMissingOrDuplicateIds() {
+
+    @Test
+    fun allThreeThousandMixedEntriesHaveNoMissingOrDuplicateIds() {
         var requests = 0
         val drive = CloudDrive(CloudDrive.P115, "UID=test", CloudTransport { url, _, _ ->
             requests++; response(args(url).getValue("offset").toInt(), 3001)
@@ -65,7 +86,9 @@ class CloudPaginationTest {
         assertEquals(3001, files.map { it.id }.toSet().size)
         assertEquals(63, requests)
     }
-    @Test fun uncachedHistoryStopsAtMatchingPageInsteadOfScanningWholeParent() {
+
+    @Test
+    fun uncachedHistoryStopsAtMatchingPageInsteadOfScanningWholeParent() {
         var requests = 0
         val drive = CloudDrive(CloudDrive.P115, "UID=test", CloudTransport { url, _, _ ->
             requests++; response(args(url).getValue("offset").toInt(), 10001)
@@ -73,7 +96,9 @@ class CloudPaginationTest {
         assertEquals("pick-49", drive.find("/片名 49.mp4").pickCode)
         assertEquals(2, requests)
     }
-    @Test fun refreshAndExpiryInvalidateMetadataAndAccountsStaySeparate() {
+
+    @Test
+    fun refreshAndExpiryInvalidateMetadataAndAccountsStaySeparate() {
         var time = 0L
         val metadata = CloudMetadata { time }
         var requests = 0
@@ -90,7 +115,9 @@ class CloudPaginationTest {
         repeat(20_001) { metadata.put("/$it", CloudFile("$it", true, 0, "$it")) }
         assertNull(metadata.file("/0"))
     }
-    @Test fun malformedPaginationCannotSilentlyTruncateOrLoop() {
+
+    @Test
+    fun malformedPaginationCannotSilentlyTruncateOrLoop() {
         for (mode in 0..3) {
             val drive = CloudDrive(CloudDrive.P115, "UID=test", CloudTransport { url, _, _ ->
                 val offset = args(url).getValue("offset").toInt()
@@ -99,22 +126,31 @@ class CloudPaginationTest {
                     1 -> response(0, 100).also { it.json.put("offset", offset) } // Repeated page.
                     2 -> response(offset, 100, 0) // Empty intermediate page.
                     else -> response(offset, 100).also {
-                        it.json.getJSONArray("data").put(1, it.json.getJSONArray("data").getJSONObject(0))
+                        it.json.getJSONArray("data")
+                            .put(1, it.json.getJSONArray("data").getJSONObject(0))
                     }
                 }
             })
             drive.page("/")
-            try { drive.page("/", 48); fail("Accepted malformed page $mode") } catch (_: CloudFailure) {}
+            try {
+                drive.page("/", 48); fail("Accepted malformed page $mode")
+            } catch (_: CloudFailure) {
+            }
         }
     }
-    @Test fun actualReturnedCountDrivesOffsetAndEmptyFolderEndsImmediately() {
+
+    @Test
+    fun actualReturnedCountDrivesOffsetAndEmptyFolderEndsImmediately() {
         val drive = CloudDrive(CloudDrive.P115, "UID=test", CloudTransport { url, _, _ ->
             val offset = args(url).getValue("offset").toInt()
             response(offset, 5, 3)
         })
         assertEquals(3, drive.page("/").nextOffset)
         assertEquals(-1, drive.page("/", 3).nextOffset)
-        val empty = CloudDrive(CloudDrive.P115, "UID=test", CloudTransport { _, _, _ -> response(0, 0) }).page("/")
+        val empty = CloudDrive(
+            CloudDrive.P115,
+            "UID=test",
+            CloudTransport { _, _, _ -> response(0, 0) }).page("/")
         assertEquals(-1, empty.nextOffset); assertTrue(empty.files.isEmpty())
     }
 }

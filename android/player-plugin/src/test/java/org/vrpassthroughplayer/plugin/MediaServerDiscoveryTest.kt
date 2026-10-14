@@ -29,14 +29,23 @@ class MediaServerDiscoveryTest {
             }
         }
     }
-    @Test fun identifiesAllProvidersWithoutCredentialsOrPortGuessing() {
+
+    @Test
+    fun identifiesAllProvidersWithoutCredentialsOrPortGuessing() {
         for (provider in listOf("emby", "jellyfin", "stash", "xbvr")) scanner(provider).use {
             assertEquals(provider, it.identify("http://192.168.31.185:12345")?.provider)
         }
         scanner("other").use { assertNull(it.identify("http://192.168.31.185:9999")) }
-        scanner("locked").use { assertEquals("", it.identify("http://192.168.31.185:9999")?.provider) }
+        scanner("locked").use {
+            assertEquals(
+                "",
+                it.identify("http://192.168.31.185:9999")?.provider
+            )
+        }
     }
-    @Test fun subnetBoundsAndBroadcastValidation() {
+
+    @Test
+    fun subnetBoundsAndBroadcastValidation() {
         val small = MediaServerDiscovery.Subnet("192.168.31.185", 24)
         assertEquals("192.168.31.255", small.broadcast)
         assertEquals(254, small.hosts().size)
@@ -44,18 +53,35 @@ class MediaServerDiscoveryTest {
         val large = MediaServerDiscovery.Subnet("10.20.30.40", 16)
         assertTrue(large.limited); assertEquals(254, large.hosts().size)
         assertEquals("10.20.255.255", large.broadcast)
-        assertEquals("http://192.168.31.185:1234/emby", MediaServerDiscovery.advertised("http://192.168.31.185:1234/emby/", "192.168.31.185", small))
-        for (bad in listOf("https://evil.invalid/", "http://192.168.31.186/", "file:///etc/passwd", "http://user:pass@192.168.31.185/", "http://192.168.31.185/?key=secret"))
+        assertEquals(
+            "http://192.168.31.185:1234/emby",
+            MediaServerDiscovery.advertised(
+                "http://192.168.31.185:1234/emby/",
+                "192.168.31.185",
+                small
+            )
+        )
+        for (bad in listOf(
+            "https://evil.invalid/",
+            "http://192.168.31.186/",
+            "file:///etc/passwd",
+            "http://user:pass@192.168.31.185/",
+            "http://192.168.31.185/?key=secret"
+        ))
             assertNull(MediaServerDiscovery.advertised(bad, "192.168.31.185", small))
     }
-    @Test fun closedScanCannotMakeRequests() {
+
+    @Test
+    fun closedScanCannotMakeRequests() {
         var requests = 0
         val scanner = MediaServerDiscovery { requests++; throw IllegalStateException() }
         scanner.close()
         assertNull(scanner.identify("http://192.168.31.185:9999"))
         assertEquals(0, requests)
     }
-    @Test fun optionalRealServers() {
+
+    @Test
+    fun optionalRealServers() {
         val host = System.getenv("VRPP_DISCOVERY_TEST_HOST").orEmpty()
         assumeTrue(host.isNotBlank())
         MediaServerDiscovery().use {
@@ -65,7 +91,9 @@ class MediaServerDiscoveryTest {
         MediaServerDiscovery().use {
             val found = java.util.concurrent.CopyOnWriteArrayList<MediaServerDiscovery.Found>()
             // Restrict the integration test to the explicitly supplied machine.
-            assertEquals(2, it.scan(MediaServerDiscovery.Subnet(host, 32)) { server -> found.add(server) })
+            assertEquals(
+                2,
+                it.scan(MediaServerDiscovery.Subnet(host, 32)) { server -> found.add(server) })
             assertEquals(setOf("emby", "stash"), found.map { server -> server.provider }.toSet())
             assertEquals(2, found.map { server -> server.address }.distinct().size)
         }

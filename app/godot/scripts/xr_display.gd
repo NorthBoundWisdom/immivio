@@ -16,14 +16,22 @@ var flat_msaa_3d := Viewport.MSAA_4X
 var scenery: Sky
 var scenery_rotation := Vector3.ZERO
 
+
 func set_scenery(value: Sky, yaw_degrees: float = 0.0) -> void:
 	scenery = value
 	# PanoramaSkyMaterial puts the texture seam along the viewer's default -Z axis.
 	# Treat 0 degrees as the image centre facing forward; keep user rotation relative to it.
 	scenery_rotation = Vector3(0, deg_to_rad(yaw_degrees) + PI, 0)
-	if environment: _set_background(applied_passthrough)
+	if environment:
+		_set_background(applied_passthrough)
 
-func configure(target_viewport: Viewport, target_environment: Environment, interface: XRInterface, desktop_preview: bool) -> bool:
+
+func configure(
+	target_viewport: Viewport,
+	target_environment: Environment,
+	interface: XRInterface,
+	desktop_preview: bool
+) -> bool:
 	viewport = target_viewport
 	environment = target_environment
 	xr = interface
@@ -46,7 +54,15 @@ func configure(target_viewport: Viewport, target_environment: Environment, inter
 		return false
 	viewport.use_xr = true
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
-	for event in ["session_begun", "session_focussed", "session_visible", "session_synchronized", "session_stopping", "session_loss_pending", "instance_exiting"]:
+	for event in [
+		"session_begun",
+		"session_focussed",
+		"session_visible",
+		"session_synchronized",
+		"session_stopping",
+		"session_loss_pending",
+		"instance_exiting"
+	]:
 		if xr.has_signal(event):
 			xr.connect(event, _on_session_event.bind(event))
 	if xr.has_signal("user_presence_changed"):
@@ -56,13 +72,23 @@ func configure(target_viewport: Viewport, target_environment: Environment, inter
 	status_changed.emit()
 	return true
 
+
 func supports_passthrough() -> bool:
-	return not preview and xr != null and xr.is_initialized() and XRInterface.XR_ENV_BLEND_MODE_ALPHA_BLEND in xr.get_supported_environment_blend_modes()
+	return (
+		not preview
+		and xr != null
+		and xr.is_initialized()
+		and XRInterface.XR_ENV_BLEND_MODE_ALPHA_BLEND in xr.get_supported_environment_blend_modes()
+	)
+
 
 func set_flat_surface_visible(flat_visible: bool) -> void:
-	if not viewport: return
+	if not viewport:
+		return
 	var desired: int = flat_msaa_3d if flat_visible else msaa_3d
-	if viewport.msaa_3d != desired: viewport.msaa_3d = desired
+	if viewport.msaa_3d != desired:
+		viewport.msaa_3d = desired
+
 
 func set_passthrough(enabled: bool) -> bool:
 	if enabled and not supports_passthrough():
@@ -73,21 +99,31 @@ func set_passthrough(enabled: bool) -> bool:
 	requested_passthrough = enabled
 	return _apply_requested_mode()
 
+
 func _apply_requested_mode() -> bool:
 	if xr != null and xr.is_initialized() and not preview:
-		var mode := XRInterface.XR_ENV_BLEND_MODE_ALPHA_BLEND if requested_passthrough else XRInterface.XR_ENV_BLEND_MODE_OPAQUE
+		var mode := (
+			XRInterface.XR_ENV_BLEND_MODE_ALPHA_BLEND
+			if requested_passthrough
+			else XRInterface.XR_ENV_BLEND_MODE_OPAQUE
+		)
 		xr.environment_blend_mode = mode
 		if xr.environment_blend_mode != mode:
 			error_code = "XR_BLEND_MODE_REJECTED"
-			DiagnosticLog.record("display_mode_rejected", {"requested": requested_passthrough, "reason": error_code})
+			DiagnosticLog.record(
+				"display_mode_rejected", {"requested": requested_passthrough, "reason": error_code}
+			)
 			status_changed.emit()
 			return false
 	_set_background(requested_passthrough)
 	applied_passthrough = requested_passthrough
 	error_code = ""
-	DiagnosticLog.record("display_mode_applied", {"passthrough": applied_passthrough, "session": session_state})
+	DiagnosticLog.record(
+		"display_mode_applied", {"passthrough": applied_passthrough, "session": session_state}
+	)
 	status_changed.emit()
 	return true
+
 
 func _set_background(transparent: bool) -> void:
 	viewport.transparent_bg = transparent
@@ -95,8 +131,13 @@ func _set_background(transparent: bool) -> void:
 	environment.sky_rotation = scenery_rotation
 	# Meta reconstruction passthrough needs a transparent environment color too.
 	# BG_CLEAR_COLOR inherits the project's opaque dark clear color.
-	environment.background_mode = Environment.BG_SKY if scenery and not transparent else Environment.BG_COLOR
-	environment.background_color = Color(0, 0, 0, 0) if transparent else Color(0.035, 0.045, 0.06, 1.0)
+	environment.background_mode = (
+		Environment.BG_SKY if scenery and not transparent else Environment.BG_COLOR
+	)
+	environment.background_color = (
+		Color(0, 0, 0, 0) if transparent else Color(0.035, 0.045, 0.06, 1.0)
+	)
+
 
 func _on_session_event(event: String) -> void:
 	session_state = event
@@ -107,21 +148,29 @@ func _on_session_event(event: String) -> void:
 		_apply_performance_levels()
 	status_changed.emit()
 
+
 # Alpha passthrough keeps RVM inference on the GPU continuously. Without a request
 # the Quest runtime chooses lower CPU/GPU/memory levels for this app.
 var performance_levels := "default"
 # Fixed foveated rendering for the eye buffers (0 off .. 3 high); the 8K video is sampled
 # for every eye pixel at the display rate, so the periphery is a large bandwidth cost.
 var foveation_level := 0
+
+
 func set_foveation(level: int) -> void:
 	foveation_level = clampi(level, 0, 3)
 	_apply_foveation()
+
 
 func _apply_foveation() -> void:
 	if xr is OpenXRInterface and xr.is_initialized() and "foveation_level" in xr:
 		xr.foveation_dynamic = false
 		xr.foveation_level = foveation_level
-		DiagnosticLog.record("xr_foveation", {"level": foveation_level, "applied": xr.foveation_level})
+		DiagnosticLog.record(
+			"xr_foveation", {"level": foveation_level, "applied": xr.foveation_level}
+		)
+
+
 func _apply_performance_levels() -> void:
 	if not (xr is OpenXRInterface) or not xr.has_method("set_gpu_level"):
 		performance_levels = "unsupported"
@@ -130,10 +179,14 @@ func _apply_performance_levels() -> void:
 	xr.set_gpu_level(OpenXRInterface.PERF_SETTINGS_LEVEL_SUSTAINED_HIGH)
 	performance_levels = "sustained_high"
 	_apply_foveation()
-	DiagnosticLog.record("xr_performance_levels", {"cpu": performance_levels, "gpu": performance_levels})
+	DiagnosticLog.record(
+		"xr_performance_levels", {"cpu": performance_levels, "gpu": performance_levels}
+	)
+
 
 func _on_presence_changed(present: bool) -> void:
 	DiagnosticLog.record("user_presence_changed", {"present": present})
+
 
 func capabilities() -> Dictionary:
 	var report := {
@@ -152,7 +205,8 @@ func capabilities() -> Dictionary:
 		"render_scale": render_scale,
 		"viewport_msaa_3d": viewport.msaa_3d if viewport else Viewport.MSAA_DISABLED,
 		# Vendors can shrink the actual render region without changing the allocated eye buffers.
-		"meta_dynamic_resolution_enabled": bool(ProjectSettings.get_setting("xr/openxr/extensions/meta/dynamic_resolution", true)),
+		"meta_dynamic_resolution_enabled":
+		bool(ProjectSettings.get_setting("xr/openxr/extensions/meta/dynamic_resolution", true)),
 		"render_target_size_scope": "allocated_eye_buffer",
 		"viewport_scaling_3d_scale": viewport.scaling_3d_scale if viewport else 1.0,
 		"captured_ticks_usec": Time.get_ticks_usec(),
@@ -173,7 +227,11 @@ func capabilities() -> Dictionary:
 			if head_pose != null:
 				report["head_has_tracking_data"] = head_pose.has_tracking_data
 				report["head_tracking_confidence"] = head_pose.tracking_confidence
-				report["head_position"] = [head_pose.transform.origin.x, head_pose.transform.origin.y, head_pose.transform.origin.z]
+				report["head_position"] = [
+					head_pose.transform.origin.x,
+					head_pose.transform.origin.y,
+					head_pose.transform.origin.z
+				]
 		report["actual_blend_mode"] = xr.environment_blend_mode
 		report["eye_origins"] = []
 		report["eye_quaternions"] = []
@@ -181,7 +239,9 @@ func capabilities() -> Dictionary:
 			var pose := xr.get_transform_for_view(eye, Transform3D.IDENTITY)
 			var orientation := pose.basis.get_rotation_quaternion()
 			report["eye_origins"].append([pose.origin.x, pose.origin.y, pose.origin.z])
-			report["eye_quaternions"].append([orientation.x, orientation.y, orientation.z, orientation.w])
+			report["eye_quaternions"].append(
+				[orientation.x, orientation.y, orientation.z, orientation.w]
+			)
 		report["supported_blend_modes"] = xr.get_supported_environment_blend_modes()
 		if xr is OpenXRInterface:
 			report["applied_render_scale"] = xr.render_target_size_multiplier
@@ -194,4 +254,3 @@ func capabilities() -> Dictionary:
 		report["fb_passthrough_started"] = fb.is_passthrough_started()
 		report["color_passthrough_capability"] = fb.has_color_passthrough_capability()
 	return report
-

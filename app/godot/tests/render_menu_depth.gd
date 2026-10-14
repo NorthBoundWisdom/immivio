@@ -6,12 +6,16 @@ var failures: Array[String] = []
 var checks := 0
 var output := OS.get_environment("QUEST_MENU_DEPTH_DIR")
 
+
 func _initialize() -> void:
 	_run.call_deferred()
 
+
 func check(ok: bool, label: String) -> void:
 	checks += 1
-	if not ok: failures.append(label)
+	if not ok:
+		failures.append(label)
+
 
 func capture(viewport: SubViewport, label: String) -> Image:
 	await process_frame
@@ -20,11 +24,14 @@ func capture(viewport: SubViewport, label: String) -> Image:
 	var image := viewport.get_texture().get_image()
 	if not output.is_empty():
 		DirAccess.make_dir_recursive_absolute(output)
-		if image.save_png(output.path_join(label + ".png")) != OK: failures.append("Save " + label)
+		if image.save_png(output.path_join(label + ".png")) != OK:
+			failures.append("Save " + label)
 	return image
+
 
 func difference(a: Color, b: Color) -> float:
 	return Vector3(a.r - b.r, a.g - b.g, a.b - b.b).length()
+
 
 func power_pixels(image: Image, camera: Camera3D, pill: Node3D, charging: bool) -> int:
 	# Inspect the actual lightning artwork, excluding the transparent texture margins.
@@ -32,14 +39,27 @@ func power_pixels(image: Image, camera: Camera3D, pill: Node3D, charging: bool) 
 	var top_left := camera.unproject_position(pill._bolt.to_global(Vector3(-half.x, half.y, 0)))
 	var bottom_right := camera.unproject_position(pill._bolt.to_global(Vector3(half.x, -half.y, 0)))
 	var pixels := 0
-	check(top_left.x >= 0 and top_left.y >= 0 and bottom_right.x < image.get_width() and bottom_right.y < image.get_height(), "Power glyph fits depth fixture viewport")
+	check(
+		(
+			top_left.x >= 0
+			and top_left.y >= 0
+			and bottom_right.x < image.get_width()
+			and bottom_right.y < image.get_height()
+		),
+		"Power glyph fits depth fixture viewport"
+	)
 	for y in range(ceili(top_left.y), floori(bottom_right.y) + 1):
 		for x in range(ceili(top_left.x), floori(bottom_right.x) + 1):
 			var color := image.get_pixel(x, y)
-			var matches := (color.g > 0.7 and color.b > 0.5 and color.g - color.r > 0.15) if charging else (color.r > 0.9 and color.g > 0.6 and color.r - color.b > 0.35)
+			var matches := (
+				(color.g > 0.7 and color.b > 0.5 and color.g - color.r > 0.15)
+				if charging
+				else (color.r > 0.9 and color.g > 0.6 and color.r - color.b > 0.35)
+			)
 			if matches:
 				pixels += 1
 	return pixels
+
 
 func _run() -> void:
 	var viewport := SubViewport.new()
@@ -62,7 +82,8 @@ func _run() -> void:
 	menu._label("Menu depth", Vector3(0, -0.08, 0.006), 24)
 	menu._place_device_status(Vector2(0, -0.27))
 	menu.device_status.set_process(false)
-	menu.device_status.status_provider = func(): return {"level": 75, "charging": true, "clock24": true}
+	menu.device_status.status_provider = func():
+		return {"level": 75, "charging": true, "clock24": true}
 	menu.device_status.clock_provider = func(): return {"hour": 12, "minute": 34}
 	menu.device_status.refresh(true)
 	var texture_image := Image.create(2, 2, false, Image.FORMAT_RGB8)
@@ -77,17 +98,31 @@ func _run() -> void:
 	menu.add_child(thumbnail)
 	menu.visible = true
 	var menu_only := await capture(viewport, "menu")
-	check(power_pixels(menu_only, camera, menu.device_status, true) >= 30, "Charging lightning has visible green pixels at menu scale")
-	menu.device_status.status_provider = func(): return {"level": 75, "charging": false, "plugged": true, "clock24": true}
+	check(
+		power_pixels(menu_only, camera, menu.device_status, true) >= 30,
+		"Charging lightning has visible green pixels at menu scale"
+	)
+	menu.device_status.status_provider = func():
+		return {"level": 75, "charging": false, "plugged": true, "clock24": true}
 	menu.device_status.refresh(true)
 	var power_only := await capture(viewport, "power-connected")
-	check(power_pixels(power_only, camera, menu.device_status, false) >= 30, "Connected but not charging lightning has visible amber pixels")
-	menu.device_status.status_provider = func(): return {"level": 75, "charging": false, "plugged": false, "clock24": true}
+	check(
+		power_pixels(power_only, camera, menu.device_status, false) >= 30,
+		"Connected but not charging lightning has visible amber pixels"
+	)
+	menu.device_status.status_provider = func():
+		return {"level": 75, "charging": false, "plugged": false, "clock24": true}
 	menu.device_status.refresh(true)
 	var unplugged := await capture(viewport, "power-unplugged")
-	check(power_pixels(unplugged, camera, menu.device_status, true) == 0 and power_pixels(unplugged, camera, menu.device_status, false) == 0,
-		"Unplugging clears the lightning pixels")
-	menu.device_status.status_provider = func(): return {"level": 75, "charging": true, "plugged": true, "clock24": true}
+	check(
+		(
+			power_pixels(unplugged, camera, menu.device_status, true) == 0
+			and power_pixels(unplugged, camera, menu.device_status, false) == 0
+		),
+		"Unplugging clears the lightning pixels"
+	)
+	menu.device_status.status_provider = func():
+		return {"level": 75, "charging": true, "plugged": true, "clock24": true}
 	menu.device_status.refresh(true)
 	var occluder := MeshInstance3D.new()
 	occluder.mesh = BoxMesh.new()
@@ -105,15 +140,24 @@ func _run() -> void:
 	var covered := 0
 	for y in range(115, 485):
 		for x in range(115, 485):
-			if difference(front.get_pixel(x, y), model_only.get_pixel(x, y)) < 0.02: covered += 1
-	check(covered > 370 * 370 * 0.99, "Near model occludes panel, buttons, labels, icons, thumbnail and status pill")
+			if difference(front.get_pixel(x, y), model_only.get_pixel(x, y)) < 0.02:
+				covered += 1
+	check(
+		covered > 370 * 370 * 0.99,
+		"Near model occludes panel, buttons, labels, icons, thumbnail and status pill"
+	)
 	var footer_pixel: Vector2i = camera.unproject_position(menu.device_status.global_position)
-	check(difference(front.get_pixelv(footer_pixel), model_only.get_pixelv(footer_pixel)) < 0.02, "Near model also occludes relocated footer status")
+	check(
+		difference(front.get_pixelv(footer_pixel), model_only.get_pixelv(footer_pixel)) < 0.02,
+		"Near model also occludes relocated footer status"
+	)
 	menu.visible = true
 	occluder.position.z = -0.3
 	var behind := await capture(viewport, "behind")
-	check(difference(behind.get_pixel(300, 300), menu_only.get_pixel(300, 300)) < 0.04,
-		"Far model stays behind the panel")
+	check(
+		difference(behind.get_pixel(300, 300), menu_only.get_pixel(300, 300)) < 0.04,
+		"Far model stays behind the panel"
+	)
 	occluder.free()
 	# Exercise the actual controller geometry/material, not just a solid depth fixture.
 	var visuals := Visuals.new()
@@ -134,8 +178,12 @@ func _run() -> void:
 			var reference := controller_only.get_pixel(x, y)
 			if reference.r > 0.3:
 				pixels += 1
-				if difference(reference, controller_menu.get_pixel(x, y)) < 0.02: preserved += 1
-	check(pixels > 1000 and preserved > pixels * 0.99, "Actual controller remains visible in front of menu")
+				if difference(reference, controller_menu.get_pixel(x, y)) < 0.02:
+					preserved += 1
+	check(
+		pixels > 1000 and preserved > pixels * 0.99,
+		"Actual controller remains visible in front of menu"
+	)
 	controller.free()
 	# Production media surfaces draw before the menu and do not write depth, even at 0.8 m.
 	var media := MeshInstance3D.new()
@@ -147,20 +195,33 @@ func _run() -> void:
 		var material := ShaderMaterial.new()
 		material.shader = load("res://shaders/" + shader_name + ".gdshader")
 		material.render_priority = -10
-		material.set_shader_parameter("photo_texture" if shader_name == "photo" else "color_texture", texture)
+		material.set_shader_parameter(
+			"photo_texture" if shader_name == "photo" else "color_texture", texture
+		)
 		material.set_shader_parameter("alpha_enabled", false)
 		material.set_shader_parameter("source_size", Vector2(2, 2))
 		media.material_override = material
 		var over_media := await capture(viewport, shader_name)
-		check(difference(over_media.get_pixel(300, 300), menu_only.get_pixel(300, 300)) < 0.04,
-			"Menu stays above near " + shader_name)
+		check(
+			difference(over_media.get_pixel(300, 300), menu_only.get_pixel(300, 300)) < 0.04,
+			"Menu stays above near " + shader_name
+		)
 	media.free()
 	var ray_origin := Vector3(0, 0.1, 0.6)
-	check(menu.press_pointer("right_hand", ray_origin, Vector3.FORWARD, true), "Ray still selects menu")
+	check(
+		menu.press_pointer("right_hand", ray_origin, Vector3.FORWARD, true),
+		"Ray still selects menu"
+	)
 	var pointer := await capture(viewport, "pointer")
-	var dot: Vector2i = camera.unproject_position(menu.to_global(menu._pointers.right_hand.dot.position))
-	check(pointer.get_pixelv(dot).r > 0.8 and pointer.get_pixelv(dot).g > 0.4, "Pointer remains visible over menu")
+	var dot: Vector2i = camera.unproject_position(
+		menu.to_global(menu._pointers.right_hand.dot.position)
+	)
+	check(
+		pointer.get_pixelv(dot).r > 0.8 and pointer.get_pixelv(dot).g > 0.4,
+		"Pointer remains visible over menu"
+	)
 	viewport.free()
-	for failure in failures: push_error(failure)
+	for failure in failures:
+		push_error(failure)
 	print("Menu depth pixels: %d checks, %d failures" % [checks, failures.size()])
 	quit(0 if failures.is_empty() else 1)

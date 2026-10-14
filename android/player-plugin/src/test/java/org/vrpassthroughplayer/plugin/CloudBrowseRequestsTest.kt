@@ -9,7 +9,8 @@ import java.util.concurrent.TimeUnit
 import java.util.Collections
 
 class CloudBrowseRequestsTest {
-    @Test fun switchingDirectoryDisconnectsOldRequestAndOnlyNewPageIsEmitted() {
+    @Test
+    fun switchingDirectoryDisconnectsOldRequestAndOnlyNewPageIsEmitted() {
         val requests = CloudBrowseRequests()
         val started = CountDownLatch(1)
         val disconnected = CountDownLatch(1)
@@ -18,12 +19,17 @@ class CloudBrowseRequestsTest {
         val connection = object : HttpURLConnection(URL("https://webapi.115.com/files")) {
             override fun connect() {}
             override fun usingProxy() = false
-            override fun disconnect() { disconnected.countDown() }
+            override fun disconnect() {
+                disconnected.countDown()
+            }
         }
         try {
             requests.submit(1, { cancellation ->
                 cancellation.attach(connection); started.countDown()
-                try { disconnected.await(5, TimeUnit.SECONDS) } catch (_: InterruptedException) {}
+                try {
+                    disconnected.await(5, TimeUnit.SECONDS)
+                } catch (_: InterruptedException) {
+                }
                 "obsolete"
             }, { id, _ -> emitted.add(id) })
             assertTrue(started.await(5, TimeUnit.SECONDS))
@@ -32,18 +38,27 @@ class CloudBrowseRequestsTest {
             assertTrue(disconnected.await(5, TimeUnit.SECONDS))
             assertTrue(done.await(5, TimeUnit.SECONDS))
             assertEquals(listOf(2), emitted)
-        } finally { requests.close() }
+        } finally {
+            requests.close()
+        }
     }
-    @Test fun cancelledRequestCannotAttachAnotherConnection() {
+
+    @Test
+    fun cancelledRequestCannotAttachAnotherConnection() {
         val cancellation = CloudCancellation()
         var disconnected = false
         cancellation.cancel()
         val connection = object : HttpURLConnection(URL("https://webapi.115.com/files")) {
             override fun connect() {}
             override fun usingProxy() = false
-            override fun disconnect() { disconnected = true }
+            override fun disconnect() {
+                disconnected = true
+            }
         }
-        try { cancellation.attach(connection); fail() } catch (_: CloudFailure) {}
+        try {
+            cancellation.attach(connection); fail()
+        } catch (_: CloudFailure) {
+        }
         assertTrue(disconnected)
     }
 }

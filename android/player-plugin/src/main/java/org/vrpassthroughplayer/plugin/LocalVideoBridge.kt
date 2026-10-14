@@ -38,7 +38,12 @@ internal class LocalVideoBridge(
     private val sessions = ConcurrentHashMap<Int, Session>()
     private var foreground = true // UI thread only
 
-    private class Session(val scope: MediaSessionGate.Scope, val textureId: Int, val uri: String, val startMs: Int) {
+    private class Session(
+        val scope: MediaSessionGate.Scope,
+        val textureId: Int,
+        val uri: String,
+        val startMs: Int
+    ) {
         val id = scope.decoderId
         val disposing = AtomicBoolean(false)
         val pendingFrames = AtomicInteger(0)
@@ -73,10 +78,16 @@ internal class LocalVideoBridge(
         sessions[id] = session
         ui.post {
             sessions.values.filter { it.id != id && !gate.accepts(it.id) }.forEach(::dispose)
-            if (!active(session)) { dispose(session); return@post }
+            if (!active(session)) {
+                dispose(session); return@post
+            }
             val source = Uri.parse(uri)
-            if (textureId <= 0 || startMs < 0) { fail(session, "INVALID_MEDIA_ARGUMENT"); return@post }
-            if (source.scheme !in setOf("content", "file")) { fail(session, "LOCAL_URI_REQUIRED"); return@post }
+            if (textureId <= 0 || startMs < 0) {
+                fail(session, "INVALID_MEDIA_ARGUMENT"); return@post
+            }
+            if (source.scheme !in setOf("content", "file")) {
+                fail(session, "LOCAL_URI_REQUIRED"); return@post
+            }
             if (source.scheme == "file" && !File(source.path ?: "").canRead()) {
                 fail(session, "FILE_UNREADABLE"); return@post
             }
@@ -108,14 +119,22 @@ internal class LocalVideoBridge(
     fun pause() {
         ui.post {
             foreground = false
-            sessions.values.forEach { if (active(it)) { it.player?.playWhenReady = false; state(it) } }
+            sessions.values.forEach {
+                if (active(it)) {
+                    it.player?.playWhenReady = false; state(it)
+                }
+            }
         }
     }
 
     fun resume() {
         ui.post {
             foreground = true
-            sessions.values.forEach { if (active(it)) { it.player?.playWhenReady = it.requestedPlay; state(it) } }
+            sessions.values.forEach {
+                if (active(it)) {
+                    it.player?.playWhenReady = it.requestedPlay; state(it)
+                }
+            }
         }
     }
 
@@ -134,14 +153,20 @@ internal class LocalVideoBridge(
     private fun active(session: Session) = gate.accepts(session.id) && !session.disposing.get()
 
     private fun createSurface(session: Session) {
-        if (!active(session)) { dispose(session); return }
+        if (!active(session)) {
+            dispose(session); return
+        }
         val current = EGL14.eglGetCurrentContext()
-        if (current == EGL14.EGL_NO_CONTEXT) { fail(session, "GL_CONTEXT_UNAVAILABLE"); return }
+        if (current == EGL14.EGL_NO_CONTEXT) {
+            fail(session, "GL_CONTEXT_UNAVAILABLE"); return
+        }
         val extensionCount = IntArray(1)
         GLES30.glGetIntegerv(GLES30.GL_NUM_EXTENSIONS, extensionCount, 0)
         if ((0 until extensionCount[0]).none {
-            GLES30.glGetStringi(GLES30.GL_EXTENSIONS, it) == "GL_OES_EGL_image_external_essl3"
-        }) { fail(session, "EXTERNAL_OES_UNAVAILABLE"); return }
+                GLES30.glGetStringi(GLES30.GL_EXTENSIONS, it) == "GL_OES_EGL_image_external_essl3"
+            }) {
+            fail(session, "EXTERNAL_OES_UNAVAILABLE"); return
+        }
         try {
             session.ownerContext = current
             // Godot owns and deletes the texture ID. Do not detach/delete it here.
@@ -155,10 +180,14 @@ internal class LocalVideoBridge(
                 session.surface = Surface(texture)
             }
             ui.post {
-                if (!active(session)) { dispose(session); return@post }
+                if (!active(session)) {
+                    dispose(session); return@post
+                }
                 createPlayer(session)
             }
-        } catch (_: Exception) { fail(session, "SURFACE_CREATE_FAILED") }
+        } catch (_: Exception) {
+            fail(session, "SURFACE_CREATE_FAILED")
+        }
     }
 
     private fun createPlayer(session: Session) {
@@ -170,26 +199,41 @@ internal class LocalVideoBridge(
                 override fun onEvents(player: Player, events: Player.Events) {
                     if (active(session)) state(session)
                 }
+
                 override fun onVideoSizeChanged(videoSize: VideoSize) {
-                    event("media_format", session, JSONObject()
-                        .put("width", videoSize.width).put("height", videoSize.height)
-                        .put("pixel_aspect", videoSize.pixelWidthHeightRatio)
-                        .put("unapplied_rotation_degrees", videoSize.unappliedRotationDegrees))
+                    event(
+                        "media_format", session, JSONObject()
+                            .put("width", videoSize.width).put("height", videoSize.height)
+                            .put("pixel_aspect", videoSize.pixelWidthHeightRatio)
+                            .put("unapplied_rotation_degrees", videoSize.unappliedRotationDegrees)
+                    )
                 }
+
                 override fun onPlayerError(error: PlaybackException) {
                     fail(session, error.errorCodeName)
                 }
             })
             player.addAnalyticsListener(object : AnalyticsListener {
-                override fun onVideoDecoderInitialized(eventTime: AnalyticsListener.EventTime,
-                    decoderName: String, initializedTimestampMs: Long, initializationDurationMs: Long) {
-                    event("media_codec", session, JSONObject().put("decoder", decoderName)
-                        .put("initialization_ms", initializationDurationMs))
+                override fun onVideoDecoderInitialized(
+                    eventTime: AnalyticsListener.EventTime,
+                    decoderName: String,
+                    initializedTimestampMs: Long,
+                    initializationDurationMs: Long
+                ) {
+                    event(
+                        "media_codec", session, JSONObject().put("decoder", decoderName)
+                            .put("initialization_ms", initializationDurationMs)
+                    )
                 }
-                override fun onDroppedVideoFrames(eventTime: AnalyticsListener.EventTime,
-                    droppedFrames: Int, elapsedMs: Long) {
-                    event("media_codec", session, JSONObject().put("dropped_frames", droppedFrames)
-                        .put("elapsed_ms", elapsedMs))
+
+                override fun onDroppedVideoFrames(
+                    eventTime: AnalyticsListener.EventTime,
+                    droppedFrames: Int, elapsedMs: Long
+                ) {
+                    event(
+                        "media_codec", session, JSONObject().put("dropped_frames", droppedFrames)
+                            .put("elapsed_ms", elapsedMs)
+                    )
                 }
             })
             player.setVideoSurface(session.surface)
@@ -197,7 +241,9 @@ internal class LocalVideoBridge(
             player.prepare()
             player.playWhenReady = foreground && session.requestedPlay
             state(session)
-        } catch (_: Exception) { fail(session, "PLAYER_PREPARE_FAILED") }
+        } catch (_: Exception) {
+            fail(session, "PLAYER_PREPARE_FAILED")
+        }
     }
 
     /** Godot GL callback is after drawing; its signal is applied before the next draw. */
@@ -218,38 +264,56 @@ internal class LocalVideoBridge(
                     texture.getTransformMatrix(matrix)
                     session.frameCounter += 1
                     session.coalescedNotifications += (pending - 1).coerceAtLeast(0)
-                    event("media_frame", session, JSONObject().put("frame_counter", session.frameCounter)
-                        .put("surface_timestamp_ns", texture.timestamp)
-                        .put("transform", JSONArray(matrix.toList()))
-                        .put("coalesced_notifications", session.coalescedNotifications)
-                        .put("timestamp_contract", "SurfaceTexture timestamp; not a guaranteed source PTS"))
+                    event(
+                        "media_frame",
+                        session,
+                        JSONObject().put("frame_counter", session.frameCounter)
+                            .put("surface_timestamp_ns", texture.timestamp)
+                            .put("transform", JSONArray(matrix.toList()))
+                            .put("coalesced_notifications", session.coalescedNotifications)
+                            .put(
+                                "timestamp_contract",
+                                "SurfaceTexture timestamp; not a guaranteed source PTS"
+                            )
+                    )
                 }
-            } catch (_: Exception) { fail(session, "SURFACE_UPDATE_FAILED") }
+            } catch (_: Exception) {
+                fail(session, "SURFACE_UPDATE_FAILED")
+            }
         }
     }
 
     private fun state(session: Session) {
         val player = session.player ?: return
         val duration = player.duration
-        event("media_state", session, JSONObject()
-            .put("state", when (player.playbackState) {
-                Player.STATE_BUFFERING -> "buffering"
-                Player.STATE_READY -> "ready"
-                Player.STATE_ENDED -> "ended"
-                else -> "idle"
-            }).put("playing", player.isPlaying).put("requested_play", session.requestedPlay)
-            .put("foreground", foreground).put("position_ms", player.currentPosition)
-            .put("duration_ms", if (duration == C.TIME_UNSET) -1 else duration)
-            .put("start_position_ms", session.startMs)
-            .put("clock", "Media3 playback position; controlled AudioTrack clock not implemented")
-            .put("backend", "Media3_C03_direct_OES"))
+        event(
+            "media_state", session, JSONObject()
+                .put(
+                    "state", when (player.playbackState) {
+                        Player.STATE_BUFFERING -> "buffering"
+                        Player.STATE_READY -> "ready"
+                        Player.STATE_ENDED -> "ended"
+                        else -> "idle"
+                    }
+                ).put("playing", player.isPlaying).put("requested_play", session.requestedPlay)
+                .put("foreground", foreground).put("position_ms", player.currentPosition)
+                .put("duration_ms", if (duration == C.TIME_UNSET) -1 else duration)
+                .put("start_position_ms", session.startMs)
+                .put(
+                    "clock",
+                    "Media3 playback position; controlled AudioTrack clock not implemented"
+                )
+                .put("backend", "Media3_C03_direct_OES")
+        )
     }
 
     private fun event(name: String, session: Session, fields: JSONObject) {
-        if (active(session)) emit(name, session.id, fields.put("session_id", session.id)
-            .put("logical_session_id", session.scope.logicalSessionId)
-            .put("generation", session.scope.generation)
-            .put("source_pts_verified", false).put("immutable_color_frame", false).toString())
+        if (active(session)) emit(
+            name, session.id, fields.put("session_id", session.id)
+                .put("logical_session_id", session.scope.logicalSessionId)
+                .put("generation", session.scope.generation)
+                .put("source_pts_verified", false).put("immutable_color_frame", false).toString()
+        )
     }
 
     private fun fail(session: Session, code: String) {
@@ -262,7 +326,9 @@ internal class LocalVideoBridge(
         if (!session.disposing.compareAndSet(false, true)) return
         // Stop producer first, then release consumer. Never block the Godot GL thread on codec release.
         ui.post {
-            try { session.player?.release() } catch (error: Exception) {
+            try {
+                session.player?.release()
+            } catch (error: Exception) {
                 Log.w("VRPassthroughPlayer", "Player release failed", error)
             } finally {
                 session.player = null
@@ -270,7 +336,9 @@ internal class LocalVideoBridge(
                 // when the renderer is already terminating and cannot run queued work.
                 synchronized(session.resourceLock) {
                     try {
-                        try { session.surface?.release() } catch (error: Exception) {
+                        try {
+                            session.surface?.release()
+                        } catch (error: Exception) {
                             Log.w("VRPassthroughPlayer", "Surface release failed", error)
                         }
                         try {
@@ -295,7 +363,9 @@ internal class LocalVideoBridge(
         val binding = IntArray(1)
         GLES30.glGetIntegerv(GLES30.GL_ACTIVE_TEXTURE, activeTexture, 0)
         GLES30.glGetIntegerv(GLES11Ext.GL_TEXTURE_BINDING_EXTERNAL_OES, binding, 0)
-        return try { operation() } finally {
+        return try {
+            operation()
+        } finally {
             GLES30.glActiveTexture(activeTexture[0])
             GLES30.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, binding[0])
         }

@@ -1,4 +1,5 @@
 """Independent text demux/decode checks; does not claim Android MPV/SMB execution."""
+
 import os
 from pathlib import Path
 import json
@@ -36,12 +37,18 @@ SAMI = """<SAMI>
 """
 CASES = {
     "srt": ("subrip", "1\n00:00:01,000 --> 00:00:02,000\n字幕测试\nSecond line\n"),
-    "vtt": ("webvtt", "WEBVTT\n\ncue-1\n00:00:01.000 --> 00:00:02.000 align:center\n字幕测试\nSecond line\n"),
+    "vtt": (
+        "webvtt",
+        "WEBVTT\n\ncue-1\n00:00:01.000 --> 00:00:02.000 align:center\n字幕测试\nSecond line\n",
+    ),
     "ass": ("ass", ASS),
     "ssa": ("ass", SSA),
     "smi": ("sami", SAMI),
     "sami": ("sami", SAMI),
-    "sub": ("microdvd", "{1}{1}25.0\n{25}{50}字幕测试|Second line\n{75}{100}Final cue\n"),
+    "sub": (
+        "microdvd",
+        "{1}{1}25.0\n{25}{50}字幕测试|Second line\n{75}{100}Final cue\n",
+    ),
 }
 
 
@@ -51,18 +58,59 @@ def main():
     for extension, (codec, content) in CASES.items():
         source = OUT / f"clip.{extension}"
         source.write_text(content, encoding="utf-8")
-        probe = subprocess.run([os.environ.get('THRU3D_FFPROBE', 'ffprobe'), "-v", "error", "-show_streams", "-of", "json", str(source)],
-                               check=True, capture_output=True)
+        probe = subprocess.run(
+            [
+                os.environ.get("THRU3D_FFPROBE", "ffprobe"),
+                "-v",
+                "error",
+                "-show_streams",
+                "-of",
+                "json",
+                str(source),
+            ],
+            check=True,
+            capture_output=True,
+        )
         streams = json.loads(probe.stdout)["streams"]
-        assert len(streams) == 1 and streams[0]["codec_name"] == codec, (extension, streams)
-        decoded = subprocess.run([os.environ.get('THRU3D_FFMPEG', 'ffmpeg'), "-v", "error", "-i", str(source), "-map", "0:s:0",
-                                  "-c:s", "srt", "-f", "srt", "pipe:1"], check=True, capture_output=True).stdout.decode("utf-8")
+        assert len(streams) == 1 and streams[0]["codec_name"] == codec, (
+            extension,
+            streams,
+        )
+        decoded = subprocess.run(
+            [
+                os.environ.get("THRU3D_FFMPEG", "ffmpeg"),
+                "-v",
+                "error",
+                "-i",
+                str(source),
+                "-map",
+                "0:s:0",
+                "-c:s",
+                "srt",
+                "-f",
+                "srt",
+                "pipe:1",
+            ],
+            check=True,
+            capture_output=True,
+        ).stdout.decode("utf-8")
         assert "字幕测试" in decoded and "Second line" in decoded, (extension, decoded)
         assert "00:00:01,000 --> 00:00:02,000" in decoded, (extension, decoded)
-        results.append({"extension": extension, "detected_codec": codec, "unicode_and_timing": "passed"})
-    report = {"state": "passed", "cases": results,
-              "scope": "Desktop FFmpeg demux/decode; Android MPV, SMB network, ASS styling and Quest composition not exercised"}
-    (OUT / "verification.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        results.append(
+            {
+                "extension": extension,
+                "detected_codec": codec,
+                "unicode_and_timing": "passed",
+            }
+        )
+    report = {
+        "state": "passed",
+        "cases": results,
+        "scope": "Desktop FFmpeg demux/decode; Android MPV, SMB network, ASS styling and Quest composition not exercised",
+    }
+    (OUT / "verification.json").write_text(
+        json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
     print(json.dumps(report, ensure_ascii=False))
 
 

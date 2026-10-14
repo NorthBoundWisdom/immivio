@@ -8,8 +8,17 @@ import org.godotengine.godot.xr.XRMode
  */
 class MpvDiagnosticActivity : GodotActivity() {
     override fun getCommandLine(): MutableList<String> {
-        val args = super.getCommandLine().filterNot { it == XRMode.OPENXR.cmdLineArg }.toMutableList()
-        args.addAll(listOf(XRMode.REGULAR.cmdLineArg, "--xr-mode", "off", "--", "--mpv-diagnostic-2d"))
+        val args =
+            super.getCommandLine().filterNot { it == XRMode.OPENXR.cmdLineArg }.toMutableList()
+        args.addAll(
+            listOf(
+                XRMode.REGULAR.cmdLineArg,
+                "--xr-mode",
+                "off",
+                "--",
+                "--mpv-diagnostic-2d"
+            )
+        )
         return args
     }
 }

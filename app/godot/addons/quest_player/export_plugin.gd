@@ -3,15 +3,20 @@ extends EditorPlugin
 
 var android_export: QuestPlayerExport
 
+
 func _enter_tree() -> void:
 	android_export = QuestPlayerExport.new()
 	add_export_plugin(android_export)
+
 
 func _exit_tree() -> void:
 	remove_export_plugin(android_export)
 	android_export = null
 
-class QuestPlayerExport extends EditorExportPlugin:
+
+class QuestPlayerExport:
+	extends EditorExportPlugin
+
 	func _get_name() -> String:
 		return "QuestPlayer"
 
@@ -19,9 +24,19 @@ class QuestPlayerExport extends EditorExportPlugin:
 		return platform is EditorExportPlatformAndroid
 
 	func _get_android_libraries(_platform: EditorExportPlatform, debug: bool) -> PackedStringArray:
-		return PackedStringArray(["res://addons/quest_player/bin/player-plugin-%s.aar" % ("debug" if debug else "release"), "res://addons/quest_player/bin/cloudcore.aar"])
+		return PackedStringArray(
+			[
+				(
+					"res://addons/quest_player/bin/player-plugin-%s.aar"
+					% ("debug" if debug else "release")
+				),
+				"res://addons/quest_player/bin/cloudcore.aar"
+			]
+		)
 
-	func _get_android_dependencies(_platform: EditorExportPlatform, _debug: bool) -> PackedStringArray:
+	func _get_android_dependencies(
+		_platform: EditorExportPlatform, _debug: bool
+	) -> PackedStringArray:
 		# The AAR embeds jcifs without the unused HTTP NTLM adapters. Resolve only
 		# its unchanged runtime dependencies here, never the original full jcifs jar.
 		var manifest := "res://addons/quest_player/bin/dependencies.json"

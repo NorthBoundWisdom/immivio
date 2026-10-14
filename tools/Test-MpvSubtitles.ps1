@@ -21,8 +21,8 @@ if ($LASTEXITCODE -ne 0) { throw 'PGS crop/premultiplied alpha/scale checks fail
 $env:QUEST_SUBTITLE_PREVIEW_DIR = Join-Path $output 'render'
 $stdout = Join-Path $workspace 'build\output\logs\mpv-subtitles-render.log'
 $stderr = Join-Path $workspace 'build\output\logs\mpv-subtitles-render-errors.log'
-$arguments = @('--xr-mode','off','--rendering-method','gl_compatibility','--rendering-driver','opengl3',
-    '--path',"$workspace\app\godot",'--script','res://tests/render_mpv_subtitles.gd')
+$arguments = @('--xr-mode', 'off', '--rendering-method', 'gl_compatibility', '--rendering-driver', 'opengl3',
+    '--path', "$workspace\app\godot", '--script', 'res://tests/render_mpv_subtitles.gd')
 $process = Start-Process -FilePath $env:GODOT_EXE -ArgumentList $arguments -WindowStyle Hidden -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
 if (-not $process.WaitForExit(60000)) { throw "Subtitle renderer remains active (PID $($process.Id)); inspect before retrying." }
 if ($process.ExitCode -ne 0) { throw 'Subtitle desktop rendering failed.' }

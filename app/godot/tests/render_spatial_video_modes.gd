@@ -5,12 +5,16 @@ const I18n := preload("res://scripts/i18n.gd")
 var failures: Array[String] = []
 var checks := 0
 
+
 func check(value: bool, message: String) -> void:
 	checks += 1
-	if not value: failures.append(message)
+	if not value:
+		failures.append(message)
+
 
 func _initialize() -> void:
 	call_deferred("_run")
+
 
 func _run() -> void:
 	var output := ProjectSettings.globalize_path("res://../../build/output/spatial-mode-ui/render")
@@ -23,9 +27,19 @@ func _run() -> void:
 	var camera := Camera3D.new()
 	camera.fov = 60
 	viewport.add_child(camera)
-	var state := {"has_video": true, "geometry": 0, "playing": true, "playback_state": "playing",
-		"spatial_video": true, "stereo": true, "title": "iPhone spatial video", "source_uri": "test.mov",
-		"position_ms": 2000, "duration_ms": 5000, "mode_lock": {"geometry": 1, "layout": 1, "depth": false}}
+	var state := {
+		"has_video": true,
+		"geometry": 0,
+		"playing": true,
+		"playback_state": "playing",
+		"spatial_video": true,
+		"stereo": true,
+		"title": "iPhone spatial video",
+		"source_uri": "test.mov",
+		"position_ms": 2000,
+		"duration_ms": 5000,
+		"mode_lock": {"geometry": 1, "layout": 1, "depth": false}
+	}
 	var menu := Menu.new()
 	menu.state_provider = func(): return state
 	camera.add_child(menu)
@@ -39,19 +53,40 @@ func _run() -> void:
 		await RenderingServer.frame_post_draw
 		var image := viewport.get_texture().get_image()
 		check(image.save_png(output.path_join(language + ".png")) == OK, "Save " + language)
-		check(not menu._buttons.any(func(b): return b.target == 112), language + " has no Auto 3D action")
-		check(menu._buttons.filter(func(b): return b.get("fixed_current", false)).size() == 2, language + " has two selected read-only tiles")
+		check(
+			not menu._buttons.any(func(b): return b.target == 112),
+			language + " has no Auto 3D action"
+		)
+		check(
+			menu._buttons.filter(func(b): return b.get("fixed_current", false)).size() == 2,
+			language + " has two selected read-only tiles"
+		)
 		for label in menu._labels:
 			if label.text.contains("MV-HEVC") or label.text == I18n.t("Mode fixed"):
-				var width := menu.ui_font().get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, label.font_size).x * label.pixel_size
-				check(width < (0.65 if label.text.contains("MV-HEVC") else 0.21), language + " header fits its column")
+				var width := (
+					(
+						menu
+						. ui_font()
+						. get_string_size(
+							label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, label.font_size
+						)
+						. x
+					)
+					* label.pixel_size
+				)
+				check(
+					width < (0.65 if label.text.contains("MV-HEVC") else 0.21),
+					language + " header fits its column"
+				)
 	menu.queue_free()
 	viewport.queue_free()
 	await process_frame
 	await _check_stereo_alpha(output)
 	print("Spatial mode render and stereo Alpha checks=%d failures=%d" % [checks, failures.size()])
-	for failure in failures: push_error(failure)
+	for failure in failures:
+		push_error(failure)
 	quit(0 if failures.is_empty() else 1)
+
 
 func _check_stereo_alpha(output: String) -> void:
 	var viewport := SubViewport.new()
@@ -69,11 +104,20 @@ func _check_stereo_alpha(output: String) -> void:
 	quad.mesh = QuadMesh.new()
 	quad.mesh.size = Vector2(2, 2)
 	viewport.add_child(quad)
-	var code := FileAccess.get_file_as_string("res://shaders/video_pair.gdshader") \
-		.replace('#include "res://shaders/video_coordinates.gdshaderinc"', FileAccess.get_file_as_string("res://shaders/video_coordinates.gdshaderinc")) \
-		.replace("varying flat int eye_index;", "uniform int test_eye = 0;\nuniform vec2 test_uv = vec2(0.5);\nvarying flat int eye_index;") \
-		.replace("eye_index = int(VIEW_INDEX);", "eye_index = test_eye;") \
-		.replace("vec2 shown_uv = eye_uv(UV, media_direction);", "vec2 shown_uv = test_uv;")
+	var code := (
+		FileAccess
+		. get_file_as_string("res://shaders/video_pair.gdshader")
+		. replace(
+			'#include "res://shaders/video_coordinates.gdshaderinc"',
+			FileAccess.get_file_as_string("res://shaders/video_coordinates.gdshaderinc")
+		)
+		. replace(
+			"varying flat int eye_index;",
+			"uniform int test_eye = 0;\nuniform vec2 test_uv = vec2(0.5);\nvarying flat int eye_index;"
+		)
+		. replace("eye_index = int(VIEW_INDEX);", "eye_index = test_eye;")
+		. replace("vec2 shown_uv = eye_uv(UV, media_direction);", "vec2 shown_uv = test_uv;")
+	)
 	var shader := Shader.new()
 	shader.code = code
 	var material := ShaderMaterial.new()
@@ -97,15 +141,25 @@ func _check_stereo_alpha(output: String) -> void:
 	material.set_shader_parameter("alpha_enabled", true)
 	for eye in [0, 1]:
 		material.set_shader_parameter("test_eye", eye)
-		for sample in [[0.25, 0.0 if eye == 0 else 1.0], [0.75, 1.0 if eye == 0 else 0.25], [0.5, 0.5 if eye == 0 else 0.625]]:
+		for sample in [
+			[0.25, 0.0 if eye == 0 else 1.0],
+			[0.75, 1.0 if eye == 0 else 0.25],
+			[0.5, 0.5 if eye == 0 else 0.625]
+		]:
 			material.set_shader_parameter("test_uv", Vector2(0.5, sample[0]))
 			await RenderingServer.frame_post_draw
 			await RenderingServer.frame_post_draw
 			var image := viewport.get_texture().get_image()
 			var pixel := image.get_pixel(32, 32)
-			check(absf(pixel.a - sample[1]) < 0.035, "Flat stereo Alpha picks the correct eye and edge: %d/%.2f" % [eye, sample[0]])
+			check(
+				absf(pixel.a - sample[1]) < 0.035,
+				"Flat stereo Alpha picks the correct eye and edge: %d/%.2f" % [eye, sample[0]]
+			)
 			if sample[1] == 1:
-				check(pixel.r > pixel.g + 0.4 if eye == 0 else pixel.g > pixel.r + 0.4, "Opaque Alpha retains native color eye %d" % eye)
+				check(
+					pixel.r > pixel.g + 0.4 if eye == 0 else pixel.g > pixel.r + 0.4,
+					"Opaque Alpha retains native color eye %d" % eye
+				)
 			image.save_png(output.path_join("alpha_eye%d_y%.2f.png" % [eye, sample[0]]))
 	material.set_shader_parameter("swap_eyes", true)
 	material.set_shader_parameter("test_eye", 0)
@@ -113,11 +167,17 @@ func _check_stereo_alpha(output: String) -> void:
 	await RenderingServer.frame_post_draw
 	await RenderingServer.frame_post_draw
 	var swapped := viewport.get_texture().get_image().get_pixel(32, 32)
-	check(swapped.a > 0.99 and swapped.g > swapped.r + 0.4, "Eye swap moves the matching color and Alpha together")
+	check(
+		swapped.a > 0.99 and swapped.g > swapped.r + 0.4,
+		"Eye swap moves the matching color and Alpha together"
+	)
 	material.set_shader_parameter("alpha_enabled", false)
 	material.set_shader_parameter("test_uv", Vector2(0.5, 0.75))
 	await RenderingServer.frame_post_draw
 	await RenderingServer.frame_post_draw
-	check(viewport.get_texture().get_image().get_pixel(32, 32).a > 0.99, "Alpha off restores opaque spatial video")
+	check(
+		viewport.get_texture().get_image().get_pixel(32, 32).a > 0.99,
+		"Alpha off restores opaque spatial video"
+	)
 	viewport.queue_free()
 	await process_frame

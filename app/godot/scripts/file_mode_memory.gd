@@ -15,26 +15,41 @@ var dirty := false
 var read_only := false
 var last_error := OK
 
+
 func _init(path: String = "user://settings") -> void:
 	directory = path
+
 
 static func key_for(uri: String) -> String:
 	if uri.is_empty() or uri.length() > 8192:
 		return ""
 	# Network library URIs are stable (smb://<server id>/..., DLNA http media URLs); the
 	# loopback SMB proxy URL is per run and never stored.
-	var network := uri.begins_with("smb://") or uri.begins_with("cloud://") or uri.begins_with("medialib://") or ((uri.begins_with("http://") or uri.begins_with("https://")) 		and not uri.begins_with("http://127.0.0.1"))
+	var network := (
+		uri.begins_with("smb://")
+		or uri.begins_with("cloud://")
+		or uri.begins_with("medialib://")
+		or (
+			(uri.begins_with("http://") or uri.begins_with("https://"))
+			and not uri.begins_with("http://127.0.0.1")
+		)
+	)
 	if not (uri.begins_with("content://") or uri.begins_with("file://") or network):
 		return ""
 	# Android document identifiers and file paths can be case-sensitive.
 	return uri.sha256_text()
 
+
 static func valid_mode(value: Variant) -> bool:
 	if not value is Dictionary or not value.get("profile") in PROFILES:
 		return false
 	var geometry: Variant = value.get("geometry")
-	if not (geometry is int or geometry is float) or not is_finite(float(geometry)) \
-		or float(geometry) != floorf(float(geometry)) or int(geometry) not in [0, 1, 2, 3]:
+	if (
+		not (geometry is int or geometry is float)
+		or not is_finite(float(geometry))
+		or float(geometry) != floorf(float(geometry))
+		or int(geometry) not in [0, 1, 2, 3]
+	):
 		return false
 	for name in ["stereo_sbs", "swap_eyes", "alpha_requested"]:
 		if not value.get(name) is bool:
@@ -43,22 +58,47 @@ static func valid_mode(value: Variant) -> bool:
 		if value.has(name) and not value[name] is bool:
 			return false
 	for key in ["subtitle_delay_ms", "audio_delay_ms"]:
-		if value.has(key) and (not (value[key] is int or value[key] is float) or not is_finite(float(value[key])) or float(value[key]) != floorf(float(value[key])) or absf(float(value[key])) > 10000): return false
+		if (
+			value.has(key)
+			and (
+				not (value[key] is int or value[key] is float)
+				or not is_finite(float(value[key]))
+				or float(value[key]) != floorf(float(value[key]))
+				or absf(float(value[key])) > 10000
+			)
+		):
+			return false
 	if value.has("external_subtitle_uri"):
-		if not value.external_subtitle_uri is String or value.external_subtitle_uri.length() > 8192: return false
-		if not value.external_subtitle_uri.is_empty() and not (value.external_subtitle_uri.begins_with("content://") or value.external_subtitle_uri.begins_with("file://")): return false
+		if not value.external_subtitle_uri is String or value.external_subtitle_uri.length() > 8192:
+			return false
+		if (
+			not value.external_subtitle_uri.is_empty()
+			and not (
+				value.external_subtitle_uri.begins_with("content://")
+				or value.external_subtitle_uri.begins_with("file://")
+			)
+		):
+			return false
 	if value.has("track_choices"):
-		if not value.track_choices is Dictionary or value.track_choices.size() > 2: return false
+		if not value.track_choices is Dictionary or value.track_choices.size() > 2:
+			return false
 		for kind in value.track_choices:
-			if kind not in ["audio", "subtitle"] or not preload("res://scripts/track_preference.gd").valid(value.track_choices[kind]): return false
+			if (
+				kind not in ["audio", "subtitle"]
+				or not preload("res://scripts/track_preference.gd").valid(value.track_choices[kind])
+			):
+				return false
 	return StereoView.valid(value)
+
 
 func _bank_path(bank: int) -> String:
 	return directory.path_join("file_modes_%d.json" % bank)
 
+
 static func _decode(text: String) -> Variant:
 	var parser := JSON.new()
 	return parser.data if parser.parse(text) == OK else null
+
 
 func _read_bank(path: String) -> Dictionary:
 	var file := FileAccess.open(path, FileAccess.READ)
@@ -68,35 +108,59 @@ func _read_bank(path: String) -> Dictionary:
 	if not envelope is Dictionary:
 		return {}
 	var version: Variant = envelope.get("schema_version")
-	if (version is int or version is float) and is_finite(float(version)) and float(version) > VERSION:
+	if (
+		(version is int or version is float)
+		and is_finite(float(version))
+		and float(version) > VERSION
+	):
 		return {"unsupported_schema": true}
 	if version != VERSION:
 		return {}
 	var serial: Variant = envelope.get("sequence")
-	if not (serial is int or serial is float) or not is_finite(float(serial)) \
-		or float(serial) != floorf(float(serial)) or float(serial) < 1 or float(serial) > 9007199254740990.0:
+	if (
+		not (serial is int or serial is float)
+		or not is_finite(float(serial))
+		or float(serial) != floorf(float(serial))
+		or float(serial) < 1
+		or float(serial) > 9007199254740990.0
+	):
 		return {}
 	var encoded: Variant = envelope.get("payload_json")
 	if not encoded is String or encoded.sha256_text() != envelope.get("payload_sha256"):
 		return {}
 	var payload: Variant = _decode(encoded)
-	if not payload is Dictionary or payload.get("sequence") != serial \
-		or not payload.get("entries") is Dictionary or payload.entries.size() > LIMIT:
+	if (
+		not payload is Dictionary
+		or payload.get("sequence") != serial
+		or not payload.get("entries") is Dictionary
+		or payload.entries.size() > LIMIT
+	):
 		return {}
 	var result: Dictionary = {}
 	for key in payload.entries:
 		var entry: Variant = payload.entries[key]
-		if not key is String or key.length() != 64 or not key.is_valid_hex_number(false) \
-			or not entry is Dictionary or not valid_mode(entry.get("mode")):
+		if (
+			not key is String
+			or key.length() != 64
+			or not key.is_valid_hex_number(false)
+			or not entry is Dictionary
+			or not valid_mode(entry.get("mode"))
+		):
 			continue
 		var updated: Variant = entry.get("updated")
-		if not (updated is int or updated is float) or not is_finite(float(updated)) \
-			or float(updated) != floorf(float(updated)) or float(updated) < 1 or float(updated) > float(serial):
+		if (
+			not (updated is int or updated is float)
+			or not is_finite(float(updated))
+			or float(updated) != floorf(float(updated))
+			or float(updated) < 1
+			or float(updated) > float(serial)
+		):
 			continue
 		var mode: Dictionary = entry.mode.duplicate(true)
 		mode.geometry = int(mode.geometry)
 		result[key] = {"mode": mode, "updated": int(updated)}
 	return {"sequence": int(serial), "entries": result}
+
 
 func load_saved() -> void:
 	entries = {}
@@ -114,9 +178,11 @@ func load_saved() -> void:
 			entries = value.entries
 			active_bank = bank
 
+
 func lookup(uri: String) -> Dictionary:
 	var value: Dictionary = entries.get(key_for(uri), {})
 	return value.get("mode", {}).duplicate(true)
+
 
 func remember(uri: String, mode: Dictionary) -> bool:
 	var key := key_for(uri)
@@ -134,18 +200,26 @@ func remember(uri: String, mode: Dictionary) -> bool:
 	dirty = true
 	return true
 
+
 func _commit(staged: String, target: String) -> Error:
 	return DirAccess.rename_absolute(staged, target)
+
 
 func relocate(old_uri: String, new_uri: String, title: String = "") -> bool:
 	var old_key := key_for(old_uri)
 	var new_key := key_for(new_uri)
-	if old_key.is_empty() or new_key.is_empty() or not entries.has(old_key): return false
+	if old_key.is_empty() or new_key.is_empty() or not entries.has(old_key):
+		return false
 	var value: Dictionary = entries[old_key].duplicate(true)
-	if value.has("uri"): value.uri = new_uri
-	if value.has("title") and not title.is_empty(): value.title = title.left(256)
-	entries[new_key] = value; entries.erase(old_key); dirty = true
+	if value.has("uri"):
+		value.uri = new_uri
+	if value.has("title") and not title.is_empty():
+		value.title = title.left(256)
+	entries[new_key] = value
+	entries.erase(old_key)
+	dirty = true
 	return true
+
 
 func save() -> bool:
 	if not dirty:
@@ -163,8 +237,14 @@ func save() -> bool:
 	var target := _bank_path(next_bank)
 	var staged := target + ".tmp"
 	var encoded := JSON.stringify({"sequence": sequence + 1, "entries": entries})
-	var serialized := JSON.stringify({"schema_version": VERSION, "sequence": sequence + 1,
-		"payload_json": encoded, "payload_sha256": encoded.sha256_text()})
+	var serialized := JSON.stringify(
+		{
+			"schema_version": VERSION,
+			"sequence": sequence + 1,
+			"payload_json": encoded,
+			"payload_sha256": encoded.sha256_text()
+		}
+	)
 	if serialized.to_utf8_buffer().size() > MAX_BYTES:
 		last_error = ERR_OUT_OF_MEMORY
 		return false

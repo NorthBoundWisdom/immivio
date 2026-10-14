@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$Serial, [switch]$Install)
+param([Parameter(Mandatory = $true)][string]$Serial, [switch]$Install)
 $ErrorActionPreference = 'Stop'
 $workspace = Split-Path -Parent $PSScriptRoot
 . "$PSScriptRoot/environment/Activate-QuestEnvironment.ps1"
@@ -25,11 +25,12 @@ function Read-Json([string]$file) {
     if ($LASTEXITCODE -ne 0) { return $null }
     try { return $raw | ConvertFrom-Json } catch { return $null }
 }
-$result = @{state='failed';apk_sha256=$build.apk_sha256;installed_sha256=$installedHash;activity_launched=$false;
-    scope='Actual Quest private file/provider descriptor preflight, cancellation and timeout; external SAF grants, persistence/reboot, MPV decode and XR not tested'}
+$result = @{state='failed'; apk_sha256=$build.apk_sha256; installed_sha256=$installedHash; activity_launched=$false;
+    scope ='Actual Quest private file/provider descriptor preflight, cancellation and timeout; external SAF grants, persistence/reboot, MPV decode and XR not tested'
+}
 try {
     & $adb -s $Serial shell am force-stop $package
-    foreach ($case in @('file_present','file_missing','content_present','content_missing','content_denied','cancel','timeout')) {
+    foreach ($case in @('file_present', 'file_missing', 'content_present', 'content_missing', 'content_denied', 'cancel', 'timeout')) {
         $key = 'access_' + [guid]::NewGuid().ToString('N')
         & $adb -s $Serial shell am broadcast -n "$package/org.vrpassthroughplayer.plugin.DebugDiagnosticsReceiver" -a "$package.DEBUG_LOCAL_ACCESS" --es request $key --es case $case | Set-Content "$directory/$case-broadcast.txt"
         if ($LASTEXITCODE -ne 0) { throw "Broadcast failed: $case" }
@@ -54,10 +55,11 @@ try {
         $report | ConvertTo-Json -Depth 10 | Set-Content "$directory/$case-report.json"
         Write-Output "Collected $case : $($report.state) / $($report.error) / $($report.elapsed_ms)ms"
     }
-    $result.state='collected_scoped_local_access_trace'
-} catch { $result.error=$_.Exception.Message }
+    $result.state = 'collected_scoped_local_access_trace'
+}
+catch { $result.error = $_.Exception.Message }
 finally {
-    $appPid=(& $adb -s $Serial shell pidof $package | Out-String).Trim()
+    $appPid = (& $adb -s $Serial shell pidof $package | Out-String).Trim()
     if ($appPid -match '^\d+$') { & $adb -s $Serial logcat -d --pid=$appPid -v threadtime | Set-Content "$directory/logcat.txt" }
     & $adb -s $Serial shell am force-stop $package
     & $adb -s $Serial shell dumpsys battery | Set-Content "$directory/battery-after.txt"
@@ -68,7 +70,7 @@ finally {
 if ($result.state -ne 'collected_scoped_local_access_trace') { throw $result.error }
 & python "$workspace/benchmarks/local_access_device.py" $directory
 if ($LASTEXITCODE -ne 0) {
-    $result.state='failed_independent_access_audit'
+    $result.state = 'failed_independent_access_audit'
     $result | ConvertTo-Json -Depth 10 | Set-Content "$directory/result.json"
     throw 'Independent local access audit failed'
 }

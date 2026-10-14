@@ -3,10 +3,18 @@ extends RefCounted
 const Binding := preload("res://scripts/pair_texture_binding.gd")
 const MaterialProbe := preload("res://scripts/pair_material_probe.gd")
 
+
 static func capture(parent: Node, pair: Dictionary, request: int) -> Dictionary:
-	var result := {"state": "failed", "request_id": request, "pair": pair.duplicate(true), "images": [],
-		"scope": "Adreno Godot SubViewport using production shader and pinned MPV/RVM native textures; XR and main viewport unverified",
-		"renderer": RenderingServer.get_video_adapter_name(), "shader": "res://shaders/video_pair.gdshader"}
+	var result := {
+		"state": "failed",
+		"request_id": request,
+		"pair": pair.duplicate(true),
+		"images": [],
+		"scope":
+		"Adreno Godot SubViewport using production shader and pinned MPV/RVM native textures; XR and main viewport unverified",
+		"renderer": RenderingServer.get_video_adapter_name(),
+		"shader": "res://shaders/video_pair.gdshader"
+	}
 	var viewport := SubViewport.new()
 	# Square input eye: a full-screen orthographic quad gives known pixel-center UVs.
 	viewport.size = Vector2i(640, 640)
@@ -49,12 +57,28 @@ static func capture(parent: Node, pair: Dictionary, request: int) -> Dictionary:
 				await RenderingServer.frame_post_draw
 				await RenderingServer.frame_post_draw
 				var image := viewport.get_texture().get_image()
-				var name := "mpv_pixels_%d_rot%d_eye%d_%s.png" % [request, rotation, eye, "alpha" if masked else "opaque"]
+				var name := (
+					"mpv_pixels_%d_rot%d_eye%d_%s.png"
+					% [request, rotation, eye, "alpha" if masked else "opaque"]
+				)
 				var path := "user://diagnostics/" + name
-				if image.is_empty() or image.get_size() != viewport.size or image.save_png(path) != OK:
+				if (
+					image.is_empty()
+					or image.get_size() != viewport.size
+					or image.save_png(path) != OK
+				):
 					errors.append("Readback/save failed: " + name)
-				result.images.append({"file": name, "eye": eye, "rotation": rotation, "alpha_enabled": masked,
-					"width": image.get_width(), "height": image.get_height(), "premultiplied_on_transparent_background": true})
+				result.images.append(
+					{
+						"file": name,
+						"eye": eye,
+						"rotation": rotation,
+						"alpha_enabled": masked,
+						"width": image.get_width(),
+						"height": image.get_height(),
+						"premultiplied_on_transparent_background": true
+					}
+				)
 	# The image readback finished all GPU draws before borrowed wrappers and pin go.
 	var detached := binding.unbind()
 	viewport.queue_free()

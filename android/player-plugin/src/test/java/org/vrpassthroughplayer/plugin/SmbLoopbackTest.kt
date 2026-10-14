@@ -11,7 +11,8 @@ import org.junit.Test
 
 /** Optional local fixture server; no real account or media is accessed. */
 class SmbLoopbackTest {
-    @Test fun enumeratesSharesAndSeeksWithoutChangingStoredUriFormat() {
+    @Test
+    fun enumeratesSharesAndSeeksWithoutChangingStoredUriFormat() {
         val host = System.getenv("VRPP_SMB_FIXTURE_HOST") ?: ""
         assumeTrue(host.isNotEmpty())
         val base = BaseContext(PropertyConfiguration(SmbClientPolicy.properties(false)))
@@ -19,8 +20,11 @@ class SmbLoopbackTest {
         try {
             SmbFile("smb://$host/", context).use { root ->
                 val files = root.listFiles()
-                try { assertTrue(files.any { it.name.trimEnd('/') == "fixture" }) }
-                finally { files.forEach { it.close() } }
+                try {
+                    assertTrue(files.any { it.name.trimEnd('/') == "fixture" })
+                } finally {
+                    files.forEach { it.close() }
+                }
             }
             SmbFile("smb://$host/fixture/", context).use { root ->
                 assertTrue(root.list().contains("sample.mp4"))
@@ -37,6 +41,8 @@ class SmbLoopbackTest {
                     }
                 }
             }
-        } finally { context.close() }
+        } finally {
+            context.close()
+        }
     }
 }

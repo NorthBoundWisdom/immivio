@@ -9,7 +9,9 @@ internal object SmbClientPolicy {
         val normalized = value.trim().replace('\\', '/').removePrefix("smb://").trim('/')
         val host = normalized.substringBefore('/')
         require(host.isNotEmpty() && host.matches(Regex("[A-Za-z0-9_.:\\[\\]-]+"))) { "SMB address invalid" }
-        require(normalized.split('/').none { it == ".." || it == "." || it.isEmpty() }) { "SMB path invalid" }
+        require(
+            normalized.split('/')
+                .none { it == ".." || it == "." || it.isEmpty() }) { "SMB path invalid" }
         require(!normalized.contains('?') && !normalized.contains('#')) { "SMB path invalid" }
         return normalized
     }

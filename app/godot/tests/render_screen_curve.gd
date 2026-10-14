@@ -6,8 +6,10 @@ extends SceneTree
 const Video := preload("res://scripts/mpv_video_display.gd")
 var failures: Array[String] = []
 
+
 func _initialize() -> void:
 	call_deferred("_run")
+
 
 func _run() -> void:
 	var output := OS.get_environment("QUEST_SCREEN_PREVIEW_DIR")

@@ -1,9 +1,16 @@
 extends SceneTree
 const Library := preload("res://scripts/library_menu.gd")
-func _initialize() -> void: call_deferred("_run")
+
+
+func _initialize() -> void:
+	call_deferred("_run")
+
+
 func _run() -> void:
 	var output := OS.get_environment("SUBTITLE_SETTINGS_OUTPUT")
-	if output.is_empty(): quit(1); return
+	if output.is_empty():
+		quit(1)
+		return
 	DirAccess.make_dir_recursive_absolute(output)
 	var viewport := SubViewport.new()
 	viewport.size = Vector2i(1280, 900)
@@ -31,7 +38,11 @@ func _run() -> void:
 				await process_frame
 				await RenderingServer.frame_post_draw
 				await RenderingServer.frame_post_draw
-				viewport.get_texture().get_image().save_png(output.path_join("settings_%s_direction%d_%d.png" % [language, direction, angle]))
+				viewport.get_texture().get_image().save_png(
+					output.path_join(
+						"settings_%s_direction%d_%d.png" % [language, direction, angle]
+					)
+				)
 	viewport.queue_free()
 	await process_frame
 	quit()

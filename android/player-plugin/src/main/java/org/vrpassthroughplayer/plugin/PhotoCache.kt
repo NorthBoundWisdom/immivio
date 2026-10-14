@@ -15,12 +15,15 @@ internal object PhotoCache {
         for (name in names) {
             val root = File(cache, name).toPath()
             if (!Files.isDirectory(root, NOFOLLOW_LINKS)) continue
-            Files.walk(root).use { paths -> paths.forEach { path ->
-                if (Files.isRegularFile(path, NOFOLLOW_LINKS)) {
-                    // A photo may be released while settings is counting its files.
-                    runCatching { Files.size(path) }.getOrNull()?.let { size -> count++; bytes += size }
+            Files.walk(root).use { paths ->
+                paths.forEach { path ->
+                    if (Files.isRegularFile(path, NOFOLLOW_LINKS)) {
+                        // A photo may be released while settings is counting its files.
+                        runCatching { Files.size(path) }.getOrNull()
+                            ?.let { size -> count++; bytes += size }
+                    }
                 }
-            } }
+            }
         }
         count to bytes
     }
@@ -30,14 +33,17 @@ internal object PhotoCache {
         for (name in names) {
             val root = File(cache, name).absoluteFile.toPath().normalize()
             if (!Files.isDirectory(root, NOFOLLOW_LINKS)) continue
-            Files.list(root).use { entries -> entries.forEach { entry ->
-                if (entry !in active) {
-                    // walk does not follow links, including links to another cache or original.
-                    Files.walk(entry).use { paths ->
-                        paths.sorted(Comparator.reverseOrder()).forEach { Files.deleteIfExists(it) }
+            Files.list(root).use { entries ->
+                entries.forEach { entry ->
+                    if (entry !in active) {
+                        // walk does not follow links, including links to another cache or original.
+                        Files.walk(entry).use { paths ->
+                            paths.sorted(Comparator.reverseOrder())
+                                .forEach { Files.deleteIfExists(it) }
+                        }
                     }
                 }
-            } }
+            }
         }
     }
 }

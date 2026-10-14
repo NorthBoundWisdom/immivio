@@ -4,7 +4,8 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class MediaSessionGateTest {
-    @Test fun repeatedSeekPreservesLogicalSessionButInvalidatesEveryPreviousProducer() {
+    @Test
+    fun repeatedSeekPreservesLogicalSessionButInvalidatesEveryPreviousProducer() {
         val gate = MediaSessionGate()
         val original = gate.begin()
         val logical = gate.current(original)!!.logicalSessionId
@@ -26,7 +27,8 @@ class MediaSessionGateTest {
         assertFalse(gate.accepts(current))
     }
 
-    @Test fun staleSeekCannotReplaceNewFileOrReviveClosedSession() {
+    @Test
+    fun staleSeekCannotReplaceNewFileOrReviveClosedSession() {
         val gate = MediaSessionGate()
         val old = gate.begin()
         val active = gate.begin()
@@ -38,7 +40,8 @@ class MediaSessionGateTest {
         assertNull(gate.current(active))
     }
 
-    @Test fun delayedCallbackAndCloseCannotAffectReplacement() {
+    @Test
+    fun delayedCallbackAndCloseCannotAffectReplacement() {
         val gate = MediaSessionGate()
         val previous = gate.begin()
         val replacement = gate.begin()
@@ -50,7 +53,8 @@ class MediaSessionGateTest {
         assertFalse(gate.accepts(replacement))
     }
 
-    @Test fun closePreventsQueuedWorkBeforeResourcesAreReleased() {
+    @Test
+    fun closePreventsQueuedWorkBeforeResourcesAreReleased() {
         val gate = MediaSessionGate()
         val session = gate.begin()
         assertTrue(gate.accepts(session))

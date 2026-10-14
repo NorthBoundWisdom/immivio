@@ -4,20 +4,67 @@ extends Node
 const Menu := preload("res://scripts/player_menu.gd")
 const Library := preload("res://scripts/library_menu.gd")
 const Icons := preload("res://scripts/menu_icons.gd")
-const STATE := {"has_video": true, "title": "Immivio", "source_uri": "warmup://synthetic",
-	"geometry": 0, "stereo": true, "ai_enabled": false, "duration_ms": 60000,
-	"position_ms": 30000, "audio_available": true, "playing": true}
-const PAGES := ["bar", "playback", "sync", "queue", "info", "color0", "color1", "color2", "color3", "color4", "stereo", "mode", "subtitles",
-	"stereo_left", "playback_mono", "sync_mono", "queue_mono", "color0_mono", "color1_mono", "color2_mono", "ipd_mono",
-	"depth", "subtitle_immersive", "queue_populated", "bookmarks", "playback_alpha", "stereo_tb", "info_available", "quick_speed"]
+const STATE := {
+	"has_video": true,
+	"title": "Immivio",
+	"source_uri": "warmup://synthetic",
+	"geometry": 0,
+	"stereo": true,
+	"ai_enabled": false,
+	"duration_ms": 60000,
+	"position_ms": 30000,
+	"audio_available": true,
+	"playing": true
+}
+const PAGES := [
+	"bar",
+	"playback",
+	"sync",
+	"queue",
+	"info",
+	"color0",
+	"color1",
+	"color2",
+	"color3",
+	"color4",
+	"stereo",
+	"mode",
+	"subtitles",
+	"stereo_left",
+	"playback_mono",
+	"sync_mono",
+	"queue_mono",
+	"color0_mono",
+	"color1_mono",
+	"color2_mono",
+	"ipd_mono",
+	"depth",
+	"subtitle_immersive",
+	"queue_populated",
+	"bookmarks",
+	"playback_alpha",
+	"stereo_tb",
+	"info_available",
+	"quick_speed"
+]
 var playback_menu: Node3D
 
-const SESSION_STATE := {"follow": false, "passthrough_visible": true, "passthrough": false, "alpha": false}
-const LIBRARY_TABS := [Library.GENERAL_TAB, Library.DISPLAY_TAB, Library.VIDEO_TAB, Library.SUBTITLES_TAB, Library.BACKGROUND_TAB, Library.ABOUT_TAB]
+const SESSION_STATE := {
+	"follow": false, "passthrough_visible": true, "passthrough": false, "alpha": false
+}
+const LIBRARY_TABS := [
+	Library.GENERAL_TAB,
+	Library.DISPLAY_TAB,
+	Library.VIDEO_TAB,
+	Library.SUBTITLES_TAB,
+	Library.BACKGROUND_TAB,
+	Library.ABOUT_TAB
+]
 var complete := false
 var pages_rendered := 0
 var max_build_us := 0
 var library_pages_rendered := 0
+
 
 func prepare_library(menu: Node3D, tab: int) -> void:
 	menu.section = Library.Section.SETTINGS
@@ -25,18 +72,35 @@ func prepare_library(menu: Node3D, tab: int) -> void:
 	menu._cache_usage = Vector2i.ZERO
 	menu.refresh()
 
-func _ready() -> void: _run.call_deferred()
+
+func _ready() -> void:
+	_run.call_deferred()
+
 
 func prepare(menu: Node3D, page: String) -> void:
 	menu._reset_navigation()
 	var name := page.trim_suffix("_mono")
-	menu.section = 0; menu._adjustment = ""
+	menu.section = 0
+	menu._adjustment = ""
 	menu._grade_page = int(name.trim_prefix("color")) if name.begins_with("color") else 0
-	menu._mode_open = name == "mode"; menu._subtitle_open = name in ["subtitles", "subtitle_immersive"]
+	menu._mode_open = name == "mode"
+	menu._subtitle_open = name in ["subtitles", "subtitle_immersive"]
 	var popup_names := {
-		"info": "info", "info_available": "info", "stereo": "ipd", "stereo_left": "ipd", "stereo_tb": "ipd", "ipd": "ipd",
-		"sync": "sync", "queue": "queue", "queue_populated": "queue"}
-	menu._quick_open = "color" if name.begins_with("color") else ("speed" if name == "quick_speed" else popup_names.get(name, ""))
+		"info": "info",
+		"info_available": "info",
+		"stereo": "ipd",
+		"stereo_left": "ipd",
+		"stereo_tb": "ipd",
+		"ipd": "ipd",
+		"sync": "sync",
+		"queue": "queue",
+		"queue_populated": "queue"
+	}
+	menu._quick_open = (
+		"color"
+		if name.begins_with("color")
+		else ("speed" if name == "quick_speed" else popup_names.get(name, ""))
+	)
 	menu._depth_open = name == "depth"
 	menu._state = STATE.duplicate(true)
 	menu._state["stereo"] = not page.ends_with("_mono") and name != "depth"
@@ -46,37 +110,53 @@ func prepare(menu: Node3D, page: String) -> void:
 	menu._state["viewing_eye"] = 1 if name == "stereo_left" else 0
 	menu._state["geometry"] = 1 if name in ["subtitle_immersive", "playback_alpha"] else 0
 	if name == "queue_populated":
-		menu._state["queue_items"] = [{"uri":"warmup://synthetic", "title":"Immivio synthetic"}]
+		menu._state["queue_items"] = [{"uri": "warmup://synthetic", "title": "Immivio synthetic"}]
 	if name in ["audio", "subtitle_immersive", "subtitles"]:
-		menu._state["audio_options"] = [{"id":1,"value":1,"label":"Synthetic audio"}]
-		menu._state["subtitle_options"] = [{"id":1,"codec":"subrip","title":"Synthetic subtitle"}]
-		menu._state["audio_available"] = true; menu._state["audio_track_id"] = 1
+		menu._state["audio_options"] = [{"id": 1, "value": 1, "label": "Synthetic audio"}]
+		menu._state["subtitle_options"] = [
+			{"id": 1, "codec": "subrip", "title": "Synthetic subtitle"}
+		]
+		menu._state["audio_available"] = true
+		menu._state["audio_track_id"] = 1
 		menu._state["text_subtitle_tracks"] = 1
 	if name == "bookmarks":
 		menu._state["bookmark_scope"] = "warmup://synthetic"
-		menu._state["bookmarks"] = [{"id":"synthetic","position_ms":10000}]
-		menu.bookmarks.opened = true; menu.bookmarks.scope = "warmup://synthetic"
+		menu._state["bookmarks"] = [{"id": "synthetic", "position_ms": 10000}]
+		menu.bookmarks.opened = true
+		menu.bookmarks.scope = "warmup://synthetic"
 	menu._draw()
+
 
 func _run() -> void:
 	# Spread SVG decoding/texture uploads across startup frames.
 	var count := 0
 	for key in Icons.PATHS:
-		Icons.texture(key); count += 1
-		if count % 4 == 0: await get_tree().process_frame
+		Icons.texture(key)
+		count += 1
+		if count % 4 == 0:
+			await get_tree().process_frame
 	var target := SubViewport.new()
-	target.size = Vector2i(256, 192); target.own_world_3d = true
-	target.transparent_bg = true; target.msaa_3d = Viewport.MSAA_DISABLED
+	target.size = Vector2i(256, 192)
+	target.own_world_3d = true
+	target.transparent_bg = true
+	target.msaa_3d = Viewport.MSAA_DISABLED
 	target.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	add_child(target)
 	var camera := Camera3D.new()
-	camera.projection = Camera3D.PROJECTION_ORTHOGONAL; camera.size = 1.8
-	camera.position.z = 1; camera.near = .01; camera.far = 3
-	target.add_child(camera); camera.current = true
+	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	camera.size = 1.8
+	camera.position.z = 1
+	camera.near = .01
+	camera.far = 3
+	target.add_child(camera)
+	camera.current = true
 	# Settings are reachable as soon as the library opens; warm them first.
-	var library := Library.new(); target.add_child(library)
+	var library := Library.new()
+	target.add_child(library)
 	library.session_controls_provider = func(): return SESSION_STATE
-	library.set_process(false); library.position = Vector3.ZERO; library.visible = true
+	library.set_process(false)
+	library.position = Vector3.ZERO
+	library.visible = true
 	for tab in LIBRARY_TABS:
 		var started := Time.get_ticks_usec()
 		prepare_library(library, tab)
@@ -87,9 +167,12 @@ func _run() -> void:
 		await RenderingServer.frame_post_draw
 		library_pages_rendered += 1
 	library.free()
-	var menu := Menu.new(); target.add_child(menu)
+	var menu := Menu.new()
+	target.add_child(menu)
 	menu.session_controls_provider = func(): return SESSION_STATE
-	menu.set_process(false); menu.position = Vector3.ZERO; menu.visible = true
+	menu.set_process(false)
+	menu.position = Vector3.ZERO
+	menu.visible = true
 	for page in PAGES:
 		var started := Time.get_ticks_usec()
 		prepare(menu, page)
@@ -100,11 +183,18 @@ func _run() -> void:
 		await RenderingServer.frame_post_draw
 		await RenderingServer.frame_post_draw
 		pages_rendered += 1
-	if is_instance_valid(playback_menu): playback_menu.adopt_prepared_layouts(menu)
+	if is_instance_valid(playback_menu):
+		playback_menu.adopt_prepared_layouts(menu)
 	target.queue_free()
 	complete = true
 
+
 func snapshot() -> Dictionary:
-	return {"complete": complete, "pages_rendered": pages_rendered, "max_build_us": max_build_us,
+	return {
+		"complete": complete,
+		"pages_rendered": pages_rendered,
+		"max_build_us": max_build_us,
 		"library_pages_rendered": library_pages_rendered,
-		"synthetic_only": true, "cpu_readback": false}
+		"synthetic_only": true,
+		"cpu_readback": false
+	}

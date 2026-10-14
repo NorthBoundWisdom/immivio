@@ -19,7 +19,7 @@ allprojects {
     }
     ['linux', 'osx', 'windows'].each { classifier ->
         dependencies.add('immivioAndroidToolDependencies',
-            "com.android.tools.build:aapt2:${libs.versions.aapt2.get()}:${classifier}")
+                "com.android.tools.build:aapt2:${libs.versions.aapt2.get()}:${classifier}")
     }
     tasks.register('prepareDependencyCache') {
         doLast {

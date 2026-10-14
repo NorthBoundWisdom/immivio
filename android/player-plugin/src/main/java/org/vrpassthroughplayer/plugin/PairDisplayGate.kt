@@ -7,7 +7,10 @@ package org.vrpassthroughplayer.plugin
  * replacing all but the newest unseen: the display runs at 72 Hz, the source at 30.
  * Closing rejects offers/claims/acks but still accepts detach of existing claims.
  */
-internal class PairDisplayGate(private val scope: MediaSessionGate.Scope, private val depth: Int = 1) {
+internal class PairDisplayGate(
+    private val scope: MediaSessionGate.Scope,
+    private val depth: Int = 1
+) {
     private var alive = true
     private val ready = ArrayDeque<FramePairGate.Identity>()
     private val claims = LinkedHashMap<Long, FramePairGate.Identity>()
@@ -23,10 +26,10 @@ internal class PairDisplayGate(private val scope: MediaSessionGate.Scope, privat
     var clockCorrections = 0L; private set
 
     private fun accepts(id: FramePairGate.Identity) = alive && id.decoderId == scope.decoderId &&
-        id.logicalSessionId == scope.logicalSessionId && id.generation == scope.generation &&
-        id.slotToken > 0 && id.frameId >= frame && id.ptsUs >= 0 &&
-        (id.playbackClockEstimate || id.ptsUs >= pts) && id.formatRevision > 0 &&
-        id.presentationRevision > 0
+            id.logicalSessionId == scope.logicalSessionId && id.generation == scope.generation &&
+            id.slotToken > 0 && id.frameId >= frame && id.ptsUs >= 0 &&
+            (id.playbackClockEstimate || id.ptsUs >= pts) && id.formatRevision > 0 &&
+            id.presentationRevision > 0
 
     /** Retire the returned token. A rejected input returns its own token. */
     fun offer(id: FramePairGate.Identity): Long? {
@@ -38,6 +41,7 @@ internal class PairDisplayGate(private val scope: MediaSessionGate.Scope, privat
         ready.addLast(id)
         return obsolete
     }
+
     /** Only the oldest ready pair can be claimed. */
     fun claim(token: Long): FramePairGate.Identity? {
         val id = ready.firstOrNull() ?: return null
@@ -45,6 +49,7 @@ internal class PairDisplayGate(private val scope: MediaSessionGate.Scope, privat
         ready.removeFirst(); claims[token] = id; claimCount++
         return id
     }
+
     fun acknowledge(token: Long): Boolean {
         val id = claims[token] ?: return false
         if (!accepts(id) || token in acknowledged) return false
@@ -55,19 +60,25 @@ internal class PairDisplayGate(private val scope: MediaSessionGate.Scope, privat
         frame = id.frameId; pts = id.ptsUs; acknowledged.add(token); ackCount++
         return true
     }
+
     fun detach(token: Long): Boolean {
         if (claims.remove(token) == null) return false
         acknowledged.remove(token); detachCount++
         return true
     }
+
     /** A readback observer keeps the same immutable pair across display detach. */
     fun pin(token: Long): Boolean = alive && token in acknowledged && pins.add(token)
     fun unpin(token: Long): Boolean = pins.remove(token)
-    fun owns(token: Long) = ready.any { it.slotToken == token } || claims.containsKey(token) || token in pins
+    fun owns(token: Long) =
+        ready.any { it.slotToken == token } || claims.containsKey(token) || token in pins
+
     fun drawn(token: Long) = alive && token in acknowledged
+
     /** The pair to offer Godot next (oldest ready). */
     fun readyToken() = ready.firstOrNull()?.slotToken
     fun heldClaims() = (claims.keys + pins).toSet().size
+
     /** Returns the newest ready token; every ready pair stops being owned. */
     fun close(): Long? {
         alive = false

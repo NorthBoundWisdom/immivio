@@ -6,5 +6,7 @@ internal interface CloudClient {
     fun find(path: String): CloudFile
     fun resolve(file: CloudFile): CloudLink
     val canDelete: Boolean get() = false
-    fun remove(path: String, file: CloudFile) { throw IllegalStateException("File deletion unavailable for this source") }
+    fun remove(path: String, file: CloudFile) {
+        throw IllegalStateException("File deletion unavailable for this source")
+    }
 }

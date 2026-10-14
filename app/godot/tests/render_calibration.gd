@@ -1,7 +1,9 @@
 extends SceneTree
 
+
 func _initialize() -> void:
 	call_deferred("_render")
+
 
 func _render() -> void:
 	var viewport := SubViewport.new()
@@ -38,15 +40,29 @@ func _render() -> void:
 		var card := board.get_node("Alpha%d" % index) as MeshInstance3D
 		var pixel := Vector2i(camera.unproject_position(card.global_position))
 		var color := image.get_pixelv(pixel)
-		samples.append({"alpha": index * 0.25, "pixel": [pixel.x, pixel.y], "rgba": [color.r, color.g, color.b, color.a]})
+		samples.append(
+			{
+				"alpha": index * 0.25,
+				"pixel": [pixel.x, pixel.y],
+				"rgba": [color.r, color.g, color.b, color.a]
+			}
+		)
 		if color.g <= previous_green + 0.05:
 			push_error("Alpha card brightness must increase at each step")
 			error = ERR_INVALID_DATA
 		previous_green = color.g
 	var evidence := FileAccess.open(output.get_basename() + ".json", FileAccess.WRITE)
 	if evidence:
-		evidence.store_string(JSON.stringify({"scope": "desktop_opaque_OpenGL_calibration", "device_passthrough_tested": false, "samples": samples}, "\t"))
+		evidence.store_string(
+			JSON.stringify(
+				{
+					"scope": "desktop_opaque_OpenGL_calibration",
+					"device_passthrough_tested": false,
+					"samples": samples
+				},
+				"\t"
+			)
+		)
 	viewport.queue_free()
 	await process_frame
 	quit(0 if error == OK else 1)
-

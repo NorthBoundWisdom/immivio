@@ -7,8 +7,14 @@ import org.json.JSONObject
  * Mutations run on the owner GL thread under the session lock. Native retirement
  * must finish before the associated producer lease can be released. */
 internal class PlaybackDisplayLeases {
-    data class Lease(val ticket: DecodedFrameGate.Ticket, val pair: JSONObject, val producer: Long = 0L)
+    data class Lease(
+        val ticket: DecodedFrameGate.Ticket,
+        val pair: JSONObject,
+        val producer: Long = 0L
+    )
+
     data class ReadyMask(val pair: JSONObject)
+
     var renderer = 0L
     var owner: EGLContext? = null
     var borrow = false

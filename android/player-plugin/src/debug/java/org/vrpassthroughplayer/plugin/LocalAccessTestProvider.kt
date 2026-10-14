@@ -19,23 +19,46 @@ import java.util.concurrent.TimeUnit
 class LocalAccessTestProvider : ContentProvider() {
     override fun onCreate() = true
     override fun getType(uri: Uri) = "video/mp4"
-    override fun query(uri: Uri, projection: Array<out String>?, selection: String?, selectionArgs: Array<out String>?, sortOrder: String?): Cursor? =
+    override fun query(
+        uri: Uri,
+        projection: Array<out String>?,
+        selection: String?,
+        selectionArgs: Array<out String>?,
+        sortOrder: String?
+    ): Cursor? =
         query(uri, projection, selection, selectionArgs, sortOrder, null)
-    override fun query(uri: Uri, projection: Array<out String>?, selection: String?, selectionArgs: Array<out String>?, sortOrder: String?, signal: CancellationSignal?): Cursor? {
+
+    override fun query(
+        uri: Uri,
+        projection: Array<out String>?,
+        selection: String?,
+        selectionArgs: Array<out String>?,
+        sortOrder: String?,
+        signal: CancellationSignal?
+    ): Cursor? {
         check(Looper.myLooper() != Looper.getMainLooper()) { "Provider metadata queried on application main thread" }
         when (uri.lastPathSegment) {
             "name_slow" -> {
                 val wake = CountDownLatch(1)
                 signal?.setOnCancelListener { wake.countDown() }
-                try { wake.await(15, TimeUnit.SECONDS) }
-                catch (_: InterruptedException) { throw OperationCanceledException() }
-                finally { signal?.setOnCancelListener(null) }
+                try {
+                    wake.await(15, TimeUnit.SECONDS)
+                } catch (_: InterruptedException) {
+                    throw OperationCanceledException()
+                } finally {
+                    signal?.setOnCancelListener(null)
+                }
                 signal?.throwIfCanceled()
             }
+
             "name_late" -> Thread.sleep(1200) // Deliberately ignores cancellation until it returns.
             "name_denied" -> throw SecurityException("Optional metadata denied")
         }
-        if (uri.lastPathSegment == "name_no_column") return MatrixCursor(arrayOf("other")).apply { addRow(arrayOf("unused")) }
+        if (uri.lastPathSegment == "name_no_column") return MatrixCursor(arrayOf("other")).apply {
+            addRow(
+                arrayOf("unused")
+            )
+        }
         val title = when (uri.lastPathSegment) {
             "name_unicode" -> "中文字幕 😀\nA\tB\rC"
             "name_long" -> "界".repeat(255) + "😀\n tail"
@@ -44,11 +67,22 @@ class LocalAccessTestProvider : ContentProvider() {
         }
         return MatrixCursor(arrayOf(OpenableColumns.DISPLAY_NAME)).apply { addRow(arrayOf(title)) }
     }
+
     override fun insert(uri: Uri, values: ContentValues?): Uri? = null
     override fun delete(uri: Uri, selection: String?, selectionArgs: Array<out String>?) = 0
-    override fun update(uri: Uri, values: ContentValues?, selection: String?, selectionArgs: Array<out String>?) = 0
+    override fun update(
+        uri: Uri,
+        values: ContentValues?,
+        selection: String?,
+        selectionArgs: Array<out String>?
+    ) = 0
+
     override fun openFile(uri: Uri, mode: String): ParcelFileDescriptor = openFile(uri, mode, null)
-    override fun openFile(uri: Uri, mode: String, signal: CancellationSignal?): ParcelFileDescriptor {
+    override fun openFile(
+        uri: Uri,
+        mode: String,
+        signal: CancellationSignal?
+    ): ParcelFileDescriptor {
         require(mode == "r")
         when (uri.lastPathSegment) {
             "missing" -> throw FileNotFoundException("Debug missing file")
@@ -56,11 +90,16 @@ class LocalAccessTestProvider : ContentProvider() {
             "slow" -> {
                 val wake = CountDownLatch(1)
                 signal?.setOnCancelListener { wake.countDown() }
-                try { wake.await(15, TimeUnit.SECONDS) }
-                catch (_: InterruptedException) { throw OperationCanceledException() }
-                finally { signal?.setOnCancelListener(null) }
+                try {
+                    wake.await(15, TimeUnit.SECONDS)
+                } catch (_: InterruptedException) {
+                    throw OperationCanceledException()
+                } finally {
+                    signal?.setOnCancelListener(null)
+                }
                 signal?.throwIfCanceled()
             }
+
             "present", "name_slow", "name_late", "name_unicode", "name_long", "name_blank", "name_no_column", "name_denied" -> Unit
             else -> throw FileNotFoundException()
         }

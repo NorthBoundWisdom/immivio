@@ -2,14 +2,17 @@ extends SceneTree
 const Grade := preload("res://scripts/color_grade.gd")
 var failures: Array[String] = []
 
+
 func _initialize() -> void:
 	call_deferred("_run")
+
 
 func sample(viewport: SubViewport) -> Color:
 	await process_frame
 	await RenderingServer.frame_post_draw
 	await RenderingServer.frame_post_draw
 	return viewport.get_texture().get_image().get_pixel(32, 32)
+
 
 func _run() -> void:
 	var viewport := SubViewport.new()
@@ -42,27 +45,34 @@ func _run() -> void:
 	grade.select("Custom")
 	grade.apply(material)
 	var neutral := await sample(viewport)
-	if baseline != neutral: failures.append("Neutral changes original pixels")
+	if baseline != neutral:
+		failures.append("Neutral changes original pixels")
 	grade.adjust("exposure", 1)
 	grade.apply(material)
 	var brighter := await sample(viewport)
-	if brighter.r < baseline.r * 1.8 or brighter.g < baseline.g * 1.8: failures.append("Exposure does not double display RGB")
+	if brighter.r < baseline.r * 1.8 or brighter.g < baseline.g * 1.8:
+		failures.append("Exposure does not double display RGB")
 	grade.reset_custom()
 	grade.adjust("saturation", 0)
 	grade.apply(material)
 	var mono := await sample(viewport)
-	if absf(mono.r - mono.g) > 0.01 or absf(mono.g - mono.b) > 0.01: failures.append("Zero saturation not grayscale")
+	if absf(mono.r - mono.g) > 0.01 or absf(mono.g - mono.b) > 0.01:
+		failures.append("Zero saturation not grayscale")
 	material.set_shader_parameter("alpha_enabled", true)
 	var alpha_before := await sample(viewport)
 	grade.select("Warm")
 	grade.apply(material)
 	var warm := await sample(viewport)
-	if absf(alpha_before.a - warm.a) > 0.005: failures.append("Grading modified mask alpha")
-	if warm.r / warm.b <= baseline.r / baseline.b + 0.1: failures.append("Warm preset did not warm test sample")
+	if absf(alpha_before.a - warm.a) > 0.005:
+		failures.append("Grading modified mask alpha")
+	if warm.r / warm.b <= baseline.r / baseline.b + 0.1:
+		failures.append("Warm preset did not warm test sample")
 	grade.select("Original")
 	grade.apply(material)
 	material.set_shader_parameter("alpha_enabled", false)
-	if await sample(viewport) != baseline: failures.append("Original does not bypass grading")
-	for failure in failures: push_error(failure)
+	if await sample(viewport) != baseline:
+		failures.append("Original does not bypass grading")
+	for failure in failures:
+		push_error(failure)
 	print("Color grading desktop pixels: ", "passed" if failures.is_empty() else failures)
 	quit(0 if failures.is_empty() else 1)

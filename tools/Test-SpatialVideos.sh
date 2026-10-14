@@ -9,19 +9,22 @@ logs="$repo/build/output"
 mkdir -p "$build" "$logs"
 cd "$build"
 if [[ ! -f config.h ]]; then
-    "$source/configure" --disable-doc --disable-programs --disable-autodetect \
-        --disable-network --disable-everything --enable-protocol=file \
-        --enable-demuxer=mov --enable-decoder=hevc --enable-parser=hevc \
-        --disable-avdevice --disable-avfilter --disable-swscale --disable-swresample \
-        --disable-x86asm >"$logs/spatial-ffmpeg-configure.log" 2>&1
+	"$source/configure" --disable-doc --disable-programs --disable-autodetect \
+		--disable-network --disable-everything --enable-protocol=file \
+		--enable-demuxer=mov --enable-decoder=hevc --enable-parser=hevc \
+		--disable-avdevice --disable-avfilter --disable-swscale --disable-swresample \
+		--disable-x86asm >"$logs/spatial-ffmpeg-configure.log" 2>&1
 fi
 make -j"${QUEST_MPV_CORES:-6}" >"$logs/spatial-ffmpeg-build.log" 2>&1
 cc -std=c11 -Wall -Wextra -Werror -I. -I"$source" \
-    "$repo/tests/native/spatial_video_test.c" \
-    libavformat/libavformat.a libavcodec/libavcodec.a libavutil/libavutil.a \
-    -lm -lpthread -ldl -o spatial_video_test
+	"$repo/tests/native/spatial_video_test.c" \
+	libavformat/libavformat.a libavcodec/libavcodec.a libavutil/libavutil.a \
+	-lm -lpthread -ldl -o spatial_video_test
 shopt -s nullglob
 files=("$samples"/iPhone16Pro_SVD_*.mov)
-[[ ${#files[@]} -ge 5 ]] || { echo 'At least five original MV-HEVC samples are required' >&2; exit 2; }
+[[ ${#files[@]} -ge 5 ]] || {
+	echo 'At least five original MV-HEVC samples are required' >&2
+	exit 2
+}
 ./spatial_video_test "${files[@]}" >"$logs/spatial-video-native-test.log" 2>&1
 cat "$logs/spatial-video-native-test.log"

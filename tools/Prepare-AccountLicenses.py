@@ -1,4 +1,5 @@
 """Archive license texts from the project's pinned local dependencies for the About reader."""
+
 from pathlib import Path
 from zipfile import ZipFile
 import shutil
@@ -21,11 +22,20 @@ def prepare():
     for name, source in copies.items():
         shutil.copyfile(source, output / name)
     (output / "hands.txt").write_bytes(
-        (root / "app/godot/models/hands/NOTICE.txt").read_bytes() + b"\n\n" +
-        (root / "app/godot/models/hands/LICENSE.txt").read_bytes())
+        (root / "app/godot/models/hands/NOTICE.txt").read_bytes()
+        + b"\n\n"
+        + (root / "app/godot/models/hands/LICENSE.txt").read_bytes()
+    )
     with ZipFile(asset_file("OpenXRVendors")) as archive:
-        entries = sorted(n for n in archive.namelist() if "LICENSE" in n and not n.endswith("/"))
-        (output / "vendors.txt").write_bytes(b"\n\n".join(n.encode() + b"\n\n" + archive.read(n) for n in entries).rstrip(b"\r\n") + b"\n")
+        entries = sorted(
+            n for n in archive.namelist() if "LICENSE" in n and not n.endswith("/")
+        )
+        (output / "vendors.txt").write_bytes(
+            b"\n\n".join(
+                n.encode() + b"\n\n" + archive.read(n) for n in entries
+            ).rstrip(b"\r\n")
+            + b"\n"
+        )
 
 
 if __name__ == "__main__":

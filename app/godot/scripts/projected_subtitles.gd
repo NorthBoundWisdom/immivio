@@ -12,6 +12,7 @@ var _edge := Color.BLACK
 var vertical_text: Control
 const VerticalText := preload("res://scripts/vertical_subtitle_text.gd")
 
+
 func _ready() -> void:
 	viewport = SubViewport.new()
 	viewport.size = Vector2i(PATCH_SIZE, PATCH_SIZE)
@@ -34,18 +35,37 @@ func _ready() -> void:
 	vertical_text.visible = false
 	viewport.add_child(vertical_text)
 
-func clear(target: ShaderMaterial) -> void:
-	if target: target.set_shader_parameter("subtitle_enabled", false)
 
-func update_patch(caption: Label3D, target: ShaderMaterial, anchor: Basis, distance: float, ipd: float, vertical: bool = false, text_size: float = 1.0) -> void:
+func clear(target: ShaderMaterial) -> void:
+	if target:
+		target.set_shader_parameter("subtitle_enabled", false)
+
+
+func update_patch(
+	caption: Label3D,
+	target: ShaderMaterial,
+	anchor: Basis,
+	distance: float,
+	ipd: float,
+	vertical: bool = false,
+	text_size: float = 1.0
+) -> void:
 	if not viewport or not caption.visible or caption.text.is_empty():
 		clear(target)
 		return
-	if _text != caption.text or _vertical != vertical or not is_equal_approx(_size, text_size) or _ink != caption.modulate or _edge != caption.outline_modulate:
-		_ink = caption.modulate; _edge = caption.outline_modulate
+	if (
+		_text != caption.text
+		or _vertical != vertical
+		or not is_equal_approx(_size, text_size)
+		or _ink != caption.modulate
+		or _edge != caption.outline_modulate
+	):
+		_ink = caption.modulate
+		_edge = caption.outline_modulate
 		label.add_theme_color_override("font_color", _ink)
 		label.add_theme_color_override("font_outline_color", _edge)
-		vertical_text.ink = _ink; vertical_text.edge = _edge
+		vertical_text.ink = _ink
+		vertical_text.edge = _edge
 		_size = text_size
 		label.add_theme_font_size_override("font_size", roundi(40 * _size))
 		label.add_theme_constant_override("outline_size", maxi(2, roundi(8 * _size)))
@@ -65,10 +85,11 @@ func update_patch(caption: Label3D, target: ShaderMaterial, anchor: Basis, dista
 	# Do not add it to a separate stereo-projected text plane as well.
 	target.set_shader_parameter("subtitle_parallax", 2.0 * atan(ipd / (2.0 * distance)))
 
+
 static func runtime_ipd() -> float:
 	var xr := XRServer.primary_interface
 	if xr and xr.is_initialized() and xr.get_view_count() == 2:
 		var left := xr.get_transform_for_view(0, Transform3D.IDENTITY)
 		var right := xr.get_transform_for_view(1, Transform3D.IDENTITY)
 		return left.origin.distance_to(right.origin) / maxf(XRServer.world_scale, 0.0001)
-	return 0.063 # Desktop preview; physical XR obtains the current runtime eye positions.
+	return 0.063  # Desktop preview; physical XR obtains the current runtime eye positions.

@@ -22,36 +22,51 @@ internal class PlaybackSourceResources(private val releaseNetwork: (String) -> U
             "file" -> source.path ?: error("Local file path unavailable")
             "smb", "cloud", "medialib", "http", "https" -> network(uri).also { location ->
                 if (source.scheme in setOf("medialib", "cloud", "smb")) synchronized(this) {
-                    if (closed) { releaseNetwork(location); error("Playback source closed") }
+                    if (closed) {
+                        releaseNetwork(location); error("Playback source closed")
+                    }
                     networkLease = location
                 }
             }
+
             else -> {
-                val fd = context.contentResolver.openFileDescriptor(source, "r") ?: error("Local document descriptor unavailable")
+                val fd = context.contentResolver.openFileDescriptor(source, "r")
+                    ?: error("Local document descriptor unavailable")
                 synchronized(this) {
-                    if (closed) { fd.close(); error("Playback source closed") }
+                    if (closed) {
+                        fd.close(); error("Playback source closed")
+                    }
                     descriptor = fd
                 }
                 "fd://${fd.fd}"
             }
         }
     }
-    @Synchronized fun adoptAudio(tracks: List<SidecarAudio.Track>) {
+
+    @Synchronized
+    fun adoptAudio(tracks: List<SidecarAudio.Track>) {
         val descriptors = tracks.mapNotNull { it.descriptor }
-        val leases = tracks.filter { it.location.startsWith("http://127.0.0.1:") }.map { it.location }
+        val leases =
+            tracks.filter { it.location.startsWith("http://127.0.0.1:") }.map { it.location }
         if (closed) {
             descriptors.forEach { runCatching { it.close() } }; leases.forEach(releaseNetwork)
             error("Playback source closed")
         }
         sidecars = descriptors; audioLeases = leases
     }
-    @Synchronized fun adoptSubtitles(tracks: List<SidecarSubtitles.Track>) {
+
+    @Synchronized
+    fun adoptSubtitles(tracks: List<SidecarSubtitles.Track>) {
         val leases = tracks.map { it.location }
-        if (closed) { leases.forEach(releaseNetwork); error("Playback source closed") }
+        if (closed) {
+            leases.forEach(releaseNetwork); error("Playback source closed")
+        }
         subtitleLeases = leases
     }
+
     /** Called under the host lock; repeat calls retry network releases that threw. */
-    @Synchronized fun close() {
+    @Synchronized
+    fun close() {
         closed = true
         networkLease?.let(releaseNetwork); networkLease = null
         subtitleLeases.forEach(releaseNetwork); subtitleLeases = emptyList()

@@ -2,14 +2,15 @@ extends Node3D
 ## Shared spatial surface only: decoding, playback clocks and photo queues live in their owners.
 signal mode_lock_changed(lock: Dictionary)
 
-var mode_lock := {} # Default for unmarked, unremembered media; manual mode changes unlock it.
+var mode_lock := {}  # Default for unmarked, unremembered media; manual mode changes unlock it.
 const Geometry := preload("res://scripts/video_geometry.gd")
 var panel: MeshInstance3D
 var material: ShaderMaterial
 var sharpness := 0.2:
 	set(value):
 		sharpness = clampf(value, 0.0, 0.6) if is_finite(value) else 0.2
-		if material: material.set_shader_parameter("sharpness", sharpness)
+		if material:
+			material.set_shader_parameter("sharpness", sharpness)
 var view_camera: Camera3D
 var geometry := Geometry.Geometry.FLAT
 var stereo_sbs := false
@@ -46,8 +47,9 @@ var view_yaw := 0.0
 var view_pitch := 0.0
 var view_zoom := 0.0
 const ZOOM_LIMITS := Vector2(-0.5, 0.6)
-var _view_basis := Basis.IDENTITY # World orientation captured once, independent of later head turns.
+var _view_basis := Basis.IDENTITY  # World orientation captured once, independent of later head turns.
 var _applied_geometry := Geometry.Geometry.FLAT
+
 
 func initialize_surface(shader: Shader) -> void:
 	panel = MeshInstance3D.new()
@@ -61,11 +63,14 @@ func initialize_surface(shader: Shader) -> void:
 	panel.material_override = material
 	add_child(panel)
 
+
 func _source_size() -> Vector2:
 	return Vector2(1920, 1080)
 
+
 func _pixel_aspect() -> float:
 	return 1.0
+
 
 func _apply_geometry() -> void:
 	if geometry != _applied_geometry:
@@ -75,8 +80,12 @@ func _apply_geometry() -> void:
 	if geometry == Geometry.Geometry.FLAT:
 		_apply_flat_pose()
 		var dimensions := _source_size()
-		var aspect := dimensions.x / maxf(1.0, dimensions.y) \
-			/ (2.0 if stereo_sbs and not top_bottom else 1.0) * (2.0 if stereo_sbs and top_bottom else 1.0)
+		var aspect := (
+			dimensions.x
+			/ maxf(1.0, dimensions.y)
+			/ (2.0 if stereo_sbs and not top_bottom else 1.0)
+			* (2.0 if stereo_sbs and top_bottom else 1.0)
+		)
 		# Half layouts restore the packed axis explicitly; container PAR may already describe
 		# that same stretch, so applying both would double it.
 		aspect *= (0.5 if top_bottom else 2.0) if stereo_sbs and stereo_half else _pixel_aspect()
@@ -84,7 +93,10 @@ func _apply_geometry() -> void:
 			_screen_base = _screen_dimensions(aspect)
 			_flat.size = _screen_base * screen_scale
 		_shape_screen()
-	elif geometry == Geometry.Geometry.EQUIRECT_360 or (geometry == Geometry.Geometry.FISHEYE and fisheye_fov > 180):
+	elif (
+		geometry == Geometry.Geometry.EQUIRECT_360
+		or (geometry == Geometry.Geometry.FISHEYE and fisheye_fov > 180)
+	):
 		# Lenses wider than 180 degrees reach behind the viewer: the whole sphere, black beyond the lens.
 		if not _sphere:
 			_sphere = Geometry.hemisphere(SPHERE_RADIUS, 144, 72, TAU)
@@ -103,34 +115,49 @@ func _apply_geometry() -> void:
 	material.set_shader_parameter("fisheye_fov", float(fisheye_fov))
 	material.set_shader_parameter("swap_eyes", swap_eyes)
 
+
 ## Preserve world position while removing pitch/roll from a placement frame.
 static func upright_pose(pose: Transform3D) -> Transform3D:
 	var forward := -pose.basis.z
 	forward.y = 0.0
-	if forward.length_squared() <= .0001: forward = Vector3.UP.cross(pose.basis.x)
+	if forward.length_squared() <= .0001:
+		forward = Vector3.UP.cross(pose.basis.x)
 	forward = forward.normalized() if forward.length_squared() > .0001 else Vector3.FORWARD
 	return Transform3D(Basis.looking_at(forward, Vector3.UP), pose.origin)
+
 
 ## Placement updates do not rebuild meshes or change decoding/projection parameters.
 func set_flat_world_pose(pose: Transform3D) -> void:
 	flat_pose = global_transform.affine_inverse() * pose
-	if geometry == Geometry.Geometry.FLAT: _apply_flat_pose()
+	if geometry == Geometry.Geometry.FLAT:
+		_apply_flat_pose()
+
 
 func _apply_flat_pose() -> void:
-	panel.transform = flat_pose * Transform3D(Basis(Vector3.FORWARD, deg_to_rad(screen_rotation)), Vector3.ZERO)
+	panel.transform = (
+		flat_pose * Transform3D(Basis(Vector3.FORWARD, deg_to_rad(screen_rotation)), Vector3.ZERO)
+	)
+
 
 func _screen_dimensions(aspect: float) -> Vector2:
 	return Vector2(minf(1.9, aspect), minf(1.9, aspect) / aspect)
 
+
 ## Immersive projections are centred on the eyes every frame. Runs on every presented video frame
 ## too, so it must never put the sphere anywhere else (that alternated with _process and shook the view).
 func _center_on_view() -> void:
-	panel.global_basis = _view_basis * Basis(Vector3.UP, view_yaw) * Basis(Vector3.RIGHT, view_pitch) * Basis(Vector3.FORWARD, deg_to_rad(screen_rotation))
+	panel.global_basis = (
+		_view_basis
+		* Basis(Vector3.UP, view_yaw)
+		* Basis(Vector3.RIGHT, view_pitch)
+		* Basis(Vector3.FORWARD, deg_to_rad(screen_rotation))
+	)
 	if view_camera and view_camera.is_inside_tree():
 		panel.global_position = view_camera.global_position
 	else:
 		panel.position = Vector3(0, 1.6, 0)
 	panel.global_position += panel.global_basis * Vector3(0, 0, -view_zoom * SPHERE_RADIUS)
+
 
 ## Drag: the picture follows the controller (radians; positive yaw turns it left, pitch up).
 func turn_view(yaw: float, pitch: float) -> void:
@@ -139,11 +166,13 @@ func turn_view(yaw: float, pitch: float) -> void:
 	if geometry != Geometry.Geometry.FLAT:
 		_center_on_view()
 
+
 ## Positive brings the picture nearer.
 func zoom_view(amount: float) -> void:
 	view_zoom = clampf(view_zoom + amount, ZOOM_LIMITS.x, ZOOM_LIMITS.y)
 	if geometry != Geometry.Geometry.FLAT:
 		_center_on_view()
+
 
 ## The flat screen's mesh: the quad, or a cylinder section of radius distance / curve with the
 ## same width along the arc (the video maps by UV, so the picture bends with it).
@@ -161,9 +190,11 @@ func _shape_screen() -> void:
 		panel.mesh = _curved
 	_show_handles(hovered_corner)
 
+
 func _curve_radius() -> float:
 	# At most ~140 degrees of arc, however wide the screen.
 	return maxf(screen_distance / screen_curve, _flat.size.x / 2.4) if screen_curve > 0.0 else INF
+
 
 static func _cylinder(size: Vector2, radius: float, columns: int = 48) -> ArrayMesh:
 	var vertices := PackedVector3Array()
@@ -175,7 +206,9 @@ static func _cylinder(size: Vector2, radius: float, columns: int = 48) -> ArrayM
 		var angle := lerpf(-half, half, u)
 		var x := sin(angle) * radius
 		var z := (1.0 - cos(angle)) * radius
-		vertices.append_array(PackedVector3Array([Vector3(x, size.y * 0.5, z), Vector3(x, -size.y * 0.5, z)]))
+		vertices.append_array(
+			PackedVector3Array([Vector3(x, size.y * 0.5, z), Vector3(x, -size.y * 0.5, z)])
+		)
 		uv.append_array(PackedVector2Array([Vector2(u, 0), Vector2(u, 1)]))
 		if column < columns:
 			var a := column * 2
@@ -189,6 +222,7 @@ static func _cylinder(size: Vector2, radius: float, columns: int = 48) -> ArrayM
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	return mesh
 
+
 ## Corner [index] (0 top-left, 1 top-right, 2 bottom-left, 3 bottom-right) in the screen's space,
 ## and the angle the screen surface turns there.
 func screen_corner(index: int) -> Vector3:
@@ -200,18 +234,24 @@ func screen_corner(index: int) -> Vector3:
 	var angle := _flat.size.x * 0.5 / radius
 	return Vector3(side * sin(angle) * radius, y, (1.0 - cos(angle)) * radius)
 
+
 ## The flat screen corner a ray points at (within a few degrees), or -1.
 func corner_at(origin: Vector3, direction: Vector3) -> int:
-	if geometry != Geometry.Geometry.FLAT or not panel.visible or direction.length_squared() < 0.000001:
+	if (
+		geometry != Geometry.Geometry.FLAT
+		or not panel.visible
+		or direction.length_squared() < 0.000001
+	):
 		return -1
 	var best := -1
-	var closest := 0.07 # radians
+	var closest := 0.07  # radians
 	for index in 4:
 		var angle := direction.angle_to(panel.global_transform * screen_corner(index) - origin)
 		if angle < closest:
 			closest = angle
 			best = index
 	return best
+
 
 ## Where a ray meets the screen's plane, in the screen's space; null when it misses.
 func screen_point(origin: Vector3, direction: Vector3) -> Variant:
@@ -222,31 +262,42 @@ func screen_point(origin: Vector3, direction: Vector3) -> Variant:
 		return null
 	return start + delta * (-start.z / delta.z)
 
+
 func set_screen_rotation(value: float) -> void:
-	if not is_finite(value): return
+	if not is_finite(value):
+		return
 	screen_rotation = clampf(value, -90.0, 90.0)
 	_apply_geometry()
 
+
 func subtitle_transform() -> Transform3D:
-	return Transform3D(panel.global_basis * Basis(Vector3.FORWARD, -deg_to_rad(screen_rotation)), panel.global_position)
+	return Transform3D(
+		panel.global_basis * Basis(Vector3.FORWARD, -deg_to_rad(screen_rotation)),
+		panel.global_position
+	)
+
 
 func set_screen_scale(value: float) -> void:
 	screen_scale = clampf(value, SCALE_LIMITS.x, SCALE_LIMITS.y)
 	_flat.size = _screen_base * screen_scale
 	_shape_screen()
 
+
 func set_screen_curve(value: float) -> void:
 	screen_curve = clampf(value, 0.0, 1.0)
 	_shape_screen()
+
 
 func cycle_screen_curve() -> void:
 	var index := CURVES.find(screen_curve)
 	set_screen_curve(CURVES[(index + 1) % CURVES.size()])
 
+
 ## Main moves the screen nearer or farther; a curved screen keeps bending round the eyes.
 func set_screen_distance(value: float) -> void:
 	screen_distance = clampf(value, DISTANCE_LIMITS.x, DISTANCE_LIMITS.y)
 	_shape_screen()
+
 
 ## Brackets on one corner ([index]) or none (-1); they bend with the screen.
 func _show_handles(index: int) -> void:
@@ -269,10 +320,22 @@ func _show_handles(index: int) -> void:
 		var bracket := _handles[corner]
 		bracket.visible = corner == index and geometry == Geometry.Geometry.FLAT
 		if bracket.visible:
-			var turn := 0.0 if screen_curve <= 0.0 else _flat.size.x * 0.5 / _curve_radius() * (1.0 if corner % 2 == 1 else -1.0)
-			var mirror := Vector3(1.0 if corner % 2 == 1 else -1.0, 1.0 if corner < 2 else -1.0, 1.0)
-			bracket.transform = Transform3D(Basis(Vector3.UP, -turn) * Basis.from_scale(mirror * screen_distance / SCREEN_DISTANCE),
-				screen_corner(corner) + Vector3(0, 0, 0.01).rotated(Vector3.UP, -turn))
+			var turn := (
+				0.0
+				if screen_curve <= 0.0
+				else _flat.size.x * 0.5 / _curve_radius() * (1.0 if corner % 2 == 1 else -1.0)
+			)
+			var mirror := Vector3(
+				1.0 if corner % 2 == 1 else -1.0, 1.0 if corner < 2 else -1.0, 1.0
+			)
+			bracket.transform = Transform3D(
+				(
+					Basis(Vector3.UP, -turn)
+					* Basis.from_scale(mirror * screen_distance / SCREEN_DISTANCE)
+				),
+				screen_corner(corner) + Vector3(0, 0, 0.01).rotated(Vector3.UP, -turn)
+			)
+
 
 ## An L outside a top-right corner (mirrored for the others).
 static func _bracket() -> ArrayMesh:
@@ -285,8 +348,16 @@ static func _bracket() -> ArrayMesh:
 	for item in quads:
 		var quad: Rect2 = item
 		var a := vertices.size()
-		vertices.append_array(PackedVector3Array([Vector3(quad.position.x, quad.end.y, 0), Vector3(quad.end.x, quad.end.y, 0),
-			Vector3(quad.position.x, quad.position.y, 0), Vector3(quad.end.x, quad.position.y, 0)]))
+		vertices.append_array(
+			PackedVector3Array(
+				[
+					Vector3(quad.position.x, quad.end.y, 0),
+					Vector3(quad.end.x, quad.end.y, 0),
+					Vector3(quad.position.x, quad.position.y, 0),
+					Vector3(quad.end.x, quad.position.y, 0)
+				]
+			)
+		)
 		indices.append_array(PackedInt32Array([a, a + 1, a + 2, a + 2, a + 1, a + 3]))
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
@@ -296,14 +367,18 @@ static func _bracket() -> ArrayMesh:
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	return mesh
 
+
 func set_corner_hover(index: int) -> void:
 	if index != hovered_corner:
 		_show_handles(index)
 
+
 func _unlock_mode() -> void:
-	if mode_lock.is_empty(): return
+	if mode_lock.is_empty():
+		return
 	mode_lock = {}
 	mode_lock_changed.emit(mode_lock.duplicate())
+
 
 func reset_view() -> void:
 	view_yaw = 0.0
@@ -313,7 +388,9 @@ func reset_view() -> void:
 		# Centre on the gaze once, keeping the picture free of head roll.
 		var forward := -view_camera.global_basis.orthonormalized().z
 		var yaw := atan2(-forward.x, -forward.z)
-		_view_basis = Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, asin(clampf(forward.y, -1.0, 1.0)))
+		_view_basis = (
+			Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, asin(clampf(forward.y, -1.0, 1.0)))
+		)
 	else:
 		_view_basis = Basis.IDENTITY
 	if geometry != Geometry.Geometry.FLAT:

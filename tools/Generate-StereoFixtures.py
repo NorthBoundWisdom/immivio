@@ -3,6 +3,7 @@
 No downloaded footage is needed. Output is disposable; this source is the master.
 Run: python tools/Generate-StereoFixtures.py
 """
+
 import argparse
 import hashlib
 import json
@@ -38,16 +39,31 @@ def eye_frame(index, frame, fps, title, font):
     for y in range(70, 380, 40):
         draw.line((30, y, 770, y), fill="#263b50")
     draw.text((30, 15), title, font=font, fill="#eef6ff")
-    draw.text((680, 15), "LEFT" if index == 0 else "RIGHT", font=font, fill="#6fe7bf" if index == 0 else "#fdc175")
+    draw.text(
+        (680, 15),
+        "LEFT" if index == 0 else "RIGHT",
+        font=font,
+        fill="#6fe7bf" if index == 0 else "#fdc175",
+    )
     # Central cross is on the screen plane. The two rings have opposing disparity.
     draw.line((350, 200, 450, 200), fill="white", width=3)
     draw.line((400, 150, 400, 250), fill="white", width=3)
     side = 1 if index == 0 else -1
     moving = round(math.sin(frame / fps * math.tau / 4) * 32)
-    for cx, cy, radius, disparity, color in [(190 + moving, 190, 55, 6, "#6fe7bf"), (605, 220, 72, -4, "#fdc175")]:
+    for cx, cy, radius, disparity, color in [
+        (190 + moving, 190, 55, 6, "#6fe7bf"),
+        (605, 220, 72, -4, "#fdc175"),
+    ]:
         cx += side * disparity
-        draw.ellipse((cx - radius, cy - radius, cx + radius, cy + radius), outline=color, width=5)
-    draw.text((30, 370), f"{frame / fps:04.1f}s    + screen plane    green near / amber far", font=font, fill="#b8cadc")
+        draw.ellipse(
+            (cx - radius, cy - radius, cx + radius, cy + radius), outline=color, width=5
+        )
+    draw.text(
+        (30, 370),
+        f"{frame / fps:04.1f}s    + screen plane    green near / amber far",
+        font=font,
+        fill="#b8cadc",
+    )
     return image
 
 
@@ -58,7 +74,35 @@ def generate(output, seconds, fps, ffmpeg):
     for name, layout, delta, title, reverse, baked in CASES:
         size = (800, 800) if layout == "tb" else (1600, 400)
         target = output / (name + ".mp4")
-        command = [ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-f", "rawvideo", "-pixel_format", "rgb24", "-video_size", f"{size[0]}x{size[1]}", "-framerate", str(fps), "-i", "pipe:0", "-an", "-c:v", "libx264", "-preset", "fast", "-crf", "16", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(target)]
+        command = [
+            ffmpeg,
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-f",
+            "rawvideo",
+            "-pixel_format",
+            "rgb24",
+            "-video_size",
+            f"{size[0]}x{size[1]}",
+            "-framerate",
+            str(fps),
+            "-i",
+            "pipe:0",
+            "-an",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "fast",
+            "-crf",
+            "16",
+            "-pix_fmt",
+            "yuv420p",
+            "-movflags",
+            "+faststart",
+            str(target),
+        ]
         with subprocess.Popen(command, stdin=subprocess.PIPE) as process:
             for frame in range(round(seconds * fps)):
                 left = eye_frame(0, frame, fps, title, font)
@@ -78,14 +122,31 @@ def generate(output, seconds, fps, ffmpeg):
             process.stdin.close()
             if process.wait() != 0:
                 raise RuntimeError("ffmpeg failed for " + name)
-        manifest["clips"].append({"file": target.name, "layout": layout, "horizontal_percent": delta[0] / EYE[0] * 100, "vertical_percent": delta[1] / EYE[1] * 100, "swap_eyes": reverse, "alignment_can_remove_ghost": not baked, "sha256": hashlib.sha256(target.read_bytes()).hexdigest()})
+        manifest["clips"].append(
+            {
+                "file": target.name,
+                "layout": layout,
+                "horizontal_percent": delta[0] / EYE[0] * 100,
+                "vertical_percent": delta[1] / EYE[1] * 100,
+                "swap_eyes": reverse,
+                "alignment_can_remove_ghost": not baked,
+                "sha256": hashlib.sha256(target.read_bytes()).hexdigest(),
+            }
+        )
         print(target)
-    (output / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    (output / "manifest.json").write_text(
+        json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+    )
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path, default=Path(__file__).resolve().parents[1] / "build/output/stereo-view/fixtures")
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path(__file__).resolve().parents[1]
+        / "build/output/stereo-view/fixtures",
+    )
     parser.add_argument("--seconds", type=float, default=6)
     parser.add_argument("--fps", type=int, default=24)
     args = parser.parse_args()

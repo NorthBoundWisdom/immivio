@@ -8,7 +8,8 @@ internal class CloudBrowseRequests {
     private val executor = Executors.newSingleThreadExecutor { Thread(it, "QuestCloudBrowse") }
     private var active: Pair<Int, CloudCancellation>? = null
     private var future: Future<*>? = null
-    @Synchronized fun submit(id: Int, work: (CloudCancellation) -> String, emit: (Int, String) -> Unit) {
+    @Synchronized
+    fun submit(id: Int, work: (CloudCancellation) -> String, emit: (Int, String) -> Unit) {
         cancel()
         val cancellation = CloudCancellation()
         active = id to cancellation
@@ -22,12 +23,18 @@ internal class CloudBrowseRequests {
             }
         }
     }
-    @Synchronized fun cancel(id: Int? = null) {
+
+    @Synchronized
+    fun cancel(id: Int? = null) {
         if (id != null && active?.first != id) return
         future?.cancel(true)
         active?.second?.cancel()
         active = null
         future = null
     }
-    @Synchronized fun close() { cancel(); executor.shutdownNow() }
+
+    @Synchronized
+    fun close() {
+        cancel(); executor.shutdownNow()
+    }
 }

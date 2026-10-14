@@ -10,7 +10,8 @@ class PhotoCacheTest {
         parentFile!!.mkdirs(); writeBytes(ByteArray(size))
     }
 
-    @Test fun clearRemovesCrashLeftoversButPreservesLivePhotosAndOtherCaches() {
+    @Test
+    fun clearRemovesCrashLeftoversButPreservesLivePhotosAndOtherCaches() {
         val cache = Files.createTempDirectory("photo-cache-clear").toFile()
         try {
             put(cache, "photos/old/source", 11)
@@ -30,15 +31,20 @@ class PhotoCacheTest {
             assertEquals(2L to 52L, PhotoCache.usage(cache))
             PhotoCache.clear(cache, emptySet())
             assertEquals(0L to 0L, PhotoCache.usage(cache))
-        } finally { cache.deleteRecursively() }
+        } finally {
+            cache.deleteRecursively()
+        }
     }
 
-    @Test fun missingDirectoriesAreAnEmptyCache() {
+    @Test
+    fun missingDirectoriesAreAnEmptyCache() {
         val cache = Files.createTempDirectory("photo-cache-empty").toFile()
         try {
             assertEquals(0L to 0L, PhotoCache.usage(cache))
             PhotoCache.clear(cache, emptySet())
             assertFalse(File(cache, "photos").exists())
-        } finally { cache.deleteRecursively() }
+        } finally {
+            cache.deleteRecursively()
+        }
     }
 }

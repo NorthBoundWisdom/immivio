@@ -25,10 +25,12 @@ import java.io.File
 @SuppressLint("SetJavaScriptEnabled")
 class WebLoginFixtureActivity : Activity() {
     private val handler = Handler(Looper.getMainLooper())
+
     private class FixtureView(context: Context) : WebView(context) {
         override fun onCreateInputConnection(info: EditorInfo) = null
         fun editor() = super.onCreateInputConnection(EditorInfo())
     }
+
     private lateinit var web: FixtureView
     private lateinit var viewport: FrameLayout
     private lateinit var root: FrameLayout
@@ -47,25 +49,39 @@ class WebLoginFixtureActivity : Activity() {
         val host = ContextThemeWrapper(this, 0).apply {
             applyOverrideConfiguration(Configuration().apply {
                 this.fontScale = fontScale
-                screenWidthDp = if (portrait) 240 else 400; screenHeightDp = if (portrait) 400 else 240
-                orientation = if (portrait) Configuration.ORIENTATION_PORTRAIT else Configuration.ORIENTATION_LANDSCAPE
+                screenWidthDp = if (portrait) 240 else 400; screenHeightDp =
+                if (portrait) 400 else 240
+                orientation =
+                    if (portrait) Configuration.ORIENTATION_PORTRAIT else Configuration.ORIENTATION_LANDSCAPE
             })
         }
         val context = if (fixed) WebLoginViewport.context(host) else host
         geometry = WebLoginViewport.Geometry(this)
         web = FixtureView(context)
-        viewport = if (fixed) WebLoginViewport.container(context, geometry) else FrameLayout(context)
-        viewport.addView(web, FrameLayout.LayoutParams(if (fixed) geometry.width else WebLoginViewport.WIDTH,
-            if (fixed) geometry.height else WebLoginViewport.HEIGHT))
+        viewport =
+            if (fixed) WebLoginViewport.container(context, geometry) else FrameLayout(context)
+        viewport.addView(
+            web, FrameLayout.LayoutParams(
+                if (fixed) geometry.width else WebLoginViewport.WIDTH,
+                if (fixed) geometry.height else WebLoginViewport.HEIGHT
+            )
+        )
         root = FrameLayout(this)
         root.addView(viewport, FrameLayout.LayoutParams(600, 240))
         setContentView(root)
         layoutViewport(600, 240)
         web.setLayerType(View.LAYER_TYPE_SOFTWARE, null)
-        WebLoginViewport.configure(web, "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36")
-        if (!fixed) { web.setInitialScale(0); web.settings.textZoom = (fontScale * 100).toInt() }
-        report.put("fixed", fixed).put("host_density", density).put("host_font_scale", fontScale).put("host_portrait", portrait)
-            .put("render_density", context.resources.configuration.densityDpi).put("display_density", geometry.density)
+        WebLoginViewport.configure(
+            web,
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
+        )
+        if (!fixed) {
+            web.setInitialScale(0); web.settings.textZoom = (fontScale * 100).toInt()
+        }
+        report.put("fixed", fixed).put("host_density", density).put("host_font_scale", fontScale)
+            .put("host_portrait", portrait)
+            .put("render_density", context.resources.configuration.densityDpi)
+            .put("display_density", geometry.density)
         web.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView, url: String) {
                 if (started) return
@@ -73,7 +89,13 @@ class WebLoginFixtureActivity : Activity() {
                 handler.postDelayed({ inspect("initial") { testInput() } }, 500)
             }
         }
-        web.loadDataWithBaseURL(null, assets.open("login.html").bufferedReader().use { it.readText() }, "text/html", "UTF-8", null)
+        web.loadDataWithBaseURL(
+            null,
+            assets.open("login.html").bufferedReader().use { it.readText() },
+            "text/html",
+            "UTF-8",
+            null
+        )
     }
 
     private fun inspect(phase: String, next: () -> Unit) {
@@ -83,14 +105,28 @@ class WebLoginFixtureActivity : Activity() {
                 .put("container_width", viewport.width).put("container_height", viewport.height)
             report.put(phase, geometry)
             if (phase == "initial") {
-                checks.put("desktop_css_viewport", geometry.getInt("width") == 1200 && geometry.getInt("height") == 720)
-                checks.put("full_container_despite_small_host", viewport.width == this.geometry.width && viewport.height == this.geometry.height)
-                checks.put("login_controls_visible", visible(geometry, setOf("phone", "password", "login")))
+                checks.put(
+                    "desktop_css_viewport",
+                    geometry.getInt("width") == 1200 && geometry.getInt("height") == 720
+                )
+                checks.put(
+                    "full_container_despite_small_host",
+                    viewport.width == this.geometry.width && viewport.height == this.geometry.height
+                )
+                checks.put(
+                    "login_controls_visible",
+                    visible(geometry, setOf("phone", "password", "login"))
+                )
             } else if (phase == "captcha") {
                 checks.put("captcha_confirm_visible", visible(geometry, setOf("code", "confirm")))
             } else if (phase == "resized") {
-                checks.put("viewport_survives_host_resize", web.width == this.geometry.width && web.height == this.geometry.height &&
-                    viewport.width == this.geometry.width && viewport.height == this.geometry.height && geometry.getInt("height") == 720)
+                checks.put(
+                    "viewport_survives_host_resize",
+                    web.width == this.geometry.width && web.height == this.geometry.height &&
+                            viewport.width == this.geometry.width && viewport.height == this.geometry.height && geometry.getInt(
+                        "height"
+                    ) == 720
+                )
                 checks.put("captcha_after_resize", visible(geometry, setOf("code", "confirm")))
             }
             var ready = false
@@ -102,12 +138,14 @@ class WebLoginFixtureActivity : Activity() {
                 snapshot(phase)
                 next()
             }
-            web.postVisualStateCallback(SystemClock.uptimeMillis(), object : WebView.VisualStateCallback() {
-                override fun onComplete(requestId: Long) {
-                    ready = true
-                    complete()
-                }
-            })
+            web.postVisualStateCallback(
+                SystemClock.uptimeMillis(),
+                object : WebView.VisualStateCallback() {
+                    override fun onComplete(requestId: Long) {
+                        ready = true
+                        complete()
+                    }
+                })
             // Like the production VR panel, poll draw even when the vendor's window is hidden.
             val pump = object : Runnable {
                 override fun run() {
@@ -125,10 +163,17 @@ class WebLoginFixtureActivity : Activity() {
 
     private fun visible(geometry: JSONObject, ids: Set<String>): Boolean {
         val fields = geometry.getJSONArray("fields")
-        return (0 until fields.length()).map { fields.getJSONObject(it) }.filter { it.getString("id") in ids }.all {
-            it.getDouble("w") > 0 && it.getDouble("h") > 0 && it.getDouble("x") >= 0 && it.getDouble("y") >= 0 &&
-                (it.getDouble("x") + it.getDouble("w")) * geometry.getDouble("dpr") * geometry.getDouble("scale") <= minOf(viewport.width, web.width) + 1 &&
-                (it.getDouble("y") + it.getDouble("h")) * geometry.getDouble("dpr") * geometry.getDouble("scale") <= minOf(viewport.height, web.height) + 1
+        return (0 until fields.length()).map { fields.getJSONObject(it) }
+            .filter { it.getString("id") in ids }.all {
+            it.getDouble("w") > 0 && it.getDouble("h") > 0 && it.getDouble("x") >= 0 && it.getDouble(
+                "y"
+            ) >= 0 &&
+                    (it.getDouble("x") + it.getDouble("w")) * geometry.getDouble("dpr") * geometry.getDouble(
+                "scale"
+            ) <= minOf(viewport.width, web.width) + 1 &&
+                    (it.getDouble("y") + it.getDouble("h")) * geometry.getDouble("dpr") * geometry.getDouble(
+                "scale"
+            ) <= minOf(viewport.height, web.height) + 1
         }
     }
 
@@ -137,27 +182,38 @@ class WebLoginFixtureActivity : Activity() {
             val connection = web.editor()
             checks.put("input_connection_commit", connection?.commitText("13800138000", 1) == true)
             // Read only the fixture's known dummy text, never a remote login page.
-            handler.postDelayed({ web.evaluateJavascript("document.activeElement.id==='phone' && document.getElementById('phone').value==='13800138000'") { raw ->
-                checks.put("touch_focus_and_input_match_pixels", raw == "true")
-                connection?.closeConnection()
-                tap("login") { handler.postDelayed({ inspect("captcha") { resizeHost() } }, 300) }
-            } }, 150)
+            handler.postDelayed({
+                web.evaluateJavascript("document.activeElement.id==='phone' && document.getElementById('phone').value==='13800138000'") { raw ->
+                    checks.put("touch_focus_and_input_match_pixels", raw == "true")
+                    connection?.closeConnection()
+                    tap("login") {
+                        handler.postDelayed(
+                            { inspect("captcha") { resizeHost() } },
+                            300
+                        )
+                    }
+                }
+            }, 150)
         }
     }
 
     private fun resizeHost() {
         viewport.layoutParams = FrameLayout.LayoutParams(300, 100)
         layoutViewport(300, 100)
-        handler.postDelayed({ inspect("resized") {
-            tap("confirm") {
-                web.evaluateJavascript("document.body.dataset.confirmed==='yes'") { raw ->
-                    checks.put("captcha_confirmation_click", raw == "true")
-                    report.put("checks", checks)
-                    report.put("passed", checks.keys().asSequence().all { checks.getBoolean(it) })
-                    File(filesDir, "report.json").writeText(report.toString(2))
+        handler.postDelayed({
+            inspect("resized") {
+                tap("confirm") {
+                    web.evaluateJavascript("document.body.dataset.confirmed==='yes'") { raw ->
+                        checks.put("captcha_confirmation_click", raw == "true")
+                        report.put("checks", checks)
+                        report.put(
+                            "passed",
+                            checks.keys().asSequence().all { checks.getBoolean(it) })
+                        File(filesDir, "report.json").writeText(report.toString(2))
+                    }
                 }
             }
-        } }, 300)
+        }, 300)
     }
 
     private fun tap(id: String, next: () -> Unit) {
@@ -165,8 +221,19 @@ class WebLoginFixtureActivity : Activity() {
             val point = JSONObject(org.json.JSONTokener(raw).nextValue() as String)
             val time = SystemClock.uptimeMillis()
             for (action in listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP)) {
-                val event = MotionEvent.obtain(time, SystemClock.uptimeMillis(), action, point.getDouble("x").toFloat(), point.getDouble("y").toFloat(), 0)
-                try { web.dispatchTouchEvent(event) } finally { event.recycle() }
+                val event = MotionEvent.obtain(
+                    time,
+                    SystemClock.uptimeMillis(),
+                    action,
+                    point.getDouble("x").toFloat(),
+                    point.getDouble("y").toFloat(),
+                    0
+                )
+                try {
+                    web.dispatchTouchEvent(event)
+                } finally {
+                    event.recycle()
+                }
             }
             handler.postDelayed(next, 150)
         }
@@ -177,13 +244,16 @@ class WebLoginFixtureActivity : Activity() {
         val canvas = Canvas(bitmap)
         if (fixed) canvas.scale(1f / geometry.density, 1f / geometry.density)
         viewport.draw(canvas)
-        File(filesDir, "$phase.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        File(filesDir, "$phase.png").outputStream()
+            .use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
         bitmap.recycle()
     }
 
     private fun layoutViewport(width: Int, height: Int) {
-        viewport.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
-            View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY))
+        viewport.measure(
+            View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY)
+        )
         viewport.layout(0, 0, viewport.measuredWidth, viewport.measuredHeight)
     }
 

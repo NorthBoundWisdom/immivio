@@ -2,8 +2,11 @@ extends SceneTree
 const Migration := preload("res://scripts/player_settings_migration.gd")
 var failures: Array[String] = []
 
+
 func check(value: bool, message: String) -> void:
-	if not value: failures.append(message)
+	if not value:
+		failures.append(message)
+
 
 func _initialize() -> void:
 	var settings := ConfigFile.new()
@@ -21,22 +24,58 @@ func _initialize() -> void:
 	settings.set_value("video", "mode_lock", source_lock)
 	settings.set_value("photo", "mode_lock", {"geometry": 3, "layout": 2, "depth": false})
 	check(Migration.apply(settings), "Legacy effect configuration requires a migration")
-	check(not settings.has_section("alpha") and not settings.has_section_key("video", "alpha_fps"), "Retired runtime preferences are removed")
-	check(not settings.has_section_key("video", "depth_strength") and not settings.has_section_key("photo", "depth_strength"), "Generated depth strengths are removed")
-	check(settings.get_value("effects", "source_mask") == "embedded", "Source-supplied masks survive migration")
-	check(settings.get_value("audio", "volume") == 37.0 and settings.get_value("audio", "muted"), "Audio preferences are preserved")
-	check(settings.get_value("subtitles", "palette") == 3 and settings.get_value("playback", "queue")[0].uri == "file:///movie.mp4", "Subtitles and queues are preserved")
+	check(
+		not settings.has_section("alpha") and not settings.has_section_key("video", "alpha_fps"),
+		"Retired runtime preferences are removed"
+	)
+	check(
+		(
+			not settings.has_section_key("video", "depth_strength")
+			and not settings.has_section_key("photo", "depth_strength")
+		),
+		"Generated depth strengths are removed"
+	)
+	check(
+		settings.get_value("effects", "source_mask") == "embedded",
+		"Source-supplied masks survive migration"
+	)
+	check(
+		settings.get_value("audio", "volume") == 37.0 and settings.get_value("audio", "muted"),
+		"Audio preferences are preserved"
+	)
+	check(
+		(
+			settings.get_value("subtitles", "palette") == 3
+			and settings.get_value("playback", "queue")[0].uri == "file:///movie.mp4"
+		),
+		"Subtitles and queues are preserved"
+	)
 	var migrated: Dictionary = settings.get_value("video", "mode_lock")
-	check(not migrated.depth and migrated.layout == 1 and migrated.geometry == 0 and migrated.fisheye_fov == 180, "Only generated depth changes in a video mode lock")
+	check(
+		(
+			not migrated.depth
+			and migrated.layout == 1
+			and migrated.geometry == 0
+			and migrated.fisheye_fov == 180
+		),
+		"Only generated depth changes in a video mode lock"
+	)
 	check(source_lock.depth, "Migration does not mutate another owner's dictionary")
-	check(settings.get_value("photo", "mode_lock") == {"geometry": 3, "layout": 2, "depth": false}, "Native stereo photo locks stay unchanged")
+	check(
+		settings.get_value("photo", "mode_lock") == {"geometry": 3, "layout": 2, "depth": false},
+		"Native stereo photo locks stay unchanged"
+	)
 	check(not Migration.apply(settings), "Running migration again does not request another write")
 	var malformed := ConfigFile.new()
 	malformed.set_value("video", "mode_lock", "invalid legacy data")
 	malformed.set_value("photo", "mode_lock", [])
-	check(not Migration.apply(malformed), "Malformed mode locks are left to the existing lock validator")
+	check(
+		not Migration.apply(malformed),
+		"Malformed mode locks are left to the existing lock validator"
+	)
 	var empty := ConfigFile.new()
 	check(not Migration.apply(empty), "Fresh installations require no migration write")
-	for failure in failures: push_error(failure)
+	for failure in failures:
+		push_error(failure)
 	print("Player settings migration: %d failures" % failures.size())
 	quit(0 if failures.is_empty() else 1)

@@ -16,12 +16,18 @@ internal object CloudPaths {
         require(uri.scheme == "cloud" && uri.rawUserInfo == null && uri.port == -1 && uri.rawQuery == null && uri.rawFragment == null)
         require(uri.host?.matches(Regex("[a-zA-Z0-9-]+")) == true)
         val path = uri.path ?: error("Missing cloud path")
-        require(path.startsWith('/') && path.split('/').none { it == "." || it == ".." } && !path.contains('\u0000'))
+        require(
+            path.startsWith('/') && path.split('/')
+                .none { it == "." || it == ".." } && !path.contains('\u0000'))
         return "/${uri.host}$path"
     }
 
     fun child(parent: String, name: String): String {
-        require(name.isNotEmpty() && name != "." && name != ".." && !name.contains('/') && !name.contains('\u0000'))
+        require(
+            name.isNotEmpty() && name != "." && name != ".." && !name.contains('/') && !name.contains(
+                '\u0000'
+            )
+        )
         return parent.trimEnd('/') + "/" + name
     }
 }

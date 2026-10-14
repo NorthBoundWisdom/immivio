@@ -29,6 +29,7 @@ var _fill: MeshInstance3D
 var _bolt: MeshInstance3D
 var _label: Label3D
 
+
 func _ready() -> void:
 	if not status_provider.is_valid() and Engine.has_singleton("QuestPlayer"):
 		var plugin := Engine.get_singleton("QuestPlayer")
@@ -54,9 +55,11 @@ func _ready() -> void:
 	add_child(_label)
 	refresh(true)
 
+
 func _process(_delta: float) -> void:
 	if is_visible_in_tree():
 		refresh()
+
 
 ## Polls the battery once a second; redraws on clock, level or power-state changes.
 func refresh(force: bool = false) -> void:
@@ -78,7 +81,10 @@ func refresh(force: bool = false) -> void:
 	_fill.visible = has_battery and level > 0
 	_bolt.visible = has_battery and (charging or plugged)
 	_bolt.material_override.albedo_color = Menu.ACCENT if charging else POWER_COLOR
-	var text_width := Menu.FONT.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x * _label.pixel_size
+	var text_width := (
+		Menu.FONT.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x
+		* _label.pixel_size
+	)
 	# Leave room for the larger charging glyph, including space from the battery outline.
 	var battery_slot := ICON * 0.5 if has_battery else 0.0
 	var bolt_slot := ICON * 0.55 if _bolt.visible else 0.0
@@ -97,9 +103,14 @@ func refresh(force: bool = false) -> void:
 	_fill.position = Vector3(_battery.position.x, ICON * (0.5 - 20.5 / 24) + height / 2, 0.003)
 	var low := has_battery and level < LOW and not charging
 	var foreground := Color(0.93, 0.95, 0.98)
-	_fill.material_override.set_shader_parameter("surface_color", Menu.ACCENT if charging else (LOW_COLOR if low else foreground))
-	_battery.material_override.albedo_color = Menu.ACCENT if charging else (LOW_COLOR if low else foreground)
+	_fill.material_override.set_shader_parameter(
+		"surface_color", Menu.ACCENT if charging else (LOW_COLOR if low else foreground)
+	)
+	_battery.material_override.albedo_color = (
+		Menu.ACCENT if charging else (LOW_COLOR if low else foreground)
+	)
 	_label.position = Vector3(left + battery_slot + bolt_slot + gap, 0, 0.003)
+
 
 func clock_text() -> String:
 	var now: Dictionary = clock_provider.call()
@@ -109,13 +120,20 @@ func clock_text() -> String:
 		return "%02d:%02d" % [hour, minute]
 	var half := I18n.t("AM" if hour < 12 else "PM")
 	var twelve := 12 if hour % 12 == 0 else hour % 12
-	return "%s %d:%02d" % [half, twelve, minute] if I18n.language == "zh" else "%d:%02d %s" % [twelve, minute, half]
+	return (
+		"%s %d:%02d" % [half, twelve, minute]
+		if I18n.language == "zh"
+		else "%d:%02d %s" % [twelve, minute, half]
+	)
+
 
 func text_snapshot() -> String:
 	return _label.text
 
+
 func pill_width() -> float:
 	return _pill.mesh.size.x if is_instance_valid(_pill) else minimum_width
+
 
 func _icon(key: String, color: Color) -> MeshInstance3D:
 	var node := MeshInstance3D.new()
@@ -132,6 +150,7 @@ func _icon(key: String, color: Color) -> MeshInstance3D:
 	node.material_override = material
 	add_child(node)
 	return node
+
 
 func _quad(size: Vector2, location: Vector3, color: Color, priority: int) -> MeshInstance3D:
 	var node := MeshInstance3D.new()

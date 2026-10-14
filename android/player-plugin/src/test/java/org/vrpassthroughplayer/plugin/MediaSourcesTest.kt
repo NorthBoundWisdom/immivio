@@ -6,7 +6,8 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 class MediaSourcesTest {
-    @Test fun rangeParsing() {
+    @Test
+    fun rangeParsing() {
         assertEquals(0L to 99L, LocalStreamServer.parseRange(null, 100))
         assertEquals(10L to 99L, LocalStreamServer.parseRange("bytes=10-", 100))
         assertEquals(10L to 19L, LocalStreamServer.parseRange("bytes=10-19", 100))
@@ -18,7 +19,8 @@ class MediaSourcesTest {
         assertNull(LocalStreamServer.parseRange("bytes=x-1", 100))
     }
 
-    @Test fun loopbackServerServesRanges() {
+    @Test
+    fun loopbackServerServesRanges() {
         val data = ByteArray(1_000_000) { (it * 31 % 251).toByte() }
         val source = object : StreamSource {
             override val size = data.size.toLong()
@@ -27,6 +29,7 @@ class MediaSourcesTest {
                     val n = minOf(length.toLong(), size - offset).toInt()
                     System.arraycopy(data, offset.toInt(), buffer, 0, n); return n
                 }
+
                 override fun close() {}
             }
         }
@@ -49,7 +52,8 @@ class MediaSourcesTest {
         }
     }
 
-    @Test fun dlnaDescriptionAndDidl() {
+    @Test
+    fun dlnaDescriptionAndDidl() {
         val description = """<?xml version="1.0"?><root xmlns="urn:schemas-upnp-org:device-1-0">
             <device><friendlyName>NAS 媒体</friendlyName><UDN>uuid:1234</UDN><serviceList>
             <service><serviceType>urn:schemas-upnp-org:service:ConnectionManager:1</serviceType><controlURL>/cm</controlURL></service>
@@ -59,9 +63,12 @@ class MediaSourcesTest {
         assertEquals("NAS 媒体", server.name)
         assertEquals("uuid:1234", server.id)
         assertEquals("http://192.168.1.5:8200/ctl/cd", server.controlUrl)
-        assertEquals("http://192.168.1.5:8200/rootDesc.xml",
-            DlnaClient.ssdpLocation("HTTP/1.1 200 OK\r\nCACHE-CONTROL: max-age=1800\r\nLocation: http://192.168.1.5:8200/rootDesc.xml\r\n\r\n"))
-        val didl = """<DIDL-Lite xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/" xmlns:dc="http://purl.org/dc/elements/1.1/"
+        assertEquals(
+            "http://192.168.1.5:8200/rootDesc.xml",
+            DlnaClient.ssdpLocation("HTTP/1.1 200 OK\r\nCACHE-CONTROL: max-age=1800\r\nLocation: http://192.168.1.5:8200/rootDesc.xml\r\n\r\n")
+        )
+        val didl =
+            """<DIDL-Lite xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/" xmlns:dc="http://purl.org/dc/elements/1.1/"
             xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/">
             <container id="64$1" parentID="64" childCount="3"><dc:title>VR180</dc:title></container>
             <item id="64$1$0"><dc:title>Concert 8K</dc:title>
@@ -82,8 +89,10 @@ class MediaSourcesTest {
         assertEquals("http://192.168.1.5:8200/thumb.jpg", video.getString("cover"))
     }
 
-    @Test fun dlnaCoverPrefersAlbumArtAndIsOptional() {
-        val didl = """<DIDL-Lite xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/" xmlns:dc="http://purl.org/dc/elements/1.1/"
+    @Test
+    fun dlnaCoverPrefersAlbumArtAndIsOptional() {
+        val didl =
+            """<DIDL-Lite xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/" xmlns:dc="http://purl.org/dc/elements/1.1/"
             xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/">
             <item id="1"><dc:title>A</dc:title><upnp:albumArtURI>http://nas:8200/art/1.jpg</upnp:albumArtURI>
               <res protocolInfo="http-get:*:image/jpeg:*">http://nas:8200/thumb/1.jpg</res>
@@ -98,7 +107,8 @@ class MediaSourcesTest {
         assertFalse("only http(s) covers", entries.getJSONObject(2).has("cover"))
     }
 
-    @Test fun videoNames() {
+    @Test
+    fun videoNames() {
         assertTrue(DlnaClient.isVideoName("a.MKV"))
         assertTrue(DlnaClient.isVideoName("http://x/y.mp4?token=1"))
         assertFalse(DlnaClient.isVideoName("a.srt"))

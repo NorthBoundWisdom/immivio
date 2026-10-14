@@ -11,11 +11,14 @@ class PhotoPreloadTest {
         parentFile!!.mkdirs(); writeText("photo $id")
     }
 
-    @Test fun preloadPromotionTransfersFileOwnershipWithoutDeletingIt() {
+    @Test
+    fun preloadPromotionTransfersFileOwnershipWithoutDeletingIt() {
         val root = Files.createTempDirectory("vrpp-photo-preload").toFile()
-        val foreground = bridge(); val background = bridge()
+        val foreground = bridge();
+        val background = bridge()
         try {
-            val first = source(root, 1); val next = source(root, 2)
+            val first = source(root, 1);
+            val next = source(root, 2)
             assertTrue(foreground.adopt(1, first))
             assertTrue(background.adopt(2, next))
             assertTrue(foreground.activate(1))
@@ -26,11 +29,14 @@ class PhotoPreloadTest {
             foreground.release(2)
             assertFalse(next.parentFile!!.exists())
             assertTrue(first.isFile)
-        } finally { foreground.close(); background.close(); root.deleteRecursively() }
+        } finally {
+            foreground.close(); background.close(); root.deleteRecursively()
+        }
     }
 
 
-    @Test fun cancelledAndClosedCacheEntriesCannotBeActivated() {
+    @Test
+    fun cancelledAndClosedCacheEntriesCannotBeActivated() {
         val root = Files.createTempDirectory("vrpp-photo-cancel").toFile()
         val background = bridge()
         try {
@@ -43,9 +49,10 @@ class PhotoPreloadTest {
             val fresh = source(root, 4)
             assertFalse(background.adopt(4, fresh))
             assertTrue("Failed adoption leaves source with its caller", fresh.exists())
-        } finally { background.close(); root.deleteRecursively() }
+        } finally {
+            background.close(); root.deleteRecursively()
+        }
     }
-
 
 
 }

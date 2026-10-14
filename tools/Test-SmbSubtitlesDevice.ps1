@@ -1,4 +1,4 @@
-param([Parameter(Mandatory)][string]$Uri, [int]$CueMs = 37500, [ValidateRange(1,8)][int]$Switches = 2, [Parameter(Mandatory=$true)][string]$Serial, [string]$BuildManifest = '')
+param([Parameter(Mandatory)][string]$Uri, [int]$CueMs = 37500, [ValidateRange(1, 8)][int]$Switches = 2, [Parameter(Mandatory = $true)][string]$Serial, [string]$BuildManifest = '')
 $ErrorActionPreference = 'Stop'
 $workspace = Split-Path -Parent $PSScriptRoot
 . "$workspace\tools\environment\Activate-QuestEnvironment.ps1"
@@ -22,11 +22,11 @@ function Read-Json([string]$file) {
     if ($LASTEXITCODE -ne 0) { return $null }
     try { return $text | ConvertFrom-Json } catch { return $null }
 }
-function Request([string]$label, [string]$operation, [string[]]$extras=@()) {
+function Request([string]$label, [string]$operation, [string[]]$extras = @()) {
     $key = $label + '_' + [guid]::NewGuid().ToString('N')
     $action = if ($operation -eq 'launch') { 'DEBUG_LAUNCH' } else { 'DEBUG_PLAYER_MPV' }
-    $args = @('-s',$Serial,'shell','am','broadcast','-n',"$package/org.vrpassthroughplayer.plugin.DebugDiagnosticsReceiver",'-a',"$package.$action",'--es','request',$key)
-    if ($operation -ne 'launch') { $args += @('--es','operation',$operation) }
+    $args = @('-s', $Serial, 'shell', 'am', 'broadcast', '-n', "$package/org.vrpassthroughplayer.plugin.DebugDiagnosticsReceiver", '-a', "$package.$action", '--es', 'request', $key)
+    if ($operation -ne 'launch') { $args += @('--es', 'operation', $operation) }
     & $adb @args @extras | Set-Content "$directory/$label-broadcast.txt"
     if ($LASTEXITCODE -ne 0) { throw "Broadcast failed: $label" }
     $deadline = [DateTime]::UtcNow.AddSeconds(15)
@@ -62,11 +62,12 @@ function Wait-Report($receipt, [string]$label, [scriptblock]$condition) {
     throw "Subtitle state timeout: $label; evidence: $directory"
 }
 function Seek([string]$label, [int]$position) {
-    $receipt = Request $label 'seek' @('--ei','position_ms',"$position")
-    return Wait-Report $receipt $label { param($r) $r.native_status.details.paused -eq 'yes' -and $r.media.presentation_identity.pts_us -ge ($position*1000) -and $r.media.presentation_identity.pts_us -lt (($position+34)*1000) }
+    $receipt = Request $label 'seek' @('--ei', 'position_ms', "$position")
+    return Wait-Report $receipt $label { param($r) $r.native_status.details.paused -eq 'yes' -and $r.media.presentation_identity.pts_us -ge ($position * 1000) -and $r.media.presentation_identity.pts_us -lt (($position + 34) * 1000) }
 }
 $result = @{state='failed'; apk_sha256=$build.apk_sha256; installed_sha256=$installedHash;
-    scope='SMB sidecar cue selection and sustained Alpha/normal frame delivery; no compositor pixel or long-session stability claim'}
+    scope ='SMB sidecar cue selection and sustained Alpha/normal frame delivery; no compositor pixel or long-session stability claim'
+}
 try {
     & $adb -s $Serial shell am force-stop $package
     & $adb -s $Serial shell am broadcast -a com.oculus.vrpowermanager.prox_close | Set-Content "$directory/wake-override.txt"
@@ -77,27 +78,27 @@ try {
     $result.launch_entry = 'normal_vr_launcher'
     $result.launch_origin = 'adb_shell_activity_manager'
     Start-Sleep -Seconds 12
-    $request = Request 'open' 'open' @('--es','uri',$Uri,'--ez','enabled','false','--es','profile','384x216')
+    $request = Request 'open' 'open' @('--es', 'uri', $Uri, '--ez', 'enabled', 'false', '--es', 'profile', '384x216')
     $opened = Wait-Report $request 'open' { param($r) $r.media.frame_counter -ge 4 -and @($r.native_status.details.subtitle_tracks).Count -gt 0 }
     $tracks = @($opened.native_status.details.subtitle_tracks)
-    $track = @($tracks | Where-Object { $_.codec -in @('subrip','ass','ssa','webvtt','text','sami','microdvd','subviewer') })[0].id
+    $track = @($tracks | Where-Object { $_.codec -in @('subrip', 'ass', 'ssa', 'webvtt', 'text', 'sami', 'microdvd', 'subviewer') })[0].id
     if (!$track) { throw 'No usable text subtitle track' }
-    $request = Request 'pause' 'playing' @('--ez','enabled','false')
+    $request = Request 'pause' 'playing' @('--ez', 'enabled', 'false')
     Wait-Report $request 'pause' { param($r) $r.native_status.details.paused -eq 'yes' } | Out-Null
     Seek 'seek_cue' $CueMs | Out-Null
-    $request = Request 'subtitle' 'subtitle' @('--ei','track_id',"$track")
+    $request = Request 'subtitle' 'subtitle' @('--ei', 'track_id', "$track")
     Wait-Report $request 'subtitle' { param($r) $r.layout.subtitles.text.Length -gt 0 } | Out-Null
-    $request = Request 'play' 'playing' @('--ez','enabled','true')
+    $request = Request 'play' 'playing' @('--ez', 'enabled', 'true')
     Wait-Report $request 'play' { param($r) $r.native_status.details.paused -eq 'no' } | Out-Null
-    $request = Request 'alpha' 'alpha' @('--ez','enabled','true')
+    $request = Request 'alpha' 'alpha' @('--ez', 'enabled', 'true')
     Wait-Report $request 'alpha' { param($r) $r.layout.alpha_ready -and $r.media.frame_counter -ge 60 -and $r.layout.subtitles.requested_track -eq $track } | Out-Null
-    for ($switch=1; $switch -le $Switches; $switch++) {
-        $request = Request "normal_$switch" 'alpha' @('--ez','enabled','false')
+    for ($switch = 1; $switch -le $Switches; $switch++) {
+        $request = Request "normal_$switch" 'alpha' @('--ez', 'enabled', 'false')
         Wait-Report $request "normal_$switch" { param($r) !$r.layout.alpha_enabled -and $r.media.frame_counter -ge 30 } | Out-Null
-        $request = Request "alpha_$switch" 'alpha' @('--ez','enabled','true')
+        $request = Request "alpha_$switch" 'alpha' @('--ez', 'enabled', 'true')
         Wait-Report $request "alpha_$switch" { param($r) $r.layout.alpha_ready -and $r.media.frame_counter -ge 120 -and $r.layout.subtitles.requested_track -eq $track } | Out-Null
     }
-    $request = Request 'normal' 'alpha' @('--ez','enabled','false')
+    $request = Request 'normal' 'alpha' @('--ez', 'enabled', 'false')
     Wait-Report $request 'normal' { param($r) !$r.layout.alpha_enabled -and $r.media.frame_counter -ge 30 } | Out-Null
     $request = Request 'close' 'close'
     Wait-Report $request 'close' { param($r) $r.media.session_id -le 0 } | Out-Null
@@ -105,7 +106,8 @@ try {
     $result.tracks = $tracks
     $result.completed_round_trips = $Switches + 1
     $result.process = $script:process
-} catch { $result.error = $_.Exception.Message; throw }
+}
+catch { $result.error = $_.Exception.Message; throw }
 finally {
     $appPid = (& $adb -s $Serial shell pidof $package | Out-String).Trim()
     if ($appPid -match '^\d+$') { & $adb -s $Serial logcat -d --pid=$appPid -v threadtime | Set-Content "$directory/logcat.txt" }

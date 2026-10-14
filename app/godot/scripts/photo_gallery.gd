@@ -32,11 +32,11 @@ var _fragment_indices: Array[int] = []
 var _batch_direction := 1
 var _wall_groups: Array[String] = []
 var _wall_group := 0
-var _swap_phase := 0 # 1 fades out, 2 fades in
+var _swap_phase := 0  # 1 fades out, 2 fades in
 var _swap_alpha := 1.0
 var _reflow_after := 0
 var anchor := Transform3D.IDENTITY
-var cards := {} # queue index -> card, original pose/shape/size are never changed by focus
+var cards := {}  # queue index -> card, original pose/shape/size are never changed by focus
 var focus := -1
 var focus_pose := Transform3D.IDENTITY
 var progress := 0.0
@@ -50,85 +50,174 @@ var _yaw := 0.0
 var _fragment_start := -1
 var _wall_start := -1
 
+
 func _init() -> void:
 	add_child(previews)
+
 
 func _ready() -> void:
 	previews.preview_ready.connect(func(_uri): _refresh_textures())
 
+
 func set_mode(value: int) -> void:
-	if value not in [0, 1, 2, 3] or value == mode: return
-	cancel_all(); focus = -1; progress = 0; returning = false; _swap_phase = 0; _swap_alpha = 1.0
+	if value not in [0, 1, 2, 3] or value == mode:
+		return
+	cancel_all()
+	focus = -1
+	progress = 0
+	returning = false
+	_swap_phase = 0
+	_swap_alpha = 1.0
 	_scales[mode] = view_scale
 	_distances[mode] = view_distance
-	mode = value; view_scale = float(_scales[value]); view_distance = float(_distances[value]); _signature = ""; _reflow = true; _yaw = 0.0; _fragment_start = -1; _wall_start = -1
+	mode = value
+	view_scale = float(_scales[value])
+	view_distance = float(_distances[value])
+	_signature = ""
+	_reflow = true
+	_yaw = 0.0
+	_fragment_start = -1
+	_wall_start = -1
 	if photo and photo.material:
-		photo.finish_transition(); photo.close_inspect()
-		photo.material.render_priority = 0; photo.set_target_feedback(0)
-		if value in [Layout.SINGLE, Layout.SIDES] and photo._texture != null: photo.panel.visible = true
-		recenter(); synchronize()
+		photo.finish_transition()
+		photo.close_inspect()
+		photo.material.render_priority = 0
+		photo.set_target_feedback(0)
+		if value in [Layout.SINGLE, Layout.SIDES] and photo._texture != null:
+			photo.panel.visible = true
+		recenter()
+		synchronize()
+
 
 func recenter() -> void:
 	if photo and is_instance_valid(photo.view_camera):
 		var head: Transform3D = photo.view_camera.global_transform
-		var forward := -head.basis.z; forward.y = 0
+		var forward := -head.basis.z
+		forward.y = 0
 		forward = forward.normalized() if forward.length() > 0.01 else Vector3.FORWARD
 		anchor = Transform3D(Basis(Vector3.UP, atan2(-forward.x, -forward.z)), head.origin)
-	else: anchor = Transform3D(Basis.IDENTITY, Vector3(0, 1.6, 0))
-	_yaw = 0.0; _reflow = true
-	if focus >= 0: _place_focus()
+	else:
+		anchor = Transform3D(Basis.IDENTITY, Vector3(0, 1.6, 0))
+	_yaw = 0.0
+	_reflow = true
+	if focus >= 0:
+		_place_focus()
+
 
 func clear() -> void:
-	cancel_all(); focus = -1; progress = 0; returning = false; _signature = ""; _fragment_start = -1; _wall_start = -1; _fragment_seed = 0
-	for card in cards.values(): _free_card(card)
-	cards.clear(); previews.clear(); visible = false; _fragment_indices.clear(); _wall_groups.clear(); _wall_group = 0; _swap_phase = 0; _swap_alpha = 1.0
-	if photo and photo.material: photo.material.render_priority = 0
+	cancel_all()
+	focus = -1
+	progress = 0
+	returning = false
+	_signature = ""
+	_fragment_start = -1
+	_wall_start = -1
+	_fragment_seed = 0
+	for card in cards.values():
+		_free_card(card)
+	cards.clear()
+	previews.clear()
+	visible = false
+	_fragment_indices.clear()
+	_wall_groups.clear()
+	_wall_group = 0
+	_swap_phase = 0
+	_swap_alpha = 1.0
+	if photo and photo.material:
+		photo.material.render_priority = 0
+
 
 func cancel_all() -> void:
-	capture = {}; hover.clear(); _dual = {}; _dual_blocked = false
-	for pointer in _pointers.values(): pointer.line.visible = false; pointer.dot.visible = false
+	capture = {}
+	hover.clear()
+	_dual = {}
+	_dual_blocked = false
+	for pointer in _pointers.values():
+		pointer.line.visible = false
+		pointer.dot.visible = false
+
 
 func cancel_pointer(hand: String) -> void:
-	if capture.get("hand", "") == hand: capture = {}
+	if capture.get("hand", "") == hand:
+		capture = {}
 	hover.erase(hand)
-	if not _dual.is_empty(): _dual_blocked = true
-	if _pointers.has(hand): _pointers[hand].line.visible = false; _pointers[hand].dot.visible = false
+	if not _dual.is_empty():
+		_dual_blocked = true
+	if _pointers.has(hand):
+		_pointers[hand].line.visible = false
+		_pointers[hand].dot.visible = false
+
 
 func has_capture() -> bool:
 	return not capture.is_empty() or not _dual.is_empty()
 
+
 func overview() -> bool:
-	return mode in [Layout.WALL, Layout.FRAGMENTS] and focus < 0 and not (photo and photo.portrait_requested)
+	return (
+		mode in [Layout.WALL, Layout.FRAGMENTS]
+		and focus < 0
+		and not (photo and photo.portrait_requested)
+	)
+
 
 func set_view_scale(value: float) -> void:
-	if not is_finite(value): return
+	if not is_finite(value):
+		return
 	var next := clampf(value, SCALE_LIMITS.x, SCALE_LIMITS.y)
-	if is_equal_approx(next, view_scale): return
-	view_scale = next; _scales[mode] = view_scale; _reflow = true
+	if is_equal_approx(next, view_scale):
+		return
+	view_scale = next
+	_scales[mode] = view_scale
+	_reflow = true
+
 
 func set_view_distance(value: float) -> void:
-	if not is_finite(value): return
+	if not is_finite(value):
+		return
 	var next := clampf(value, DISTANCE_LIMITS.x, DISTANCE_LIMITS.y)
-	if is_equal_approx(next, view_distance): return
-	view_distance = next; _distances[mode] = next; _reflow = true
+	if is_equal_approx(next, view_distance):
+		return
+	view_distance = next
+	_distances[mode] = next
+	_reflow = true
+
 
 func set_wall_rows(value: int) -> void:
 	var rows := clampi(value, 1, 3)
-	if wall_rows == rows: return
+	if wall_rows == rows:
+		return
 	wall_rows = rows
-	_wall_groups.clear(); _wall_group = 0
+	_wall_groups.clear()
+	_wall_group = 0
 	_reflow = true
+
 
 func restore_settings(settings: ConfigFile) -> void:
 	set_wall_rows(int(settings.get_value("photo_screen", "wall_rows", 1)))
 	mode = clampi(int(settings.get_value("photo_screen", "layout", 0)), 0, 3)
 	for layout in 4:
-		var scale := float(settings.get_value("photo_screen", "layout_%d_scale" % layout,
-			settings.get_value("photo_screen", "gallery_scale", 1.0) if layout == mode else 1.0))
-		var distance := float(settings.get_value("photo_screen", "layout_%d_distance" % layout, DEFAULT_DISTANCES[layout]))
+		var scale := float(
+			settings.get_value(
+				"photo_screen",
+				"layout_%d_scale" % layout,
+				settings.get_value("photo_screen", "gallery_scale", 1.0) if layout == mode else 1.0
+			)
+		)
+		var distance := float(
+			settings.get_value(
+				"photo_screen", "layout_%d_distance" % layout, DEFAULT_DISTANCES[layout]
+			)
+		)
 		_scales[layout] = clampf(scale, SCALE_LIMITS.x, SCALE_LIMITS.y) if is_finite(scale) else 1.0
-		_distances[layout] = clampf(distance, DISTANCE_LIMITS.x, DISTANCE_LIMITS.y) if is_finite(distance) else DEFAULT_DISTANCES[layout]
-	view_scale = _scales[mode]; view_distance = _distances[mode]; _reflow = true
+		_distances[layout] = (
+			clampf(distance, DISTANCE_LIMITS.x, DISTANCE_LIMITS.y)
+			if is_finite(distance)
+			else DEFAULT_DISTANCES[layout]
+		)
+	view_scale = _scales[mode]
+	view_distance = _distances[mode]
+	_reflow = true
+
 
 func save_settings(settings: ConfigFile) -> void:
 	settings.set_value("photo_screen", "wall_rows", wall_rows)
@@ -138,180 +227,295 @@ func save_settings(settings: ConfigFile) -> void:
 		settings.set_value("photo_screen", "layout_%d_scale" % layout, _scales[layout])
 		settings.set_value("photo_screen", "layout_%d_distance" % layout, _distances[layout])
 
+
 ## Two optical pinches take ownership before either single-pointer release can click.
 func hand_zoom(inputs: Dictionary, enabled: bool) -> Dictionary:
-	var consumed := []; var finished := false
-	var both := true; var released := true
+	var consumed := []
+	var finished := false
+	var both := true
+	var released := true
 	for hand in ["left_hand", "right_hand"]:
 		var input: Dictionary = inputs.get(hand, {})
-		both = both and input.get("source") == "hand" and input.get("tracked", false) and input.get("down", false) \
-			and input.get("position") is Vector3 and input.position.is_finite()
+		both = (
+			both
+			and input.get("source") == "hand"
+			and input.get("tracked", false)
+			and input.get("down", false)
+			and input.get("position") is Vector3
+			and input.position.is_finite()
+		)
 		released = released and not input.get("down", false)
 	if not _dual.is_empty():
 		consumed = ["left_hand", "right_hand"]
-		if not enabled or not both: _dual_blocked = true
+		if not enabled or not both:
+			_dual_blocked = true
 		if released:
-			_dual = {}; _dual_blocked = false; finished = true
+			_dual = {}
+			_dual_blocked = false
+			finished = true
 		elif not _dual_blocked:
 			var span: float = inputs.left_hand.position.distance_to(inputs.right_hand.position)
 			if span >= 0.05 and span <= 2.0:
-				if _dual.get("surface",false): photo.set_hand_scale(float(_dual.scale) * span / float(_dual.span))
-				else: set_view_scale(float(_dual.scale) * span / float(_dual.span))
+				if _dual.get("surface", false):
+					photo.set_hand_scale(float(_dual.scale) * span / float(_dual.span))
+				else:
+					set_view_scale(float(_dual.scale) * span / float(_dual.span))
 				photo.changed.emit()
 	elif enabled and both and inputs.values().any(func(input): return input.get("pressed", false)):
 		var span: float = inputs.left_hand.position.distance_to(inputs.right_hand.position)
 		if span >= 0.08 and span <= 2.0:
 			var surface: bool = focus >= 0 and photo.geometry == 0
-			capture = {}; hover.clear(); _dual = {"span": span, "scale": photo.screen_scale if surface else view_scale, "surface":surface}; _dual_blocked = false
+			capture = {}
+			hover.clear()
+			_dual = {
+				"span": span,
+				"scale": photo.screen_scale if surface else view_scale,
+				"surface": surface
+			}
+			_dual_blocked = false
 			consumed = ["left_hand", "right_hand"]
 	return {"consumed": consumed, "finished": finished}
+
 
 func shuffle_fragments() -> bool:
 	return change_batch(1) if mode == Layout.FRAGMENTS else false
 
+
 func change_batch(direction: int = 1) -> bool:
-	if not overview() or _swap_phase != 0 or has_capture() or photo.queue.is_empty(): return false
+	if not overview() or _swap_phase != 0 or has_capture() or photo.queue.is_empty():
+		return false
 	_batch_direction = -1 if direction < 0 else 1
-	_swap_phase = 1; _swap_alpha = 1.0; hover.clear()
+	_swap_phase = 1
+	_swap_alpha = 1.0
+	hover.clear()
 	return true
 
+
 func _advance_wall() -> void:
-	var current: int = _wall_start if _wall_start >= 0 else (photo.pending_index if photo.pending_index >= 0 else photo.index)
+	var current: int = (
+		_wall_start
+		if _wall_start >= 0
+		else (photo.pending_index if photo.pending_index >= 0 else photo.index)
+	)
 	var uri := str(photo.queue[current].uri)
 	if _wall_groups.is_empty() or _wall_groups[_wall_group] != uri:
-		_wall_groups.assign([uri]); _wall_group = 0
+		_wall_groups.assign([uri])
+		_wall_group = 0
 	var target: int = _wall_group + _batch_direction
 	var next := -1
 	if target >= 0 and target < _wall_groups.size():
 		var wanted: String = _wall_groups[target]
 		for index in photo.queue.size():
-			if str(photo.queue[index].uri) == wanted: next = index; break
+			if str(photo.queue[index].uri) == wanted:
+				next = index
+				break
 		_wall_group = target
 	if next < 0:
 		var step := 1 if cards.size() >= photo.queue.size() else maxi(1, cards.size())
 		next = _neighbor(current, step * _batch_direction)
-		if next < 0: next = clampi(current + step * _batch_direction, 0, photo.queue.size() - 1)
+		if next < 0:
+			next = clampi(current + step * _batch_direction, 0, photo.queue.size() - 1)
 		if _batch_direction > 0:
-			_wall_groups.append(str(photo.queue[next].uri)); _wall_group = _wall_groups.size() - 1
+			_wall_groups.append(str(photo.queue[next].uri))
+			_wall_group = _wall_groups.size() - 1
 		else:
-			_wall_groups.push_front(str(photo.queue[next].uri)); _wall_group = 0
+			_wall_groups.push_front(str(photo.queue[next].uri))
+			_wall_group = 0
 		if _wall_groups.size() > 128:
 			_wall_groups.pop_front() if _wall_group > 0 else _wall_groups.pop_back()
 			_wall_group = mini(_wall_group, _wall_groups.size() - 1)
 	_wall_start = next
-	photo.finish_transition(); photo._select(next)
+	photo.finish_transition()
+	photo._select(next)
 
 
 func _choose_memories(count: int, fresh: bool) -> void:
 	var previous := _fragment_indices.duplicate()
-	var candidates: Array[int] = []; var reused: Array[int] = []
+	var candidates: Array[int] = []
+	var reused: Array[int] = []
 	for index in photo.queue.size():
-		if fresh and index in previous: reused.append(index)
-		else: candidates.append(index)
-	var random := RandomNumberGenerator.new(); random.seed = _fragment_seed
+		if fresh and index in previous:
+			reused.append(index)
+		else:
+			candidates.append(index)
+	var random := RandomNumberGenerator.new()
+	random.seed = _fragment_seed
 	for list in [candidates, reused]:
 		for i in range(list.size() - 1, 0, -1):
 			var other := random.randi_range(0, i)
-			var value: int = list[i]; list[i] = list[other]; list[other] = value
+			var value: int = list[i]
+			list[i] = list[other]
+			list[other] = value
 	candidates.append_array(reused)
 	_fragment_indices.assign(candidates.slice(0, count))
 
+
 func clear_focus() -> void:
-	_restore_focus_card(); focus = -1; progress = 0; returning = false; cancel_all(); _reflow = true
+	_restore_focus_card()
+	focus = -1
+	progress = 0
+	returning = false
+	cancel_all()
+	_reflow = true
+
 
 func new_window(index: int) -> void:
-	_fragment_start = index; _wall_start = index; _fragment_indices.clear(); _signature = ""; _reflow = true
+	_fragment_start = index
+	_wall_start = index
+	_fragment_indices.clear()
+	_signature = ""
+	_reflow = true
+
 
 func replace_indices(old: Array[Dictionary], entries: Array[Dictionary]) -> void:
 	var positions := {}
-	for index in entries.size(): positions[str(entries[index].uri)] = index
+	for index in entries.size():
+		positions[str(entries[index].uri)] = index
 	var replaced := {}
 	for index in cards:
 		var target := int(positions.get(str(old[index].uri), -1))
-		if target >= 0: replaced[target] = cards[index]
-		else: _free_card(cards[index])
-	if focus >= 0: focus = int(positions.get(str(old[focus].uri), -1))
-	if _fragment_start >= 0: _fragment_start = int(positions.get(str(old[_fragment_start].uri), -1))
-	if _wall_start >= 0: _wall_start = int(positions.get(str(old[_wall_start].uri), -1))
+		if target >= 0:
+			replaced[target] = cards[index]
+		else:
+			_free_card(cards[index])
+	if focus >= 0:
+		focus = int(positions.get(str(old[focus].uri), -1))
+	if _fragment_start >= 0:
+		_fragment_start = int(positions.get(str(old[_fragment_start].uri), -1))
+	if _wall_start >= 0:
+		_wall_start = int(positions.get(str(old[_wall_start].uri), -1))
 	var remapped: Array[int] = []
 	for index in _fragment_indices:
 		var target := int(positions.get(str(old[index].uri), -1))
-		if target >= 0: remapped.append(target)
+		if target >= 0:
+			remapped.append(target)
 	_fragment_indices = remapped
-	cards = replaced; cancel_all(); _signature = ""; _reflow = true
+	cards = replaced
+	cancel_all()
+	_signature = ""
+	_reflow = true
 	if mode == Layout.FRAGMENTS and not cards.is_empty():
 		# Completing a paged index must not scatter an already visible memory group.
 		_signature = "%d/%d/%d/%s" % [mode, _fragment_start, entries.size(), str(entries[0].uri)]
 		_reflow = false
 
+
 func _process(delta: float) -> void:
-	if not photo: return
+	if not photo:
+		return
 	previews.platform = photo.platform
 	if photo.portrait_requested:
-		visible = false; photo.panel.visible = true; return
+		visible = false
+		photo.panel.visible = true
+		return
 	if _swap_phase == 1:
 		_swap_alpha = move_toward(_swap_alpha, 0.0, delta / 0.22)
 		if _swap_alpha <= 0:
 			if mode == Layout.FRAGMENTS:
-				_fragment_seed = randi(); _choose_memories(_fragment_count(), true)
-			elif mode == Layout.WALL: _advance_wall()
-			_reflow = true; _swap_phase = 2
+				_fragment_seed = randi()
+				_choose_memories(_fragment_count(), true)
+			elif mode == Layout.WALL:
+				_advance_wall()
+			_reflow = true
+			_swap_phase = 2
 	elif _swap_phase == 2:
 		_swap_alpha = move_toward(_swap_alpha, 1.0, delta / 0.38)
-		if _swap_alpha >= 1: _swap_phase = 0
+		if _swap_alpha >= 1:
+			_swap_phase = 0
 	synchronize()
 	if focus >= 0:
 		progress = move_toward(progress, 0.0 if returning else 1.0, delta / ANIMATION_SECONDS)
 		_animate_focus()
 		if returning and progress <= 0:
-			focus = -1; returning = false
-			if mode != Layout.FRAGMENTS: _reflow = true
+			focus = -1
+			returning = false
+			if mode != Layout.FRAGMENTS:
+				_reflow = true
 			synchronize()
 	_refresh_visibility()
 
+
 func synchronize() -> void:
 	if photo and photo.portrait_requested:
-		visible = false; photo.panel.visible = true; return
-	if not photo or mode == Layout.SINGLE or photo.queue.is_empty() or (photo.local_uri.is_empty() and not photo.loading):
-		if not cards.is_empty(): clear()
-		visible = false; return
+		visible = false
+		photo.panel.visible = true
+		return
+	if (
+		not photo
+		or mode == Layout.SINGLE
+		or photo.queue.is_empty()
+		or (photo.local_uri.is_empty() and not photo.loading)
+	):
+		if not cards.is_empty():
+			clear()
+		visible = false
+		return
 	visible = true
 	var current: int = photo.pending_index if photo.pending_index >= 0 else photo.index
 	current = clampi(current, 0, photo.queue.size() - 1)
 	if mode == Layout.WALL:
-		if _wall_start < 0: _wall_start = current
+		if _wall_start < 0:
+			_wall_start = current
 		current = _wall_start
-	var signature := "%d/%d/%d/%s" % [mode, _fragment_start if mode == Layout.FRAGMENTS else current, photo.queue.size(), str(photo.queue[0].uri)]
+	var signature := (
+		"%d/%d/%d/%s"
+		% [
+			mode,
+			_fragment_start if mode == Layout.FRAGMENTS else current,
+			photo.queue.size(),
+			str(photo.queue[0].uri)
+		]
+	)
 	if mode == Layout.SIDES:
-		anchor = photo.global_transform * photo.flat_pose * Transform3D(Basis.IDENTITY, Vector3(0, 0, photo.screen_distance))
+		anchor = (
+			photo.global_transform
+			* photo.flat_pose
+			* Transform3D(Basis.IDENTITY, Vector3(0, 0, photo.screen_distance))
+		)
 		signature += "/%s/%s" % [str(anchor), str(photo._flat.size)]
-	if signature != _signature: _signature = signature; _reflow = true
+	if signature != _signature:
+		_signature = signature
+		_reflow = true
 	if _reflow and capture.is_empty() and focus < 0 and Time.get_ticks_msec() >= _reflow_after:
 		_reflow_after = Time.get_ticks_msec() + (50 if not _dual.is_empty() else 0)
 		_reflow = false
 		_build(current)
 
+
 func _neighbor(current: int, offset: int) -> int:
 	var target := current + offset
-	if photo.queue_complete: return posmod(target, photo.queue.size())
+	if photo.queue_complete:
+		return posmod(target, photo.queue.size())
 	return target if target >= 0 and target < photo.queue.size() else -1
+
 
 func _aspect(index: int) -> float:
 	var uri := str(photo.queue[index].uri)
 	var info := previews.metadata(uri)
-	if info.is_empty(): info = photo.queue[index].get("photo_info", {})
+	if info.is_empty():
+		info = photo.queue[index].get("photo_info", {})
 	var resolved: Dictionary = photo._resolved_mode(index, info)
-	if int(resolved.geometry) != 0: return 4.0 / 3.0
+	if int(resolved.geometry) != 0:
+		return 4.0 / 3.0
 	var texture := previews.texture(uri)
-	var aspect := float(texture.get_width()) / texture.get_height() if texture else float(info.get("width", 3)) / maxf(1.0, float(info.get("height", 2)))
-	if resolved.stereo_sbs and not info.get("single_eye", false): aspect *= 2.0 if resolved.top_bottom else 0.5
+	var aspect := (
+		float(texture.get_width()) / texture.get_height()
+		if texture
+		else float(info.get("width", 3)) / maxf(1.0, float(info.get("height", 2)))
+	)
+	if resolved.stereo_sbs and not info.get("single_eye", false):
+		aspect *= 2.0 if resolved.top_bottom else 0.5
 	return maxf(0.001, aspect)
+
 
 func _fragment_count() -> int:
 	# Density follows angular footprint and usable vertical space, with a bounded texture budget.
-	var columns := clampi(floori(TAU / (2.0 * atan(0.55 * view_scale / view_distance) + 0.04)), 4, 24)
+	var columns := clampi(
+		floori(TAU / (2.0 * atan(0.55 * view_scale / view_distance) + 0.04)), 4, 24
+	)
 	var rows := clampi(floori(2.2 / (0.80 * view_scale)), 1, 3)
 	return mini(mini(MAX_CARDS, columns * rows), photo.queue.size())
+
 
 ## Ordered rows use one bounded angular span and a shared vertical budget.
 ## Scaling never stretches an image, and partial directories never wrap past their end.
@@ -323,23 +527,40 @@ func _build_wall_rows(current: int) -> void:
 	for row in wall_rows:
 		var items := []
 		var angle := 0.0
-		var capacity := ceili(mini(MAX_CARDS - visited.size(), photo.queue.size() - offset) / float(wall_rows - row))
-		while items.size() < capacity and offset < photo.queue.size() and visited.size() < MAX_CARDS:
+		var capacity := ceili(
+			mini(MAX_CARDS - visited.size(), photo.queue.size() - offset) / float(wall_rows - row)
+		)
+		while (
+			items.size() < capacity and offset < photo.queue.size() and visited.size() < MAX_CARDS
+		):
 			var index := _neighbor(current, offset)
-			if index < 0 or visited.has(index): break
+			if index < 0 or visited.has(index):
+				break
 			var size := Vector2(height * _aspect(index), height)
-			if size.x > view_distance * 1.5: size *= view_distance * 1.5 / size.x
+			if size.x > view_distance * 1.5:
+				size *= view_distance * 1.5 / size.x
 			var span := 2.0 * atan(size.x * 0.5 / view_distance)
-			if not items.is_empty() and angle + gap + span > PI * 1.6: break
-			if not items.is_empty(): angle += gap
+			if not items.is_empty() and angle + gap + span > PI * 1.6:
+				break
+			if not items.is_empty():
+				angle += gap
 			items.append({"index": index, "size": size, "angle": angle + span * 0.5})
-			angle += span; offset += 1; visited[index] = true
+			angle += span
+			offset += 1
+			visited[index] = true
 		var y := ((wall_rows - 1) * 0.5 - row) * (height + gap)
 		for item in items:
-			_add(item.index, anchor * _ring_pose(item.angle - angle * 0.5, view_distance, y), item.size, RECT)
+			_add(
+				item.index,
+				anchor * _ring_pose(item.angle - angle * 0.5, view_distance, y),
+				item.size,
+				RECT
+			)
+
 
 func _build(current: int) -> void:
-	_pool = cards; cards = {}
+	_pool = cards
+	cards = {}
 	var used := {current: true} if mode == Layout.SIDES else {}
 	if mode == Layout.SIDES:
 		# A compact vertical rail remains visible even when the hero fills the user's view.
@@ -348,12 +569,19 @@ func _build(current: int) -> void:
 		for side in [-1, 1]:
 			for rank in range(1, 4):
 				var index := _neighbor(current, side * rank)
-				if index < 0 or used.has(index): continue
+				if index < 0 or used.has(index):
+					continue
 				used[index] = true
 				var height := radius * 0.18
 				var size := Vector2(height * _aspect(index), height)
-				if size.x > radius * 0.25: size *= radius * 0.25 / size.x
-				_add(index, anchor * _ring_pose(angle * side, radius, (2 - rank) * radius * 0.22), size, RECT)
+				if size.x > radius * 0.25:
+					size *= radius * 0.25 / size.x
+				_add(
+					index,
+					anchor * _ring_pose(angle * side, radius, (2 - rank) * radius * 0.22),
+					size,
+					RECT
+				)
 	elif mode == Layout.WALL and wall_rows > 1:
 		_build_wall_rows(current)
 	elif mode == Layout.WALL:
@@ -366,29 +594,42 @@ func _build(current: int) -> void:
 		for rank in range(1, MAX_CARDS):
 			for side in [-1, 1]:
 				var index := _neighbor(current, rank * side)
-				if index < 0 or used.has(index) or cards.size() >= MAX_CARDS: continue
+				if index < 0 or used.has(index) or cards.size() >= MAX_CARDS:
+					continue
 				var width := height * _aspect(index)
 				var half := atan(width * 0.5 / radius)
 				var centre: float = edges[side] + 0.035 + half
-				if centre + half >= PI - 0.08: continue
+				if centre + half >= PI - 0.08:
+					continue
 				used[index] = true
-				_add(index, anchor * _ring_pose(centre * side, radius, 0), Vector2(width, height), RECT)
+				_add(
+					index,
+					anchor * _ring_pose(centre * side, radius, 0),
+					Vector2(width, height),
+					RECT
+				)
 				edges[side] = centre + half
 	else:
-		if _fragment_start < 0: _fragment_start = current
+		if _fragment_start < 0:
+			_fragment_start = current
 		current = _fragment_start
-		if _fragment_seed == 0: _fragment_seed = str(photo.queue[0].uri).hash()
-		var random := RandomNumberGenerator.new(); random.seed = _fragment_seed
+		if _fragment_seed == 0:
+			_fragment_seed = str(photo.queue[0].uri).hash()
+		var random := RandomNumberGenerator.new()
+		random.seed = _fragment_seed
 		var count := _fragment_count()
 		if _fragment_indices.is_empty():
 			for slot in count:
 				var index := _neighbor(current, slot if slot <= count / 2 else slot - count)
-				if index >= 0 and not _fragment_indices.has(index): _fragment_indices.append(index)
+				if index >= 0 and not _fragment_indices.has(index):
+					_fragment_indices.append(index)
 		elif _fragment_indices.size() < count:
 			for offset in photo.queue.size():
 				var index := _neighbor(current, offset)
-				if index >= 0 and not _fragment_indices.has(index): _fragment_indices.append(index)
-				if _fragment_indices.size() >= count: break
+				if index >= 0 and not _fragment_indices.has(index):
+					_fragment_indices.append(index)
+				if _fragment_indices.size() >= count:
+					break
 		_fragment_indices.resize(mini(count, _fragment_indices.size()))
 		count = _fragment_indices.size()
 		var rows := clampi(floori(2.2 / (0.80 * view_scale)), 1, 3)
@@ -398,91 +639,167 @@ func _build(current: int) -> void:
 		for slot in count:
 			var index: int = _fragment_indices[slot]
 			var row := slot % rows
-			var angle := TAU * floori(slot / float(rows)) / columns + row * TAU / columns * 0.38 + phase + random.randf_range(-0.04, 0.04)
+			var angle := (
+				TAU * floori(slot / float(rows)) / columns
+				+ row * TAU / columns * 0.38
+				+ phase
+				+ random.randf_range(-0.04, 0.04)
+			)
 			var radius := view_distance * random.randf_range(0.92, 1.08)
-			var size := Vector2(random.randf_range(0.62, 1.16), random.randf_range(0.44, 0.82)) * view_scale
+			var size := (
+				Vector2(random.randf_range(0.62, 1.16), random.randf_range(0.44, 0.82)) * view_scale
+			)
 			var roll := random.randf_range(-0.25, 0.25)
 			var half_height := (absf(sin(roll)) * size.x + absf(cos(roll)) * size.y) * 0.5
-			if half_height > 1.04: size *= 1.04 / half_height; half_height = 1.04
+			if half_height > 1.04:
+				size *= 1.04 / half_height
+				half_height = 1.04
 			var centre := (row + 0.5) * 2.2 / rows + random.randf_range(-0.12, 0.12)
-			if pattern == 1: centre += sin(angle * 2.0 + phase) * 0.20
-			elif pattern == 2: centre += random.randf_range(-0.20, 0.20)
-			var elevation := clampf(centre, half_height + 0.06, maxf(half_height + 0.06, 2.2 - half_height))
+			if pattern == 1:
+				centre += sin(angle * 2.0 + phase) * 0.20
+			elif pattern == 2:
+				centre += random.randf_range(-0.20, 0.20)
+			var elevation := clampf(
+				centre, half_height + 0.06, maxf(half_height + 0.06, 2.2 - half_height)
+			)
 			var local := _ring_pose(angle, radius, elevation)
 			local.basis *= Basis(Vector3.FORWARD, roll)
 			var silhouette: Array = SHAPES[random.randi_range(0, SHAPES.size() - 1)].duplicate()
 			var triangular: bool = silhouette[2] == silhouette[3]
-			for vertex in (3 if triangular else 4):
-				silhouette[vertex] = (silhouette[vertex] + Vector2(random.randf_range(-0.035, 0.035), random.randf_range(-0.035, 0.035))).clamp(Vector2(-0.5,-0.5), Vector2(0.5,0.5))
-			if triangular: silhouette[3] = silhouette[2]
+			for vertex in 3 if triangular else 4:
+				silhouette[vertex] = (
+					(
+						silhouette[vertex]
+						+ Vector2(
+							random.randf_range(-0.035, 0.035), random.randf_range(-0.035, 0.035)
+						)
+					)
+					. clamp(Vector2(-0.5, -0.5), Vector2(0.5, 0.5))
+				)
+			if triangular:
+				silhouette[3] = silhouette[2]
 			_add(index, anchor * local, size, silhouette)
-	for card in _pool.values(): _free_card(card)
+	for card in _pool.values():
+		_free_card(card)
 	_pool.clear()
 	var entries: Array[Dictionary] = []
-	for index in cards: entries.append(photo.queue[index])
-	previews.request(entries); _refresh_textures(); _refresh_visibility()
+	for index in cards:
+		entries.append(photo.queue[index])
+	previews.request(entries)
+	_refresh_textures()
+	_refresh_visibility()
+
 
 static func _ring_pose(angle: float, radius: float, height: float) -> Transform3D:
-	return Transform3D(Basis(Vector3.UP, -angle), Vector3(sin(angle) * radius, height, -cos(angle) * radius))
+	return Transform3D(
+		Basis(Vector3.UP, -angle), Vector3(sin(angle) * radius, height, -cos(angle) * radius)
+	)
+
 
 static func _free_card(card: Dictionary) -> void:
-	card.node.free(); card.rim.free(); card.echo.free()
+	card.node.free()
+	card.rim.free()
+	card.echo.free()
+
 
 static func _plain(color: Color, priority: int = 0) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	material.albedo_color = color; material.render_priority = priority
+	material.albedo_color = color
+	material.render_priority = priority
 	return material
+
 
 func _add(index: int, pose: Transform3D, size: Vector2, shape: Array) -> void:
 	var card: Dictionary
 	if _pool.has(index):
-		card = _pool[index]; _pool.erase(index)
-		card.pose = pose; card.size = size; card.shape = shape.duplicate()
+		card = _pool[index]
+		_pool.erase(index)
+		card.pose = pose
+		card.size = size
+		card.shape = shape.duplicate()
 	else:
 		var node := MeshInstance3D.new()
-		var material := ShaderMaterial.new(); material.shader = SHADER
-		node.material_override = material; node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; add_child(node)
-		var rim := MeshInstance3D.new(); rim.material_override = _plain(Color(0.65, 0.82, 0.92, 0.5), 2); add_child(rim)
-		var echo := MeshInstance3D.new(); echo.material_override = _plain(Color(0.55, 0.75, 0.9, 0.13)); add_child(echo)
-		rim.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; echo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		card = {"node": node, "rim": rim, "echo": echo, "pose": pose, "size": size, "shape": shape.duplicate(), "shown_shape": [], "shown_size": Vector2.ZERO}
-	cards[index] = card; card.node.global_transform = pose
+		var material := ShaderMaterial.new()
+		material.shader = SHADER
+		node.material_override = material
+		node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(node)
+		var rim := MeshInstance3D.new()
+		rim.material_override = _plain(Color(0.65, 0.82, 0.92, 0.5), 2)
+		add_child(rim)
+		var echo := MeshInstance3D.new()
+		echo.material_override = _plain(Color(0.55, 0.75, 0.9, 0.13))
+		add_child(echo)
+		rim.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		echo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		card = {
+			"node": node,
+			"rim": rim,
+			"echo": echo,
+			"pose": pose,
+			"size": size,
+			"shape": shape.duplicate(),
+			"shown_shape": [],
+			"shown_size": Vector2.ZERO
+		}
+	cards[index] = card
+	card.node.global_transform = pose
 	_mesh(card, shape, size)
 
+
 static func _mesh(card: Dictionary, shape: Array, size: Vector2) -> void:
-	if card.node.mesh != null and card.shown_shape == shape and card.shown_size == size: return
-	var vertices := PackedVector3Array(); var uv := PackedVector2Array()
+	if card.node.mesh != null and card.shown_shape == shape and card.shown_size == size:
+		return
+	var vertices := PackedVector3Array()
+	var uv := PackedVector2Array()
 	for point in shape:
 		vertices.append(Vector3(point.x * size.x, point.y * size.y, 0))
 		uv.append(Vector2(point.x + 0.5, 0.5 - point.y))
-	var arrays := []; arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = vertices; arrays[Mesh.ARRAY_TEX_UV] = uv
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = vertices
+	arrays[Mesh.ARRAY_TEX_UV] = uv
 	arrays[Mesh.ARRAY_INDEX] = PackedInt32Array([0, 2, 1, 0, 3, 2])
-	var mesh := ArrayMesh.new(); mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	card.node.mesh = mesh; card.shown_shape = shape; card.shown_size = size
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	card.node.mesh = mesh
+	card.shown_shape = shape
+	card.shown_size = size
 	# Trace the polygon itself, including diagonal fragment edges and triangular silhouettes.
-	var outline := PackedVector3Array(); var indices := PackedInt32Array()
+	var outline := PackedVector3Array()
+	var indices := PackedInt32Array()
 	var centre := Vector2.ZERO
-	for point in shape: centre += point
+	for point in shape:
+		centre += point
 	centre /= shape.size()
 	for i in shape.size():
-		var start: Vector2 = shape[i] * size; var end: Vector2 = shape[(i + 1) % shape.size()] * size
-		if start.distance_to(end) < 0.001: continue
+		var start: Vector2 = shape[i] * size
+		var end: Vector2 = shape[(i + 1) % shape.size()] * size
+		if start.distance_to(end) < 0.001:
+			continue
 		var normal := (end - start).orthogonal().normalized() * minf(size.x, size.y) * 0.018
-		if normal.dot((start + end) * 0.5 - centre * size) < 0: normal = -normal
+		if normal.dot((start + end) * 0.5 - centre * size) < 0:
+			normal = -normal
 		var base := outline.size()
-		for point in [start - normal * 0.25, end - normal * 0.25, end + normal, start + normal]: outline.append(Vector3(point.x, point.y, 0.004))
+		for point in [start - normal * 0.25, end - normal * 0.25, end + normal, start + normal]:
+			outline.append(Vector3(point.x, point.y, 0.004))
 		indices.append_array(PackedInt32Array([base, base + 1, base + 2, base, base + 2, base + 3]))
-	var frame_arrays := []; frame_arrays.resize(Mesh.ARRAY_MAX)
-	frame_arrays[Mesh.ARRAY_VERTEX] = outline; frame_arrays[Mesh.ARRAY_INDEX] = indices
-	var frame := ArrayMesh.new(); frame.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, frame_arrays)
-	card.rim.mesh = frame; card.echo.mesh = frame
+	var frame_arrays := []
+	frame_arrays.resize(Mesh.ARRAY_MAX)
+	frame_arrays[Mesh.ARRAY_VERTEX] = outline
+	frame_arrays[Mesh.ARRAY_INDEX] = indices
+	var frame := ArrayMesh.new()
+	frame.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, frame_arrays)
+	card.rim.mesh = frame
+	card.echo.mesh = frame
+
 
 func _refresh_textures() -> void:
-	if not photo: return
+	if not photo:
+		return
 	for index in cards:
 		var card: Dictionary = cards[index]
 		var uri := str(photo.queue[index].uri)
@@ -495,210 +812,408 @@ func _refresh_textures() -> void:
 		material.set_shader_parameter("geometry", int(resolved.geometry))
 		var rect := Vector4(0, 0, 1, 1)
 		if resolved.stereo_sbs and not info.get("single_eye", false):
-			rect = Vector4(0, 0.5 if resolved.swap_eyes else 0.0, 1, 0.5) if resolved.top_bottom else Vector4(0.5 if resolved.swap_eyes else 0.0, 0, 0.5, 1)
+			rect = (
+				Vector4(0, 0.5 if resolved.swap_eyes else 0.0, 1, 0.5)
+				if resolved.top_bottom
+				else Vector4(0.5 if resolved.swap_eyes else 0.0, 0, 0.5, 1)
+			)
 		material.set_shader_parameter("eye_rect", rect)
-		material.set_shader_parameter("crop_rect", _crop(index, card.size) if mode == Layout.FRAGMENTS else Vector4(0, 0, 1, 1))
+		material.set_shader_parameter(
+			"crop_rect",
+			_crop(index, card.size) if mode == Layout.FRAGMENTS else Vector4(0, 0, 1, 1)
+		)
 	# Reflow only when aspect ratios actually change, not each texture completion.
 	if mode in [Layout.SIDES, Layout.WALL]:
 		for index in cards:
 			var size: Vector2 = cards[index].size
-			if absf(size.x / size.y - _aspect(index)) > 0.02: _reflow = true; break
+			if absf(size.x / size.y - _aspect(index)) > 0.02:
+				_reflow = true
+				break
+
 
 func _crop(index: int, size: Vector2) -> Vector4:
-	var image_aspect := _aspect(index); var box_aspect := size.x / size.y
+	var image_aspect := _aspect(index)
+	var box_aspect := size.x / size.y
 	var extent := Vector2(minf(1, box_aspect / image_aspect), minf(1, image_aspect / box_aspect))
 	return Vector4((1.0 - extent.x) * 0.5, (1.0 - extent.y) * 0.5, extent.x, extent.y)
 
+
 func activate(index: int) -> void:
-	if (photo and photo.portrait_requested) or not cards.has(index): return
+	if (photo and photo.portrait_requested) or not cards.has(index):
+		return
 	if focus == index:
-		return_focus(); return
+		return_focus()
+		return
 	if focus >= 0:
 		_restore_focus_card()
-	focus = index; progress = 0.0; returning = false; cancel_all()
+	focus = index
+	progress = 0.0
+	returning = false
+	cancel_all()
 	_place_focus()
 	if mode == Layout.SIDES:
 		focus = -1
-		photo._select(index); _reflow = true
+		photo._select(index)
+		_reflow = true
 	else:
 		photo.finish_transition()
-		if photo.pending_index != index and (photo.index != index or photo.loading): photo._select(index)
+		if photo.pending_index != index and (photo.index != index or photo.loading):
+			photo._select(index)
 		photo.changed.emit()
+
 
 func _place_focus() -> void:
 	var head := anchor
 	if photo and is_instance_valid(photo.view_camera):
 		var transform: Transform3D = photo.view_camera.global_transform
-		var direction := -transform.basis.z; direction.y = 0
-		if direction.length() > 0.01: head = Transform3D(Basis(Vector3.UP, atan2(-direction.x, -direction.z)), transform.origin)
-	focus_pose = head * Transform3D(Basis.IDENTITY, Vector3(0, 0, -maxf(1.5, photo.screen_distance)))
+		var direction := -transform.basis.z
+		direction.y = 0
+		if direction.length() > 0.01:
+			head = Transform3D(
+				Basis(Vector3.UP, atan2(-direction.x, -direction.z)), transform.origin
+			)
+	focus_pose = (
+		head * Transform3D(Basis.IDENTITY, Vector3(0, 0, -maxf(1.5, photo.screen_distance)))
+	)
+
 
 func return_focus() -> void:
-	if photo and photo.portrait_requested: return
-	if focus < 0: return
-	returning = true; cancel_all(); photo.close_inspect(); photo.changed.emit()
+	if photo and photo.portrait_requested:
+		return
+	if focus < 0:
+		return
+	returning = true
+	cancel_all()
+	photo.close_inspect()
+	photo.changed.emit()
+
 
 func _restore_focus_card() -> void:
-	if not cards.has(focus): return
+	if not cards.has(focus):
+		return
 	var card: Dictionary = cards[focus]
-	card.node.global_transform = card.pose; _mesh(card, card.shape, card.size)
-	card.node.material_override.set_shader_parameter("crop_rect", _crop(focus, card.size) if mode == Layout.FRAGMENTS else Vector4(0, 0, 1, 1))
+	card.node.global_transform = card.pose
+	_mesh(card, card.shape, card.size)
+	card.node.material_override.set_shader_parameter(
+		"crop_rect", _crop(focus, card.size) if mode == Layout.FRAGMENTS else Vector4(0, 0, 1, 1)
+	)
+
 
 func _animate_focus() -> void:
-	if not cards.has(focus): return
+	if not cards.has(focus):
+		return
 	var card: Dictionary = cards[focus]
 	var eased := smoothstep(0.0, 1.0, progress)
-	var size: Vector2 = photo._flat.size if photo.index == focus and photo.geometry == 0 else Vector2(2.8, 2.8 / _aspect(focus))
-	card.node.global_transform = card.pose if eased <= 0 else (focus_pose if eased >= 1 else card.pose.interpolate_with(focus_pose, eased))
+	var size: Vector2 = (
+		photo._flat.size
+		if photo.index == focus and photo.geometry == 0
+		else Vector2(2.8, 2.8 / _aspect(focus))
+	)
+	card.node.global_transform = (
+		card.pose
+		if eased <= 0
+		else (focus_pose if eased >= 1 else card.pose.interpolate_with(focus_pose, eased))
+	)
 	var shape := []
-	for i in 4: shape.append(card.shape[i] if eased <= 0 else (RECT[i] if eased >= 1 else card.shape[i].lerp(RECT[i], eased)))
-	_mesh(card, shape, card.size if eased <= 0 else (size if eased >= 1 else card.size.lerp(size, eased)))
+	for i in 4:
+		shape.append(
+			(
+				card.shape[i]
+				if eased <= 0
+				else (RECT[i] if eased >= 1 else card.shape[i].lerp(RECT[i], eased))
+			)
+		)
+	_mesh(
+		card,
+		shape,
+		card.size if eased <= 0 else (size if eased >= 1 else card.size.lerp(size, eased))
+	)
 	var crop := _crop(focus, card.size) if mode == Layout.FRAGMENTS else Vector4(0, 0, 1, 1)
-	card.node.material_override.set_shader_parameter("crop_rect", crop if eased <= 0 else (Vector4(0, 0, 1, 1) if eased >= 1 else crop.lerp(Vector4(0, 0, 1, 1), eased)))
+	card.node.material_override.set_shader_parameter(
+		"crop_rect",
+		(
+			crop
+			if eased <= 0
+			else (Vector4(0, 0, 1, 1) if eased >= 1 else crop.lerp(Vector4(0, 0, 1, 1), eased))
+		)
+	)
 	if progress >= 1 and not returning and photo.index == focus and not photo.loading:
 		photo.finish_transition()
 		if photo.geometry == 0:
 			photo.flat_pose = photo.global_transform.affine_inverse() * focus_pose
 			photo.panel.global_transform = focus_pose
 
+
 func _refresh_visibility() -> void:
 	if photo and photo.portrait_requested:
-		visible = false; photo.panel.visible = true; return
-	if mode == Layout.SINGLE: return
-	var focused_ready: bool = focus >= 0 and progress >= 1 and not returning and photo.index == focus and not photo.loading and photo._texture != null
+		visible = false
+		photo.panel.visible = true
+		return
+	if mode == Layout.SINGLE:
+		return
+	var focused_ready: bool = (
+		focus >= 0
+		and progress >= 1
+		and not returning
+		and photo.index == focus
+		and not photo.loading
+		and photo._texture != null
+	)
 	photo.material.render_priority = 1 if focused_ready else 0
-	if mode in [Layout.WALL, Layout.FRAGMENTS]: photo.set_target_feedback((2 if capture.get("index", -1) == focus else 1) if focused_ready else 0)
+	if mode in [Layout.WALL, Layout.FRAGMENTS]:
+		photo.set_target_feedback(
+			(2 if capture.get("index", -1) == focus else 1) if focused_ready else 0
+		)
 	if mode == Layout.SIDES:
 		for card in cards.values():
-			card.node.visible = true; card.node.material_override.set_shader_parameter("brightness", 1.0)
+			card.node.visible = true
+			card.node.material_override.set_shader_parameter("brightness", 1.0)
 	else:
 		photo.panel.visible = focused_ready
-		if is_instance_valid(photo._placeholder): photo._placeholder.visible = false
+		if is_instance_valid(photo._placeholder):
+			photo._placeholder.visible = false
 		for index in cards:
 			var card: Dictionary = cards[index]
-			card.node.visible = not (index == focus and focused_ready) and not (focused_ready and photo.geometry != 0)
-			card.node.material_override.set_shader_parameter("brightness", 0.3 if focus >= 0 and index != focus else 1.0)
+			card.node.visible = (
+				not (index == focus and focused_ready)
+				and not (focused_ready and photo.geometry != 0)
+			)
+			card.node.material_override.set_shader_parameter(
+				"brightness", 0.3 if focus >= 0 and index != focus else 1.0
+			)
 	for index in cards:
 		var card: Dictionary = cards[index]
 		var targeted: bool = hover.values().has(index)
 		var pressed: bool = capture.get("index", -1) == index
 		var full: bool = index == focus and focused_ready
 		card.rim.global_transform = card.node.global_transform
-		card.echo.global_transform = card.node.global_transform * Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * 1.025), Vector3(0.018, -0.012, -0.008))
+		card.echo.global_transform = (
+			card.node.global_transform
+			* Transform3D(
+				Basis.IDENTITY.scaled(Vector3.ONE * 1.025), Vector3(0.018, -0.012, -0.008)
+			)
+		)
 		card.rim.visible = card.node.visible and (mode == Layout.FRAGMENTS or targeted or pressed)
 		card.echo.visible = card.node.visible and mode == Layout.FRAGMENTS and index != focus
-		var color := Color(1.0, 0.88, 0.55) if pressed else (Color(0.15, 0.95, 1.0) if targeted or full else Color(0.67, 0.83, 0.94, 0.5))
+		var color := (
+			Color(1.0, 0.88, 0.55)
+			if pressed
+			else (Color(0.15, 0.95, 1.0) if targeted or full else Color(0.67, 0.83, 0.94, 0.5))
+		)
 		color.a *= _swap_alpha * (0.3 if focus >= 0 and index != focus else 1.0)
 		card.rim.material_override.albedo_color = color
-		card.echo.material_override.albedo_color.a = 0.14 * _swap_alpha * (0.3 if focus >= 0 else 1.0)
+		card.echo.material_override.albedo_color.a = (
+			0.14 * _swap_alpha * (0.3 if focus >= 0 else 1.0)
+		)
 		card.node.material_override.set_shader_parameter("opacity", _swap_alpha)
 
+
 func ray_hit(origin: Vector3, direction: Vector3) -> Dictionary:
-	if _swap_phase != 0 or not _dual.is_empty() or not photo or photo.portrait_requested or photo.inspect or not origin.is_finite() or not direction.is_finite() or direction.length_squared() < 0.00001: return {}
+	if (
+		_swap_phase != 0
+		or not _dual.is_empty()
+		or not photo
+		or photo.portrait_requested
+		or photo.inspect
+		or not origin.is_finite()
+		or not direction.is_finite()
+		or direction.length_squared() < 0.00001
+	):
+		return {}
 	var nearest := {}
 	if mode in [Layout.SINGLE, Layout.SIDES] and photo.panel.visible and photo.geometry == 0:
 		var point: Variant = photo.screen_point(origin, direction)
-		if point != null and absf(point.x) <= photo._flat.size.x * 0.5 and absf(point.y) <= photo._flat.size.y * 0.5:
-			nearest = {"index": photo.index, "distance": origin.distance_to(photo.panel.global_transform * point), "point": photo.panel.global_transform * point}
-	if not visible and mode != Layout.SINGLE: return {}
+		if (
+			point != null
+			and absf(point.x) <= photo._flat.size.x * 0.5
+			and absf(point.y) <= photo._flat.size.y * 0.5
+		):
+			nearest = {
+				"index": photo.index,
+				"distance": origin.distance_to(photo.panel.global_transform * point),
+				"point": photo.panel.global_transform * point
+			}
+	if not visible and mode != Layout.SINGLE:
+		return {}
 	if focus >= 0 and progress >= 1 and not returning and photo.panel.visible:
-		if photo.geometry != 0: return {"index": focus, "distance": 2.0, "point": origin + direction.normalized() * 2.0}
+		if photo.geometry != 0:
+			return {"index": focus, "distance": 2.0, "point": origin + direction.normalized() * 2.0}
 		var point: Variant = photo.screen_point(origin, direction)
-		if point != null and absf(point.x) <= photo._flat.size.x * 0.5 and absf(point.y) <= photo._flat.size.y * 0.5:
-			return {"index": focus, "distance": origin.distance_to(photo.panel.global_transform * point), "point": photo.panel.global_transform * point}
+		if (
+			point != null
+			and absf(point.x) <= photo._flat.size.x * 0.5
+			and absf(point.y) <= photo._flat.size.y * 0.5
+		):
+			return {
+				"index": focus,
+				"distance": origin.distance_to(photo.panel.global_transform * point),
+				"point": photo.panel.global_transform * point
+			}
 	for index in cards:
 		var card: Dictionary = cards[index]
-		if not card.node.visible: continue
+		if not card.node.visible:
+			continue
 		var inverse: Transform3D = card.node.global_transform.affine_inverse()
-		var start := inverse * origin; var vector := inverse.basis * direction.normalized()
-		if absf(vector.z) < 0.0001: continue
+		var start := inverse * origin
+		var vector := inverse.basis * direction.normalized()
+		if absf(vector.z) < 0.0001:
+			continue
 		var distance := -start.z / vector.z
-		if distance <= 0: continue
+		if distance <= 0:
+			continue
 		var point := start + vector * distance
 		var polygon := PackedVector2Array()
-		for vertex in card.shown_shape: polygon.append(vertex * card.shown_size)
+		for vertex in card.shown_shape:
+			polygon.append(vertex * card.shown_size)
 		var inside := Geometry2D.is_point_in_polygon(Vector2(point.x, point.y), polygon)
 		if not inside:
 			for edge in polygon.size():
-				var closest := Geometry2D.get_closest_point_to_segment(Vector2(point.x, point.y), polygon[edge], polygon[(edge + 1) % polygon.size()])
-				if closest.distance_to(Vector2(point.x, point.y)) < minf(0.035, distance * 0.006): inside = true; break
+				var closest := Geometry2D.get_closest_point_to_segment(
+					Vector2(point.x, point.y), polygon[edge], polygon[(edge + 1) % polygon.size()]
+				)
+				if closest.distance_to(Vector2(point.x, point.y)) < minf(0.035, distance * 0.006):
+					inside = true
+					break
 		if inside and (nearest.is_empty() or distance < float(nearest.distance)):
-			nearest = {"index": index, "distance": distance, "point": origin + direction.normalized() * distance}
+			nearest = {
+				"index": index,
+				"distance": distance,
+				"point": origin + direction.normalized() * distance
+			}
 	return nearest
 
+
 func press_pointer(hand: String, origin: Vector3, direction: Vector3) -> bool:
-	if has_capture(): return true
+	if has_capture():
+		return true
 	var hit := ray_hit(origin, direction)
-	if hit.is_empty() or (mode in [Layout.SINGLE, Layout.SIDES] and not cards.has(int(hit.index))): return false
-	capture = {"hand": hand, "index": int(hit.index), "start": direction.normalized(), "last": direction.normalized(), "moved": false}
+	if hit.is_empty() or (mode in [Layout.SINGLE, Layout.SIDES] and not cards.has(int(hit.index))):
+		return false
+	capture = {
+		"hand": hand,
+		"index": int(hit.index),
+		"start": direction.normalized(),
+		"last": direction.normalized(),
+		"moved": false
+	}
 	return true
 
-func update_pointer(hand: String, origin: Vector3, direction: Vector3, tracked: bool = true) -> void:
-	if not tracked: cancel_pointer(hand); return
+
+func update_pointer(
+	hand: String, origin: Vector3, direction: Vector3, tracked: bool = true
+) -> void:
+	if not tracked:
+		cancel_pointer(hand)
+		return
 	var hit := ray_hit(origin, direction)
 	hover[hand] = int(hit.get("index", -1))
 	_show_pointer(hand, origin, hit)
 	_refresh_visibility()
-	if capture.get("hand", "") != hand: return
-	if direction.normalized().angle_to(capture.start) > 0.035: capture.moved = true
+	if capture.get("hand", "") != hand:
+		return
+	if direction.normalized().angle_to(capture.start) > 0.035:
+		capture.moved = true
 	if capture.moved and mode == Layout.WALL and focus < 0:
-		var old: Vector3 = capture.last; var current := direction.normalized()
+		var old: Vector3 = capture.last
+		var current := direction.normalized()
 		var step := wrapf(atan2(-current.x, -current.z) - atan2(-old.x, -old.z), -PI, PI)
 		_yaw += step
 		for card in cards.values():
-			var pivot := anchor * Transform3D(Basis(Vector3.UP, _yaw), Vector3.ZERO) * anchor.affine_inverse()
+			var pivot := (
+				anchor
+				* Transform3D(Basis(Vector3.UP, _yaw), Vector3.ZERO)
+				* anchor.affine_inverse()
+			)
 			card.node.global_transform = pivot * card.pose
 	capture.last = direction.normalized()
 
-func release_pointer(hand: String, origin: Vector3, direction: Vector3, tracked: bool = true) -> bool:
-	if capture.get("hand", "") != hand: return false
+
+func release_pointer(
+	hand: String, origin: Vector3, direction: Vector3, tracked: bool = true
+) -> bool:
+	if capture.get("hand", "") != hand:
+		return false
 	update_pointer(hand, origin, direction, tracked)
-	if capture.is_empty(): return true
-	var pressed := capture.duplicate(); capture = {}
+	if capture.is_empty():
+		return true
+	var pressed := capture.duplicate()
+	capture = {}
 	var hit := ray_hit(origin, direction)
-	if not pressed.moved and not hit.is_empty() and int(hit.index) == int(pressed.index): activate(int(hit.index))
+	if not pressed.moved and not hit.is_empty() and int(hit.index) == int(pressed.index):
+		activate(int(hit.index))
 	elif pressed.moved and mode == Layout.WALL and focus < 0:
 		# Commit the closest visible exhibit as the next window centre, then refill off-screen slots.
-		var closest := -1; var angle := INF
+		var closest := -1
+		var angle := INF
 		var forward := -anchor.basis.z
 		for index in cards:
 			var offset: Vector3 = cards[index].node.global_position - anchor.origin
 			var value := forward.angle_to(offset)
-			if value < angle: closest = index; angle = value
-		if closest >= 0: _wall_start = closest; photo._select(closest)
-		_yaw = 0; _reflow = true
+			if value < angle:
+				closest = index
+				angle = value
+		if closest >= 0:
+			_wall_start = closest
+			photo._select(closest)
+		_yaw = 0
+		_reflow = true
 	return true
+
 
 func _show_pointer(hand: String, origin: Vector3, hit: Dictionary) -> void:
 	if not _pointers.has(hand):
-		var line := MeshInstance3D.new(); line.mesh = CylinderMesh.new()
-		line.mesh.top_radius = 1.0; line.mesh.bottom_radius = 1.0; line.mesh.height = 1.0; line.mesh.radial_segments = 6
-		line.material_override = _plain(Color(0.15, 0.9, 1.0, 0.65), 4); photo.add_child(line)
-		var dot := MeshInstance3D.new(); dot.mesh = SphereMesh.new(); dot.mesh.radius = 1.0; dot.mesh.height = 2.0
-		dot.mesh.radial_segments = 12; dot.mesh.rings = 6; dot.material_override = _plain(Color(0.85, 1.0, 1.0), 5)
-		dot.material_override.no_depth_test = true; photo.add_child(dot)
-		line.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; dot.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var line := MeshInstance3D.new()
+		line.mesh = CylinderMesh.new()
+		line.mesh.top_radius = 1.0
+		line.mesh.bottom_radius = 1.0
+		line.mesh.height = 1.0
+		line.mesh.radial_segments = 6
+		line.material_override = _plain(Color(0.15, 0.9, 1.0, 0.65), 4)
+		photo.add_child(line)
+		var dot := MeshInstance3D.new()
+		dot.mesh = SphereMesh.new()
+		dot.mesh.radius = 1.0
+		dot.mesh.height = 2.0
+		dot.mesh.radial_segments = 12
+		dot.mesh.rings = 6
+		dot.material_override = _plain(Color(0.85, 1.0, 1.0), 5)
+		dot.material_override.no_depth_test = true
+		photo.add_child(dot)
+		line.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		dot.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		_pointers[hand] = {"line": line, "dot": dot}
 	var pointer: Dictionary = _pointers[hand]
-	pointer.line.visible = not hit.is_empty(); pointer.dot.visible = not hit.is_empty()
-	if hit.is_empty(): return
+	pointer.line.visible = not hit.is_empty()
+	pointer.dot.visible = not hit.is_empty()
+	if hit.is_empty():
+		return
 	var target: Vector3 = hit.point
 	var direction := (target - origin).normalized()
 	var length := origin.distance_to(target)
 	var right := direction.cross(Vector3.FORWARD)
-	if right.length_squared() < 0.001: right = direction.cross(Vector3.UP)
+	if right.length_squared() < 0.001:
+		right = direction.cross(Vector3.UP)
 	right = right.normalized()
-	pointer.line.global_transform = Transform3D(Basis(right, direction, right.cross(direction)), (origin + target) * 0.5)
+	pointer.line.global_transform = Transform3D(
+		Basis(right, direction, right.cross(direction)), (origin + target) * 0.5
+	)
 	pointer.line.scale = Vector3(0.0018, length, 0.0018)
 	pointer.dot.global_position = target - direction * 0.012
 	pointer.dot.scale = Vector3.ONE * clampf(length * 0.0045, 0.008, 0.03)
-	pointer.dot.material_override.albedo_color = Color(1.0, 0.88, 0.55) if capture.get("hand", "") == hand else Color(0.8, 1.0, 1.0)
+	pointer.dot.material_override.albedo_color = (
+		Color(1.0, 0.88, 0.55) if capture.get("hand", "") == hand else Color(0.8, 1.0, 1.0)
+	)
+
 
 func set_focus_distance(value: float) -> void:
-	if focus < 0 or not photo or photo.geometry != 0: return
-	var eye: Vector3 = photo.view_camera.global_position if is_instance_valid(photo.view_camera) else anchor.origin
-	var direction := (focus_pose.origin-eye).normalized()
-	if direction.length_squared() < 0.001: direction = -focus_pose.basis.z
+	if focus < 0 or not photo or photo.geometry != 0:
+		return
+	var eye: Vector3 = (
+		photo.view_camera.global_position if is_instance_valid(photo.view_camera) else anchor.origin
+	)
+	var direction := (focus_pose.origin - eye).normalized()
+	if direction.length_squared() < 0.001:
+		direction = -focus_pose.basis.z
 	photo.set_screen_distance(value)
 	focus_pose.origin = eye + direction * photo.screen_distance
 	photo.flat_pose = photo.global_transform.affine_inverse() * focus_pose

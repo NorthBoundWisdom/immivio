@@ -47,9 +47,9 @@ class ReleaseSnapshot(unittest.TestCase):
                 elif case == "duplicate":
                     data["assets"].append(data["assets"][0])
                 elif case == "url":
-                    data["assets"][0]["browser_download_url"] = (
-                        "https://example.invalid/download.apk"
-                    )
+                    data["assets"][0][
+                        "browser_download_url"
+                    ] = "https://example.invalid/download.apk"
                 elif case == "zero":
                     data["assets"][0]["size"] = 0
                 else:

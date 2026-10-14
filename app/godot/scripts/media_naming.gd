@@ -26,10 +26,14 @@ const _ALPHA := "alpha|passthrough"
 const _FLAT := "flat|screen"
 static var _patterns := {}
 
+
 static func _has(name: String, alternatives: String) -> bool:
 	if not _patterns.has(alternatives):
-		_patterns[alternatives] = RegEx.create_from_string("(?i)" + _EDGE + "(?:" + alternatives + ")" + _END)
+		_patterns[alternatives] = RegEx.create_from_string(
+			"(?i)" + _EDGE + "(?:" + alternatives + ")" + _END
+		)
 	return _patterns[alternatives].search(name) != null
+
 
 ## What the name states. Keys appear only when stated: geometry, stereo, top_bottom, swap,
 ## stereo_half, fisheye_fov, alpha, packed.
@@ -67,32 +71,55 @@ static func from_name(file_name: String) -> Dictionary:
 		result.stereo_half = false
 	if _has(name, _ALPHA):
 		result.alpha = true
-		result.packed = result.get("geometry", -1) == Geometry.Geometry.FISHEYE and result.get("stereo", true) \
+		result.packed = (
+			result.get("geometry", -1) == Geometry.Geometry.FISHEYE
+			and result.get("stereo", true)
 			and not result.get("top_bottom", false)
+		)
 	return result
+
 
 ## The marker's lens, snapped to the choices the player offers.
 static func _lens_fov(name: String) -> int:
-	var found := RegEx.create_from_string("(?i)" + _EDGE + "(fisheye(\\d{3})?|f180|180f|rf52|mkx200|mkx220|mkx22|vrca220)" + _END).search(name)
+	var found := (
+		RegEx
+		. create_from_string(
+			"(?i)" + _EDGE + "(fisheye(\\d{3})?|f180|180f|rf52|mkx200|mkx220|mkx22|vrca220)" + _END
+		)
+		. search(name)
+	)
 	if not found:
 		return 180
-	var fov := int(found.get_string(2)) if not found.get_string(2).is_empty() else int(_LENS.get(found.get_string(1).to_lower(), 180))
+	var fov := (
+		int(found.get_string(2))
+		if not found.get_string(2).is_empty()
+		else int(_LENS.get(found.get_string(1).to_lower(), 180))
+	)
 	var best := 180
 	for choice in FOVS:
 		if absi(choice - fov) < absi(best - fov):
 			best = choice
 	return best
 
+
 ## Fills missing layout details from metadata and frame size. A 2:1 frame cannot distinguish
 ## a flat video, mono 360 and VR180 SBS, so it never supplies a projection or stereo marker.
 ## 3.2:1 and wider is a flat full-SBS film; a large square frame (2880 px and up) is 360
 ## top-bottom; stated top-bottom: square is 360.
-static func complete(stated: Dictionary, width: int, height: int, format: Dictionary = {}, file_name: String = "") -> Dictionary:
+static func complete(
+	stated: Dictionary, width: int, height: int, format: Dictionary = {}, file_name: String = ""
+) -> Dictionary:
 	stated = stated.duplicate()
 	# Generic "3D" says nothing about the packing axis. Container metadata fills that gap;
 	# an explicit filename convention (or a saved user choice, applied by the owner) wins.
 	var name := file_name.get_file().get_basename()
-	var explicit_axis := _has(name, _SBS.replace("|3d|", "|")) or _has(name, _RL) or _has(name, _TB) or _has(name, _BT) or _has(name, _MONO)
+	var explicit_axis := (
+		_has(name, _SBS.replace("|3d|", "|"))
+		or _has(name, _RL)
+		or _has(name, _TB)
+		or _has(name, _BT)
+		or _has(name, _MONO)
+	)
 	var mode := str(format.get("stereo_mode", "")).to_lower()
 	var sbs := mode in ["sbsl", "sbsr", "sbs2l", "sbs2r", "side_by_side", "right_left"]
 	var tb := mode in ["abl", "abr", "ab2l", "ab2r", "top_bottom", "bottom_top"]
@@ -105,7 +132,15 @@ static func complete(stated: Dictionary, width: int, height: int, format: Dictio
 	var aspect := float(width) / maxf(1.0, float(height))
 	var square := absf(aspect - 1.0) <= 0.04
 	var geometry := int(stated.get("geometry", -1))
-	var stacked := bool(stated.get("top_bottom", false)) or (not stated.has("stereo") and square and width >= 2880 		and geometry != Geometry.Geometry.FISHEYE)
+	var stacked := (
+		bool(stated.get("top_bottom", false))
+		or (
+			not stated.has("stereo")
+			and square
+			and width >= 2880
+			and geometry != Geometry.Geometry.FISHEYE
+		)
+	)
 	if geometry < 0:
 		if stacked and square:
 			geometry = Geometry.Geometry.EQUIRECT_360
@@ -130,6 +165,22 @@ static func complete(stated: Dictionary, width: int, height: int, format: Dictio
 	if stereo:
 		# Flat half layouts restore the packed axis; squeezed fisheye lenses occupy the
 		# whole eye rectangle instead of containing a padded pixel circle.
-		compressed = bool(stated.get("stereo_half", (geometry == Geometry.Geometry.FLAT and aspect >= 1.2 and aspect < 3.2) \
-			or (geometry == Geometry.Geometry.FISHEYE and ((stacked and aspect >= 1.2) or (not stacked and aspect <= 1.2)))))
-	return {"geometry": geometry, "stereo": stereo, "top_bottom": stacked, "stereo_half": compressed, "swap": bool(stated.get("swap", false)) and stereo}
+		compressed = bool(
+			stated.get(
+				"stereo_half",
+				(
+					(geometry == Geometry.Geometry.FLAT and aspect >= 1.2 and aspect < 3.2)
+					or (
+						geometry == Geometry.Geometry.FISHEYE
+						and ((stacked and aspect >= 1.2) or (not stacked and aspect <= 1.2))
+					)
+				)
+			)
+		)
+	return {
+		"geometry": geometry,
+		"stereo": stereo,
+		"top_bottom": stacked,
+		"stereo_half": compressed,
+		"swap": bool(stated.get("swap", false)) and stereo
+	}

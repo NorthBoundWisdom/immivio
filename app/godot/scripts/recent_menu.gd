@@ -7,33 +7,40 @@ signal player_requested
 const PLAYER := -5
 
 var catalog: RefCounted
-var focus_index := 0 # Desktop keyboard preview only.
+var focus_index := 0  # Desktop keyboard preview only.
 var page := 0
 var rows: Array[Dictionary] = []
+
 
 func _reset_navigation() -> void:
 	page = 0
 	focus_index = 0
+
 
 func refresh() -> void:
 	rows = catalog.list_recent() if catalog else []
 	page = clampi(page, 0, _page_count() - 1)
 	_draw()
 
+
 func _page_count() -> int:
 	return ceili(float(rows.size() + 1) / PAGE_SIZE)
+
 
 func move_focus(direction: int) -> void:
 	focus_index = posmod(focus_index + direction, rows.size() + 1)
 	page = focus_index / PAGE_SIZE
 	_draw()
 
+
 func activate_desktop() -> void:
 	if visible:
 		_activate(focus_index)
 
+
 func _activate(target: int) -> void:
-	if _activate_footer(target): return
+	if _activate_footer(target):
+		return
 	if target == PLAYER:
 		dismiss()
 		player_requested.emit()
@@ -49,6 +56,7 @@ func _activate(target: int) -> void:
 		var uri := str(rows[target - 1].uri)
 		dismiss()
 		chosen.emit(uri)
+
 
 func _draw() -> void:
 	_clear_layout()
@@ -72,12 +80,26 @@ func _draw() -> void:
 			var seconds := int(entry.position_ms) / 1000
 			text = _fit_title(str(entry.title), "", 1.0, 23)
 			resume = "%02d:%02d" % [seconds / 60, seconds % 60]
-		_button(index, text, Vector2(0, 0.25 - (index - first) * 0.087), Vector2(1.4, 0.075), true, "", index == 0)
+		_button(
+			index,
+			text,
+			Vector2(0, 0.25 - (index - first) * 0.087),
+			Vector2(1.4, 0.075),
+			true,
+			"",
+			index == 0
+		)
 		var node: MeshInstance3D = _buttons.back().node
 		var title: Label3D = node.get_child(0)
 		title.position.x = -0.55
 		title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-		_icon("folder" if index == 0 else "play", Vector3(-0.645, 0, 0.004), 0.036, _buttons.back().foreground, node)
+		_icon(
+			"folder" if index == 0 else "play",
+			Vector3(-0.645, 0, 0.004),
+			0.036,
+			_buttons.back().foreground,
+			node
+		)
 		if index > 0:
 			var time := _label(resume, Vector3(0.64, 0, 0.004), 18, node)
 			time.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -89,4 +111,3 @@ func _draw() -> void:
 	_button(NEXT, "Next", Vector2(0, -0.415), Vector2(0.3, 0.075), page < _page_count() - 1)
 	_button(CLOSE, "Close", Vector2(0.5, -0.415), Vector2(0.3, 0.075))
 	_update_highlights()
-

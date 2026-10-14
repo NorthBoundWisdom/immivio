@@ -8,7 +8,8 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class SmbPackagingTest {
-    @Test fun deprecatedHttpTlsAdaptersAreUnavailable() {
+    @Test
+    fun deprecatedHttpTlsAdaptersAreUnavailable() {
         for (prefix in listOf("org.codelibs.jcifs.smb", "org.codelibs.jcifs.smb1")) {
             for (adapter in listOf("http.NtlmHttpURLConnection", "http.Handler", "https.Handler")) {
                 assertThrows(ClassNotFoundException::class.java) { Class.forName("$prefix.$adapter") }
@@ -16,7 +17,8 @@ class SmbPackagingTest {
         }
     }
 
-    @Test fun smbContextAndUrlHandlerStillWorkWithTheFilteredJar() {
+    @Test
+    fun smbContextAndUrlHandlerStillWorkWithTheFilteredJar() {
         val base = BaseContext(PropertyConfiguration(SmbClientPolicy.properties(false)))
         val context = base.withCredentials(NtlmPasswordAuthenticator("", "fixture", "fixture-only"))
         try {

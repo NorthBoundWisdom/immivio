@@ -7,145 +7,310 @@ var failures: Array[String] = []
 var checks := 0
 var requests: Array = []
 
-class FailedWrite extends "res://scripts/bookmark_store.gd":
-	func _commit(_staged: String, _target: String) -> Error: return ERR_CANT_CREATE
 
-class Host extends RefCounted:
+class FailedWrite:
+	extends "res://scripts/bookmark_store.gd"
+
+	func _commit(_staged: String, _target: String) -> Error:
+		return ERR_CANT_CREATE
+
+
+class Host:
+	extends RefCounted
 	var targets: Array = []
-	func close_mpv_video(_id: int) -> void: pass
-	func set_mpv_playing(_id: int, _playing: bool) -> void: pass
-	func revise_mpv_video(id: int, _stereo: bool, _alpha: bool, _profile: String, time: int, _depth: bool, _top_bottom: bool, _exact: bool = false) -> int:
-		targets.append([id, time]); return 0
+
+	func close_mpv_video(_id: int) -> void:
+		pass
+
+	func set_mpv_playing(_id: int, _playing: bool) -> void:
+		pass
+
+	func revise_mpv_video(
+		id: int,
+		_stereo: bool,
+		_alpha: bool,
+		_profile: String,
+		time: int,
+		_depth: bool,
+		_top_bottom: bool,
+		_exact: bool = false
+	) -> int:
+		targets.append([id, time])
+		return 0
+
 
 func check(ok: bool, text: String) -> void:
 	checks += 1
-	if not ok: failures.append(text)
+	if not ok:
+		failures.append(text)
+
 
 func origin(menu: Node3D, target: int) -> Vector3:
 	for button in menu._buttons:
-		if button.target == target: return menu.to_global(Vector3(button.rect.get_center().x, button.rect.get_center().y, 1))
+		if button.target == target:
+			return menu.to_global(
+				Vector3(button.rect.get_center().x, button.rect.get_center().y, 1)
+			)
 	return Vector3.ZERO
+
 
 func tap(menu: Node3D, target: int, hand: String = "left_hand") -> void:
 	var start := origin(menu, target)
 	menu.press_pointer(hand, start, -menu.global_basis.z, true)
 	menu.release_pointer(hand, start, -menu.global_basis.z, true)
 
+
 func _initialize() -> void:
 	call_deferred("_run")
 
+
 func _run() -> void:
 	preload("res://scripts/i18n.gd").use("en")
-	var path := ProjectSettings.globalize_path("res://../../build/output/bookmarks-host/" + str(Time.get_ticks_usec()))
+	var path := ProjectSettings.globalize_path(
+		"res://../../build/output/bookmarks-host/" + str(Time.get_ticks_usec())
+	)
 	var store := Store.new(path)
 	var uri := "smb://server/old/movie.mp4"
 	var id := store.resolve(uri, "movie.mp4", 5000000)
-	check(store.list_markers(id).is_empty() and not DirAccess.dir_exists_absolute(path), "Opening a movie performs no storage mutation")
+	check(
+		store.list_markers(id).is_empty() and not DirAccess.dir_exists_absolute(path),
+		"Opening a movie performs no storage mutation"
+	)
 	var a := store.add(uri, "movie.mp4", 5000000, 10000)
 	var b := store.add(uri, "movie.mp4", 5000000, 30000)
 	check(not a.is_empty() and not b.is_empty(), "Add two timestamps")
-	check(a.keys().size() == 3 and not a.has("rating") and not a.has("title"), "User marker contains only ID, time and creation date")
+	check(
+		a.keys().size() == 3 and not a.has("rating") and not a.has("title"),
+		"User marker contains only ID, time and creation date"
+	)
 	var moved := "cloud://account/new/movie.mp4"
-	check(store.resolve(moved, "movie.mp4", 5000000) == id, "Matching real name and byte length survives directory and source changes")
+	check(
+		store.resolve(moved, "movie.mp4", 5000000) == id,
+		"Matching real name and byte length survives directory and source changes"
+	)
 	check(store.resolve(moved, "movie.mp4", -1) != id, "Unknown byte size never cross-matches")
-	check(store.resolve(moved, "movie.mp4", 5000001) != id, "Same name with different size stays separate")
-	check(store.resolve(uri, "movie.mp4", 5000001) != id, "Changed file at same path does not inherit old bookmarks")
+	check(
+		store.resolve(moved, "movie.mp4", 5000001) != id,
+		"Same name with different size stays separate"
+	)
+	check(
+		store.resolve(uri, "movie.mp4", 5000001) != id,
+		"Changed file at same path does not inherit old bookmarks"
+	)
 	check(store.resolve(moved, "Movie.mp4", 5000000) != id, "Case-sensitive basename is preserved")
 	var duplicate := store.add(moved, "movie.mp4", 5000000, 10900)
-	check(duplicate.id == a.id and store.list_markers(id).size() == 2, "Repeated nearby add highlights original point and binds moved URI")
+	check(
+		duplicate.id == a.id and store.list_markers(id).size() == 2,
+		"Repeated nearby add highlights original point and binds moved URI"
+	)
 	var loaded := Store.new(path)
-	check(loaded.resolve(moved) == id and loaded.list_markers(id) == store.list_markers(id), "Restart retains markers and newly bound alias")
+	check(
+		loaded.resolve(moved) == id and loaded.list_markers(id) == store.list_markers(id),
+		"Restart retains markers and newly bound alias"
+	)
 	check(store.remove(id, a.id) and store.can_undo(), "Delete commits and offers undo")
-	check(Store.new(path).list_markers(id).size() == 1, "Delete is persisted before normal shutdown")
-	check(store.restore() and store.list_markers(id)[0] == a and not store.can_undo(), "Undo restores original ID and date and sorted position")
+	check(
+		Store.new(path).list_markers(id).size() == 1, "Delete is persisted before normal shutdown"
+	)
+	check(
+		store.restore() and store.list_markers(id)[0] == a and not store.can_undo(),
+		"Undo restores original ID and date and sorted position"
+	)
 	store.remove(id, b.id)
 	store.add("file:///other.mp4", "other.mp4", 50, 0)
-	check(store.restore() and store.list_markers(id).size() == 2, "Undo after switching movie restores the original movie")
-	store.remove(id, a.id); store.undo.until = Time.get_ticks_msec() - 1
+	check(
+		store.restore() and store.list_markers(id).size() == 2,
+		"Undo after switching movie restores the original movie"
+	)
+	store.remove(id, a.id)
+	store.undo.until = Time.get_ticks_msec() - 1
 	check(not store.can_undo() and not store.restore(), "Undo expires")
 	check(store.add(uri, "movie.mp4", 5000000, -1).is_empty(), "Negative position is rejected")
 	var failed := FailedWrite.new(path)
 	var before := failed.list_markers(id)
-	check(not failed.remove(id, b.id) and failed.list_markers(id) == before and not failed.can_undo(), "Failed delete preserves memory and creates no undo")
-	check(failed.add(uri, "movie.mp4", 5000000, 60000).is_empty() and failed.list_markers(id) == before, "Failed add preserves memory")
+	check(
+		not failed.remove(id, b.id) and failed.list_markers(id) == before and not failed.can_undo(),
+		"Failed delete preserves memory and creates no undo"
+	)
+	check(
+		(
+			failed.add(uri, "movie.mp4", 5000000, 60000).is_empty()
+			and failed.list_markers(id) == before
+		),
+		"Failed add preserves memory"
+	)
 	var damaged_path := path.path_join("damage")
 	var damaged := Store.new(damaged_path)
 	damaged.add(uri, "movie.mp4", 5000000, 10000)
 	damaged.add(uri, "movie.mp4", 5000000, 30000)
 	var corrupt := FileAccess.open(damaged._path(id, 0), FileAccess.WRITE)
-	corrupt.store_string("broken"); corrupt.close()
-	check(Store.new(damaged_path).list_markers(id).size() == 1, "Corrupt latest generation falls back to previous bank")
+	corrupt.store_string("broken")
+	corrupt.close()
+	check(
+		Store.new(damaged_path).list_markers(id).size() == 1,
+		"Corrupt latest generation falls back to previous bank"
+	)
 	var future := FileAccess.open(damaged._path(id, 0), FileAccess.WRITE)
-	future.store_string('{"schema_version":2}'); future.close()
+	future.store_string('{"schema_version":2}')
+	future.close()
 	var protected := Store.new(damaged_path)
-	check(protected.add(uri, "movie.mp4", 5000000, 50000).is_empty() and protected.list_markers(id).size() == 1, "Future schema cannot be overwritten")
-	for index in 34: store.add("file:///%d.mp4" % index, "%d.mp4" % index, index + 1, 10000)
-	check(Store.new(path).records.size() == 36, "Bookmarks survive beyond 32 history entries without eviction")
+	check(
+		(
+			protected.add(uri, "movie.mp4", 5000000, 50000).is_empty()
+			and protected.list_markers(id).size() == 1
+		),
+		"Future schema cannot be overwritten"
+	)
+	for index in 34:
+		store.add("file:///%d.mp4" % index, "%d.mp4" % index, index + 1, 10000)
+	check(
+		Store.new(path).records.size() == 36,
+		"Bookmarks survive beyond 32 history entries without eviction"
+	)
 	var limit_store := Store.new(path.path_join("limit"))
 	var limit_id := limit_store.resolve(uri, "movie.mp4", 5000000)
-	var limit_record := {"id": limit_id, "aliases": [Store.Memory.key_for(uri)], "fingerprint": Store.fingerprint("movie.mp4", 5000000), "markers": []}
+	var limit_record := {
+		"id": limit_id,
+		"aliases": [Store.Memory.key_for(uri)],
+		"fingerprint": Store.fingerprint("movie.mp4", 5000000),
+		"markers": []
+	}
 	for index in Store.MAX_MARKERS:
-		limit_record.markers.append({"id": "%032x" % (index + 1), "position_ms": index * 2000, "created_at_ms": 1})
-	check(limit_store._save(limit_record) and limit_store.add(uri, "movie.mp4", 5000000, 1100000).is_empty() and limit_store.last_error == "Bookmark limit reached", "500 point limit rejects additions without eviction")
+		limit_record.markers.append(
+			{"id": "%032x" % (index + 1), "position_ms": index * 2000, "created_at_ms": 1}
+		)
+	check(
+		(
+			limit_store._save(limit_record)
+			and limit_store.add(uri, "movie.mp4", 5000000, 1100000).is_empty()
+			and limit_store.last_error == "Bookmark limit reached"
+		),
+		"500 point limit rejects additions without eviction"
+	)
 
-	var marks := [{"id": "a", "position_ms": 0}, {"id": "b", "position_ms": 10000}, {"id": "c", "position_ms": 1000000}, {"id": "outside", "position_ms": 7200000}]
+	var marks := [
+		{"id": "a", "position_ms": 0},
+		{"id": "b", "position_ms": 10000},
+		{"id": "c", "position_ms": 1000000},
+		{"id": "outside", "position_ms": 7200000}
+	]
 	var clusters := Timeline.groups(marks, 7200000, 0.82)
-	check(clusters.size() == 2 and clusters[0].markers.size() == 2, "Dense timestamps cluster by visible distance and EOS is excluded")
+	check(
+		clusters.size() == 2 and clusters[0].markers.size() == 2,
+		"Dense timestamps cluster by visible distance and EOS is excluded"
+	)
 	var dense: Array = []
-	for index in 500: dense.append({"id": str(index), "position_ms": index * 14000})
-	check(Timeline.groups(dense, 7200000, 0.82).size() <= 17, "500 markers produce bounded, non-overlapping groups")
+	for index in 500:
+		dense.append({"id": str(index), "position_ms": index * 14000})
+	check(
+		Timeline.groups(dense, 7200000, 0.82).size() <= 17,
+		"500 markers produce bounded, non-overlapping groups"
+	)
 
 	var menu := Menu.new()
-	var state := {"has_video": true, "duration_ms": 7200000, "position_ms": 30000,
-		"bookmark_scope": "movieA", "bookmark_ready": true, "bookmark_seekable": true,
-		"bookmarks": marks.slice(0, 3), "bookmark_revision": 1}
+	var state := {
+		"has_video": true,
+		"duration_ms": 7200000,
+		"position_ms": 30000,
+		"bookmark_scope": "movieA",
+		"bookmark_ready": true,
+		"bookmark_seekable": true,
+		"bookmarks": marks.slice(0, 3),
+		"bookmark_revision": 1
+	}
 	menu.state_provider = func(): return state
-	menu.bookmark_requested.connect(func(operation, marker_id, scope): requests.append([operation, marker_id, scope]))
-	root.add_child(menu); menu.toggle(); menu.set_process(false)
-	check(not menu._buttons.any(func(button): return button.target == 2000), "Bookmark addition has no toolbar action")
+	menu.bookmark_requested.connect(
+		func(operation, marker_id, scope): requests.append([operation, marker_id, scope])
+	)
+	root.add_child(menu)
+	menu.toggle()
+	menu.set_process(false)
+	check(
+		not menu._buttons.any(func(button): return button.target == 2000),
+		"Bookmark addition has no toolbar action"
+	)
 	var start := origin(menu, menu.BookmarkMenu.LIST)
 	menu.press_pointer("left_hand", start, -menu.global_basis.z, true)
 	menu.release_pointer("right_hand", start, -menu.global_basis.z, true)
 	check(not menu.bookmarks.opened, "Other hand cannot release bookmark-list capture")
 	menu.release_pointer("left_hand", start, -menu.global_basis.z, true)
-	check(menu.bookmarks.opened and not menu.text_snapshot().contains("Seek mode"), "Existing bookmarks open without a precision selector")
+	check(
+		menu.bookmarks.opened and not menu.text_snapshot().contains("Seek mode"),
+		"Existing bookmarks open without a precision selector"
+	)
 	tap(menu, menu.BookmarkMenu.ROW)
-	check(requests.back() == ["seek", "a", "movieA"], "Existing timestamp row seeks its stable marker ID")
+	check(
+		requests.back() == ["seek", "a", "movieA"],
+		"Existing timestamp row seeks its stable marker ID"
+	)
 	var count := requests.size()
 	start = origin(menu, menu.BookmarkMenu.DELETE)
 	menu.press_pointer("left_hand", start, -menu.global_basis.z, true)
-	state.bookmark_scope = "movieB"; menu.refresh()
+	state.bookmark_scope = "movieB"
+	menu.refresh()
 	menu.release_pointer("left_hand", start, -menu.global_basis.z, true)
 	check(requests.size() == count, "Changing media cancels a held delete")
-	state.bookmark_scope = "movieA"; menu.refresh(); tap(menu, menu.BookmarkMenu.LIST)
+	state.bookmark_scope = "movieA"
+	menu.refresh()
+	tap(menu, menu.BookmarkMenu.LIST)
 	tap(menu, menu.BookmarkMenu.DELETE)
 	check(requests.back() == ["delete", "a", "movieA"], "Existing bookmarks remain removable")
 	count = requests.size()
-	state.bookmarks = dense; menu.bookmarks.subset.clear(); menu.refresh()
+	state.bookmarks = dense
+	menu.bookmarks.subset.clear()
+	menu.refresh()
 	menu.stick_scroll(-1, 1)
 	check(menu.bookmarks.offset > 0 and requests.size() == count, "Stick scrolling does not seek")
 	start = origin(menu, menu.BookmarkMenu.ROW)
 	menu.press_pointer("left_hand", start, -menu.global_basis.z, true)
-	menu.dismiss(); menu.release_pointer("left_hand", start, -menu.global_basis.z, true)
+	menu.dismiss()
+	menu.release_pointer("left_hand", start, -menu.global_basis.z, true)
 	check(requests.size() == count, "Closing controls cancels bookmark capture")
 	menu.toggle()
-	check(menu.ray_hit(origin(menu, Menu.SEEK), -menu.global_basis.z).get("target") == Menu.SEEK, "Stored markers do not intercept the timeline")
+	check(
+		menu.ray_hit(origin(menu, Menu.SEEK), -menu.global_basis.z).get("target") == Menu.SEEK,
+		"Stored markers do not intercept the timeline"
+	)
 	menu.free()
 
 	var video := Video.new()
 	video.bookmark_store = Store.new(path.path_join("video"))
-	root.add_child(video); video.set_process(false)
-	video.media.begin(7); video.media.generation = 3
-	video.media.state = "paused"; video.media.playback = {"details": {"seekable": "yes", "partially_seekable": "no"}}
-	video.control.duration_ms = 60000; video.local_uri = uri; video.panel.visible = true
-	video._bookmark_metadata = {"basename": "movie.mp4", "size": 5000000}; video._bookmark_resolve()
-	video._binding.ticket = {"session_id": 7, "generation": 3, "pts_us": 12345000, "source_pts_verified": true}
-	check(video.bookmark_snapshot().position_ms == 12345, "Capture uses displayed source frame, not UI clock")
-	check(video.bookmark_action("add", "", video.bookmark_scope()).is_empty() and video.bookmark_store.list_markers(video._bookmark_media_id).is_empty(), "Retired addition cannot modify stored bookmarks")
+	root.add_child(video)
+	video.set_process(false)
+	video.media.begin(7)
+	video.media.generation = 3
+	video.media.state = "paused"
+	video.media.playback = {"details": {"seekable": "yes", "partially_seekable": "no"}}
+	video.control.duration_ms = 60000
+	video.local_uri = uri
+	video.panel.visible = true
+	video._bookmark_metadata = {"basename": "movie.mp4", "size": 5000000}
+	video._bookmark_resolve()
+	video._binding.ticket = {
+		"session_id": 7, "generation": 3, "pts_us": 12345000, "source_pts_verified": true
+	}
+	check(
+		video.bookmark_snapshot().position_ms == 12345,
+		"Capture uses displayed source frame, not UI clock"
+	)
+	check(
+		(
+			video.bookmark_action("add", "", video.bookmark_scope()).is_empty()
+			and video.bookmark_store.list_markers(video._bookmark_media_id).is_empty()
+		),
+		"Retired addition cannot modify stored bookmarks"
+	)
 	var stored := video.bookmark_store.add(uri, "movie.mp4", 5000000, 12345)
 	video.control.seek_absolute(40000)
-	check(video.bookmark_snapshot().is_empty() and video.bookmark_action("add", "", video.bookmark_scope()).is_empty(), "Pending seek target cannot be bookmarked")
-	video.control.reject(); video._binding.ticket.generation = 2
+	check(
+		(
+			video.bookmark_snapshot().is_empty()
+			and video.bookmark_action("add", "", video.bookmark_scope()).is_empty()
+		),
+		"Pending seek target cannot be bookmarked"
+	)
+	video.control.reject()
+	video._binding.ticket.generation = 2
 	check(video.bookmark_snapshot().is_empty(), "Stale processing generation is rejected")
 	video._binding.ticket.generation = 3
 	video._binding.ticket.frozen_frame_id = 1
@@ -155,12 +320,26 @@ func _run() -> void:
 	check(video.bookmark_seekable(), "Bookmark jumps remain available at EOF")
 	video.media.playback.details.partially_seekable = "yes"
 	check(not video.bookmark_seekable(), "Partially seekable source disables bookmark jumps")
-	check(video.bookmark_action("delete", "a", "stale scope").is_empty(), "Controller independently rejects stale UI scope")
+	check(
+		video.bookmark_action("delete", "a", "stale scope").is_empty(),
+		"Controller independently rejects stale UI scope"
+	)
 	video.media.playback.details.partially_seekable = "no"
-	var bridge := Host.new(); video.platform = bridge; video.requested_play = false
+	var bridge := Host.new()
+	video.platform = bridge
+	video.requested_play = false
 	video.bookmark_action("seek", str(stored.id), video.bookmark_scope())
-	check(bridge.targets == [[7, 12345]] and video.control.target_ms == 12345 and not video.requested_play, "Stored marker reaches actual revision chain and preserves pause intent")
-	video._binding.ticket.clear(); video.free()
+	check(
+		(
+			bridge.targets == [[7, 12345]]
+			and video.control.target_ms == 12345
+			and not video.requested_play
+		),
+		"Stored marker reaches actual revision chain and preserves pause intent"
+	)
+	video._binding.ticket.clear()
+	video.free()
 	print("Bookmark checks=%d failures=%d" % [checks, failures.size()])
-	for failure in failures: push_error(failure)
+	for failure in failures:
+		push_error(failure)
 	quit(0 if failures.is_empty() else 1)

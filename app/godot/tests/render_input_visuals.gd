@@ -1,8 +1,10 @@
 extends SceneTree
 const Visuals := preload("res://scripts/input_visuals.gd")
 
+
 func _initialize() -> void:
 	_render.call_deferred()
+
 
 func _render() -> void:
 	var viewport := SubViewport.new()

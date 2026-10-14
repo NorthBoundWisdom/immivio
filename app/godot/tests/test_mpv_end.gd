@@ -3,22 +3,36 @@ extends SceneTree
 const Video := preload("res://scripts/mpv_video_display.gd")
 var failures: Array[String] = []
 
-class ReplayProbe extends "res://scripts/mpv_video_display.gd":
+
+class ReplayProbe:
+	extends "res://scripts/mpv_video_display.gd"
 	var play_actions := 0
+
 	func toggle_play() -> void:
 		play_actions += 1
+
 
 func _check(value: bool, message: String) -> void:
 	if not value:
 		failures.append(message)
+
 
 func _initialize() -> void:
 	var video := Video.new()
 	video.media.state = "ended"
 	video.loop_enabled = true
 	video.alpha_requested = false
-	video.media.last_pair = {"contract_version": 2, "slot_token": 9, "source_epoch": 7, "frame_id": 179, "pts_us": 5966667}
-	video.media.playback = {"eof_source_resolved": true, "eof_source_ticket": {"source_epoch": 7, "frame_id": 179, "pts_us": 5966667}}
+	video.media.last_pair = {
+		"contract_version": 2,
+		"slot_token": 9,
+		"source_epoch": 7,
+		"frame_id": 179,
+		"pts_us": 5966667
+	}
+	video.media.playback = {
+		"eof_source_resolved": true,
+		"eof_source_ticket": {"source_epoch": 7, "frame_id": 179, "pts_us": 5966667}
+	}
 	_check(not video._can_loop(), "EOF and a bound final pair must wait for post-draw confirmation")
 	video.media.playback["eof_pair_post_draw"] = true
 	video.media.playback["eof_presented_slot"] = 8
@@ -46,7 +60,10 @@ func _initialize() -> void:
 	replay.requested_play = true
 	replay.media.state = "ended"
 	replay._on_debug_command(1, '{"operation":"playing","enabled":true}')
-	_check(replay.play_actions == 1, "Play at EOF must invoke replay even when play intent remains true")
+	_check(
+		replay.play_actions == 1,
+		"Play at EOF must invoke replay even when play intent remains true"
+	)
 	replay.media.state = "playing"
 	replay._on_debug_command(2, '{"operation":"playing","enabled":true}')
 	_check(replay.play_actions == 1, "Repeated play during playback must not toggle pause")

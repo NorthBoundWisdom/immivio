@@ -16,6 +16,7 @@ var decoder := ""
 var codec_dropped_frames := 0
 var coalesced_notifications := 0
 
+
 func begin(id: int) -> void:
 	session_id = id
 	logical_session_id = 0
@@ -33,8 +34,10 @@ func begin(id: int) -> void:
 	codec_dropped_frames = 0
 	coalesced_notifications = 0
 
+
 func accepts(id: int) -> bool:
 	return id > 0 and id == session_id and state not in ["closed", "failed"]
+
 
 func apply_event(kind: String, id: int, payload: String) -> bool:
 	if not accepts(id):
@@ -43,15 +46,25 @@ func apply_event(kind: String, id: int, payload: String) -> bool:
 	if parser.parse(payload) != OK:
 		return false
 	var parsed: Variant = parser.data
-	if not parsed is Dictionary or not _valid_id(parsed.get("session_id")) or int(parsed.session_id) != id:
+	if (
+		not parsed is Dictionary
+		or not _valid_id(parsed.get("session_id"))
+		or int(parsed.session_id) != id
+	):
 		return false
 	var has_scope: bool = parsed.has("logical_session_id") or parsed.has("generation")
 	var candidate_logical := int(parsed.get("logical_session_id", 0))
 	var candidate_generation := int(parsed.get("generation", 0))
 	if has_scope:
-		if not _valid_id(parsed.get("logical_session_id")) or not _valid_id(parsed.get("generation")):
+		if (
+			not _valid_id(parsed.get("logical_session_id"))
+			or not _valid_id(parsed.get("generation"))
+		):
 			return false
-		if logical_session_id > 0 and (candidate_logical != logical_session_id or candidate_generation != generation):
+		if (
+			logical_session_id > 0
+			and (candidate_logical != logical_session_id or candidate_generation != generation)
+		):
 			return false
 	elif logical_session_id > 0:
 		return false
@@ -63,12 +76,21 @@ func apply_event(kind: String, id: int, payload: String) -> bool:
 			state = parsed.state
 		"format":
 			var aspect := float(parsed.get("pixel_aspect", 0.0))
-			if int(parsed.get("width", 0)) <= 0 or int(parsed.get("height", 0)) <= 0 or not is_finite(aspect) or aspect <= 0.0:
+			if (
+				int(parsed.get("width", 0)) <= 0
+				or int(parsed.get("height", 0)) <= 0
+				or not is_finite(aspect)
+				or aspect <= 0.0
+			):
 				return false
 			if int(parsed.get("unapplied_rotation_degrees", -1)) not in [0, 90, 180, 270]:
 				return false
-			if format.width != int(parsed.width) or format.height != int(parsed.height) \
-				or float(format.pixel_aspect) != aspect or int(format.unapplied_rotation_degrees) != int(parsed.unapplied_rotation_degrees):
+			if (
+				format.width != int(parsed.width)
+				or format.height != int(parsed.height)
+				or float(format.pixel_aspect) != aspect
+				or int(format.unapplied_rotation_degrees) != int(parsed.unapplied_rotation_degrees)
+			):
 				format_revision += 1
 			format = parsed
 		"frame":
@@ -81,7 +103,14 @@ func apply_event(kind: String, id: int, payload: String) -> bool:
 					return false
 			var columns: Array[Vector4] = []
 			for column in 4:
-				columns.append(Vector4(matrix[column * 4], matrix[column * 4 + 1], matrix[column * 4 + 2], matrix[column * 4 + 3]))
+				columns.append(
+					Vector4(
+						matrix[column * 4],
+						matrix[column * 4 + 1],
+						matrix[column * 4 + 2],
+						matrix[column * 4 + 3]
+					)
+				)
 			transform = Projection(columns[0], columns[1], columns[2], columns[3])
 			frame_counter = count
 			surface_timestamp_ns = int(parsed.get("surface_timestamp_ns", 0))
@@ -99,17 +128,35 @@ func apply_event(kind: String, id: int, payload: String) -> bool:
 		generation = candidate_generation
 	return true
 
+
 func revise_effect() -> void:
 	effect_revision += 1
 
+
 func _valid_id(value: Variant) -> bool:
-	return (value is int or value is float) and is_finite(float(value)) and float(value) > 0 \
-		and float(value) <= 2147483647 and float(value) == floorf(float(value))
+	return (
+		(value is int or value is float)
+		and is_finite(float(value))
+		and float(value) > 0
+		and float(value) <= 2147483647
+		and float(value) == floorf(float(value))
+	)
+
 
 func frame_identity() -> Dictionary:
-	return {"session_id": logical_session_id, "decoder_id": session_id, "generation": generation, \
-		"format_revision": format_revision, "effect_revision": effect_revision, "frame_id": frame_counter, \
-		"pts_us": null, "source_pts_verified": false, "immutable_color_frame": false, "rvm_pairable": false}
+	return {
+		"session_id": logical_session_id,
+		"decoder_id": session_id,
+		"generation": generation,
+		"format_revision": format_revision,
+		"effect_revision": effect_revision,
+		"frame_id": frame_counter,
+		"pts_us": null,
+		"source_pts_verified": false,
+		"immutable_color_frame": false,
+		"rvm_pairable": false
+	}
+
 
 func close() -> void:
 	session_id = 0
@@ -118,11 +165,22 @@ func close() -> void:
 	state = "closed"
 	frame_counter = 0
 
+
 func snapshot() -> Dictionary:
-	return {"session_id": session_id, "state": state, "error": error,
-		"logical_session_id": logical_session_id, "generation": generation,
+	return {
+		"session_id": session_id,
+		"state": state,
+		"error": error,
+		"logical_session_id": logical_session_id,
+		"generation": generation,
 		"presentation_identity": frame_identity(),
-		"frame_counter": frame_counter, "surface_timestamp_ns": surface_timestamp_ns,
-		"format": format, "playback": playback, "decoder": decoder,
-		"codec_dropped_frames": codec_dropped_frames, "coalesced_notifications": coalesced_notifications,
-		"frame_pairing": "direct_OES_only_no_RVM", "device_validation": "pending"}
+		"frame_counter": frame_counter,
+		"surface_timestamp_ns": surface_timestamp_ns,
+		"format": format,
+		"playback": playback,
+		"decoder": decoder,
+		"codec_dropped_frames": codec_dropped_frames,
+		"coalesced_notifications": coalesced_notifications,
+		"frame_pairing": "direct_OES_only_no_RVM",
+		"device_validation": "pending"
+	}

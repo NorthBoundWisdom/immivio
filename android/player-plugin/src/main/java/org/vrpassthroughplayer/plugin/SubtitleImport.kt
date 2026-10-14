@@ -7,8 +7,16 @@ import java.io.OutputStream
 internal object SubtitleImport {
     const val MAX_BYTES = 16 * 1024 * 1024
     fun extension(name: String): String = name.substringAfterLast('.', "").lowercase().also {
-        require(it in setOf("srt", "ass", "ssa", "vtt")) { "Choose an SRT, ASS, SSA or VTT subtitle" }
+        require(
+            it in setOf(
+                "srt",
+                "ass",
+                "ssa",
+                "vtt"
+            )
+        ) { "Choose an SRT, ASS, SSA or VTT subtitle" }
     }
+
     fun copy(input: InputStream, output: OutputStream): Int {
         val buffer = ByteArray(8192)
         var total = 0

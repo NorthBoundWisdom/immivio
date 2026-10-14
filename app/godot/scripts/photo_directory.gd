@@ -14,53 +14,106 @@ var _offset := 0
 var _connected: Object
 var loading := false
 
+
 func start(context: Dictionary) -> void:
 	cancel()
-	if context.is_empty(): return
-	_context = context.duplicate(true); loading = true
+	if context.is_empty():
+		return
+	_context = context.duplicate(true)
+	loading = true
 	if _connected != platform:
-		if is_instance_valid(_connected) and _connected.is_connected("media_list", receive): _connected.disconnect("media_list", receive)
+		if is_instance_valid(_connected) and _connected.is_connected("media_list", receive):
+			_connected.disconnect("media_list", receive)
 		_connected = platform
-		if is_instance_valid(platform) and platform.has_signal("media_list"): platform.connect("media_list", receive)
+		if is_instance_valid(platform) and platform.has_signal("media_list"):
+			platform.connect("media_list", receive)
 	_page(0)
+
 
 func cancel() -> void:
 	if _request > 0:
-		if Methods.supports(platform, "media_photo_directory_cancel"): platform.media_photo_directory_cancel(_request)
-		elif Methods.supports(platform, "media_cloud_cancel"): platform.media_cloud_cancel(_request)
-	_request = 0; loading = false; _context = {}; _entries.clear(); _uris.clear(); _offsets.clear()
+		if Methods.supports(platform, "media_photo_directory_cancel"):
+			platform.media_photo_directory_cancel(_request)
+		elif Methods.supports(platform, "media_cloud_cancel"):
+			platform.media_cloud_cancel(_request)
+	_request = 0
+	loading = false
+	_context = {}
+	_entries.clear()
+	_uris.clear()
+	_offsets.clear()
+
 
 func _page(offset: int) -> void:
-	if _offsets.has(offset): _finish(false, "Images unavailable"); return
-	_offsets[offset] = true; _offset = offset
+	if _offsets.has(offset):
+		_finish(false, "Images unavailable")
+		return
+	_offsets[offset] = true
+	_offset = offset
 	if Methods.supports(platform, "media_photo_directory_page"):
-		_request = int(platform.media_photo_directory_page(str(_context.path), offset, str(_context.order)))
+		_request = int(
+			platform.media_photo_directory_page(str(_context.path), offset, str(_context.order))
+		)
 	elif Methods.supports(platform, "media_cloud_sorted_page"):
-		_request = int(platform.media_cloud_sorted_page(str(_context.path), offset, false, str(_context.order)))
+		_request = int(
+			platform.media_cloud_sorted_page(str(_context.path), offset, false, str(_context.order))
+		)
 	elif Methods.supports(platform, "media_cloud_page"):
 		_request = int(platform.media_cloud_page(str(_context.path), offset, false))
-	else: _request = -1
-	if _request <= 0: _finish(false, "Images unavailable")
+	else:
+		_request = -1
+	if _request <= 0:
+		_finish(false, "Images unavailable")
+
 
 func receive(id: int, payload: String) -> void:
-	if not loading or id != _request: return
+	if not loading or id != _request:
+		return
 	_request = 0
 	var result: Variant = JSON.parse_string(payload)
-	if not result is Dictionary or result.get("state") != "ready" or str(result.get("path", "")) != str(_context.path) \
-		or int(result.get("offset", -1)) != _offset or ((Methods.supports(platform, "media_cloud_sorted_page") or Methods.supports(platform, "media_photo_directory_page")) and str(result.get("order", "")) != str(_context.order)):
-		_finish(false, "Images unavailable"); return
+	if (
+		not result is Dictionary
+		or result.get("state") != "ready"
+		or str(result.get("path", "")) != str(_context.path)
+		or int(result.get("offset", -1)) != _offset
+		or (
+			(
+				Methods.supports(platform, "media_cloud_sorted_page")
+				or Methods.supports(platform, "media_photo_directory_page")
+			)
+			and str(result.get("order", "")) != str(_context.order)
+		)
+	):
+		_finish(false, "Images unavailable")
+		return
 	for item in result.get("entries", []):
-		if not item is Dictionary or item.get("container", false) or str(item.get("uri", "")).is_empty(): continue
+		if (
+			not item is Dictionary
+			or item.get("container", false)
+			or str(item.get("uri", "")).is_empty()
+		):
+			continue
 		var uri := str(item.uri)
-		if not _uris.has(uri) and (item.get("kind", "") == "image" or Info.is_image(uri, str(item.get("title", "")))):
-			_uris[uri] = true; _entries.append(item.duplicate(true))
+		if (
+			not _uris.has(uri)
+			and (item.get("kind", "") == "image" or Info.is_image(uri, str(item.get("title", ""))))
+		):
+			_uris[uri] = true
+			_entries.append(item.duplicate(true))
 	var next := int(result.get("next_offset", -1))
-	if next < 0: _finish(true, "")
-	elif _entries.size() >= MAX_ENTRIES or _offsets.size() >= 512: _finish(false, "Images unavailable")
-	else: _page(next)
+	if next < 0:
+		_finish(true, "")
+	elif _entries.size() >= MAX_ENTRIES or _offsets.size() >= 512:
+		_finish(false, "Images unavailable")
+	else:
+		_page(next)
+
 
 func _finish(complete: bool, error: String) -> void:
-	loading = false; _request = 0
+	loading = false
+	_request = 0
 	completed.emit(_entries.duplicate(true), complete, error)
 
-func _exit_tree() -> void: cancel()
+
+func _exit_tree() -> void:
+	cancel()

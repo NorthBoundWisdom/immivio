@@ -1,230 +1,409 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="color-scheme" content="dark light">
-<meta name="application-name" content="Immivio – VR &amp; Spatial Media Player">
-<title>Immivio — Quest &amp; PICO APK Installation and Playback Guide</title>
-<meta name="description" content="Install the free Immivio VR player on Meta Quest or PICO. Set up VR180, 360° and 3D SBS playback, NAS libraries, audio tracks and subtitles.">
-<link rel="canonical" href="https://northboundwisdom.github.io/immivio/guide/">
-<link rel="alternate" hreflang="en" href="https://northboundwisdom.github.io/immivio/guide/">
-<link rel="alternate" hreflang="zh-CN" href="https://northboundwisdom.github.io/immivio/zh/guide/">
-<link rel="alternate" hreflang="x-default" href="https://northboundwisdom.github.io/immivio/guide/">
-<meta property="og:title" content="Immivio — Quest &amp; PICO APK Installation and Playback Guide">
-<meta property="og:description" content="Install the free Immivio VR player on Meta Quest or PICO. Set up VR180, 360° and 3D SBS playback, NAS libraries, audio tracks and subtitles.">
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://northboundwisdom.github.io/immivio/guide/">
-<meta property="og:image" content="https://northboundwisdom.github.io/immivio/assets/screenshots/playback.png">
-<meta name="twitter:card" content="summary_large_image">
-<meta property="og:site_name" content="Immivio">
-<meta property="og:locale" content="en_US">
-<meta property="og:locale:alternate" content="zh_CN">
-<meta property="og:image:width" content="1920">
-<meta property="og:image:height" content="1080">
-<meta property="og:image:alt" content="Immivio video playback interface">
-<meta name="twitter:title" content="Immivio — Quest &amp; PICO APK Installation and Playback Guide">
-<meta name="twitter:description" content="Install the free Immivio VR player on Meta Quest or PICO. Set up VR180, 360° and 3D SBS playback, NAS libraries, audio tracks and subtitles.">
-<meta name="twitter:image" content="https://northboundwisdom.github.io/immivio/assets/screenshots/playback.png">
-<meta name="robots" content="index,follow,max-image-preview:large">
-<link rel="icon" href="../assets/icon.png" type="image/png">
-<link rel="apple-touch-icon" href="../assets/icon.png">
-<link rel="stylesheet" href="../assets/site.css">
-<script defer data-site-script src="../assets/site.js">
-</script>
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "WebPage",
-      "@id": "https://northboundwisdom.github.io/immivio/guide/#webpage",
-      "url": "https://northboundwisdom.github.io/immivio/guide/",
-      "name": "Immivio — Quest & PICO APK Installation and Playback Guide",
-      "description": "Install the free Immivio VR player on Meta Quest or PICO. Set up VR180, 360° and 3D SBS playback, NAS libraries, audio tracks and subtitles.",
-      "inLanguage": "en",
-      "about": {
-        "@id": "https://northboundwisdom.github.io/immivio/#software"
-      },
-      "breadcrumb": {
-        "@id": "https://northboundwisdom.github.io/immivio/guide/#breadcrumb"
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <meta
+      name="application-name"
+      content="Immivio – VR &amp; Spatial Media Player"
+    />
+    <title>Immivio — Quest &amp; PICO APK Installation and Playback Guide</title>
+    <meta
+      name="description"
+      content="Install the free Immivio VR player on Meta Quest or PICO. Set up VR180, 360° and 3D SBS playback, NAS libraries, audio tracks and subtitles."
+    />
+    <link
+      rel="canonical"
+      href="https://northboundwisdom.github.io/immivio/guide/"
+    />
+    <link
+      rel="alternate"
+      hreflang="en"
+      href="https://northboundwisdom.github.io/immivio/guide/"
+    />
+    <link
+      rel="alternate"
+      hreflang="zh-CN"
+      href="https://northboundwisdom.github.io/immivio/zh/guide/"
+    />
+    <link
+      rel="alternate"
+      hreflang="x-default"
+      href="https://northboundwisdom.github.io/immivio/guide/"
+    />
+    <meta
+      property="og:title"
+      content="Immivio — Quest &amp; PICO APK Installation and Playback Guide"
+    />
+    <meta
+      property="og:description"
+      content="Install the free Immivio VR player on Meta Quest or PICO. Set up VR180, 360° and 3D SBS playback, NAS libraries, audio tracks and subtitles."
+    />
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:url"
+      content="https://northboundwisdom.github.io/immivio/guide/"
+    />
+    <meta
+      property="og:image"
+      content="https://northboundwisdom.github.io/immivio/assets/screenshots/playback.png"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta property="og:site_name" content="Immivio" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="zh_CN" />
+    <meta property="og:image:width" content="1920" />
+    <meta property="og:image:height" content="1080" />
+    <meta property="og:image:alt" content="Immivio video playback interface" />
+    <meta
+      name="twitter:title"
+      content="Immivio — Quest &amp; PICO APK Installation and Playback Guide"
+    />
+    <meta
+      name="twitter:description"
+      content="Install the free Immivio VR player on Meta Quest or PICO. Set up VR180, 360° and 3D SBS playback, NAS libraries, audio tracks and subtitles."
+    />
+    <meta
+      name="twitter:image"
+      content="https://northboundwisdom.github.io/immivio/assets/screenshots/playback.png"
+    />
+    <meta name="robots" content="index,follow,max-image-preview:large" />
+    <link rel="icon" href="../assets/icon.png" type="image/png" />
+    <link rel="apple-touch-icon" href="../assets/icon.png" />
+    <link rel="stylesheet" href="../assets/site.css" />
+    <script defer data-site-script src="../assets/site.js"></script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebPage",
+            "@id": "https://northboundwisdom.github.io/immivio/guide/#webpage",
+            "url": "https://northboundwisdom.github.io/immivio/guide/",
+            "name": "Immivio — Quest & PICO APK Installation and Playback Guide",
+            "description": "Install the free Immivio VR player on Meta Quest or PICO. Set up VR180, 360° and 3D SBS playback, NAS libraries, audio tracks and subtitles.",
+            "inLanguage": "en",
+            "about": {
+              "@id": "https://northboundwisdom.github.io/immivio/#software"
+            },
+            "breadcrumb": {
+              "@id": "https://northboundwisdom.github.io/immivio/guide/#breadcrumb"
+            }
+          },
+          {
+            "@type": "BreadcrumbList",
+            "@id": "https://northboundwisdom.github.io/immivio/guide/#breadcrumb",
+            "itemListElement": [
+              {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Immivio",
+                "item": "https://northboundwisdom.github.io/immivio/"
+              },
+              {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Installation and playback guide",
+                "item": "https://northboundwisdom.github.io/immivio/guide/"
+              }
+            ]
+          }
+        ]
       }
-    },
-    {
-      "@type": "BreadcrumbList",
-      "@id": "https://northboundwisdom.github.io/immivio/guide/#breadcrumb",
-      "itemListElement": [
-        {
-          "@type": "ListItem",
-          "position": 1,
-          "name": "Immivio",
-          "item": "https://northboundwisdom.github.io/immivio/"
-        },
-        {
-          "@type": "ListItem",
-          "position": 2,
-          "name": "Installation and playback guide",
-          "item": "https://northboundwisdom.github.io/immivio/guide/"
-        }
-      ]
-    }
-  ]
-}
-</script>
-</head>
-<body data-theme="dark">
-<a class="skip" href="#main">Skip to content</a>
-<header class="site-header">
-<div class="wrap header-inner">
-<a class="brand" href=".././">
-<img src="../assets/icon.png" alt="" width="39" height="39">Immivio</a>
-<nav class="nav" aria-label="Main navigation">
-<a class="optional" href=".././#experience">Experience</a>
-<a href=".././#download">Download</a>
-<a class="optional" href="../guide/">Guide</a>
-<a class="optional" href=".././updates/">Updates</a>
-<a class="locale" href="../zh/guide/" lang="zh-CN">中文</a>
-<button class="theme" type="button" data-theme-toggle aria-label="Toggle light theme" aria-pressed="false">◐</button>
-</nav>
-</div>
-</header>
-<main id="main" class="wrap guide-layout">
-<nav class="guide-nav" aria-label="Guide contents">
-<p class="eyebrow">User guide</p>
-<a href="#install">Install</a>
-<a href="#first-video">Your first video</a>
-<a href="#controls">Everyday controls</a>
-<a href="#library">Libraries & photos</a>
-<a href="#troubleshooting">Troubleshooting</a>
-</nav>
-<article class="guide-content">
-<p class="eyebrow">IMMIVIO / GETTING STARTED</p>
-<h1>Start with your own media.</h1>
-<p>Choose an APK, open a video, and put the picture where you want it.</p>
-<section id="install">
-<h2>01 / Install on your headset</h2>
-<ol>
-<li>Choose Quest, PICO or experimental OpenXR on the <a href=".././#download">download page</a>.</li>
-<li>Enable developer mode, connect your headset by USB, and approve debugging.</li>
-<li>Install the downloaded APK with your preferred sideloading tool. The file should end in <code>.apk</code>; source archives are for developers.</li>
-<li>Launch Immivio from the headset’s sideloaded-app library.</li>
-</ol>
-<div class="note">An update needs a matching application ID and signing key. Packages from other distributors or some CI builds may not update an existing installation. Check the release notes and keep your current app and data until you have confirmed compatibility.</div>
-</section>
-<section id="first-video">
-<h2>02 / Play your first video</h2>
-<ol>
-<li>Open a local file in the library and grant access to the file or folder you want to use.</li>
-<li>Match the projection and stereo layout to your source, then check eye order.</li>
-<li>Use the compact playback buttons for subtitles, speed, color and stereo alignment. Long-press Home to recenter; use the headset’s system volume controls.</li>
-</ol>
-<table>
-<thead>
-<tr>
-<th>Media</th>
-<th>Start with</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Ordinary video</td>
-<td>Flat + mono</td>
-</tr>
-<tr>
-<td>Side-by-side / top-bottom stereo</td>
-<td>SBS / TB to match the source; choose projection separately</td>
-</tr>
-<tr>
-<td>VR180 SBS fisheye</td>
-<td>Fisheye + SBS; match field of view to the source</td>
-</tr>
-<tr>
-<td>360° equirectangular video</td>
-<td>360° + the source’s mono/stereo layout</td>
-</tr>
-</tbody>
-</table>
-<p class="note">These are starting points, not a guarantee of automatic detection. Adjust manually when names, metadata and actual content disagree.</p>
-</section>
-<section id="controls">
-<h2>03 / Everyday controls</h2>
-<table>
-<tbody>
-<tr>
-<th>Show playback controls</th>
-<td>Left Menu button, or tap the picture with the trigger.</td>
-</tr>
-<tr>
-<th>Select and adjust</th>
-<td>Point a controller ray and press the trigger. Hold and drag sliders.</td>
-</tr>
-<tr>
-<th>Move the interface</th>
-<td>Hold grip to move a picture or library window. Use the same hand’s thumbstick for distance where supported.</td>
-</tr>
-<tr>
-<th>Scroll</th>
-<td>Use a thumbstick in an open list or settings view. Lists take priority over playback shortcuts.</td>
-</tr>
-<tr>
-<th>Watch reclined</th>
-<td>Settings → General → Reclining mode. Follow is controlled separately.</td>
-</tr>
-<tr>
-<th>Return to the library</th>
-<td>Choose Close video to return to the previous browsing location.</td>
-</tr>
-</tbody>
-</table>
-<h3>Subtitles, timing and queues</h3>
-<p>Select a subtitle track or load SRT, ASS, SSA or VTT from the subtitle controls. The synchronization popup adjusts audio and subtitle timing independently by up to ten seconds. Playback automatically advances to the next queued video and returns to the file browser after the last one. Save a queue and optionally enable shuffle.</p>
-<p>The current development build remembers explicit audio/subtitle choices per video and offers five text-caption palettes. Playback volume follows the headset’s system volume. Check your APK’s release notes for availability.</p>
-<p>Use the reset icon beside a slider to restore just that value. Grading offers Original, Warm, Cool and Custom; Reset page restores only the three fields in the current popup, while Reset custom restores the entire custom look. Subtitle, timing, eye-alignment and photo sliders reset independently. Resets leave disabled effects off. Older Daylight settings use Original and retain remembered custom values.</p>
-</section>
-<section id="library">
-<h2>04 / Connect a library. Explore photos.</h2>
-<p>Use local files, SMB, WebDAV, DLNA or supported media servers. Add a source, then supply its address and required authorization. Browsing, favorites, sidecar subtitles and file management depend on the source.</p>
-<p>Photos can be viewed individually, with side previews, on a photo wall or as memory fragments. The development build supports 1–3 wall rows. Supported HEIC/HEIF spatial photos and MV-HEVC spatial videos can retain their stereo views, depending on the build backend and source.</p>
-<p>Immivio displays existing stereo content and does not generate 3D from 2D. Spatial decoding depends on the backend and source format.</p>
-</section>
-<section id="troubleshooting">
-<h2>05 / When something needs attention</h2>
-<h3>Split, distorted or inverted stereo</h3>
-<p>Check Flat/180°/Fisheye/360° projection, then mono/SBS/TB layout. Swap eyes if necessary. Software eye alignment does not change headset lenses or physical IPD.</p>
-<h3>Slow playback</h3>
-<p>Try lower-bitrate media and check the device, codec and build capabilities. Decoding an 8K file in an emulator does not establish a headset frame-rate target.</p>
-<h3>Missing subtitles</h3>
-<p>Check that a track is selected and any external file is still accessible. PGS support varies with the APK; check its release notes or try SRT, ASS, SSA or VTT text subtitles.</p>
-<h3>Report an issue</h3>
-<p>Include your headset, build version, media format and reproduction steps in <a href="https://github.com/NorthBoundWisdom/immivio/issues">Issues</a>. Share samples only when you have distribution permission, and keep credentials private.</p>
-<p>Developer references: <a href="https://github.com/NorthBoundWisdom/immivio/blob/main/docs/BUILD.md">Build</a> · <a href="../updates/">Release notes</a>
-</p>
-</section>
-</article>
-</main>
-<footer class="site-footer wrap">
-<div class="footer-top">
-<p>Continued from version 0.6.0 of <a href="https://github.com/zerochocobo/Thru3D-Media-Player">zerochocobo/Thru3D-Media-Player</a>. Independently developed and released by NorthBoundWisdom from that baseline, with the original attribution, history and GPL-3.0 license preserved.</p>
-<div class="footer-links">
-<a href="https://github.com/NorthBoundWisdom/immivio">GitHub ↗</a>
-<a href=".././updates/">Release notes ↗</a>
-<a href="https://github.com/NorthBoundWisdom/immivio/issues">Report an issue ↗</a>
-<a href="https://github.com/NorthBoundWisdom/immivio/blob/main/LICENSE">GPL-3.0 ↗</a>
-</div>
-</div>
-<div class="copyright">
-<span>Immivio · NorthBoundWisdom</span>
-<span>Open source · Independently maintained · Hosted on GitHub Pages</span>
-</div>
-</footer>
-<dialog class="lightbox" aria-label="Application screenshot">
-<img alt="">
-<div class="lightbox-footer">
-<p>
-</p>
-<a href="../assets/screenshots/playback.png" target="_blank" rel="noopener">Original image ↗</a>
-<button type="button">Close ✕</button>
-</div>
-</dialog>
-</body>
+    </script>
+  </head>
+  <body data-theme="dark">
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="site-header">
+      <div class="wrap header-inner">
+        <a class="brand" href=".././">
+          <img
+            src="../assets/icon.png"
+            alt=""
+            width="39"
+            height="39"
+          />Immivio</a
+        >
+        <nav class="nav" aria-label="Main navigation">
+          <a class="optional" href=".././#experience">Experience</a>
+          <a href=".././#download">Download</a>
+          <a class="optional" href="../guide/">Guide</a>
+          <a class="optional" href=".././updates/">Updates</a>
+          <a class="locale" href="../zh/guide/" lang="zh-CN">中文</a>
+          <button
+            class="theme"
+            type="button"
+            data-theme-toggle
+            aria-label="Toggle light theme"
+            aria-pressed="false"
+          >
+            ◐
+          </button>
+        </nav>
+      </div>
+    </header>
+    <main id="main" class="wrap guide-layout">
+      <nav class="guide-nav" aria-label="Guide contents">
+        <p class="eyebrow">User guide</p>
+        <a href="#install">Install</a>
+        <a href="#first-video">Your first video</a>
+        <a href="#controls">Everyday controls</a>
+        <a href="#library">Libraries & photos</a>
+        <a href="#troubleshooting">Troubleshooting</a>
+      </nav>
+      <article class="guide-content">
+        <p class="eyebrow">IMMIVIO / GETTING STARTED</p>
+        <h1>Start with your own media.</h1>
+        <p>
+          Choose an APK, open a video, and put the picture where you want it.
+        </p>
+        <section id="install">
+          <h2>01 / Install on your headset</h2>
+          <ol>
+            <li>
+              Choose Quest, PICO or experimental OpenXR on the
+              <a href=".././#download">download page</a>.
+            </li>
+            <li>
+              Enable developer mode, connect your headset by USB, and approve
+              debugging.
+            </li>
+            <li>
+              Install the downloaded APK with your preferred sideloading tool.
+              The file should end in <code>.apk</code>; source archives are for
+              developers.
+            </li>
+            <li>Launch Immivio from the headset’s sideloaded-app library.</li>
+          </ol>
+          <div class="note">
+            An update needs a matching application ID and signing key. Packages
+            from other distributors or some CI builds may not update an existing
+            installation. Check the release notes and keep your current app and
+            data until you have confirmed compatibility.
+          </div>
+        </section>
+        <section id="first-video">
+          <h2>02 / Play your first video</h2>
+          <ol>
+            <li>
+              Open a local file in the library and grant access to the file or
+              folder you want to use.
+            </li>
+            <li>
+              Match the projection and stereo layout to your source, then check
+              eye order.
+            </li>
+            <li>
+              Use the compact playback buttons for subtitles, speed, color and
+              stereo alignment. Long-press Home to recenter; use the headset’s
+              system volume controls.
+            </li>
+          </ol>
+          <table>
+            <thead>
+              <tr>
+                <th>Media</th>
+                <th>Start with</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Ordinary video</td>
+                <td>Flat + mono</td>
+              </tr>
+              <tr>
+                <td>Side-by-side / top-bottom stereo</td>
+                <td>
+                  SBS / TB to match the source; choose projection separately
+                </td>
+              </tr>
+              <tr>
+                <td>VR180 SBS fisheye</td>
+                <td>Fisheye + SBS; match field of view to the source</td>
+              </tr>
+              <tr>
+                <td>360° equirectangular video</td>
+                <td>360° + the source’s mono/stereo layout</td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="note">
+            These are starting points, not a guarantee of automatic detection.
+            Adjust manually when names, metadata and actual content disagree.
+          </p>
+        </section>
+        <section id="controls">
+          <h2>03 / Everyday controls</h2>
+          <table>
+            <tbody>
+              <tr>
+                <th>Show playback controls</th>
+                <td>Left Menu button, or tap the picture with the trigger.</td>
+              </tr>
+              <tr>
+                <th>Select and adjust</th>
+                <td>
+                  Point a controller ray and press the trigger. Hold and drag
+                  sliders.
+                </td>
+              </tr>
+              <tr>
+                <th>Move the interface</th>
+                <td>
+                  Hold grip to move a picture or library window. Use the same
+                  hand’s thumbstick for distance where supported.
+                </td>
+              </tr>
+              <tr>
+                <th>Scroll</th>
+                <td>
+                  Use a thumbstick in an open list or settings view. Lists take
+                  priority over playback shortcuts.
+                </td>
+              </tr>
+              <tr>
+                <th>Watch reclined</th>
+                <td>
+                  Settings → General → Reclining mode. Follow is controlled
+                  separately.
+                </td>
+              </tr>
+              <tr>
+                <th>Return to the library</th>
+                <td>
+                  Choose Close video to return to the previous browsing
+                  location.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <h3>Subtitles, timing and queues</h3>
+          <p>
+            Select a subtitle track or load SRT, ASS, SSA or VTT from the
+            subtitle controls. The synchronization popup adjusts audio and
+            subtitle timing independently by up to ten seconds. Playback
+            automatically advances to the next queued video and returns to the
+            file browser after the last one. Save a queue and optionally enable
+            shuffle.
+          </p>
+          <p>
+            The current development build remembers explicit audio/subtitle
+            choices per video and offers five text-caption palettes. Playback
+            volume follows the headset’s system volume. Check your APK’s release
+            notes for availability.
+          </p>
+          <p>
+            Use the reset icon beside a slider to restore just that value.
+            Grading offers Original, Warm, Cool and Custom; Reset page restores
+            only the three fields in the current popup, while Reset custom
+            restores the entire custom look. Subtitle, timing, eye-alignment and
+            photo sliders reset independently. Resets leave disabled effects
+            off. Older Daylight settings use Original and retain remembered
+            custom values.
+          </p>
+        </section>
+        <section id="library">
+          <h2>04 / Connect a library. Explore photos.</h2>
+          <p>
+            Use local files, SMB, WebDAV, DLNA or supported media servers. Add a
+            source, then supply its address and required authorization.
+            Browsing, favorites, sidecar subtitles and file management depend on
+            the source.
+          </p>
+          <p>
+            Photos can be viewed individually, with side previews, on a photo
+            wall or as memory fragments. The development build supports 1–3 wall
+            rows. Supported HEIC/HEIF spatial photos and MV-HEVC spatial videos
+            can retain their stereo views, depending on the build backend and
+            source.
+          </p>
+          <p>
+            Immivio displays existing stereo content and does not generate 3D
+            from 2D. Spatial decoding depends on the backend and source format.
+          </p>
+        </section>
+        <section id="troubleshooting">
+          <h2>05 / When something needs attention</h2>
+          <h3>Split, distorted or inverted stereo</h3>
+          <p>
+            Check Flat/180°/Fisheye/360° projection, then mono/SBS/TB layout.
+            Swap eyes if necessary. Software eye alignment does not change
+            headset lenses or physical IPD.
+          </p>
+          <h3>Slow playback</h3>
+          <p>
+            Try lower-bitrate media and check the device, codec and build
+            capabilities. Decoding an 8K file in an emulator does not establish
+            a headset frame-rate target.
+          </p>
+          <h3>Missing subtitles</h3>
+          <p>
+            Check that a track is selected and any external file is still
+            accessible. PGS support varies with the APK; check its release notes
+            or try SRT, ASS, SSA or VTT text subtitles.
+          </p>
+          <h3>Report an issue</h3>
+          <p>
+            Include your headset, build version, media format and reproduction
+            steps in
+            <a href="https://github.com/NorthBoundWisdom/immivio/issues"
+              >Issues</a
+            >. Share samples only when you have distribution permission, and
+            keep credentials private.
+          </p>
+          <p>
+            Developer references:
+            <a
+              href="https://github.com/NorthBoundWisdom/immivio/blob/main/docs/BUILD.md"
+              >Build</a
+            >
+            · <a href="../updates/">Release notes</a>
+          </p>
+        </section>
+      </article>
+    </main>
+    <footer class="site-footer wrap">
+      <div class="footer-top">
+        <p>
+          Continued from version 0.6.0 of
+          <a href="https://github.com/zerochocobo/Thru3D-Media-Player"
+            >zerochocobo/Thru3D-Media-Player</a
+          >. Independently developed and released by NorthBoundWisdom from that
+          baseline, with the original attribution, history and GPL-3.0 license
+          preserved.
+        </p>
+        <div class="footer-links">
+          <a href="https://github.com/NorthBoundWisdom/immivio">GitHub ↗</a>
+          <a href=".././updates/">Release notes ↗</a>
+          <a href="https://github.com/NorthBoundWisdom/immivio/issues"
+            >Report an issue ↗</a
+          >
+          <a
+            href="https://github.com/NorthBoundWisdom/immivio/blob/main/LICENSE"
+            >GPL-3.0 ↗</a
+          >
+        </div>
+      </div>
+      <div class="copyright">
+        <span>Immivio · NorthBoundWisdom</span>
+        <span
+          >Open source · Independently maintained · Hosted on GitHub Pages</span
+        >
+      </div>
+    </footer>
+    <dialog class="lightbox" aria-label="Application screenshot">
+      <img alt="" />
+      <div class="lightbox-footer">
+        <p></p>
+        <a
+          href="../assets/screenshots/playback.png"
+          target="_blank"
+          rel="noopener"
+          >Original image ↗</a
+        >
+        <button type="button">Close ✕</button>
+      </div>
+    </dialog>
+  </body>
 </html>

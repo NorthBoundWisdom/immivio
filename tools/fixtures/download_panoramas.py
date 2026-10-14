@@ -40,8 +40,21 @@ from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 API = "https://api.polyhaven.com"
-HEADERS = {"User-Agent": "PanoramaBatchDownloader/1.0 (Poly Haven panorama test assets)"}
-FIELDS = ["asset_id", "name", "category", "format", "file", "size_bytes", "md5", "url", "status", "error"]
+HEADERS = {
+    "User-Agent": "PanoramaBatchDownloader/1.0 (Poly Haven panorama test assets)"
+}
+FIELDS = [
+    "asset_id",
+    "name",
+    "category",
+    "format",
+    "file",
+    "size_bytes",
+    "md5",
+    "url",
+    "status",
+    "error",
+]
 STOP = threading.Event()
 
 
@@ -51,7 +64,7 @@ def check_stop():
 
 
 def pause_after_error(error, attempt):
-    delay = 2 ** attempt
+    delay = 2**attempt
     if isinstance(error, HTTPError) and error.code == 429:
         try:
             delay = max(delay, float(error.headers.get("Retry-After", "0")))
@@ -113,11 +126,17 @@ def download(info, path):
 
 
 def process_asset(asset_id, asset, args):
-    suffix = ".jpg" if args.format == "jpg" else "_" + args.resolution + "." + args.format
+    suffix = (
+        ".jpg" if args.format == "jpg" else "_" + args.resolution + "." + args.format
+    )
     row = dict.fromkeys(FIELDS, "")
-    row.update(asset_id=asset_id, name=asset.get("name", ""),
-               category=asset.get("category") or ",".join(asset.get("categories", [])),
-               format=args.format, file=asset_id + suffix)
+    row.update(
+        asset_id=asset_id,
+        name=asset.get("name", ""),
+        category=asset.get("category") or ",".join(asset.get("categories", [])),
+        format=args.format,
+        file=asset_id + suffix,
+    )
     try:
         files = get_json(API + "/files/" + quote(asset_id, safe=""))
         if args.format == "jpg":
@@ -128,23 +147,44 @@ def process_asset(asset_id, asset, args):
             row.update(status="missing", error="资源不提供所选格式或尺寸")
             return row
         row.update(size_bytes=info["size"], md5=info.get("md5", ""), url=info["url"])
-        row["status"] = "planned" if args.dry_run else download(info, args.out / row["file"])
+        row["status"] = (
+            "planned" if args.dry_run else download(info, args.out / row["file"])
+        )
     except Exception as error:
         row.update(status="failed", error=str(error))
     return row
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--limit", "-n", type=int, default=100, help="资源数；0=全部，默认100")
-    parser.add_argument("--out", "-o", type=Path, default=Path("panoramas"), help="输出目录")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--limit", "-n", type=int, default=100, help="资源数；0=全部，默认100"
+    )
+    parser.add_argument(
+        "--out", "-o", type=Path, default=Path("panoramas"), help="输出目录"
+    )
     parser.add_argument("--format", choices=["jpg", "hdr", "exr"], default="jpg")
-    parser.add_argument("--resolution", choices=["1k", "2k", "4k", "8k", "16k", "24k"], default="8k", help="只影响HDR/EXR")
+    parser.add_argument(
+        "--resolution",
+        choices=["1k", "2k", "4k", "8k", "16k", "24k"],
+        default="8k",
+        help="只影响HDR/EXR",
+    )
     parser.add_argument("--category", default="", help="分类/标签/属性关键词（英文）")
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--workers", type=int, choices=range(1, 5), default=2, help="并发数1到4，默认2")
-    parser.add_argument("--ids", nargs="+", help="指定资源ID；使用此参数时忽略limit/category/seed")
-    parser.add_argument("--dry-run", action="store_true", help="仅生成带大小、校验码、URL的CSV，不下载图片")
+    parser.add_argument(
+        "--workers", type=int, choices=range(1, 5), default=2, help="并发数1到4，默认2"
+    )
+    parser.add_argument(
+        "--ids", nargs="+", help="指定资源ID；使用此参数时忽略limit/category/seed"
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="仅生成带大小、校验码、URL的CSV，不下载图片",
+    )
     args = parser.parse_args()
     if args.limit < 0:
         parser.error("--limit 不能小于0")
@@ -161,18 +201,29 @@ def main():
         selected = []
         for asset_id in sorted(assets):
             asset = assets[asset_id]
-            searchable = json.dumps({k: asset.get(k) for k in ("categories", "category", "tags", "attributes")}, ensure_ascii=False).casefold()
+            searchable = json.dumps(
+                {
+                    k: asset.get(k)
+                    for k in ("categories", "category", "tags", "attributes")
+                },
+                ensure_ascii=False,
+            ).casefold()
             if not keyword or keyword in searchable:
                 selected.append(asset_id)
         random.Random(args.seed).shuffle(selected)
         if args.limit:
-            selected = selected[:args.limit]
+            selected = selected[: args.limit]
     if not selected:
         print("没有匹配资源，请更换 --category 关键词。", file=sys.stderr)
         return 1
     args.out.mkdir(parents=True, exist_ok=True)
-    manifest = args.out / ("download_manifest_" + datetime.now().strftime("%Y%m%d_%H%M%S_%f") + ".csv")
-    print(f"目录共 {len(assets)} 个资源，本次选择 {len(selected)} 个，格式 {args.format}。", flush=True)
+    manifest = args.out / (
+        "download_manifest_" + datetime.now().strftime("%Y%m%d_%H%M%S_%f") + ".csv"
+    )
+    print(
+        f"目录共 {len(assets)} 个资源，本次选择 {len(selected)} 个，格式 {args.format}。",
+        flush=True,
+    )
     if args.format == "jpg":
         print("JPG 保留官方原图尺寸；--resolution 不改变 JPG 尺寸。", flush=True)
     counts = {}
@@ -182,7 +233,10 @@ def main():
         writer.writeheader()
         executor = ThreadPoolExecutor(max_workers=args.workers)
         try:
-            futures = [executor.submit(process_asset, asset_id, assets[asset_id], args) for asset_id in selected]
+            futures = [
+                executor.submit(process_asset, asset_id, assets[asset_id], args)
+                for asset_id in selected
+            ]
             for index, future in enumerate(as_completed(futures), 1):
                 row = future.result()
                 writer.writerow(row)
@@ -191,7 +245,10 @@ def main():
                 counts[status] = counts.get(status, 0) + 1
                 total_bytes += int(row["size_bytes"] or 0)
                 detail = " | " + row["error"] if row["error"] else ""
-                print(f"[{index}/{len(selected)}] {status}: {row['file']}{detail}", flush=True)
+                print(
+                    f"[{index}/{len(selected)}] {status}: {row['file']}{detail}",
+                    flush=True,
+                )
         except KeyboardInterrupt:
             STOP.set()
             executor.shutdown(wait=False, cancel_futures=True)
@@ -199,7 +256,10 @@ def main():
         else:
             executor.shutdown(wait=True)
     print("结果: " + json.dumps(counts, ensure_ascii=False), flush=True)
-    print(f"已解析文件的总大小: {total_bytes / 1024 ** 3:.2f} GiB（含已存在文件）", flush=True)
+    print(
+        f"已解析文件的总大小: {total_bytes / 1024 ** 3:.2f} GiB（含已存在文件）",
+        flush=True,
+    )
     print("CSV清单: " + str(manifest.resolve()), flush=True)
     return 1 if counts.get("failed") or counts.get("missing") else 0
 
@@ -208,7 +268,10 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main())
     except KeyboardInterrupt:
-        print("\n已中断。重跑会校验并跳过已完成文件，未完成文件会重新下载。", file=sys.stderr)
+        print(
+            "\n已中断。重跑会校验并跳过已完成文件，未完成文件会重新下载。",
+            file=sys.stderr,
+        )
         raise SystemExit(130)
     except Exception as error:
         print("错误: " + str(error), file=sys.stderr)

@@ -36,6 +36,7 @@ var _recover_pending := false
 var _recover_position_ms := 0
 var _recover_alpha := false
 
+
 func _ready() -> void:
 	panel = MeshInstance3D.new()
 	panel.name = "VideoPanel"
@@ -57,6 +58,7 @@ func _ready() -> void:
 			platform.connect("media_" + kind, _on_media_event.bind(kind))
 		platform.connect("media_released", _on_released)
 
+
 func pick_file() -> void:
 	if platform:
 		picker_error = ""
@@ -64,6 +66,7 @@ func pick_file() -> void:
 	else:
 		picker_error = "Local Android video playback requires Quest"
 	changed.emit()
+
 
 func play_calibration_clip() -> void:
 	if not platform:
@@ -106,6 +109,7 @@ func play_calibration_clip() -> void:
 	requested_play = true
 	open_local("file://" + ProjectSettings.globalize_path(target_path), filename)
 
+
 func open_local(uri: String, name_value: String, start_ms: int = 0) -> bool:
 	if not platform or retained_textures.size() >= 4:
 		picker_error = "MEDIA_UNAVAILABLE" if not platform else "MEDIA_RELEASE_PENDING"
@@ -130,6 +134,7 @@ func open_local(uri: String, name_value: String, start_ms: int = 0) -> bool:
 	changed.emit()
 	return id > 0
 
+
 func close_video() -> void:
 	var id := media.session_id
 	media.close()
@@ -146,6 +151,7 @@ func close_video() -> void:
 		panel.visible = false
 	changed.emit()
 
+
 func toggle_play() -> void:
 	if platform and media.accepts(media.session_id):
 		if media.state == "ended":
@@ -156,6 +162,7 @@ func toggle_play() -> void:
 		platform.set_video_playing(media.session_id, requested_play and not control.pending)
 		changed.emit()
 
+
 func seek_absolute(position_ms: int) -> bool:
 	if not platform or not media.accepts(media.session_id):
 		picker_error = "SEEK_REQUIRES_ACTIVE_MEDIA"
@@ -165,6 +172,7 @@ func seek_absolute(position_ms: int) -> bool:
 	_queue_seek()
 	return true
 
+
 func seek_relative(delta_ms: int) -> bool:
 	if not platform or not media.accepts(media.session_id):
 		picker_error = "SEEK_REQUIRES_ACTIVE_MEDIA"
@@ -173,6 +181,7 @@ func seek_relative(delta_ms: int) -> bool:
 	control.seek_relative(delta_ms)
 	_queue_seek()
 	return true
+
 
 func _queue_seek() -> void:
 	# Pause while waiting for bounded resource capacity, including audio.
@@ -184,13 +193,16 @@ func _queue_seek() -> void:
 	_try_pending_seek()
 	changed.emit()
 
+
 func _try_pending_seek() -> void:
 	if not control.pending or retained_textures.size() >= 4:
 		return
 	var request := control.take_pending()
 	var next_texture := ExternalTexture.new()
 	next_texture.size = Vector2(256, 256)
-	var id: int = platform.restart_video_at(media.session_id, next_texture.get_external_texture_id(), request.target_ms)
+	var id: int = platform.restart_video_at(
+		media.session_id, next_texture.get_external_texture_id(), request.target_ms
+	)
 	if id <= 0:
 		control.reject()
 		picker_error = "MEDIA_SEEK_REJECTED"
@@ -202,11 +214,16 @@ func _try_pending_seek() -> void:
 	_set_uniform("video_texture", texture)
 	_set_uniform("surface_transform", Projection.IDENTITY)
 	platform.set_video_playing(id, requested_play)
-	Log.record("seek_decoder_replaced", {"decoder_id": id, "request_id": request.request_id, "target_ms": request.target_ms})
+	Log.record(
+		"seek_decoder_replaced",
+		{"decoder_id": id, "request_id": request.request_id, "target_ms": request.target_ms}
+	)
+
 
 func toggle_loop() -> void:
 	loop_enabled = not loop_enabled
 	changed.emit()
+
 
 func toggle_stereo() -> void:
 	stereo_sbs = not stereo_sbs
@@ -215,6 +232,7 @@ func toggle_stereo() -> void:
 	_set_uniform("stereo_sbs", stereo_sbs)
 	_update_size()
 	changed.emit()
+
 
 func cycle_projection() -> void:
 	geometry = (geometry + 1) % 3
@@ -225,6 +243,7 @@ func cycle_projection() -> void:
 	set_alpha(false)
 	_apply_geometry()
 	changed.emit()
+
 
 func set_alpha(enabled: bool) -> bool:
 	if enabled and not alpha_ready():
@@ -240,15 +259,26 @@ func set_alpha(enabled: bool) -> bool:
 	changed.emit()
 	return true
 
+
 func alpha_ready() -> bool:
-	return media.accepts(media.session_id) and media.frame_counter > 0 and ( \
-		(alpha_encoding == 1 and alpha_texture != null) or \
-		(alpha_encoding == 2 and Geometry.legacy_compatible(media.format, stereo_sbs, geometry)))
+	return (
+		media.accepts(media.session_id)
+		and media.frame_counter > 0
+		and (
+			(alpha_encoding == 1 and alpha_texture != null)
+			or (
+				alpha_encoding == 2
+				and Geometry.legacy_compatible(media.format, stereo_sbs, geometry)
+			)
+		)
+	)
+
 
 func _set_uniform(key: String, value: Variant) -> void:
 	for target in [material, alpha_material]:
 		if target:
 			target.set_shader_parameter(key, value)
+
 
 func _apply_geometry() -> void:
 	if not panel:
@@ -265,15 +295,29 @@ func _apply_geometry() -> void:
 	_set_uniform("stereo_sbs", stereo_sbs)
 	_set_uniform("alpha_encoding", alpha_encoding)
 	_set_uniform("alpha_texture", alpha_texture)
-	_set_uniform("packed_color", alpha_encoding == 2 and Geometry.legacy_compatible(media.format, stereo_sbs, geometry))
+	_set_uniform(
+		"packed_color",
+		alpha_encoding == 2 and Geometry.legacy_compatible(media.format, stereo_sbs, geometry)
+	)
 	_update_size()
 
+
 func layout_snapshot() -> Dictionary:
-	return {"geometry": ["flat", "half_equirect_180", "fisheye_180"][geometry], \
-		"stereo_sbs": stereo_sbs, "swap_eyes": swap_eyes, "alpha_encoding": alpha_encoding, \
-		"alpha_enabled": alpha_enabled, "alpha_ready": alpha_ready(), "lens_fov": 180, \
-		"alpha_requested": alpha_requested, "loop_enabled": loop_enabled, "playback_control": control.snapshot(), \
-		"selection": "explicit_manual_or_fixture", "device_validation": "pending"}
+	return {
+		"geometry": ["flat", "half_equirect_180", "fisheye_180"][geometry],
+		"stereo_sbs": stereo_sbs,
+		"swap_eyes": swap_eyes,
+		"alpha_encoding": alpha_encoding,
+		"alpha_enabled": alpha_enabled,
+		"alpha_ready": alpha_ready(),
+		"lens_fov": 180,
+		"alpha_requested": alpha_requested,
+		"loop_enabled": loop_enabled,
+		"playback_control": control.snapshot(),
+		"selection": "explicit_manual_or_fixture",
+		"device_validation": "pending"
+	}
+
 
 func _on_selected(payload: String) -> void:
 	var result: Variant = JSON.parse_string(payload)
@@ -291,21 +335,36 @@ func _on_selected(payload: String) -> void:
 			Log.record("local_picker_failed", {"code": picker_error})
 	changed.emit()
 
+
 func _on_media_event(id: int, payload: String, kind: String) -> void:
 	if not media.apply_event(kind, id, payload):
 		return
 	if kind == "state":
-		control.observe(int(media.playback.get("position_ms", 0)), int(media.playback.get("duration_ms", -1)))
+		control.observe(
+			int(media.playback.get("position_ms", 0)), int(media.playback.get("duration_ms", -1))
+		)
 		if media.state == "ended" and control.in_flight > 0 and media.frame_counter == 0:
 			control.reject()
-		if media.state == "ended" and media.frame_counter > 0 and loop_enabled and not control.pending and control.in_flight == 0:
+		if (
+			media.state == "ended"
+			and media.frame_counter > 0
+			and loop_enabled
+			and not control.pending
+			and control.in_flight == 0
+		):
 			seek_absolute(0)
 	elif kind == "format":
 		texture.size = Vector2(media.format.width, media.format.height)
 		_set_uniform("rotation_degrees", media.format.unapplied_rotation_degrees)
 		_set_uniform("source_size", Vector2(media.format.width, media.format.height))
-		_set_uniform("packed_size", Vector2(Geometry.packed_dimensions(media.format.width, media.format.height)))
-		_set_uniform("packed_color", alpha_encoding == 2 and Geometry.legacy_compatible(media.format, stereo_sbs, geometry))
+		_set_uniform(
+			"packed_size",
+			Vector2(Geometry.packed_dimensions(media.format.width, media.format.height))
+		)
+		_set_uniform(
+			"packed_color",
+			alpha_encoding == 2 and Geometry.legacy_compatible(media.format, stereo_sbs, geometry)
+		)
 		if alpha_enabled and not alpha_ready():
 			set_alpha(false)
 		_update_size()
@@ -314,7 +373,11 @@ func _on_media_event(id: int, payload: String, kind: String) -> void:
 		_set_uniform("surface_transform", media.transform)
 		_refresh_presentation()
 	elif kind == "error":
-		_recover_position_ms = control.target_ms if control.pending or control.in_flight > 0 else int(media.playback.get("position_ms", 0))
+		_recover_position_ms = (
+			control.target_ms
+			if control.pending or control.in_flight > 0
+			else int(media.playback.get("position_ms", 0))
+		)
 		_recover_alpha = alpha_requested
 		control.reject()
 		panel.visible = false
@@ -327,14 +390,24 @@ func _on_media_event(id: int, payload: String, kind: String) -> void:
 		Log.record("media_codec", media.snapshot())
 	changed.emit()
 
+
 func _refresh_presentation() -> void:
-	panel.visible = int(media.format.width) > 0 and int(media.format.height) > 0 and media.frame_counter > 0 and not control.pending
+	panel.visible = (
+		int(media.format.width) > 0
+		and int(media.format.height) > 0
+		and media.frame_counter > 0
+		and not control.pending
+	)
 	if not panel.visible:
 		return
 	if control.first_frame():
-		Log.record("seek_first_presentation_frame", {"request_id": control.sequence, "identity": media.frame_identity()})
+		Log.record(
+			"seek_first_presentation_frame",
+			{"request_id": control.sequence, "identity": media.frame_identity()}
+		)
 	if alpha_requested and not alpha_enabled and alpha_ready():
 		set_alpha(true)
+
 
 func _on_released(id: int, _payload: String) -> void:
 	# Native player and SurfaceTexture have released this Godot-owned texture.
@@ -349,6 +422,7 @@ func _on_released(id: int, _payload: String) -> void:
 		texture = null
 		_set_uniform("video_texture", null)
 
+
 func _recover_video(expected_decoder: int) -> void:
 	if not _recover_pending or expected_decoder != media.session_id:
 		return
@@ -356,6 +430,7 @@ func _recover_video(expected_decoder: int) -> void:
 	var restore_alpha := _recover_alpha
 	if open_local(local_uri, display_name, _recover_position_ms):
 		alpha_requested = restore_alpha
+
 
 func _update_size() -> void:
 	if not panel or geometry != Geometry.Geometry.FLAT:
@@ -374,6 +449,7 @@ func _update_size() -> void:
 	var panel_width := minf(1.9, aspect)
 	panel.mesh.size = Vector2(panel_width, panel_width / aspect)
 
+
 func _process(delta: float) -> void:
 	if panel and geometry != Geometry.Geometry.FLAT and view_camera:
 		# Video follows head translation; turning the head still changes the viewed direction.
@@ -382,6 +458,7 @@ func _process(delta: float) -> void:
 	if platform and _status_seconds >= 1.0 and media.accepts(media.session_id):
 		_status_seconds = 0.0
 		platform.request_video_status(media.session_id)
+
 
 func _exit_tree() -> void:
 	close_video()

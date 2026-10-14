@@ -21,7 +21,9 @@ internal object WebLoginViewport {
         // Resource overrides alone do not change its devicePixelRatio.
         private val metrics = DisplayMetrics().also {
             @Suppress("DEPRECATION")
-            (host.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay.getMetrics(it)
+            (host.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay.getMetrics(
+                it
+            )
         }
         val density = metrics.density.coerceAtLeast(1f)
         val width = (WIDTH * density).roundToInt()
@@ -37,17 +39,21 @@ internal object WebLoginViewport {
             screenHeightDp = HEIGHT
             smallestScreenWidthDp = HEIGHT
             orientation = Configuration.ORIENTATION_LANDSCAPE
-            screenLayout = Configuration.SCREENLAYOUT_SIZE_LARGE or Configuration.SCREENLAYOUT_LONG_NO
+            screenLayout =
+                Configuration.SCREENLAYOUT_SIZE_LARGE or Configuration.SCREENLAYOUT_LONG_NO
         })
     }
 
-    fun container(context: Context, geometry: Geometry): FrameLayout = object : FrameLayout(context) {
-        override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-            // A vendor window/IME resize must not constrain the bitmap's web viewport.
-            super.onMeasure(View.MeasureSpec.makeMeasureSpec(geometry.width, View.MeasureSpec.EXACTLY),
-                View.MeasureSpec.makeMeasureSpec(geometry.height, View.MeasureSpec.EXACTLY))
+    fun container(context: Context, geometry: Geometry): FrameLayout =
+        object : FrameLayout(context) {
+            override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+                // A vendor window/IME resize must not constrain the bitmap's web viewport.
+                super.onMeasure(
+                    View.MeasureSpec.makeMeasureSpec(geometry.width, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(geometry.height, View.MeasureSpec.EXACTLY)
+                )
+            }
         }
-    }
 
     fun configure(view: WebView, userAgent: String) {
         view.settings.apply {

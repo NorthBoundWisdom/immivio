@@ -1,12 +1,16 @@
 extends SceneTree
 
+
 # Instantiate the real entry scene. No mocked catalog or replacement menu nodes.
 func _initialize() -> void:
 	call_deferred("_run")
 
+
 func _run() -> void:
 	# English unless a language preview is asked for (QUEST_UI_LANGUAGE=zh).
-	preload("res://scripts/i18n.gd").use(OS.get_environment("QUEST_UI_LANGUAGE") if OS.has_environment("QUEST_UI_LANGUAGE") else "en")
+	preload("res://scripts/i18n.gd").use(
+		OS.get_environment("QUEST_UI_LANGUAGE") if OS.has_environment("QUEST_UI_LANGUAGE") else "en"
+	)
 	var output := OS.get_environment("QUEST_MAIN_UI_PREVIEW_DIR")
 	if output.is_empty():
 		quit(1)
@@ -34,10 +38,26 @@ func _run() -> void:
 	await RenderingServer.frame_post_draw
 	if root.get_texture().get_image().save_png(output.path_join("empty-player.png")) != OK:
 		failures.append("Empty player screenshot failed")
-	FileAccess.open(output.path_join("verification.json"), FileAccess.WRITE).store_string(JSON.stringify({
-		"state": "passed" if failures.is_empty() else "failed", "failures": failures,
-		"scope": "Actual Godot entry scene desktop OpenGL startup; Quest physical rays, binocular compositor and native playback not tested"}, "\t"))
-	for failure in failures: push_error(failure)
+	(
+		FileAccess
+		. open(output.path_join("verification.json"), FileAccess.WRITE)
+		. store_string(
+			(
+				JSON
+				. stringify(
+					{
+						"state": "passed" if failures.is_empty() else "failed",
+						"failures": failures,
+						"scope":
+						"Actual Godot entry scene desktop OpenGL startup; Quest physical rays, binocular compositor and native playback not tested"
+					},
+					"\t"
+				)
+			)
+		)
+	)
+	for failure in failures:
+		push_error(failure)
 	main.queue_free()
 	await process_frame
 	quit(0 if failures.is_empty() else 1)

@@ -46,8 +46,14 @@ internal object DeviceCapabilities {
             val capabilities = codec.getCapabilitiesForType(mime)
             val video = capabilities.videoCapabilities
                 ?: throw IllegalStateException("Video capabilities were not returned")
-            result.put("width_range", JSONArray(listOf(video.supportedWidths.lower, video.supportedWidths.upper)))
-            result.put("height_range", JSONArray(listOf(video.supportedHeights.lower, video.supportedHeights.upper)))
+            result.put(
+                "width_range",
+                JSONArray(listOf(video.supportedWidths.lower, video.supportedWidths.upper))
+            )
+            result.put(
+                "height_range",
+                JSONArray(listOf(video.supportedHeights.lower, video.supportedHeights.upper))
+            )
             result.put("width_alignment", video.widthAlignment)
             result.put("height_alignment", video.heightAlignment)
             result.put("max_instances", capabilities.maxSupportedInstances)
@@ -56,8 +62,12 @@ internal object DeviceCapabilities {
             }))
             val candidates = JSONArray()
             for ((width, height) in listOf(1920 to 1080, 3840 to 1920, 3840 to 2160)) {
-                val candidate = JSONObject().put("width", width).put("height", height).put("fps", 30)
-                candidate.put("advertised_size_rate_support", video.areSizeAndRateSupported(width, height, 30.0))
+                val candidate =
+                    JSONObject().put("width", width).put("height", height).put("fps", 30)
+                candidate.put(
+                    "advertised_size_rate_support",
+                    video.areSizeAndRateSupported(width, height, 30.0)
+                )
                 candidates.put(candidate)
             }
             result.put("candidates", candidates)

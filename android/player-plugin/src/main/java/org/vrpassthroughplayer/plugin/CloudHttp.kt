@@ -12,49 +12,73 @@ import java.net.URLEncoder
 internal fun interface CloudTransport {
     fun request(url: String, cookie: String, form: Map<String, String>?): CloudResponse
 }
+
 internal class CloudResponse(val json: JSONObject, val cookies: List<String> = emptyList())
 internal class CloudCancellation : CloudTransport {
-    @Volatile var cancelled = false
+    @Volatile
+    var cancelled = false
         private set
     private var active: HttpURLConnection? = null
-    @Synchronized fun attach(connection: HttpURLConnection) {
-        if (cancelled) { connection.disconnect(); throw CloudFailure() }
+    @Synchronized
+    fun attach(connection: HttpURLConnection) {
+        if (cancelled) {
+            connection.disconnect(); throw CloudFailure()
+        }
         active = connection
     }
-    @Synchronized fun detach(connection: HttpURLConnection) { if (active === connection) active = null }
+
+    @Synchronized
+    fun detach(connection: HttpURLConnection) {
+        if (active === connection) active = null
+    }
+
     fun cancel() {
         val connection = synchronized(this) { cancelled = true; active.also { active = null } }
         connection?.disconnect()
     }
+
     override fun request(url: String, cookie: String, form: Map<String, String>?): CloudResponse {
         if (cancelled) throw CloudFailure()
         return CloudHttp.request(url, cookie, form, this)
     }
 }
-internal class CloudFailure(val reason: String = "cloud_unavailable") : IOException(when (reason) {
-    "cloud_login_required" -> "Please sign in to your cloud account again"
-    "cloud_store_unavailable" -> "Cloud account storage unavailable"
-    "cloud_file_missing" -> "Cloud file or account not found"
-    "cloud_file_changed" -> "Cloud file changed. Refresh the folder"
-    "cloud_file_ambiguous" -> "Duplicate cloud names. Rename in cloud storage"
-    "cloud_folder_too_large" -> "Cloud folder too large"
-    else -> "Cloud connection failed"
-})
+
+internal class CloudFailure(val reason: String = "cloud_unavailable") : IOException(
+    when (reason) {
+        "cloud_login_required" -> "Please sign in to your cloud account again"
+        "cloud_store_unavailable" -> "Cloud account storage unavailable"
+        "cloud_file_missing" -> "Cloud file or account not found"
+        "cloud_file_changed" -> "Cloud file changed. Refresh the folder"
+        "cloud_file_ambiguous" -> "Duplicate cloud names. Rename in cloud storage"
+        "cloud_folder_too_large" -> "Cloud folder too large"
+        else -> "Cloud connection failed"
+    }
+)
 
 internal object CloudHttp : CloudTransport {
     val apiHosts = setOf("webapi.115.com", "proapi.115.com", "pan.baidu.com")
     const val UA = Cloud115Auth.USER_AGENT
-    fun query(url: String, values: Map<String, String>): String = url + (if ('?' in url) "&" else "?") + form(values)
+    fun query(url: String, values: Map<String, String>): String =
+        url + (if ('?' in url) "&" else "?") + form(values)
+
     fun form(values: Map<String, String>): String = values.entries.joinToString("&") {
         URLEncoder.encode(it.key, "UTF-8") + "=" + URLEncoder.encode(it.value, "UTF-8")
     }
+
     fun validCookie(value: String): Boolean = value.isNotBlank() && value.length <= 16384 &&
-        value.all { it.code in 32..126 } && value.split(';').all { '=' in it && it.substringBefore('=').trim().matches(Regex("[A-Za-z0-9_-]+")) }
+            value.all { it.code in 32..126 } && value.split(';')
+        .all { '=' in it && it.substringBefore('=').trim().matches(Regex("[A-Za-z0-9_-]+")) }
 
     override fun request(url: String, cookie: String, form: Map<String, String>?): CloudResponse {
         return request(url, cookie, form, null)
     }
-    fun request(url: String, cookie: String, form: Map<String, String>?, cancellation: CloudCancellation?): CloudResponse {
+
+    fun request(
+        url: String,
+        cookie: String,
+        form: Map<String, String>?,
+        cancellation: CloudCancellation?
+    ): CloudResponse {
         val uri = URI(url)
         require(uri.scheme == "https" && uri.host in apiHosts && uri.port == -1 && uri.rawUserInfo == null)
         require(validCookie(cookie))
@@ -65,14 +89,26 @@ internal object CloudHttp : CloudTransport {
             connection.instanceFollowRedirects = false; connection.useCaches = false
             connection.setRequestProperty("User-Agent", UA)
             connection.setRequestProperty("Cookie", cookie)
-            connection.setRequestProperty("Referer", if (uri.host.endsWith("115.com")) "https://115.com/" else "https://pan.baidu.com/disk/main")
+            connection.setRequestProperty(
+                "Referer",
+                if (uri.host.endsWith("115.com")) "https://115.com/" else "https://pan.baidu.com/disk/main"
+            )
             connection.setRequestProperty("Accept-Encoding", "identity")
             if (form != null) {
                 connection.requestMethod = "POST"; connection.doOutput = true
-                connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+                connection.setRequestProperty(
+                    "Content-Type",
+                    "application/x-www-form-urlencoded; charset=UTF-8"
+                )
                 connection.outputStream.use { it.write(form(form).toByteArray(Charsets.UTF_8)) }
             }
-            if (connection.responseCode in setOf(301, 302, 401, 403)) throw CloudFailure("cloud_login_required")
+            if (connection.responseCode in setOf(
+                    301,
+                    302,
+                    401,
+                    403
+                )
+            ) throw CloudFailure("cloud_login_required")
             if (connection.responseCode != 200) throw CloudFailure()
             val bytes = connection.inputStream.use { input ->
                 val out = ByteArrayOutputStream()
@@ -86,10 +122,16 @@ internal object CloudHttp : CloudTransport {
                 }
                 out.toByteArray()
             }
-            return CloudResponse(JSONObject(String(bytes, Charsets.UTF_8)), connection.headerFields.entries
-                .filter { it.key.equals("Set-Cookie", true) }.flatMap { it.value })
-        } catch (error: CloudFailure) { throw error }
-        catch (_: Exception) { throw CloudFailure() }
-        finally { cancellation?.detach(connection); connection.disconnect() }
+            return CloudResponse(
+                JSONObject(String(bytes, Charsets.UTF_8)),
+                connection.headerFields.entries
+                    .filter { it.key.equals("Set-Cookie", true) }.flatMap { it.value })
+        } catch (error: CloudFailure) {
+            throw error
+        } catch (_: Exception) {
+            throw CloudFailure()
+        } finally {
+            cancellation?.detach(connection); connection.disconnect()
+        }
     }
 }

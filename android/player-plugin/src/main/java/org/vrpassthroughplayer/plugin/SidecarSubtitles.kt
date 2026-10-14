@@ -7,6 +7,7 @@ import java.net.URI
  * SRT/ASS files should become CC tracks, not playable library entries. */
 internal object SidecarSubtitles {
     data class Track(val location: String, val title: String)
+
     // .sub is ambiguous: MPV's detected codec decides whether it is text or bitmap.
     private val extensions = setOf("srt", "ass", "ssa", "vtt", "smi", "sami", "sub")
 
@@ -15,9 +16,12 @@ internal object SidecarSubtitles {
         if (stem.isEmpty()) return emptyList()
         return names.filter {
             '/' !in it && '\\' !in it && it.startsWith("$stem.", ignoreCase = true) &&
-                it.substringAfterLast('.', "").lowercase() in extensions
-        }.sortedWith(compareBy({ !it.substringBeforeLast('.').equals(stem, ignoreCase = true) },
-            { it.lowercase() })).take(8)
+                    it.substringAfterLast('.', "").lowercase() in extensions
+        }.sortedWith(
+            compareBy(
+                { !it.substringBeforeLast('.').equals(stem, ignoreCase = true) },
+                { it.lowercase() })
+        ).take(8)
     }
 
     fun forCloud(path: String, client: CloudClient, publish: (CloudFile) -> String): List<Track> {
@@ -30,35 +34,51 @@ internal object SidecarSubtitles {
         }
     }
 
-    fun forServer(http: MediaServerHttp, captions: List<MediaSubtitleLink>,
-        publish: (StreamSource, String) -> String): List<Track> = captions.take(8).mapIndexedNotNull { index, caption ->
+    fun forServer(
+        http: MediaServerHttp, captions: List<MediaSubtitleLink>,
+        publish: (StreamSource, String) -> String
+    ): List<Track> = captions.take(8).mapIndexedNotNull { index, caption ->
         runCatching {
             require(caption.extension in extensions)
             val bytes = http.bytes(caption.url, 4 * 1024 * 1024, textSubtitle = true)
             require(bytes.isNotEmpty())
             validate(bytes)
             val source = Bytes(bytes)
-            try { Track(publish(source, "subtitle-$index.${caption.extension}"), caption.title) }
-            catch (error: Exception) { source.close(); throw error }
+            try {
+                Track(publish(source, "subtitle-$index.${caption.extension}"), caption.title)
+            } catch (error: Exception) {
+                source.close(); throw error
+            }
         }.getOrNull()
     }
 
-    fun forDlna(captions: List<MediaSubtitleLink>, publish: (StreamSource, String) -> String): List<Track> =
+    fun forDlna(
+        captions: List<MediaSubtitleLink>,
+        publish: (StreamSource, String) -> String
+    ): List<Track> =
         captions.take(8).mapIndexedNotNull { index, caption ->
             runCatching {
                 require(caption.extension in extensions)
                 val bytes = download(caption.url)
                 validate(bytes)
                 val source = Bytes(bytes)
-                try { Track(publish(source, "subtitle-$index.${caption.extension}"), caption.title) }
-                catch (error: Exception) { source.close(); throw error }
+                try {
+                    Track(publish(source, "subtitle-$index.${caption.extension}"), caption.title)
+                } catch (error: Exception) {
+                    source.close(); throw error
+                }
             }.getOrNull()
         }
 
     private fun validate(bytes: ByteArray) {
         require(bytes.isNotEmpty())
-        val prefix = bytes.copyOf(minOf(256, bytes.size)).toString(Charsets.UTF_8).trimStart('\uFEFF', ' ', '\r', '\n', '\t').lowercase()
-        require(!prefix.startsWith("<html") && !prefix.startsWith("<!doctype html") && !prefix.startsWith("{") && !prefix.startsWith("[{"))
+        val prefix = bytes.copyOf(minOf(256, bytes.size)).toString(Charsets.UTF_8)
+            .trimStart('\uFEFF', ' ', '\r', '\n', '\t').lowercase()
+        require(
+            !prefix.startsWith("<html") && !prefix.startsWith("<!doctype html") && !prefix.startsWith(
+                "{"
+            ) && !prefix.startsWith("[{")
+        )
     }
 
     private fun download(url: URI): ByteArray {
@@ -70,7 +90,10 @@ internal object SidecarSubtitles {
             try {
                 val status = connection.responseCode
                 if (status in listOf(301, 302, 303, 307, 308)) {
-                    current = DlnaClient.httpUri(connection.getHeaderField("Location").orEmpty(), current.toString()) ?: error("Invalid subtitle redirect")
+                    current = DlnaClient.httpUri(
+                        connection.getHeaderField("Location").orEmpty(),
+                        current.toString()
+                    ) ?: error("Invalid subtitle redirect")
                 } else {
                     require(status == 200 && connection.contentLengthLong <= 4 * 1024 * 1024)
                     return connection.inputStream.use { input ->
@@ -85,15 +108,21 @@ internal object SidecarSubtitles {
                         output.toByteArray()
                     }
                 }
-            } finally { connection.disconnect() }
+            } finally {
+                connection.disconnect()
+            }
         }
         error("Too many subtitle redirects")
     }
 
     private class Bytes(data: ByteArray) : StreamSource {
         override val size = data.size.toLong()
-        @Volatile private var bytes: ByteArray? = data
-        override fun close() { bytes = null }
+        @Volatile
+        private var bytes: ByteArray? = data
+        override fun close() {
+            bytes = null
+        }
+
         override fun open(): StreamSource.Reader {
             check(bytes != null)
             return object : StreamSource.Reader {
@@ -107,7 +136,10 @@ internal object SidecarSubtitles {
                     data.copyInto(buffer, 0, offset.toInt(), offset.toInt() + count)
                     return count
                 }
-                override fun close() { closed = true }
+
+                override fun close() {
+                    closed = true
+                }
             }
         }
     }
