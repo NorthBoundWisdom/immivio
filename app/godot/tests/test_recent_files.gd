@@ -84,6 +84,8 @@ func reload_catalog() -> RefCounted:
 
 
 func _initialize() -> void:
+	if not preload("res://tests/support/test_result.gd").prepare(self):
+		return
 	call_deferred("_run")
 
 
@@ -413,4 +415,4 @@ func _run() -> void:
 	print("Recent files host checks: %s (%d), evidence=%s" % [report.state, checks, directory])
 	for failure in failures:
 		push_error(failure)
-	quit(0 if failures.is_empty() else 1)
+	preload("res://tests/support/test_result.gd").finish(self, 0 if failures.is_empty() else 1)

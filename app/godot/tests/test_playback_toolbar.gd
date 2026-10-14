@@ -11,6 +11,8 @@ func check(value: bool, message: String) -> void:
 
 
 func _initialize() -> void:
+	if not preload("res://tests/support/test_result.gd").prepare(self):
+		return
 	_run.call_deferred()
 
 
@@ -161,4 +163,4 @@ func _run() -> void:
 	for failure in failures:
 		push_error(failure)
 	print("Playback toolbar: %d checks, %d failures" % [checks, failures.size()])
-	quit(0 if failures.is_empty() else 1)
+	preload("res://tests/support/test_result.gd").finish(self, 0 if failures.is_empty() else 1)

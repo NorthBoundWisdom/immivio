@@ -60,6 +60,8 @@ func check(value: bool, reason: String) -> void:
 
 
 func _initialize() -> void:
+	if not preload("res://tests/support/test_result.gd").prepare(self):
+		return
 	var bridge := BridgeProbe.new()
 	var video := Video.new()
 	video.platform = bridge
@@ -171,4 +173,4 @@ func _initialize() -> void:
 	else:
 		for failure in failures:
 			push_error(failure)
-	quit(0 if failures.is_empty() else 1)
+	preload("res://tests/support/test_result.gd").finish(self, 0 if failures.is_empty() else 1)

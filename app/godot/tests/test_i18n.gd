@@ -11,6 +11,8 @@ func check(ok: bool, message: String) -> void:
 
 
 func _initialize() -> void:
+	if not preload("res://tests/support/test_result.gd").prepare(self):
+		return
 	var locales := {
 		"en_US": "en",
 		"ja_JP": "ja",
@@ -56,4 +58,4 @@ func _initialize() -> void:
 	print("i18n checks=%d failures=%d" % [checks, failures.size()])
 	for failure in failures:
 		push_error(failure)
-	quit(0 if failures.is_empty() else 1)
+	preload("res://tests/support/test_result.gd").finish(self, 0 if failures.is_empty() else 1)

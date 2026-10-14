@@ -273,6 +273,8 @@ static func choose_setting(menu: Node3D, key: String, value: Variant) -> bool:
 
 
 func _initialize() -> void:
+	if not preload("res://tests/support/test_result.gd").prepare(self):
+		return
 	call_deferred("_run")
 
 
@@ -1221,7 +1223,7 @@ func _run() -> void:
 	for failure in failures:
 		push_error(failure)
 	print("Player menu host checks: %s (%d), evidence=%s" % [report.state, checks, directory])
-	quit(0 if failures.is_empty() else 1)
+	preload("res://tests/support/test_result.gd").finish(self, 0 if failures.is_empty() else 1)
 
 
 ## Feed the production per-frame routing with real menus/video state and a mocked Android backend.

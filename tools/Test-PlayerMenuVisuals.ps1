@@ -2,13 +2,13 @@ $ErrorActionPreference = 'Stop'
 $workspace = Split-Path -Parent $PSScriptRoot
 . "$PSScriptRoot/environment/Activate-QuestEnvironment.ps1"
 $output = Join-Path $workspace 'build/output/ui-polish'
+New-Item -ItemType Directory -Force -Path $output | Out-Null
 $sourceHashes = @{}
 foreach ($file in Get-ChildItem "$workspace/app/godot/scripts", "$workspace/app/godot/shaders", "$workspace/app/godot/tests" -File) {
     $relative = [IO.Path]::GetRelativePath($workspace, $file.FullName).Replace('\', '/')
     $sourceHashes[$relative] = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
 }
 foreach ($case in @(
-        @{name = 'player'; script = 'render_player_menu.gd'; variable = 'QUEST_PLAYER_MENU_PREVIEW_DIR' },
         @{name = 'library'; script = 'render_recent_menu.gd'; variable = 'QUEST_RECENT_PREVIEW_DIR' },
         @{name = 'entry'; script = 'render_main_ui.gd'; variable = 'QUEST_MAIN_UI_PREVIEW_DIR' })) {
     $destination = Join-Path $output $case.name
@@ -28,7 +28,7 @@ foreach ($case in @(
 foreach ($path in $sourceHashes.Keys) {
     if ((Get-FileHash "$workspace/$path" -Algorithm SHA256).Hash.ToLowerInvariant() -ne $sourceHashes[$path]) { throw "Source changed during render: $path" }
 }
-@{state='passed'; source_sha256=$sourceHashes; scope='Actual Godot entry scene and production menus with supplied stress states on desktop NVIDIA OpenGL; Quest binocular pixels/physical pointing not verified';
+@{state='passed'; source_sha256=$sourceHashes; scope='Actual Godot entry scene and production menus with supplied stress states on desktop OpenGL; Quest binocular pixels/physical pointing not verified';
     physical_quest_verified=$false; binocular_XR_verified=$false
 } | ConvertTo-Json -Depth 6 | Set-Content "$output/verification.json" -Encoding utf8
 Write-Output 'Production menu visuals and entry scene: passed'

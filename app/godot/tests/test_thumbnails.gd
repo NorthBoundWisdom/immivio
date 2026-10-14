@@ -1,6 +1,5 @@
 extends SceneTree
-## Library pictures. Needs a renderer (run without --headless):
-## godot --xr-mode off --rendering-driver opengl3 --path app/godot --script res://tests/test_thumbnails.gd
+## Cache, crop and library behavior. GPU capture is checked by render_thumbnail_capture.gd.
 
 const Thumbnails := preload("res://scripts/thumbnail_cache.gd")
 const Menu := preload("res://scripts/library_menu.gd")
@@ -9,6 +8,16 @@ const Recent := preload("res://scripts/recent_files.gd")
 
 var checks := 0
 var failures: Array[String] = []
+
+
+class LibraryFixture:
+	extends Menu
+
+	func _fetch_cover(url: String) -> void:
+		# Exercise the real cache/fallback policy without contacting a real NAS.
+		var request := HTTPRequest.new()
+		add_child(request)
+		_covers[url] = request
 
 
 class PhotoCacheHost:
@@ -45,6 +54,8 @@ func wait_for_cache(menu: Node3D) -> void:
 
 
 func _initialize() -> void:
+	if not preload("res://tests/support/test_result.gd").prepare(self):
+		return
 	_run.call_deferred()
 
 
@@ -72,27 +83,9 @@ func _run() -> void:
 		"A portrait eye gives its middle band: %s" % tall
 	)
 
-	# Capture renders the left eye of a side-by-side frame, top row on top.
-	var frame := Image.create(640, 180, false, Image.FORMAT_RGBA8)
-	frame.fill_rect(Rect2i(0, 0, 320, 90), Color(0, 1, 0))
-	frame.fill_rect(Rect2i(0, 90, 320, 90), Color(1, 0, 0))
-	frame.fill_rect(Rect2i(320, 0, 320, 180), Color(0, 0, 1))
-	var source := ImageTexture.create_from_image(frame)
-	var holder := Node.new()
-	root.add_child(holder)
-	var shot: Image = await Thumbnails.capture(
-		holder, source.get_rid(), false, true, Vector4(0, 0, 1, 1)
-	)
-	check(shot != null and shot.get_size() == Thumbnails.SIZE, "Capture has the picture size")
-	if shot:
-		var top := shot.get_pixel(160, 30)
-		var bottom := shot.get_pixel(160, 150)
-		check(top.g > 0.8 and top.r < 0.2 and top.b < 0.2, "Top of the left eye on top: %s" % top)
-		check(
-			bottom.r > 0.8 and bottom.g < 0.2 and bottom.b < 0.2,
-			"Bottom of the left eye below: %s" % bottom
-		)
-		check(Thumbnails.store("file:///v.mp4", shot), "Stored")
+	var frame := Image.create(320, 180, false, Image.FORMAT_RGBA8)
+	frame.fill(Color(0.25, 0.5, 0.75))
+	check(Thumbnails.store("file:///v.mp4", frame), "A supplied thumbnail is persisted")
 	check(
 		Thumbnails.has("file:///v.mp4") and Thumbnails.texture("file:///v.mp4") != null,
 		"Stored picture loads"
@@ -102,7 +95,7 @@ func _run() -> void:
 	check(Thumbnails.fit(wide).get_size() == Thumbnails.SIZE, "Covers of any shape fill the tile")
 
 	# Library tiles use the picture; DLNA covers only come from the server's URL.
-	var menu := Menu.new()
+	var menu := LibraryFixture.new()
 	root.add_child(menu)
 	menu.toggle()
 	check(
@@ -258,4 +251,4 @@ func _run() -> void:
 
 	Thumbnails.clear()
 	print("thumbnail checks=%d failures=%d" % [checks, failures.size()])
-	quit(1 if failures.size() > 0 else 0)
+	preload("res://tests/support/test_result.gd").finish(self, 1 if failures.size() > 0 else 0)

@@ -38,6 +38,8 @@ func check(value: bool, message: String) -> void:
 
 
 func _initialize() -> void:
+	if not preload("res://tests/support/test_result.gd").prepare(self):
+		return
 	var state := State.new()
 	var pair := {"session_id": 7, "generation": 3, "source_epoch": 2, "mpv_source_handle": 55}
 	var sample := {
@@ -210,8 +212,8 @@ func _initialize() -> void:
 	video.free()
 	if failures.is_empty():
 		print("MPV subtitle host checks passed: %d" % checks)
-		quit(0)
+		preload("res://tests/support/test_result.gd").finish(self, 0)
 	else:
 		for failure in failures:
 			push_error(failure)
-		quit(1)
+		preload("res://tests/support/test_result.gd").finish(self, 1)

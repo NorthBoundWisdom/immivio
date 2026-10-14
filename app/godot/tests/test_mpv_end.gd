@@ -18,6 +18,8 @@ func _check(value: bool, message: String) -> void:
 
 
 func _initialize() -> void:
+	if not preload("res://tests/support/test_result.gd").prepare(self):
+		return
 	var video := Video.new()
 	video.media.state = "ended"
 	video.loop_enabled = true
@@ -70,8 +72,8 @@ func _initialize() -> void:
 	replay.free()
 	if failures.is_empty():
 		print("MPV EOF host checks passed")
-		quit(0)
+		preload("res://tests/support/test_result.gd").finish(self, 0)
 	else:
 		for failure in failures:
 			push_error(failure)
-		quit(1)
+		preload("res://tests/support/test_result.gd").finish(self, 1)

@@ -16,11 +16,34 @@ import zipfile
 from configs import player_build as player
 
 
+def validate_host_test_result(script, returncode, output):
+    """A frame-limit exit is not evidence that a test reached its assertions."""
+    if returncode or re.search(r"(?m)^(SCRIPT ERROR:|SHADER ERROR:|ERROR:)", output):
+        raise RuntimeError(f"exit={returncode}; see {script.stem}.log")
+    prefix = "IMMIVIO_TEST_RESULT "
+    reports = [
+        line[len(prefix) :] for line in output.splitlines() if line.startswith(prefix)
+    ]
+    if len(reports) != 1:
+        raise RuntimeError("Expected exactly one explicit test completion report")
+    try:
+        report = json.loads(reports[0])
+    except ValueError as error:
+        raise RuntimeError("Invalid test completion report") from error
+    if (
+        not isinstance(report, dict)
+        or report.get("script") != "res://tests/" + script.name
+        or type(report.get("exit_code")) is not int
+        or report["exit_code"] != 0
+    ):
+        raise RuntimeError("Test completion report does not confirm this script passed")
+
+
 def host_tests(godot):
     logs = player.ROOT / "artifacts/source-tests"
     logs.mkdir(parents=True, exist_ok=True)
     env = os.environ.copy()
-    # Windows Godot honors these directories. Hosted macOS has fresh user state.
+    # The test helper isolates user:// per case; Windows also redirects its base here.
     userdata = player.ROOT / "artifacts/source-test-userdata"
     userdata.mkdir(parents=True, exist_ok=True)
     env.update(APPDATA=str(userdata), LOCALAPPDATA=str(userdata))
@@ -33,6 +56,8 @@ def host_tests(godot):
             "--path",
             player.PROJECT,
             "--editor",
+            "--log-file",
+            str(logs / "import-engine.log"),
             "--quit-after",
             "600",
         ],
@@ -46,7 +71,10 @@ def host_tests(godot):
         raise RuntimeError("Godot host import reported errors")
     suite = ET.Element("testsuite", name="Godot source tests")
     failures = []
-    for script in sorted((player.PROJECT / "tests").glob("test_*.gd")):
+    scripts = sorted((player.PROJECT / "tests").glob("test_*.gd"))
+    if not scripts:
+        raise RuntimeError("No Godot host tests were discovered")
+    for script in scripts:
         case = ET.SubElement(suite, "testcase", name=script.stem)
         try:
             result = subprocess.run(
@@ -57,6 +85,8 @@ def host_tests(godot):
                     "off",
                     "--path",
                     str(player.PROJECT),
+                    "--log-file",
+                    str(logs / (script.stem + "-engine.log")),
                     "--quit-after",
                     "1800",
                     "--script",
@@ -71,10 +101,7 @@ def host_tests(godot):
             )
             output = result.stdout + result.stderr
             (logs / (script.stem + ".log")).write_text(output, encoding="utf-8")
-            if result.returncode or re.search(
-                r"(?m)^(SCRIPT ERROR:|SHADER ERROR:|ERROR:)", output
-            ):
-                raise RuntimeError(f"exit={result.returncode}; see {script.stem}.log")
+            validate_host_test_result(script, result.returncode, output)
             print("Passed: " + script.name, flush=True)
         except (RuntimeError, subprocess.TimeoutExpired) as error:
             failures.append(script.name)

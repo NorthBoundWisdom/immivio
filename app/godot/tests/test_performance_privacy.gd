@@ -13,6 +13,8 @@ class Host:
 
 
 func _initialize() -> void:
+	if not preload("res://tests/support/test_result.gd").prepare(self):
+		return
 	call_deferred("_run")
 
 
@@ -41,4 +43,4 @@ func _run() -> void:
 	if not ordinary:
 		push_error("Privacy guard fixture did not exercise a ready thumbnail path")
 	print("Performance privacy: %s" % ("passed" if guarded and ordinary else "failed"))
-	quit(0 if guarded and ordinary else 1)
+	preload("res://tests/support/test_result.gd").finish(self, 0 if guarded and ordinary else 1)

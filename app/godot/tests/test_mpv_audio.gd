@@ -22,6 +22,8 @@ func check(value: bool, message: String) -> void:
 
 
 func _initialize() -> void:
+	if not preload("res://tests/support/test_result.gd").prepare(self):
+		return
 	var video := Video.new()
 	var host := Host.new()
 	video.platform = host
@@ -70,8 +72,8 @@ func _initialize() -> void:
 	video.free()
 	if failures.is_empty():
 		print("MPV audio host checks passed")
-		quit(0)
+		preload("res://tests/support/test_result.gd").finish(self, 0)
 	else:
 		for failure in failures:
 			push_error(failure)
-		quit(1)
+		preload("res://tests/support/test_result.gd").finish(self, 1)

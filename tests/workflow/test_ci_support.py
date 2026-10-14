@@ -1,6 +1,7 @@
 """Offline checks for CI template caching and optional signing configuration."""
 
 import base64
+import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -59,6 +60,49 @@ class CiBoundaries(unittest.TestCase):
         env, mode = ci.signing_env({})
         self.assertEqual(mode, "ephemeral-ci-key")
         self.assertEqual(env, {})
+
+
+class HostTestReports(unittest.TestCase):
+    script = Path("test_playback_control.gd")
+
+    def report(self, **changes):
+        data = {"script": "res://tests/" + self.script.name, "exit_code": 0}
+        data.update(changes)
+        return "IMMIVIO_TEST_RESULT " + json.dumps(data) + "\n"
+
+    def test_explicit_completion_accepts_normal_engine_output(self):
+        ci.validate_host_test_result(self.script, 0, "Godot Engine\n" + self.report())
+
+    def test_zero_exit_without_completion_is_not_success(self):
+        for output in ("", "Test started\n", "checks passed\n"):
+            with self.subTest(output=output), self.assertRaisesRegex(
+                RuntimeError, "completion"
+            ):
+                ci.validate_host_test_result(self.script, 0, output)
+
+    def test_stale_duplicate_malformed_and_failed_reports_are_rejected(self):
+        for output in (
+            self.report(script="res://tests/test_other.gd"),
+            self.report(exit_code=1),
+            self.report(exit_code=False),
+            self.report() * 2,
+            "IMMIVIO_TEST_RESULT not-json\n",
+            "IMMIVIO_TEST_RESULT []\n",
+        ):
+            with self.subTest(output=output), self.assertRaises(RuntimeError):
+                ci.validate_host_test_result(self.script, 0, output)
+
+    def test_engine_errors_and_process_failure_override_completion(self):
+        for code, message in (
+            (1, ""),
+            (0, "SCRIPT ERROR: failed"),
+            (0, "SHADER ERROR: failed"),
+            (0, "ERROR: failed"),
+        ):
+            with self.subTest(code=code, message=message), self.assertRaises(
+                RuntimeError
+            ):
+                ci.validate_host_test_result(self.script, code, self.report() + message)
 
 
 if __name__ == "__main__":

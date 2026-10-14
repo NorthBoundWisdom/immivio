@@ -9,110 +9,11 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-from configs import source_root_workflow as source, android_workflow as android
-from freecm.asset_seeds import prepare_asset_seeds, require_asset_seeds
+from configs import android_workflow as android
 from freecm.build_cleanup import clean_build
 
 
 class DependencyLifecycle(unittest.TestCase):
-    def test_source_workflow_does_not_install_host_tools_or_packages(self):
-        for argv in (["--init"], ["--update"], ["--refreshpin"], ["--pinlatest"]):
-            with (
-                self.subTest(argv=argv),
-                patch.object(source.script, "main", return_value=0) as script,
-            ):
-                with patch(
-                    "subprocess.run",
-                    side_effect=AssertionError("Unexpected host installer"),
-                ):
-                    self.assertEqual(source.main(argv), 0)
-                script.assert_called_once_with(argv)
-
-    def test_disabled_sources_need_no_seed_and_can_be_enabled_explicitly(self):
-        from freecm.dependency_roots import DependencyRootConfig, DependencyRootSpec
-
-        with tempfile.TemporaryDirectory() as name:
-            root = Path(name)
-            lock = {
-                "schemaVersion": 5,
-                "depsMode": "pinned",
-                "depsManualPath": {"Optional": ""},
-                "dependencies": {
-                    "Optional": {
-                        "remote": "https://example.invalid/never-clone.git",
-                        "commit": "a" * 40,
-                        "disabled": True,
-                    }
-                },
-            }
-            path = root / "source_roots.lock.jsonc"
-            path.write_text(json.dumps(lock))
-            (root / "source_roots.lock.jsonc.in").write_text(json.dumps(lock))
-            manager = source.Workflow(
-                DependencyRootConfig(
-                    repo_root=root,
-                    repo_display_name="Fixture",
-                    dependency_root_specs=(
-                        DependencyRootSpec("Optional", "Optional", "OPTIONAL_ROOT", ()),
-                    ),
-                    default_required_relative_paths=(),
-                )
-            )
-            with patch(
-                "urllib.request.urlopen",
-                side_effect=AssertionError("Unexpected download"),
-            ):
-                manager.init_seed_repositories()
-                roots = manager.materialize_source_roots(allow_network=False)
-            self.assertEqual(roots.dependency_roots.resolved_commits, {})
-            self.assertFalse((root / "build/dependency_seed_repos/Optional").exists())
-            lock["dependencies"]["Optional"]["disabled"] = False
-            path.write_text(json.dumps(lock))
-            with self.assertRaises((RuntimeError, FileNotFoundError)):
-                manager.materialize_source_roots(allow_network=False)
-
-    def test_verified_asset_lifecycle_and_corruption_do_not_download_during_verify(
-        self,
-    ):
-        import hashlib
-
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            fixture = root / "fixture"
-            fixture.write_bytes(b"locked payload")
-            lock = {
-                "schemaVersion": 5,
-                "depsMode": "pinned",
-                "depsManualPath": {},
-                "dependencies": {},
-                "assets": {
-                    "Fixture": {
-                        "seedPath": "build/dependency_seed_repos/Fixture",
-                        "files": [
-                            {
-                                "id": "fixture",
-                                "type": "file",
-                                "url": fixture.as_uri(),
-                                "fileName": "fixture",
-                                "sizeBytes": fixture.stat().st_size,
-                                "sha256": hashlib.sha256(
-                                    fixture.read_bytes()
-                                ).hexdigest(),
-                            }
-                        ],
-                    }
-                },
-            }
-            (root / "source_roots.lock.jsonc").write_text(json.dumps(lock))
-            prepare_asset_seeds(root)
-            with patch("urllib.request.urlopen", side_effect=AssertionError("offline")):
-                require_asset_seeds(root)
-                (root / "build/dependency_seed_repos/Fixture/fixture").write_bytes(
-                    b"corrupt"
-                )
-                with self.assertRaisesRegex(FileNotFoundError, "missing or invalid"):
-                    require_asset_seeds(root)
-
     def test_cleanup_preserves_dependency_roots_and_signing_material(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

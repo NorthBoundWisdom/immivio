@@ -28,6 +28,8 @@ func check(ok: bool, message: String) -> void:
 
 
 func _initialize() -> void:
+	if not preload("res://tests/support/test_result.gd").prepare(self):
+		return
 	call_deferred("_run")
 
 
@@ -185,4 +187,4 @@ func _run() -> void:
 	for failure in failures:
 		push_error(failure)
 	print("Playback settings: %s (%d)" % ["passed" if failures.is_empty() else "failed", checks])
-	quit(0 if failures.is_empty() else 1)
+	preload("res://tests/support/test_result.gd").finish(self, 0 if failures.is_empty() else 1)

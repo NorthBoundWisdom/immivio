@@ -20,6 +20,8 @@ func check(value: bool, message: String) -> void:
 
 
 func _initialize() -> void:
+	if not preload("res://tests/support/test_result.gd").prepare(self):
+		return
 	call_deferred("_run")
 
 
@@ -210,4 +212,4 @@ func _run() -> void:
 	for failure in failures:
 		push_error(failure)
 	print("Global display quality: ", "passed" if failures.is_empty() else failures)
-	quit(0 if failures.is_empty() else 1)
+	preload("res://tests/support/test_result.gd").finish(self, 0 if failures.is_empty() else 1)

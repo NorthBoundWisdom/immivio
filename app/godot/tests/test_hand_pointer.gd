@@ -94,6 +94,8 @@ func frames(main: Node3D, tracker: XRHandTracker, center: Vector3, ratio: float)
 
 
 func _initialize() -> void:
+	if not preload("res://tests/support/test_result.gd").prepare(self):
+		return
 	call_deferred("_run")
 
 
@@ -461,7 +463,7 @@ func _run() -> void:
 		)
 	)
 	print("Hand pointer checks: %s (%d)" % ["passed" if failures.is_empty() else "FAILED", checks])
-	quit(0 if failures.is_empty() else 1)
+	preload("res://tests/support/test_result.gd").finish(self, 0 if failures.is_empty() else 1)
 
 
 func make_aim() -> XRControllerTracker:

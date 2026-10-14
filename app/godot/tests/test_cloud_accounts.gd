@@ -44,6 +44,8 @@ func check(ok: bool, label: String) -> void:
 
 
 func _initialize() -> void:
+	if not preload("res://tests/support/test_result.gd").prepare(self):
+		return
 	call_deferred("_run")
 
 
@@ -192,4 +194,4 @@ func _run() -> void:
 	print("cloud accounts checks=%d failures=%d" % [checks, failures.size()])
 	for failure in failures:
 		push_error(failure)
-	quit(0 if failures.is_empty() else 1)
+	preload("res://tests/support/test_result.gd").finish(self, 0 if failures.is_empty() else 1)
