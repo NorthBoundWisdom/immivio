@@ -4,10 +4,16 @@
 
 Newest first, following product release milestones. Entries under 0.6.0 and earlier describe the original project; removed conversion features are historical, not current Immivio capabilities. Some development/source snapshots contained features before their product release. Original APK identifiers `0.2` and `0.4` are retained; `0.4` was also called `0.4.0` in release notes. Availability depends on device, server and media capabilities.
 
-## Unreleased
+## 0.9.3 — 2026-10-14
+
+- Set application version 0.9.3 / versionCode 17 for Quest, PICO and experimental OpenXR packages.
 
 - Add independent reset actions to existing grading, subtitle, timing, eye-alignment and photo sliders. Reset only the current three-field grading popup page, retain whole-custom reset, and preserve disabled effects and unavailable controls. Adapt the upstream 0.8.0 behavior to the compact toolbar without restoring removed settings pages or conversion features.
 - Keep only Original, Warm, Cool and Custom grading presets. Restore legacy Daylight saves as Original while retaining their custom parameters.
+
+- Use one playback pipeline with verified upstream Android mpv/FFmpeg libraries; simplify the native source layout and remove unused source build dependencies and probes.
+- Run Android CI on GitHub-hosted Windows and macOS machines. Fix MSVC numeric trace compilation and prepare the expanded gomobile module graph before offline AAR builds.
+- Replace old player tests and screenshot-only scripts with focused controller, geometry and download checks. Require explicit Godot test completion, isolate test user data, and separate GPU thumbnail pixels from headless cache tests.
 
 ## 0.9.2 — 2026-10-14
 

@@ -32,7 +32,7 @@ Immivio continues development of [zerochocobo/Thru3D-Media-Player](https://githu
 - **Free and open source.** Download, use and build the player under GPL-3.0; third-party services follow their own terms and may have their own fees.
 - **Bring your own library.** Local files, SMB, WebDAV, DLNA, supported media servers and cloud sources. Available operations depend on the source and your account permissions.
 - **Get comfortable.** Move the picture and panels, adjust supported screen size/distance/curvature, and use reclining mode or head-follow when you want them.
-- **Keep control.** Compact playback popups, subtitles, playback speed, per-video audio/subtitle timing, automatic queue advance and optional shuffle.
+- **Keep control.** Compact playback popups with slider resets, subtitles, playback speed, per-video audio/subtitle timing, automatic queue advance and optional shuffle.
 - **Return to familiar settings.** Remembered per-video track choices and stereo alignment, system-controlled volume, and full filename hover tips.
 - **Explore photos.** Single images, side previews, 1–3-row photo walls and memory fragments. HEIF photo decoding depends on the Android device and source format.
 
