@@ -1,5 +1,5 @@
 /* Verify the exact decoder helper on raw MV-HEVC and synthetic eye pairs. */
-#include "../../native/mpv/spatial/quest_spatial_video.h"
+#include <spatial/quest_spatial_video.h>
 #include <assert.h>
 #include <libavformat/avformat.h>
 #include <libavutil/opt.h>

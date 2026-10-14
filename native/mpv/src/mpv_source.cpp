@@ -1,5 +1,5 @@
-#include "json_quote.h"
-#include "pgs_bitmap.h"
+#include <immivio/mpv/json_quote.h>
+#include <immivio/mpv/pgs_bitmap.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <GLES3/gl3.h>
@@ -28,7 +28,7 @@
 #include <unordered_map>
 #include <vector>
 #ifndef NDEBUG
-#include "seek_trace.h"
+#include <immivio/mpv/seek_trace.h>
 #endif
 
 void quest_mpv_initialize_android(JNIEnv *, jobject);

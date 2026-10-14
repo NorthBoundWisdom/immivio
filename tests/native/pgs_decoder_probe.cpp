@@ -1,5 +1,5 @@
 // Standalone ARM64 MPV/PGS probe. No app install, UI, GPU renderer or OCR.
-#include "../../native/mpv/pgs_bitmap.h"
+#include <immivio/mpv/pgs_bitmap.h>
 #include <chrono>
 #include <fstream>
 #include <iostream>

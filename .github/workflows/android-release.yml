@@ -90,6 +90,11 @@ jobs:
       - name: Initialize FreeCM
         run: git submodule update --init FreeCM
       - uses: ./.github/actions/android-setup
+      - name: Build and test native host helpers
+        run: |
+          cmake -S native -B build/native-host -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/native-host --config Release --parallel 2
+          ctest --test-dir build/native-host -C Release --output-on-failure
       - name: Initialize and materialize locked dependencies
         run: |
           python configs/source_root_workflow.py --init --quiet

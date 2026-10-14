@@ -16,6 +16,16 @@ Settings migration tests preserve ordinary preferences, source masks and stereo 
 
 The Android workflow offers `--level l0` (workflow and publication boundaries), `l1` (JVM and Go integration), `l2` (Godot host behavior), and `all`. JVM/Go tests use the configured dependencies offline. The Godot suite writes isolated test user data and JUnit results under `artifacts/`.
 
+Native helper tests have one host entry point on macOS, Windows and Linux:
+
+```sh
+cmake -S native -B build/native-host -DCMAKE_BUILD_TYPE=Release
+cmake --build build/native-host --config Release --parallel 2
+ctest --test-dir build/native-host -C Release --output-on-failure
+```
+
+These tests exercise the production JSON writer against an independent Python Unicode oracle, PGS bitmap composition, and numeric seek tracing. They require CMake, a C++17 compiler and Python 3.11+, and keep assertions enabled in Release builds. GitHub CI runs them on both build hosts. `tests/native/pgs_decoder_probe.cpp` additionally requires the optional project's libmpv PGS ABI and real subtitle media; `tests/native/spatial_video_test.c` is run by `tools/Test-SpatialVideos.sh` with prepared FFmpeg sources and licensed MV-HEVC samples. These media-dependent probes are not part of the standalone host suite.
+
 Workflow tests cover corrupt assets, offline acquisition boundaries, configuration staleness, separate Build/Package stages, safe cleanup, verified optional backend imports, process timeouts and signing identity preservation. Release tests reject incomplete dependency provenance and mismatched tag/commit/host/variant or APK bytes.
 
 Use the Android workflow for host tests and package verification. Rendering fixtures remain under `app/godot/tests/render_*.gd` for focused visual checks. Build and package each target before device verification. Existing device probes and media benchmarks remain available. Use the optional backend and its checked receipt for private PGS, spatial-video or Dolby tests; host/APK checks alone do not establish those capabilities on a headset.

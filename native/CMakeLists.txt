@@ -1,9 +1,18 @@
 cmake_minimum_required(VERSION 3.22)
-project(Immivio LANGUAGES CXX)
+project(Immivio LANGUAGES C CXX)
+
 option(QUEST_STANDARD_MPV "Use the public libmpv render API" ON)
-add_library(quest_media SHARED media/media_delete.cpp)
-target_compile_features(quest_media PRIVATE cxx_std_17)
-target_compile_options(quest_media PRIVATE -Wall -Wextra -Werror)
-target_link_options(quest_media PRIVATE "-Wl,-z,max-page-size=16384")
-add_subdirectory(render-bridge)
+
+# Reusable, platform-independent headers also belong to the host test graph.
 add_subdirectory(mpv)
+
+if(ANDROID)
+  add_subdirectory(media)
+  add_subdirectory(render-bridge)
+else()
+  include(CTest)
+  if(BUILD_TESTING)
+    add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../tests/native"
+                     "${CMAKE_CURRENT_BINARY_DIR}/tests")
+  endif()
+endif()

@@ -62,10 +62,12 @@ def main():
             32 <= ord(ch) < 128 for ch in actual
         ), "JNI string must contain ASCII without raw controls/NUL"
     sources = [
-        "native/mpv/json_quote.h",
-        "benchmarks/native_mpv_json/json_oracle.cpp",
-        "benchmarks/native_mpv_json/verify.py",
-        "benchmarks/native_mpv_json/CMakeLists.txt",
+        "native/mpv/include/immivio/mpv/json_quote.h",
+        "tests/native/mpv_json_oracle.cpp",
+        "tests/native/verify_mpv_json.py",
+        "tests/native/CMakeLists.txt",
+        "native/CMakeLists.txt",
+        "native/mpv/CMakeLists.txt",
     ]
     report = dict(
         schema_version=1,

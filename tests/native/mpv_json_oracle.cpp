@@ -1,4 +1,4 @@
-#include "../../native/mpv/json_quote.h"
+#include <immivio/mpv/json_quote.h>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>

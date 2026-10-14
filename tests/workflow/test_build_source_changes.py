@@ -63,8 +63,9 @@ class BuildSourceChanges(unittest.TestCase):
     def test_production_source_add_edit_and_delete_reject_the_old_build(self):
         for language in (
             "android/player-plugin/src/main/java/example/Bridge.kt",
-            "native/render-bridge/bridge.cpp",
+            "native/render-bridge/src/render_bridge.cpp",
             "native/render-bridge/CMakeLists.txt",
+            "native/mpv/include/immivio/mpv/json_quote.h",
             "app/godot/scripts/player.gd",
             "app/godot/shaders/video.gdshader",
         ):

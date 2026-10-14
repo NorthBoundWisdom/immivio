@@ -2,22 +2,17 @@ $ErrorActionPreference = 'Stop'
 $workspace = Split-Path -Parent $PSScriptRoot
 . "$PSScriptRoot\environment\Activate-QuestEnvironment.ps1"
 $output = Join-Path $workspace 'build\output\mpv-subtitles-host'
-$build = Join-Path $workspace 'build\native-mpv-json'
-& cmake -S "$workspace\benchmarks\native_mpv_json" -B $build -G 'Visual Studio 17 2022' -A x64
-if ($LASTEXITCODE -ne 0) { throw 'Native JSON configuration failed.' }
+$build = Join-Path $workspace 'build\native-host'
+& cmake -S "$workspace\native" -B $build -G 'Visual Studio 17 2022' -A x64
+if ($LASTEXITCODE -ne 0) { throw 'Native host test configuration failed.' }
 & cmake --build $build --config Release
-if ($LASTEXITCODE -ne 0) { throw 'Native JSON compilation failed.' }
-& python "$workspace\benchmarks\native_mpv_json\verify.py" --executable "$build\Release\mpv_json_oracle.exe" --output "$output\json"
+if ($LASTEXITCODE -ne 0) { throw 'Native host test compilation failed.' }
+& ctest --test-dir $build -C Release --output-on-failure
+if ($LASTEXITCODE -ne 0) { throw 'Native JSON/PGS/seek trace checks failed.' }
+& python "$workspace\tests\native\verify_mpv_json.py" --executable "$build\tests\Release\mpv_json_oracle.exe" --output "$output\json"
 if ($LASTEXITCODE -ne 0) { throw 'Independent native JSON oracle failed.' }
 & python "$workspace\tools\media\generate_mp06_subtitle_fixture.py"
 if ($LASTEXITCODE -ne 0) { throw 'Subtitle fixture mux/timing verification failed.' }
-$pgsBuild = Join-Path $workspace 'build\native-pgs'
-& cmake -S "$workspace\benchmarks\native_pgs" -B $pgsBuild -G 'Visual Studio 17 2022' -A x64
-if ($LASTEXITCODE -ne 0) { throw 'PGS pixel configuration failed.' }
-& cmake --build $pgsBuild --config Release
-if ($LASTEXITCODE -ne 0) { throw 'PGS pixel compilation failed.' }
-& "$pgsBuild\Release\pgs_bitmap_checks.exe"
-if ($LASTEXITCODE -ne 0) { throw 'PGS crop/premultiplied alpha/scale checks failed.' }
 $env:QUEST_SUBTITLE_PREVIEW_DIR = Join-Path $output 'render'
 $stdout = Join-Path $workspace 'build\output\logs\mpv-subtitles-render.log'
 $stderr = Join-Path $workspace 'build\output\logs\mpv-subtitles-render-errors.log'

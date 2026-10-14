@@ -1,4 +1,4 @@
-#include "../seek_trace.h"
+#include <immivio/mpv/seek_trace.h>
 #include <cassert>
 #include <iostream>
 

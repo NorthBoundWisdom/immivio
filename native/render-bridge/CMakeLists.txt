@@ -1,4 +1,4 @@
-add_library(quest_render_bridge SHARED render_bridge.cpp)
+add_library(quest_render_bridge SHARED src/render_bridge.cpp)
 target_compile_features(quest_render_bridge PRIVATE cxx_std_17)
 target_compile_options(quest_render_bridge PRIVATE -Wall -Wextra -Werror)
 target_link_libraries(quest_render_bridge PRIVATE GLESv3 EGL android log
