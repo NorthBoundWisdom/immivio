@@ -10,7 +10,7 @@
 extern "C" int av_jni_set_java_vm(void *, void *);
 extern "C" int av_jni_set_android_app_ctx(void *, void *);
 std::string quest_mpv_gpu_probe(const std::string &path, bool hardware,
-                                int width, int height, bool source_frame);
+                                int width, int height);
 
 namespace {
 std::mutex probe_mutex;
@@ -152,7 +152,7 @@ std::string probe(JNIEnv *env, jobject context, jstring path) {
 extern "C" JNIEXPORT jstring JNICALL
 Java_org_vrpassthroughplayer_plugin_MpvNative_probeGpu(
     JNIEnv *env, jclass, jobject context, jstring path, jboolean hardware,
-    jint width, jint height, jboolean source_frame) {
+    jint width, jint height) {
   try {
     std::lock_guard<std::mutex> lock(probe_mutex);
     initialize_android(env, context);
@@ -163,10 +163,9 @@ Java_org_vrpassthroughplayer_plugin_MpvNative_probeGpu(
       throw std::runtime_error("MPV path allocation failed");
     const std::string source = utf;
     env->ReleaseStringUTFChars(path, utf);
-    return env->NewStringUTF(quest_mpv_gpu_probe(source, hardware == JNI_TRUE,
-                                                 width, height,
-                                                 source_frame == JNI_TRUE)
-                                 .c_str());
+    return env->NewStringUTF(
+        quest_mpv_gpu_probe(source, hardware == JNI_TRUE, width, height)
+            .c_str());
   } catch (const std::exception &error) {
     const auto type = env->FindClass("java/lang/IllegalStateException");
     if (type && !env->ExceptionCheck())

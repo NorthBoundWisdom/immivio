@@ -135,18 +135,6 @@ func _run() -> void:
 		),
 		"Reset changes only alignment"
 	)
-	video.media.format = {"width": 1600, "height": 400, "spatial_video": true}
-	video._complete_layout()
-	check(
-		(
-			video.set_viewing_eye(1)
-			and video.is_spatial_video()
-			and not video.mode_action_allowed("stereo_2d")
-		),
-		"Spatial format remains locked while mono viewing works"
-	)
-	video.set_viewing_eye(0)
-	check(video.set_stereo_alignment("stereo_vertical", 0.5), "Spatial video permits alignment")
 	video.close_video()
 	check(
 		video.viewing_eye == 0 and video.stereo_vertical == 0, "Close clears runtime viewing state"

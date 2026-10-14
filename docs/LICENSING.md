@@ -18,7 +18,7 @@ The project license does not replace third-party notices or claim ownership of u
 
 | Component | License / treatment |
 | --- | --- |
-| libmpv / FFmpeg | Recorded GPL build; source revisions, build scripts and the project mpv patch are included/referenced. Upstream headers retain their notices. |
+| libmpv / FFmpeg | Recorded GPL build; upstream release source revisions and build provenance are recorded. Upstream headers retain their notices. |
 | Godot | MIT engine and corresponding template notices. |
 | Hand fallback meshes and texture | Unmodified MIT Godot OpenXR hand demo assets; full license and pinned upstream provenance in `app/godot/models/hands`. These glTF buffers are runtime visuals, not AI weights. |
 | Godot OpenXR Vendors | External addon; preserve the addon and each vendor component's actual license. No vendor SDK binaries are vendored here. |

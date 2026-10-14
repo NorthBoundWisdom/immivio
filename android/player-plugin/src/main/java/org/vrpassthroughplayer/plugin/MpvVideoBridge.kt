@@ -32,12 +32,15 @@ internal class MpvVideoBridge(
     private val gate = MediaSessionGate()
     private val sessions = ConcurrentHashMap<Int, Session>()
     private val hosts = ConcurrentHashMap.newKeySet<PlaybackHost>()
+
     @Volatile
     private var foreground = true
+
     @Volatile
     private var stopped = false
     private val freezePending = AtomicBoolean(false)
     private val frozenFrames = ConcurrentHashMap<Long, AtomicInteger>()
+
     @Volatile
     private var debugNormalFastPath = true
     internal fun debugNormalFramePath(enabled: Boolean) {
@@ -61,8 +64,8 @@ internal class MpvVideoBridge(
     }
 
     /** Debug A/B only: MPV renders an 8K RGBA copy instead of handing over the decoder's image. */
-    private fun direct(session: Session) = false
     private var audioFocus: MpvAudioFocus? = null // worker only
+
     @Volatile
     private var audioFocusState = "none"
     private val lifecyclePauses = AtomicInteger(0)
@@ -80,11 +83,9 @@ internal class MpvVideoBridge(
         private val requestedDepth: Boolean = false,
         private val requestedTopBottom: Boolean = false
     ) {
-        @Volatile
-        var spatial = false // the decoded source fixes its physical packing
-        val stereo get() = spatial || requestedStereo
+        val stereo get() = requestedStereo
         val depth get() = false
-        val topBottom get() = requestedTopBottom && !spatial
+        val topBottom get() = requestedTopBottom
         val id get() = scope.decoderId
         val lock = Any()
         val disposed = AtomicBoolean(false)
@@ -204,7 +205,6 @@ internal class MpvVideoBridge(
                             check(host.subtitleCommand > 0)
                         }
                         MpvSourceNative.setFrameCap(host.handle, frameCap(session))
-                        MpvSourceNative.setDirect(host.handle, direct(session))
                         // Native creation stays paused until focus policy has
                         // run off the Godot GL thread.
                         refreshPlayback()
@@ -249,7 +249,6 @@ internal class MpvVideoBridge(
         )
         sessions[next] = session; dispose(old, false)
         if (host.handle > 0) MpvSourceNative.setFrameCap(host.handle, frameCap(session))
-        if (host.handle > 0) MpvSourceNative.setDirect(host.handle, direct(session))
         if (host.handle > 0 && positionMs < 0) MpvSourceNative.requestFrame(host.handle)
         return next
     }
@@ -401,12 +400,6 @@ internal class MpvVideoBridge(
             .put("required_command_id", session.host.subtitleCommand).toString()
     }
 
-    fun subtitleBitmap(id: Int, version: Long): ByteArray {
-        val session = sessions[id] ?: return ByteArray(0)
-        if (!active(session) || session.host.handle <= 0 || version <= 0) return ByteArray(0)
-        val pixels = MpvSourceNative.subtitleBitmap(session.host.handle, version)
-        return if (active(session)) pixels else ByteArray(0)
-    }
 
     private fun refreshPlayback(explicit: Boolean = false) {
         worker.post {
@@ -586,7 +579,6 @@ internal class MpvVideoBridge(
                     "owner_context_shared"
                 )
             )
-            if (source.optBoolean("spatial_video")) session.spatial = true
             val width = source.getInt("width");
             val height = source.getInt("height")
             check(!session.stereo || (if (session.topBottom) height else width) % 2 == 0)
@@ -611,9 +603,6 @@ internal class MpvVideoBridge(
                     session.output.borrow =
                         RenderBridgeNative.enableBorrowedColor(session.output.renderer)
             }
-            val buffer = source.optLong("hardware_buffer", 0L)
-            // Public-libmpv playback must provide a completed color texture.
-            check(buffer == 0L) { "Playback requires a rendered RGBA texture" }
             val token = if (session.normalFastPath)
                 RenderBridgeNative.captureOpaqueTexture(
                     session.output.renderer,

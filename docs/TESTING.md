@@ -24,11 +24,11 @@ cmake --build build/native-host --config Release --parallel 2
 ctest --test-dir build/native-host -C Release --output-on-failure
 ```
 
-These tests exercise the production JSON writer against an independent Python Unicode oracle, PGS bitmap composition, and numeric seek tracing. They require CMake, a C++17 compiler and Python 3.11+, and keep assertions enabled in Release builds. GitHub CI runs them on both build hosts. `tests/native/pgs_decoder_probe.cpp` additionally requires the optional project's libmpv PGS ABI and real subtitle media; `tests/native/spatial_video_test.c` is run by `tools/Test-SpatialVideos.sh` with prepared FFmpeg sources and licensed MV-HEVC samples. These media-dependent probes are not part of the standalone host suite.
+These tests exercise the production JSON writer against an independent Python Unicode oracle, and numeric seek tracing. They require CMake, a C++17 compiler and Python 3.11+, and keep assertions enabled in Release builds. GitHub CI runs them on both build hosts.
 
-Workflow tests cover corrupt assets, offline acquisition boundaries, configuration staleness, separate Build/Package stages, safe cleanup, verified optional backend imports, process timeouts and signing identity preservation. Release tests reject incomplete dependency provenance and mismatched tag/commit/host/variant or APK bytes.
+Workflow tests cover corrupt assets, offline acquisition boundaries, configuration staleness, separate Build/Package stages, safe cleanup, process timeouts and signing identity preservation. Release tests reject incomplete dependency provenance and mismatched tag/commit/host/variant or APK bytes.
 
-Use the Android workflow for host tests and package verification. Rendering fixtures remain under `app/godot/tests/render_*.gd` for focused visual checks. Build and package each target before device verification. Existing device probes and media benchmarks remain available. Use the optional backend and its checked receipt for private PGS, spatial-video or Dolby tests; host/APK checks alone do not establish those capabilities on a headset.
+Use the Android workflow for host tests and package verification. Rendering fixtures remain under `app/godot/tests/render_*.gd` for focused visual checks. Build and package each target before device verification. Existing device probes and media benchmarks remain available. Host/APK checks do not establish media or rendering correctness on a headset.
 
 Dependency-selection tests verify that disabled source entries need no seed or download, and explicitly enabling them requires prepared inputs. Host-environment checks inspect installations without installing or downloading tools.
 

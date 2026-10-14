@@ -39,7 +39,6 @@ BUILD_INPUTS = (
     "android/gradle/libs.versions.toml",
     "android/gradle/dependency-cache.gradle",
     "third_party/mpv/manifest.json",
-    "third_party/mpv/source-lock.json",
     "android/gradle/verification-metadata.xml",
     "cloud/openlist/go.mod",
     "cloud/openlist/go.sum",
@@ -48,7 +47,7 @@ BUILD_INPUTS = (
 )
 
 
-def arguments_for(vendor, build_type, tools, *, mpv_dir=None, mpv_receipt=None):
+def arguments_for(vendor, build_type, tools):
     components = player.sdk_tools()
     return SimpleNamespace(
         vendor=vendor,
@@ -62,8 +61,6 @@ def arguments_for(vendor, build_type, tools, *, mpv_dir=None, mpv_receipt=None):
         cmake=components["cmake"],
         build_tools=components["build_tools"],
         plugin_only=False,
-        mpv_dir=mpv_dir,
-        mpv_receipt=mpv_receipt,
     )
 
 
@@ -88,7 +85,6 @@ def input_signature(args):
         ("app/godot/shaders", "**/*.gdshader"),
         ("app/godot", "*.tscn"),
         ("app/godot/addons/quest_player", "*.gd"),
-        ("native/mpv/patches", "*"),
         ("android", "**/*gradle.lockfile"),
     ]:
         inputs.update(
@@ -102,18 +98,10 @@ def input_signature(args):
         ["git", "-C", str(ROOT / "FreeCM"), "rev-parse", "HEAD"], text=True
     ).strip()
     inputs["resolved_commits"] = roots.resolved_commits
-    inputs["backend"] = "source_frame" if args.mpv_dir else "standard_libmpv_render"
-    if not args.mpv_dir:
-        inputs["mpv_libraries"] = {
-            name: digest(path) for name, path in player.standard_mpv_libraries().items()
-        }
-    if args.mpv_dir:
-        inputs["mpv_receipt"] = digest(args.mpv_receipt)
-        record = json.loads(Path(args.mpv_receipt).read_text())
-        inputs["mpv_libraries"] = {
-            item["name"]: digest(Path(args.mpv_dir) / item["name"])
-            for item in record["libraries"]
-        }
+    inputs["mpv_libraries"] = {
+        name: digest(path) for name, path in player.mpv_libraries().items()
+    }
+
     return inputs
 
 
@@ -159,11 +147,7 @@ def dependency_receipt():
 
 def configure(args, env, sdk):
     require_asset_seeds(ROOT)
-    (
-        player.prepare_mpv()
-        if not args.mpv_dir
-        else player.prepare_source_mpv(args.mpv_dir, args.mpv_receipt)
-    )
+    player.prepare_mpv()
     # Vendors are pure inputs; OpenList compilation belongs to Build.
     stage_vendors()
     player.configure_project(args, env, sdk)
@@ -368,14 +352,10 @@ def main(argv=None):
         default=os.environ.get("CI_BUILD_TYPE", "Debug"),
     )
     parser.add_argument("--level", choices=("l0", "l1", "l2", "all"), default="all")
-    parser.add_argument("--mpv-dir", type=Path)
-    parser.add_argument("--mpv-receipt", type=Path)
     opts = parser.parse_args(argv)
     from configs.ci_support import build_type_for_ref
 
     opts.build_type = build_type_for_ref(opts.build_type)
-    if bool(opts.mpv_dir) != bool(opts.mpv_receipt):
-        parser.error("--mpv-dir and --mpv-receipt must be supplied together")
     if opts.command == "stop-gradle":
         import shutil
 
@@ -388,8 +368,6 @@ def main(argv=None):
         opts.vendor,
         opts.build_type,
         tools,
-        mpv_dir=opts.mpv_dir,
-        mpv_receipt=opts.mpv_receipt,
     )
     env, sdk = player.environment(args)
     with player.build_lock():

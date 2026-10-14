@@ -35,7 +35,9 @@ func _initialize() -> void:
 		"alpha_slot_token": 8,
 		"alpha_frame_id": 7,
 		"alpha_pts_us": 233333,
-		"source_pts_verified": true,
+		"source_pts_verified": false,
+		"source_ticket_origin": "standard_libmpv_render",
+		"source_ticket_valid": true,
 		"immutable_color_frame": true,
 		"pair_identity_verified": true,
 		"consumer_copy_fence_ready": true,
@@ -44,7 +46,15 @@ func _initialize() -> void:
 		"alpha_texture_format": "GL_R8_numeric"
 	}
 	check(Contract.valid(pair), "Complete v2 source color/mask pair is accepted")
+	var media := preload("res://scripts/mpv_media_state.gd").new()
+	media.last_pair = pair.duplicate(true)
+	check(
+		Contract.timing_valid(media.frame_identity()),
+		"Diagnostic snapshots preserve playback-clock provenance"
+	)
 	for change in [
+		{"source_pts_verified": true},
+		{"source_ticket_origin": "unknown"},
 		{"contract_version": 1},
 		{"model_generation": 1},
 		{"slot_token": 8.5},

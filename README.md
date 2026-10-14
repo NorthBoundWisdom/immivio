@@ -34,7 +34,7 @@ Immivio continues development of [zerochocobo/Thru3D-Media-Player](https://githu
 - **Get comfortable.** Move the picture and panels, adjust supported screen size/distance/curvature, and use reclining mode or head-follow when you want them.
 - **Keep control.** Compact playback popups, subtitles, playback speed, per-video audio/subtitle timing, automatic queue advance and optional shuffle.
 - **Return to familiar settings.** Remembered per-video track choices and stereo alignment, system-controlled volume, and full filename hover tips.
-- **Explore photos.** Single images, side previews, 1–3-row photo walls and memory fragments. Spatial-media decoding depends on the selected playback backend and source format.
+- **Explore photos.** Single images, side previews, 1–3-row photo walls and memory fragments. HEIF photo decoding depends on the Android device and source format.
 
 Immivio has **one playback edition**. It displays existing stereo/spatial content; it does not generate 3D from 2D. The earlier live AI depth, person-matting, model preparation and inference features have been removed.
 
@@ -79,7 +79,7 @@ The interface supports English, Simplified Chinese, Traditional Chinese and Japa
 
 **Will Immivio update my existing app?** The ordinary player's application ID and signing identity are retained to preserve its data. Android still requires matching signing keys; builds from other distributors or ephemeral CI keys may not update one another. Check the package notes before replacing an installation.
 
-**Are spatial formats and PGS subtitles supported in every build?** No. The standard-libmpv build and the optionally imported, verified project-mpv backend have different capabilities. See [build and format compatibility](docs/BUILD.md#optional-dependencies-and-playback-backends). No format support is inferred from a filename alone.
+**Which subtitle and spatial formats are supported?** Text subtitle tracks and ordinary packed SBS/TB video are supported. Bitmap subtitles are not offered; MV-HEVC dual-view video and Dolby Vision colour correctness require separate device/media validation. See [playback libraries and formats](docs/BUILD.md#playback-libraries-and-formats).
 
 **Will every 8K video play smoothly?** Codec, bitrate, projection and hardware all matter. An emulator screenshot is not a headset benchmark.
 

@@ -271,8 +271,7 @@
             </li>
             <li>
               Simplify dependency management with FreeCM and preinstalled
-              development tools; optional native sources stay disabled by
-              default.
+              development tools and verified Android playback libraries.
             </li>
           </ul>
           <p>
@@ -296,10 +295,10 @@
             archives are for developers.
           </p>
           <p>
-            PGS bitmap subtitles, native spatial formats and Dolby media support
-            vary with the APK and source. Read the package notes before choosing
-            media; file names alone do not establish support. Ordinary and
-            packed stereo playback use the standard media backend.
+            Text subtitles and packed SBS/TB video use the same playback pipeline
+            in all packages. Bitmap subtitle tracks are not offered. MV-HEVC
+            dual-view video and Dolby Vision colour correctness have not been
+            validated; file names alone do not establish support.
           </p>
           <p>
             Updates need a matching Android application identity and signing
@@ -328,8 +327,7 @@
           </p>
           <p>
             Developer setup now uses preinstalled host tools and Android media
-            libraries. FreeCM manages enabled project inputs; optional native
-            sources remain pinned and disabled by default. See
+            libraries. FreeCM manages OpenList sources and the OpenXR addon. See
             <a
               href="https://github.com/NorthBoundWisdom/immivio/blob/main/docs/BUILD.md"
               >building from source</a

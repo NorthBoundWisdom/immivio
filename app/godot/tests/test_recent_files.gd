@@ -272,7 +272,12 @@ func _run() -> void:
 	video.media.generation = 2
 	video.media.state = "paused"
 	video.media.last_pair = {
-		"session_id": 7, "generation": 2, "pts_us": 23000000, "source_pts_verified": true
+		"session_id": 7,
+		"generation": 2,
+		"pts_us": 23000000,
+		"source_pts_verified": false,
+		"source_ticket_origin": "standard_libmpv_render",
+		"source_ticket_valid": true
 	}
 	video.control.duration_ms = 60000
 	video.panel.visible = true

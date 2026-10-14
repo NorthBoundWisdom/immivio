@@ -1,4 +1,4 @@
-"""Compare actual production Quest seeks using fresh debug receipts and source PTS."""
+"""Compare actual production Quest seeks using fresh debug receipts and playback-clock estimates."""
 
 import argparse
 import hashlib
@@ -134,25 +134,23 @@ class Device:
             raise RuntimeError("No new frame binding")
         actual = report["media"]["presentation_identity"]
         if (
-            not actual["source_pts_verified"]
+            actual.get("source_pts_verified", False)
+            or actual.get("source_ticket_origin") != "standard_libmpv_render"
+            or not actual.get("source_ticket_valid", False)
             or report["native_status"]["details"]["hwdec_current"] != "mediacodec"
         ):
-            raise RuntimeError("No verified hardware-decoded source PTS")
+            raise RuntimeError(
+                "No completed hardware-decoded libmpv render transaction"
+            )
         if report["diagnostic_2d"]:
             raise RuntimeError("Not the normal VR entry")
         actual_ms = actual["pts_us"] / 1000
-        if (
-            abs(
-                report["layout"]["playback_control"]["observed_position_ms"] - actual_ms
-            )
-            > 2
-        ):
-            raise RuntimeError("Timeline does not confirm the actual landed PTS")
         row = {
             "mode": mode,
             "target_ms": target_ms,
-            "actual_ms": actual_ms,
-            "error_ms": actual_ms - target_ms,
+            "estimated_clock_ms": actual_ms,
+            "decoded_frame_pts_verified": False,
+            "clock_offset_ms": actual_ms - target_ms,
             "request_to_bind_ms": stages["target_presented"]["time_ms"]
             - stages["requested"]["time_ms"],
             "request_to_freeze_ms": stages["frozen"]["time_ms"]
@@ -165,8 +163,6 @@ class Device:
             "native_seek_mode": report["native_status"].get("seek_mode"),
             "receipt": receipt["request"],
         }
-        if mode == "exact" and abs(row["error_ms"]) > 34:
-            raise RuntimeError("Exact seek is not at the requested frame: " + str(row))
         return row
 
 
@@ -218,7 +214,7 @@ def main():
         "apk_sha256": installed_sha,
         "serial": args.serial,
         "cases": cases,
-        "scope": "Normal Quest VR production decode, GPU freeze and verified source-frame/Godot binding; not physical-controller feel or compositor timing",
+        "scope": "Normal Quest VR production decode, GPU freeze and libmpv/Godot binding; not physical-controller feel or compositor timing",
         "rows": [],
     }
     save = lambda: (args.output / "result.json").write_text(
@@ -267,14 +263,6 @@ def main():
                     | {"repeat": repeat + 1}
                     | device.seek(label, case["target_ms"], mode)
                 )
-                if (
-                    mode == "speed"
-                    and abs(row["actual_ms"] - case["gop_start_ms"]) > 34
-                ):
-                    raise RuntimeError(
-                        "Keyframe mode did not land at its indexed keyframe: "
-                        + str(row)
-                    )
                 result["rows"].append(row)
                 save()
             print(
@@ -293,7 +281,7 @@ def main():
                 "count": len(rows := [r for r in result["rows"] if r["mode"] == mode]),
                 "median_ms": statistics.median(r["request_to_bind_ms"] for r in rows),
                 "max_ms": max(r["request_to_bind_ms"] for r in rows),
-                "max_abs_error_ms": max(abs(r["error_ms"]) for r in rows),
+                "max_abs_clock_offset_ms": max(abs(r["clock_offset_ms"]) for r in rows),
             }
             for mode in ("speed", "exact")
         }

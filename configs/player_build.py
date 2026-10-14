@@ -265,7 +265,7 @@ def environment(args, base_env=None):
     return env, sdk
 
 
-def standard_mpv_directory():
+def mpv_directory():
     value = os.environ.get("IMMIVIO_MPV_LIB_DIR")
     if not value:
         raise RuntimeError(
@@ -274,9 +274,9 @@ def standard_mpv_directory():
     return Path(value).expanduser().absolute()
 
 
-def standard_mpv_libraries():
+def mpv_libraries():
     record = json.loads((ROOT / "third_party/mpv/manifest.json").read_text())
-    directory = standard_mpv_directory()
+    directory = mpv_directory()
     libraries = {}
     for library in record["libraries"]:
         if library["name"] not in record["packaged_libraries"]:
@@ -295,55 +295,11 @@ def standard_mpv_libraries():
 
 
 def prepare_mpv():
-    libraries = (
-        standard_mpv_libraries()
-    )  # Validate every input before staging any file.
+    libraries = mpv_libraries()  # Validate every input before staging any file.
     destination = ROOT / "android/player-plugin/src/main/jniLibs/arm64-v8a"
     destination.mkdir(parents=True, exist_ok=True)
     for name, path in libraries.items():
         shutil.copy2(path, destination / name)
-
-
-def prepare_source_mpv(directory, receipt_path):
-    """Import a source-frame build only after validating its complete receipt and files."""
-    record = json.loads(Path(receipt_path).read_text())
-    patch = json.loads(
-        (ROOT / "native/mpv/patches/source-frame-manifest.json").read_text()
-    )
-    expected = set(
-        json.loads((ROOT / "third_party/mpv/manifest.json").read_text())[
-            "packaged_libraries"
-        ]
-    )
-    if (
-        record.get("candidate") != "source-frame"
-        or record.get("api_version") != patch["api_version"]
-        or record.get("mpv_revision") != patch["base_mpv_revision"]
-        or record.get("patch_sha256") != patch["patch_sha256"]
-        or record.get("private_header_sha256") != patch["private_header_sha256"]
-        or record.get("source_lock_sha256")
-        != digest(ROOT / "third_party/mpv/source-lock.json")
-        or set(record.get("packaged_libraries", [])) != expected
-        or {item["name"] for item in record.get("libraries", [])} != expected
-    ):
-        raise RuntimeError(
-            "Source-frame mpv receipt differs from the required source/patch contract"
-        )
-    directory = Path(directory)
-    for item in record["libraries"]:
-        source = directory / item["name"]
-        if (
-            not source.is_file()
-            or source.stat().st_size != item["bytes"]
-            or digest(source) != item["sha256"]
-        ):
-            raise RuntimeError(
-                "Source-frame library differs from its receipt: " + item["name"]
-            )
-    destination = ROOT / "android/player-plugin/src/main/jniLibs/arm64-v8a"
-    destination.mkdir(parents=True, exist_ok=True)
-    for item in record["libraries"]:
-        shutil.copy2(directory / item["name"], destination / item["name"])
 
 
 def prepare_openlist(env):
@@ -730,7 +686,6 @@ def configure_project(args, env, sdk):
         f"-PkotlinPluginVersion={LOCK['kotlin']}",
         "-Pandroid.builtInKotlin=false",
         "-Pandroid.newDsl=false",
-        f"-PstandardMpv={str(not bool(getattr(args, 'mpv_dir', None))).lower()}",
         f"-PandroidNdkVersion={args.ndk}",
         f"-PandroidCmakeVersion={args.cmake}",
         f"-PandroidCompileSdk={TOOLCHAIN['android']['platform']}",
@@ -913,11 +868,6 @@ def package(args, env, sdk):
         "apk": output.name,
         "sha256": sha,
         "product": "Immivio",
-        "mpv_backend": (
-            "source_frame"
-            if getattr(args, "mpv_dir", None)
-            else "standard_libmpv_render"
-        ),
         "godot": engine,
         "vendor": args.vendor,
         "build_type": args.build_type,
@@ -929,8 +879,6 @@ def package(args, env, sdk):
         "openlist_aar_sha256": digest(BIN / "cloudcore.aar"),
         "device_execution": "not_verified",
     }
-    if getattr(args, "mpv_dir", None):
-        receipt["mpv_receipt_sha256"] = digest(args.mpv_receipt)
     (output.with_suffix(".build.json")).write_text(json.dumps(receipt, indent=2) + "\n")
     print(f"Built {output}\nSHA256 {sha}", flush=True)
 

@@ -3,7 +3,7 @@ package org.vrpassthroughplayer.plugin
 import android.content.Context
 import java.nio.ByteBuffer
 
-/** Source-frame build only. GL methods run in an actual Godot draw callback.
+/** Public libmpv render API. GL methods run in an actual Godot draw callback.
  * The native worker shares its context and owns all MPV render calls; control
  * methods enqueue work for a separate ordinary-client thread.
  */
@@ -14,9 +14,7 @@ internal object MpvSourceNative {
         false
     }
 
-    fun supported() = loaded && available()
-    @JvmStatic
-    private external fun available(): Boolean
+    fun supported() = loaded
     /** Starts paused; the caller must apply focus policy before setPlaying(true). */
     /** maxWidth > 0 scales the decoded color down to that width (aspect kept); 0 keeps the source size.
      * audioFiles: location/title pairs added as unselected audio tracks once the video loads. */
@@ -34,6 +32,7 @@ internal object MpvSourceNative {
     /** Insert consumer-context fence after its last copy/draw; rejects double release. */
     @JvmStatic
     external fun release(handle: Long, producerToken: Long): Boolean
+
     @JvmStatic
     external fun setPlaying(handle: Long, playing: Boolean)
 
@@ -52,6 +51,7 @@ internal object MpvSourceNative {
     /** Positive milliseconds delay the selected audio/subtitles. Returns a subtitle fence serial. */
     @JvmStatic
     external fun setSync(handle: Long, subtitleMs: Int, audioMs: Int): Long
+
     @JvmStatic
     external fun addSubtitle(handle: Long, path: String, title: String): Long
 
@@ -59,19 +59,12 @@ internal object MpvSourceNative {
     @JvmStatic
     external fun subtitleStatus(handle: Long, afterSequence: Long): String
 
-    /** Cropped premultiplied RGBA for this exact bitmap version, empty if superseded. */
-    @JvmStatic
-    external fun subtitleBitmap(handle: Long, version: Long): ByteArray
     @JvmStatic
     external fun seek(handle: Long, positionMs: Long, exact: Boolean = true): Boolean
 
     /** Present at most fps source frames per second (0 = all), chosen by scheduled display time before rendering. */
     @JvmStatic
     external fun setFrameCap(handle: Long, fps: Int)
-
-    /** Direct mode: publish MediaCodec images; Profile 5 always retains converted SDR RGBA. */
-    @JvmStatic
-    external fun setDirect(handle: Long, enabled: Boolean)
 
     /** Re-render a retained paused frame; its original frame ID/PTS/epoch remain unchanged. */
     @JvmStatic

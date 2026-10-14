@@ -28,6 +28,7 @@ import javax.microedition.khronos.opengles.GL10
 @UnstableApi
 class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     private val closed = AtomicBoolean(false)
+
     @Volatile
     private var signalsReady = false
     private val requestId = AtomicInteger(0)
@@ -36,6 +37,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         ArrayBlockingQueue(1), { task -> Thread(task, "QuestCapabilityProbe") },
         ThreadPoolExecutor.DiscardOldestPolicy()
     )
+
     @Volatile
     private var graphicsSnapshot = "{\"observed\":false}"
     private val media = LocalVideoBridge(
@@ -113,8 +115,10 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
 
     @UsedByGodot
     fun cancel_photo_preview(id: Int) = photoPreviews.cancel(id)
+
     @UsedByGodot
     fun release_photo_preview(id: Int) = photoPreviews.release(id)
+
     @UsedByGodot
     fun preload_photo(uri: String): Int {
         if (closed.get()) return -1
@@ -236,6 +240,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
 
     @UsedByGodot
     fun add_mpv_subtitle(id: Int, uri: String): Boolean = !closed.get() && mpv.addSubtitle(id, uri)
+
     @UsedByGodot
     fun cancel_local_video_pick(id: Int) {
         if (!closed.get()) runOnHostThread { picker.cancel(id) }
@@ -308,6 +313,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
 
     @UsedByGodot
     fun mpv_supported(): Boolean = !closed.get() && mpv.supported()
+
     @UsedByGodot
     fun set_mpv_output_width(width: Int) {
         if (width in 0..8192) mpv.outputWidthCap = width
@@ -324,6 +330,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
 
     @UsedByGodot
     fun media_list_local(): Int = media_local_browse("")
+
     @UsedByGodot
     fun media_local_storage_settings(path: String): Int {
         if (closed.get()) return -1
@@ -342,6 +349,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
 
     @UsedByGodot
     fun media_photo_directory_cancel(id: Int) = sources.photoDirectoryCancel(id)
+
     @UsedByGodot
     fun media_cloud_page(path: String, offset: Int, refresh: Boolean): Int =
         if (closed.get()) -1 else sources.cloudBrowse(path, refresh, offset)
@@ -357,6 +365,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
 
     @UsedByGodot
     fun media_file_delete(json: String): Int = if (closed.get()) -1 else sources.deleteFile(json)
+
     @UsedByGodot
     fun media_file_rename_prepare(json: String): Int =
         if (closed.get()) -1 else sources.renameFile(json, true)
@@ -384,8 +393,10 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
 
     @UsedByGodot
     fun account_list(kind: String): String = if (closed.get()) "null" else accounts.accounts(kind)
+
     @UsedByGodot
     fun account_snapshot(id: Int): String = if (closed.get()) "{}" else accounts.snapshot(id)
+
     @UsedByGodot
     fun account_input(id: Int, field: String, action: String, text: String) {
         if (!closed.get()) accounts.input(id, field, action, text)
@@ -416,6 +427,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
 
     @UsedByGodot
     fun media_cloud_remove(id: String): Int = if (closed.get()) -1 else sources.cloudRemove(id)
+
     @UsedByGodot
     fun media_server_request(json: String): Int =
         if (closed.get()) -1 else sources.serverRequest(json)
@@ -433,26 +445,33 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
 
     @UsedByGodot
     fun media_dlna_discover(): Int = if (closed.get()) -1 else sources.dlnaDiscover()
+
     @UsedByGodot
     fun media_dlna_servers(): Int = if (closed.get()) -1 else sources.dlnaServers()
+
     @UsedByGodot
     fun media_dlna_save(json: String): Int = if (closed.get()) -1 else sources.dlnaSave(json)
+
     @UsedByGodot
     fun media_dlna_remove(id: String): Int = if (closed.get()) -1 else sources.dlnaRemove(id)
+
     @UsedByGodot
     fun media_dlna_browse(server: String, objectId: String): Int =
         if (closed.get()) -1 else sources.dlnaBrowse(server, objectId)
 
     @UsedByGodot
     fun media_smb_servers(): Int = if (closed.get()) -1 else sources.smbServers()
+
     @UsedByGodot
     fun media_smb_discover(): Int = if (closed.get()) -1 else sources.smbDiscover()
 
     /** {id?, name, host, domain, user, password}; an empty password keeps the saved one. */
     @UsedByGodot
     fun media_smb_save(json: String): Int = if (closed.get()) -1 else sources.smbSave(json)
+
     @UsedByGodot
     fun media_smb_remove(id: String): Int = if (closed.get()) -1 else sources.smbRemove(id)
+
     @UsedByGodot
     fun media_smb_browse(server: String, path: String): Int =
         if (closed.get()) -1 else sources.smbBrowse(server, path)
@@ -502,6 +521,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
 
     @UsedByGodot
     fun set_mpv_speed(id: Int, speed: Double): Boolean = !closed.get() && mpv.setSpeed(id, speed)
+
     @UsedByGodot
     fun set_mpv_subtitle(id: Int, trackId: Int): Boolean =
         !closed.get() && mpv.setSubtitle(id, trackId)
@@ -509,10 +529,6 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     @UsedByGodot
     fun get_mpv_subtitles(id: Int, afterSequence: Long): String =
         if (closed.get()) "" else mpv.subtitles(id, afterSequence)
-
-    @UsedByGodot
-    fun get_mpv_subtitle_bitmap(id: Int, version: Long): ByteArray =
-        if (closed.get()) ByteArray(0) else mpv.subtitleBitmap(id, version)
 
     @UsedByGodot
     fun claim_mpv_pair(id: Int, token: Long): String =
@@ -524,6 +540,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
 
     @UsedByGodot
     fun detach_mpv_pair(id: Int, token: Long): Boolean = mpv.detach(id, token)
+
     @UsedByGodot
     fun freeze_mpv_pair(id: Int, token: Long, request: Int): Boolean =
         !closed.get() && mpv.freeze(id, token, request)
@@ -535,10 +552,13 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
 
     @UsedByGodot
     fun retain_mpv_frozen_frame(id: Long): Boolean = !closed.get() && mpv.retainFrozen(id)
+
     @UsedByGodot
     fun pin_mpv_pair(id: Int, token: Long): Boolean = !closed.get() && mpv.pinPair(id, token)
+
     @UsedByGodot
     fun release_mpv_pair_pin(id: Int, token: Long): Boolean = mpv.unpinPair(id, token)
+
     @UsedByGodot
     fun close_mpv_video(id: Int) {
         mpv.close(id)

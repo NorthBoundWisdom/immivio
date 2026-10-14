@@ -131,7 +131,7 @@ def main():
         "state": "running",
         "apk_sha256": sha,
         "rows": [],
-        "scope": "Normal VR source-frame/Godot binding, excluding process boot before the open request and compositor; USB HTTP excludes real Wi-Fi/NAS/auth latency",
+        "scope": "Normal VR libmpv/Godot binding, excluding process boot before the open request and compositor; USB HTTP excludes real Wi-Fi/NAS/auth latency",
     }
     server = None
     options = device.run("shell", "getprop", "debug.vrpp.mpv.opts").strip()
@@ -235,9 +235,18 @@ def main():
                 )
                 if (
                     r["diagnostic_2d"]
-                    or not r["media"]["presentation_identity"]["source_pts_verified"]
+                    or r["media"]["presentation_identity"].get(
+                        "source_pts_verified", False
+                    )
+                    or r["media"]["presentation_identity"].get("source_ticket_origin")
+                    != "standard_libmpv_render"
+                    or not r["media"]["presentation_identity"].get(
+                        "source_ticket_valid", False
+                    )
                 ):
-                    raise RuntimeError("Not verified production VR playback")
+                    raise RuntimeError(
+                        "Not a completed production VR libmpv render transaction"
+                    )
                 stages = {t["stage"]: t for t in r["open_trace"]}
                 row = {
                     "cold_process": cold,

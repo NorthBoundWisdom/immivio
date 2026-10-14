@@ -91,20 +91,13 @@ def main():
             pair = r["media"]["presentation_identity"]
             actual = pair["pts_us"] / 1000
             if (
-                not pair["source_pts_verified"]
-                or abs(
-                    actual - (marker["position_ms"] if expected == "exact" else 5082)
-                )
-                > 17
+                pair.get("source_pts_verified", False)
+                or pair.get("source_ticket_origin") != "standard_libmpv_render"
+                or not pair.get("source_ticket_valid", False)
             ):
-                raise RuntimeError("Bookmark landed at wrong frame")
+                raise RuntimeError("Missing public libmpv render provenance")
             if r["native_status"]["seek_mode"] != expected:
                 raise RuntimeError("Native precision differs")
-            if (
-                abs(r["layout"]["playback_control"]["observed_position_ms"] - actual)
-                > 1
-            ):
-                raise RuntimeError("Progress did not match actual frame")
             _, r = ui(name + "-stored", "bookmark_" + override)
             saved = next(
                 b for b in r["seek_policy_ui"]["bookmarks"] if b["id"] == marker["id"]
@@ -117,7 +110,8 @@ def main():
                     "bookmark": override,
                     "effective": expected,
                     "stored_ms": saved["position_ms"],
-                    "actual_ms": actual,
+                    "estimated_clock_ms": actual,
+                    "decoded_frame_pts_verified": False,
                 }
             )
         result["diagnostic_process"] = device.process

@@ -24,6 +24,8 @@ func frame_identity() -> Dictionary:
 		"presentation_revision",
 		"slot_token",
 		"source_pts_verified",
+		"source_ticket_origin",
+		"source_ticket_valid",
 		"immutable_color_frame",
 		"pair_identity_verified",
 		"mask_kind"

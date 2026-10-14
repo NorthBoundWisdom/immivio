@@ -47,11 +47,9 @@ static func _integer(value: Variant, positive: bool = true) -> bool:
 
 static func timing_valid(pair: Dictionary) -> bool:
 	return (
-		pair.get("source_pts_verified", false) == true
-		or (
-			pair.get("source_ticket_origin", "") == "standard_libmpv_render"
-			and pair.get("source_ticket_valid", false) == true
-		)
+		pair.get("source_pts_verified", false) == false
+		and pair.get("source_ticket_origin", "") == "standard_libmpv_render"
+		and pair.get("source_ticket_valid", false) == true
 	)
 
 

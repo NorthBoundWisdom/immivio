@@ -1,5 +1,0 @@
-# Optional native-backend build environment; use compatible installed tools.
-meson
-Jinja2
-MarkupSafe
-packaging

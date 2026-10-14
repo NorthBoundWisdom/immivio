@@ -39,8 +39,8 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 - Start the architecture refactor: isolate retired-settings migration, remove dormant model-preheat/Alpha-FPS paths and unused inference JNI entry points, and preserve the current playback lease/fence contracts.
 
-- Simplify FreeCM management: keep OpenList and the OpenXR addon active, declare optional native sources at fixed commits with `disabled: true`, restore Gradle/Go manifests and use prepared host tools and Android libraries.
-- Retire superseded Windows test/package wrappers and the checked-in machine-specific mpv build receipt; retain device probes and optional native build recipes.
+- Simplify FreeCM management: keep OpenList and the OpenXR addon active, restore Gradle/Go manifests and use prepared host tools and Android libraries.
+- Retire superseded Windows test/package wrappers and the checked-in machine-specific mpv build receipt; retain device probes.
 
 - Rename the independently maintained project, application and build artifacts to Immivio; the repository is now `NorthBoundWisdom/immivio`. Retain ordinary-player app identity/signing compatibility.
 - Remove live AI depth, person matting, model preparation/training tools, inference libraries and AI-specific build jobs. Keep existing stereo/spatial media, ordinary photos and precomputed media masks.
@@ -53,7 +53,7 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 - Maintain this edition independently; retain the original license and history, and direct contributions/releases to NorthBoundWisdom.
 - Reimplement selected original 0.7.0 behaviors: persist explicit audio/subtitle choices per video (with metadata matching after track renumbering), and retain volume/mute across launches.
 - Double-tap the volume icon to toggle mute; keep existing single-tap controls. Muted volume uses a red icon.
-- Offer five text-caption palettes across flat and projected/vertical captions without recoloring PGS bitmaps. Show complete long library filenames in wrapped hover tips.
+- Offer five text-caption palettes across flat and projected/vertical captions. Show complete long library filenames in wrapped hover tips.
 - Add persisted 1–3-row photo walls with ordered groups, aspect-preserving cards and bounded vertical placement.
 - Retain DLNA subtitle links when metadata is incomplete, refresh from the containing directory and match by server object ID when resource URLs change. Identify playback HTTP requests as Thru3D rather than a generic libmpv client.
 - Add sustained-low-frame-rate fallback to our existing native menu compositor, retaining its scene/curved fallback and input mapping.
@@ -70,19 +70,19 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 - Added a persistent Reclining mode in General settings, off by default, allowing tilted flat-video screens and menus while keeping Follow independent.
 
-- Added a verified standard-libmpv backend and portable Android build entry point; documented its source-timing, PGS and Dolby metadata limits separately from the project mpv backend.
+- Added a verified standard-libmpv backend and portable Android build entry point; documented its source-timing, PGS and Dolby metadata limits.
 - Updated the color-grading regression to exercise subtitle distance through the current subtitle popup.
 
 ## 0.6.0 — 2026-10-11
 
-- Added native stereo HEIC/HEIF spatial photos and iPhone MOV/MV-HEVC spatial-video decoding, including supported person-Alpha passthrough. Output is sRGB; compatibility and performance depend on media and device.
+- Added native stereo HEIC/HEIF spatial photos. Output is sRGB; compatibility and performance depend on media and device.
 - Added side thumbnails, grouped Photo Wall and randomized Memory Fragments, with hand-driven overview browsing, expand/return placement and remembered layouts.
 - Improved large-photo loading feedback, asynchronous switching and stable photo placement.
 - Added one-button 3D/person preparation for selected ordinary flat photos, with 0%–200% depth strength and synchronized color/mask updates. Native stereo, panoramas and photo overviews retain their own presentation.
 - Added session-scoped head following for flat video, individual/portrait photos and menus; it starts disabled at launch.
 - Added a temporary environment-passthrough footer control, independent of media mode; person-Alpha playback keeps passthrough enabled.
 - Added stereo/left-eye/right-eye video views and saved per-video horizontal/vertical alignment corrections (±5%, 0.05% steps). Monocular views display the selected logical eye to both headset eyes.
-- Simplified menu closing/back controls, stopped treating every 2:1 video as VR180, and locked native spatial-video format to prevent repeated depth conversion.
+- Simplified menu closing/back controls, stopped treating every 2:1 video as VR180.
 - Updated portable signing validation and public-source export boundaries: caller-owned keys and identity metadata remain private, missing/mismatched keys stop packaging, and export state uses persistent storage.
 
 ## 0.5.2 — 2026-10-11
@@ -96,11 +96,9 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 ## 0.5.1 — 2026-10-11
 
 - Added Plex phone/computer pairing, library browsing and original-file playback, with improved LAN connection selection.
-- Corrected Dolby Vision Profile 5 green-tinted playback on compatible hardware; no blanket profile support, Dolby certification or native HDR claim.
-- Added embedded PGS bitmap subtitles for flat-screen video, including switching while paused. Immersive projections continue to use text subtitles.
 - Added 0.25×–3× playback speed, audio pitch correction and one-button return to 1×.
 - Reorganized Screen/Playback/Info settings. Added flat-screen distance, size and curvature controls, and −90°–90° picture rotation while subtitles stay upright.
-- Added 50%–200% text subtitle sizing, independent flat-video vertical position and filename guidance. Text controls do not change PGS layout.
+- Added 50%–200% text subtitle sizing, independent flat-video vertical position and filename guidance.
 - Improved modification-time sorting with folders first for local/SMB/cloud libraries, and ascending/descending DLNA name sorting.
 - Fixed screen percentages and slider positions, straightened settings panels, and placed conditional speed/rotation resets beside their sliders.
 

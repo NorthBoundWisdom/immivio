@@ -56,14 +56,14 @@ def check():
     ):
         if not path.exists():
             raise RuntimeError(f"Preinstall Android SDK component: {path}")
-    player.standard_mpv_libraries()
+    player.mpv_libraries()
     print(
         json.dumps(
             {
                 **tools,
                 "sdk": str(sdk),
                 "android_components": player.sdk_tools(env),
-                "mpv": str(player.standard_mpv_directory()),
+                "mpv": str(player.mpv_directory()),
                 "observed_versions": versions,
             },
             indent=2,

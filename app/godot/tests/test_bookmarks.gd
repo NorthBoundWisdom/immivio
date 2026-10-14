@@ -287,7 +287,12 @@ func _run() -> void:
 	video._bookmark_metadata = {"basename": "movie.mp4", "size": 5000000}
 	video._bookmark_resolve()
 	video._binding.ticket = {
-		"session_id": 7, "generation": 3, "pts_us": 12345000, "source_pts_verified": true
+		"session_id": 7,
+		"generation": 3,
+		"pts_us": 12345000,
+		"source_pts_verified": false,
+		"source_ticket_origin": "standard_libmpv_render",
+		"source_ticket_valid": true
 	}
 	check(
 		video.bookmark_snapshot().position_ms == 12345,

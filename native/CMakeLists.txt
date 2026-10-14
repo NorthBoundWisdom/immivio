@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 project(Immivio LANGUAGES C CXX)
 
-option(QUEST_STANDARD_MPV "Use the public libmpv render API" ON)
-
 # Reusable, platform-independent headers also belong to the host test graph.
 add_subdirectory(mpv)
 

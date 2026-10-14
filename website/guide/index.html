@@ -314,13 +314,12 @@
           <p>
             Photos can be viewed individually, with side previews, on a photo
             wall or as memory fragments. The development build supports 1–3 wall
-            rows. Supported HEIC/HEIF spatial photos and MV-HEVC spatial videos
-            can retain their stereo views, depending on the build backend and
-            source.
+            rows. Supported HEIC/HEIF spatial photos retain their stereo views.
+            MV-HEVC dual-view video playback has not been validated.
           </p>
           <p>
             Immivio displays existing stereo content and does not generate 3D
-            from 2D. Spatial decoding depends on the backend and source format.
+            from 2D. Photo decoding depends on the Android device and source format.
           </p>
         </section>
         <section id="troubleshooting">
@@ -340,8 +339,8 @@
           <h3>Missing subtitles</h3>
           <p>
             Check that a track is selected and any external file is still
-            accessible. PGS support varies with the APK; check its release notes
-            or try SRT, ASS, SSA or VTT text subtitles.
+            accessible. Use SRT, ASS, SSA or VTT text subtitles; bitmap subtitle
+            tracks are not offered.
           </p>
           <h3>Report an issue</h3>
           <p>

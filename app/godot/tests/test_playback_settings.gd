@@ -73,11 +73,7 @@ func _run() -> void:
 	video.media.format = {"width": 1920, "height": 1080}
 	video.media.playback = {
 		"details":
-		{
-			"pgs_supported": true,
-			"subtitle_tracks":
-			[{"id": 1, "codec": "subrip"}, {"id": 2, "codec": "hdmv_pgs_subtitle"}]
-		}
+		{"subtitle_tracks": [{"id": 1, "codec": "subrip"}, {"id": 2, "codec": "hdmv_pgs_subtitle"}]}
 	}
 	video.flat_pose = Transform3D(Basis(), Vector3(0, 1.6, -2))
 	video._apply_geometry()
@@ -182,12 +178,6 @@ func _run() -> void:
 		),
 		"CC retains size, position and external-file guidance"
 	)
-	video.subtitles.select(2)
-	menu.refresh()
-	check(menu.choices.sliders.is_empty(), "PGS preserves source layout and hides text controls")
-	video.subtitles.select(1)
-	menu.refresh()
-	check(menu.choices.sliders.size() == 2, "Text controls return despite PGS also being listed")
 	menu.free()
 	video.free()
 	main.free()

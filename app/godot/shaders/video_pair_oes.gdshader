@@ -24,7 +24,6 @@ uniform float depth_convergence = 0.35;
 // "_FISHEYE_F180_alpha"): the mask is part of the color image itself; no model
 // runs. packed_size is in the include.
 uniform bool packed_alpha = false;
-#include "res://shaders/bitmap_subtitles.gdshaderinc"
 #include "res://shaders/projected_subtitles.gdshaderinc"
 #include "res://shaders/sharpness.gdshaderinc"
 #include "res://shaders/video_coordinates.gdshaderinc"
@@ -192,9 +191,6 @@ void fragment() {
   if (!separate_subtitles) {
     vec4 composed = caption_composite(
         ALBEDO, ALPHA, projected_caption(media_direction, eye_index));
-    composed = caption_composite(
-        composed.rgb, composed.a,
-        bitmap_caption(raw_eye_uv(eye_uv(UV, media_direction))));
     ALBEDO = composed.rgb;
     ALPHA = composed.a;
   }

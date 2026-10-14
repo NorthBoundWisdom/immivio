@@ -637,7 +637,6 @@ func _menu_state() -> Dictionary:
 		"geometry": host.video.geometry,
 		"profile": host.video.profile,
 		"mode_lock": host.video.mode_lock,
-		"spatial_video": host.video.is_spatial_video(),
 		"audio_available": details.get("audio_tracks", []).size() > 0,
 		"audio_options": audio_options,
 		"audio_track_id": host.video.audio_track_id,

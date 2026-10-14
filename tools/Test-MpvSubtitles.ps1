@@ -8,7 +8,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Native host test configuration failed.' }
 & cmake --build $build --config Release
 if ($LASTEXITCODE -ne 0) { throw 'Native host test compilation failed.' }
 & ctest --test-dir $build -C Release --output-on-failure
-if ($LASTEXITCODE -ne 0) { throw 'Native JSON/PGS/seek trace checks failed.' }
+if ($LASTEXITCODE -ne 0) { throw 'Native JSON/seek trace checks failed.' }
 & python "$workspace\tests\native\verify_mpv_json.py" --executable "$build\tests\Release\mpv_json_oracle.exe" --output "$output\json"
 if ($LASTEXITCODE -ne 0) { throw 'Independent native JSON oracle failed.' }
 & python "$workspace\tools\media\generate_mp06_subtitle_fixture.py"
@@ -36,16 +36,4 @@ $log = (Get-Content $stdout -Raw) + (Get-Content $stderr -Raw)
 if ($log -match '(?m)^(SCRIPT ERROR:|SHADER ERROR:|ERROR:)') { throw 'Projected subtitle renderer reported errors.' }
 $render = Get-Content (Join-Path $env:PROJECTED_SUBTITLE_OUTPUT 'verification.json') -Raw | ConvertFrom-Json
 if ($render.state -ne 'passed' -or $render.samples.Count -ne 24 -or $render.motion_samples.Count -ne 36) { throw 'Projected caption pixel evidence incomplete.' }
-$arguments[-1] = 'res://tests/render_bitmap_subtitles.gd'
-$stdout = Join-Path $workspace 'build\output\logs\bitmap-subtitles-render.log'
-$stderr = Join-Path $workspace 'build\output\logs\bitmap-subtitles-render-errors.log'
-$process = Start-Process -FilePath $env:GODOT_EXE -ArgumentList $arguments -WindowStyle Hidden -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
-if (-not $process.WaitForExit(60000)) { throw "PGS renderer remains active (PID $($process.Id)); inspect before retrying." }
-if ($process.ExitCode -ne 0) { throw 'PGS shader rendering failed.' }
-$log = (Get-Content $stdout -Raw) + (Get-Content $stderr -Raw)
-if ($log -match '(?m)^(SCRIPT ERROR:|SHADER ERROR:|ERROR:)') { throw 'PGS renderer reported errors.' }
-$render = Get-Content (Join-Path $env:QUEST_SUBTITLE_PREVIEW_DIR 'pgs-render-verification.json') -Raw | ConvertFrom-Json
-if ($render.state -ne 'passed' -or $render.pixel_fetches -ne 1 -or $render.white_pixels.normal -lt 100 -or
-    $render.white_pixels.alpha_zero -lt 100 -or $render.white_pixels.gap -ne 0 -or $render.white_pixels.vr -ne 0 -or
-    $render.white_pixels.off -ne 0) { throw 'PGS caption pixel evidence incomplete.' }
-Write-Output 'MPV subtitle native JSON/PGS pixels/fixture mux/flat and immersive text/flat PGS rendering checks passed.'
+Write-Output 'MPV subtitle JSON/seek/fixture and text rendering checks passed.'

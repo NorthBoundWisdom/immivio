@@ -285,7 +285,6 @@ func _run() -> void:
 	var caption_local: Transform3D = (
 		main.video.subtitle_transform().affine_inverse() * main.video.caption.global_transform
 	)
-	main.video.material.set_shader_parameter("bitmap_subtitle_enabled", true)
 	main.video._sync_subtitle_surface()
 	for pose in [
 		Transform3D(Basis.from_euler(Vector3(0, 0, 0)), Vector3(0, 1.6, 0)),
@@ -312,10 +311,8 @@ func _run() -> void:
 			"Flat text subtitle follows its screen"
 		)
 		check(
-			main.video._subtitle_surface.global_transform.is_equal_approx(
-				main.video.subtitle_transform()
-			),
-			"Rotated content's separate subtitle surface follows"
+			not main.video._subtitle_surface.visible,
+			"Flat captions use their independently placed Label3D"
 		)
 		check(
 			(

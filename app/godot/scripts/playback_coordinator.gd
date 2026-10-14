@@ -263,8 +263,6 @@ func _on_menu_action(operation: String) -> void:
 	if host.photo_active:
 		host._on_photo_action(operation)
 		return
-	if host.video and not host.video.mode_action_allowed(operation):
-		return
 	match operation:
 		"open_file":
 			host._show_recent_menu()

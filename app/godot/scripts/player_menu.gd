@@ -575,12 +575,7 @@ func _draw_bar() -> void:
 	var has_video: bool = _state.get("has_video", false)
 	var controls := [
 		{"target": 110, "icon": "subtitle", "tip": "Subtitles", "enabled": _enabled("subtitles")},
-		{
-			"target": MODE,
-			"icon": "view_mode",
-			"tip": "Video mode",
-			"enabled": has_video and not _state.get("spatial_video", false)
-		},
+		{"target": MODE, "icon": "view_mode", "tip": "Video mode", "enabled": has_video},
 		{"target": QUICK_SPEED, "icon": "time", "tip": "Playback speed", "enabled": has_video},
 		{"target": QUICK_COLOR, "icon": "adjust", "tip": "Color grading", "enabled": has_video},
 		{"target": IPD_SETTINGS, "icon": "eyes", "tip": "IPD", "enabled": _enabled("stereo_view")},
@@ -645,9 +640,6 @@ func _draw_bar() -> void:
 		false,
 		I18n.t("Close video" if has_video else "Library")
 	)
-	if _state.get("spatial_video", false):
-		_mode_open = false
-		_close_depth_slider()
 	if _quick_open == "ipd" and not _enabled("stereo_view"):
 		_quick_open = ""
 	_bar_drawn = _bar_key()
@@ -722,22 +714,13 @@ func _subtitle_label(track: Dictionary) -> String:
 		title = str(track.get("language", "")).strip_edges()
 	if title.is_empty():
 		title = I18n.t("Subtitles") + " %d" % int(track.id)
-	var codec := (
-		str(track.get("codec", ""))
-		. to_upper()
-		. replace("SUBRIP", "SRT")
-		. replace("WEBVTT", "VTT")
-		. replace("HDMV_PGS_SUBTITLE", "PGS")
+	var codec := str(track.get("codec", "")).to_upper().replace("SUBRIP", "SRT").replace(
+		"WEBVTT", "VTT"
 	)
 	return _fit_title(title.replace("\n", " "), " · " + codec, 0.76, 20)
 
 
 func _subtitle_controls() -> Array:
-	var pgs := _subtitle_tracks().any(
-		func(track): return ( int(track.id) == int(_state.get("subtitle_track", 0)) and str(track.get("codec", "")) == "hdmv_pgs_subtitle" )
-	)
-	if pgs:
-		return []
 	var rows: Array = []
 	if _immersive_subtitles():
 		rows.append(
@@ -1144,7 +1127,6 @@ func _bar_key() -> String:
 			_state.get("clone_voice", false),
 			_state.get("geometry", 0),
 			_state.get("has_video", false),
-			_state.get("spatial_video", false),
 			_state.get("stereo", false),
 			false,
 			_state.get("source_uri", ""),
@@ -1180,13 +1162,12 @@ func _supports_half_layouts() -> bool:
 func _draw_modes() -> void:
 	_lit_modes = {}
 	var half_choices := _supports_half_layouts()
-	var fixed := bool(_state.get("spatial_video", false))
 	var lock: Dictionary = _state.get("mode_lock", {})
 	var locked := {}
-	if not fixed and not lock.is_empty():
+	if not lock.is_empty():
 		locked[MODE_PROJECTION + int(lock.geometry)] = true
 		locked[MODE_STEREO + (3 if lock.depth and not half_choices else [0, 1, 4, 5, 6][int(lock.layout)])] = true
-	var fisheye := not fixed and int(_state.get("geometry", 0)) == 2
+	var fisheye := int(_state.get("geometry", 0)) == 2
 	# The lens row sits under the layouts: the panel rises to clear the floating round buttons.
 	var top := 0.61 if fisheye else 0.47
 	if half_choices:
@@ -1196,28 +1177,11 @@ func _draw_modes() -> void:
 	var centre_y := (
 		(0.44 if fisheye else 0.385) if half_choices else top - (0.07 if fisheye else 0.0)
 	)
-	if fixed:
-		height += 0.08
-		centre_y += 0.04
 	var panel := _quad(Vector2(1.06, height), Vector3(0, centre_y, 0.001), Color(PANEL, 0.94), 10)
 	panel.material_override.set_shader_parameter("corner_radius", 0.04)
 	add_child(panel)
 	_decorations.append(panel)
-	if fixed:
-		var badge := _label(
-			I18n.t("Spatial video") + " · MV-HEVC", Vector3(-0.48, top + 0.185, 0.006), 19
-		)
-		badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-		badge.modulate = ACCENT
-		var reason := _label(I18n.t("Mode fixed"), Vector3(0.48, top + 0.185, 0.006), 17)
-		reason.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		reason.modulate = MUTED
-		var reason_width := (
-			ui_font().get_string_size(reason.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 17).x
-			* reason.pixel_size
-		)
-		_icon("lock", Vector3(0.48 - reason_width - 0.025, top + 0.185, 0.006), 0.028, MUTED)
-	var projection := 0 if fixed else int(_state.get("geometry", 0))
+	var projection := int(_state.get("geometry", 0))
 	var names := ["Flat", "180°", "Fisheye", "360°"]
 	var icons := ["screen", "dome", "fisheye", "panorama"]
 	var projection_order := [0, 1, 3, 2]
@@ -1229,31 +1193,31 @@ func _draw_modes() -> void:
 			icons[g],
 			Vector2(-0.3 + column * 0.2, top + 0.075),
 			projection == g,
-			not fixed
+			true
 		)
-	var stereo: bool = fixed or _state.get("stereo", false)
+	var stereo: bool = _state.get("stereo", false)
 	var depth: bool = _state.get("depth_requested", false)
 	var tb: bool = stereo and _state.get("top_bottom", false)
 	var half_layout: bool = stereo and _state.get("stereo_half", false)
 	var layouts_y := top - (0.04 if half_choices else 0.09)
 	_mode_tile(
-		MODE_STEREO, "2D", "screen", Vector2(-0.4, layouts_y), not stereo and not depth, not fixed
+		MODE_STEREO, "2D", "screen", Vector2(-0.4, layouts_y), not stereo and not depth, true
 	)
 	_mode_tile(
 		MODE_STEREO + 1,
-		I18n.t("Native 3D" if fixed else "3D SBS"),
+		I18n.t("3D SBS"),
 		"stereo",
 		Vector2(-0.2, layouts_y),
-		fixed or (stereo and not tb and not half_layout),
-		not fixed
+		stereo and not tb and not half_layout,
+		true
 	)
 	_mode_tile(
 		MODE_STEREO + 4,
 		I18n.t("3D TB"),
 		"stacked",
 		Vector2(0.2 if half_choices else 0, layouts_y),
-		not fixed and tb and not half_layout,
-		not fixed
+		tb and not half_layout,
+		true
 	)
 	if half_choices:
 		_mode_tile(
@@ -1261,16 +1225,16 @@ func _draw_modes() -> void:
 			I18n.t("Half SBS"),
 			"stereo",
 			Vector2(0, layouts_y),
-			not fixed and stereo and not tb and half_layout,
-			not fixed
+			stereo and not tb and half_layout,
+			true
 		)
 		_mode_tile(
 			MODE_STEREO + 6,
 			I18n.t("Half TB"),
 			"stacked",
 			Vector2(0.4, layouts_y),
-			not fixed and tb and half_layout,
-			not fixed
+			tb and half_layout,
+			true
 		)
 	var controls_y := top - (0.15 if half_choices else 0.09)
 	# Photos retain their existing controls; video depth is on the bar, eye order in Settings.
@@ -1515,25 +1479,6 @@ func _activate(target: int) -> void:
 		_quick_open = ""
 		choices.reset()
 		refresh()
-	if (
-		_state.get("spatial_video", false)
-		and (
-			target in range(MODE_PROJECTION, MODE_PROJECTION + 4)
-			or (
-				target
-				in [
-					MODE_STEREO,
-					MODE_STEREO + 1,
-					MODE_STEREO + 3,
-					MODE_STEREO + 4,
-					MODE_STEREO + 5,
-					MODE_STEREO + 6
-				]
-			)
-			or target in range(MODE_LENS, MODE_LENS + LENS_FOVS.size())
-		)
-	):
-		return
 	bookmarks.opened = false
 	if _subtitle_open:
 		if target in [SUBTITLE_UP, SUBTITLE_DOWN]:
@@ -1699,7 +1644,7 @@ func _enabled(operation: String) -> bool:
 			return (
 				(false or _state.get("packed_file", false))
 				and has_video
-				and (_state.get("spatial_video", false) or int(_state.get("geometry", 0)) in [1, 2])
+				and int(_state.get("geometry", 0)) in [1, 2]
 			)
 		"eyes", "stereo_view":
 			return has_video and _state.get("stereo", false)
@@ -1711,7 +1656,6 @@ func _enabled(operation: String) -> bool:
 			return (
 				false
 				and has_video
-				and not _state.get("spatial_video", false)
 				and int(_state.get("geometry", 0)) == 0
 				and not _state.get("stereo", false)
 			)

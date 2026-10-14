@@ -2,7 +2,7 @@
 
 This directory retains upstream license texts, source locks, checksums and provenance. The application's overall GPL v3 choice does not replace these components' existing terms. See [licensing scope](../docs/LICENSING.md) for the component inventory and binary-release requirements.
 
-- `mpv`: headers/provenance, supported Android library checksums, historical source identity for optional backend receipts, and GPL/LGPL texts. The project's source-frame modification is in `native/mpv/patches`.
+- `mpv`: upstream headers, Android release provenance, library checksums and GPL/LGPL texts.
 - `p115rsacipher`: original MIT notice and provenance for the Kotlin 115 RSA adaptation.
 - `gradle`: Apache-2.0 license text used by the dependency-license maintenance tool; the Gradle wrapper implementation has been retired.
 - `polyhaven`: CC0 source and attribution for the unmodified built-in background.
@@ -14,4 +14,4 @@ The repository includes only synthetic test media. Private human-video fixtures 
 
 The CodeLibs JCIFS jar is staged by Gradle with unused HTTP/HTTPS NTLM adapters removed. Retained classes/resources keep upstream bytes and notices; SMB functions remain available. The combined binary OpenList obligations are recorded in the licensing scope above.
 
-FreeCM source commits and addon checksums live in `source_roots.lock.jsonc.in`; optional native source entries are disabled by default. Gradle versions, locks and verification metadata live under `android/`; Go modules are pinned in `cloud/openlist/go.mod` and `go.sum`. Host tools and large Android media libraries are prepared separately. `third_party/mpv/manifest.json` verifies the supplied Android libraries, while `source-lock.json` preserves the identity expected by private-backend receipts. See [BUILD.md](../docs/BUILD.md).
+FreeCM source commits and addon checksums live in `source_roots.lock.jsonc.in`. Gradle versions, locks and verification metadata live under `android/`; Go modules are pinned in `cloud/openlist/go.mod` and `go.sum`. Host tools and large Android media libraries are prepared separately. `third_party/mpv/manifest.json` verifies the supplied Android libraries. See [BUILD.md](../docs/BUILD.md).

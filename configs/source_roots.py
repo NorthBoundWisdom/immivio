@@ -22,40 +22,13 @@ workflow = bind_dependency_root_workflow(
     DependencyRootConfig(
         repo_root=REPO_ROOT,
         repo_display_name="Immivio",
-        dependency_root_specs=tuple(
+        dependency_root_specs=(
             DependencyRootSpec(
-                name,
-                name,
-                name.upper() + "_SOURCE_ROOT",
-                (
-                    ("go.mod", "go.sum", "internal/model/storage.go", "LICENSE")
-                    if name == "OpenList"
-                    else ()
-                ),
-            )
-            for name in (
                 "OpenList",
-                "MbedTLS",
-                "FreeType",
-                "FriBidi",
-                "HarfBuzz",
-                "Libunibreak",
-                "Libxml2",
-                "Fontconfig",
-                "Curl",
-                "Dav1d",
-                "FFmpeg",
-                "Libass",
-                "Libplacebo",
-                "Mpv",
-                "FastFloat",
-                "Glad",
-                "GodotOpenXRHands",
-                "Lua",
-                "MpvAndroidSource",
-                "MbedTLSFramework",
-                "FreeTypeDlg",
-            )
+                "OpenList",
+                "OPENLIST_SOURCE_ROOT",
+                ("go.mod", "go.sum", "internal/model/storage.go", "LICENSE"),
+            ),
         ),
         default_required_relative_paths=(),
     ),

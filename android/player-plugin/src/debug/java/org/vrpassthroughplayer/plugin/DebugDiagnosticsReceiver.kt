@@ -104,15 +104,6 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                             context.applicationContext,
                             intent.getStringExtra("case") ?: "unicode"
                         )
-                    } else if (intent.action == "${context.packageName}.DEBUG_MPV_DOLBY") {
-                        MpvDolbyDiagnostics.request(
-                            context.applicationContext,
-                            intent.getStringExtra("fixture") ?: "dovi_profile5.mkv",
-                            intent.getBooleanExtra("direct", false),
-                            intent.getBooleanExtra("audio", false),
-                            intent.getBooleanExtra("hardware", true),
-                            intent.getBooleanExtra("pixels_only", false)
-                        )
                     } else if (intent.action == "${context.packageName}.DEBUG_MPV_URI") {
                         MpvDiagnostics.requestExternal(context.applicationContext)
                     } else if (intent.action == "${context.packageName}.DEBUG_MPV_AUDIO") {
@@ -122,18 +113,15 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                         )
                     } else if (intent.action in setOf(
                             "${context.packageName}.DEBUG_MPV_CORE",
-                            "${context.packageName}.DEBUG_MPV_GPU",
-                            "${context.packageName}.DEBUG_MPV_SOURCE"
+                            "${context.packageName}.DEBUG_MPV_GPU"
                         )
                     ) {
-                        val sourceFrame = intent.action!!.endsWith("_SOURCE")
                         MpvDiagnostics.request(
                             context.applicationContext,
-                            if (sourceFrame) "mp03_frame_identity" else intent.getStringExtra("fixture")
+                            intent.getStringExtra("fixture")
                                 ?: "c03_sbs_grid",
                             gpu = !intent.action!!.endsWith("_CORE"),
-                            hardware = intent.getBooleanExtra("hardware", false),
-                            sourceFrame = sourceFrame
+                            hardware = intent.getBooleanExtra("hardware", false)
                         )
                     } else {
                         val plugin = DiagnosticRequests.current()

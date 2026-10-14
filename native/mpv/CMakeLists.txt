@@ -18,28 +18,23 @@ if(NOT EXISTS "${MPV_LIB_DIR}/libmpv.so")
       "Run configs/android_workflow.py configure to stage the locked mpv libraries"
   )
 endif()
-add_library(mpv_candidate SHARED IMPORTED)
-set_target_properties(mpv_candidate PROPERTIES IMPORTED_LOCATION
-                                               "${MPV_LIB_DIR}/libmpv.so")
-add_library(avcodec_candidate SHARED IMPORTED)
-set_target_properties(
-  avcodec_candidate PROPERTIES IMPORTED_LOCATION "${MPV_LIB_DIR}/libavcodec.so")
+add_library(mpv_runtime SHARED IMPORTED)
+set_target_properties(mpv_runtime PROPERTIES IMPORTED_LOCATION
+                                             "${MPV_LIB_DIR}/libmpv.so")
+add_library(avcodec_runtime SHARED IMPORTED)
+set_target_properties(avcodec_runtime PROPERTIES IMPORTED_LOCATION
+                                                 "${MPV_LIB_DIR}/libavcodec.so")
 add_library(quest_mpv SHARED src/mpv_core_probe.cpp src/mpv_gpu_probe.cpp
                              src/mpv_source.cpp)
 target_compile_features(quest_mpv PRIVATE cxx_std_17)
-target_compile_definitions(
-  quest_mpv PRIVATE QUEST_STANDARD_MPV=$<BOOL:${QUEST_STANDARD_MPV}>)
 target_compile_options(quest_mpv PRIVATE -Wall -Wextra -Werror)
 target_link_libraries(
   quest_mpv
-  PRIVATE mpv_candidate
+  PRIVATE mpv_runtime
           Immivio::MpvHeaders
-          avcodec_candidate
+          avcodec_runtime
           log
-          android
           EGL
           GLESv3
-          dl
-          nativewindow
-          mediandk)
+          dl)
 target_link_options(quest_mpv PRIVATE "-Wl,-z,max-page-size=16384")

@@ -16,7 +16,7 @@ Opening or explicitly recentering the file browser places its stable layout enve
 
 `MpvVideoBridge.kt` coordinates MPV sessions, audio focus and frame delivery. `PlaybackHost` holds decoder lifetime, `PlaybackSourceResources` owns FD/network/subtitle resources, and `PlaybackDisplayLeases` holds consumer GL leases under the session lock. `native/mpv/src/mpv_source.cpp` owns decoding/render transactions, source epochs, seeks and EOF. `native/render-bridge` manages GPU resources and fences; source buffers cannot be reused before the last consumer releases ownership.
 
-The standard backend provides playback-clock estimates rather than verified source-image PTS. The optional verified project backend exposes additional private source/PGS/spatial contracts. Both work without an inference runtime. Existing SBS/TB, projection, eye alignment, subtitles, playback speed and precomputed mask data remain media/rendering features.
+The player provides playback-clock estimates rather than verified source-image PTS. It uses the public libmpv render API. Existing SBS/TB, projection, eye alignment, subtitles, playback speed and precomputed mask data remain media/rendering features.
 
 Per-video track intent is stored in the existing checksummed mode store. Track metadata guards against ID reuse; stale-session reports cannot restore another source's choices. Global sound preferences are coalesced and flushed on suspend/close. Timing corrections and playback queues remain independent of track selection.
 
@@ -38,9 +38,9 @@ The MNN/ncnn runtime, RVM matting, monocular depth, photo conversion/portrait jo
 
 ## Native source and test layout
 
-Each module under `native/` owns its CMake target and keeps implementation files in `src/`. Render bridge headers describe internal GL resources and remain beside its implementation; they are not a public test API. Reusable MPV helpers live under `native/mpv/include/immivio/mpv/` and are consumed as `<immivio/mpv/...>` through the `Immivio::MpvHeaders` target. Upstream libmpv headers and project backend ABI extensions remain under `native/mpv/include/mpv/`; optional backend patches and maintenance inputs stay in their existing directories.
+Each module under `native/` owns its CMake target and keeps implementation files in `src/`. Render bridge headers describe internal GL resources and remain beside its implementation; they are not a public test API. Reusable MPV helpers live under `native/mpv/include/immivio/mpv/` and are consumed as `<immivio/mpv/...>` through the `Immivio::MpvHeaders` target. Upstream libmpv headers remain under `native/mpv/include/mpv/` with their original notices.
 
-`tests/native/` owns native regression executables and their verification scripts. The host CMake graph builds JSON, PGS bitmap and seek trace tests without JNI, Android SDK libraries or a prepared libmpv binary. Android builds use the same helper target and build the three production shared libraries. Cross-directory dependencies use target include directories and linked targets; source files never include another `.cpp` file.
+`tests/native/` owns native regression executables and their verification scripts. The host CMake graph builds JSON and seek trace tests without JNI, Android SDK libraries or a prepared libmpv binary. Android builds use the same helper target and build the three production shared libraries. Cross-directory dependencies use target include directories and linked targets; source files never include another `.cpp` file.
 
 The old `photo_stereo_gpu_probe.cpp` referenced removed `PhotoEgl`/`photo_stereo` conversion entry points and has been retired with that subsystem. Current photo and native stereo checks remain in the Godot tests and supported device probes.
 

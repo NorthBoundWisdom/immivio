@@ -15,8 +15,6 @@ var _last_seek_mode := SeekPolicy.DEFAULT
 const Log := preload("res://scripts/diagnostic_log.gd")
 const PixelProbe := preload("res://scripts/mpv_pixel_probe.gd")
 const SubtitleState := preload("res://scripts/mpv_subtitle_state.gd")
-const BitmapSubtitles := preload("res://scripts/bitmap_subtitles.gd")
-var bitmap_subtitles := BitmapSubtitles.new()
 const ModeMemory := preload("res://scripts/file_mode_memory.gd")
 const StereoView := preload("res://scripts/stereo_view.gd")
 var viewing_eye := 0  # 0 binocular; 1/2 duplicate the logical left/right view after eye swap.
@@ -36,7 +34,6 @@ const AUTOMATIC_PROFILE := "320x320"
 const PROFILES := ["320x320", "384x216", "512x288", "384x384", "512x512", "256x144", "256x256"]
 
 var media := State.new()
-var _spatial_video := false  # Source type survives seek/effect session generations.
 var control := PlaybackControl.new()
 var platform: Object
 var alpha_encoding := 1
@@ -607,7 +604,6 @@ func open_local(
 	_clone_applied = false
 	subtitles.select(0)
 	subtitles.clear(true)
-	bitmap_subtitles.clear(material)
 	if _subtitle_surface:
 		_subtitle_surface.visible = false
 	reset_view()  # every video starts straight ahead at its natural size
@@ -653,8 +649,6 @@ func close_video() -> void:
 	stereo_horizontal = 0.0
 	stereo_vertical = 0.0
 	_apply_stereo_view()
-	_spatial_video = false
-	media.format.erase("spatial_video")
 	_bookmark_scope_sequence += 1
 	_bookmark_media_id = ""
 	_bookmark_metadata.clear()
@@ -688,7 +682,6 @@ func close_video() -> void:
 	depth_requested = false
 	set_corner_hover(-1)
 	subtitles.clear(true)
-	bitmap_subtitles.clear(material)
 	if _subtitle_surface:
 		_subtitle_surface.visible = false
 	changed.emit()
@@ -758,7 +751,6 @@ func _request_revision(position_ms: int = -1, mode: String = "") -> void:
 	platform.set_mpv_playing(media.session_id, false)
 	_waiting_first = true
 	subtitles.clear()
-	bitmap_subtitles.clear(material)
 	if _subtitle_surface:
 		_subtitle_surface.visible = false
 	if caption:
@@ -1045,7 +1037,6 @@ func set_sync_delay(key: String, value: float) -> bool:
 	subtitle_delay_ms = sub
 	audio_delay_ms = audio
 	subtitles.clear()
-	bitmap_subtitles.clear(material)
 	changed.emit()
 	return true
 
@@ -1302,7 +1293,6 @@ func set_subtitle_track(track_id: int, remember: bool = true) -> bool:
 	subtitles.select(track_id)
 	if remember:
 		_remember_track("subtitle", track_id)
-	bitmap_subtitles.clear(material)
 	if _subtitle_surface:
 		_subtitle_surface.visible = false
 	if caption:
@@ -1320,11 +1310,7 @@ func subtitle_tracks() -> Array[Dictionary]:
 		if (
 			track is Dictionary
 			and int(track.get("id", 0)) > 0
-			and SubtitleState.supported_codec(
-				str(track.get("codec", "")),
-				geometry == Geometry.Geometry.FLAT,
-				bool(details.get("pgs_supported", false))
-			)
+			and SubtitleState.text_codec(str(track.get("codec", "")))
 		):
 			tracks.append(track)
 	return tracks
@@ -1355,7 +1341,6 @@ func _poll_subtitles() -> void:
 	if not ready:
 		caption.visible = false
 		projected_subtitles.clear(material)
-		bitmap_subtitles.clear(material)
 		if _subtitle_surface:
 			_subtitle_surface.visible = false
 		return
@@ -1371,18 +1356,6 @@ func _poll_subtitles() -> void:
 			_subtitle_received_ms = now
 	if now - _subtitle_received_ms > 1000:
 		subtitles.clear()
-	if geometry == Geometry.Geometry.FLAT and not subtitles.bitmap.is_empty():
-		var handle := int(subtitles.cue.get("mpv_source_handle", 0))
-		var pixels := PackedByteArray()
-		if bitmap_subtitles.needs_pixels(subtitles.bitmap, handle):
-			pixels = platform.get_mpv_subtitle_bitmap(
-				media.session_id, int(subtitles.bitmap.version)
-			)
-		bitmap_subtitles.apply(material, subtitles.bitmap, handle, pixels)
-	else:
-		bitmap_subtitles.clear(material)
-		if _subtitle_surface:
-			_subtitle_surface.visible = false
 	caption.text = subtitles.text
 	caption.visible = not subtitles.text.is_empty()
 	if caption.visible:
@@ -1441,22 +1414,6 @@ func seek_relative(delta_ms: int) -> bool:
 	return true
 
 
-## A decoded source type, retained until the file is closed.
-func is_spatial_video() -> bool:
-	return _spatial_video
-
-
-func mode_action_allowed(operation: String) -> bool:
-	if not is_spatial_video():
-		return true
-	return (
-		operation not in ["stereo", "projection", "lock_mode", "depth", "depth_strength"]
-		and not operation.begins_with("stereo_")
-		and not operation.begins_with("projection_")
-		and not operation.begins_with("fov_")
-	)
-
-
 ## The current projection and layout as a lock.
 func current_lock() -> Dictionary:
 	return {
@@ -1469,8 +1426,6 @@ func current_lock() -> Dictionary:
 
 ## Locks the current mode, or unlocks when it is the locked one.
 func toggle_mode_lock() -> void:
-	if is_spatial_video():
-		return
 	var current := current_lock()
 	mode_lock = {} if mode_lock == current else current
 	mode_lock_changed.emit(mode_lock.duplicate())
@@ -1513,8 +1468,6 @@ func toggle_stereo() -> void:
 
 ## 0 mono, 1 full SBS, 2 full TB, 3 half SBS, 4 half TB.
 func set_stereo_layout(layout: int) -> void:
-	if is_spatial_video():
-		return
 	if layout < 0 or layout > 4 or layout == stereo_layout():
 		return
 	_unlock_mode()
@@ -1545,8 +1498,6 @@ func stereo_layout() -> int:
 
 
 func set_fisheye_fov(value: int) -> void:
-	if is_spatial_video():
-		return
 	if not value in FISHEYE_FOVS or value == fisheye_fov:
 		return
 	_unlock_mode()
@@ -1561,8 +1512,6 @@ func cycle_projection() -> void:
 
 
 func set_projection(value: int) -> void:
-	if is_spatial_video():
-		return
 	if value < 0 or value > 3:
 		return
 	if value != geometry:
@@ -1664,20 +1613,6 @@ func _apply_stereo_view() -> void:
 
 ## The file name left the projection or the layout open: the frame's shape decides (once).
 func _complete_layout() -> void:
-	if bool(media.format.get("spatial_video", false)):
-		_spatial_video = true
-	if is_spatial_video():
-		_layout_pending = null
-		var revise := not stereo_sbs or top_bottom or depth_requested
-		geometry = Geometry.Geometry.FLAT
-		stereo_sbs = true
-		top_bottom = false
-		stereo_half = false
-		depth_requested = false
-		if revise:
-			_request_revision()
-		_apply_geometry()
-		return
 	if _layout_pending == null:
 		return
 	var chosen := Naming.complete(
@@ -1802,11 +1737,9 @@ func _present_pending() -> void:
 	media.effect_revision = int(claimed.presentation_revision)
 	media.frame_counter += 1
 	var par := float(claimed.get("pixel_aspect", 1.0))
-	_spatial_video = _spatial_video or bool(claimed.get("spatial_video", false))
 	media.format = {
 		"width": int(claimed.width),
 		"height": int(claimed.height),
-		"spatial_video": _spatial_video,
 		"pixel_aspect": par if is_finite(par) and par > 0.0 and par <= 16.0 else 1.0,
 		"stereo_mode": str(claimed.get("stereo_mode", "")),
 		"unapplied_rotation_degrees": 0
@@ -1895,14 +1828,6 @@ func _on_state(id: int, payload: String) -> void:
 		_bookmark_resolve()
 	if details.has("position_seconds"):
 		var position_ms := int(float(details.position_seconds) * 1000)
-		# MPV's time-pos may still be the requested time after a paused keyframe
-		# seek. Keep the timeline and relative shortcuts on the displayed frame.
-		var pair: Dictionary = media.last_pair
-		if (
-			pair.get("source_pts_verified", false)
-			and int(pair.get("session_id", -1)) == media.session_id
-		):
-			position_ms = int(int(pair.pts_us) / 1000)
 		control.observe(position_ms, int(float(details.get("duration_seconds", "-1")) * 1000))
 		media.decoder = (
 			str(details.get("codec", "")) + " / " + str(details.get("hwdec_current", ""))
@@ -2178,12 +2103,7 @@ func _sync_subtitle_surface() -> void:
 	var separate := not is_zero_approx(screen_rotation)
 	material.set_shader_parameter("separate_subtitles", separate)
 	_subtitle_surface.visible = (
-		separate
-		and panel.visible
-		and (
-			material.get_shader_parameter("subtitle_enabled") == true
-			or material.get_shader_parameter("bitmap_subtitle_enabled") == true
-		)
+		separate and panel.visible and material.get_shader_parameter("subtitle_enabled") == true
 	)
 	if not _subtitle_surface.visible:
 		return
@@ -2194,11 +2114,7 @@ func _sync_subtitle_surface() -> void:
 		"subtitle_enabled",
 		"subtitle_anchor_inverse",
 		"subtitle_parallax",
-		"subtitle_patch_half_extent",
-		"bitmap_subtitle_texture",
-		"bitmap_subtitle_enabled",
-		"bitmap_subtitle_rect",
-		"rotation_degrees"
+		"subtitle_patch_half_extent"
 	]:
 		_subtitle_material.set_shader_parameter(key, material.get_shader_parameter(key))
 
@@ -2220,17 +2136,6 @@ func _apply_flat_pose() -> void:
 func _apply_geometry() -> void:
 	super._apply_geometry()
 	_apply_stereo_view()
-	if geometry != Geometry.Geometry.FLAT:
-		bitmap_subtitles.clear(material)
-		if _subtitle_surface:
-			_subtitle_surface.visible = false
-		for track in media.playback.get("details", {}).get("subtitle_tracks", []):
-			if (
-				track is Dictionary
-				and int(track.get("id", 0)) == subtitles.requested_track
-				and str(track.get("codec", "")) == "hdmv_pgs_subtitle"
-			):
-				set_subtitle_track(0, false)
 	_apply_packed()
 	if caption and caption.visible:
 		_place_caption()
@@ -2281,28 +2186,11 @@ func layout_snapshot() -> Dictionary:
 			"requested_track": subtitles.requested_track,
 			"cue": subtitles.cue,
 			"text": subtitles.text,
-			"bitmap_ready":
-			(
-				geometry == Geometry.Geometry.FLAT
-				and bitmap_subtitles.texture != null
-				and bool(material.get_shader_parameter("bitmap_subtitle_enabled"))
-			),
-			"bitmap_texture_version": bitmap_subtitles.version,
-			"bitmap_texture_size":
-			(
-				[bitmap_subtitles.texture.get_width(), bitmap_subtitles.texture.get_height()]
-				if bitmap_subtitles.texture
-				else []
-			),
 			"render_layer":
 			(
-				"flat_PGS_bitmap_overlay"
-				if bitmap_subtitles.texture and geometry == Geometry.Geometry.FLAT
-				else (
-					"independent_Label3D"
-					if geometry == Geometry.Geometry.FLAT
-					else "video_projection_overlay"
-				)
+				"independent_Label3D"
+				if geometry == Geometry.Geometry.FLAT
+				else "video_projection_overlay"
 			),
 			"size": subtitle_size,
 			"flat_position": subtitle_flat_position,

@@ -1,4 +1,4 @@
-"""Audit two actual Android UIDs, grants and source-frame MPV FD decode."""
+"""Audit two actual Android UIDs, grants and libmpv FD decode."""
 
 import os
 from pathlib import Path
@@ -8,8 +8,6 @@ import json
 from pathlib import Path
 import re
 import sys
-
-from mpv_source_probe import verify as verify_source
 
 ROOT = Path(__file__).resolve().parents[1]
 URI = "content://org.vrpassthroughplayer.urifixture.documents/document/clip"
@@ -192,6 +190,11 @@ def verify(data):
         native["diagnostic_process"] == reports["player_restart"]["diagnostic_process"]
     )
     assert native["descriptor_bytes"] == (ROOT / fixture["file"]).stat().st_size
+    assert native["state"] == "passed" and native["probe_kind"] == "gpu"
+    assert native["hwdec_current"] == "mediacodec" and native["context_disposed"]
+    assert native["ended"] and native["playback_error"] == 0
+    assert native["video_render_events"] >= 10
+    assert native["source_pts_verified"] is False
 
 
 def main():
@@ -211,9 +214,7 @@ def main():
         (directory / "player-logcat.txt").read_text(encoding="utf-8-sig"),
     ]
     verify(data)
-    native = verify_source(
-        data[3]["native_decode"], os.environ.get("THRU3D_FFMPEG", "ffmpeg")
-    )
+    native = data[3]["native_decode"]
     mutations = []
 
     def reject(label, change):
@@ -290,7 +291,7 @@ def main():
         document_access_observations=14,
         provider_operations=len(OPERATIONS),
         polluted_evidence_rejected=mutations,
-        native_source_identity=native,
+        native_playback=native,
         scope=data[0]["scope"],
         system_picker_ui_verified=False,
         device_reboot_persistence_verified=False,
@@ -304,7 +305,7 @@ def main():
     )
     print(
         json.dumps(
-            {k: v for k, v in output.items() if k != "native_source_identity"},
+            {k: v for k, v in output.items() if k != "native_playback"},
             ensure_ascii=False,
             indent=2,
         )

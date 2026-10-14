@@ -33,16 +33,14 @@ class BuildSourceChanges(unittest.TestCase):
                 )
             )
             stack.enter_context(
-                patch.object(android.player, "standard_mpv_libraries", return_value={})
+                patch.object(android.player, "mpv_libraries", return_value={})
             )
             binaries = root / "app/godot/addons/quest_player/bin"
             binaries.mkdir(parents=True)
             for name in ("player-plugin-debug.aar", "cloudcore.aar"):
                 (binaries / name).write_bytes(b"fixture-compiled-output")
             stack.enter_context(patch.object(android.player, "BIN", binaries))
-            args = SimpleNamespace(
-                vendor="Quest", build_type="Debug", mpv_dir=None, mpv_receipt=None
-            )
+            args = SimpleNamespace(vendor="Quest", build_type="Debug")
             marker = root / "build/configurations/Quest-Debug.built.json"
             marker.parent.mkdir(parents=True)
             yield root, args, marker

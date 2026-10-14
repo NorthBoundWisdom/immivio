@@ -57,8 +57,6 @@ func _run() -> void:
 		material.set_shader_parameter("color_texture", texture)
 		material.set_shader_parameter("source_size", Vector2(64, 64))
 		material.set_shader_parameter("subtitle_texture", caption_texture)
-		material.set_shader_parameter("bitmap_subtitle_texture", caption_texture)
-		material.set_shader_parameter("bitmap_subtitle_rect", Vector4(.2, .2, .6, .6))
 	old.set_shader_parameter("alpha_enabled", false)
 	for rotation in [0, 90, 180, 270]:
 		for stereo in [false, true]:
@@ -70,7 +68,7 @@ func _run() -> void:
 							material.set_shader_parameter("stereo_sbs", stereo)
 							material.set_shader_parameter("test_eye", eye)
 							material.set_shader_parameter("sharpness", clarity)
-							material.set_shader_parameter("bitmap_subtitle_enabled", captions)
+							material.set_shader_parameter("subtitle_enabled", captions)
 							material.set_shader_parameter("grade_enabled", captions)
 							material.set_shader_parameter("grade_gain", Vector3(1.1, .9, 1.0))
 						quad.material_override = old
@@ -120,7 +118,7 @@ func _run() -> void:
 						material.set_shader_parameter("swap_eyes", swap)
 						material.set_shader_parameter("top_bottom", vertical)
 						material.set_shader_parameter("stereo_offset", Vector2(.08, .06))
-						material.set_shader_parameter("bitmap_subtitle_enabled", false)
+						material.set_shader_parameter("subtitle_enabled", false)
 					quad.material_override = old
 					await RenderingServer.frame_post_draw
 					await RenderingServer.frame_post_draw
@@ -155,7 +153,7 @@ func _run() -> void:
 	alpha.fill(Color.WHITE)
 	var alpha_texture := ImageTexture.create_from_image(alpha)
 	for material in [old, fast]:
-		for key in ["stereo_sbs", "bitmap_subtitle_enabled", "grade_enabled"]:
+		for key in ["stereo_sbs", "subtitle_enabled", "grade_enabled"]:
 			material.set_shader_parameter(key, false)
 		material.set_shader_parameter("rotation_degrees", 0)
 		material.set_shader_parameter("sharpness", .2)
@@ -218,7 +216,6 @@ func _run() -> void:
 	# An opaque opt-in must never override a numeric source mask.
 	alpha.fill(Color(.25, 0, 0))
 	alpha_texture.update(alpha)
-	pair.source_pts_verified = true
 	pair.mask_kind = "numeric"
 	if not binding.bind(fast, pair):
 		failures.append("Numeric source-mask binding failed")

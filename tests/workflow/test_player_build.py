@@ -17,7 +17,7 @@ from configs import player_build as builder
 
 
 class DependencyBoundaries(unittest.TestCase):
-    def test_preinstalled_standard_libraries_are_verified_before_staging(self):
+    def test_preinstalled_mpv_libraries_are_verified_before_staging(self):
         with (
             tempfile.TemporaryDirectory() as directory,
             patch.object(builder, "ROOT", Path(directory)),
@@ -50,76 +50,6 @@ class DependencyBoundaries(unittest.TestCase):
             with patch.dict(os.environ, {"IMMIVIO_MPV_LIB_DIR": str(native)}):
                 with self.assertRaisesRegex(RuntimeError, "incompatible"):
                     builder.prepare_mpv()
-            self.assertFalse((root / "android").exists())
-
-    def test_spatial_source_libraries_are_all_verified_before_any_are_imported(self):
-        with (
-            tempfile.TemporaryDirectory() as directory,
-            patch.object(builder, "ROOT", Path(directory)),
-        ):
-            root = Path(directory)
-            metadata = root / "native/mpv/patches/source-frame-manifest.json"
-            metadata.parent.mkdir(parents=True)
-            contract = dict(
-                api_version=2,
-                base_mpv_revision="revision",
-                patch_sha256="patch",
-                private_header_sha256="header",
-            )
-            metadata.write_text(json.dumps(contract))
-            lock = root / "third_party/mpv/source-lock.json"
-            lock.parent.mkdir(parents=True)
-            lock.write_text("{}")
-            names = ["libmpv.so", "libavcodec.so"]
-            (lock.parent / "manifest.json").write_text(
-                json.dumps(dict(packaged_libraries=names))
-            )
-            source = root / "source"
-            source.mkdir()
-            libraries = []
-            for name in names:
-                data = ("fixture-" + name).encode()
-                (source / name).write_bytes(data)
-                libraries.append(
-                    dict(
-                        name=name,
-                        bytes=len(data),
-                        sha256=hashlib.sha256(data).hexdigest(),
-                    )
-                )
-            receipt = dict(
-                candidate="source-frame",
-                api_version=2,
-                mpv_revision="revision",
-                patch_sha256="patch",
-                private_header_sha256="header",
-                source_lock_sha256=builder.digest(lock),
-                packaged_libraries=names,
-                libraries=libraries,
-            )
-            path = root / "receipt.json"
-            path.write_text(json.dumps(receipt))
-            (source / names[-1]).write_bytes(b"corrupt")
-            with self.assertRaisesRegex(RuntimeError, "differs from its receipt"):
-                builder.prepare_source_mpv(source, path)
-            self.assertFalse((root / "android").exists())
-
-    def test_spatial_source_receipt_cannot_relabel_the_standard_backend(self):
-        with (
-            tempfile.TemporaryDirectory() as directory,
-            patch.object(builder, "ROOT", Path(directory)),
-        ):
-            root = Path(directory)
-            metadata = root / "native/mpv/patches/source-frame-manifest.json"
-            metadata.parent.mkdir(parents=True)
-            metadata.write_text(json.dumps(dict(api_version=2)))
-            manifest = root / "third_party/mpv/manifest.json"
-            manifest.parent.mkdir(parents=True)
-            manifest.write_text(json.dumps(dict(packaged_libraries=["libmpv.so"])))
-            receipt = root / "receipt.json"
-            receipt.write_text(json.dumps(dict(candidate="standard")))
-            with self.assertRaisesRegex(RuntimeError, "source/patch contract"):
-                builder.prepare_source_mpv(root / "source", receipt)
             self.assertFalse((root / "android").exists())
 
     def test_engine_failure_terminates_a_hung_export_and_keeps_its_log(self):

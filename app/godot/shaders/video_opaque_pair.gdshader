@@ -4,7 +4,6 @@ render_mode unshaded, cull_disabled, depth_draw_opaque;
 // Ordinary RGBA playback is opaque. Keep the same coordinates, sharpening,
 // grading and captions without entering the transparent/matting render path.
 uniform sampler2D color_texture : filter_linear, repeat_disable;
-#include "res://shaders/bitmap_subtitles.gdshaderinc"
 #include "res://shaders/color_grade.gdshaderinc"
 #include "res://shaders/projected_subtitles.gdshaderinc"
 #include "res://shaders/sharpness.gdshaderinc"
@@ -68,9 +67,6 @@ void fragment() {
       vec4 caption = projected_caption(media_direction, eye_index);
       ALBEDO = caption.rgb + ALBEDO * (1.0 - caption.a);
     }
-    if (bitmap_subtitle_enabled) {
-      vec4 caption = bitmap_caption(local_uv);
-      ALBEDO = caption.rgb + ALBEDO * (1.0 - caption.a);
-    }
+
   }
 }

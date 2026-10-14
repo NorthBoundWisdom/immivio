@@ -1,136 +1,13 @@
-// Required project inputs are enabled. Optional native backend sources and
-// hand-model maintenance sources stay declared at fixed commits but disabled.
-// Host tools and large binaries are preinstalled; see docs/BUILD.md.
 {
   "schemaVersion": 5,
   "depsMode": "pinned",
   "depsManualPath": {
-    "OpenList": "",
-    "MbedTLS": "",
-    "FreeType": "",
-    "FriBidi": "",
-    "HarfBuzz": "",
-    "Libunibreak": "",
-    "Libxml2": "",
-    "Fontconfig": "",
-    "Curl": "",
-    "Dav1d": "",
-    "FFmpeg": "",
-    "Libass": "",
-    "Libplacebo": "",
-    "Mpv": "",
-    "FastFloat": "",
-    "Glad": "",
-    "GodotOpenXRHands": "",
-    "Lua": "",
-    "MpvAndroidSource": "",
-    "MbedTLSFramework": "",
-    "FreeTypeDlg": ""
+    "OpenList": ""
   },
   "dependencies": {
     "OpenList": {
       "remote": "https://github.com/OpenListTeam/OpenList.git",
       "commit": "2bdf16d5967d0a403f67d809efd5a418b8f5bd30"
-    },
-    "MbedTLS": {
-      "remote": "https://github.com/Mbed-TLS/mbedtls.git",
-      "commit": "068ff080b369adfac81509f9b57b2afabaf82dc5",
-      "disabled": true
-    },
-    "FreeType": {
-      "remote": "https://github.com/freetype/freetype.git",
-      "commit": "0a0221a1347e2f1e07c395263540026e9a0aa7c7",
-      "disabled": true
-    },
-    "FriBidi": {
-      "remote": "https://github.com/fribidi/fribidi.git",
-      "commit": "68162babff4f39c4e2dc164a5e825af93bda9983",
-      "disabled": true
-    },
-    "HarfBuzz": {
-      "remote": "https://github.com/harfbuzz/harfbuzz.git",
-      "commit": "36cb489cb02ce4b92099669ba9f9bea348eff93f",
-      "disabled": true
-    },
-    "Libunibreak": {
-      "remote": "https://github.com/adah1972/libunibreak.git",
-      "commit": "28a2756b864c343f438cd22537d49d394d4666a5",
-      "disabled": true
-    },
-    "Libxml2": {
-      "remote": "https://github.com/GNOME/libxml2.git",
-      "commit": "96498992efa48d52b0e8b83058bd88dbdaf153c1",
-      "disabled": true
-    },
-    "Fontconfig": {
-      "remote": "https://gitlab.freedesktop.org/fontconfig/fontconfig.git",
-      "commit": "0f236723a3c26bd9745e32ba2b3ee21e5f809295",
-      "disabled": true
-    },
-    "Curl": {
-      "remote": "https://github.com/curl/curl.git",
-      "commit": "68720b4837284335b2d63cb358f8f6ce65f5bc55",
-      "disabled": true
-    },
-    "Dav1d": {
-      "remote": "https://github.com/videolan/dav1d.git",
-      "commit": "362bc1138228390a0a521ecf3af18b23c6afeb9e",
-      "disabled": true
-    },
-    "FFmpeg": {
-      "remote": "https://github.com/FFmpeg/FFmpeg.git",
-      "commit": "094a2f8a2a5e7fa64736e067de224ce28fdf5979",
-      "disabled": true
-    },
-    "Libass": {
-      "remote": "https://github.com/libass/libass.git",
-      "commit": "b2fe9d8770678a7b5271387d38c20657ebf3429a",
-      "disabled": true
-    },
-    "Libplacebo": {
-      "remote": "https://github.com/haasn/libplacebo.git",
-      "commit": "3330a515d62139259c26239014f286e233bd3a5c",
-      "disabled": true
-    },
-    "Mpv": {
-      "remote": "https://github.com/mpv-player/mpv.git",
-      "commit": "0b7ed670f7c353dd3dd4f8ae0fc788a181a15aa6",
-      "disabled": true
-    },
-    "FastFloat": {
-      "remote": "https://github.com/fastfloat/fast_float.git",
-      "commit": "97b54ca9e75f5303507699d27c6b4f4efe4641a1",
-      "disabled": true
-    },
-    "Glad": {
-      "remote": "https://github.com/Dav1dde/glad.git",
-      "commit": "73db193f853e2ee079bf3ca8a64aa2eaf6459043",
-      "disabled": true
-    },
-    "GodotOpenXRHands": {
-      "remote": "https://github.com/godotengine/godot-demo-projects.git",
-      "commit": "3e08537616661a5883831628decab4c526260289",
-      "disabled": true
-    },
-    "Lua": {
-      "remote": "https://github.com/LuaDist/lua.git",
-      "commit": "98648514bf7c15d12ccb56222a85e06bfcf9317f",
-      "disabled": true
-    },
-    "MpvAndroidSource": {
-      "remote": "https://github.com/mpv-android/mpv-android.git",
-      "commit": "fdf74f6830c47dbaa8a22ac79726e8303f1db5af",
-      "disabled": true
-    },
-    "MbedTLSFramework": {
-      "remote": "https://github.com/Mbed-TLS/mbedtls-framework.git",
-      "commit": "dde0c4a0e448a0552f18817dcea633bb851fd288",
-      "disabled": true
-    },
-    "FreeTypeDlg": {
-      "remote": "https://github.com/nyorain/dlg.git",
-      "commit": "395ccad2c1e0daae535c4d20bb0a3f2424648e17",
-      "disabled": true
     }
   },
   "assets": {

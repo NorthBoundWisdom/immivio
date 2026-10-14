@@ -17,18 +17,18 @@ internal object MpvNative {
 
     @JvmStatic
     external fun probe(context: Context, path: String): String
+
     @JvmStatic
     external fun probeGpu(
         context: Context,
         path: String,
         hardware: Boolean,
         width: Int,
-        height: Int,
-        sourceFrame: Boolean
+        height: Int
     ): String
 }
 
-/** Optional MPV development candidate, entirely absent from Release. */
+/** MPV playback diagnostics, entirely absent from Release. */
 internal object MpvDiagnostics {
     private val busy = AtomicBoolean(false)
     private val sequence = AtomicInteger(0)
@@ -47,15 +47,14 @@ internal object MpvDiagnostics {
                 try {
                     context.contentResolver.openFileDescriptor(Uri.parse(uri), "r")
                         ?.use { descriptor ->
-                            // Real source-frame MPV path, with the FD owned until native teardown.
+                            // Real libmpv path, with the FD owned until native teardown.
                             report = JSONObject(
                                 MpvNative.probeGpu(
                                     context,
                                     "fd://${descriptor.fd}",
                                     true,
                                     1280,
-                                    640,
-                                    true
+                                    640
                                 )
                             )
                             report.put("descriptor_bytes", descriptor.statSize)
@@ -66,11 +65,11 @@ internal object MpvDiagnostics {
                     report.put("request_id", id)
                         .put("diagnostic_process", DiagnosticRequests.processId)
                         .put("uri", uri).put("fixture", "mp03_frame_identity")
-                        .put("probe_kind", "source").put("requested_hardware", true)
+                        .put("probe_kind", "gpu").put("requested_hardware", true)
                         .put("client_uid", android.os.Process.myUid())
                         .put(
                             "scope",
-                            "Actual external granted document FD consumed by native source-frame MPV/EGL; Godot catalog/resume UI, RVM and XR not exercised"
+                            "Actual external granted document FD consumed by native libmpv/EGL; Godot catalog/resume UI, RVM and XR not exercised"
                         )
                     try {
                         val directory = File(
@@ -105,12 +104,10 @@ internal object MpvDiagnostics {
         context: Context,
         fixture: String,
         gpu: Boolean = false,
-        hardware: Boolean = false,
-        sourceFrame: Boolean = false
+        hardware: Boolean = false
     ): Int {
         require(
-            if (sourceFrame) gpu && fixture == "mp03_frame_identity"
-            else fixture in listOf("c03_sbs_grid", "c04_alpha_f180", "c04_independent_alpha")
+            fixture in listOf("c03_sbs_grid", "c04_alpha_f180", "c04_independent_alpha")
         )
         if (!busy.compareAndSet(false, true)) return -1
         val id = sequence.incrementAndGet()
@@ -129,8 +126,7 @@ internal object MpvDiagnostics {
                             input.absolutePath,
                             hardware,
                             if (fixture == "c03_sbs_grid") 1920 else 1280,
-                            if (fixture == "c03_sbs_grid") 1080 else 640,
-                            sourceFrame
+                            if (fixture == "c03_sbs_grid") 1080 else 640
                         )
                         else MpvNative.probe(context, input.absolutePath)
                     )
@@ -143,7 +139,7 @@ internal object MpvDiagnostics {
                         .put("fixture", fixture)
                         .put(
                             "probe_kind",
-                            if (sourceFrame) "source" else if (gpu) "gpu" else "core"
+                            if (gpu) "gpu" else "core"
                         ).put("requested_hardware", hardware)
                     try {
                         val directory = File(
@@ -151,7 +147,7 @@ internal object MpvDiagnostics {
                             "diagnostics"
                         ).apply { check(mkdirs() || isDirectory) }
                         val tmp = File.createTempFile("mpv-core-", ".tmp", directory)
-                        val kind = if (sourceFrame) "source" else if (gpu) "gpu" else "core"
+                        val kind = if (gpu) "gpu" else "core"
                         try {
                             tmp.writeText(report.toString()); check(
                                 tmp.renameTo(

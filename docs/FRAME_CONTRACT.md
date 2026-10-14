@@ -6,7 +6,7 @@ The Kotlin producer and Godot consumer use **contract version 2**. A playback fr
 | --- | --- |
 | Version | `contract_version = 2`; other versions are rejected |
 | Ownership | Positive `session_id`, `logical_session_id`, `generation`, `source_epoch`, `slot_token` |
-| Source identity | Nonnegative integral `frame_id`, `pts_us`; native exact PTS or explicitly identified standard-libmpv playback-clock estimate |
+| Source identity | Nonnegative integral `frame_id`, `pts_us`; an explicitly identified libmpv playback-clock estimate |
 | Presentation | Positive `format_revision`, `presentation_revision`; revisions cannot relabel a source frame |
 | Color | Positive `color_texture_id`, width/height within supported native limits, `color_target = texture` |
 | Mask | Positive distinct `alpha_texture_id`, even `alpha_width`, positive `alpha_height`, `alpha_texture_format = GL_R8_numeric`; `mask_kind` is `opaque` or `numeric` |
