@@ -10,6 +10,11 @@ foreach(name IN ITEMS mpv_json_oracle seek_trace_test)
   endif()
 endforeach()
 
+if(MSVC)
+  # The production trace parser scans numeric fields only, with no string buffers.
+  target_compile_definitions(seek_trace_test PRIVATE _CRT_SECURE_NO_WARNINGS)
+endif()
+
 add_test(
   NAME mpv_json_round_trip
   COMMAND

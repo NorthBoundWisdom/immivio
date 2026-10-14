@@ -221,17 +221,31 @@ def require_configuration(args, env, sdk):
         raise RuntimeError("Release builds require pinned dependencies")
 
 
-def prepare_packages(args, env):
-    """Resolve application packages with Go/Gradle; host tools remain untouched."""
-    source, _ = openlist_workspace()
+def prepare_go_packages(source, env):
+    """Cache the full module graph consumed by gomobile's generated module."""
     online = go_environment(env, online=True)
-    online["IMMIVIO_OFFLINE_BUILD"] = "0"
+    # Package discovery alone omits modules which gomobile subsequently reads
+    # with `go list -m all` and imports while tidying its generated bindings.
+    player.run(
+        ["go", "mod", "download", "all"],
+        cwd=source,
+        env=online,
+        log="go-modules.log",
+    )
     player.run(
         ["go", "list", "-deps", "-test", "./cloudcore"],
         cwd=source,
         env=online,
         log="go-dependencies.log",
     )
+
+
+def prepare_packages(args, env):
+    """Resolve application packages with Go/Gradle; host tools remain untouched."""
+    source, _ = openlist_workspace()
+    prepare_go_packages(source, env)
+    online = go_environment(env, online=True)
+    online["IMMIVIO_OFFLINE_BUILD"] = "0"
     for directory in (ROOT / "android", player.PROJECT / "android/build"):
         player.run(
             [args.gradle, "-p", directory, "--console=plain", "prepareDependencyCache"],

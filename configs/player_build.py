@@ -330,6 +330,14 @@ def prepare_openlist(env):
         )
     pending = cache / "cloudcore.pending.aar"
     before = {name: digest(source / name) for name in ("go.mod", "go.sum")}
+    # gomobile hides module-graph lookup failures and later reports an empty
+    # generated go.mod. Fail here with the actual missing-module diagnostic.
+    run(
+        ["go", "list", "-m", "-json", "-tags=android", "all"],
+        cwd=source,
+        env=dict(env, GOOS="android", GOARCH="arm64"),
+        log="openlist-modules.log",
+    )
     run(
         [
             executable,
