@@ -69,8 +69,6 @@ func _run() -> void:
 		["smb_share", [Menu.ROW_BASE, Menu.ROW_BASE]],
 		["smb_editor", [Menu.BACK, Menu.BACK, Menu.ADD, Menu.KEY_BASE + 1, Menu.KEY_BASE + 9]],
 		["dlna", [Menu.CANCEL, Menu.NAV_BASE + Menu.Section.DLNA]],
-		["cloud", [Menu.NAV_BASE + Menu.Section.CLOUD]],
-		["cloud_folder", [Menu.ROW_BASE]],
 		["settings", [Menu.NAV_BASE + Menu.Section.SETTINGS]],
 		["video", [Menu.TAB_BASE + Menu.VIDEO_TAB]],
 		["subtitles", [Menu.TAB_BASE + Menu.SUBTITLES_TAB]],

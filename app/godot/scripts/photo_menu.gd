@@ -587,10 +587,6 @@ func _photo_status() -> String:
 				else "Preparing portrait"
 			)
 		)
-	if _state.get("directory_loading", false):
-		return I18n.t("Loading images")
-	if not str(_state.get("directory_error", "")).is_empty():
-		return I18n.t(str(_state.directory_error))
 	if _state.get("loading", false):
 		return I18n.t("Preparing 3D" if _state.get("preparing_depth", false) else "Loading image")
 	if not str(_state.get("error", "")).is_empty():

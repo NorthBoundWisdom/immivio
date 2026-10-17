@@ -161,7 +161,7 @@ internal class PhotoPreviewBridge(
                 )
             } finally {
                 connection?.disconnect(); connection = null
-                if (uri.startsWith("smb://") || uri.startsWith("cloud://")) releaseStream(resolved)
+                if (uri.startsWith("smb://")) releaseStream(resolved)
                 if (!published) {
                     synchronized(lock) { directories.remove(id) }; directory?.deleteRecursively()
                 }

@@ -28,7 +28,7 @@ Frame descriptors use [contract version 2](FRAME_CONTRACT.md), with source ident
 
 `photo_display.gd` handles ordinary/native-stereo images, preload/navigation, magnification and gallery presentation. Photo walls preserve aspect ratio and ordered groups, with a bounded vertical budget for multiple rows. Depth/portrait workers and their backend entry points have been removed.
 
-The Android plugin owns local grants, SMB, WebDAV, DLNA, media-server adapters and cloud account authorization. Credentials remain in application-private storage. DLNA subtitle refresh matches server-scoped object IDs and uses a complete directory listing to confirm removal when item metadata is incomplete.
+The Android plugin owns local grants, SMB, DLNA, media-server adapters. Credentials remain in application-private storage. DLNA subtitle refresh matches server-scoped object IDs and uses a complete directory listing to confirm removal when item metadata is incomplete.
 
 ## Removed subsystems
 

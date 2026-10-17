@@ -4,6 +4,12 @@
 
 Newest first, following product release milestones. Entries under 0.6.0 and earlier describe the original project; removed conversion features are historical, not current Immivio capabilities. Some development/source snapshots contained features before their product release. Original APK identifiers `0.2` and `0.4` are retained; `0.4` was also called `0.4.0` in release notes. Availability depends on device, server and media capabilities.
 
+## Unreleased
+
+- Automatically hide idle controller models after three seconds during video viewing. Movement, buttons, sticks and menus restore them while tracking and input remain active.
+
+- Remove cloud drive accounts, authorization, browsing, playback and file operations, including remote WebDAV mounts and the local cloud WebDAV service. Remove OpenList/Go mobile bindings from builds and CI. Keep local files, SMB, DLNA and supported media servers.
+
 ## 0.9.3 — 2026-10-14
 
 - Set application version 0.9.3 / versionCode 17 for Quest, PICO and experimental OpenXR packages.

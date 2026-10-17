@@ -168,10 +168,10 @@ func _run() -> void:
 			and Video._thumbnail_source("content://media/1")
 			and Video._thumbnail_source("http://192.168.31.185/a.mp4")
 			and Video._thumbnail_source("https://nas/a.mp4")
-			and Video._thumbnail_source("cloud://account/a.mp4")
+			and Video._thumbnail_source("smb://account/a.mp4")
 			and Video._thumbnail_source("medialib://server/scene/1")
 		),
-		"Played local, SMB, DLNA, cloud and media-server videos get a frame"
+		"Played local, SMB, DLNA and media-server videos get a frame"
 	)
 	check(
 		(

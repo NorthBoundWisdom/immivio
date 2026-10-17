@@ -367,39 +367,6 @@ func new_window(index: int) -> void:
 	_reflow = true
 
 
-func replace_indices(old: Array[Dictionary], entries: Array[Dictionary]) -> void:
-	var positions := {}
-	for index in entries.size():
-		positions[str(entries[index].uri)] = index
-	var replaced := {}
-	for index in cards:
-		var target := int(positions.get(str(old[index].uri), -1))
-		if target >= 0:
-			replaced[target] = cards[index]
-		else:
-			_free_card(cards[index])
-	if focus >= 0:
-		focus = int(positions.get(str(old[focus].uri), -1))
-	if _fragment_start >= 0:
-		_fragment_start = int(positions.get(str(old[_fragment_start].uri), -1))
-	if _wall_start >= 0:
-		_wall_start = int(positions.get(str(old[_wall_start].uri), -1))
-	var remapped: Array[int] = []
-	for index in _fragment_indices:
-		var target := int(positions.get(str(old[index].uri), -1))
-		if target >= 0:
-			remapped.append(target)
-	_fragment_indices = remapped
-	cards = replaced
-	cancel_all()
-	_signature = ""
-	_reflow = true
-	if mode == Layout.FRAGMENTS and not cards.is_empty():
-		# Completing a paged index must not scatter an already visible memory group.
-		_signature = "%d/%d/%d/%s" % [mode, _fragment_start, entries.size(), str(entries[0].uri)]
-		_reflow = false
-
-
 func _process(delta: float) -> void:
 	if not photo:
 		return

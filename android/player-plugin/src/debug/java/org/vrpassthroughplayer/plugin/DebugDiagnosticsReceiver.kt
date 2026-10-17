@@ -50,19 +50,6 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                     } else if (intent.action == "${context.packageName}.DEBUG_SMB_CRYPTO") {
                         report.put("smb", SmbCryptoProbe.run())
                         1
-                    } else if (intent.action == "${context.packageName}.DEBUG_CLOUD") {
-                        val provider = intent.getStringExtra("provider") ?: CloudDrive.P115
-                        if (provider == CloudDrive.P115) CloudPlaybackProbe.request(
-                            context.applicationContext,
-                            request,
-                            intent.getBooleanExtra("play", false)
-                        )
-                        else OpenListCloudProbe.request(
-                            context.applicationContext,
-                            request,
-                            provider,
-                            intent.getBooleanExtra("play", false)
-                        )
                     } else if (intent.action == "${context.packageName}.DEBUG_PLEX_NETWORK") {
                         val raw =
                             intent.getStringExtra("connections") ?: error("Missing connections")
@@ -143,8 +130,6 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                         "subtitle",
                                         "display_quality",
                                         "sharpness",
-                                        "cloud_accounts",
-                                        "cloud_page_probe",
                                         "display_menu",
                                         "player_menu",
                                         "restart_app",

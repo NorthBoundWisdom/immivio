@@ -74,7 +74,6 @@ if (!godotApi.isPresent() || !file(godotApi.get()).isFile()) {
 dependencies {
     // The exported Godot APK supplies this library. Never package a second engine.
     compileOnly files(godotApi.get())
-    compileOnly files("../../app/godot/addons/quest_player/bin/cloudcore.aar")
     implementation libs.media3.exoplayer
     // Preserve SMB2/3, NTLM authentication, signing and encryption (LGPL-2.1).
     smbUpstream libs.jcifs

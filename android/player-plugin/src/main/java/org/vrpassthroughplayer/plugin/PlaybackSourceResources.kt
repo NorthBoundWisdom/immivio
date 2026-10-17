@@ -20,8 +20,8 @@ internal class PlaybackSourceResources(private val releaseNetwork: (String) -> U
         val source = Uri.parse(uri)
         return when (source.scheme) {
             "file" -> source.path ?: error("Local file path unavailable")
-            "smb", "cloud", "medialib", "http", "https" -> network(uri).also { location ->
-                if (source.scheme in setOf("medialib", "cloud", "smb")) synchronized(this) {
+            "smb", "medialib", "http", "https" -> network(uri).also { location ->
+                if (source.scheme in setOf("medialib", "smb")) synchronized(this) {
                     if (closed) {
                         releaseNetwork(location); error("Playback source closed")
                     }

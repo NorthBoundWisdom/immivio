@@ -31,28 +31,18 @@ internal class AccountManager(private val host: () -> Activity?) {
         val accountId: String
     ) : AccountSessionGuard() {
         val inputs =
-            listOf("name", "base", "username", "password", "sms").associateWith { AccountInput() }
+            listOf("name", "base", "username", "password").associateWith { AccountInput() }
         @Volatile
         var state = "form"
         var error = ""
         var busy = false
         var revision = 0
         var old: MediaServerAccount? = null
-        var savedWebDavLogin: JSONObject? = null
-        var sms: Cloud115Auth.Result.Sms? = null
-        var smsSent = false
-        var nextSmsAt = 0L
-        var challenge: Cloud115Auth.Challenge? = null
-        var challengeVersion = 0
-        var answer: Cloud115Auth.Answer? = null
-        var retry = "password"
-        var result = JSONObject()
-        var auth: Cloud115Auth? = null
         @Volatile
         var http: MediaServerHttp? = null
         @Volatile
         var discovery: MediaServerDiscovery? = null
-        var web: InAppWebLogin? = null
+        var result = JSONObject()
         @Volatile
         var plex: PlexAuth? = null
         var plexPin: PlexAuth.Pin? = null
@@ -69,13 +59,10 @@ internal class AccountManager(private val host: () -> Activity?) {
     @Synchronized
     fun open(kind: String, provider: String, accountId: String, raw: String): Int {
         if (closed || kind !in setOf(
-                "cloud",
                 "server",
-                "dav",
                 "discover"
             ) || raw.length > 4096
         ) return -1
-        if (kind == "cloud" && provider !in CloudDrive.PROVIDERS && !(BuildConfig.DEBUG && provider in CloudDrive.TRIAL_PROVIDERS) && !(provider == CloudDrive.P115 && accountId.isNotEmpty())) return -1
         if (kind == "server" && provider !in setOf(
                 "emby",
                 "jellyfin",
@@ -99,25 +86,7 @@ internal class AccountManager(private val host: () -> Activity?) {
                     s.old?.base ?: data.optString("base", if (provider == "plex") "" else "http://")
                 )
                 s.set("username", s.old?.username ?: "")
-            } else if (kind == "cloud") {
-                CloudLibrary.start(app)
-                val all = CloudLibrary.accounts()
-                val old = (0 until all.length()).map(all::getJSONObject)
-                    .find { it.getString("id") == accountId }
-                require(accountId.isEmpty() || old?.optString("provider") == provider)
-                s.set("name", old?.getString("name") ?: CloudDrive.providerName(provider))
-                s.auth = if (provider == CloudDrive.P115) Cloud115Auth() else null
-                if (provider == CloudDrive.WEBDAV) {
-                    val metadata =
-                        if (accountId.isEmpty()) JSONObject() else CloudLibrary.webDavMetadata(
-                            accountId
-                        )
-                    s.set("base", metadata.optString("base", data.optString("base", "http://")))
-                    s.set("username", metadata.optString("username", data.optString("username")))
-                    s.savedWebDavLogin = metadata
-                }
             }
-            if (kind == "dav") task(s) { dav(s, app) }
             if (kind == "discover") task(s) { discover(s, app) }
         } catch (_: Exception) {
             s.error = "Account settings unavailable"; s.revision++
@@ -127,9 +96,8 @@ internal class AccountManager(private val host: () -> Activity?) {
 
     fun accounts(kind: String): String = try {
         val app = context()
-        if (kind == "cloud") {
-            CloudLibrary.start(app); CloudLibrary.accounts().toString()
-        } else JSONArray().apply {
+        require(kind == "server")
+        JSONArray().apply {
             MediaServerStore.accounts(app).forEach {
                 put(
                     it.json().put("username", it.username).put("has_password", it.key.isNotEmpty())
@@ -149,39 +117,16 @@ internal class AccountManager(private val host: () -> Activity?) {
             val fields = JSONObject()
             for ((name, input) in s.inputs) fields.put(
                 name,
-                if (name in setOf("password", "sms")) "" else input.text()
+                if (name == "password") "" else input.text()
             )
             val value = JSONObject().put("id", id).put("state", s.state).put("busy", s.busy)
                 .put("error", if (pairingExpired) "Pairing code expired" else s.error)
                 .put("pairing_expired", pairingExpired)
                 .put("revision", s.revision).put("fields", fields)
                 .put("password_length", s.inputs.getValue("password").length)
-                .put("sms_length", s.inputs.getValue("sms").length).put("sms_sent", s.smsSent)
-                .put("challenge_revision", s.challengeVersion)
-                .put(
-                    "sms_wait",
-                    ((s.nextSmsAt - SystemClock.elapsedRealtime() + 999) / 1000).coerceAtLeast(0)
-                )
-                .put(
-                    "has_password",
-                    (s.old?.key?.isNotEmpty() == true || RemoteWebDav.retainsSavedLogin(
-                        s.savedWebDavLogin,
-                        s.value("base"),
-                        s.value("username")
-                    ))
-                ).put("result", s.result)
+                .put("has_password", s.old?.key?.isNotEmpty() == true)
+                .put("result", s.result)
                 .put("editing_account", s.accountId.isNotEmpty())
-            s.challenge?.let { c ->
-                value.put(
-                    "prompt",
-                    android.util.Base64.encodeToString(c.prompt, android.util.Base64.NO_WRAP)
-                )
-                    .put(
-                        "choices",
-                        android.util.Base64.encodeToString(c.choices, android.util.Base64.NO_WRAP)
-                    )
-            }
-            s.web?.let { value.put("web", it.snapshot()) }
             return value.toString()
         }
     }
@@ -234,30 +179,6 @@ internal class AccountManager(private val host: () -> Activity?) {
         if (raw.length > 4096) return
         val data = runCatching { if (raw.isEmpty()) JSONObject() else JSONObject(raw) }.getOrNull()
             ?: return
-        if (action == "web") {
-            synchronized(s) {
-                if (s.busy || s.kind != "cloud" || (s.provider != CloudDrive.P115 && !OpenListAuth.supported(
-                        s.provider
-                    ))
-                ) return
-                s.error = ""; s.state = "web"; s.revision++
-                if (s.web == null) s.web = InAppWebLogin(host, s.provider, { cookie ->
-                    task(s) { connect(s, cookie) }
-                }, { credential ->
-                    task(s) {
-                        CloudLibrary.connectOAuth(
-                            credential,
-                            s.value("name").ifBlank { CloudDrive.providerName(s.provider) },
-                            s.accountId.ifEmpty { null },
-                            { block -> commit(s, block) })
-                        commit(s) { s.state = "done"; s.inputs.values.forEach { it.clear() } }
-                        s.web?.close()
-                    }
-                })
-                s.web!!.open()
-            }
-            return
-        }
         task(s) {
             val app = context()
             when (action) {
@@ -281,58 +202,6 @@ internal class AccountManager(private val host: () -> Activity?) {
 
                 "save_server" -> {
                     require(s.kind == "server"); saveServer(s, app)
-                }
-
-                "save_webdav" -> {
-                    require(s.kind == "cloud" && s.provider == CloudDrive.WEBDAV)
-                    CloudLibrary.connectWebDav(
-                        s.value("name").ifBlank { "WebDAV" },
-                        s.value("base"),
-                        s.value("username"),
-                        s.value("password"),
-                        s.accountId.ifEmpty { null },
-                        { block -> commit(s, block) })
-                    commit(s) { s.state = "done"; s.inputs.values.forEach { it.clear() } }
-                }
-
-                "rename" -> {
-                    require(s.kind == "cloud" && s.accountId.isNotEmpty()); commit(s) {
-                        CloudLibrary.rename(
-                            s.accountId,
-                            s.value("name")
-                        ); s.state = "done"
-                    }
-                }
-
-                "password", "send_sms", "verify_sms", "captcha", "answer" -> {
-                    require(s.kind == "cloud" && s.provider == CloudDrive.P115)
-                    login(s, action, data)
-                }
-
-                "dav_enable" -> {
-                    require(s.kind == "dav"); commit(s) {
-                        CloudWebDav.setEnabled(
-                            app,
-                            data.optBoolean("enabled")
-                        )
-                    }; dav(s, app)
-                }
-
-                "dav_reset" -> {
-                    require(s.kind == "dav"); commit(s) { CloudWebDav.resetPassword(app) }; dav(
-                        s,
-                        app
-                    )
-                }
-
-                "dav_show" -> {
-                    require(s.kind == "dav");
-                    val state = CloudWebDav.status(app); commit(s) {
-                        s.result.put(
-                            "password",
-                            state.password
-                        ); s.revision++
-                    }
                 }
 
                 else -> error("Invalid action")
@@ -359,7 +228,7 @@ internal class AccountManager(private val host: () -> Activity?) {
                             )
                             s.error = when (e) {
                                 is MediaServerFailure -> e.code
-                                is CloudFailure -> if (e.reason == "cloud_login_required") "Sign in again." else "Cloud connection failed"
+
                                 else -> "Unable to connect. Please retry."
                             }
                         }
@@ -378,99 +247,6 @@ internal class AccountManager(private val host: () -> Activity?) {
     private fun commit(s: Session, block: () -> Unit) = s.commitSession {
         check(!s.cancelled && session === s && !closed)
         block()
-    }
-
-    private fun connect(s: Session, cookie: String) {
-        CloudLibrary.connect(
-            s.provider,
-            s.value("name").ifBlank {
-                if (s.provider == CloudDrive.P115) "115" else CloudDrive.PROVIDERS.getValue(s.provider)
-            },
-            cookie,
-            s.accountId.ifEmpty { null },
-            { block -> commit(s, block) })
-        commit(s) { s.state = "done"; s.inputs.values.forEach { it.clear() }; s.challenge = null }
-        s.web?.close()
-    }
-
-    private fun login(s: Session, action: String, data: JSONObject) {
-        val auth = s.auth ?: error("No authentication session")
-        if (action == "captcha") {
-            challenge(s, auth); return
-        }
-        val operation = if (action == "answer") s.retry else action
-        if (action == "answer") {
-            val code = data.getString("code")
-            require(code.matches(Regex("[0-9]{4}")))
-            s.answer = Cloud115Auth.Answer(s.challenge?.sign ?: error("No challenge"), code)
-        }
-        val result = when (operation) {
-            "password" -> {
-                val password = s.inputs.getValue("password").copy()
-                try {
-                    auth.password(s.value("username"), password, s.answer)
-                } finally {
-                    password.fill('\u0000')
-                }
-            }
-
-            "send_sms" -> {
-                check(SystemClock.elapsedRealtime() >= s.nextSmsAt)
-                auth.sendSms(s.sms ?: error("No SMS session"), s.answer)
-            }
-
-            "verify_sms" -> {
-                val sms = s.sms ?: error("No SMS session")
-                check(s.smsSent)
-                val code = s.value("sms"); require(code.matches(Regex("[0-9]{4,8}")))
-                if (sms.twoStep) auth.verifySms(sms, code) else {
-                    val password = s.inputs.getValue("password").copy()
-                    try {
-                        auth.password(s.value("username"), password, s.answer, code)
-                    } finally {
-                        password.fill('\u0000')
-                    }
-                }
-            }
-
-            else -> error("Invalid login operation")
-        }
-        when (result) {
-            is Cloud115Auth.Result.Connected -> connect(s, result.cookie)
-            is Cloud115Auth.Result.Captcha -> {
-                s.retry = operation; challenge(s, auth)
-            }
-
-            is Cloud115Auth.Result.Sms -> commit(s) {
-                s.sms = result; s.smsSent = false; s.answer = null; s.challenge = null; s.state =
-                "sms"
-                if (result.twoStep) s.inputs.getValue("password").clear()
-            }
-
-            is Cloud115Auth.Result.Sent -> commit(s) {
-                s.smsSent = true; s.nextSmsAt = SystemClock.elapsedRealtime() + 60000
-                s.answer = null; s.challenge = null; s.state = "sms"
-            }
-
-            is Cloud115Auth.Result.Rejected -> commit(s) {
-                s.error = "Sign-in declined (%s).".replace("%s", result.code.toString())
-            }
-        }
-    }
-
-    private fun challenge(s: Session, auth: Cloud115Auth) {
-        val value = auth.challenge()
-        // Size checks are repeated by the Godot image decoder before making GPU textures.
-        require(value.prompt.size <= 1024 * 1024 && value.choices.size <= 1024 * 1024)
-        for (bytes in listOf(value.prompt, value.choices)) {
-            val bounds =
-                android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
-            require(bounds.outWidth in 1..2048 && bounds.outHeight in 1..2048)
-        }
-        commit(s) {
-            s.answer = null; s.challenge = value; s.challengeVersion++; s.state = "captcha"
-        }
     }
 
     private fun saveServer(s: Session, app: Context) {
@@ -596,15 +372,6 @@ internal class AccountManager(private val host: () -> Activity?) {
         auth.close()
     }
 
-    private fun dav(s: Session, app: Context) {
-        val value = CloudWebDav.status(app)
-        commit(s) {
-            s.state = "dav"; s.result =
-            JSONObject().put("enabled", value.enabled).put("addresses", JSONArray(value.addresses))
-                .put("username", "quest")
-        }
-    }
-
     private fun discover(s: Session, app: Context) {
         val manager = app.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val network = manager.activeNetwork ?: throw MediaServerFailure("Connect to Wi-Fi")
@@ -644,25 +411,14 @@ internal class AccountManager(private val host: () -> Activity?) {
         }
     }
 
-    fun webFrame(id: Int): ByteArray =
-        session?.takeIf { it.id == id && !it.cancelled }?.web?.frame() ?: ByteArray(0)
-
-    fun webAction(id: Int, action: String, x: Float, y: Float, text: String) {
-        session?.takeIf { it.id == id && !it.cancelled }?.web?.action(action, x, y, text)
-    }
-
-    fun pause(paused: Boolean) {
-        session?.web?.pause(paused)
-    }
-
     @Synchronized
     fun cancel(id: Int) {
         val s = session?.takeIf { it.id == id } ?: return
         s.cancelSession {
-            s.inputs.values.forEach { it.clear() }; s.challenge = null; s.result = JSONObject()
+            s.inputs.values.forEach { it.clear() }; s.result = JSONObject()
         }
         s.plexServers = emptyList(); s.plexPin = null; s.plexToken = null
-        s.auth?.close(); s.http?.close(); s.discovery?.close(); s.web?.close(); s.plex?.close()
+        s.http?.close(); s.discovery?.close(); s.plex?.close()
         session = null
     }
 

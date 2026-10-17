@@ -34,15 +34,6 @@ class Platform:
 		calls.append({"operation": "rename", "target": JSON.parse_string(json)})
 		return calls.size()
 
-	func media_cloud_sorted_page(path: String, offset: int, force: bool, order: String) -> int:
-		calls.append(
-			{"operation": "sort", "path": path, "offset": offset, "force": force, "order": order}
-		)
-		return calls.size()
-
-	func media_cloud_cancel(_id: int) -> void:
-		pass
-
 	func respond(id: int, state: String, values: Dictionary = {}) -> void:
 		var request: Dictionary = calls[id - 1]
 		var result := {
@@ -182,47 +173,6 @@ func _run() -> void:
 		"Read-only selection cannot delete"
 	)
 	menu.file_actions.reset()
-	menu.section = Menu.Section.CLOUD
-	menu._cloud_stack = [{"id": "/account", "title": "Cloud"}]
-	menu._cloud_entries = [{"title": "Old.mp4", "uri": "cloud://account/Old.mp4", "size": 1}]
-	menu._cloud_page = 2
-	menu._cloud_offsets.assign([0, 48, 96])
-	menu.refresh()
-	menu.file_actions.choose_order("size_desc")
-	check(
-		platform.calls.back().offset == 0 and platform.calls.back().order == "size_desc",
-		"Cloud sort resets to page one using directory sort endpoint"
-	)
-	platform.respond(4, "error", {"path": "/account", "offset": 0, "order": "size_desc"})
-	check(
-		(
-			menu._cloud_page == 2
-			and menu._cloud_offsets == [0, 48, 96]
-			and menu.rows[0].title == "Old.mp4"
-		),
-		"Sort failure restores old pagination and content"
-	)
-	menu.file_actions.choose_order("size_desc")
-	platform.respond(
-		5,
-		"ready",
-		{
-			"path": "/account",
-			"offset": 0,
-			"order": "size_desc",
-			"entries": [{"title": "New.mp4", "uri": "cloud://account/New.mp4"}],
-			"next_offset": -1
-		}
-	)
-	check(
-		(
-			menu._cloud_page == 0
-			and menu.rows[0].title == "New.mp4"
-			and menu.file_actions.order() == "size_desc"
-		),
-		"Successful sort commits preference and first page"
-	)
-	menu.file_actions.reset()
 	menu.section = Menu.Section.LOCAL
 	menu._local_entries = [
 		{
@@ -242,19 +192,19 @@ func _run() -> void:
 		"Folder confirmation first reads complete tree; does not stop playback"
 	)
 	menu._activate(Actions.CONFIRM)
-	check(platform.calls.size() == 6, "Cannot confirm folder before content plan arrives")
-	platform.respond(6, "ready", {"preview": true, "plan": "tree-hash", "files": 3, "folders": 1})
+	check(platform.calls.size() == 4, "Cannot confirm folder before content plan arrives")
+	platform.respond(4, "ready", {"preview": true, "plan": "tree-hash", "files": 3, "folders": 1})
 	check(
 		menu.file_actions.plan_ready and menu.text_snapshot().contains("3 files · 1 folders"),
 		"Folder confirmation includes all content counts"
 	)
 	menu._activate(Actions.CONFIRM)
 	check(
-		platform.calls.size() == 7 and platform.calls.back().target.plan == "tree-hash",
+		platform.calls.size() == 5 and platform.calls.back().target.plan == "tree-hash",
 		"Confirmed folder uses inspected tree plan"
 	)
 	platform.respond(
-		7, "uncertain", {"partial": true, "error": "Some contents were deleted; check the folder"}
+		5, "uncertain", {"partial": true, "error": "Some contents were deleted; check the folder"}
 	)
 	check(
 		menu._local_entries.size() == 1 and menu.status.contains("Some contents"),
@@ -296,7 +246,7 @@ func _run() -> void:
 		"Rename preview does not mutate or stop playback"
 	)
 	platform.respond(
-		8,
+		6,
 		"ready",
 		{
 			"preview": true,
@@ -314,14 +264,14 @@ func _run() -> void:
 	menu._activate(Actions.Rename.APPLY)
 	check(
 		(
-			platform.calls.size() == 9
+			platform.calls.size() == 7
 			and platform.calls.back().operation == "rename"
 			and preparing.size() == 4
 		),
 		"Rename confirms exactly once and releases readers"
 	)
 	platform.respond(
-		9,
+		7,
 		"ready",
 		{"renamed": true, "new_uri": "file:///storage/test/new.mp4", "new_title": "new.mp4"}
 	)
@@ -338,112 +288,6 @@ func _run() -> void:
 			func(row): return row.get("key", "") == "file_editing" and row.title == "Allow file management"
 		),
 		"Global setting uses the requested file management label"
-	)
-	menu.section = Menu.Section.CLOUD
-	menu._cloud_stack = [{"id": "/account", "title": "Cloud"}]
-	menu.refresh()
-	menu.file_actions.choose_order("source")
-	check(
-		platform.calls.back().operation == "sort" and platform.calls.back().order == "source",
-		"Cloud source order is available without a sorted metadata snapshot"
-	)
-	platform.respond(
-		10,
-		"ready",
-		{
-			"path": "/account",
-			"offset": 0,
-			"order": "source",
-			"entries": [],
-			"next_offset": 48,
-			"total": 20001
-		}
-	)
-	check(
-		menu.file_actions.order() == "source" and menu._cloud_next == 48,
-		"Source order keeps large directories browsable and commits its preference"
-	)
-
-	menu.file_actions.reset()
-	menu._cloud_busy = false
-	menu._cloud_offsets.assign([0])
-	menu._cloud_page = 0
-	menu._cloud_entries = [
-		{
-			"id": "/account/folder",
-			"title": "旅行",
-			"container": true,
-			"delete_uri": "cloud://account/folder",
-			"cloud_id": "9007199254740993",
-			"delete_effect": "recycle",
-			"can_delete": true
-		},
-		{
-			"title": "Cloud.mp4",
-			"uri": "cloud://account/Cloud.mp4",
-			"kind": "video",
-			"size": 12,
-			"modified": 10,
-			"cloud_id": "2",
-			"delete_effect": "recycle",
-			"can_delete": true
-		}
-	]
-	menu.file_actions.set_enabled(false)
-	menu.refresh()
-	menu._activate(Actions.EDIT_MODE)
-	check(
-		(
-			not menu.file_actions.editing
-			and not menu._buttons.any(func(button): return button.target == Actions.EDIT_MODE)
-		),
-		"Cloud edit entry also stays hidden with file management off"
-	)
-	menu.file_actions.set_enabled(true)
-	menu.refresh()
-	menu._activate(Actions.EDIT_MODE)
-	menu._choose(menu.rows[1])
-	check(
-		not menu.file_actions.rename.can_rename(menu.file_actions.selected_row()),
-		"Cloud deletion capability cannot accidentally enable cloud rename"
-	)
-	menu._choose(menu.rows[0])
-	menu._activate(Actions.DELETE_FILE)
-	check(
-		(
-			platform.calls.back().operation == "prepare"
-			and platform.calls.back().target.cloud_id == "9007199254740993"
-		),
-		"Cloud folder keeps stable provider ID through selection and preview"
-	)
-	platform.respond(11, "ready", {"preview": true, "plan": "cloud-tree", "files": 3, "folders": 1})
-	check(
-		(
-			menu.text_snapshot().contains("cloud recycle bin")
-			and not menu.text_snapshot().contains("Permanently")
-		),
-		"Cloud confirmation explains recycle-bin deletion"
-	)
-	menu._activate(Actions.CONFIRM)
-	check(
-		(
-			platform.calls.back().target.plan == "cloud-tree"
-			and platform.calls.back().target.delete_effect == "recycle"
-		),
-		"Cloud folder confirms with its inspected plan and provider effect"
-	)
-	platform.respond(12, "uncertain")
-	menu._activate(Actions.CONFIRM)
-	check(platform.calls.size() == 12, "Ambiguous cloud delete does not replay")
-	menu._activate(Actions.CHECK_STATUS)
-	platform.respond(13, "ready", {"exists": true, "changed": true})
-	check(
-		(
-			menu._cloud_entries.size() == 2
-			and not menu.file_actions.uncertain
-			and menu.file_actions.target.is_empty()
-		),
-		"Replacement at deleted path clears stale confirmation and preserves replacement"
 	)
 	menu.queue_free()
 	await process_frame

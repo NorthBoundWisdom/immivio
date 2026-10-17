@@ -13,7 +13,6 @@ sys.path.insert(0, str(FREECM_ROOT))
 sys.path.insert(0, str(REPO_ROOT))
 from freecm.dependency_roots import (
     DependencyRootConfig,
-    DependencyRootSpec,
     bind_dependency_root_workflow,
 )
 
@@ -22,14 +21,7 @@ workflow = bind_dependency_root_workflow(
     DependencyRootConfig(
         repo_root=REPO_ROOT,
         repo_display_name="Immivio",
-        dependency_root_specs=(
-            DependencyRootSpec(
-                "OpenList",
-                "OpenList",
-                "OPENLIST_SOURCE_ROOT",
-                ("go.mod", "go.sum", "internal/model/storage.go", "LICENSE"),
-            ),
-        ),
+        dependency_root_specs=(),
         default_required_relative_paths=(),
     ),
 )

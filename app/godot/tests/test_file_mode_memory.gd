@@ -109,6 +109,7 @@ func _run() -> void:
 			Memory.key_for("http://127.0.0.1:4242/t/v.mp4").is_empty()
 			and Memory.key_for("").is_empty()
 			and Memory.key_for("ftp://x/v").is_empty()
+			and Memory.key_for("cloud://retired-account/video.mp4").is_empty()
 		),
 		"Per-run loopback proxy and unknown schemes are not persisted"
 	)
@@ -120,8 +121,8 @@ func _run() -> void:
 		"Stable SMB and DLNA library URIs keep per-file modes"
 	)
 	check(
-		not Memory.key_for("cloud://mount-id/中文%20VR.mp4").is_empty(),
-		"Cloud mount identity survives proxy URL changes"
+		not Memory.key_for("smb://mount-id/中文%20VR.mp4").is_empty(),
+		"SMB identity survives proxy URL changes"
 	)
 	check(
 		not memory.remember(uri, {}) and not memory.remember("http://127.0.0.1:4242/t/v.mp4", mode),

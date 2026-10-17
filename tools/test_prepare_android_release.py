@@ -23,7 +23,7 @@ class ReleaseAssets(unittest.TestCase):
                 "schema_version": 2,
                 "dependency_mode": "pinned",
                 "freecm_commit": "d" * 40,
-                "dependency_commits": {"OpenList": "e" * 40},
+                "dependency_commits": {},
                 "dependency_assets": {"OpenXRVendors": []},
                 "gradle_locks": {"android/gradle.lockfile": "f" * 64},
                 "dependency_manifests": {
@@ -33,8 +33,6 @@ class ReleaseAssets(unittest.TestCase):
                         "configs/toolchain.json",
                         "android/gradle/libs.versions.toml",
                         "android/gradle/verification-metadata.xml",
-                        "cloud/openlist/go.mod",
-                        "cloud/openlist/go.sum",
                     )
                 },
                 "vendor": vendor,
@@ -109,6 +107,7 @@ class ReleaseAssets(unittest.TestCase):
             ("freecm_commit", ""),
             ("dependency_manifests", {}),
             ("gradle_locks", {}),
+            ("dependency_commits", None),
         ]:
             with self.subTest(key=key), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)

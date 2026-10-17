@@ -27,7 +27,6 @@ static func key_for(uri: String) -> String:
 	# loopback SMB proxy URL is per run and never stored.
 	var network := (
 		uri.begins_with("smb://")
-		or uri.begins_with("cloud://")
 		or uri.begins_with("medialib://")
 		or (
 			(uri.begins_with("http://") or uri.begins_with("https://"))

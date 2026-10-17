@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 $workspace = Split-Path -Parent $PSScriptRoot
 $output = Join-Path $workspace 'build/output/account-ui'
 New-Item -ItemType Directory -Force -Path $output | Out-Null
-foreach ($case in @('test_account_panel', 'test_cloud_accounts', 'test_media_servers', 'test_library_menu', 'test_i18n')) {
+foreach ($case in @('test_account_panel', 'test_media_servers', 'test_library_menu', 'test_i18n')) {
     $stdout = Join-Path $output ($case + '.log')
     $stderr = Join-Path $output ($case + '-errors.log')
     $arguments = @('--headless', '--xr-mode', 'off', '--path', "$workspace/app/godot", '--quit-after', '1800', '--script', "res://tests/$case.gd")

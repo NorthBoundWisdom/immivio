@@ -91,12 +91,12 @@ func _check_video_queue() -> void:
 		{"uri": "smb://host/a.mp4", "title": "A", "kind": "video"},
 		{"uri": "smb://host/p.jpg", "title": "Photo", "kind": "image"},
 		{"folder": "subfolder", "title": "Folder"},
-		{"uri": "cloud://folder", "title": "Container", "container": true},
-		{"uri": "cloud://b.mp4", "title": "B", "kind": "video"}
+		{"uri": "smb://folder", "title": "Container", "container": true},
+		{"uri": "smb://b.mp4", "title": "B", "kind": "video"}
 	]
 	var queue := library.video_queue()
 	check(
-		queue.map(func(item): return item.uri) == ["smb://host/a.mp4", "cloud://b.mp4"],
+		queue.map(func(item): return item.uri) == ["smb://host/a.mp4", "smb://b.mp4"],
 		"Video queue preserves browse order and excludes photos, folders and containers"
 	)
 	library.rows.reverse()

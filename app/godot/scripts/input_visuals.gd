@@ -3,6 +3,9 @@ extends Node3D
 const HandInput := preload("res://scripts/hand_pointer.gd")
 const LEFT_HAND := preload("res://models/hands/LeftHandHumanoid.gltf")
 const RIGHT_HAND := preload("res://models/hands/RightHandHumanoid.gltf")
+const CONTROLLER_HIDE_SECONDS := 3.0
+const CONTROLLER_MOVE_METERS := 0.025
+const CONTROLLER_TURN_RADIANS := deg_to_rad(8.0)
 var use_runtime_models := true
 var hands := {}
 var _material: ShaderMaterial
@@ -53,6 +56,8 @@ func _ready() -> void:
 			"ext": null,
 			"fb": null,
 			"hand_mesh": null,
+			"idle_seconds": 0.0,
+			"rest_pose": null,
 			"controller_model": "fallback",
 			"hand_model": "fallback"
 		}
@@ -90,7 +95,14 @@ func _ready() -> void:
 				entry.hand_mesh = mesh
 
 
-func update_visibility(focused: bool) -> void:
+func controller_activity(hand: String) -> void:
+	if hands.has(hand):
+		hands[hand].idle_seconds = 0.0
+
+
+func update_visibility(
+	focused: bool, delta: float = 0.0, playback: bool = false, interacting: bool = false
+) -> void:
 	for hand in hands:
 		var entry: Dictionary = hands[hand]
 		var tracker := (
@@ -98,7 +110,17 @@ func update_visibility(focused: bool) -> void:
 		)
 		var optical := HandInput.is_optical(tracker)
 		entry.hand_gate.visible = focused and optical
-		entry.controller_gate.visible = focused and not optical and _pose_tracked(entry.grip)
+		var tracked := focused and not optical and _pose_tracked(entry.grip)
+		var pose: Transform3D = entry.grip.transform
+		var moved := _controller_moved(entry.rest_pose, pose)
+		if not tracked or not playback or interacting or moved:
+			entry.idle_seconds = 0.0
+			entry.rest_pose = pose if tracked else null
+		else:
+			entry.idle_seconds = minf(
+				CONTROLLER_HIDE_SECONDS, float(entry.idle_seconds) + maxf(delta, 0.0)
+			)
+		entry.controller_gate.visible = tracked and entry.idle_seconds < CONTROLLER_HIDE_SECONDS
 		var ext_ready := entry.ext != null and _has_mesh(entry.ext)
 		var fb_ready: bool = entry.fb != null and entry.fb.has_render_model_node()
 		if entry.ext:
@@ -114,6 +136,21 @@ func update_visibility(focused: bool) -> void:
 			entry.hand_mesh.visible = mesh_ready
 		entry.hand_fallback.visible = not mesh_ready
 		entry.hand_model = "meta" if mesh_ready else "fallback"
+
+
+static func _controller_moved(previous: Variant, current: Transform3D) -> bool:
+	if previous == null:
+		return true
+	# Compare against the last meaningful pose, not individual frames: small
+	# deliberate movements accumulate, while tracking jitter cannot keep models awake.
+	return (
+		previous.origin.distance_to(current.origin)
+		> CONTROLLER_MOVE_METERS * XRServer.world_scale
+		or previous.basis.orthonormalized().get_rotation_quaternion().angle_to(
+			current.basis.orthonormalized().get_rotation_quaternion()
+		)
+		> CONTROLLER_TURN_RADIANS
+	)
 
 
 func snapshot() -> Dictionary:

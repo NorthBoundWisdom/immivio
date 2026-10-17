@@ -21,9 +21,6 @@ var failed := false
 var preparing := false
 var plan_ready := false
 var orders := {}
-var cloud_requested_order := ""
-var cloud_committed_order := ""
-var cloud_rollback := {}
 const Rename := preload("res://scripts/library_rename.gd")
 var rename: RefCounted
 
@@ -45,11 +42,6 @@ func folder() -> bool:
 			and not menu._smb_server.is_empty()
 			and not menu._smb_path.is_empty()
 		)
-		or (
-			menu.section == menu.Section.CLOUD
-			and not menu._cloud_stack.is_empty()
-			and menu.cloud_accounts.mode.is_empty()
-		)
 	)
 
 
@@ -65,7 +57,7 @@ func sortable() -> bool:
 func supports_order(value: String) -> bool:
 	if menu.section == menu.Section.DLNA:
 		return value in ["name_asc", "name_desc"]
-	return value in Order.ORDERS and (value != "source" or menu.section == menu.Section.CLOUD)
+	return value in Order.ORDERS and (value != "source")
 
 
 func load(value: Dictionary) -> void:
@@ -76,8 +68,6 @@ func reset() -> void:
 	editing = false
 	selected = ""
 	modal = ""
-	cloud_requested_order = ""
-	cloud_rollback = {}
 	if pending == 0 and not uncertain:
 		target = {}
 
@@ -133,7 +123,7 @@ func select(row: Dictionary) -> bool:
 
 
 func sort_rows() -> void:
-	if not sortable() or menu.section == menu.Section.CLOUD:
+	if not sortable():
 		return
 	menu.rows.sort_custom(func(a, b): return Order.before(a, b, order()))
 
@@ -141,46 +131,12 @@ func sort_rows() -> void:
 func choose_order(value: String) -> void:
 	if not sortable() or not supports_order(value):
 		return
-	if menu.section == menu.Section.CLOUD:
-		if not menu.PlatformMethods.supports(menu.platform, "media_cloud_sorted_page"):
-			return
-		cloud_requested_order = value
-		cloud_rollback = {"offsets": menu._cloud_offsets.duplicate(), "page": menu._cloud_page}
-		menu._cloud_positions.clear()
-		menu._cloud_offsets.assign([0])
-		menu._load_cloud(false, false, 0)
-	else:
-		orders[scope()] = value
-		menu.setting_changed.emit("library_orders", orders.duplicate(true))
-		menu.scroll = 0.0
+	orders[scope()] = value
+	menu.setting_changed.emit("library_orders", orders.duplicate(true))
+	menu.scroll = 0.0
 	modal = ""
 	selected = ""
 	menu.refresh()
-
-
-func commit_cloud(value: String) -> void:
-	cloud_committed_order = value
-	cloud_requested_order = ""
-	cloud_rollback = {}
-	if not value.is_empty():
-		orders[scope()] = value
-		menu.setting_changed.emit("library_orders", orders.duplicate(true))
-
-
-func cloud_order() -> String:
-	return (
-		cloud_requested_order
-		if not cloud_requested_order.is_empty()
-		else Order.normalize(orders.get(str(menu.Section.CLOUD), "name_asc"))
-	)
-
-
-func cloud_failed() -> void:
-	if not cloud_rollback.is_empty():
-		menu._cloud_offsets.assign(cloud_rollback.offsets)
-		menu._cloud_requested_page = int(cloud_rollback.page)
-	cloud_requested_order = ""
-	cloud_rollback = {}
 
 
 func action(id: int) -> bool:
@@ -295,19 +251,12 @@ func receive(id: int, payload: String) -> bool:
 		modal = ""
 		selected = ""
 		target = {}
-		for entries in [menu._local_entries, menu._smb_entries, menu._cloud_entries]:
+		for entries in [menu._local_entries, menu._smb_entries]:
 			for i in range(entries.size() - 1, -1, -1):
 				if str(entries[i].get("uri", entries[i].get("delete_uri", ""))) == uri:
 					entries.remove_at(i)
 		menu.file_deleted.emit(uri)
 		menu.status = "File deleted"
-	elif checking and result.get("state") == "ready" and result.get("changed", false):
-		uncertain = false
-		failed = true
-		modal = ""
-		selected = ""
-		target = {}
-		menu.status = "Cloud file changed. Refresh the folder"
 	elif checking and result.get("state") == "ready":
 		uncertain = false
 		failed = true
@@ -338,7 +287,7 @@ func draw_header() -> void:
 		"",
 		Vector2(0.25, 0.46),
 		Vector2(0.09, 0.07),
-		not editing and not menu._cloud_busy,
+		not editing,
 		"sort"
 	)
 	menu._tips[SORT] = menu.I18n.t("Sort")
@@ -423,11 +372,6 @@ func draw_modal() -> void:
 					func(row): return ( (field == "modified" or row.has("uri")) and int(row.get(field, -1)) >= 0 )
 				)
 			)
-			if menu.section == menu.Section.CLOUD:
-				enabled = (
-					enabled
-					and menu.PlatformMethods.supports(menu.platform, "media_cloud_sorted_page")
-				)
 			menu._button(
 				ORDER_BASE + i,
 				menu.I18n.t(Order.LABELS[i]),
@@ -456,37 +400,20 @@ func draw_modal() -> void:
 			16
 		)
 		path.modulate = menu.MUTED
-		var recycle: bool = target.get("delete_effect", "") == "recycle"
 		var effect := (
-			(
-				"Moves the folder and all contents to the cloud recycle bin"
-				if target.get("folder", false)
-				else "Moves the original file to the cloud recycle bin"
-			)
-			if recycle
-			else (
-				"Permanently deletes the folder and all contents"
-				if target.get("folder", false)
-				else "Permanently deletes the original file"
-			)
+			"Permanently deletes the folder and all contents"
+			if target.get("folder", false)
+			else "Permanently deletes the original file"
 		)
 		if menu.current_file_provider.is_valid():
 			var current := str(menu.current_file_provider.call())
 			if current == str(target.get("uri", "")):
-				effect = (
-					"Stop playback and move to the cloud recycle bin"
-					if recycle
-					else "Stop playback and permanently delete"
-				)
+				effect = "Stop playback and permanently delete"
 			elif (
 				target.get("folder", false)
 				and current.begins_with(str(target.get("uri", "")).trim_suffix("/") + "/")
 			):
-				effect = (
-					"Stop playback and move folder contents to the cloud recycle bin"
-					if recycle
-					else "Stop playback and permanently delete folder contents"
-				)
+				effect = "Stop playback and permanently delete folder contents"
 		menu._label(menu.I18n.t(effect), Vector3(0.13, -0.01, 0.004), 19)
 		if target.get("folder", false) and plan_ready:
 			menu._label(

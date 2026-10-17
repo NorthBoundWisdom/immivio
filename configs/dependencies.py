@@ -58,54 +58,6 @@ def asset_file(name, filename=None):
     return path
 
 
-def go_environment(env, *, online=False):
-    env = env.copy()
-    # Respect the preconfigured Go environment and its normal package caches.
-    env.update(GOTOOLCHAIN="local", GOFLAGS="-mod=readonly")
-    if not online:
-        env.update(GOPROXY="off", GOSUMDB="off")
-    return env
-
-
-def openlist_workspace(*, include_tests=True):
-    from configs.source_roots import workflow
-
-    roots = workflow.require_dependency_roots(ROOT)
-    source = roots.dependency_root_for("OpenList")
-    destination = ROOT / "build/openlist"
-    fingerprint = {
-        "source": roots.resolved_commits["OpenList"],
-        "module": digest(ROOT / "cloud/openlist/go.mod"),
-        "sum": digest(ROOT / "cloud/openlist/go.sum"),
-        "adapters": {
-            p.name: digest(p) for p in sorted((ROOT / "cloud/openlist").glob("*.go"))
-        },
-    }
-    marker = destination / ".immivio-inputs.json"
-    if not marker.exists() or json.loads(marker.read_text()) != fingerprint:
-        shutil.rmtree(destination, ignore_errors=True)
-        shutil.copytree(source, destination, ignore=shutil.ignore_patterns(".git"))
-        model = destination / "internal/model/storage.go"
-        text = model.read_text()
-        old = 'json:"addition" gorm:"type:text"'
-        if text.count(old) != 1:
-            raise RuntimeError("OpenList credential field changed; review the adapter")
-        model.write_text(
-            text.replace(old, 'json:"addition" gorm:"type:text;serializer:vrpp_secret"')
-        )
-        (destination / "cloudcore").mkdir(exist_ok=True)
-        for path in (ROOT / "cloud/openlist").glob("*.go"):
-            shutil.copy2(path, destination / "cloudcore" / path.name)
-        for name in ("go.mod", "go.sum"):
-            shutil.copy2(ROOT / "cloud/openlist" / name, destination / name)
-        (destination / "public/dist").mkdir(parents=True, exist_ok=True)
-        (destination / "public/dist/index.html").write_text(
-            "<!doctype html><title>Immivio Cloud</title>"
-        )
-        marker.write_text(json.dumps(fingerprint, indent=2) + "\n")
-    return destination, fingerprint
-
-
 def export_dependencies():
     records = []
     for key in ("media3-exoplayer", "slf4j-api", "bcprov", "openxr-loader"):

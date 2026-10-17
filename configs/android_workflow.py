@@ -7,8 +7,6 @@ import argparse
 import json
 import os
 from pathlib import Path
-import re
-import shutil
 import subprocess
 import sys
 from types import SimpleNamespace
@@ -20,8 +18,6 @@ from configs.dependencies import (
     TOOLCHAIN,
     digest,
     lock_data,
-    go_environment,
-    openlist_workspace,
     stage_vendors,
     host_tools,
 )
@@ -42,8 +38,6 @@ BUILD_INPUTS = (
     "android/gradle/dependency-cache.gradle",
     "third_party/mpv/manifest.json",
     "android/gradle/verification-metadata.xml",
-    "cloud/openlist/go.mod",
-    "cloud/openlist/go.sum",
     "app/godot/export_presets.cfg",
     "app/godot/project.godot",
 )
@@ -75,7 +69,6 @@ def input_signature(args):
     inputs = {name: digest(ROOT / name) for name in BUILD_INPUTS}
     for directory, pattern in [
         ("configs", "*.py"),
-        ("cloud/openlist", "*.go"),
         ("android/player-plugin/src/main", "**/*.kt"),
         ("android/player-plugin/src/main", "**/*.java"),
         ("android/player-plugin/src/main", "**/*.xml"),
@@ -134,8 +127,6 @@ def dependency_receipt():
                 "configs/toolchain.json",
                 "android/gradle/libs.versions.toml",
                 "android/gradle/verification-metadata.xml",
-                "cloud/openlist/go.mod",
-                "cloud/openlist/go.sum",
             )
         },
         "gradle_locks": {
@@ -150,7 +141,7 @@ def dependency_receipt():
 def configure(args, env, sdk):
     require_asset_seeds(ROOT)
     player.prepare_mpv()
-    # Vendors are pure inputs; OpenList compilation belongs to Build.
+    # Stage the OpenXR vendor addon before configuring the Android project.
     stage_vendors()
     player.configure_project(args, env, sdk)
     marker = configuration_path(args.vendor, args.build_type)
@@ -223,99 +214,9 @@ def require_configuration(args, env, sdk):
         raise RuntimeError("Release builds require pinned dependencies")
 
 
-def prepare_go_packages(source, env):
-    """Cache the full module graph consumed by gomobile's generated module."""
-    online = go_environment(env, online=True)
-    # Package discovery alone omits modules which gomobile subsequently reads
-    # with `go list -m all` and imports while tidying its generated bindings.
-    player.run(
-        ["go", "mod", "download", "all"],
-        cwd=source,
-        env=online,
-        log="go-modules.log",
-    )
-    player.run(
-        ["go", "list", "-deps", "-test", "./cloudcore"],
-        cwd=source,
-        env=online,
-        log="go-dependencies.log",
-    )
-    prepare_binding_module_graph(source, online)
-
-
-def prepare_binding_module_graph(source, env):
-    """Warm gomobile's expanded module graph without compiling the bindings."""
-    graph = subprocess.check_output(
-        ["go", "list", "-m", "-json", "-tags=android", "all"],
-        cwd=source,
-        env=dict(env, GOOS="android", GOARCH="arm64"),
-        text=True,
-    )
-    version = (
-        subprocess.check_output(
-            ["go", "env", "GOVERSION"],
-            cwd=source,
-            env=env,
-            text=True,
-        )
-        .strip()
-        .removeprefix("go")
-    )
-    if not re.fullmatch(r"\d+\.\d+(?:\.\d+)?", version):
-        raise RuntimeError("Binding cache preparation requires a released Go toolchain")
-    decoder = json.JSONDecoder()
-    requires, replaces = [], []
-    while graph.strip():
-        module, end = decoder.raw_decode(graph.lstrip())
-        graph = graph.lstrip()[end:]
-        path, selected = module["Path"], module.get("Version", "")
-        replacement = module.get("Replace")
-        if replacement:
-            target = (
-                replacement.get("Dir")
-                if not replacement.get("Version")
-                else replacement["Path"]
-            )
-            replaces.append(
-                f'{path} => {json.dumps(target, ensure_ascii=False)} {replacement.get("Version", "")}'
-            )
-        elif not selected:
-            replaces.append(
-                f'{path} => {json.dumps(Path(module["Dir"]).as_posix(), ensure_ascii=False)}'
-            )
-            # Tidy adds this requirement after seeing the generated wrapper's import.
-            major = re.search(r"/v(\d+)$", path)
-            selected = f'v{major[1] if major else "0"}.0.0'
-        if selected:
-            requires.append(f"{path} {selected}")
-    directory = source.parent / "openlist-binding-modules"
-    directory.mkdir(parents=True, exist_ok=True)
-    (directory / "go.mod").write_text(
-        f"module gobind\n\ngo {version}\n\nrequire (\n"
-        + "\n".join(requires)
-        + "\n)\n\nreplace (\n"
-        + "\n".join(replaces)
-        + "\n)\n",
-        encoding="utf-8",
-    )
-    if (source / "go.sum").exists():
-        shutil.copy2(source / "go.sum", directory / "go.sum")
-    # gomobile promotes every listed module to a root requirement. This can
-    # select newer transitive versions than `go mod download all` in the app.
-    player.run(
-        ["go", "mod", "download", "all"],
-        cwd=directory,
-        env=dict(env, GOFLAGS="-mod=mod"),
-        log="go-binding-modules.log",
-    )
-
-
 def prepare_packages(args, env):
-    """Resolve application packages with Go/Gradle; host tools remain untouched."""
-    source, _ = openlist_workspace()
-    prepare_go_packages(source, env)
-    online = go_environment(env, online=True)
-    online["IMMIVIO_OFFLINE_BUILD"] = "0"
+    """Resolve application packages with Gradle; host tools remain untouched."""
+    online = dict(env, IMMIVIO_OFFLINE_BUILD="0")
     for directory in (ROOT / "android", player.PROJECT / "android/build"):
         player.run(
             [args.gradle, "-p", directory, "--console=plain", "prepareDependencyCache"],
@@ -325,7 +226,6 @@ def prepare_packages(args, env):
 
 
 def build(args, env, sdk):
-    player.prepare_openlist(env)
     player.build_plugin(args, env, sdk)
     path = ROOT / f"build/configurations/{args.vendor}-{args.build_type}.built.json"
     path.write_text(
@@ -335,7 +235,6 @@ def build(args, env, sdk):
                 "aar": digest(
                     player.BIN / f"player-plugin-{args.build_type.lower()}.aar"
                 ),
-                "openlist": digest(player.BIN / "cloudcore.aar"),
             },
             indent=2,
         )
@@ -351,7 +250,6 @@ def require_build(args):
     if data != {
         "inputs": input_signature(args),
         "aar": digest(player.BIN / f"player-plugin-{args.build_type.lower()}.aar"),
-        "openlist": digest(player.BIN / "cloudcore.aar"),
     }:
         raise RuntimeError("Build inputs changed; run build again")
 
@@ -399,15 +297,6 @@ def test(args, env, sdk, level):
             ],
             env=env,
             log="jvm-tests.log",
-        )
-        source, _ = openlist_workspace()
-        goenv = go_environment(env)
-        goenv["CGO_ENABLED"] = "0"
-        player.run(
-            ["go", "test", "-timeout", "180s", "./cloudcore"],
-            cwd=source,
-            env=goenv,
-            log="cloudcore-tests.log",
         )
     if level in ("l2", "all"):
         from configs.ci_support import host_tests

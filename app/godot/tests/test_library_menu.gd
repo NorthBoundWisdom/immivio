@@ -38,34 +38,6 @@ class FakePlatform:
 	extends "res://tests/account_platform_fixture.gd"
 	signal media_list(id: int, payload: String)
 	signal android_lifecycle(state: String)
-	var cloud_setups := 0
-	var cloud_refreshed := false
-
-	func media_cloud_browse(path: String, refresh_cloud: bool) -> int:
-		cloud_refreshed = refresh_cloud
-		var entries := (
-			[{"id": "/mount1", "title": "115", "container": true}]
-			if path.is_empty()
-			else [
-				{
-					"id": path + "/片名.mp4",
-					"title": "片名.mp4",
-					"container": false,
-					"uri": "cloud://mount1/%E7%89%87%E5%90%8D.mp4"
-				}
-			]
-		)
-		return _reply(
-			{
-				"call": "cloud",
-				"source": "cloud",
-				"state": "ready",
-				"path": path,
-				"refresh": refresh_cloud,
-				"entries": entries
-			}
-		)
-
 	var next := 0
 	var calls: Array = []
 	var saved: Array = []
@@ -479,43 +451,6 @@ func _run() -> void:
 	await settle()
 	check(titles(menu) == ["Movies", "舞台.mp4"], "Back returns to the parent folder")
 	# SMB: saved servers plus discovered hosts, shares, folders, file URI.
-	menu._activate(Menu.NAV_BASE + Menu.Section.CLOUD)
-	await settle()
-	check(titles(menu) == ["115"], "Cloud accounts appear as mounts")
-	menu._activate(Menu.ROW_BASE)
-	await settle()
-	check(
-		titles(menu) == ["片名.mp4"] and menu._header_title() == "115",
-		"Cloud folder opens with a readable breadcrumb"
-	)
-	menu._activate(Menu.REFRESH)
-	await settle()
-	check(platform.cloud_refreshed, "Cloud refresh bypasses cached metadata")
-	menu._activate(Menu.ROW_BASE)
-	check(
-		str(chosen.back()[0]).begins_with("cloud://mount1/") and not menu.visible,
-		"Cloud selection keeps a stable URI"
-	)
-	menu.toggle()
-	menu._activate(Menu.NAV_BASE + Menu.Section.CLOUD)
-	await settle()
-	menu._activate(Menu.CRUMB_BASE)
-	await settle()
-	check(titles(menu) == ["115"], "Cloud breadcrumb returns to account list")
-	menu._activate(Menu.CLOUD_ACCOUNTS)
-	check(
-		menu.account_panel.view == "choose" and menu.account_panel.kind == "cloud",
-		"Account action opens in-app provider selection"
-	)
-	platform.android_lifecycle.emit("resume")
-	await settle()
-	check(menu.account_panel.view == "choose", "Resume retains in-app provider selection")
-	menu.account_panel.action(menu.AccountPanel.BASE)
-	await settle()
-	check(
-		not menu._cloud_setup and titles(menu) == ["115"],
-		"Leaving account management returns to mounts"
-	)
 	menu._activate(Menu.NAV_BASE + Menu.Section.SMB)
 	await settle()
 	check(titles(menu) == ["NAS"], "Saved SMB server listed")
@@ -715,7 +650,7 @@ func _run() -> void:
 	menu.scroll = menu._max_scroll()
 	menu._draw()
 	check(
-		menu.text_snapshot().contains("p115rsacipher") and menu._max_scroll() > 0,
+		menu.text_snapshot().contains("CodeLibs JCIFS") and menu._max_scroll() > 0,
 		"Copyright list scrolls to its final component"
 	)
 	menu._activate(Menu.ABOUT_HOME)

@@ -17,5 +17,5 @@ They do not replace each dependency's original notices or source records.
   resources are unchanged. SMB authentication, signing and encryption remain.
 
 Godot engine and its compiled dependency notices are read from Engine's runtime
-license/copyright APIs. MPV/FFmpeg, p115rsacipher, Gradle and CC0 use existing
+license/copyright APIs. MPV/FFmpeg, Gradle and CC0 use existing
 third_party assets directly. The index is app/godot/i18n/licenses.json.

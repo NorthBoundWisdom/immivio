@@ -56,7 +56,7 @@ def prepare(packages, output, tag, commit):
         if not re.fullmatch(r"[0-9a-f]{40}", record.get("freecm_commit", "")):
             raise ValueError("Release receipt is missing the FreeCM commit")
         if (
-            not record.get("dependency_commits")
+            not isinstance(record.get("dependency_commits"), dict)
             or not record.get("dependency_assets")
             or not record.get("gradle_locks")
         ):
@@ -69,8 +69,6 @@ def prepare(packages, output, tag, commit):
             "configs/toolchain.json",
             "android/gradle/libs.versions.toml",
             "android/gradle/verification-metadata.xml",
-            "cloud/openlist/go.mod",
-            "cloud/openlist/go.sum",
         }
         if not required_manifests <= record.get("dependency_manifests", {}).keys():
             raise ValueError("Release receipt is missing dependency manifest digests")

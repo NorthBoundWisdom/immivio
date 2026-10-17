@@ -21,10 +21,6 @@ runs:
       with:
         distribution: temurin
         java-version: ${{ steps.versions.outputs.java }}
-    - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
-      with:
-        go-version-file: cloud/openlist/go.mod
-        cache: false
     - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4
       with:
         cmdline-tools-version: ${{ steps.versions.outputs.command_line_tools }}

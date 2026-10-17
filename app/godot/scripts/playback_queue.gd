@@ -34,7 +34,7 @@ func append(entries: Array) -> void:
 			continue
 		if not (
 			uri.get_slice(":", 0)
-			in ["file", "content", "smb", "cloud", "medialib", "http", "https"]
+			in ["file", "content", "smb", "medialib", "http", "https"]
 		):
 			continue
 		if not entry.get("metadata", {}) is Dictionary:

@@ -563,7 +563,7 @@ func open_local(
 	if not basename.is_empty():
 		_bookmark_metadata.basename = basename
 	if str(_bookmark_metadata.get("basename", "")).is_empty():
-		if uri.begins_with("file://") or uri.begins_with("smb://") or uri.begins_with("cloud://"):
+		if uri.begins_with("file://") or uri.begins_with("smb://"):
 			_bookmark_metadata.basename = uri.uri_decode().get_file()
 		elif uri.begins_with("content://"):
 			_bookmark_metadata.basename = title

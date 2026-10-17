@@ -23,7 +23,7 @@ class BuildSourceChanges(unittest.TestCase):
                     android.workflow,
                     "require_dependency_roots",
                     return_value=SimpleNamespace(
-                        resolved_commits={"OpenList": "a" * 40}
+                        resolved_commits={}
                     ),
                 )
             )
@@ -37,7 +37,7 @@ class BuildSourceChanges(unittest.TestCase):
             )
             binaries = root / "app/godot/addons/quest_player/bin"
             binaries.mkdir(parents=True)
-            for name in ("player-plugin-debug.aar", "cloudcore.aar"):
+            for name in ("player-plugin-debug.aar",):
                 (binaries / name).write_bytes(b"fixture-compiled-output")
             stack.enter_context(patch.object(android.player, "BIN", binaries))
             args = SimpleNamespace(vendor="Quest", build_type="Debug")
@@ -53,7 +53,6 @@ class BuildSourceChanges(unittest.TestCase):
                     "aar": android.digest(
                         android.player.BIN / "player-plugin-debug.aar"
                     ),
-                    "openlist": android.digest(android.player.BIN / "cloudcore.aar"),
                 }
             )
         )
@@ -89,7 +88,7 @@ class BuildSourceChanges(unittest.TestCase):
         with self.workspace() as (root, args, marker):
             self.mark_built(args, marker)
             for name in (
-                "build/openlist/generated.go",
+                "build/generated/source.kt",
                 "android/player-plugin/build/generated.kt",
                 "app/godot/android/build/generated.gd",
                 "app/godot/.godot/import.log",

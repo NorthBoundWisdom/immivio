@@ -18,9 +18,3 @@ include ':player-plugin'
 if (providers.gradleProperty('includeUriFixture').orNull == 'true') {
     include ':uri-fixture'
 }
-
-
-// Local-only WebView regression APK; shares the production viewport without XR/native libraries.
-if (providers.gradleProperty('includeWebLoginFixture').orNull == 'true') {
-    include ':web-login-fixture'
-}

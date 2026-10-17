@@ -38,9 +38,6 @@ func _on_library_chosen(uri: String, title: String) -> void:
 			host.recent_menu.status = "Added to playback queue"
 			host.recent_menu.refresh()
 		return
-	var directory_context: Dictionary = (
-		host.recent_menu.photo_directory_context() if is_photo else {}
-	)
 	host.recent_menu.dismiss()
 	if host.player_menu:
 		host.player_menu.dismiss()
@@ -54,7 +51,6 @@ func _on_library_chosen(uri: String, title: String) -> void:
 			func(pointer): return pointer.source == "hand"
 		)
 		host.photo.open_image(uri, title, host.recent_menu.image_queue())
-		host.photo.start_directory(directory_context)
 		host._show_player_menu()
 	else:
 		host._photo_open_hide_controls = false

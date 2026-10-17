@@ -11,7 +11,7 @@ import java.security.SecureRandom
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
-/** Random-access byte source (SMB or cloud). Each HTTP connection opens its own reader. */
+/** Random-access byte source (SMB or media servers). Each HTTP connection opens its own reader. */
 internal interface StreamSource : Closeable {
     val size: Long
     fun open(): Reader

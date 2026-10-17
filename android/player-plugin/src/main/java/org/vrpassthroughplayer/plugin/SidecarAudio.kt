@@ -53,15 +53,6 @@ internal object SidecarAudio {
         return extra.ifEmpty { "M4A" }
     }
 
-    fun forCloud(path: String, client: CloudClient, publish: (CloudFile) -> String): List<Track> {
-        val files = client.list(path.substringBeforeLast('/').ifEmpty { "/" })
-            .filter { !it.folder && it.size > 0 }.associateBy { it.name }
-        val video = path.substringAfterLast('/')
-        return select(video, files.keys).mapNotNull { name ->
-            runCatching { Track(publish(files.getValue(name)), title(video, name)) }.getOrNull()
-        }
-    }
-
     fun forFile(path: String): List<Track> {
         val video = File(path)
         val names = video.parentFile?.list()?.toList() ?: return emptyList()

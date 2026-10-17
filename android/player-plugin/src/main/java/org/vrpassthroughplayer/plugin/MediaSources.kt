@@ -3,7 +3,6 @@ package org.vrpassthroughplayer.plugin
 import android.app.Activity
 import android.content.Context
 import android.net.wifi.WifiManager
-import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
@@ -17,9 +16,6 @@ internal class MediaSources(
 ) {
     private val ids = AtomicInteger()
     private val network = Executors.newSingleThreadExecutor { Thread(it, "QuestMediaNetwork") }
-    private val cloudNetwork = Executors.newSingleThreadExecutor { Thread(it, "QuestCloudNetwork") }
-    private val cloudBrowseRequests = CloudBrowseRequests()
-    private val photoDirectoryRequests = CloudBrowseRequests()
     private val local = LocalVideoLibrary(host, emit)
     @Volatile
     private var fileManagementEnabled = false
@@ -74,20 +70,8 @@ internal class MediaSources(
 
     @Volatile
     private var stopped = false
-    private val cloudAccountChanged: () -> Unit = {
-        if (!stopped) emit(
-            0,
-            JSONObject().put("source", "cloud").put("state", "accounts_changed").toString()
-        )
-    }
-
     init {
-        CloudAccountChanges.subscribe(cloudAccountChanged)
         DlnaClient.log = { android.util.Log.i("QuestDlna", it) }
-        cloudNetwork.execute {
-            if (!stopped) runCatching { context()?.let { CloudWebDav.restore(it) } }
-            if (stopped) CloudWebDav.stop()
-        }
     }
 
     fun dlnaDiscover(): Int = run("dlna") {
@@ -145,46 +129,6 @@ internal class MediaSources(
             .put("entries", smb.browse(serverId, path))
     }
 
-    fun cloudBrowse(path: String, refresh: Boolean, offset: Int = 0, order: String = ""): Int {
-        val id = nextId()
-        cloudBrowseRequests.submit(id, { cancellation ->
-            val result = try {
-                CloudLibrary.start(context() ?: error("Activity unavailable"))
-                CloudLibrary.browse(path, refresh, offset, cancellation, order)
-                    .put("state", "ready")
-            } catch (error: Exception) {
-                JSONObject().put("state", "error")
-                    .put("error", error.message ?: "Cloud connection failed")
-            }
-            result.put("source", "cloud").put("path", path).put("offset", offset)
-                .put("order", order).toString()
-        }, emit)
-        return id
-    }
-
-    fun cloudCancel(id: Int) = cloudBrowseRequests.cancel(id)
-    fun photoDirectoryPage(path: String, offset: Int, order: String): Int {
-        val id = nextId()
-        photoDirectoryRequests.submit(id, { cancellation ->
-            val result = try {
-                CloudLibrary.start(context() ?: error("Activity unavailable"))
-                CloudLibrary.browse(path, false, offset, cancellation, order).put("state", "ready")
-            } catch (_: Exception) {
-                JSONObject().put("state", "error").put("error", "PHOTO_DIRECTORY_UNAVAILABLE")
-            }
-            result.put("path", path).put("offset", offset).put("order", order).toString()
-        }, emit)
-        return id
-    }
-
-    fun photoDirectoryCancel(id: Int) = photoDirectoryRequests.cancel(id)
-
-    fun cloudRemove(id: String): Int = run("cloud") {
-        CloudLibrary.start(context() ?: error("Activity unavailable"))
-        CloudLibrary.remove(id)
-        JSONObject()
-    }
-
     fun renameFile(json: String, prepare: Boolean): Int {
         val id = nextId()
         network.execute {
@@ -220,21 +164,13 @@ internal class MediaSources(
             val result = try {
                 request = JSONObject(json)
                 val uri = request.getString("uri")
-                require(uri.startsWith("file://") || uri.startsWith("smb://") || uri.startsWith("cloud://"))
+                require(uri.startsWith("file://") || uri.startsWith("smb://"))
                 if (!inspect) check(fileManagementEnabled) { "File management is off" }
-                // CloudDeletion handles uncertainty after its single write; exceptions here precede it.
-                sent = !inspect && !prepare && !uri.startsWith("cloud://")
+                sent = !inspect && !prepare
                 val result = when {
                     uri.startsWith("file://") -> local.deleteFile(request, inspect, prepare)
                     uri.startsWith("smb://") -> smb.deleteFile(request, inspect, prepare)
-                    else -> {
-                        CloudLibrary.start(context() ?: error("Activity unavailable"))
-                        CloudLibrary.deleteFile(request, inspect, prepare) {
-                            check(
-                                fileManagementEnabled
-                            ) { "File management is off" }
-                        }
-                    }
+                    else -> error("File deletion unavailable for this source")
                 }
                 if (!result.has("state")) result.put("state", "ready") else result
             } catch (error: Exception) {
@@ -251,7 +187,7 @@ internal class MediaSources(
                 JSONObject().put("state", if (sent && !definite) "uncertain" else "error")
                     .put(
                         "error",
-                        if (error is CloudFailure && !sent) error.message else if (smbError != null && definite) "File deletion permission denied" else if (definite) error.message
+                        if (smbError != null && definite) "File deletion permission denied" else if (definite) error.message
                             ?: "File deletion failed" else "Delete result needs checking"
                     )
             }
@@ -268,11 +204,6 @@ internal class MediaSources(
     fun playable(uri: String): String = when {
         uri.startsWith("medialib://") -> mediaServers.playable(uri)
         uri.startsWith("smb://") -> smb.stream(uri)
-        uri.startsWith("cloud://") -> {
-            CloudLibrary.start(context() ?: error("Activity unavailable"))
-            CloudLibrary.playable(uri, streams())
-        }
-
         else -> uri
     }
 
@@ -285,11 +216,6 @@ internal class MediaSources(
             "content" -> context()?.let { SidecarAudio.forMediaStore(it, source) } ?: emptyList()
             "smb" -> smb.sidecarAudio(uri)
             "medialib" -> mediaServers.sidecarAudio(uri)
-            "cloud" -> {
-                CloudLibrary.start(context() ?: error("Activity unavailable"))
-                CloudLibrary.sidecarAudio(uri, streams())
-            }
-
             else -> emptyList()
         }
     } catch (error: Throwable) {
@@ -310,11 +236,6 @@ internal class MediaSources(
                 )
             ) { source, name -> streams().publish(source, name) }
 
-            uri.startsWith("cloud://") -> {
-                CloudLibrary.start(context() ?: error("Activity unavailable"))
-                CloudLibrary.sidecarSubtitles(uri, streams())
-            }
-
             else -> emptyList()
         }
     } catch (error: Exception) {
@@ -327,7 +248,7 @@ internal class MediaSources(
 
     private fun run(source: String, block: () -> JSONObject): Int {
         val id = ids.incrementAndGet()
-        (if (source == "cloud") cloudNetwork else network).execute {
+        network.execute {
             val result = try {
                 block().put("state", "ready")
             } catch (error: Throwable) {
@@ -341,12 +262,8 @@ internal class MediaSources(
 
     fun close() {
         stopped = true
-        CloudAccountChanges.unsubscribe(cloudAccountChanged)
         mediaServers.close()
-        cloudBrowseRequests.close(); photoDirectoryRequests.close()
-        network.shutdownNow(); cloudNetwork.shutdownNow(); local.close()
-        CloudLibrary.stopStreams()
-        CloudWebDav.stop()
+        network.shutdownNow(); local.close()
         server?.close(); server = null
     }
 }

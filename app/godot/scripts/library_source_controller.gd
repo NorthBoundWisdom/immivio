@@ -1,23 +1,13 @@
 extends RefCounted
-## Owns asynchronous library requests, cancellation and cloud pagination.
+## Owns asynchronous library requests and cancellation.
 
 var _host_ref: WeakRef
 const PlatformMethods := preload("res://scripts/platform_methods.gd")
 
-enum Section { RECENT, LOCAL, SMB, DLNA, CLOUD, SETTINGS, MEDIA_SERVER }
+enum Section { RECENT, LOCAL, SMB, DLNA, SETTINGS, MEDIA_SERVER }
 var _pending := {}  # request id -> kind
 var _local_stack: Array = []  # [{id, title}] from a storage volume down to the open folder
 var _local_entries: Array = []
-var _cloud_stack: Array = []
-var _cloud_entries: Array = []
-var _cloud_page := 0  # zero-based, committed only after a successful response
-var _cloud_next := -1
-var _cloud_total := -1
-var _cloud_offsets: Array[int] = [0]
-var _cloud_positions := {}
-var _cloud_location := ""
-var _cloud_requested_page := 0
-var _cloud_busy := false
 
 
 func _init(host: Node3D) -> void:
@@ -29,10 +19,6 @@ func _request(kind: String, id: Variant) -> void:
 	if not is_instance_valid(host):
 		return
 	if id is int and id > 0:
-		if kind == "cloud":
-			for previous in host._pending.keys():
-				if host._pending[previous] == "cloud":
-					host._pending.erase(previous)
 		if kind.begins_with("dlna") and kind not in ["dlna_save", "dlna_remove"]:
 			for previous in host._pending.keys():
 				if host._pending[previous] == kind:
@@ -52,8 +38,6 @@ func _on_media_list(id: int, payload: String) -> void:
 	if not is_instance_valid(host):
 		return
 	if host.file_actions.receive(id, payload):
-		return
-	if host.cloud_accounts.receive(id, payload):
 		return
 	# Unsolicited store notifications also work when Quest does not pause/resume VR.
 	if id == 0:
@@ -133,36 +117,10 @@ func _on_media_list(id: int, payload: String) -> void:
 	host._pending.erase(id)
 	if kind.begins_with("dlna") and host.section != Section.DLNA:
 		return
-	if kind == "cloud":
-		host._cloud_busy = false
-	if kind == "cloud" and host.section != Section.CLOUD:
-		return
 	var parsed: Variant = JSON.parse_string(payload)
 	if not parsed is Dictionary:
-		if kind == "cloud":
-			host.file_actions.cloud_failed()
-			host.status = "Cloud connection failed"
-			host.refresh()
 		return
 	var result: Dictionary = parsed
-	if (
-		kind == "cloud"
-		and (
-			str(result.get("path", "")) != host._cloud_path()
-			or int(result.get("offset", 0)) != host._cloud_offsets[host._cloud_requested_page]
-			or (
-				not host._cloud_path().is_empty()
-				and PlatformMethods.supports(host.platform, "media_cloud_sorted_page")
-				and str(result.get("order", "")) != host.file_actions.cloud_order()
-			)
-		)
-	):
-		# A matching request ID with the wrong page is a protocol failure, not pending work.
-		host.file_actions.cloud_failed()
-		host.status = "Cloud connection failed"
-		if host.visible:
-			host.refresh()
-		return
 	host.status = ""
 	var state = str(result.get("state", "error"))
 	if state == "denied":
@@ -172,19 +130,9 @@ func _on_media_list(id: int, payload: String) -> void:
 			else "Media access needed"
 		)
 	elif state != "ready":
-		if kind == "cloud":
-			host.file_actions.cloud_failed()
 		host.status = str(result.get("error", "Error")).left(80)
 	else:
 		match kind:
-			"cloud":
-				host.file_actions.commit_cloud(str(result.get("order", "")))
-				host._cloud_entries = result.get("entries", [])
-				host._cloud_page = host._cloud_requested_page
-				host._cloud_next = int(result.get("next_offset", -1))
-				host._cloud_total = int(result.get("total", -1))
-				host._cloud_page_size = maxi(1, int(result.get("page_size", 48)))
-				host._reset_navigation()
 			"local":
 				if str(result.get("path", "")) == host._local_path():
 					host._local_entries = result.get("entries", [])
@@ -247,13 +195,11 @@ func _load_section() -> void:
 	if not host.platform:
 		host.status = (
 			"Headset only"
-			if host.section in [Section.LOCAL, Section.SMB, Section.DLNA, Section.CLOUD]
+			if host.section in [Section.LOCAL, Section.SMB, Section.DLNA]
 			else ""
 		)
 		return
 	match host.section:
-		Section.CLOUD:
-			host._load_cloud()
 		Section.LOCAL:
 			# Always read again: files change, and access may have just been granted in settings.
 			host._request("local", host.platform.media_local_browse(host._local_path()))
@@ -275,100 +221,11 @@ func _local_path() -> String:
 	return "" if host._local_stack.is_empty() else str(host._local_stack.back().id)
 
 
-func _cloud_path() -> String:
-	var host := _host_ref.get_ref() as Node3D
-	if not is_instance_valid(host):
-		return ""
-	return "" if host._cloud_stack.is_empty() else str(host._cloud_stack.back().id)
-
-
-func _cancel_cloud() -> void:
-	var host := _host_ref.get_ref() as Node3D
-	if not is_instance_valid(host):
-		return
-	for id in host._pending.keys():
-		if host._pending[id] == "cloud":
-			if PlatformMethods.supports(host.platform, "media_cloud_cancel"):
-				host.platform.media_cloud_cancel(int(id))
-			host._pending.erase(id)
-	host._cloud_busy = false
-
-
-func _load_cloud(reset: bool = true, force: bool = false, page: int = 0) -> void:
-	var host := _host_ref.get_ref() as Node3D
-	if not is_instance_valid(host):
-		return
-	host._cancel_cloud()
-	if reset:
-		if not host._cloud_entries.is_empty() or host._cloud_page > 0:
-			host._cloud_positions[host._cloud_location] = {
-				"page": host._cloud_page, "offsets": host._cloud_offsets.duplicate()
-			}
-			while host._cloud_positions.size() > 32:
-				host._cloud_positions.erase(host._cloud_positions.keys()[0])
-		host._cloud_location = host._cloud_path()
-		var saved_page: Dictionary = host._cloud_positions.get(host._cloud_location, {})
-		host._cloud_entries = []
-		host._cloud_page = 0
-		host._cloud_offsets.assign(saved_page.get("offsets", [0]))
-		page = int(saved_page.get("page", 0))
-		host._cloud_next = -1
-		host._cloud_total = -1
-	if not host.platform or page < 0 or page >= host._cloud_offsets.size():
-		return
-	host._cloud_requested_page = page
-	host._cloud_busy = true
-	if (
-		PlatformMethods.supports(host.platform, "media_cloud_sorted_page")
-		and not host._cloud_path().is_empty()
-	):
-		host._request(
-			"cloud",
-			host.platform.media_cloud_sorted_page(
-				host._cloud_path(),
-				host._cloud_offsets[page],
-				force,
-				host.file_actions.cloud_order()
-			)
-		)
-	elif PlatformMethods.supports(host.platform, "media_cloud_page"):
-		host._request(
-			"cloud",
-			host.platform.media_cloud_page(host._cloud_path(), host._cloud_offsets[page], force)
-		)
-	elif page == 0:
-		host._request("cloud", host.platform.media_cloud_browse(host._cloud_path(), force))
-	else:
-		host.status = "Unavailable"
-	if not host._pending.values().has("cloud"):
-		host._cloud_busy = false
-
-
-func _turn_cloud_page(step: int) -> void:
-	var host := _host_ref.get_ref() as Node3D
-	if not is_instance_valid(host):
-		return
-	if host._cloud_busy or host._cloud_stack.is_empty():
-		return
-	var page = host._cloud_page + step
-	if page < 0 or (step > 0 and host._cloud_next < 0):
-		return
-	if step > 0:
-		host._cloud_offsets.resize(page + 1)
-		host._cloud_offsets[page] = host._cloud_next
-	host._load_cloud(false, false, page)
-	host.refresh()
-
-
 func _refresh_source() -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
 	if not host.platform:
-		return
-	if host.section == Section.CLOUD:
-		host._load_cloud(false, true, host._cloud_page)
-		host.refresh()
 		return
 	match host.section:
 		Section.LOCAL:

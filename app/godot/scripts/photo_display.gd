@@ -8,12 +8,8 @@ const SHADER := preload("res://shaders/photo.gdshader")
 const PLACEHOLDER_SHADER := preload("res://shaders/photo_placeholder.gdshader")
 const Methods := preload("res://scripts/platform_methods.gd")
 const Gallery := preload("res://scripts/photo_gallery.gd")
-const Directory := preload("res://scripts/photo_directory.gd")
 var gallery := Gallery.new()
-var directory := Directory.new()
 var queue_complete := true
-var directory_error := ""
-var _directory_result := {}
 const CACHE_IMAGE_BYTES := 32 * 1024 * 1024
 const RECENT_FILE_BYTES := 128 * 1024 * 1024
 const RECENT_FILE_COUNT := 4
@@ -119,7 +115,6 @@ var _swipe_offset := 0.0
 func _init() -> void:
 	gallery.photo = self
 	add_child(gallery)
-	add_child(directory)
 	screen_curve = DEFAULT_CURVE
 	screen_distance = DEFAULT_DISTANCE
 	flat_pose.origin.z = -DEFAULT_DISTANCE
@@ -210,10 +205,6 @@ func pan_hand(step: Vector2) -> void:
 func _ready() -> void:
 	initialize_surface(SHADER)
 	changed.connect(gallery._refresh_textures)
-	directory.completed.connect(
-		func(entries, complete, failure):
-			_directory_result = {"entries": entries, "complete": complete, "error": failure}
-	)
 	_placeholder = MeshInstance3D.new()
 	_placeholder_material = ShaderMaterial.new()
 	_placeholder_material.shader = PLACEHOLDER_SHADER
@@ -305,14 +296,6 @@ func open_image(uri: String, title: String, entries: Array = []) -> bool:
 	return _select(target)
 
 
-func start_directory(context: Dictionary) -> void:
-	queue_complete = context.is_empty()
-	directory_error = ""
-	directory.platform = platform
-	directory.start(context)
-	changed.emit()
-
-
 func set_layout_mode(value: int) -> void:
 	if portrait_requested:
 		set_portrait(false)
@@ -323,34 +306,6 @@ func set_layout_mode(value: int) -> void:
 			_drop_prefetch(target)
 	if value == Gallery.Layout.SINGLE and _texture != null:
 		panel.visible = true
-	changed.emit()
-
-
-func _replace_directory() -> void:
-	var result := _directory_result
-	_directory_result = {}
-	queue_complete = bool(result.complete)
-	directory_error = str(result.error)
-	var entries: Array[Dictionary] = result.entries
-	if not entries.is_empty() and entries.any(func(item): return str(item.uri) == local_uri):
-		_cache_epoch += 1
-		_pause_prefetch()
-		for target in _prefetched.keys():
-			_drop_prefetch(target)
-		for entry in _recent_files.values():
-			_release_photo(int(entry.id), true)
-		_recent_files.clear()
-		_prefetch_failed.clear()
-		gallery.replace_indices(queue, entries)
-		queue = entries
-		for position in queue.size():
-			if str(queue[position].uri) == local_uri:
-				index = position
-				break
-		pending_index = -1
-	elif queue_complete:
-		queue_complete = false
-		directory_error = "Images unavailable"
 	changed.emit()
 
 
@@ -714,8 +669,6 @@ static func _decode(job: Dictionary) -> Dictionary:
 
 
 func _process(delta: float) -> void:
-	if not _directory_result.is_empty() and not loading and not _thread:
-		_replace_directory()
 	if _thread and not _thread.is_alive():
 		var result: Dictionary = _thread.wait_to_finish()
 		_thread = null
@@ -1735,8 +1688,6 @@ func snapshot() -> Dictionary:
 		"gallery_distance": gallery.view_distance,
 		"gallery_swapping": gallery._swap_phase != 0,
 		"gallery_focus": gallery.focus,
-		"directory_loading": directory.loading,
-		"directory_error": directory_error,
 		"queue_complete": queue_complete,
 		"can_background": can_background(),
 		"can_previous":
@@ -1848,8 +1799,6 @@ func release_storage(volume: Dictionary) -> bool:
 	loading = false
 	_restore_display()
 	gallery.clear()
-	directory.cancel()
-	_directory_result = {}
 	queue = remaining
 	index = -1
 	for target in queue.size():
@@ -1867,10 +1816,7 @@ func close_image(notify: bool = true) -> void:
 	_portrait_strength = -1.0
 	portrait_error = ""
 	_portrait_next = {}
-	directory.cancel()
-	_directory_result = {}
 	queue_complete = true
-	directory_error = ""
 	gallery.clear()
 	_restore_display()
 	_cache_epoch += 1

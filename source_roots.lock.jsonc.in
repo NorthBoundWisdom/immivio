@@ -1,15 +1,8 @@
 {
   "schemaVersion": 5,
   "depsMode": "pinned",
-  "depsManualPath": {
-    "OpenList": ""
-  },
-  "dependencies": {
-    "OpenList": {
-      "remote": "https://github.com/OpenListTeam/OpenList.git",
-      "commit": "2bdf16d5967d0a403f67d809efd5a418b8f5bd30"
-    }
-  },
+  "depsManualPath": {},
+  "dependencies": {},
   "assets": {
     "OpenXRVendors": {
       "seedPath": "build/dependency_seed_repos/OpenXRVendors",

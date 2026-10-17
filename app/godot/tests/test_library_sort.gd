@@ -116,38 +116,6 @@ func _run() -> void:
 		not menu._buttons.any(func(button): return button.target == Actions.SORT),
 		"SMB share list remains outside file-directory sorting"
 	)
-	menu.section = Menu.Section.CLOUD
-	menu._cloud_stack = [{"id": "/account", "title": "Cloud"}]
-	menu._cloud_entries = folders
-	menu.refresh()
-	menu._activate(Actions.SORT)
-	check(
-		menu._buttons.any(
-			func(button): return button.target == Actions.ORDER_BASE + 2 and button.enabled
-		),
-		"Cloud folder-only metadata also enables modified sorting"
-	)
-	menu._activate(Actions.ORDER_BASE + 2)
-	check(
-		platform.calls.back().order == "modified_desc",
-		"Cloud uses whole-directory native time sort"
-	)
-	platform.respond(
-		platform.calls.size(),
-		"ready",
-		{
-			"path": "/account",
-			"offset": 0,
-			"order": "modified_desc",
-			"entries": [folders[1], folders[2], folders[0], folders[3]],
-			"next_offset": -1
-		}
-	)
-	check(
-		titles(menu.rows) == ["B", "A2", "A10", "Unknown"],
-		"Cloud page preserves native global folder order"
-	)
-	menu.file_actions.reset()
 	menu.section = Menu.Section.DLNA
 	menu._dlna_server = "uuid:test"
 	menu._dlna_stack = []
@@ -214,16 +182,15 @@ func _run() -> void:
 				"uri": "http://nas/%d.mp4" % i
 			}
 		)
-	for source in [Menu.Section.DLNA, Menu.Section.CLOUD]:
+	for source in [Menu.Section.DLNA]:
 		menu.section = source
 		menu._dlna_entries = filename_entries
-		menu._cloud_entries = filename_entries
 		for direction in ["name_asc", "name_desc"]:
 			menu.file_actions.load({str(source): direction})
 			menu.refresh()
 			check(
 				menu.rows.size() == filename_cases.size(),
-				"Similar filenames remain visible in DLNA and cloud rows"
+				"Similar filenames remain visible in DLNA rows"
 			)
 			for name in filename_cases:
 				check(

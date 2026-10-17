@@ -12,7 +12,7 @@ Watch VR180, 360° and 3D side-by-side (SBS) videos and supported spatial photos
 
 **Designed for high-performance playback:** libmpv uses Android hardware video decoding where supported, with shared GPU textures for rendering and adjustable display quality. Actual performance depends on headset, codec, resolution and bitrate.
 
-Immivio 是面向 Meta Quest 与 PICO 的免费开源 VR 视频播放器，支持 VR180、360° 全景、3D 左右立体视频与空间照片，提供硬件解码、GPU 渲染，以及 SMB、WebDAV、DLNA 网络媒体库访问。[查看中文官网](https://northboundwisdom.github.io/immivio/zh/)。
+Immivio 是面向 Meta Quest 与 PICO 的免费开源 VR 视频播放器，支持 VR180、360° 全景、3D 左右立体视频与空间照片，提供硬件解码、GPU 渲染，以及 SMB、DLNA 网络媒体库访问。[查看中文官网](https://northboundwisdom.github.io/immivio/zh/)。
 
 [Website](https://northboundwisdom.github.io/immivio/) · [Releases](https://github.com/NorthBoundWisdom/immivio/releases) · [Development builds](https://github.com/NorthBoundWisdom/immivio/actions/workflows/android-release.yml) · [User guide](https://northboundwisdom.github.io/immivio/guide/) · [中文官网与使用指南](https://northboundwisdom.github.io/immivio/zh/)
 
@@ -30,7 +30,7 @@ Immivio continues development of [zerochocobo/Thru3D-Media-Player](https://githu
 
 - **Watch flat or immersive media.** Flat screens, VR180, VR360 and fisheye projections; side-by-side and top-bottom stereo layouts, including half-width/half-height formats.
 - **Free and open source.** Download, use and build the player under GPL-3.0; third-party services follow their own terms and may have their own fees.
-- **Bring your own library.** Local files, SMB, WebDAV, DLNA, supported media servers and cloud sources. Available operations depend on the source and your account permissions.
+- **Bring your own library.** Local files, SMB, DLNA, supported media servers. Available operations depend on the source and your account permissions.
 - **Get comfortable.** Move the picture and panels, adjust supported screen size/distance/curvature, and use reclining mode or head-follow when you want them.
 - **Keep control.** Compact playback popups with slider resets, subtitles, playback speed, per-video audio/subtitle timing, automatic queue advance and optional shuffle.
 - **Return to familiar settings.** Remembered per-video track choices and stereo alignment, system-controlled volume, and full filename hover tips.
@@ -90,7 +90,7 @@ The interface supports English, Simplified Chinese, Traditional Chinese and Japa
 - Store listing name: **Immivio – VR & Spatial Media Player**
 - [Changelog](CHANGELOG.md) · [Release notes / 更新说明](https://northboundwisdom.github.io/immivio/updates/)
 - [Build from source](docs/BUILD.md) · [Architecture](docs/ARCHITECTURE.md) · [Refactor plan](docs/REFACTOR_PLAN.md) · [Testing](docs/TESTING.md) · [Refactor acceptance](docs/ACCEPTANCE.md) · [Contributing](CONTRIBUTING.md)
-- Project source is [GPL-3.0-only](LICENSE). Third-party components retain their licenses, including the embedded OpenList component's AGPL-3.0 obligations. See [licensing details](docs/LICENSING.md).
+- Project source is [GPL-3.0-only](LICENSE). Third-party components retain their licenses. See [licensing details](docs/LICENSING.md).
 
 [**Ravo Studio**](https://northboundwisdom.github.io/Ravo/) — organize, review and develop photographs.
 

@@ -1,33 +1,11 @@
 extends SceneTree
 const Photo := preload("res://scripts/photo_display.gd")
-const Directory := preload("res://scripts/photo_directory.gd")
 const Memory := preload("res://scripts/file_mode_memory.gd")
 const Main := preload("res://scripts/main.gd")
 var checks := 0
 var failures: Array[String] = []
 var folder := "user://photo_layout_test_%d" % Time.get_ticks_usec()
 var entries: Array[Dictionary] = []
-
-
-class Cloud:
-	extends RefCounted
-	signal media_list(id: int, payload: String)
-	var requests := []
-	var cancelled := []
-
-	func media_photo_directory_page(path: String, offset: int, order: String) -> int:
-		requests.append({"path": path, "offset": offset, "order": order})
-		return requests.size()
-
-	func media_photo_directory_cancel(id: int) -> void:
-		cancelled.append(id)
-
-	func media_cloud_sorted_page(path: String, offset: int, _refresh: bool, order: String) -> int:
-		push_error("Album scanning must not steal the library's active browse")
-		return -1
-
-	func media_cloud_cancel(id: int) -> void:
-		cancelled.append(id)
 
 
 class Harness:
@@ -370,8 +348,8 @@ func _run() -> void:
 	photo.set_layout_mode(0)
 	photo.close_image()
 	check(
-		photo.gallery.previews._textures.is_empty() and not photo.directory.loading,
-		"Closing releases previews and cancels directory scanning"
+		photo.gallery.previews._textures.is_empty(),
+		"Closing releases previews"
 	)
 	photo.open_image(str(entries[0].uri), "00.png", entries.slice(0, 2))
 	await settle(photo)
@@ -389,83 +367,11 @@ func _run() -> void:
 	photo.queue_free()
 	camera.queue_free()
 	await process_frame
-	await _directory_checks()
-	await _directory_reindex_checks()
 	await _input_checks()
 	for failure in failures:
 		push_error(failure)
 	print("Photo layouts: %d checks, %d failures" % [checks, failures.size()])
 	preload("res://tests/support/test_result.gd").finish(self, 0 if failures.is_empty() else 1)
-
-
-func _directory_checks() -> void:
-	var directory := Directory.new()
-	var cloud := Cloud.new()
-	directory.platform = cloud
-	root.add_child(directory)
-	var results := []
-	directory.completed.connect(
-		func(items, complete, error):
-			results.append({"items": items, "complete": complete, "error": error})
-	)
-	directory.start({"path": "cloud://account/folder", "order": "name_asc"})
-	directory.receive(
-		1,
-		JSON.stringify(
-			{
-				"state": "ready",
-				"path": "cloud://account/folder",
-				"order": "name_asc",
-				"offset": 0,
-				"next_offset": 48,
-				"entries": [entries[0], {"uri": "file://movie.mp4", "title": "movie.mp4"}]
-			}
-		)
-	)
-	check(
-		results.is_empty() and cloud.requests[1].offset == 48,
-		"Directory metadata continues beyond the opened page"
-	)
-	directory.receive(
-		2,
-		JSON.stringify(
-			{
-				"state": "ready",
-				"path": "cloud://account/folder",
-				"order": "name_asc",
-				"offset": 48,
-				"next_offset": -1,
-				"entries": [entries[0], entries[35]]
-			}
-		)
-	)
-	check(
-		(
-			results.size() == 1
-			and results[0].complete
-			and results[0].items.size() == 2
-			and results[0].items.back().uri == entries[35].uri
-		),
-		"Complete directory keeps the true tail, filters videos and deduplicates items"
-	)
-	directory.start({"path": "cloud://account/other", "order": "name_desc"})
-	directory.receive(2, "{}")
-	check(directory.loading, "Late old-page responses are ignored")
-	directory.receive(
-		3,
-		JSON.stringify(
-			{"state": "ready", "path": "cloud://account/wrong", "order": "name_desc", "offset": 0}
-		)
-	)
-	check(
-		not directory.loading and not results.back().complete,
-		"Wrong-folder page never completes a captured album"
-	)
-	directory.start({"path": "cloud://account/other", "order": "name_desc"})
-	directory.cancel()
-	check(cloud.cancelled.has(4), "Leaving an album cancels its pending page request")
-	directory.queue_free()
-	await process_frame
 
 
 func _input_checks() -> void:
@@ -755,34 +661,4 @@ func _input_checks() -> void:
 		"Production menu arrows page the wall instead of advancing one image"
 	)
 	app.queue_free()
-	await process_frame
-
-
-func _directory_reindex_checks() -> void:
-	var photo := Photo.new()
-	photo.history_enabled = false
-	photo.mode_memory = Memory.new(folder.path_join("reindex_modes"))
-	root.add_child(photo)
-	photo.open_image(str(entries[15].uri), "15.png", entries.slice(10, 20))
-	await settle(photo)
-	photo.queue_complete = false
-	photo.set_layout_mode(3)
-	photo.gallery._process(0.01)
-	var original: Transform3D = photo.gallery.cards[5].pose
-	photo.gallery.activate(5)
-	photo.gallery._process(1.0)
-	photo._directory_result = {"entries": entries.duplicate(true), "complete": true, "error": ""}
-	photo._replace_directory()
-	photo.gallery._process(0.01)
-	check(
-		photo.index == 15 and photo.gallery.focus == 15 and photo.local_uri == entries[15].uri,
-		"Completing a directory reindexes by URI without changing the focused image"
-	)
-	photo.gallery.return_focus()
-	photo.gallery._process(1.0)
-	check(
-		photo.gallery.cards[15].pose.is_equal_approx(original),
-		"Index completion during focus preserves the original fragment return location"
-	)
-	photo.queue_free()
 	await process_frame

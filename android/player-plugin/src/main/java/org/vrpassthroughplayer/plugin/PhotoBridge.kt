@@ -256,7 +256,7 @@ internal class PhotoBridge(
                 )
             } finally {
                 connection?.disconnect(); connection = null
-                if (uri.startsWith("smb://") || uri.startsWith("cloud://")) releaseStream(resolved)
+                if (uri.startsWith("smb://")) releaseStream(resolved)
                 // A published preload may already have been adopted by the foreground bridge.
                 if (!published) directory?.deleteRecursively()
             }

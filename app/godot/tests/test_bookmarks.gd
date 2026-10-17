@@ -85,7 +85,7 @@ func _run() -> void:
 		a.keys().size() == 3 and not a.has("rating") and not a.has("title"),
 		"User marker contains only ID, time and creation date"
 	)
-	var moved := "cloud://account/new/movie.mp4"
+	var moved := "smb://account/new/movie.mp4"
 	check(
 		store.resolve(moved, "movie.mp4", 5000000) == id,
 		"Matching real name and byte length survives directory and source changes"

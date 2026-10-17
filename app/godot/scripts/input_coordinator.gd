@@ -161,6 +161,8 @@ func _on_controller_release(action: String, hand: String = "") -> void:
 		return
 	if not host._controller_allowed(hand):
 		return
+	if host.input_visuals:
+		host.input_visuals.controller_activity(hand)
 	host._on_pointer_release(action, hand)
 
 
@@ -238,6 +240,8 @@ func _on_controller_button(action: String, hand: String = "") -> void:
 		return
 	if not host._controller_allowed(hand):
 		return
+	if host.input_visuals:
+		host.input_visuals.controller_activity(hand)
 	host._on_pointer_button(action, hand)
 
 
@@ -334,6 +338,11 @@ func _process_sticks(left: Vector2, right: Vector2, delta: float) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
+	if host.input_visuals and host._input_focused():
+		if left.length() >= 0.3:
+			host.input_visuals.controller_activity("left_hand")
+		if right.length() >= 0.3:
+			host.input_visuals.controller_activity("right_hand")
 	if not host._library_grab.is_empty():
 		host._update_library_grab_stick(left, right, delta)
 		host._update_menu_pointer("left_hand")
@@ -522,7 +531,17 @@ func _update_hand_input(delta: float) -> void:
 	if not is_instance_valid(host):
 		return
 	if host.input_visuals:
-		host.input_visuals.update_visibility(host._input_focused() and host._head_tracked())
+		host.input_visuals.update_visibility(
+			host._input_focused() and host._head_tracked(),
+			delta,
+			not host.photo_active and host.video != null and not host.video.local_uri.is_empty(),
+			(
+				host._active_menu() != null
+				or not host._grab.is_empty()
+				or not host._library_grab.is_empty()
+				or not host._trigger_taps.is_empty()
+			)
+		)
 	var inputs = {}
 	var wave_enabled: bool = (
 		host.photo_active

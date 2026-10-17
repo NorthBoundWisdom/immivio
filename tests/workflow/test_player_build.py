@@ -2,7 +2,6 @@
 
 from pathlib import Path
 import argparse
-import hashlib
 import json
 import os
 import sys
@@ -17,6 +16,33 @@ from configs import player_build as builder
 
 
 class DependencyBoundaries(unittest.TestCase):
+    def test_apk_rejects_retired_cloud_dependencies_before_native_inspection(self):
+        for retired in (
+            "lib/arm64-v8a/libgojni.so",
+            "assets/openlist/NOTICE.md",
+            "assets/p115rsacipher/NOTICE.md",
+        ):
+            with (
+                self.subTest(retired=retired),
+                tempfile.TemporaryDirectory() as directory,
+                patch.object(builder, "ROOT", Path(directory)),
+                patch.object(builder.subprocess, "check_output") as native_tool,
+            ):
+                apk = Path(directory) / "player.apk"
+                with zipfile.ZipFile(apk, "w") as archive:
+                    for library in (
+                        "libquest_media.so",
+                        "libquest_mpv.so",
+                        "libquest_render_bridge.so",
+                        "libgodot_android.so",
+                        "libmpv.so",
+                    ):
+                        archive.writestr("lib/arm64-v8a/" + library, b"fixture")
+                    archive.writestr(retired, b"retired cloud dependency")
+                with self.assertRaisesRegex(RuntimeError, "removed cloud dependencies"):
+                    builder.inspect_package(apk, {}, Path(directory) / "sdk")
+                native_tool.assert_not_called()
+
     def test_preinstalled_mpv_libraries_are_verified_before_staging(self):
         with (
             tempfile.TemporaryDirectory() as directory,

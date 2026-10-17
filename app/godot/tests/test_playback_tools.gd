@@ -46,17 +46,17 @@ func _run() -> void:
 	var queue := Queue.new()
 	var entries := [
 		{"uri": "file:///a.mp4", "title": "A", "metadata": {"basename": "a.mp4"}},
-		{"uri": "cloud://b.mp4", "title": "B"},
+		{"uri": "smb://b.mp4", "title": "B"},
 		{"uri": "smb://c.mp4", "title": "C"}
 	]
 	queue.replace(entries)
 	entries[0].metadata.basename = "changed"
 	check(queue.items[0].metadata.basename == "a.mp4", "Queue owns a copy of source metadata")
-	queue.append([entries[0], {"uri": "bad://a"}, {"uri": "file:///invalid.mp4", "metadata": 7}])
+	queue.append([entries[0], {"uri": "bad://a"}, {"uri": "cloud://retired-account/video.mp4"}, {"uri": "file:///invalid.mp4", "metadata": 7}])
 	check(queue.items.size() == 3, "Queue deduplicates and rejects invalid entries")
 	check(
 		(
-			queue.adjacent("file:///a.mp4", 1).uri == "cloud://b.mp4"
+			queue.adjacent("file:///a.mp4", 1).uri == "smb://b.mp4"
 			and queue.adjacent("smb://c.mp4", 1).is_empty()
 		),
 		"Sequential queue ends without implicit wrapping"

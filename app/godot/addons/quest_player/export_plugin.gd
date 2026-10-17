@@ -29,8 +29,7 @@ class QuestPlayerExport:
 				(
 					"res://addons/quest_player/bin/player-plugin-%s.aar"
 					% ("debug" if debug else "release")
-				),
-				"res://addons/quest_player/bin/cloudcore.aar"
+				)
 			]
 		)
 

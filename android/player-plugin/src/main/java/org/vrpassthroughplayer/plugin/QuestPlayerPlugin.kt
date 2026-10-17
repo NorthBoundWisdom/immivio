@@ -340,25 +340,6 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     }
 
     @UsedByGodot
-    fun media_cloud_browse(path: String, refresh: Boolean): Int =
-        if (closed.get()) -1 else sources.cloudBrowse(path, refresh)
-
-    @UsedByGodot
-    fun media_photo_directory_page(path: String, offset: Int, order: String): Int =
-        if (closed.get()) -1 else sources.photoDirectoryPage(path, offset, order)
-
-    @UsedByGodot
-    fun media_photo_directory_cancel(id: Int) = sources.photoDirectoryCancel(id)
-
-    @UsedByGodot
-    fun media_cloud_page(path: String, offset: Int, refresh: Boolean): Int =
-        if (closed.get()) -1 else sources.cloudBrowse(path, refresh, offset)
-
-    @UsedByGodot
-    fun media_cloud_sorted_page(path: String, offset: Int, refresh: Boolean, order: String): Int =
-        if (closed.get()) -1 else sources.cloudBrowse(path, refresh, offset, order)
-
-    @UsedByGodot
     fun media_file_management_enabled(enabled: Boolean) {
         if (!closed.get()) sources.setFileManagement(enabled)
     }
@@ -381,11 +362,6 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     @UsedByGodot
     fun media_file_delete_status(json: String): Int =
         if (closed.get()) -1 else sources.deleteFile(json, true)
-
-    @UsedByGodot
-    fun media_cloud_cancel(id: Int) {
-        if (!closed.get()) sources.cloudCancel(id)
-    }
 
     @UsedByGodot
     fun account_open(kind: String, provider: String, id: String, json: String): Int =
@@ -415,18 +391,6 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     @UsedByGodot
     fun license_text(id: String): String =
         activity?.applicationContext?.let { LicenseCatalog.text(it, id) } ?: ""
-
-    @UsedByGodot
-    fun account_web_frame(id: Int): ByteArray =
-        if (closed.get()) ByteArray(0) else accounts.webFrame(id)
-
-    @UsedByGodot
-    fun account_web_action(id: Int, action: String, x: Float, y: Float, text: String) {
-        if (!closed.get()) accounts.webAction(id, action, x, y, text)
-    }
-
-    @UsedByGodot
-    fun media_cloud_remove(id: String): Int = if (closed.get()) -1 else sources.cloudRemove(id)
 
     @UsedByGodot
     fun media_server_request(json: String): Int =
@@ -708,7 +672,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
 
     override fun onMainPause() {
         if (!closed.get()) {
-            accounts.pause(true); media.pause(); mpv.pause(); if (signalsReady) emitSignal(
+            media.pause(); mpv.pause(); if (signalsReady) emitSignal(
                 "android_lifecycle",
                 "pause"
             )
@@ -717,7 +681,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
 
     override fun onMainResume() {
         if (!closed.get()) {
-            accounts.pause(false); media.resume(); mpv.resume(); if (signalsReady) {
+            media.resume(); mpv.resume(); if (signalsReady) {
                 sources.refreshLocalStorage(); emitSignal("android_lifecycle", "resume")
             }
         }

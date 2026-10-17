@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit
 /** App-private server profiles. UI requests never return the key. */
 internal object MediaServerStore {
     private fun store(context: Context) =
-        CloudAccountStore(context, "media-servers-v1.bin", "quest_media_servers_v1")
+        EncryptedAccountStore(context, "media-servers-v1.bin", "quest_media_servers_v1")
 
     @Synchronized
     fun accounts(context: Context): List<MediaServerAccount> {

@@ -1221,14 +1221,6 @@ func _on_display_debug_command(_id: int, payload: String) -> void:
 		recent_menu._activate(
 			recent_menu.RESTART_APP if operation == "restart_app" else recent_menu.QUIT_APP
 		)
-	elif operation == "cloud_accounts":
-		_show_recent_menu()
-		recent_menu.section = recent_menu.Section.CLOUD
-		recent_menu.account_panel.open("cloud", true)
-	elif operation == "cloud_page_probe" and OS.is_debug_build():
-		var probe := preload("res://scripts/cloud_page_probe.gd").new()
-		add_child(probe)
-		probe.start(platform_plugin)
 	elif operation == "media_library_ui" and OS.is_debug_build():
 		var probe := preload("res://scripts/media_server_device_probe.gd").new()
 		add_child(probe)

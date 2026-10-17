@@ -24,16 +24,6 @@ internal object SidecarSubtitles {
         ).take(8)
     }
 
-    fun forCloud(path: String, client: CloudClient, publish: (CloudFile) -> String): List<Track> {
-        // Library pages hide subtitle files. Read the unfiltered directory, including later pages.
-        val files = client.list(path.substringBeforeLast('/').ifEmpty { "/" })
-            .filter { !it.folder && it.size > 0 }.associateBy { it.name }
-        return select(path.substringAfterLast('/'), files.keys).mapNotNull { name ->
-            // One inaccessible subtitle must not hide other tracks or fail video playback.
-            runCatching { Track(publish(files.getValue(name)), name) }.getOrNull()
-        }
-    }
-
     fun forServer(
         http: MediaServerHttp, captions: List<MediaSubtitleLink>,
         publish: (StreamSource, String) -> String

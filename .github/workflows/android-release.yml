@@ -81,7 +81,6 @@ jobs:
         shell: bash
     env:
       PYTHONUTF8: '1'
-      GOMAXPROCS: '2'
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
@@ -104,14 +103,14 @@ jobs:
           for target in Pico Quest OpenXR; do
             python configs/android_workflow.py configure --vendor "$target" --build-type "$CI_BUILD_TYPE"
           done
-      - name: Resolve application packages with Go and Gradle
+      - name: Resolve application packages with Gradle
         run: python configs/android_workflow.py prepare-packages --vendor Quest --build-type "$CI_BUILD_TYPE"
       - name: Build Android plugins
         run: |
           for target in Pico Quest OpenXR; do
             python configs/android_workflow.py build --vendor "$target" --build-type "$CI_BUILD_TYPE"
           done
-      - name: Run workflow, JVM, Go and Godot tests
+      - name: Run workflow, JVM and Godot tests
         run: python configs/android_workflow.py test --vendor Quest --build-type "$CI_BUILD_TYPE"
       - name: Package and verify Android targets
         env:

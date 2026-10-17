@@ -4,7 +4,7 @@
 
 ## 最新代码的判断
 
-继续使用 Godot/OpenXR → Kotlin → libmpv/FFmpeg/C++，以及 Go/OpenList 的整体分层。重构集中在职责、接口和生命周期，逐批替换实现，每批保持可构建。
+继续使用 Godot/OpenXR → Kotlin → libmpv/FFmpeg/C++ 的整体分层。重构集中在职责、接口和生命周期，逐批替换实现，每批保持可构建。
 
 | 部位 | 当前证据 | 实际问题 |
 | --- | --- | --- |
@@ -55,7 +55,6 @@ R1 已提交为 `ed190d3`。本轮继续完成 R2–R5 的代码迁移及 R6 文
 - 快速检查：工作流/发布/网站测试、FreeCM 命令清单、公共源码边界和 `git diff --check`。
 - Godot：执行全部 `test_*.gd`，新增旧配置迁移与退休动作不能恢复旧设置的行为用例。
 - Android：JVM 集成测试、JNI/native ARM64 编译；Debug 包检查 ELF、符号、依赖闭包、16KB、签名、ZIP alignment 与应用身份。
-- Go：修改涉及来源、账号或网络租约时执行 `cloudcore` 测试。
 - 设备：复用保留的独立探针。实际头显不可用时报告该限制；静态阅读、主机测试和 APK 通过不能代替设备验收。
 
 ## 进度
@@ -101,4 +100,4 @@ R1 已提交为 `ed190d3`。本轮继续完成 R2–R5 的代码迁移及 R6 文
 
 所有者后续授权执行完整本机校验，并将完成标准收缩为本机能够生成安装包；无需准备 Windows 环境。75 项 Godot、234 项 JVM、48 项 Python 测试与 Go 测试通过；11 项依赖账号的 JVM 用例跳过。Quest/Pico/OpenXR 的 Debug/Release 六个安装包均完成校验。验收范围、产物和限制见 [ACCEPTANCE.md](ACCEPTANCE.md)。
 
-基础工具不再要求固定 Python/JDK/Go/Gradle/Godot/gomobile/NDK/CMake 版本。脚本检查可用性和必要兼容条件：Python 所需标准库、模块语言版本、编辑器/模板匹配及项目 Android target。SDK 工具默认选择完整的已安装版本，可由环境变量指定另一个已安装组件；不下载工具。
+基础工具不再要求固定 Python/JDK/Gradle/Godot/NDK/CMake 版本。脚本检查可用性和必要兼容条件：Python 所需标准库、模块语言版本、编辑器/模板匹配及项目 Android target。SDK 工具默认选择完整的已安装版本，可由环境变量指定另一个已安装组件；不下载工具。

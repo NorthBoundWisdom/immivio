@@ -28,8 +28,6 @@ LOGS = ROOT / "artifacts/logs"
 from configs.dependencies import (
     TOOLCHAIN,
     digest,
-    go_environment,
-    openlist_workspace,
     export_dependencies,
 )
 from repomgrandroid.workflow import android_environment
@@ -204,7 +202,7 @@ def environment(args, base_env=None):
     env = android_environment(os.environ if base_env is None else base_env)
     sdk = Path(args.sdk).expanduser().absolute() if args.sdk else sdk_directory(env)
     # Preserve host-provided SDK junctions/aliases. On Windows C:\Android can
-    # point into Program Files; resolving it breaks gomobile's unquoted CC path.
+    # point into Program Files; preserve the supplied native toolchain path.
     sdk = Path(sdk).expanduser().absolute()
     java = args.java_home or env.get("JAVA_HOME")
     if (
@@ -300,75 +298,6 @@ def prepare_mpv():
     destination.mkdir(parents=True, exist_ok=True)
     for name, path in libraries.items():
         shutil.copy2(path, destination / name)
-
-
-def prepare_openlist(env):
-    source, inputs = openlist_workspace()
-    env = go_environment(env)
-    cache = ROOT / "build/openlist-output"
-    cache.mkdir(parents=True, exist_ok=True)
-    inputs = {
-        **inputs,
-        "ndk": env["ANDROID_NDK_HOME"],
-        "go": subprocess.check_output(["go", "version"], env=env, text=True).strip(),
-        "recipe": digest(Path(__file__)),
-        "binding_tools": {
-            name: digest(shutil.which(name, path=env["PATH"]))
-            for name in ("gomobile", "gobind")
-            if shutil.which(name, path=env["PATH"])
-        },
-    }
-    stamp, output = cache / "android-build.json", BIN / "cloudcore.aar"
-    if output.exists() and stamp.exists():
-        receipt = json.loads(stamp.read_text())
-        if receipt.get("inputs") == inputs and receipt.get("sha256") == digest(output):
-            return
-    executable = shutil.which("gomobile", path=env["PATH"])
-    if not executable:
-        raise RuntimeError(
-            "Preinstall gomobile and gobind in PATH; see configs/toolchain.json"
-        )
-    pending = cache / "cloudcore.pending.aar"
-    before = {name: digest(source / name) for name in ("go.mod", "go.sum")}
-    # gomobile hides module-graph lookup failures and later reports an empty
-    # generated go.mod. Fail here with the actual missing-module diagnostic.
-    run(
-        ["go", "list", "-m", "-json", "-tags=android", "all"],
-        cwd=source,
-        env=dict(env, GOOS="android", GOARCH="arm64"),
-        log="openlist-modules.log",
-    )
-    run(
-        [
-            executable,
-            "bind",
-            "-target=android/arm64",
-            "-androidapi",
-            "29",
-            "-javapkg",
-            "org.vrpassthroughplayer",
-            "-ldflags",
-            "-s -w -extldflags=-Wl,-z,max-page-size=16384",
-            "-o",
-            pending,
-            "./cloudcore",
-        ],
-        cwd=source,
-        env=env,
-        log="openlist-build.log",
-    )
-    if before != {name: digest(source / name) for name in before}:
-        raise RuntimeError("Binding changed the locked Go manifests")
-    with zipfile.ZipFile(pending) as archive:
-        if archive.testzip() or not {"classes.jar", "jni/arm64-v8a/libgojni.so"} <= set(
-            archive.namelist()
-        ):
-            raise RuntimeError("Incomplete OpenList AAR")
-    BIN.mkdir(parents=True, exist_ok=True)
-    pending.replace(output)
-    stamp.write_text(
-        json.dumps({"inputs": inputs, "sha256": digest(output)}, indent=2) + "\n"
-    )
 
 
 def gradle_executable(args):
@@ -528,12 +457,17 @@ def inspect_package(path, env, sdk):
                 "libquest_mpv.so",
                 "libquest_render_bridge.so",
                 "libgodot_android.so",
-                "libgojni.so",
                 "libmpv.so",
             )
         }
         if not required <= names:
             raise RuntimeError(f"Missing packaged libraries: {required - names}")
+        if any(
+            n.endswith("/libgojni.so")
+            or n.startswith(("assets/openlist/", "assets/p115rsacipher/"))
+            for n in names
+        ):
+            raise RuntimeError("Immivio APK contains removed cloud dependencies")
         if any(
             re.match(
                 r"assets/(rvm|rvm-mnn|depth-mnn|ai-models)/|lib/[^/]+/lib(quest_rvm|MNN[^/]*|ncnn)\.so$",
@@ -884,7 +818,6 @@ def package(args, env, sdk):
         "ndk": args.ndk,
         "cmake": args.cmake,
         "dependency_lock_sha256": digest(ROOT / "source_roots.lock.jsonc"),
-        "openlist_aar_sha256": digest(BIN / "cloudcore.aar"),
         "device_execution": "not_verified",
     }
     (output.with_suffix(".build.json")).write_text(json.dumps(receipt, indent=2) + "\n")

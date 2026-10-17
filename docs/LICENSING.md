@@ -24,7 +24,6 @@ The project license does not replace third-party notices or claim ownership of u
 | Godot OpenXR Vendors | External addon; preserve the addon and each vendor component's actual license. No vendor SDK binaries are vendored here. |
 | AndroidX Media3 | Apache-2.0; retain applicable dependency/transitive notices when distributing an APK. |
 | CodeLibs JCIFS | LGPL-2.1; keep its source/license obligations and those of transitive dependencies. |
-| p115rsacipher adaptation | MIT; source and attribution in `third_party/p115rsacipher`. |
 | Belfast Sunset (Pure Sky) | Unmodified Poly Haven background, CC0-1.0; source and attribution are kept with the image. |
 | Project-generated test fixtures | Synthetic images, patterns and audio; no private source media is included. |
 
@@ -39,6 +38,4 @@ When distributing a covered binary, GPL v3 requires corresponding source through
 
 Vendor SDK terms, the actual combined binary, distribution-channel terms and any GPL exceptions must also be checked before claiming complete binary-distribution compliance. GPL permissions do not grant rights to third-party SDKs or private media. This source publication does not declare the existing store/testing APK fully compliant.
 
-## Embedded OpenList
-
-OpenList v4.2.6 and the JNI adapter are distributed with their AGPL-3.0 obligations. The original project-owned source remains GPL-3.0-only; the combined application must also satisfy AGPL requirements applicable to its OpenList component. GPL v3 section 13 permits combination with AGPL v3. Replacing the frontend does not remove those obligations. Keep the exact upstream revision, modified Storage.Addition serializer, adapter, Go module manifests, dependency notices and build/install scripts with the binary's corresponding source. See third_party/openlist/NOTICE.md and configs/dependencies.py and configs/player_build.py.
+Cloud drive integrations and their embedded OpenList/p115rsacipher dependencies have been removed from current builds. Historical releases retain their original source and distribution obligations.

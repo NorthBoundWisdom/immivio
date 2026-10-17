@@ -20,7 +20,6 @@
             <intent-filter>
                 <action android:name="${applicationId}.DEBUG_DLNA" />
                 <action android:name="${applicationId}.DEBUG_PLEX_NETWORK" />
-                <action android:name="${applicationId}.DEBUG_CLOUD" />
                 <action android:name="${applicationId}.DEBUG_MPV_CORE" />
                 <action android:name="${applicationId}.DEBUG_MPV_GPU" />
                 <action android:name="${applicationId}.DEBUG_PLAYER_MPV" />
