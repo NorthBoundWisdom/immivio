@@ -2,7 +2,7 @@
 """Build the Android player on macOS, Linux or Windows.
 
 Tools/SDKs and Android libmpv are supplied by the host.
-Only project source roots and the OpenXR addon use FreeCM.
+The OpenXR addon comes from the project's verified archive cache.
 """
 
 from contextlib import contextmanager
@@ -817,7 +817,6 @@ def package(args, env, sdk):
         "source_dirty": dirty,
         "ndk": args.ndk,
         "cmake": args.cmake,
-        "dependency_lock_sha256": digest(ROOT / "source_roots.lock.jsonc"),
         "device_execution": "not_verified",
     }
     (output.with_suffix(".build.json")).write_text(json.dumps(receipt, indent=2) + "\n")

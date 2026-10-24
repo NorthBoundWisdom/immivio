@@ -7,7 +7,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from configs.dependencies import asset_file
+from configs.dependencies import vendors_archive
 
 
 def prepare():
@@ -26,7 +26,7 @@ def prepare():
         + b"\n\n"
         + (root / "app/godot/models/hands/LICENSE.txt").read_bytes()
     )
-    with ZipFile(asset_file("OpenXRVendors")) as archive:
+    with ZipFile(vendors_archive()) as archive:
         entries = sorted(
             n for n in archive.namelist() if "LICENSE" in n and not n.endswith("/")
         )

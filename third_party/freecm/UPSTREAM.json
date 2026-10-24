@@ -1,0 +1,23 @@
+{
+  "repository": "https://github.com/NorthBoundWisdom/FreeCM",
+  "commit": "3f867e99750bd746f690c6ad168e1d488e915eae",
+  "version": "0.1.158",
+  "license": "MIT",
+  "files": {
+    "LICENSE": "0a3da4275547e5bd02b4b1e4baba150ed6a8dead8d513734fbdfca6277a50519",
+    "VERSION": "3d26b710503183ff19f942739e180aa74ce11a12f98ff82fbfde90f82382e5d8",
+    "freecm/__init__.py": "42ea24a3b7688a8499b322e21b4e789805589ca32ab559a954f0b7c7b11346ae",
+    "freecm/_version.py": "63fabcef06f42648d76e422b3fed08e65e05f70ad9a17d01fff593bf09aa8c31",
+    "freecm/errors.py": "256c241be766ea79c60805fe7faf2b7cc0fc5e97dafca2f5cefc200852ae1174",
+    "freecm/jsonc.py": "c825294e3bc2019743a3d3ec97421b3cb83ff12f704f5938707ab009eab9576f",
+    "freecm/repo_commands.py": "783cea9073f32c3d97c992a03189efd37d7a4d59fbf7b04377cf07c3099d544f",
+    "freecm/subprocess_utils.py": "1fa1d3bed1a68fe33160a712ff6c8edaa7da8ae440de384e2fb9fb65decf58db",
+    "freecm/workspace_lock.py": "1260fe634586d2369a4eabd73d1c111cd103c638d8c79bb512d14f2dc83f1bb3",
+    "repomgrandroid/__init__.py": "ab099b70754ff84ec1b33973eca8d10868b9824bd227730a4a9bfd5e40f9e5eb",
+    "repomgrandroid/workflow.py": "9d3cbb9d40a64b14332e15151a10160c604fb334dbd0b2f48c8559f0152b60d9"
+  },
+  "modifications": {
+    "freecm/__init__.py": "Expose only the retained version API; remove source-root and asset-manager exports.",
+    "freecm/workspace_lock.py": "Keep the upstream workspace-lock protocol constants locally, independently of the removed source-root schema."
+  }
+}

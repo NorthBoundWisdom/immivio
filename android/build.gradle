@@ -6,7 +6,7 @@ plugins {
 
 def prepared = file('../build/android.properties')
 if (!prepared.isFile()) {
-    throw new GradleException('Run python3 configs/android_workflow.py configure after FreeCM initialization.')
+    throw new GradleException('Run python3 configs/android_workflow.py configure after preparing the OpenXR addon.')
 }
 def preparedProperties = new Properties()
 prepared.withInputStream { preparedProperties.load(it) }

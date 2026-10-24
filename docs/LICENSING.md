@@ -18,6 +18,7 @@ The project license does not replace third-party notices or claim ownership of u
 
 | Component | License / treatment |
 | --- | --- |
+| Bundled FreeCM workflow subset | MIT; original copyright/license and source revision retained in `third_party/freecm`. Maintained here independently of future upstream releases. |
 | libmpv / FFmpeg | Recorded GPL build; upstream release source revisions and build provenance are recorded. Upstream headers retain their notices. |
 | Godot | MIT engine and corresponding template notices. |
 | Hand fallback meshes and texture | Unmodified MIT Godot OpenXR hand demo assets; full license and pinned upstream provenance in `app/godot/models/hands`. These glTF buffers are runtime visuals, not AI weights. |

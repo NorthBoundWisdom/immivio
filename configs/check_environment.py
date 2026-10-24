@@ -10,7 +10,6 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-sys.path.insert(0, str(ROOT / "FreeCM"))
 from configs.dependencies import TOOLCHAIN, host_tools
 from configs.android_workflow import arguments_for
 from configs import player_build as player

@@ -56,9 +56,10 @@ thru3d*-signing.json
 .freecm
 .DS_Store
 
-# FreeCM active workspace and Python caches
-/source_roots.lock.jsonc
-/source_roots.lock.jsonc.pending
+# Former local FreeCM checkout; builds use third_party/freecm.
+/FreeCM/
+
+# Workspace lock and Python caches
 /.freecm.workspace.lock*
 __pycache__/
 

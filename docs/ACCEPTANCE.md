@@ -45,7 +45,7 @@ Windows/cross-platform execution is delegated to CI per the owner's updated scop
 
 ## CI and device follow-up
 
-1. Configure the prepared host environment; initialize enabled FreeCM inputs and prepare ordinary package caches if needed. Use the current commands in [BUILD.md](BUILD.md).
+1. Configure the prepared host environment; prepare the verified OpenXR addon archive and ordinary package caches if needed. Use the current commands in [BUILD.md](BUILD.md).
 2. Run `tests/workflow`, release selection/publication tests and website checks. Verify production-source changes reject stale build receipts.
 3. Run the JVM/Go tests and all Godot tests. Updated gate, frame-descriptor and source-mask fixtures must pass. Verify weak owner references, controller field adapters, stale callbacks, source cancellation and lifecycle persistence.
 4. Build and package each Quest, Pico and OpenXR target on the required hosts. Check JNI exports, dependency closure, ELF/ZIP alignment, signature, identity and absence of inference artifacts.

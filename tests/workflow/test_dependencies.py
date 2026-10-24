@@ -10,16 +10,15 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from configs import android_workflow as android
-from freecm.build_cleanup import clean_build
+from configs.dependencies import clean_build
 
 
 class DependencyLifecycle(unittest.TestCase):
-    def test_cleanup_preserves_dependency_roots_and_signing_material(self):
+    def test_cleanup_preserves_asset_cache_and_signing_material(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             for relative in (
-                "build/dependency_seed_repos/A",
-                "build/dependency_source_roots/A",
+                ".cache/openxr-vendors",
                 "build/generated",
                 "artifacts/signing",
             ):
@@ -31,8 +30,7 @@ class DependencyLifecycle(unittest.TestCase):
             clean_build(root, dry_run=False)
             self.assertFalse((root / "build/generated").exists())
             for relative in (
-                "build/dependency_seed_repos/A",
-                "build/dependency_source_roots/A",
+                ".cache/openxr-vendors",
                 "artifacts/signing",
             ):
                 self.assertTrue((root / relative / "marker").exists())

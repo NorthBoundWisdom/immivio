@@ -84,20 +84,15 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          submodules: false
           persist-credentials: false
-      - name: Initialize FreeCM
-        run: git submodule update --init FreeCM
       - uses: ./.github/actions/android-setup
       - name: Build and test native host helpers
         run: |
           cmake -S native -B build/native-host -DCMAKE_BUILD_TYPE=Release
           cmake --build build/native-host --config Release --parallel 2
           ctest --test-dir build/native-host -C Release --output-on-failure
-      - name: Initialize and materialize locked dependencies
-        run: |
-          python configs/source_root_workflow.py --init --quiet
-          python configs/source_root_workflow.py --update --quiet
+      - name: Prepare verified OpenXR addon
+        run: python configs/prepare_assets.py --download
       - name: Configure Android targets
         run: |
           for target in Pico Quest OpenXR; do

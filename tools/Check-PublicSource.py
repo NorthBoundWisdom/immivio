@@ -80,6 +80,8 @@ def check_files(files):
     errors = []
     for name, data in files.items():
         path = PurePosixPath(name)
+        if path.parts and path.parts[0].lower() == "freecm":
+            errors.append(f"{name}: use the vendored FreeCM subset under third_party/freecm")
         if path.is_absolute() or ".." in path.parts or "\\" in name or ":" in name:
             errors.append(f"{name}: unsafe path")
         approved_mesh = name in HAND_BUFFER_PINS
@@ -190,13 +192,6 @@ def main():
     files = {}
     for name in filter(None, names):
         path = root / name
-        if name == "FreeCM":
-            mode = subprocess.check_output(
-                ["git", "-C", str(root), "ls-files", "--stage", "--", name], text=True
-            ).split()[0]
-            if mode != "160000":
-                raise SystemExit("FreeCM must be a submodule gitlink")
-            continue
         if path.is_symlink() or not path.is_file():
             raise SystemExit(f"{name}: tracked file is missing or redirected")
         files[name] = path.read_bytes()

@@ -1,15 +1,13 @@
-# Internal: project source/asset consumption and preinstalled host tools.
+# Internal: verified OpenXR addon archive and preinstalled host tools.
 import hashlib
 import json
 import os
 from pathlib import Path
 import shutil
-import sys
+import tempfile
+from urllib.request import urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "FreeCM"))
-from freecm.asset_seeds import asset_seed_root
-from freecm.jsonc import loads_jsonc
 
 import tomllib
 
@@ -19,7 +17,7 @@ TOOLCHAIN.update(
     android_gradle_plugin=CATALOG["versions"]["agp"],
     kotlin=CATALOG["versions"]["kotlin"],
 )
-INIT_HINT = "Run python3 configs/source_root_workflow.py --init, then --update."
+ASSET_HINT = "Run python3 configs/prepare_assets.py --download."
 
 
 def digest(path):
@@ -27,35 +25,67 @@ def digest(path):
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
-def lock_data(root=ROOT):
-    path = root / "source_roots.lock.jsonc"
-    if not path.is_file():
-        raise RuntimeError(INIT_HINT)
-    return loads_jsonc(path.read_text(), path_label=str(path))
+def vendors_manifest():
+    return json.loads((ROOT / "third_party/openxr-vendors/manifest.json").read_text())
 
 
-def asset_file(name, filename=None):
-    data = lock_data()["assets"].get(name)
-    if data is None:
-        raise RuntimeError(f"Missing {name}. {INIT_HINT}")
-    record = next(
-        (
-            item
-            for item in data["files"]
-            if filename is None or item["fileName"] == filename
-        ),
-        None,
-    )
-    if record is None or record["type"] != "file":
-        raise RuntimeError(f"Unknown asset file: {name}/{filename}")
-    path = asset_seed_root(ROOT, name) / record["fileName"]
+def verify_vendor_archive(path, record):
     if (
         not path.is_file()
         or path.stat().st_size != record["sizeBytes"]
         or digest(path) != record["sha256"]
     ):
-        raise RuntimeError(f"Invalid asset: {name}/{path.name}. {INIT_HINT}")
+        raise RuntimeError(
+            f"Missing or invalid OpenXR addon: {path.name}. {ASSET_HINT}"
+        )
+
+
+def vendors_archive():
+    record = vendors_manifest()
+    path = ROOT / ".cache/openxr-vendors" / record["fileName"]
+    verify_vendor_archive(path, record)
     return path
+
+
+def prepare_vendor_archive():
+    """Explicitly download this one archive; all consumers verify it offline."""
+    record = vendors_manifest()
+    path = ROOT / ".cache/openxr-vendors" / record["fileName"]
+    try:
+        verify_vendor_archive(path, record)
+        return path
+    except RuntimeError:
+        pass
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="download-", dir=path.parent) as temporary:
+        staging = Path(temporary) / record["fileName"]
+        with urlopen(record["url"], timeout=60) as response, staging.open(
+            "wb"
+        ) as output:
+            received = 0
+            while chunk := response.read(1024 * 1024):
+                received += len(chunk)
+                if received > record["sizeBytes"]:
+                    raise RuntimeError(
+                        "OpenXR addon download exceeds the expected size"
+                    )
+                output.write(chunk)
+        verify_vendor_archive(staging, record)
+        os.replace(staging, path)
+    return path
+
+
+def clean_build(root, *, dry_run=False):
+    from freecm.workspace_lock import workspace_mutation_lock
+
+    with workspace_mutation_lock(root):
+        build = root / "build"
+        if build.is_symlink():
+            raise RuntimeError(f"Refusing to clean symlinked build directory: {build}")
+        if dry_run and build.exists():
+            print(f"Would remove {build}")
+        if build.exists() and not dry_run:
+            shutil.rmtree(build)
 
 
 def export_dependencies():
@@ -72,7 +102,7 @@ def stage_vendors():
     from configs import player_build as player
 
     destination = ROOT / "build/vendors"
-    player.extract(asset_file("OpenXRVendors"), destination)
+    player.extract(vendors_archive(), destination)
     shutil.copytree(
         destination / "asset/addons/godotopenxrvendors",
         player.PROJECT / "addons/godotopenxrvendors",

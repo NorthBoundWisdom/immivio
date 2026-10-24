@@ -9,6 +9,7 @@ import unittest
 from unittest.mock import patch
 
 from configs import android_workflow as android
+from configs import freecm_vendor
 
 
 class BuildSourceChanges(unittest.TestCase):
@@ -18,20 +19,10 @@ class BuildSourceChanges(unittest.TestCase):
             root = Path(folder)
             stack.enter_context(patch.object(android, "ROOT", root))
             stack.enter_context(patch.object(android, "BUILD_INPUTS", ()))
-            stack.enter_context(
-                patch.object(
-                    android.workflow,
-                    "require_dependency_roots",
-                    return_value=SimpleNamespace(
-                        resolved_commits={}
-                    ),
-                )
-            )
-            stack.enter_context(
-                patch.object(
-                    android.subprocess, "check_output", return_value="b" * 40 + "\n"
-                )
-            )
+            vendor = root / "third_party/freecm"
+            vendor.mkdir(parents=True)
+            (vendor / "UPSTREAM.json").write_text(json.dumps({"commit": "b" * 40}))
+            stack.enter_context(patch.object(freecm_vendor, "FREECM_ROOT", vendor))
             stack.enter_context(
                 patch.object(android.player, "mpv_libraries", return_value={})
             )
@@ -65,6 +56,8 @@ class BuildSourceChanges(unittest.TestCase):
             "native/mpv/include/immivio/mpv/json_quote.h",
             "app/godot/scripts/player.gd",
             "app/godot/shaders/video.gdshader",
+            "third_party/freecm/freecm/jsonc.py",
+            "third_party/freecm/freecm/workspace_lock.py",
         ):
             for action in ("add", "edit", "delete"):
                 with (
@@ -98,6 +91,21 @@ class BuildSourceChanges(unittest.TestCase):
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text("generated output")
             android.require_build(args)
+
+    def test_addon_manifest_changes_require_a_new_build(self):
+        with self.workspace() as (root, args, marker):
+            name = "third_party/openxr-vendors/manifest.json"
+            manifest = root / name
+            manifest.parent.mkdir(parents=True)
+            manifest.write_text(json.dumps({"version": "original", "sha256": "a" * 64}))
+            with patch.object(android, "BUILD_INPUTS", (name,)):
+                self.mark_built(args, marker)
+                android.require_build(args)
+                manifest.write_text(
+                    json.dumps({"version": "updated", "sha256": "b" * 64})
+                )
+                with self.assertRaisesRegex(RuntimeError, "Build inputs changed"):
+                    android.require_build(args)
 
 
 if __name__ == "__main__":

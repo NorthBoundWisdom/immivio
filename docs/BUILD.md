@@ -1,18 +1,19 @@
 # Building Immivio
 
-Immivio uses FreeCM for project source roots and the Android OpenXR addon. Tools and large native libraries belong to a prepared development environment, following MonsterRPG's approach. Configure, Build, Test and Package never install tools.
+Immivio uses ordinary Gradle dependency files and one verified OpenXR addon archive. A small MIT-licensed FreeCM subset under `third_party/freecm` supplies command validation, Android helpers and the workspace lock; cloning or installing FreeCM separately is unnecessary. Tools and large native libraries belong to a prepared development environment. Configure, Build, Test and Package never install tools or download dependencies.
 
 ## Dependency ownership
 
 | Input | Managed by |
 | --- | --- |
-| OpenXR vendor Android addon | FreeCM, verified release archive |
+| FreeCM workflow helpers | Bundled MIT source subset; original revision and file hashes in `third_party/freecm/UPSTREAM.json` |
+| OpenXR vendor Android addon | Single verified archive recorded in `third_party/openxr-vendors/manifest.json` |
 | Android application/plugin packages | Gradle version catalog, lockfiles and verification metadata under `android/` |
 | Python, JDK, Gradle, Godot and export templates, Android SDK/NDK/CMake | Preinstalled host environment; compatible host installations; Android project targets in `configs/toolchain.json` |
 | Android ARM64 libmpv/FFmpeg libraries | Prepared host SDK directory, checked against `third_party/mpv/manifest.json` |
 | Python media tools for fixtures | Preinstalled environment; `requirements-media-tools.txt` |
 
-`source_roots.lock.jsonc.in` is a source/asset lock, not an embedded copy of package-manager manifests or a host installer. Edit Gradle files directly and commit their native lock/checksum changes. Python wheel inventories and tool download URLs are not stored in FreeCM. If upgrading from the previous embedded master lock, replace the ignored machine-local `source_roots.lock.jsonc` with the new template once, preserving any wanted manual paths.
+There is no source-root initialization or materialization step. Edit Gradle files directly and commit their native lock/checksum changes. The OpenXR addon manifest records its version, URL, byte size and SHA-256; its downloaded archive stays under `.cache/openxr-vendors`.
 
 ## Prepare the host once
 
@@ -35,16 +36,15 @@ NDK, CMake and Android Build Tools are selected from complete stable installatio
 python3 configs/check_environment.py
 ```
 
-Optional fixture/benchmark scripts use the active Python environment. If needed, install `requirements-media-tools.txt` there beforehand; this is not part of FreeCM initialization or CI. Host tests require working CJK system fonts, such as Noto Sans CJK; install them with the host environment.
+Optional fixture/benchmark scripts use the active Python environment. If needed, install `requirements-media-tools.txt` there beforehand; this is separate from application builds and CI. Host tests require working CJK system fonts, such as Noto Sans CJK; install them with the host environment.
 
 ## Build
 
 ```sh
-git clone --recurse-submodules https://github.com/NorthBoundWisdom/immivio.git
+git clone https://github.com/NorthBoundWisdom/immivio.git
 cd immivio
 python3 configs/check_environment.py
-python3 configs/source_root_workflow.py --init
-python3 configs/source_root_workflow.py --update
+python3 configs/prepare_assets.py --download
 python3 configs/android_workflow.py configure --vendor Quest --build-type Debug
 python3 configs/android_workflow.py prepare-packages --vendor Quest --build-type Debug
 python3 configs/android_workflow.py build --vendor Quest --build-type Debug
@@ -54,9 +54,9 @@ python3 configs/android_workflow.py package --vendor Quest --build-type Debug
 
 Use `Pico` or `OpenXR` for the other targets and `Release` for distributable packages. The same Python commands run in PowerShell.
 
-FreeCM `--init` accesses the network for enabled source roots and assets only. `--update`, diagnostics and materialization remain offline. `prepare-packages` independently prepares ordinary Gradle application package caches using their native manifests; it does not install Gradle, Python or any other host tool. Build/Test/Package consume those caches offline. Gradle respects the host's normal cache locations and environment overrides. A prepared package cache lets subsequent builds skip `prepare-packages`.
+`prepare_assets.py --download` explicitly downloads the OpenXR archive if its cache is missing or invalid. Run it without `--download` to verify the cache offline. `prepare-packages` prepares ordinary Gradle application package caches using their native manifests; it does not install Gradle, Python or any other host tool. Configure/Build/Test/Package consume prepared inputs offline. Gradle respects the host's normal cache locations and environment overrides. Valid caches let subsequent builds skip these preparation commands.
 
-Configure is explicit. Build/Test/Package reject missing or stale configuration; Package requires a successful current Build. `run` installs an already packaged APK on the attached device. Generated source roots, projects and outputs stay under ignored build directories. Cleanup preserves dependency seeds and signing material, but removes generated configuration; configure again afterward.
+Configure is explicit. Build/Test/Package reject missing or stale configuration; Package requires a successful current Build. `run` installs an already packaged APK on the attached device. Generated projects and outputs stay under ignored build directories. `python3 configs/android_workflow.py clean --dry-run` previews cleanup; `clean` removes `build/` while preserving the addon cache and signing material. Configure again afterward.
 
 ## Playback libraries and formats
 
@@ -66,7 +66,7 @@ Ordinary and packed SBS/TB playback use the same pipeline. Frame timestamps obse
 
 ## Outputs, signing and CI
 
-APKs retain `Immivio-<QUEST|PICO|OpenXR>-<version>-<debug|release>-<YYYYMMDD>.apk`. Each `.build.json` receipt includes source/FreeCM commits, resolved enabled dependencies, asset and native package-lock digests, toolchain, APK checksum and signing certificate. Release requires pinned dependencies.
+APKs retain `Immivio-<QUEST|PICO|OpenXR>-<version>-<debug|release>-<YYYYMMDD>.apk`. Each `.build.json` receipt includes the source commit, bundled helper provenance and content digest, the verified OpenXR addon version/checksum, Gradle locks, manifest digests, toolchain, APK checksum and signing certificate. Changes to bundled helpers or the addon manifest invalidate previous build configurations.
 
 The application ID remains `com.wapok.thru3d`. Existing `artifacts/signing/thru3d-signing.json` credentials are reused. Complete `GODOT_ANDROID_KEYSTORE_<DEBUG|RELEASE>_*` overrides take priority. Keep keys outside Git.
 

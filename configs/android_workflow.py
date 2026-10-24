@@ -17,19 +17,19 @@ from configs import player_build as player
 from configs.dependencies import (
     TOOLCHAIN,
     digest,
-    lock_data,
+    clean_build,
     stage_vendors,
     host_tools,
+    vendors_archive,
+    vendors_manifest,
 )
-from configs.source_roots import workflow
-from freecm.asset_seeds import require_asset_seeds
+from configs.freecm_vendor import provenance as freecm_provenance
 from freecm.repo_commands import validate_repo_command_manifest
 from repomgrandroid.workflow import AndroidWorkflowConfig, run_test_level
 
 VENDORS = ("Quest", "Pico", "OpenXR")
 BUILD_INPUTS = (
-    "source_roots.lock.jsonc",
-    "source_roots.lock.jsonc.in",
+    "third_party/openxr-vendors/manifest.json",
     "configs/toolchain.json",
     "android/build.gradle",
     "android/player-plugin/build.gradle",
@@ -65,7 +65,6 @@ def configuration_path(vendor, build_type):
 
 
 def input_signature(args):
-    roots = workflow.require_dependency_roots()
     inputs = {name: digest(ROOT / name) for name in BUILD_INPUTS}
     for directory, pattern in [
         ("configs", "*.py"),
@@ -89,10 +88,7 @@ def input_signature(args):
                 if p.is_file()
             }
         )
-    inputs["FreeCM"] = subprocess.check_output(
-        ["git", "-C", str(ROOT / "FreeCM"), "rev-parse", "HEAD"], text=True
-    ).strip()
-    inputs["resolved_commits"] = roots.resolved_commits
+    inputs["FreeCM"] = freecm_provenance()
     inputs["mpv_libraries"] = {
         name: digest(path) for name, path in player.mpv_libraries().items()
     }
@@ -101,32 +97,31 @@ def input_signature(args):
 
 
 def dependency_receipt():
-    roots = workflow.require_dependency_roots()
+    freecm = freecm_provenance()
+    vendors_archive()
+    addon = vendors_manifest()
     return {
-        "schema_version": 2,
-        "freecm_commit": subprocess.check_output(
-            ["git", "-C", str(ROOT / "FreeCM"), "rev-parse", "HEAD"], text=True
-        ).strip(),
-        "dependency_mode": roots.mode,
-        "dependency_commits": roots.resolved_commits,
+        "schema_version": 4,
+        "freecm_commit": freecm["commit"],
+        "freecm_vendor_sha256": freecm["sha256"],
         "dependency_assets": {
-            name: [
+            "OpenXRVendors": [
                 {
-                    "id": item["id"],
-                    "sha256": item["sha256"],
-                    "sizeBytes": item["sizeBytes"],
+                    "id": "OpenXRVendors",
+                    "version": addon["version"],
+                    "sha256": addon["sha256"],
+                    "sizeBytes": addon["sizeBytes"],
                 }
-                for item in spec["files"]
-            ]
-            for name, spec in lock_data().get("assets", {}).items()
+            ],
         },
         "dependency_manifests": {
             name: digest(ROOT / name)
             for name in (
-                "source_roots.lock.jsonc.in",
+                "third_party/openxr-vendors/manifest.json",
                 "configs/toolchain.json",
                 "android/gradle/libs.versions.toml",
                 "android/gradle/verification-metadata.xml",
+                "third_party/freecm/UPSTREAM.json",
             )
         },
         "gradle_locks": {
@@ -139,7 +134,7 @@ def dependency_receipt():
 
 
 def configure(args, env, sdk):
-    require_asset_seeds(ROOT)
+    vendors_archive()
     player.prepare_mpv()
     # Stage the OpenXR vendor addon before configuring the Android project.
     stage_vendors()
@@ -206,12 +201,7 @@ def require_configuration(args, env, sdk):
         raise RuntimeError(
             "Generated backend configuration changed; run configure again"
         )
-    require_asset_seeds(ROOT)
-    if (
-        args.build_type == "Release"
-        and workflow.require_dependency_roots().mode != "pinned"
-    ):
-        raise RuntimeError("Release builds require pinned dependencies")
+    vendors_archive()
 
 
 def prepare_packages(args, env):
@@ -316,6 +306,7 @@ def main(argv=None):
             "package",
             "run",
             "stop-gradle",
+            "clean",
         ),
     )
     parser.add_argument("--vendor", choices=VENDORS, default="Quest")
@@ -325,7 +316,15 @@ def main(argv=None):
         default=os.environ.get("CI_BUILD_TYPE", "Debug"),
     )
     parser.add_argument("--level", choices=("l0", "l1", "l2", "all"), default="all")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Preview clean without deleting files"
+    )
     opts = parser.parse_args(argv)
+    if opts.dry_run and opts.command != "clean":
+        parser.error("--dry-run requires clean")
+    if opts.command == "clean":
+        clean_build(ROOT, dry_run=opts.dry_run)
+        return 0
     from configs.ci_support import build_type_for_ref
 
     opts.build_type = build_type_for_ref(opts.build_type)

@@ -12,7 +12,7 @@ COMMIT = "a" * 40
 
 
 class ReleaseAssets(unittest.TestCase):
-    def fixture(self, root):
+    def fixture(self, root, schema=4):
         directory = root / "packages"
         directory.mkdir()
         for vendor, platform in release.PLATFORMS.items():
@@ -20,16 +20,25 @@ class ReleaseAssets(unittest.TestCase):
             data = vendor.encode()
             (directory / name).write_bytes(data)
             record = {
-                "schema_version": 2,
-                "dependency_mode": "pinned",
+                "schema_version": schema,
                 "freecm_commit": "d" * 40,
-                "dependency_commits": {},
-                "dependency_assets": {"OpenXRVendors": []},
+                "freecm_vendor_sha256": "e" * 64,
+                "dependency_assets": {
+                    "OpenXRVendors": [
+                        {
+                            "id": "OpenXRVendors",
+                            "version": "5.1.0-stable",
+                            "sha256": "c" * 64,
+                            "sizeBytes": 100,
+                        }
+                    ]
+                },
                 "gradle_locks": {"android/gradle.lockfile": "f" * 64},
                 "dependency_manifests": {
                     key: "f" * 64
                     for key in (
-                        "source_roots.lock.jsonc.in",
+                        "third_party/openxr-vendors/manifest.json",
+                        "third_party/freecm/UPSTREAM.json",
                         "configs/toolchain.json",
                         "android/gradle/libs.versions.toml",
                         "android/gradle/verification-metadata.xml",
@@ -46,6 +55,17 @@ class ReleaseAssets(unittest.TestCase):
                 "signing_certificate_sha256": "b" * 64,
                 "ci_signing": "ephemeral-ci-key",
             }
+            if schema in (2, 3):
+                record.update(dependency_mode="pinned", dependency_commits={})
+                record.pop("freecm_vendor_sha256")
+                for manifest_name in (
+                    "third_party/openxr-vendors/manifest.json",
+                    "third_party/freecm/UPSTREAM.json",
+                ):
+                    record["dependency_manifests"].pop(manifest_name)
+                record["dependency_manifests"]["source_roots.lock.jsonc.in"] = "f" * 64
+                if schema == 3:
+                    record["dependency_catalog_sha256"] = "f" * 64
             (directory / Path(name).with_suffix(".build.json")).write_text(
                 json.dumps(record)
             )
@@ -111,10 +131,65 @@ class ReleaseAssets(unittest.TestCase):
         ]:
             with self.subTest(key=key), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)
-                packages = self.fixture(root)
+                packages = self.fixture(root, schema=2)
                 receipt = next(packages.glob("*.build.json"))
                 record = json.loads(receipt.read_text())
                 record[key] = value
+                receipt.write_text(json.dumps(record))
+                with self.assertRaises(ValueError):
+                    release.prepare(packages, root / "release", TAG, COMMIT)
+                self.assertFalse((root / "release").exists())
+
+    def test_vendored_dependency_receipts_remain_publishable(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            packages = self.fixture(root)
+            manifest = release.prepare(packages, root / "release", TAG, COMMIT)
+            self.assertEqual(len(manifest["packages"]), 3)
+            self.assertEqual(manifest["packages"][0]["freecm_vendor_sha256"], "e" * 64)
+            self.assertNotIn("dependency_mode", manifest["packages"][0])
+            self.assertNotIn("dependency_commits", manifest["packages"][0])
+
+    def test_vendored_receipts_require_bundle_digest_and_upstream_manifest(self):
+        for missing in (
+            "freecm_vendor_sha256",
+            "third_party/freecm/UPSTREAM.json",
+            "third_party/openxr-vendors/manifest.json",
+        ):
+            with self.subTest(
+                missing=missing
+            ), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                packages = self.fixture(root)
+                for receipt in packages.glob("*.build.json"):
+                    record = json.loads(receipt.read_text())
+                    if missing == "freecm_vendor_sha256":
+                        record.pop(missing)
+                    else:
+                        record["dependency_manifests"].pop(missing)
+                    receipt.write_text(json.dumps(record))
+                with self.assertRaises(ValueError):
+                    release.prepare(packages, root / "release", TAG, COMMIT)
+                self.assertFalse((root / "release").exists())
+
+    def test_historical_dependency_receipts_remain_publishable(self):
+        for schema in (2, 3):
+            with self.subTest(
+                schema=schema
+            ), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                packages = self.fixture(root, schema=schema)
+                manifest = release.prepare(packages, root / "release", TAG, COMMIT)
+                self.assertEqual(len(manifest["packages"]), 3)
+
+    def test_missing_or_invalid_addon_provenance_cannot_publish(self):
+        for field, value in (("sha256", "invalid"), ("version", ""), ("sizeBytes", 0)):
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                packages = self.fixture(root)
+                receipt = next(packages.glob("*.build.json"))
+                record = json.loads(receipt.read_text())
+                record["dependency_assets"]["OpenXRVendors"][0][field] = value
                 receipt.write_text(json.dumps(record))
                 with self.assertRaises(ValueError):
                     release.prepare(packages, root / "release", TAG, COMMIT)

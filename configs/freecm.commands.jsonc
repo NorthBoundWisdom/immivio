@@ -26,7 +26,7 @@
         },
         "readiness": {
           "inputs": [
-            "source_roots.lock.jsonc",
+            "third_party/openxr-vendors/manifest.json",
             "configs/toolchain.json",
             "android/gradle/libs.versions.toml"
           ],
@@ -60,7 +60,7 @@
         },
         "readiness": {
           "inputs": [
-            "source_roots.lock.jsonc",
+            "third_party/openxr-vendors/manifest.json",
             "configs/toolchain.json",
             "android/gradle/libs.versions.toml"
           ],
@@ -93,7 +93,7 @@
         },
         "readiness": {
           "inputs": [
-            "source_roots.lock.jsonc",
+            "third_party/openxr-vendors/manifest.json",
             "configs/toolchain.json",
             "android/gradle/libs.versions.toml"
           ],
@@ -126,7 +126,7 @@
         },
         "readiness": {
           "inputs": [
-            "source_roots.lock.jsonc",
+            "third_party/openxr-vendors/manifest.json",
             "configs/toolchain.json",
             "android/gradle/libs.versions.toml"
           ],
@@ -159,7 +159,7 @@
         },
         "readiness": {
           "inputs": [
-            "source_roots.lock.jsonc",
+            "third_party/openxr-vendors/manifest.json",
             "configs/toolchain.json",
             "android/gradle/libs.versions.toml"
           ],
@@ -192,7 +192,7 @@
         },
         "readiness": {
           "inputs": [
-            "source_roots.lock.jsonc",
+            "third_party/openxr-vendors/manifest.json",
             "configs/toolchain.json",
             "android/gradle/libs.versions.toml"
           ],
@@ -224,7 +224,7 @@
         },
         "readiness": {
           "inputs": [
-            "source_roots.lock.jsonc",
+            "third_party/openxr-vendors/manifest.json",
             "configs/toolchain.json",
             "android/gradle/libs.versions.toml"
           ],
@@ -257,7 +257,7 @@
         },
         "readiness": {
           "inputs": [
-            "source_roots.lock.jsonc",
+            "third_party/openxr-vendors/manifest.json",
             "configs/toolchain.json",
             "android/gradle/libs.versions.toml"
           ],
@@ -289,7 +289,7 @@
         },
         "readiness": {
           "inputs": [
-            "source_roots.lock.jsonc",
+            "third_party/openxr-vendors/manifest.json",
             "configs/toolchain.json",
             "android/gradle/libs.versions.toml"
           ],
@@ -321,7 +321,7 @@
         },
         "readiness": {
           "inputs": [
-            "source_roots.lock.jsonc",
+            "third_party/openxr-vendors/manifest.json",
             "configs/toolchain.json",
             "android/gradle/libs.versions.toml"
           ],
@@ -353,7 +353,7 @@
         },
         "readiness": {
           "inputs": [
-            "source_roots.lock.jsonc",
+            "third_party/openxr-vendors/manifest.json",
             "configs/toolchain.json",
             "android/gradle/libs.versions.toml"
           ],
@@ -385,7 +385,7 @@
         },
         "readiness": {
           "inputs": [
-            "source_roots.lock.jsonc",
+            "third_party/openxr-vendors/manifest.json",
             "configs/toolchain.json",
             "android/gradle/libs.versions.toml"
           ],
