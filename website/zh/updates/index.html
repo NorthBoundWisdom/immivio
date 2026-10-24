@@ -8,10 +8,10 @@
       name="application-name"
       content="Immivio – VR &amp; Spatial Media Player"
     />
-    <title>Immivio — v0.9.3 更新说明与 APK 兼容性</title>
+    <title>Immivio — v0.9.4 更新说明与 APK 兼容性</title>
     <meta
       name="description"
-      content="免费开源 VR 播放器 Immivio v0.9.3 更新说明，了解 Meta Quest、PICO 与 OpenXR 安装包的播放功能、兼容性及历史版本。"
+      content="免费开源 VR 播放器 Immivio v0.9.4 更新说明，了解 Meta Quest、PICO 与 OpenXR 安装包的播放功能、兼容性及历史版本。"
     />
     <link
       rel="canonical"
@@ -34,11 +34,11 @@
     />
     <meta
       property="og:title"
-      content="Immivio — v0.9.3 更新说明与 APK 兼容性"
+      content="Immivio — v0.9.4 更新说明与 APK 兼容性"
     />
     <meta
       property="og:description"
-      content="免费开源 VR 播放器 Immivio v0.9.3 更新说明，了解 Meta Quest、PICO 与 OpenXR 安装包的播放功能、兼容性及历史版本。"
+      content="免费开源 VR 播放器 Immivio v0.9.4 更新说明，了解 Meta Quest、PICO 与 OpenXR 安装包的播放功能、兼容性及历史版本。"
     />
     <meta property="og:type" content="website" />
     <meta
@@ -58,11 +58,11 @@
     <meta property="og:image:alt" content="Immivio 视频播放界面" />
     <meta
       name="twitter:title"
-      content="Immivio — v0.9.3 更新说明与 APK 兼容性"
+      content="Immivio — v0.9.4 更新说明与 APK 兼容性"
     />
     <meta
       name="twitter:description"
-      content="免费开源 VR 播放器 Immivio v0.9.3 更新说明，了解 Meta Quest、PICO 与 OpenXR 安装包的播放功能、兼容性及历史版本。"
+      content="免费开源 VR 播放器 Immivio v0.9.4 更新说明，了解 Meta Quest、PICO 与 OpenXR 安装包的播放功能、兼容性及历史版本。"
     />
     <meta
       name="twitter:image"
@@ -81,8 +81,8 @@
             "@type": "WebPage",
             "@id": "https://northboundwisdom.github.io/immivio/zh/updates/#webpage",
             "url": "https://northboundwisdom.github.io/immivio/zh/updates/",
-            "name": "Immivio — v0.9.3 更新说明与 APK 兼容性",
-            "description": "免费开源 VR 播放器 Immivio v0.9.3 更新说明，了解 Meta Quest、PICO 与 OpenXR 安装包的播放功能、兼容性及历史版本。",
+            "name": "Immivio — v0.9.4 更新说明与 APK 兼容性",
+            "description": "免费开源 VR 播放器 Immivio v0.9.4 更新说明，了解 Meta Quest、PICO 与 OpenXR 安装包的播放功能、兼容性及历史版本。",
             "inLanguage": "zh-CN",
             "about": {
               "@id": "https://northboundwisdom.github.io/immivio/#software"
@@ -146,7 +146,8 @@
     <main id="main" class="wrap guide-layout">
       <nav class="guide-nav" aria-label="更新说明目录">
         <p class="eyebrow">更新说明</p>
-        <a href="#current">v0.9.3</a>
+        <a href="#current">v0.9.4</a>
+        <a href="#v0-9-3">v0.9.3</a>
         <a href="#v0-9-2">v0.9.2</a>
         <a href="#v0-9-1">v0.9.1</a>
         <a href="#v0-9-0">v0.9.0</a>
@@ -157,21 +158,25 @@
         <p class="eyebrow">IMMIVIO / 更新</p>
         <h1>Immivio 的新变化。</h1>
         <p>
-          以下说明对应 v0.9.3 源码里程碑。你安装的 APK
+          以下说明对应 v0.9.4 源码里程碑。你安装的 APK
           包含哪些功能，请以该安装包的发布说明为准。
         </p>
-        <section id="unreleased">
-          <h2>开发中 / 尚未发布</h2>
-          <ul>
-            <li>采用独立的 Immivio Android 包名并标记为视频应用。旧版与新版分别安装，数据不会自动迁移。</li>
-            <li>修复媒体库与控制栏同时显示时的原生合成与点击映射，以及影院预设选择和对数距离滑块。</li>
-            <li>新增 STRM 索引播放、加载阶段与等待时间、视频读取速度和明确的播放错误反馈。</li>
-            <li>新增目录位置记忆、逐目录排序、列表／图标切换，以及保留播放控制栏的紧凑媒体库。</li>
-            <li>新增控制栏空间锁与透明度、平面影院银幕预设，以及可固定的观看默认布局。</li>
-          </ul>
-          <p>上述能力位于开发源码中，请以安装包说明为准；头显实机验收仍待完成。</p>
-        </section>
         <section id="current">
+          <h2>v0.9.4 — 2026 年 10 月 24 日</h2>
+          <ul>
+            <li>新增本地、SMB 与兼容 HTTP 来源的 STRM 索引播放，显示加载阶段、等待时间、视频读取速度和明确的播放错误。</li>
+            <li>新增目录位置记忆、逐目录排序、列表／图标切换，以及保留播放控制栏的紧凑／完整媒体库。</li>
+            <li>新增控制栏空间锁与底板透明度；提供平面影院银幕预设、距离、大小、曲率、视线高度和可固定的观看默认布局。</li>
+            <li>修复媒体库与控制栏同时显示时的原生合成和射线点击、影院预设选择与对数距离滑块。观影时自动隐藏闲置手柄。</li>
+            <li>采用独立包名 <code>com.northboundwisdom.immivio</code>，与旧版分别安装，数据不会自动迁移。签名保持项目独立，不使用公司产品的签名。</li>
+            <li>新增 PICO 启动入口，重复打开时复用正在运行的 VR 播放器。PICO 可通过「资源库 → 未知来源 → Immivio」进入侧载版本。</li>
+            <li>移除网盘与 WebDAV 集成，保留本地、SMB、DLNA 和支持的媒体服务器，并简化依赖准备。</li>
+          </ul>
+          <p>相关改动已在 PICO 4 上进行自动化真机检查；兼容性与交互表现仍取决于设备和媒体来源。</p>
+          <p>Windows 与 macOS 两端构建和校验通过后，正式 APK 会自动附加到发布页；此前发布页仅包含源码归档。</p>
+          <p><a href="https://github.com/NorthBoundWisdom/immivio/releases/tag/v0.9.4">v0.9.4 发布与 APK →</a> · <a href="../guide/">安装与操作指南 →</a></p>
+        </section>
+        <section id="v0-9-3">
           <h2>v0.9.3 — 2026 年 10 月 14 日</h2>
           <ul>
             <li>

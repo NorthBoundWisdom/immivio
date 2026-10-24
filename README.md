@@ -36,7 +36,7 @@ Immivio continues development of [zerochocobo/Thru3D-Media-Player](https://githu
 - **Return to familiar settings.** Remembered per-video track choices and stereo alignment, system-controlled volume, and full filename hover tips.
 - **Explore photos.** Single images, side previews, 1–3-row photo walls and memory fragments. HEIF photo decoding depends on the Android device and source format.
 
-Current development source also includes STRM shortcuts, list/icon browsing with folder-position memory, compact browsing during playback, spatially locked controls and flat-screen cinema presets. See the [unreleased changes](CHANGELOG.md) and [feature boundaries](docs/SELECTED_UPSTREAM_PORTS.md); published APKs may predate these additions.
+Version 0.9.4 adds STRM shortcuts, list/icon browsing with folder-position memory, compact browsing during playback, spatially locked controls and flat-screen cinema presets. See the [release notes](CHANGELOG.md) and [feature boundaries](docs/SELECTED_UPSTREAM_PORTS.md); published APKs may predate these additions.
 
 Immivio has **one playback edition**. It displays existing stereo/spatial content; it does not generate 3D from 2D. The earlier live AI depth, person-matting, model preparation and inference features have been removed.
 
@@ -44,7 +44,7 @@ Immivio has **one playback edition**. It displays existing stereo/spatial conten
 
 Use [Releases](https://github.com/NorthBoundWisdom/immivio/releases) for published APKs. Current development packages are under a successful [Android workflow run](https://github.com/NorthBoundWisdom/immivio/actions/workflows/android-release.yml) → **Artifacts**; GitHub sign-in is required for those artifacts. Releases from before the rename retain their historical names and behavior.
 
-Current development builds use the independent Android ID `com.northboundwisdom.immivio`. They install separately from the legacy player; existing data is not automatically migrated.
+Version 0.9.4 uses the independent Android ID `com.northboundwisdom.immivio`. Its packages install separately from the legacy player; existing data is not automatically migrated.
 
 Choose an APK matching your headset:
 

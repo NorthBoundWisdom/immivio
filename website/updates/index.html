@@ -8,10 +8,10 @@
       name="application-name"
       content="Immivio – VR &amp; Spatial Media Player"
     />
-    <title>Immivio — v0.9.3 Release Notes &amp; APK Compatibility</title>
+    <title>Immivio — v0.9.4 Release Notes &amp; APK Compatibility</title>
     <meta
       name="description"
-      content="What changed in Immivio v0.9.3, the free, open-source VR player for Meta Quest and PICO. Read playback updates, APK compatibility and version history."
+      content="What changed in Immivio v0.9.4, the free, open-source VR player for Meta Quest and PICO. Read playback updates, APK compatibility and version history."
     />
     <link
       rel="canonical"
@@ -34,11 +34,11 @@
     />
     <meta
       property="og:title"
-      content="Immivio — v0.9.3 Release Notes &amp; APK Compatibility"
+      content="Immivio — v0.9.4 Release Notes &amp; APK Compatibility"
     />
     <meta
       property="og:description"
-      content="What changed in Immivio v0.9.3, the free, open-source VR player for Meta Quest and PICO. Read playback updates, APK compatibility and version history."
+      content="What changed in Immivio v0.9.4, the free, open-source VR player for Meta Quest and PICO. Read playback updates, APK compatibility and version history."
     />
     <meta property="og:type" content="website" />
     <meta
@@ -58,11 +58,11 @@
     <meta property="og:image:alt" content="Immivio video playback interface" />
     <meta
       name="twitter:title"
-      content="Immivio — v0.9.3 Release Notes &amp; APK Compatibility"
+      content="Immivio — v0.9.4 Release Notes &amp; APK Compatibility"
     />
     <meta
       name="twitter:description"
-      content="What changed in Immivio v0.9.3, the free, open-source VR player for Meta Quest and PICO. Read playback updates, APK compatibility and version history."
+      content="What changed in Immivio v0.9.4, the free, open-source VR player for Meta Quest and PICO. Read playback updates, APK compatibility and version history."
     />
     <meta
       name="twitter:image"
@@ -81,8 +81,8 @@
             "@type": "WebPage",
             "@id": "https://northboundwisdom.github.io/immivio/updates/#webpage",
             "url": "https://northboundwisdom.github.io/immivio/updates/",
-            "name": "Immivio — v0.9.3 Release Notes & APK Compatibility",
-            "description": "What changed in Immivio v0.9.3, the free, open-source VR player for Meta Quest and PICO. Read playback updates, APK compatibility and version history.",
+            "name": "Immivio — v0.9.4 Release Notes & APK Compatibility",
+            "description": "What changed in Immivio v0.9.4, the free, open-source VR player for Meta Quest and PICO. Read playback updates, APK compatibility and version history.",
             "inLanguage": "en",
             "about": {
               "@id": "https://northboundwisdom.github.io/immivio/#software"
@@ -146,7 +146,8 @@
     <main id="main" class="wrap guide-layout">
       <nav class="guide-nav" aria-label="Release notes sections">
         <p class="eyebrow">RELEASE NOTES</p>
-        <a href="#current">v0.9.3</a>
+        <a href="#current">v0.9.4</a>
+        <a href="#v0-9-3">v0.9.3</a>
         <a href="#v0-9-2">v0.9.2</a>
         <a href="#v0-9-1">v0.9.1</a>
         <a href="#v0-9-0">v0.9.0</a>
@@ -157,21 +158,25 @@
         <p class="eyebrow">IMMIVIO / UPDATES</p>
         <h1>What’s changing in Immivio.</h1>
         <p>
-          These notes describe the v0.9.3 source milestone. Check the notes
+          These notes describe the v0.9.4 source milestone. Check the notes
           attached to your APK for the features in that build.
         </p>
-        <section id="unreleased">
-          <h2>Development / Unreleased</h2>
-          <ul>
-            <li>Use the independent Immivio Android identity and video-app classification. Legacy installations remain separate; data is not migrated automatically.</li>
-            <li>Fix simultaneous native library/toolbar display and pointer routing, cinema preset selection and logarithmic distance adjustment.</li>
-            <li>STRM shortcuts for existing local and network media, with readable loading stages and playback errors.</li>
-            <li>Remembered folder positions, per-folder sorting, list/icon views and compact browsing while playback controls stay available.</li>
-            <li>Spatially locked controls, adjustable bar opacity and flat-screen cinema presets with fixed viewing defaults.</li>
-          </ul>
-          <p>These changes are in development source. Check the notes for your APK; headset acceptance is still required.</p>
-        </section>
         <section id="current">
+          <h2>v0.9.4 — October 24, 2026</h2>
+          <ul>
+            <li>Play STRM shortcuts from local files, SMB and compatible HTTP sources. Show loading stages, elapsed waiting time, measured video input speed and readable playback errors.</li>
+            <li>Remember folder positions and per-folder sorting, switch between list and icon views, and browse in a compact or full library while playback controls remain available.</li>
+            <li>Lock playback controls in space and adjust their background opacity. Use flat-screen TV/cinema presets, distance, size, curvature, eye height and fixed viewing defaults.</li>
+            <li>Fix native library/toolbar display and ray mapping, cinema preset selection and logarithmic distance adjustment. Hide idle controllers during video viewing.</li>
+            <li>Use the independent Android ID <code>com.northboundwisdom.immivio</code>. It installs separately from the legacy player; data is not migrated automatically. Keep project-local signing independent of company products.</li>
+            <li>Add a PICO launcher that reuses the running VR player on repeated opens. On PICO, the sideloaded VR entry is available under Library → Unknown sources → Immivio.</li>
+            <li>Remove cloud-drive and WebDAV integrations. Local files, SMB, DLNA and supported media servers remain available; dependency preparation is simpler.</li>
+          </ul>
+          <p>Selected changes passed automated checks on a physical PICO 4. Compatibility and interaction still depend on the headset and media source.</p>
+          <p>Verified release APKs are attached automatically after both Windows and macOS build checks pass. Until then, the release contains source archives only.</p>
+          <p><a href="https://github.com/NorthBoundWisdom/immivio/releases/tag/v0.9.4">v0.9.4 release and APKs →</a> · <a href="../guide/">Installation and controls →</a></p>
+        </section>
+        <section id="v0-9-3">
           <h2>v0.9.3 — October 14, 2026</h2>
           <ul>
             <li>
