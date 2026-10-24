@@ -442,6 +442,7 @@ struct Source final {
         ",\"audio_samplerate\":" + quote(rate) +
         ",\"audio_channels\":" + quote(channels) +
         ",\"avsync_seconds\":" + quote(avsync) +
+        ",\"read_bytes_per_second\":" + quote(property(core, "cache-speed")) +
         ",\"paused_for_cache\":" + quote(cache_pause) +
         ",\"decoder_frame_drop_count\":" + quote(decoder_drops) +
         ",\"vo_frame_drop_count\":" + quote(vo_drops) +

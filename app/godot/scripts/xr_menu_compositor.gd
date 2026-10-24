@@ -57,6 +57,7 @@ var _capture_frames := 0
 var _bridge_status := {}
 var camera: Camera3D
 var active_menu: Node3D
+var _shown_menu_ids: Array = []
 var native_supported := false
 var content_bounds := Rect2()
 var surface_rect := Rect2()
@@ -197,6 +198,11 @@ func _process(_delta: float) -> void:
 		if is_instance_valid(menu) and menu.is_visible_in_tree():
 			shown = menu
 			break
+	var shown_ids := menus.filter(func(menu): return is_instance_valid(menu) and menu.is_visible_in_tree()).map(func(menu): return menu.get_instance_id())
+	if shown_ids != _shown_menu_ids:
+		_shown_menu_ids = shown_ids
+		content_bounds = Rect2()
+		_bounds_due = 0
 	if shown != active_menu:
 		active_menu = shown
 		content_bounds = Rect2()
@@ -281,6 +287,7 @@ func _process(_delta: float) -> void:
 				"visible": true,
 				"menu_id": active_menu.get_instance_id(),
 				"layout_revision": active_menu.layout_revision,
+				"menu_revisions": _capture_revisions(),
 				"pose": capture,
 				"rect": surface_rect,
 				"curve_radius": active_menu.curve_radius
@@ -460,24 +467,35 @@ static func capture_pose(menu: Node3D) -> Transform3D:
 	return menu.global_transform.orthonormalized()
 
 
+func captures_menu(menu: Node3D) -> bool:
+	return is_instance_valid(menu) and menu.is_visible_in_tree() and (menu == active_menu or menu in menus)
+
+func _capture_menus() -> Array:
+	var result := menus.filter(func(menu): return captures_menu(menu))
+	if is_instance_valid(active_menu) and active_menu not in result:
+		result.append(active_menu)
+	return result
+
+func _capture_revisions() -> Dictionary:
+	var result := {}
+	for menu in _capture_menus():
+		result[str(menu.get_instance_id())] = menu.layout_revision
+	return result
+
 func _update_bounds() -> void:
 	var result: Array = []
-	_visual_bounds(active_menu, capture_pose(active_menu).affine_inverse(), result)
+	var inverse := capture_pose(active_menu).affine_inverse()
+	for menu in _capture_menus():
+		_visual_bounds(menu, inverse, result)
 	var bounds: Rect2 = result[0] if not result.is_empty() else Rect2(-.6, -.2, 1.2, .5)
-	var envelope: Rect2 = active_menu.capture_envelope()
-	var tooltip_bounds: Rect2 = active_menu.tooltip_envelope()
-	if tooltip_bounds.has_area():
-		envelope = envelope.merge(tooltip_bounds) if envelope.has_area() else tooltip_bounds
-	if envelope.has_area():
-		var local_to_capture := (
-			capture_pose(active_menu).affine_inverse() * active_menu.global_transform
-		)
-		for corner in [
-			envelope.position,
-			Vector2(envelope.end.x, envelope.position.y),
-			envelope.end,
-			Vector2(envelope.position.x, envelope.end.y)
-		]:
+	for menu in _capture_menus():
+		var envelope: Rect2 = menu.capture_envelope()
+		var tooltip_bounds: Rect2 = menu.tooltip_envelope()
+		if tooltip_bounds.has_area():
+			envelope = envelope.merge(tooltip_bounds) if envelope.has_area() else tooltip_bounds
+		if not envelope.has_area(): continue
+		var local_to_capture: Transform3D = inverse * menu.global_transform
+		for corner in [envelope.position, Vector2(envelope.end.x, envelope.position.y), envelope.end, Vector2(envelope.position.x, envelope.end.y)]:
 			var point: Vector3 = local_to_capture * Vector3(corner.x, corner.y, 0)
 			bounds = bounds.expand(Vector2(point.x, point.y))
 	bounds = bounds.grow(.04)
@@ -521,15 +539,12 @@ static func project_ray(
 
 
 func is_layout_presented(menu: Node3D) -> bool:
-	return (
-		(scene_curved and menu == active_menu)
-		or (
-			native_supported
-			and menu == active_menu
-			and presented.get("menu_id") == menu.get_instance_id()
-			and presented.get("layout_revision") == menu.layout_revision
-		)
-	)
+	if not captures_menu(menu): return false
+	if scene_curved: return true
+	if not native_supported or not is_instance_valid(active_menu) or presented.get("menu_id") != active_menu.get_instance_id(): return false
+	var revisions: Dictionary = presented.get("menu_revisions", {})
+	var revision: int = int(revisions.get(str(menu.get_instance_id()), presented.get("layout_revision", -1) if menu == active_menu else -1))
+	return revision == menu.layout_revision
 
 
 func native_placement_available() -> bool:
@@ -595,17 +610,17 @@ static func project_curved_ray(
 
 
 func map_ray(menu: Node3D, origin: Vector3, direction: Vector3) -> Dictionary:
-	if menu != active_menu:
+	if not captures_menu(menu) or not is_instance_valid(active_menu):
 		return {}
 	if scene_curved:
 		return project_curved_ray(
-			capture_pose(menu), surface_rect, menu.curve_radius, origin, direction
+			capture_pose(active_menu), surface_rect, active_menu.curve_radius, origin, direction
 		)
 	if not native_supported or not is_layout_presented(menu):
 		return {}
-	if menu.curve_radius > 0.0:
+	if active_menu.curve_radius > 0.0:
 		return project_curved_ray(
-			presented_pose(presented, menu),
+			presented_pose(presented, active_menu),
 			presented.rect,
 			presented.curve_radius,
 			origin,

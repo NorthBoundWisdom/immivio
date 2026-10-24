@@ -127,6 +127,7 @@ var _audio_pending := false
 var local_uri := ""
 var display_name := ""
 var picker_error := ""
+var playback_error_detail := ""
 var _picker_request := 0
 var profile := AUTOMATIC_PROFILE  # ROI default: one square input for full-eye and zoom windows
 var _binding := Binding.new()
@@ -478,6 +479,7 @@ func open_local(
 		return false
 	cancel_pending_open()
 	close_video()
+	playback_error_detail = ""
 	# Alpha-packed and Alpha-wanted files say so in their names (PTMediaServer / DeoVR markers).
 	_layout_basename = (
 		basename
@@ -1851,6 +1853,7 @@ func _on_error(id: int, payload: String) -> void:
 		if report is Dictionary
 		else "MPV playback failed"
 	)
+	playback_error_detail = str(report.get("message", "")) if report is Dictionary else ""
 	media.state = "failed"
 	_freeze_request = 0
 	_pending_revision = {}
@@ -1861,6 +1864,7 @@ func _on_error(id: int, payload: String) -> void:
 	_recover_ms = control.observed_position_ms
 	_unbind()
 	Log.record("mpv_error", {"session_id": id, "report": report})
+	_debug_next_report_us = 0
 	_write_debug_report()
 	changed.emit()
 
@@ -2056,12 +2060,14 @@ func _write_debug_report() -> void:
 		"request_id": _debug_request,
 		"commands": _debug_commands,
 		"picker_error": picker_error,
+		"loading_feedback": {"message": host.playback_feedback.message, "visible": host.playback_feedback.visible} if host and is_instance_valid(host.get("playback_feedback")) else {},
 		"canvas_controls":
 		(
 			host._canvas_controls_snapshot()
 			if host and host.has_method("_canvas_controls_snapshot")
 			else {}
 		),
+		"selected_features_ui": host.selected_features_probe_result if host and host.get("selected_features_probe_result") is Dictionary else {},
 		"seek_policy_ui":
 		(
 			host.seek_policy_probe_result

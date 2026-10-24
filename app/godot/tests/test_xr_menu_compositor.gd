@@ -127,6 +127,24 @@ func _run() -> void:
 		),
 		"Capture bounds include physically scaled controls"
 	)
+	var secondary := Menu.new()
+	root.add_child(secondary)
+	secondary.visible = true
+	secondary.global_transform = menu.global_transform
+	secondary.global_position -= menu.global_basis.y.normalized() * 2.0
+	secondary._button(43, "Playback", Vector2.ZERO, Vector2(0.2, 0.1))
+	compositor.menus = [menu, secondary]
+	compositor.content_bounds = Rect2()
+	compositor._update_bounds()
+	var secondary_point: Vector3 = Surface.capture_pose(menu).affine_inverse() * secondary.global_position
+	check(compositor.content_bounds.has_point(Vector2(secondary_point.x, secondary_point.y)), "Capture includes a second visible menu outside the primary envelope")
+	compositor.native_supported = true
+	compositor.presented = {"menu_id": menu.get_instance_id(), "layout_revision": menu.layout_revision, "menu_revisions": compositor._capture_revisions()}
+	check(compositor.is_layout_presented(secondary), "Secondary menu becomes interactive only after its layout is presented")
+	secondary.layout_revision += 1
+	check(not compositor.is_layout_presented(secondary), "Stale secondary layout rejects ray mapping")
+	compositor.menus = [menu]
+	secondary.free()
 	var pointer := menu._pointer("right_hand")
 	compositor.native_supported = true
 	compositor._tag(pointer.line)

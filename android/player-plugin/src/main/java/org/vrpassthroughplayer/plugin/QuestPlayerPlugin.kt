@@ -75,7 +75,8 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         sources::playable,
         sources::sidecarAudio,
         sources::releaseMediaStream,
-        sources::sidecarSubtitles
+        sources::sidecarSubtitles,
+        sources::resolveShortcut
     )
     private val photos = PhotoBridge(
         { activity?.applicationContext },

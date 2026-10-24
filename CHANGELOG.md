@@ -6,6 +6,21 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 ## Unreleased
 
+- Add a concrete PICO launcher forwarding to the existing immersive entry. Reuse the current Godot Activity on repeated launches to prevent a duplicate engine instance from terminating the process. Keep signing independent of company projects.
+
+- Give Immivio its own Android application ID, `com.northboundwisdom.immivio`, plus an isolated Debug-only `.dev` identity. Keep the existing signing certificate. Legacy `com.wapok.thru3d` installations are separate; user data needs an explicit migration.
+- Classify exported APKs as video applications instead of games using the Godot export option, and verify the final manifest after export rather than trusting template metadata.
+- Fix native XR capture and ray mapping for the library and playback controls displayed together. Acknowledged layout revisions now include each visible menu.
+- Route cinema preset/default choices through the adjustment handler, retain logarithmic slider interpolation during pointer capture, and flush terminal debug failures even during throttled reporting.
+
+- Add bounded STRM shortcut playback from local/SMB files, HTTP(S), and the system document picker. Keep the shortcut identity for history, mode memory and adjacent subtitles; reuse saved SMB connections without importing credentials.
+- Show playback preparation stages, elapsed loading time and measured video input speed. Buffering can use a small independent status plane; failures open readable, redacted diagnostics with a library return action.
+- Remember directory positions by source, folder and media filter, and sorting per directory. History-disabled browsing remains session-only; clearing history also clears directory positions. Add a separate position-memory setting.
+- Add persistent list/icon browsing with available file size, date and resume metadata, plus a compact browser above the playback controls and a full-size switch.
+- Add a session spatial lock for playback controls and their popups, plus saved control-bar background opacity. Explicit recenter remains available.
+- Add flat-screen TV/cinema presets, 1–50 m distance and up to 3000% size controls, curvature, eye-height adjustment and a temporary positioning grid. Defaults follow adjustments unless explicitly fixed; temporary changes do not replace fixed defaults. This is screen placement, not a generated 3D auditorium.
+- Adapt selected GPL-3.0 upstream code and behavior through Thru3D 0.13.3 (`9a6a905`); retain the standard mpv backend and existing source scope. See `docs/SELECTED_UPSTREAM_PORTS.md` for provenance and boundaries.
+
 - Automatically hide idle controller models after three seconds during video viewing. Movement, buttons, sticks and menus restore them while tracking and input remain active.
 
 - Remove cloud drive accounts, authorization, browsing, playback and file operations, including remote WebDAV mounts and the local cloud WebDAV service. Remove OpenList/Go mobile bindings from builds and CI. Keep local files, SMB, DLNA and supported media servers.

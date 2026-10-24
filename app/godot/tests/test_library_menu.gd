@@ -832,7 +832,7 @@ func _run() -> void:
 	menu._activate(Menu.TAB_BASE + Menu.GENERAL_TAB)
 	check(
 		(
-			menu.rows.size() == 5
+			menu.rows.size() == 6
 			and menu.rows[0].title == "语言"
 			and menu.rows[0].value == "zh"
 			and (

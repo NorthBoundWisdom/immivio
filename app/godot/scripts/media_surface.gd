@@ -25,13 +25,16 @@ var flat_pose := Transform3D(Basis(), Vector3(0, 1.5, -2))
 ## Flat screen set by the viewer: distance from the eyes, size (corner drag) and curvature.
 ## A curve of 1 bends the screen round the eyes; smaller values bend it less.
 const SCREEN_DISTANCE := 2.0
-const DISTANCE_LIMITS := Vector2(0.8, 8.0)
-const SCALE_LIMITS := Vector2(0.4, 3.0)
+const DISTANCE_LIMITS := Vector2(1.0, 50.0)
+const SCALE_LIMITS := Vector2(0.4, 30.0)
 const CURVES := [0.0, 0.35, 0.7, 1.0]
 var screen_distance := SCREEN_DISTANCE
 var screen_scale := 1.0
 var screen_rotation := 0.0
 var screen_curve := 0.0
+const ScreenPresets := preload("res://scripts/screen_presets.gd")
+var screen_preset := ""
+var screen_eye_level := 0.5
 var _screen_base := Vector2(1.9, 1.07)
 var _curved: ArrayMesh
 var _curved_key := Vector4.ZERO
@@ -90,8 +93,16 @@ func _apply_geometry() -> void:
 		# that same stretch, so applying both would double it.
 		aspect *= (0.5 if top_bottom else 2.0) if stereo_sbs and stereo_half else _pixel_aspect()
 		if aspect > 0:
+			var previous_height := _flat.size.y
 			_screen_base = _screen_dimensions(aspect)
+			if not screen_preset.is_empty():
+				screen_scale = ScreenPresets.scale_for(screen_preset, _screen_base)
 			_flat.size = _screen_base * screen_scale
+			if not screen_preset.is_empty():
+				flat_pose.origin += (
+					flat_pose.basis.y * (_flat.size.y - previous_height) * (0.5 - screen_eye_level)
+				)
+				_apply_flat_pose()
 		_shape_screen()
 	elif (
 		geometry == Geometry.Geometry.EQUIRECT_360
@@ -278,6 +289,7 @@ func subtitle_transform() -> Transform3D:
 
 
 func set_screen_scale(value: float) -> void:
+	screen_preset = ""
 	screen_scale = clampf(value, SCALE_LIMITS.x, SCALE_LIMITS.y)
 	_flat.size = _screen_base * screen_scale
 	_shape_screen()

@@ -23,6 +23,24 @@ class QuestPlayerExport:
 	func _supports_platform(platform: EditorExportPlatform) -> bool:
 		return platform is EditorExportPlatformAndroid
 
+	func _get_android_manifest_application_element_contents(
+		_platform: EditorExportPlatform, _debug: bool
+	) -> String:
+		if not bool(get_option("xr_features/enable_pico_plugin")):
+			return ""
+		return """
+        <activity android:name="org.vrpassthroughplayer.plugin.ImmivioLauncherActivity"
+            android:exported="true" android:noHistory="true"
+            android:theme="@android:style/Theme.NoDisplay">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+"""
+
+
 	func _get_android_libraries(_platform: EditorExportPlatform, debug: bool) -> PackedStringArray:
 		return PackedStringArray(
 			[

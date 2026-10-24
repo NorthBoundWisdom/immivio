@@ -56,6 +56,7 @@ func _slider(
 		"key": key,
 		"value": menu._state.get(key, fallback),
 		"slider": true,
+		"logarithmic": key in ["screen_distance", "screen_scale"],
 		"span": span,
 		"unit": unit,
 		"precision": precision,
@@ -75,6 +76,49 @@ func _button(
 
 func draw(key: String) -> void:
 	match key:
+		"screen":
+			var y := _panel("Screen layout", 0.82)
+			var presets: Array = []
+			for item in preload("res://scripts/screen_presets.gd").ITEMS:
+				presets.append({"value": item.id, "label": item.title, "hint": item.detail})
+			_row(
+				"Screen preset",
+				{
+					"key": "screen_preset",
+					"value": menu._state.get("screen_preset", ""),
+					"choices": presets
+				},
+				y
+			)
+			_slider("Distance", "screen_distance", Vector3(1, 50, 0.05), 2, " m", y - 0.09, 2)
+			_slider("Size", "screen_scale", Vector3(100, 3000, 5), 100, "%", y - 0.18, 0)
+			_slider("Eye level", "screen_eye_level", Vector3(0, 1, 0.05), 0.5, "", y - 0.27, 2)
+			_row(
+				"Curvature",
+				{
+					"key": "screen_curve",
+					"value": menu._state.get("screen_curve", 0),
+					"choices":
+					[
+						{"value": 0.0, "label": "Off"},
+						{"value": 0.35, "label": "Slight"},
+						{"value": 0.7, "label": "Medium"},
+						{"value": 1.0, "label": "Surround"}
+					]
+				},
+				y - 0.36
+			)
+			_row(
+				"Fix viewing defaults",
+				{
+					"key": "screen_fixed",
+					"value": menu._state.get("screen_fixed", false),
+					"choices": [{"value": false, "label": "Off"}, {"value": true, "label": "On"}]
+				},
+				y - 0.45
+			)
+			_button(221, "Save as default", Vector2(-0.26, 0.43), 0.48)
+			_button(222, "Positioning grid", Vector2(0.26, 0.43), 0.48)
 		"speed":
 			var y := _panel("Playback speed", 0.33)
 			_slider("Playback speed", "playback_speed", Vector3(0.25, 3, 0.05), 1, "×", y, 2)
@@ -236,6 +280,7 @@ func draw(key: String) -> void:
 						"key": field,
 						"value": values.get(field, menu.Grade.DEFAULTS[field]),
 						"slider": true,
+						"logarithmic": key in ["screen_distance", "screen_scale"],
 						"span": menu.Grade.limits(field),
 						"unit": " K" if field == "temperature" else "",
 						"precision":
@@ -261,6 +306,9 @@ func draw(key: String) -> void:
 			menu._info = menu._label(info_text(), Vector3(-0.49, y + 0.025, 0.004), 16)
 			menu._info.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 			menu._info.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+			menu._info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			menu._info.width = 800
+			_button(menu.BROWSE, "Library", Vector2(0, 0.40), 0.5)
 			_button(
 				menu.INFO_REFRESH,
 				"Refresh device info",
@@ -273,6 +321,13 @@ func draw(key: String) -> void:
 
 func info_text() -> String:
 	var lines := PackedStringArray()
+	if not str(menu._state.get("error", "")).is_empty():
+		lines.append(str(menu._state.error))
+		var detail := str(menu._state.get("error_detail", ""))
+		# Let Label3D wrap complete diagnostics rather than silently ellipsizing them.
+		if not detail.is_empty():
+			lines.append(detail)
+		return "\n".join(lines)
 	for line in menu._info_text().split("\n"):
 		lines.append(menu._fit_title(line, "", 1.0, 16))
 	return "\n".join(lines)
@@ -314,7 +369,10 @@ func action(target: int) -> bool:
 	var key: String = menu._quick_open
 	var adjustment := ""
 	var value: Variant = 0.0
-	if key == "speed" and target == menu.SPEED_RESET:
+	if key == "screen" and target in [221, 222]:
+		adjustment = "screen_save_default" if target == 221 else "screen_grid"
+		value = true
+	elif key == "speed" and target == menu.SPEED_RESET:
 		adjustment = "playback_speed"
 		value = 1.0
 	elif key == "sync" and target in [menu.SUBTITLE_DELAY_RESET, menu.AUDIO_DELAY_RESET]:

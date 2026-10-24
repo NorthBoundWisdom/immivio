@@ -27,6 +27,7 @@ internal class MpvVideoBridge(
     private val sidecarAudio: (String) -> List<SidecarAudio.Track> = { emptyList() },
     private val releaseNetwork: (String) -> Unit = {},
     private val sidecarSubtitles: (String) -> List<SidecarSubtitles.Track> = { emptyList() },
+    private val resolveShortcut: (String) -> String = { it },
 ) {
     private val worker = PlaybackWorkers.video
     private val gate = MediaSessionGate()
@@ -167,7 +168,11 @@ internal class MpvVideoBridge(
                 host.markStartup("worker_started_ms")
                 if (host.closing || stopped) return@post
                 val app = context() ?: error("Activity unavailable")
-                val path = host.resources.resolve(app, uri, resolveNetwork)
+                event("mpv_state", session, JSONObject().put("state", "opening").put("loading_stage", "Resolving source"))
+                val resolved = resolveShortcut(uri)
+                if (host.closing || stopped) return@post
+                val path = host.resources.resolve(app, resolved, resolveNetwork)
+                event("mpv_state", session, JSONObject().put("state", "opening").put("loading_stage", "Loading subtitles and audio"))
                 host.markStartup("source_resolved_ms")
                 // Extra audio is optional: a failed lookup plays the video without it.
                 val extra = if (audio) sidecarAudio(uri) else emptyList()
@@ -182,6 +187,7 @@ internal class MpvVideoBridge(
                 render(Runnable {
                     if (host.closing || stopped) return@Runnable
                     try {
+                        event("mpv_state", session, JSONObject().put("state", "opening").put("loading_stage", "Preparing playback"))
                         host.owner = EGL14.eglGetCurrentContext()
                         host.markStartup("native_create_started_ms")
                         host.handle = MpvSourceNative.create(
@@ -986,7 +992,7 @@ internal class MpvVideoBridge(
 
     private fun fail(session: Session, code: String, failure: Throwable) {
         if (session.disposed.get()) return
-        event("mpv_error", session, JSONObject().put("code", code).put("message", failure.message))
+        event("mpv_error", session, JSONObject().put("code", if (failure is StrmFailure) failure.code else code).put("message", PlaybackErrors.safe(failure.message)))
         gate.invalidate(session.id); dispose(session, true)
     }
 

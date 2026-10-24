@@ -88,6 +88,7 @@ def input_signature(args):
                 if p.is_file()
             }
         )
+    inputs["android_identity"] = player.android_identity(args.build_type)
     inputs["FreeCM"] = freecm_provenance()
     inputs["mpv_libraries"] = {
         name: digest(path) for name, path in player.mpv_libraries().items()

@@ -200,6 +200,41 @@ internal class MediaSources(
         return id
     }
 
+    /** Resolve shortcuts on the playback worker, retaining the original URI for sidecars/history. */
+    fun resolveShortcut(uri: String): String {
+        val app = context() ?: error("Activity unavailable")
+        fun named(value: String): Boolean {
+            if (StrmFile.location(value)) return true
+            val parsed = android.net.Uri.parse(value)
+            if (parsed.scheme != "content") return false
+            return app.contentResolver.query(parsed, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
+                it.moveToFirst() && StrmFile.named(it.getString(0).orEmpty())
+            } ?: false
+        }
+        return StrmResolver(read = { value ->
+            val parsed = android.net.Uri.parse(value)
+            when (parsed.scheme) {
+                "http", "https" -> StrmHttp.read(value)
+                "smb" -> {
+                    val location = smb.stream(value)
+                    try { StrmDocument(StrmHttp.read(location).bytes, value) }
+                    finally { releaseMediaStream(location) }
+                }
+                "file" -> StrmDocument(java.io.File(parsed.path ?: "").inputStream().use(StrmFile::read), value)
+                "content" -> StrmDocument((app.contentResolver.openInputStream(parsed)
+                    ?: throw StrmFailure("STRM_READ_FAILED")).use(StrmFile::read), value)
+                else -> throw StrmFailure("STRM_UNSUPPORTED_ADDRESS")
+            }
+        }, isStrm = ::named, mapTarget = { origin, target ->
+            if (!target.startsWith("smb://")) target else {
+                val servers = smb.serversJson()
+                StrmFile.smbTarget(target, (0 until servers.length()).map {
+                    servers.getJSONObject(it).let { item -> item.getString("id") to item.getString("host") }
+                }, android.net.Uri.parse(origin).takeIf { it.scheme == "smb" }?.host.orEmpty())
+            }
+        }).resolve(uri)
+    }
+
     /** MPV-playable location for a library URI; blocks (SMB connects). Worker threads only. */
     fun playable(uri: String): String = when {
         uri.startsWith("medialib://") -> mediaServers.playable(uri)

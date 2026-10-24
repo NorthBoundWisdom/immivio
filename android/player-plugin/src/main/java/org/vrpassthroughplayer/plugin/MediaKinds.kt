@@ -7,6 +7,6 @@ internal object MediaKinds {
         name.substringBefore('?').substringBefore('#').substringAfterLast('.', "")
             .lowercase() in images
 
-    fun supported(name: String) = image(name) || DlnaClient.isVideoName(name)
+    fun supported(name: String) = image(name) || StrmFile.named(name) || DlnaClient.isVideoName(name)
     fun kind(name: String) = if (image(name)) "image" else "video"
 }

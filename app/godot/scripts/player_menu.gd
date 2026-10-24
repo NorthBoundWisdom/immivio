@@ -11,6 +11,11 @@ signal adjustment_committed
 signal depth_strength_committed
 
 const SEEK := 200
+const QUICK_SCREEN := 223
+const SPACE_LOCK := 224
+const BROWSE := 225
+var space_locked := false
+var controls_opacity := 0.86
 const QUICK_SPEED := 211
 const QUICK_CLOSE := 213
 const QUICK_COLOR := 214
@@ -70,6 +75,7 @@ const ALIGNMENT_HORIZONTAL := 485
 const ALIGNMENT_VERTICAL := 486
 const IPD_SETTINGS := 498
 const POPUP_TARGETS := {
+	QUICK_SCREEN: "screen",
 	QUICK_SPEED: "speed",
 	QUICK_COLOR: "color",
 	IPD_SETTINGS: "ipd",
@@ -565,7 +571,9 @@ func _draw_uncached() -> void:
 ## Settings open separate popups; audio gain belongs to the system.
 func _draw_bar() -> void:
 	_set_backdrop(Vector2(1.16, 0.20), Vector2(0, -0.02))
-	_backdrop.material_override.set_shader_parameter("surface_color", Color(PANEL, 0.86))
+	_backdrop.material_override.set_shader_parameter(
+		"surface_color", Color(PANEL, controls_opacity)
+	)
 	_backdrop.material_override.set_shader_parameter("corner_radius", 0.05)
 	_title_pill = _quad(Vector2(0.60, DeviceStatus.HEIGHT), Vector3(0, HEADER_Y, 0.002), TILE, 11)
 	_title_pill.material_override.set_shader_parameter("corner_radius", DeviceStatus.HEIGHT / 2)
@@ -574,6 +582,19 @@ func _draw_bar() -> void:
 	_title = _label("", Vector3(0, HEADER_Y, 0.006), 18)
 	var has_video: bool = _state.get("has_video", false)
 	var controls := [
+		{
+			"target": QUICK_SCREEN,
+			"icon": "screen",
+			"tip": "Screen layout",
+			"enabled": has_video and int(_state.get("geometry", 0)) == 0
+		},
+		{
+			"target": SPACE_LOCK,
+			"icon": "lock" if space_locked else "unlock",
+			"tip": "Unlock spatial position" if space_locked else "Lock spatial position",
+			"enabled": has_video
+		},
+		{"target": BROWSE, "icon": "folder", "tip": "Library", "enabled": has_video},
 		{"target": 110, "icon": "subtitle", "tip": "Subtitles", "enabled": _enabled("subtitles")},
 		{"target": MODE, "icon": "view_mode", "tip": "Video mode", "enabled": has_video},
 		{"target": QUICK_SPEED, "icon": "time", "tip": "Playback speed", "enabled": has_video},
@@ -642,6 +663,7 @@ func _draw_bar() -> void:
 	)
 	if _quick_open == "ipd" and not _enabled("stereo_view"):
 		_quick_open = ""
+	_status = _label(_status_text(), Vector3(0, -0.155, 0.005), 15)
 	_bar_drawn = _bar_key()
 	_seek_bar(BAR_SEEK_Y)
 	_place_device_status(Vector2(0, HEADER_Y))
@@ -1293,6 +1315,8 @@ func _settings_key() -> String:
 			_state.get("source_uri", ""),
 			_state.get("has_video", false),
 			_state.get("screen_curve", 0.0),
+			_state.get("screen_preset", ""),
+			_state.get("screen_fixed", false),
 			_state.get("stereo", false),
 			_state.get("geometry", 0),
 			_state.get("show_fps", false),
@@ -1340,6 +1364,10 @@ func _on_choice_changed(key: String, value: Variant) -> void:
 		(
 			key
 			in [
+				"screen_preset",
+				"screen_fixed",
+				"screen_eye_level",
+				"screen_curve",
 				"screen_distance",
 				"screen_scale",
 				"screen_rotation",
@@ -1451,6 +1479,13 @@ func _activate_hit(hit: Dictionary) -> void:
 
 
 func _activate(target: int) -> void:
+	if target == SPACE_LOCK:
+		space_locked = not space_locked
+		refresh()
+		return
+	if target == BROWSE:
+		recent_requested.emit()
+		return
 	if _activate_slider_reset(target):
 		return
 	if target == QUICK_CLOSE:
@@ -1743,6 +1778,8 @@ func _caption_text(operation: String) -> String:
 
 
 func _status_text() -> String:
+	if not str(_state.get("loading_message", "")).is_empty():
+		return str(_state.loading_message)
 	if _state.get("subtitle_loading", false):
 		return I18n.t("Loading subtitle…")
 	if not str(_state.get("error", "")).is_empty():

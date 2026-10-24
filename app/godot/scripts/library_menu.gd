@@ -8,6 +8,80 @@ signal chosen(uri: String, title: String)
 signal player_requested
 signal queue_requested(operation: String)
 var queue_add_mode := false
+signal layout_changed
+const VIEW_MODE := 90
+const BROWSER_SIZE := 91
+var list_view := false
+var compact := false
+var playback_browser := false
+const BrowseMemory := preload("res://scripts/directory_browse_memory.gd")
+var browse_memory := BrowseMemory.new()
+var _browse_scope := ""
+var _browse_restore := {}
+
+
+func directory_scope() -> String:
+	if account_panel.active() or not _editor.is_empty():
+		return ""
+	match section:
+		Section.LOCAL:
+			return JSON.stringify([section, _local_path(), media_filter])
+		Section.SMB:
+			return JSON.stringify([section, _smb_server, _smb_path, media_filter])
+		Section.DLNA:
+			return JSON.stringify(
+				[
+					section,
+					_dlna_server,
+					_dlna_stack.back().id if not _dlna_stack.is_empty() else "0",
+					media_filter
+				]
+			)
+		Section.MEDIA_SERVER:
+			return JSON.stringify(
+				[
+					section,
+					server_browser.server.get("id", ""),
+					server_browser.view,
+					server_browser.query
+				]
+			)
+	return ""
+
+
+func _row_identity(row: Dictionary) -> String:
+	return (
+		str(row.get("uri", row.get("container", {}).get("id", row.get("id", row.get("title", "")))))
+		. sha256_text()
+	)
+
+
+func remember_browse() -> void:
+	if _browse_scope.is_empty() or not _browse_restore.is_empty() or status == "Loading…":
+		return
+	var index := mini(_first_line() * _cols(), maxi(0, rows.size() - 1))
+	browse_memory.remember(
+		_browse_scope,
+		{
+			"index": index,
+			"anchor": _row_identity(rows[index]) if not rows.is_empty() else "",
+			"order": file_actions.order()
+		}
+	)
+
+
+func _restore_browse() -> void:
+	if _browse_restore.is_empty() or rows.is_empty() or status == "Loading…":
+		return
+	var index := int(_browse_restore.get("index", 0))
+	for i in rows.size():
+		if _row_identity(rows[i]) == _browse_restore.get("anchor", ""):
+			index = i
+			break
+	scroll = clampf(float(index / _cols()), 0.0, _max_scroll())
+	_browse_restore = {}
+
+
 const QUEUE_ADD_LIST := 88
 const QUEUE_DONE := 89
 signal recenter_requested
@@ -26,22 +100,10 @@ const LibrarySourceController := preload("res://scripts/library_source_controlle
 var _sources := LibrarySourceController.new(self)
 
 const Section := LibrarySourceController.Section
-const NAV := [
-	"Recent",
-	"Local files",
-	"SMB network",
-	"DLNA network",
-	"Settings",
-	"Media servers"
-]
+const NAV := ["Recent", "Local files", "SMB network", "DLNA network", "Settings", "Media servers"]
 const NAV_ICONS := ["history", "device", "server", "cast", "settings", "media_library"]
 const NAV_ORDER := [
-	Section.RECENT,
-	Section.LOCAL,
-	Section.SMB,
-	Section.DLNA,
-	Section.MEDIA_SERVER,
-	Section.SETTINGS
+	Section.RECENT, Section.LOCAL, Section.SMB, Section.DLNA, Section.MEDIA_SERVER, Section.SETTINGS
 ]
 const ServerBrowser := preload("res://scripts/media_server_browser.gd")
 const PlatformMethods := preload("res://scripts/platform_methods.gd")
@@ -189,6 +251,8 @@ var _covers := {}  # DLNA cover URL -> HTTPRequest while it downloads
 
 
 func dismiss() -> void:
+	remember_browse()
+	browse_memory.flush()
 	file_actions.reset()
 	choices.reset()
 	if account_panel.active():
@@ -199,7 +263,28 @@ func dismiss() -> void:
 	super()
 
 
+func _place_device_status(centre: Vector2) -> void:
+	if compact and playback_browser:
+		if is_instance_valid(device_status):
+			device_status.visible = false
+		return
+	super(centre)
+	if is_instance_valid(device_status):
+		device_status.visible = true
+
+
+func refresh_session_controls(force: bool = false) -> void:
+	if compact and playback_browser:
+		if is_instance_valid(device_status):
+			device_status.visible = false
+		return
+	super(force)
+	if is_instance_valid(device_status):
+		device_status.visible = true
+
+
 func _ready() -> void:
+	browse_memory.load_file()
 	super()
 	allow_user_dismiss = false
 	curve_radius = 1.6
@@ -251,6 +336,8 @@ func _on_android_lifecycle(state: String) -> void:
 		if section == Section.MEDIA_SERVER:
 			server_browser.load_servers()
 			refresh()
+
+
 func _reset_navigation() -> void:
 	choices.reset()
 	_recent_page = 0
@@ -270,7 +357,7 @@ func _plane_point(origin: Vector3, direction: Vector3) -> Variant:
 	if (
 		xr_surface
 		and (xr_surface.native_supported or xr_surface.get("scene_curved") == true)
-		and xr_surface.active_menu == self
+		and (xr_surface.active_menu == self or (xr_surface.has_method("captures_menu") and xr_surface.captures_menu(self)))
 	):
 		var mapped: Dictionary = xr_surface.map_ray(self, origin, direction)
 		return to_local(mapped.get("canvas_point", mapped.point)) if not mapped.is_empty() else null
@@ -283,10 +370,7 @@ func _plane_point(origin: Vector3, direction: Vector3) -> Variant:
 
 
 func has_pointer_capture() -> bool:
-	return (
-		not _drag.is_empty()
-		or not choices.capture.is_empty()
-	)
+	return not _drag.is_empty() or not choices.capture.is_empty()
 
 
 func _row_target(target: int) -> bool:
@@ -428,6 +512,9 @@ func stick_scroll(y: float, delta: float) -> void:
 
 
 func _process(delta: float) -> void:
+	if visible:
+		remember_browse()
+	browse_memory.tick()
 	_poll_cache_usage()
 	if not file_actions.modal.is_empty():
 		return
@@ -507,8 +594,8 @@ func _grid() -> bool:
 	if account_panel.active():
 		return false
 	if section == Section.MEDIA_SERVER:
-		return server_browser.grid()
-	return section != Section.SETTINGS
+		return server_browser.grid() and not list_view
+	return section != Section.SETTINGS and not list_view
 
 
 func _cols() -> int:
@@ -548,7 +635,18 @@ func _max_scroll() -> float:
 
 
 func refresh() -> void:
+	var scope := directory_scope()
+	if scope != _browse_scope:
+		_browse_scope = scope
+		_browse_restore = browse_memory.lookup(scope)
+		if (
+			not _browse_restore.is_empty()
+			and file_actions.sortable()
+			and not file_actions.orders.has(file_actions.scope())
+		):
+			file_actions.orders[file_actions.scope()] = _browse_restore.get("order", "name_asc")
 	_rebuild_rows()
+	_restore_browse()
 	_draw()
 	_update_highlights()
 
@@ -750,6 +848,14 @@ func _rebuild_rows() -> void:
 						[{"value": true, "label": "On"}, {"value": false, "label": "Off"}]
 					)
 				)
+				rows.append(
+					_choice_row(
+						"Remember folder position",
+						"browse_memory",
+						settings.get("browse_memory", true),
+						[{"value": true, "label": "On"}, {"value": false, "label": "Off"}]
+					)
+				)
 				# Library thumbnails plus Android photo/depth/SBS files.
 				if _cache_usage == null:
 					_request_cache_usage()
@@ -805,6 +911,17 @@ func _rebuild_rows() -> void:
 						bool(settings.get("show_fps", false)),
 						[{"value": false, "label": "Off"}, {"value": true, "label": "On"}]
 					)
+				)
+				rows.append(
+					{
+						"title": I18n.t("Control bar opacity"),
+						"key": "controls_opacity",
+						"value": settings.get("controls_opacity", 0.86),
+						"slider": true,
+						"span": Vector3(0, 1, 0.05),
+						"unit": "",
+						"reset_value": 0.86
+					}
 				)
 			elif tab == SUBTITLES_TAB:
 				for key in ["subtitle_distance", "subtitle_direction", "subtitle_position"]:
@@ -942,6 +1059,21 @@ func _rebuild_rows() -> void:
 				func(row): return ( not row.has("uri") or row.get("kind", "video") == ("image" if media_filter == 2 else "video") )
 			)
 		)
+	for row in rows:
+		if row.has("uri"):
+			var parts: Array[String] = []
+			if int(row.get("size", -1)) > 0:
+				parts.append(_size(row))
+			if int(row.get("modified", 0)) > 0:
+				parts.append(Time.get_date_string_from_unix_time(int(row.modified) / 1000))
+			var recent: Dictionary = (
+				catalog.lookup(str(row.uri)) if catalog and catalog.has_method("lookup") else {}
+			)
+			if int(recent.get("position_ms", 0)) > 0:
+				var seconds := int(recent.position_ms) / 1000
+				parts.append("%02d:%02d" % [seconds / 60, seconds % 60])
+			if not parts.is_empty():
+				row.detail = " · ".join(parts)
 	file_actions.sort_rows()
 	if section == Section.RECENT:
 		_recent_all_rows.assign(rows)
@@ -989,9 +1121,7 @@ func _entry_row(entry: Dictionary) -> Dictionary:
 		"icon": "image" if photo else "video",
 		"uri": str(entry.get("uri", ""))
 	}
-	for field in [
-		"size", "modified", "can_delete", "delete_reason", "id"
-	]:
+	for field in ["size", "modified", "can_delete", "delete_reason", "id"]:
 		if entry.has(field):
 			row[field] = entry[field]
 	if not str(entry.get("cover", "")).is_empty():
@@ -1119,6 +1249,7 @@ func _poll_cache_usage() -> void:
 
 
 func _exit_tree() -> void:
+	browse_memory.flush()
 	if _cache_thread:
 		_cache_thread.wait_to_finish()
 		_cache_thread = null
@@ -1127,7 +1258,23 @@ func _exit_tree() -> void:
 ## Video state changes arrive several times a second: redraw only when the Alpha profiles
 ## (current, compiling, cold) shown on the Alpha tab change.
 func _activate(target: int) -> void:
+	remember_browse()
+	if target == VIEW_MODE:
+		var index := _first_line() * _cols()
+		list_view = not list_view
+		scroll = float(index / _cols())
+		setting_changed.emit("library_list_view", list_view)
+		refresh()
+		return
+	if target == BROWSER_SIZE:
+		compact = not compact
+		layout_changed.emit()
+		refresh()
+		return
 	if target in [CLOSE, PLAYER]:
+		if playback_browser:
+			dismiss()
+			player_requested.emit()
 		return
 	if target == QUEUE_ADD_LIST:
 		queue_requested.emit("queue_add_list")
@@ -1227,6 +1374,7 @@ func _activate(target: int) -> void:
 
 
 func _choose(row: Dictionary) -> void:
+	remember_browse()
 	if file_actions.select(row):
 		return
 	if account_panel.choose(row):
@@ -1321,6 +1469,7 @@ func _choose(row: Dictionary) -> void:
 
 
 func _go_back() -> void:
+	remember_browse()
 	file_actions.reset()
 	scroll = 0.0
 	status = ""
@@ -1391,6 +1540,7 @@ func _crumbs() -> Array:
 
 ## Jump to path segment [level] (0: the server or library root).
 func _go_to(level: int) -> void:
+	remember_browse()
 	file_actions.reset()
 	var depth := _crumbs().size() - 1
 	if level < 0 or level >= depth:
@@ -1580,6 +1730,25 @@ func _draw() -> void:
 	if not _editor.is_empty():
 		_draw_editor()
 		return
+	if section != Section.SETTINGS:
+		_glyph(
+			VIEW_MODE,
+			"list" if not list_view else "media_library",
+			Vector2(-0.50, -0.51),
+			0.065,
+			true,
+			I18n.t("List view" if not list_view else "Icon view")
+		)
+	if playback_browser:
+		_glyph(PLAYER, "close", Vector2(-0.30, -0.51), 0.065, true, I18n.t("Back to video"))
+		_glyph(
+			BROWSER_SIZE,
+			"view_mode",
+			Vector2(-0.40, -0.51),
+			0.065,
+			true,
+			I18n.t("Full library" if compact else "Compact library")
+		)
 	if section == Section.MEDIA_SERVER:
 		server_browser.draw()
 		return
@@ -1707,22 +1876,16 @@ func _draw() -> void:
 			)
 			(_buttons.back().node.get_child(0) as Label3D).font_size = 17
 	if section == Section.RECENT:
-		_button(RECENT_PREVIOUS, "‹", Vector2(-0.45, -0.515), Vector2(0.09, 0.07), _recent_page > 0)
-		_label(
-			"%d / %d" % [_recent_page + 1, _recent_page_count()], Vector3(-0.27, -0.515, 0.004), 18
-		)
+		_button(RECENT_PREVIOUS, "‹", Vector2(0.15, 0.46), Vector2(0.09, 0.07), _recent_page > 0)
+		_label("%d / %d" % [_recent_page + 1, _recent_page_count()], Vector3(0.33, 0.46, 0.004), 18)
 		_button(
 			RECENT_NEXT,
 			"›",
-			Vector2(-0.09, -0.515),
+			Vector2(0.51, 0.46),
 			Vector2(0.09, 0.07),
 			_recent_page + 1 < _recent_page_count()
 		)
-	var line := _label(
-		_fit_title(I18n.t(status), "", 0.67, 17),
-		Vector3(-0.45, -0.58 if file_actions.folder() else -0.52, 0.004),
-		17
-	)
+	var line := _label(_fit_title(I18n.t(status), "", 0.67, 17), Vector3(-0.45, -0.58, 0.004), 17)
 	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	line.modulate = MUTED
 	if file_actions.uncertain or file_actions.pending > 0:
@@ -1741,11 +1904,7 @@ func _draw_crumbs(crumbs: Array) -> void:
 	var x := -0.455
 	# Leave room for account actions; the up button still exposes every parent.
 	var first := maxi(
-		0,
-		(
-			crumbs.size()
-			- (2 if section in [Section.LOCAL] or file_actions.sortable() else 4)
-		)
+		0, crumbs.size() - (2 if section in [Section.LOCAL] or file_actions.sortable() else 4)
 	)
 	for i in range(first, crumbs.size()):
 		var text := _fit_title(str(crumbs[i]), "", 0.24, 19)
@@ -1983,7 +2142,12 @@ func _tile(target: int, row: Dictionary, centre: Vector2) -> void:
 		)
 	var detail := str(row.get("detail", ""))
 	if not detail.is_empty():
-		var badge := _label(detail, Vector3(TILE_SIZE.x * 0.5 - 0.02, -0.03, 0.006), 13, node)
+		var badge := _label(
+			_fit_title(detail, "", TILE_SIZE.x - 0.03, 13),
+			Vector3(TILE_SIZE.x * 0.5 - 0.02, -0.03, 0.006),
+			13,
+			node
+		)
 		badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		badge.render_priority = 14
 		badge.modulate = MUTED

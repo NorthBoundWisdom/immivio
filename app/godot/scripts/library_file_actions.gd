@@ -31,7 +31,7 @@ func _init(owner: Node3D) -> void:
 
 
 func scope() -> String:
-	return str(menu.section)
+	return menu.directory_scope().sha256_text()
 
 
 func folder() -> bool:
@@ -46,7 +46,7 @@ func folder() -> bool:
 
 
 func order() -> String:
-	var value := Order.normalize(orders.get(scope(), "name_asc"))
+	var value := Order.normalize(orders.get(scope(), orders.get(str(menu.section), "name_asc")))
 	return value if supports_order(value) else "name_asc"
 
 
@@ -282,14 +282,7 @@ func receive(id: int, payload: String) -> bool:
 func draw_header() -> void:
 	if not sortable():
 		return
-	menu._button(
-		SORT,
-		"",
-		Vector2(0.25, 0.46),
-		Vector2(0.09, 0.07),
-		not editing,
-		"sort"
-	)
+	menu._button(SORT, "", Vector2(0.25, 0.46), Vector2(0.09, 0.07), not editing, "sort")
 	menu._tips[SORT] = menu.I18n.t("Sort")
 	if enabled and folder():
 		menu._button(

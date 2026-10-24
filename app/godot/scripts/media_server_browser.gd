@@ -308,6 +308,7 @@ func _remember() -> void:
 
 
 func back() -> void:
+	menu.remember_browse()
 	cancel()
 	keyboard = ""
 	if not history.is_empty():
@@ -341,7 +342,11 @@ func back() -> void:
 
 
 func grid() -> bool:
-	return view in ["servers", "home", "scenes", "facets", "libraries"] and keyboard.is_empty()
+	return (
+		view in ["servers", "home", "scenes", "facets", "libraries"]
+		and keyboard.is_empty()
+		and not menu.list_view
+	)
 
 
 func visible_lines() -> int:
@@ -598,6 +603,7 @@ func _time(ms: int) -> String:
 
 
 func choose(row: Dictionary) -> void:
+	menu.remember_browse()
 	if row.has("remove_server"):
 		removing = row.remove_server.duplicate(true)
 		view = "confirm_remove"
@@ -940,6 +946,7 @@ func scroll_changed() -> void:
 
 
 func _navigate(section: String) -> void:
+	menu.remember_browse()
 	history.clear()
 	labels.clear()
 	folder_path.clear()

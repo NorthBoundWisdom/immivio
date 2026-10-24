@@ -6,6 +6,8 @@ Run the source boundary and applicable host tests described in [TESTING.md](docs
 
 For maintainer Android/XR fixes, install the build on the target headset and obtain the owner's device acceptance before pushing the changes or a release tag. Keep local verification focused on the affected device; other build hosts are covered by CI.
 
+Immivio is an independent personal open-source project, unrelated to the maintainer's company. Do not use employer or other company signing keys, credentials, organization fields or branding for Immivio. Keep its project-local signing identity separate; the retained legacy certificate is `CN=Thru3D` without a company organization field, and newly provisioned keys use `CN=Immivio`. Referencing another repository's Android configuration does not authorize copying its signing material.
+
 Do not commit model weights, generated APKs/libraries, signing material, credentials, personal media or device logs containing user data. Provide synthetic reproduction fixtures or generation instructions. Do not send account tokens in public issues.
 
 VR menus use controller ray/trigger selection or hand interaction, never thumbstick selection. Libraries, settings, list popups and photo menus reserve thumbsticks for scrolling and suppress playback shortcuts. The ordinary video control bar allows the same seek and immersive zoom shortcuts as hidden controls. Pointer capture suppresses shortcuts; after leaving a list or ending capture, the stick must return to center before reactivation. Keep visible UI text concise and place implementation notes in technical documentation.

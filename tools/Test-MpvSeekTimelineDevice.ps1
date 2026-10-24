@@ -5,7 +5,7 @@ $workspace = Split-Path -Parent $PSScriptRoot
 $directory = Join-Path $workspace $Output
 New-Item -ItemType Directory -Path $directory -Force | Out-Null
 $adb = (Get-Command adb -ErrorAction Stop).Source
-$package = 'com.wapok.thru3d'
+$package = 'com.northboundwisdom.immivio'
 $installed = (( & $adb -s $Serial shell pm path $package) | Where-Object { $_ -match '/base\.apk$' } | Select-Object -First 1) -replace '^package:', ''
 if ($installed -notmatch '^/data/app/[A-Za-z0-9_=/+.~\-]+/base\.apk$') { throw 'Unexpected APK path' }
 $sha = (( & $adb -s $Serial shell sha256sum $installed) -split '\s+')[0]

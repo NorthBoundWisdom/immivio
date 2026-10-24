@@ -4,7 +4,7 @@ param([Parameter(Mandatory = $true)][string]$Serial, [string]$Apk = 'build/outpu
 $ErrorActionPreference = 'Stop'
 $workspace = Split-Path -Parent $PSScriptRoot
 $adb = (Get-Command adb -ErrorAction Stop).Source
-$package = 'com.wapok.thru3d'
+$package = 'com.northboundwisdom.immivio'
 $directory = Join-Path $workspace $Output
 New-Item -ItemType Directory -Path $directory -Force | Out-Null
 $apkPath = Join-Path $workspace $Apk

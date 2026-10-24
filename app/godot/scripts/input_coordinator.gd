@@ -223,6 +223,8 @@ func _on_pointer_release(action: String, hand: String) -> void:
 				host._show_player_menu()
 		return
 	var menu = host._active_menu()
+	if host.player_menu and host.player_menu.visible and host.player_menu.has_pointer_capture():
+		menu = host.player_menu
 	if action != "trigger_click" or not menu or not menu.has_method("release_pointer"):
 		return
 	var ray: Variant = host._ray(hand)

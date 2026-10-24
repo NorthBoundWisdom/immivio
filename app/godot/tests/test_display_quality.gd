@@ -96,7 +96,7 @@ func _run() -> void:
 	main.recent_menu.refresh()
 	check(
 		(
-			main.recent_menu.rows.size() == 3
+			main.recent_menu.rows.size() == 4
 			and main.recent_menu.rows[0].choices.size() == 4
 			and main.recent_menu.rows[0].choices[0].value == Quality.AUTO
 			and main.recent_menu.rows[1].choices.size() == 4

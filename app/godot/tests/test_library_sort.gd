@@ -153,8 +153,8 @@ func _run() -> void:
 	)
 	check(
 		(
-			saved_orders.get(str(Menu.Section.DLNA)) == "name_desc"
-			and saved_orders.get(str(Menu.Section.LOCAL)) == "modified_asc"
+			saved_orders.get(menu.file_actions.scope()) == "name_desc"
+			and saved_orders.values().count("modified_asc") == 2
 		),
 		"DLNA preference is saved independently from local sorting"
 	)
@@ -165,10 +165,7 @@ func _run() -> void:
 	)
 	menu._dlna_stack = [{"id": "nested", "title": "Nested"}]
 	menu.refresh()
-	check(
-		titles(menu.rows)[0] == "Folder10",
-		"DLNA nested containers inherit the saved name direction"
-	)
+	check(titles(menu.rows)[0] == "Folder2", "DLNA nested containers have independent sorting")
 	var filename_cases := [
 		"test.mp4", "test(2).mp4", "test（2）.mp4", "test (2).mp4", "test[2].mp4", "q.mp4"
 	]
@@ -202,6 +199,7 @@ func _run() -> void:
 		{"title": "Movie10", "uri": "http://nas/10.mp4"},
 		{"id": "10", "title": "Folder10", "container": true}
 	]
+	menu._dlna_stack = []
 	menu.file_actions.load(saved_orders)
 	menu.refresh()
 	check(menu.file_actions.order() == "name_desc", "Reloaded settings restore the DLNA choice")

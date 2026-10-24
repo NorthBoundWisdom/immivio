@@ -35,7 +35,7 @@ def main():
     if not 1 <= args.cycles <= 100:
         parser.error("cycles must be 1..100")
     args.out.mkdir(parents=True, exist_ok=False)
-    package = "com.wapok.thru3d"
+    package = "com.northboundwisdom.immivio"
     base = [args.adb, "-s", args.serial]
     process_id = None
     last_frame_report_us = 0

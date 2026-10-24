@@ -145,7 +145,7 @@ func ray_hit(origin: Vector3, direction: Vector3) -> Dictionary:
 	if (
 		xr_surface
 		and (xr_surface.native_supported or xr_surface.get("scene_curved") == true)
-		and xr_surface.active_menu == self
+		and (xr_surface.active_menu == self or (xr_surface.has_method("captures_menu") and xr_surface.captures_menu(self)))
 	):
 		mapped = xr_surface.map_ray(self, origin, direction)
 		if mapped.is_empty() or float(mapped.distance) > max_ray_metres:
@@ -207,7 +207,7 @@ func ray_panel_hit(origin: Vector3, direction: Vector3) -> Dictionary:
 	if (
 		xr_surface
 		and (xr_surface.native_supported or xr_surface.get("scene_curved") == true)
-		and xr_surface.active_menu == self
+		and (xr_surface.active_menu == self or (xr_surface.has_method("captures_menu") and xr_surface.captures_menu(self)))
 	):
 		mapped = xr_surface.map_ray(self, origin, direction)
 		if mapped.is_empty() or float(mapped.distance) > max_ray_metres:

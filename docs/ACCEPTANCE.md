@@ -1,4 +1,26 @@
-# Deferred refactor acceptance
+# Device and build acceptance
+
+## Selected upstream ports on PICO 4 — 2026-10-24
+
+A physical PICO 4 (A8110), PICO OS 5.13.7 / Android 10, passed automated checks through the normal OpenXR launcher with live head tracking and two views. Test media was synthetic; captured UI layers and binocular compositor screenshots were reviewed. Ray events were generated in software through production pointer methods, not by physically pressing controllers.
+
+| Area | Result |
+| --- | --- |
+| STRM | Local relative paths, authenticated-connection routing through a synthetic SMB2 guest share, and HTTP redirects all reached current-session native presented frames |
+| Loading/errors | A delayed HTTP source showed elapsed waiting feedback and recovered to playback; empty STRM displayed the localized error and Info panel |
+| Directory memory | Android directory enumeration, list/icon position retention, persistent write and restoration after process restart passed |
+| Concurrent browsing | Compact/full library and playback controls remained captured, visible and ray-selectable together |
+| Spatial controls | Lock, independent screen movement, hide/reopen, unlock and opacity adjustment passed |
+| Cinema layout | Ray-selected 150-inch preset, aspect-preserving size, logarithmic distance input, fixed defaults and recenter restoration passed |
+
+Device validation found and fixed missing secondary-menu capture/ray mapping, dropped cinema choice dispatch and missing logarithmic pointer metadata. Terminal debug failures now bypass telemetry throttling so a stopped source cannot leave an obsolete opening report.
+
+The complete feature suite used APK SHA-256 `a35745cb3ce8f4c6390e6fca992c5035f6dee6b0a834ef0de14d3796be6be036`. The subsequently installed package changes Android application classification to video; its exact hash is in ignored `artifacts/device-acceptance-20261024/result.json`. Final APK inspection confirms `appCategory=2` and `isGame=false`. PICO classifies this sideloaded immersive SDK package under Library → Unknown sources, rather than the ordinary 2D Apps category; the entry is present. A concrete `MAIN`/`LAUNCHER` Activity forwards to the normal OpenXR alias with clear-top/single-top flags. Cold launch, repeat launch with the same PID, and native playback passed on the final installed build. After cleanup, the delivered app reported a focused XR session with live tracking and two views. Resource-pane automatic foreground handoff through simulated clicks is not certified; physical controller actuation was not performed. Tracking/boundary protection was not disabled.
+
+The legacy standard package failed PICO entitlement checks even when its original APK was restored; both original and replacement signatures used certificate SHA-256 `c231d4cb72806711c9e946757580f9bf469ea969ef88ec70008a602b8025cfa6`. Independent Immivio identities entered XR successfully. The standard legacy installation and temporary Dev installation were removed at the owner's request. Preferences were backed up and copied to the independent application. Synthetic device media, temporary SMB account and ADB reverse mappings were removed. Other independently installed applications were not removed.
+
+Raw request-matched receipts, current-session playback reports, settings backup and screenshots remain under ignored `artifacts/device-acceptance-20261024/`. Headset lens comfort, real controller actuation, other vendors and sustained thermal behavior are outside this automated result.
+
 
 R2–R5 code migration has reached local acceptance. The owner subsequently authorized the deferred checks and narrowed the completion criterion to producing installable packages on this machine; other platforms are delegated to CI. Earlier compile-only results remain historical evidence.
 

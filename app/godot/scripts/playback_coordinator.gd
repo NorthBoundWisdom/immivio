@@ -450,4 +450,4 @@ func _menu_error() -> String:
 			error = "File access timed out. Try opening again."
 		"UNREADABLE":
 			error = "Unable to read the video. Select another file."
-	return I18n.t(error)
+	return I18n.t(preload("res://scripts/playback_errors.gd").summary(error))

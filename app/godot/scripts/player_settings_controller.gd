@@ -44,6 +44,8 @@ func _library_settings() -> Dictionary:
 		),
 		"sharpness": Quality.load_sharpness(host.settings, host.low_end_gpu),
 		"history": host.video.history_enabled,
+		"browse_memory": bool(host.settings.get_value("library", "browse_memory", true)),
+		"controls_opacity": float(host.settings.get_value("ui", "controls_opacity", 0.86)),
 		"reclining_mode": host.reclining_mode,
 		"subtitle_distance": host.video.subtitle_distance,
 		"subtitle_position": host.video.subtitle_position,
@@ -64,6 +66,16 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 	if not is_instance_valid(host):
 		return
 	match key:
+		"controls_opacity":
+			_on_playback_adjustment(key, value)
+		"browse_memory":
+			host.recent_menu.browse_memory.configure(bool(value), host.video.history_enabled)
+			host.recent_menu._browse_restore = {}
+			host.settings.set_value("library", "browse_memory", bool(value))
+			host.settings.save(host.settings_path)
+		"library_list_view":
+			host.settings.set_value("library", "list_view", bool(value))
+			host.settings.save(host.settings_path)
 		"reclining_mode":
 			host._set_reclining_mode(bool(value))
 			host.settings.set_value("ui", "reclining_mode", host.reclining_mode)
@@ -121,11 +133,16 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 					)
 				)
 		"history":
+			host.recent_menu.remember_browse()
+			host.recent_menu.browse_memory.configure(
+				host.recent_menu.browse_memory.enabled, bool(value)
+			)
 			host.video.history_enabled = bool(value)
 			host.photo.history_enabled = bool(value)
 			host.settings.set_value("library", "history", bool(value))
 			host.settings.save(host.settings_path)
 		"clear_history":
+			host.recent_menu.browse_memory.clear()
 			host.video.clear_history()
 		"language":
 			host.settings.set_value("ui", "language", str(value))
@@ -185,6 +202,15 @@ func _on_custom_background_saved(path: String, title: String, orientation: int) 
 func _on_playback_adjustment(key: String, value: Variant) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
+		return
+	if key == "controls_opacity":
+		host.video_menu.controls_opacity = clampf(float(value), 0, 1)
+		host.settings.set_value("ui", "controls_opacity", host.video_menu.controls_opacity)
+		host.settings.save(host.settings_path)
+		if host.video_menu.visible:
+			host.video_menu.refresh()
+		return
+	if host.screen_layout.adjust(key, value):
 		return
 	if key in ["subtitle_delay_ms", "audio_delay_ms"]:
 		if not host.photo_active:
@@ -263,8 +289,7 @@ func _save_playback_adjustments() -> void:
 		return
 	host.video.commit_sync()
 	host.video.commit_stereo_view()
-	host.settings.set_value("screen", "distance", host.video.screen_distance)
-	host.settings.set_value("screen", "scale", host.video.screen_scale)
+	host.screen_layout.save()
 	host.settings.set_value("subtitles", "palette", host.video.subtitle_palette)
 	host.settings.set_value("subtitles", "size", host.video.subtitle_size)
 	host.settings.set_value("subtitles", "flat_position", host.video.subtitle_flat_position)

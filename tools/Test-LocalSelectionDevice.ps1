@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 $workspace = Split-Path -Parent $PSScriptRoot
 . "$PSScriptRoot/environment/Activate-QuestEnvironment.ps1"
 $adb = Join-Path $env:ANDROID_HOME 'platform-tools/adb.exe'
-$package = 'com.wapok.thru3d'
+$package = 'com.northboundwisdom.immivio'
 $provider = 'org.vrpassthroughplayer.urifixture'
 $directory = Join-Path $workspace ('build/output/device/' + (Get-Date -Format 'yyyyMMdd_HHmmss') + '_selection_' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $directory -Force | Out-Null

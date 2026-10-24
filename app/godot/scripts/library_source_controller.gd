@@ -121,6 +121,29 @@ func _on_media_list(id: int, payload: String) -> void:
 	if not parsed is Dictionary:
 		return
 	var result: Dictionary = parsed
+	if (
+		kind == "smb_browse"
+		and result.has("server_id")
+		and (
+			str(result.get("server_id")) != host._smb_server
+			or str(result.get("path")) != host._smb_path
+		)
+	):
+		return
+	if (
+		kind == "dlna_browse"
+		and result.has("object_id")
+		and (
+			str(result.get("server_id")) != host._dlna_server
+			or (
+				str(result.object_id)
+				!= (str(host._dlna_stack.back().id) if not host._dlna_stack.is_empty() else "0")
+			)
+		)
+	):
+		return
+	if kind == "local" and result.has("path") and str(result.path) != host._local_path():
+		return
 	host.status = ""
 	var state = str(result.get("state", "error"))
 	if state == "denied":
@@ -194,9 +217,7 @@ func _load_section() -> void:
 		return
 	if not host.platform:
 		host.status = (
-			"Headset only"
-			if host.section in [Section.LOCAL, Section.SMB, Section.DLNA]
-			else ""
+			"Headset only" if host.section in [Section.LOCAL, Section.SMB, Section.DLNA] else ""
 		)
 		return
 	match host.section:

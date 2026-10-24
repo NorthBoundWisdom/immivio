@@ -127,7 +127,7 @@ func _slider(parent: Node3D, row: Dictionary, centre: Vector2, width: float, hei
 	var field_centre := centre - Vector2((width - field_width) / 2, 0)
 	var rail_width := field_width - 0.15
 	var target := _button(
-		{"kind": "slider", "key": row.key, "span": row.span},
+		{"kind": "slider", "key": row.key, "span": row.span, "logarithmic": row.get("logarithmic", false)},
 		"",
 		field_centre,
 		Vector2(field_width, height),
@@ -169,6 +169,7 @@ func _slider(parent: Node3D, row: Dictionary, centre: Vector2, width: float, hei
 	label.position = Vector3(field_width / 2 - 0.005, 0, 0.006)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	sliders[target] = {
+		"logarithmic": row.get("logarithmic", false),
 		"span": row.span,
 		"left": left,
 		"width": rail_width,
@@ -211,7 +212,11 @@ func _refresh_slider(target: int, value: float) -> void:
 	if not sliders.has(target):
 		return
 	var slider: Dictionary = sliders[target]
-	var fraction := clampf(inverse_lerp(slider.span.x, slider.span.y, value), 0, 1)
+	var fraction := (
+		preload("res://scripts/screen_presets.gd").slider_fraction(value, slider.span)
+		if slider.get("logarithmic", false)
+		else clampf(inverse_lerp(slider.span.x, slider.span.y, value), 0, 1)
+	)
 	slider.fill.visible = fraction > 0
 	slider.fill.mesh.size.x = maxf(0.001, fraction * slider.width)
 	slider.fill.position.x = slider.left + fraction * slider.width / 2
@@ -244,7 +249,11 @@ func _refresh_slider(target: int, value: float) -> void:
 func _preview_slider(point: Vector3) -> void:
 	var span: Vector3 = capture.item.span
 	var fraction := clampf((point.x - float(capture.left)) / float(capture.width), 0, 1)
-	var value := clampf(snappedf(lerpf(span.x, span.y, fraction), span.z), span.x, span.y)
+	var value := (
+		preload("res://scripts/screen_presets.gd").slider_value(fraction, span)
+		if capture.item.get("logarithmic", false)
+		else clampf(snappedf(lerpf(span.x, span.y, fraction), span.z), span.x, span.y)
+	)
 	if capture.has("value") and is_equal_approx(capture.value, value):
 		return
 	capture.value = value

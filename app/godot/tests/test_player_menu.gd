@@ -592,7 +592,7 @@ func _run() -> void:
 		not menu._buttons.any(
 			func(button): return button.target in [11, 109, 111, 108, 210, 215, 216]
 		),
-		"Toolbar omits retired settings, audio, recenter, screen and FPS actions"
+		"Toolbar omits retired settings, audio, recenter and FPS actions"
 	)
 	check(
 		(
@@ -1049,7 +1049,7 @@ func _run() -> void:
 	)
 	video.set_screen_scale(1.5)
 	check(video._flat.size.is_equal_approx(size * 1.5), "Corner drag scales the screen")
-	video.set_screen_scale(10.0)
+	video.set_screen_scale(100.0)
 	check(is_equal_approx(video.screen_scale, video.SCALE_LIMITS.y), "Size is limited")
 	video.set_screen_scale(1.0)
 	video.set_corner_hover(-1)

@@ -414,9 +414,18 @@ def signing_environment(env, *, build_type="Release"):
     return env
 
 
-def android_identity():
-    # Keep the installed ordinary player's ID and data through the rename.
-    return {"application_id": "com.wapok.thru3d", "application_label": "Immivio"}
+def android_identity(build_type=None):
+    # A separate developer identity avoids sharing another application's store
+    # entitlement and keeps acceptance fixtures/settings away from real user data.
+    development = os.environ.get("IMMIVIO_DEVELOPMENT_PACKAGE") == "1"
+    if development:
+        if build_type is not None and build_type != "Debug":
+            raise RuntimeError("The isolated development package requires Debug")
+        return {
+            "application_id": "com.northboundwisdom.immivio.dev",
+            "application_label": "Immivio Dev",
+        }
+    return {"application_id": "com.northboundwisdom.immivio", "application_label": "Immivio"}
 
 
 @contextmanager
@@ -601,6 +610,11 @@ def inspect_package(path, env, sdk):
         log="base-apk-manifest.log",
     )
     badging = (LOGS / "base-apk-manifest.log").read_text()
+    run([tools / ("aapt2.exe" if os.name == "nt" else "aapt2"), "dump", "xmltree", path, "--file", "AndroidManifest.xml"], env=env,
+        log="base-apk-xmltree.log")
+    manifest_xml = (LOGS / "base-apk-xmltree.log").read_text()
+    if not re.search(r"android:appCategory[^\n]*=2\b", manifest_xml) or re.search(r"android:isGame[^\n]*=true", manifest_xml):
+        raise RuntimeError("APK must be classified as a video application, not a game")
     identity = android_identity()
     if not re.search(
         r"(?m)^package: name='" + re.escape(identity["application_id"]) + r"'", badging
@@ -640,6 +654,8 @@ def configure_project(args, env, sdk):
     android = PROJECT / "android/build"
     android.mkdir(parents=True, exist_ok=True)
     extract(source_zip, android)
+    # Discard stale generated launcher sources when refreshing the engine template.
+    (android / "src/main/java/com/godot/game/GodotAppLauncher.java").unlink(missing_ok=True)
     (android.parent / ".gdignore").touch()
     (android.parent / ".build_version").write_text(
         (templates / "version.txt").read_text()
@@ -734,6 +750,8 @@ def build_plugin(args, env, sdk):
 
 
 def package(args, env, sdk):
+    identity = android_identity(args.build_type)
+    development_suffix = "-dev" if identity["application_id"].endswith(".dev") else ""
     variant = args.build_type.lower()
     templates, engine = template_directory(args, env)
     env = signing_environment(env, build_type=args.build_type)
@@ -743,7 +761,7 @@ def package(args, env, sdk):
     platform_name = {"Quest": "QUEST", "Pico": "PICO", "OpenXR": "OpenXR"}[args.vendor]
     output = (
         ROOT
-        / f"artifacts/Immivio-{platform_name}-{version}-{variant}-{datetime.now():%Y%m%d}.apk"
+        / f"artifacts/Immivio{development_suffix}-{platform_name}-{version}-{variant}-{datetime.now():%Y%m%d}.apk"
     )
     preset = {"Quest": "Quest 3", "Pico": "PICO 4", "OpenXR": "OpenXR (Experimental)"}[
         args.vendor

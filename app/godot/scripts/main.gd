@@ -1,5 +1,9 @@
 extends Node3D
 
+const ScreenLayout := preload("res://scripts/screen_layout.gd")
+var screen_layout := ScreenLayout.new(self)
+var playback_feedback: Node3D
+
 const DisplayController := preload("res://scripts/xr_display.gd")
 const Board := preload("res://scripts/calibration_board.gd")
 const Log := preload("res://scripts/diagnostic_log.gd")
@@ -299,6 +303,7 @@ func _ready() -> void:
 	)
 	video.screen_curve = clampf(float(settings.get_value("screen", "curve", 0.0)), 0.0, 1.0)
 	add_child(video)
+	screen_layout.restore()
 	_update_thumbnail_protection()
 	video.sharpness = Quality.load_sharpness(settings, low_end_gpu)
 	video.view_camera = camera
@@ -317,6 +322,11 @@ func _ready() -> void:
 	display.set_foveation(int(settings.get_value("video", "foveation", 0)))
 	recent_menu = LibraryMenu.new()
 	recent_menu.catalog = video.recent_files
+	recent_menu.list_view = bool(settings.get_value("library", "list_view", false))
+	recent_menu.browse_memory.configure(
+		bool(settings.get_value("library", "browse_memory", true)), video.history_enabled
+	)
+	recent_menu.layout_changed.connect(func(): _place_menu(recent_menu))
 	recent_menu.file_actions.load(settings.get_value("library", "orders", {}))
 	recent_menu.file_actions.set_enabled(bool(settings.get_value("library", "file_editing", false)))
 	recent_menu.file_renamed.connect(_on_file_renamed)
@@ -347,10 +357,20 @@ func _ready() -> void:
 		plugin.set_mpv_output_width(
 			Quality.output_width(Quality.load_output_choice(settings), low_end_gpu)
 		)
+	playback_feedback = preload("res://scripts/playback_feedback.gd").new()
+	playback_feedback.host = self
+	add_child(playback_feedback)
 	player_menu = PlayerMenu.new()
+	player_menu.controls_opacity = clampf(
+		float(settings.get_value("ui", "controls_opacity", 0.86)), 0, 1
+	)
 	player_menu.state_provider = _menu_state
 	player_menu.action_requested.connect(_on_menu_action)
-	player_menu.recent_requested.connect(_show_recent_menu)
+	player_menu.recent_requested.connect(
+		func():
+			recent_menu.compact = true
+			_show_recent_menu()
+	)
 	player_menu.seek_requested.connect(_on_menu_seek)
 	player_menu.bookmark_requested.connect(_on_bookmark_request)
 	player_menu.setting_requested.connect(_on_player_setting)
@@ -487,6 +507,9 @@ func _apply_system_recenter() -> void:
 
 
 func _process(delta: float) -> void:
+	screen_layout.tick()
+	if is_instance_valid(playback_feedback):
+		playback_feedback.tick()
 	_apply_system_recenter()
 	_update_view_follow()
 	_refresh_session_controls()
@@ -505,6 +528,8 @@ func _process(delta: float) -> void:
 	if video and _viewer().local_uri != _screen_uri:
 		_screen_uri = _viewer().local_uri
 		if not _screen_uri.is_empty():
+			if not photo_active and screen_layout.fixed():
+				screen_layout.restore()
 			if not photo_active or photo.gallery.mode == 0 or photo.placement_pending:
 				_place_screen()
 			if photo_active:
@@ -1201,6 +1226,7 @@ func _fps_sample() -> Dictionary:
 
 
 var seek_policy_probe_result: Dictionary = {}
+var selected_features_probe_result: Dictionary = {}
 
 
 func _on_display_debug_command(_id: int, payload: String) -> void:
@@ -1208,7 +1234,11 @@ func _on_display_debug_command(_id: int, payload: String) -> void:
 	if not command is Dictionary:
 		return
 	var operation := str(command.get("operation", ""))
-	if operation == "seek_policy_ui" and OS.is_debug_build():
+	if operation == "selected_features_ui" and OS.is_debug_build():
+		var probe := preload("res://scripts/selected_features_device_probe.gd").new()
+		selected_features_probe_result = await probe.run(self, str(command.step), str(command.request_key))
+		video._write_debug_report()
+	elif operation == "seek_policy_ui" and OS.is_debug_build():
 		var probe := preload("res://scripts/seek_policy_device_probe.gd").new()
 		seek_policy_probe_result = await probe.run(
 			self, str(command.step), str(command.get("marker_id", ""))

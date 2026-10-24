@@ -144,10 +144,7 @@ func _save_screen() -> void:
 	if host.photo_active:
 		host._save_photo_adjustments()
 		return
-	host.settings.set_value("screen", "distance", host.video.screen_distance)
-	host.settings.set_value("screen", "scale", host.video.screen_scale)
-	host.settings.set_value("screen", "curve", host.video.screen_curve)
-	host.settings.save(host.settings_path)
+	host.screen_layout.save()
 
 
 func _reset_picture() -> void:
@@ -177,6 +174,27 @@ func _update_menu_pointer(hand: String, pressed: bool = false) -> bool:
 	var tracked = ray != null
 	var origin: Vector3 = ray[0] if tracked else Vector3.ZERO
 	var direction: Vector3 = ray[1] if tracked else Vector3.ZERO
+	if (
+		menu == host.recent_menu
+		and menu is LibraryMenu
+		and host.player_menu
+		and host.player_menu.visible
+	):
+		var controls: Node3D = host.player_menu
+		var hit: Dictionary = controls.ray_hit(origin, direction) if tracked else {}
+		var library_hit: Dictionary = menu.ray_panel_hit(origin, direction) if tracked else {}
+		if (
+			controls.has_pointer_capture()
+			or (
+				not menu.has_pointer_capture()
+				and not hit.is_empty()
+				and (library_hit.is_empty() or float(hit.distance) < float(library_hit.distance))
+			)
+		):
+			menu.update_pointer(hand, origin, direction, false)
+			menu = controls
+		else:
+			controls.update_pointer(hand, origin, direction, false)
 	if pressed:
 		host._menu_touched_ms = Time.get_ticks_msec()
 		var handled: bool = menu.press_pointer(hand, origin, direction, tracked)
@@ -257,7 +275,12 @@ func _place_screen(recenter: bool = false) -> void:
 	if not is_instance_valid(host):
 		return
 	var head: Variant = host._head_pose()
+	if recenter and not host.photo_active:
+		host.screen_layout.restore()
+		host.video._apply_geometry()
 	var pose: Variant = host._view_pose(host._viewer().screen_distance, 0.0)
+	if pose != null and not host.photo_active and host.video.geometry == 0:
+		pose.origin += pose.basis.y * host.video._flat.size.y * (0.5 - host.video.screen_eye_level)
 	if host.view_follow.enabled and host._flat_followable(host._viewer()) and head != null:
 		pose = host._follow_screen_pose(host._viewer(), head, recenter)
 	if pose != null:
@@ -299,7 +322,10 @@ func _follow_screen_pose(surface: Node3D, head: Transform3D, recenter: bool = fa
 	var saved: Variant = null if recenter else host.view_follow.pose(key, head)
 	if saved != null:
 		return saved
-	var pose = head * Transform3D(Basis.IDENTITY, Vector3(0, 0, -surface.screen_distance))
+	var rise: float = (
+		surface._flat.size.y * (0.5 - surface.screen_eye_level) if surface == host.video else 0.0
+	)
+	var pose = head * Transform3D(Basis.IDENTITY, Vector3(0, rise, -surface.screen_distance))
 	host.view_follow.capture(key, head, pose)
 	return pose
 
@@ -327,7 +353,14 @@ func _update_view_follow() -> void:
 		return
 	var menu_head = host._menu_head_pose(head)
 	for menu in [host.recent_menu, host.video_menu, host.photo_menu]:
-		if not menu or not menu.visible:
+		if not menu or not menu.visible or (menu is PlayerMenu and menu.space_locked):
+			continue
+		if (
+			menu == host.recent_menu
+			and menu is LibraryMenu
+			and menu.playback_browser
+			and host.video_menu.space_locked
+		):
 			continue
 		# Immersive controls belong to the reset/content sphere, even in follow mode.
 		if menu == host.player_menu and host._viewer().geometry != Geometry.Geometry.FLAT:
@@ -350,9 +383,24 @@ func _place_menu(menu: Node3D) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
+	if menu is PlayerMenu and menu.space_locked:
+		return
 	# A temporary tracking loss must not relocate menus to a world-origin fallback.
 	var head: Variant = host._head_pose()
 	if not host.display.preview and head == null:
+		return
+	if (
+		menu == host.recent_menu
+		and menu is LibraryMenu
+		and menu.playback_browser
+		and (menu.compact or host.video_menu.space_locked)
+	):
+		var pose: Transform3D = host.video_menu.global_transform
+		pose.origin = host.video_menu.to_global(Vector3(-0.08, 0.70 if menu.compact else 1.15, 0))
+		pose.basis *= Basis.from_scale(Vector3.ONE * (0.62 if menu.compact else 1.2))
+		menu.global_transform = pose
+		if head != null:
+			host.view_follow.capture(host._menu_key(menu), host._menu_head_pose(head), pose)
 		return
 	var ui_scale = PlayerMenu.PANEL_SCALE if menu is PlayerMenu else Vector3.ONE
 	if (
@@ -440,6 +488,24 @@ func _place_menu(menu: Node3D) -> void:
 		menu.global_transform = pose
 		host.view_follow.capture(host._menu_key(menu), host._menu_head_pose(head), pose)
 
+	if (
+		menu == host.recent_menu
+		and menu is LibraryMenu
+		and menu.playback_browser
+		and host.video_menu.visible
+		and not host.video_menu.space_locked
+	):
+		host.video_menu.global_transform = Transform3D(
+			menu.global_basis * Basis.from_scale(PlayerMenu.PANEL_SCALE),
+			menu.to_global(Vector3(0.13, -1.0, 0.02))
+		)
+		if head != null:
+			host.view_follow.capture(
+				host._menu_key(host.video_menu),
+				host._menu_head_pose(head),
+				host.video_menu.global_transform
+			)
+
 
 func _active_menu() -> Node3D:
 	var host := _host_ref.get_ref() as Node3D
@@ -457,6 +523,8 @@ func _update_player_menu_anchor() -> void:
 	if not is_instance_valid(host):
 		return
 	if host._system_recenter_pending:
+		return
+	if host.player_menu is PlayerMenu and host.player_menu.space_locked:
 		return
 	# Explicit head-follow owns menu placement, including captured interactions.
 	if host.view_follow.enabled and host._viewer().geometry == Geometry.Geometry.FLAT:
@@ -513,8 +581,9 @@ func _show_player_menu() -> void:
 	host._trigger_taps.clear()
 	if host.recent_menu:
 		host.recent_menu.dismiss()
-	if host.player_menu and not host.player_menu.visible:
+	if host.player_menu:
 		host._place_menu(host.player_menu)
+	if host.player_menu and not host.player_menu.visible:
 		host._menu_touched_ms = Time.get_ticks_msec()
 		host.player_menu.toggle()
 
@@ -529,15 +598,27 @@ func _show_recent_menu(preserve_navigation: bool = false) -> void:
 	host._trigger_taps.clear()
 	if host.photo_active and host.photo.inspect:
 		host._close_photo_inspect(false)
+	var playing: bool = not host.photo_active and not host.video.local_uri.is_empty()
+	if host.recent_menu is LibraryMenu:
+		host.recent_menu.playback_browser = playing
+		host.recent_menu.allow_user_dismiss = playing
+		if not playing:
+			host.recent_menu.compact = false
 	if host.player_menu:
-		host.player_menu.dismiss()
+		if playing:
+			host.player_menu._reset_navigation()
+			if not host.player_menu.visible:
+				host._place_menu(host.player_menu)
+			host.player_menu.visible = true
+			host.player_menu.refresh()
+		else:
+			host.player_menu.dismiss()
 	if host.recent_menu and not host.recent_menu.visible:
 		host._place_menu(host.recent_menu)
-		if preserve_navigation:
-			host.recent_menu.visible = true
-			host.recent_menu.refresh()
-		else:
-			host.recent_menu.toggle()
+		host.recent_menu.visible = true
+		if host.recent_menu is LibraryMenu:
+			host.recent_menu._load_section()
+		host.recent_menu.refresh()
 
 
 func _canvas_controls_snapshot() -> Dictionary:
@@ -654,6 +735,9 @@ func _menu_state() -> Dictionary:
 		"depth_requested": host.video.depth_requested,
 		"depth_enabled": host.video.depth_enabled,
 		"depth_strength": host.video.depth_strength,
+		"screen_preset": host.video.screen_preset,
+		"screen_eye_level": host.video.screen_eye_level,
+		"screen_fixed": host.screen_layout.fixed(),
 		"screen_curve": host.video.screen_curve,
 		"screen_distance": host.video.screen_distance,
 		"screen_scale": host.video.screen_scale * 100.0,
@@ -687,6 +771,9 @@ func _menu_state() -> Dictionary:
 		"duration_ms": host.video.control.duration_ms,
 		"xr_state": "Desktop preview" if host.display.preview else host.display.session_state,
 		"capabilities_available": host.platform_plugin != null,
+		"loading_message":
+		host.playback_feedback.message if is_instance_valid(host.playback_feedback) else "",
+		"error_detail": host.video.playback_error_detail,
 		"error": host._menu_error()
 	}
 	result.merge(host.video.bookmarks_snapshot())
@@ -910,9 +997,14 @@ func _recenter() -> void:
 		host.photo.gallery.recenter()
 		if host.photo.inspect:
 			host.photo._place_detail()
-	for menu in [host.recent_menu, host.player_menu]:
+	for menu in [host.player_menu, host.recent_menu]:
 		if menu and menu.visible:
+			var locked: bool = menu is PlayerMenu and menu.space_locked
+			if locked:
+				menu.space_locked = false
 			host._place_menu(menu)
+			if locked:
+				menu.space_locked = true
 	if is_instance_valid(host.menu_compositor):
 		host.menu_compositor.refresh_placement()
 	Log.record("recenter_requested")

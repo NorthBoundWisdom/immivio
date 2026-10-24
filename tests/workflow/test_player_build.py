@@ -203,6 +203,15 @@ class DependencyBoundaries(unittest.TestCase):
 
 
 class VariantIdentityBoundaries(unittest.TestCase):
+    def test_development_identity_is_separate_and_rejects_release(self):
+        with patch.dict(os.environ, {"IMMIVIO_DEVELOPMENT_PACKAGE": "1"}):
+            self.assertEqual(builder.android_identity("Debug")["application_id"],
+                             "com.northboundwisdom.immivio.dev")
+            with self.assertRaisesRegex(RuntimeError, "requires Debug"):
+                builder.android_identity("Release")
+        with patch.dict(os.environ, {"IMMIVIO_DEVELOPMENT_PACKAGE": "0"}):
+            self.assertEqual(builder.android_identity()["application_id"], "com.northboundwisdom.immivio")
+
     def test_package_and_label_are_separate_and_presets_restore_after_failure(self):
         with (
             tempfile.TemporaryDirectory() as directory,
@@ -210,20 +219,20 @@ class VariantIdentityBoundaries(unittest.TestCase):
         ):
             path = Path(directory) / "export_presets.cfg"
             original = b"\r\n".join(
-                [b'package/unique_name="com.wapok.thru3d"\r\npackage/name="Original"']
+                [b'package/unique_name="com.northboundwisdom.immivio"\r\npackage/name="Original"']
                 * 3
             )
             path.write_bytes(original)
             with self.assertRaisesRegex(RuntimeError, "simulated"):
                 with builder.variant_export_presets() as identity:
-                    self.assertEqual(identity["application_id"], "com.wapok.thru3d")
+                    self.assertEqual(identity["application_id"], "com.northboundwisdom.immivio")
                     self.assertEqual(
                         path.read_text().count('package/name="Immivio"'), 3
                     )
                     raise RuntimeError("simulated export failure")
             self.assertEqual(path.read_bytes(), original)
             with builder.variant_export_presets() as identity:
-                self.assertEqual(identity["application_id"], "com.wapok.thru3d")
+                self.assertEqual(identity["application_id"], "com.northboundwisdom.immivio")
                 self.assertEqual(identity, builder.android_identity())
             self.assertEqual(path.read_bytes(), original)
 

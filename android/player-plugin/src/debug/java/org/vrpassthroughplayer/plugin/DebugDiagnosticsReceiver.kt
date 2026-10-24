@@ -135,7 +135,8 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                         "restart_app",
                                         "quit_app",
                                         "seek_policy_ui",
-                                        "media_library_ui"
+                                        "media_library_ui",
+                                        "selected_features_ui"
                                     )
                                 )
                                 val command = JSONObject().put("operation", operation)
@@ -166,6 +167,11 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                     val mode = intent.getStringExtra("seek_mode")
                                     require(mode in setOf("speed", "exact"))
                                     command.put("seek_mode", mode)
+                                }
+                                if (operation == "selected_features_ui") {
+                                    val step = intent.getStringExtra("step") ?: "snapshot"
+                                    require(step in setOf("setup", "browse", "restore", "controls", "cinema", "library", "snapshot", "error"))
+                                    command.put("step", step)
                                 }
                                 if (operation == "media_library_ui") {
                                     val step = intent.getStringExtra("step") ?: "snapshot"
