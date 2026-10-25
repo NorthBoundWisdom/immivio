@@ -44,69 +44,40 @@ def prepare(packages, output, tag, commit):
             raise ValueError("Release receipt belongs to a different tag or commit")
         if record.get("ci_host") != "macOS":
             raise ValueError("Release assets must come from the canonical macOS builds")
-        schema = record.get("schema_version")
-        if schema not in (2, 3, 4):
-            raise ValueError("Unsupported build receipt schema")
-        if schema in (2, 3) and record.get("dependency_mode") != "pinned":
-            raise ValueError("Historical releases require pinned dependencies")
-        if record.get("schema_version") == 3 and not re.fullmatch(
-            r"[0-9a-f]{64}", record.get("dependency_catalog_sha256", "")
-        ):
-            raise ValueError("Release is missing its master dependency lock digest")
-        if not re.fullmatch(r"[0-9a-f]{40}", record.get("freecm_commit", "")):
-            raise ValueError("Release receipt is missing the FreeCM commit")
-        if record.get("schema_version") == 4:
-            vendor_digest = record.get("freecm_vendor_sha256")
-            if not isinstance(vendor_digest, str) or not re.fullmatch(
-                r"[0-9a-f]{64}", vendor_digest
-            ):
-                raise ValueError(
-                    "Release receipt is missing the vendored FreeCM digest"
-                )
+        if record.get("schema_version") != 5:
+            raise ValueError(
+                "Unsupported build receipt schema; rebuild with the current workflow"
+            )
         if not record.get("dependency_assets") or not record.get("gradle_locks"):
             raise ValueError("Release receipt is missing dependency provenance")
-        if schema in (2, 3) and not isinstance(record.get("dependency_commits"), dict):
-            raise ValueError("Historical release receipt is missing dependency commits")
-        if schema == 4:
-            asset_records = record["dependency_assets"]
-            addon_assets = (
-                asset_records.get("OpenXRVendors")
-                if isinstance(asset_records, dict)
-                else None
-            )
-            if not isinstance(addon_assets, list) or len(addon_assets) != 1:
-                raise ValueError(
-                    "Release receipt is missing the OpenXR addon provenance"
-                )
-            addon = addon_assets[0]
-            if (
-                not isinstance(addon, dict)
-                or addon.get("id") != "OpenXRVendors"
-                or not addon.get("version")
-                or not isinstance(addon.get("sizeBytes"), int)
-                or addon["sizeBytes"] <= 0
-                or not isinstance(addon.get("sha256"), str)
-                or not re.fullmatch(r"[0-9a-f]{64}", addon["sha256"])
-            ):
-                raise ValueError("Release receipt has invalid OpenXR addon provenance")
+        asset_records = record["dependency_assets"]
+        addon_assets = (
+            asset_records.get("OpenXRVendors")
+            if isinstance(asset_records, dict)
+            else None
+        )
+        if not isinstance(addon_assets, list) or len(addon_assets) != 1:
+            raise ValueError("Release receipt is missing the OpenXR addon provenance")
+        addon = addon_assets[0]
+        if (
+            not isinstance(addon, dict)
+            or addon.get("id") != "OpenXRVendors"
+            or not addon.get("version")
+            or not isinstance(addon.get("sizeBytes"), int)
+            or addon["sizeBytes"] <= 0
+            or not isinstance(addon.get("sha256"), str)
+            or not re.fullmatch(r"[0-9a-f]{64}", addon["sha256"])
+        ):
+            raise ValueError("Release receipt has invalid OpenXR addon provenance")
         for digest in record.get("dependency_manifests", {}).values():
             if not re.fullmatch(r"[0-9a-f]{64}", digest):
                 raise ValueError("Invalid dependency manifest digest")
         required_manifests = {
+            "third_party/openxr-vendors/manifest.json",
             "configs/toolchain.json",
             "android/gradle/libs.versions.toml",
             "android/gradle/verification-metadata.xml",
         }
-        if schema == 4:
-            required_manifests.update(
-                {
-                    "third_party/freecm/UPSTREAM.json",
-                    "third_party/openxr-vendors/manifest.json",
-                }
-            )
-        else:
-            # Historical tag receipts retain the original source-lock digest.
-            required_manifests.add("source_roots.lock.jsonc.in")
         if not required_manifests <= record.get("dependency_manifests", {}).keys():
             raise ValueError("Release receipt is missing dependency manifest digests")
         name = record.get("apk", "")
@@ -141,7 +112,7 @@ def prepare(packages, output, tag, commit):
             shutil.copy2(asset, stage / asset.name)
         records.sort(key=lambda r: r["vendor"])
         (stage / "SHA256SUMS.txt").write_text(
-            "".join(f'{r["sha256"]}  {r["apk"]}\n' for r in records), encoding="utf-8"
+            "".join(f"{r['sha256']}  {r['apk']}\n" for r in records), encoding="utf-8"
         )
         manifest = {
             "tag": tag,

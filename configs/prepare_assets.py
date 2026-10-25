@@ -9,7 +9,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from configs.dependencies import prepare_vendor_archive, vendors_archive
-from freecm.workspace_lock import workspace_mutation_lock
+from configs.workspace_lock import workspace_mutation_lock
 
 
 def main(argv=None):

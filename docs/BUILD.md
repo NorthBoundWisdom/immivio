@@ -1,12 +1,11 @@
 # Building Immivio
 
-Immivio uses ordinary Gradle dependency files and one verified OpenXR addon archive. A small MIT-licensed FreeCM subset under `third_party/freecm` supplies command validation, Android helpers and the workspace lock; cloning or installing FreeCM separately is unnecessary. Tools and large native libraries belong to a prepared development environment. Configure, Build, Test and Package never install tools or download dependencies.
+Immivio uses ordinary Gradle dependency files and one verified OpenXR addon archive. Project-owned Python scripts implement the Android workflow and workspace locking using the standard library. Tools and large native libraries belong to a prepared development environment. Configure, Build, Test and Package never install tools or download dependencies.
 
 ## Dependency ownership
 
 | Input | Managed by |
 | --- | --- |
-| FreeCM workflow helpers | Bundled MIT source subset; original revision and file hashes in `third_party/freecm/UPSTREAM.json` |
 | OpenXR vendor Android addon | Single verified archive recorded in `third_party/openxr-vendors/manifest.json` |
 | Android application/plugin packages | Gradle version catalog, lockfiles and verification metadata under `android/` |
 | Python, JDK, Gradle, Godot and export templates, Android SDK/NDK/CMake | Preinstalled host environment; compatible host installations; Android project targets in `configs/toolchain.json` |
@@ -66,7 +65,7 @@ Ordinary and packed SBS/TB playback use the same pipeline. Frame timestamps obse
 
 ## Outputs, signing and CI
 
-APKs retain `Immivio-<QUEST|PICO|OpenXR>-<version>-<debug|release>-<YYYYMMDD>.apk`. Each `.build.json` receipt includes the source commit, bundled helper provenance and content digest, the verified OpenXR addon version/checksum, Gradle locks, manifest digests, toolchain, APK checksum and signing certificate. Changes to bundled helpers or the addon manifest invalidate previous build configurations.
+APKs retain `Immivio-<QUEST|PICO|OpenXR>-<version>-<debug|release>-<YYYYMMDD>.apk`. Each schema-version-5 `.build.json` receipt includes the source commit, verified OpenXR addon version/checksum, Gradle locks, manifest digests, toolchain, APK checksum and signing certificate. Changes to build scripts or the addon manifest invalidate previous build configurations. The current release publisher requires version-5 receipts; rebuild older packages before publishing them with this workflow.
 
 The exported application is categorized as video (`package/app_category=8` in Godot, `appCategory=2` and `isGame=false` in Android); package verification rejects a game-classified APK.
 

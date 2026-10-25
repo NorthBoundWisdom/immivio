@@ -80,8 +80,6 @@ def check_files(files):
     errors = []
     for name, data in files.items():
         path = PurePosixPath(name)
-        if path.parts and path.parts[0].lower() == "freecm":
-            errors.append(f"{name}: use the vendored FreeCM subset under third_party/freecm")
         if path.is_absolute() or ".." in path.parts or "\\" in name or ":" in name:
             errors.append(f"{name}: unsafe path")
         approved_mesh = name in HAND_BUFFER_PINS

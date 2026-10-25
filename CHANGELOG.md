@@ -68,7 +68,7 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 - Start the architecture refactor: isolate retired-settings migration, remove dormant model-preheat/Alpha-FPS paths and unused inference JNI entry points, and preserve the current playback lease/fence contracts.
 
-- Simplify FreeCM management: keep OpenList and the OpenXR addon active, restore Gradle/Go manifests and use prepared host tools and Android libraries.
+- Simplify dependency management: verify the OpenXR addon archive, restore Gradle/Go manifests and use prepared host tools and Android libraries.
 - Retire superseded Windows test/package wrappers and the checked-in machine-specific mpv build receipt; retain device probes.
 
 - Rename the independently maintained project, application and build artifacts to Immivio; the repository is now `NorthBoundWisdom/immivio`. Retain ordinary-player app identity/signing compatibility.

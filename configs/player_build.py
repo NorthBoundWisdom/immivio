@@ -30,7 +30,6 @@ from configs.dependencies import (
     digest,
     export_dependencies,
 )
-from repomgrandroid.workflow import android_environment
 
 LOCK = {**TOOLCHAIN, **TOOLCHAIN["android"]}
 
@@ -137,7 +136,7 @@ def extract(archive, destination):
 
 
 def build_lock():
-    from freecm.workspace_lock import workspace_mutation_lock
+    from configs.workspace_lock import workspace_mutation_lock
 
     return workspace_mutation_lock(ROOT)
 
@@ -199,12 +198,16 @@ def sdk_tools(env=None):
 
 
 def environment(args, base_env=None):
-    env = android_environment(os.environ if base_env is None else base_env)
-    sdk = Path(args.sdk).expanduser().absolute() if args.sdk else sdk_directory(env)
+    env = dict(os.environ if base_env is None else base_env)
+    sdk = args.sdk or env.get("ANDROID_SDK_ROOT") or sdk_directory(env)
     # Preserve host-provided SDK junctions/aliases. On Windows C:\Android can
     # point into Program Files; preserve the supplied native toolchain path.
     sdk = Path(sdk).expanduser().absolute()
     java = args.java_home or env.get("JAVA_HOME")
+    if not java and sys.platform == "darwin":
+        homebrew_jdk = Path("/opt/homebrew/opt/openjdk@17")
+        if homebrew_jdk.is_dir():
+            java = homebrew_jdk
     if (
         not java
         and os.name != "nt"
@@ -234,7 +237,20 @@ def environment(args, base_env=None):
         ANDROID_SDK_ROOT=str(sdk),
         ANDROID_NDK_HOME=str(ndk),
     )
-    env["PATH"] = os.pathsep.join([str(Path(java) / "bin"), env["PATH"]])
+    path_key = (
+        next((key for key in env if key.lower() == "path"), "PATH")
+        if os.name == "nt"
+        else "PATH"
+    )
+    env[path_key] = os.pathsep.join(
+        [
+            str(Path(java) / "bin"),
+            str(sdk / "platform-tools"),
+            str(sdk / "emulator"),
+            str(sdk / "cmdline-tools/latest/bin"),
+            env.get(path_key, ""),
+        ]
+    )
     # Java/Gradle do not honor HTTP(S)_PROXY themselves. Use only credential-free proxies.
     proxy_options = []
     for scheme in ("http", "https"):

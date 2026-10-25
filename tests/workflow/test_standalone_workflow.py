@@ -1,4 +1,4 @@
-"""The public source copy must work without an upstream FreeCM installation."""
+"""The public source copy runs with Python's standard library alone."""
 
 import hashlib
 import json
@@ -12,22 +12,20 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 
 
-class VendoredFreecm(unittest.TestCase):
+class StandaloneWorkflow(unittest.TestCase):
     def test_standalone_source_runs_workflows_and_rejects_corrupt_assets(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()
-            for folder in ("configs", "third_party/freecm"):
-                shutil.copytree(
-                    ROOT / folder,
-                    root / folder,
-                    ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
-                )
+            shutil.copytree(
+                ROOT / "configs",
+                root / "configs",
+                ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.jsonc"),
+            )
             for name in (
                 "android/gradle/libs.versions.toml",
                 "android/gradle/verification-metadata.xml",
                 "android/gradle.lockfile",
                 "third_party/mpv/manifest.json",
-                "tools/validate_repo_commands.py",
             ):
                 target = root / name
                 target.parent.mkdir(parents=True, exist_ok=True)
@@ -49,7 +47,6 @@ class VendoredFreecm(unittest.TestCase):
             for command in (
                 ["configs/prepare_assets.py"],
                 ["configs/android_workflow.py", "--help"],
-                ["tools/validate_repo_commands.py"],
             ):
                 with self.subTest(command=command):
                     result = subprocess.run(
@@ -70,24 +67,12 @@ class VendoredFreecm(unittest.TestCase):
                     "-c",
                     """
 import json
-from pathlib import Path
 import sys
 sys.path.insert(0, sys.argv[1])
 from configs import android_workflow as android
-from configs.freecm_vendor import provenance
-import freecm
-import repomgrandroid
-vendor = Path(sys.argv[1]) / 'third_party/freecm'
-assert Path(freecm.__file__).is_relative_to(vendor)
-assert Path(repomgrandroid.__file__).is_relative_to(vendor)
 receipt = android.dependency_receipt()
-assert receipt['freecm_commit'] == provenance()['commit']
-assert receipt['freecm_vendor_sha256'] == provenance()['sha256']
-assert receipt['schema_version'] == 4
-assert 'third_party/freecm/UPSTREAM.json' in receipt['dependency_manifests']
+assert receipt['schema_version'] == 5
 assert 'third_party/openxr-vendors/manifest.json' in receipt['dependency_manifests']
-assert 'dependency_mode' not in receipt
-assert 'dependency_commits' not in receipt
 print(json.dumps(receipt))
 """,
                     str(root),
@@ -99,9 +84,6 @@ print(json.dumps(receipt))
             )
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertFalse((root / ".git").exists())
-            self.assertFalse((root / "FreeCM").exists())
-            self.assertFalse((root / "source_roots.lock.jsonc").exists())
-            self.assertFalse((root / "source_roots.lock.jsonc.in").exists())
             seed.write_bytes(b"corrupted addon")
             result = subprocess.run(
                 [

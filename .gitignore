@@ -53,14 +53,14 @@ credentials/
 *.pem
 signing-identities.json
 thru3d*-signing.json
-.freecm
 .DS_Store
 
-# Former local FreeCM checkout; builds use third_party/freecm.
+# Optional editor plugin local files
+.freecm
 /FreeCM/
-
-# Workspace lock and Python caches
 /.freecm.workspace.lock*
-__pycache__/
+
+# Project workspace lock
+/.immivio.workspace.lock
 
 Downloads

@@ -52,7 +52,7 @@ R1 已提交为 `ed190d3`。本轮继续完成 R2–R5 的代码迁移及 R6 文
 
 ## 验证方式
 
-- 快速检查：工作流/发布/网站测试、FreeCM 命令清单、公共源码边界和 `git diff --check`。
+- 快速检查：工作流/发布/网站测试、公共源码边界和 `git diff --check`。
 - Godot：执行全部 `test_*.gd`，新增旧配置迁移与退休动作不能恢复旧设置的行为用例。
 - Android：JVM 集成测试、JNI/native ARM64 编译；Debug 包检查 ELF、符号、依赖闭包、16KB、签名、ZIP alignment 与应用身份。
 - 设备：复用保留的独立探针。实际头显不可用时报告该限制；静态阅读、主机测试和 APK 通过不能代替设备验收。
@@ -92,7 +92,7 @@ R1 已提交为 `ed190d3`。本轮继续完成 R2–R5 的代码迁移及 R6 文
 - Android NDK 对拆分后的 C++ 渲染桥执行 ARM64 `-Wall -Wextra -Werror` 语法编译，通过。
 - 单个 Gradle worker 编译 Debug Kotlin 生产源码和 JVM 测试源码，通过；没有执行测试任务。
 - 对改动 GDScript 及 fixture 执行资源加载/编译；没有实例化或运行测试脚本。
-- 16 个 RenderBridge JNI 声明与 C++ 实现名称匹配，公共源码、FreeCM 命令、网站链接和 workflow 静态检查通过。
+- 16 个 RenderBridge JNI 声明与 C++ 实现名称匹配，公共源码、仓库命令、网站链接和 workflow 静态检查通过。
 - 版本 2 契约的拒绝/时钟 provenance 用例已添加，留待集中执行。本轮未进行打包、矩阵测试或设备验收。
 - 重构检查点使用 `[skip ci]`，避免推送触发自动矩阵和打包；集中验收时手动执行工作流。
 

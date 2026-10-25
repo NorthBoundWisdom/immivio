@@ -23,9 +23,6 @@ from configs.dependencies import (
     vendors_archive,
     vendors_manifest,
 )
-from configs.freecm_vendor import provenance as freecm_provenance
-from freecm.repo_commands import validate_repo_command_manifest
-from repomgrandroid.workflow import AndroidWorkflowConfig, run_test_level
 
 VENDORS = ("Quest", "Pico", "OpenXR")
 BUILD_INPUTS = (
@@ -89,7 +86,6 @@ def input_signature(args):
             }
         )
     inputs["android_identity"] = player.android_identity(args.build_type)
-    inputs["FreeCM"] = freecm_provenance()
     inputs["mpv_libraries"] = {
         name: digest(path) for name, path in player.mpv_libraries().items()
     }
@@ -98,13 +94,10 @@ def input_signature(args):
 
 
 def dependency_receipt():
-    freecm = freecm_provenance()
     vendors_archive()
     addon = vendors_manifest()
     return {
-        "schema_version": 4,
-        "freecm_commit": freecm["commit"],
-        "freecm_vendor_sha256": freecm["sha256"],
+        "schema_version": 5,
         "dependency_assets": {
             "OpenXRVendors": [
                 {
@@ -122,7 +115,6 @@ def dependency_receipt():
                 "configs/toolchain.json",
                 "android/gradle/libs.versions.toml",
                 "android/gradle/verification-metadata.xml",
-                "third_party/freecm/UPSTREAM.json",
             )
         },
         "gradle_locks": {
@@ -247,17 +239,16 @@ def require_build(args):
 
 def test(args, env, sdk, level):
     if level in ("l0", "all"):
-        run_test_level(
-            AndroidWorkflowConfig(
-                repo_root=ROOT,
-                python_check_files=tuple(
-                    str(p.relative_to(ROOT)) for p in (ROOT / "configs").glob("*.py")
-                ),
-            ),
-            "l0",
+        player.run(
+            [
+                sys.executable,
+                "-m",
+                "py_compile",
+                *sorted((ROOT / "configs").glob("*.py")),
+            ],
             env=env,
         )
-        validate_repo_command_manifest(ROOT)
+        player.run(["git", "diff", "--check"], env=env)
         player.run([sys.executable, ROOT / "tools/Check-PublicSource.py"], env=env)
         player.run(
             [

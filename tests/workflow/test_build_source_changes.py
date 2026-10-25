@@ -9,7 +9,6 @@ import unittest
 from unittest.mock import patch
 
 from configs import android_workflow as android
-from configs import freecm_vendor
 
 
 class BuildSourceChanges(unittest.TestCase):
@@ -19,10 +18,6 @@ class BuildSourceChanges(unittest.TestCase):
             root = Path(folder)
             stack.enter_context(patch.object(android, "ROOT", root))
             stack.enter_context(patch.object(android, "BUILD_INPUTS", ()))
-            vendor = root / "third_party/freecm"
-            vendor.mkdir(parents=True)
-            (vendor / "UPSTREAM.json").write_text(json.dumps({"commit": "b" * 40}))
-            stack.enter_context(patch.object(freecm_vendor, "FREECM_ROOT", vendor))
             stack.enter_context(
                 patch.object(android.player, "mpv_libraries", return_value={})
             )
@@ -56,8 +51,8 @@ class BuildSourceChanges(unittest.TestCase):
             "native/mpv/include/immivio/mpv/json_quote.h",
             "app/godot/scripts/player.gd",
             "app/godot/shaders/video.gdshader",
-            "third_party/freecm/freecm/jsonc.py",
-            "third_party/freecm/freecm/workspace_lock.py",
+            "configs/android_workflow.py",
+            "configs/workspace_lock.py",
         ):
             for action in ("add", "edit", "delete"):
                 with (

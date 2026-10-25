@@ -5,7 +5,6 @@ Prepare and configure dependencies as described in [BUILD.md](BUILD.md).
 ```sh
 python3 -m unittest discover -s tests/workflow -v
 python3 tools/test_prepare_android_release.py
-python3 tools/validate_repo_commands.py .
 python3 tools/Check-PublicSource.py
 python3 configs/prepare_assets.py
 python3 configs/check_environment.py
@@ -36,7 +35,7 @@ Use [ACCEPTANCE.md](ACCEPTANCE.md) for recorded local checks and the remaining d
 
 ## Test responsibilities
 
-- `tests/workflow` and the release tests protect configuration freshness, byte integrity, signing and publication boundaries. Archive tests use a local HTTP fixture to check explicit downloads, offline reuse and corrupt bytes. The bundled helpers are also exercised in an isolated source copy with Python site packages disabled, including asset verification and build receipts without Git metadata or source-root locks. FreeCM's own implementation tests are not copied into this repository.
+- `tests/workflow` and the release tests protect configuration freshness, byte integrity, signing and publication boundaries. Archive tests use a local HTTP fixture to check explicit downloads, offline reuse and corrupt bytes. The build scripts are also exercised in an isolated source copy with Python site packages disabled, including asset verification and build receipts without Git metadata or optional editor configuration. Workspace-lock tests cover nested calls, concurrent threads and processes, and release after process exit.
 - `app/godot/tests/test_*.gd` exercise the current playback controller, captions, persistent state, menus and input behavior. The playback control and geometry suites use focused state transitions and invariants rather than constructing the old player implementation.
 - Android/JVM tests cover protocol parsing, actual loopback HTTP/range reads, account isolation, file operations and frame/resource ownership. Credential-dependent live checks report explicit skips.
 - Retained `render_*.gd` checks need a real GPU renderer and have failure conditions such as pixel differences, invalid geometry, clipping or incomplete warmup. Saving a screenshot alone is not an automated regression result. They are not run by the headless suite. Thumbnail capture pixels live in `render_thumbnail_capture.gd`; `test_thumbnails.gd` covers cache and library behavior without waiting for a GPU.

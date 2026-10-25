@@ -76,7 +76,7 @@ def prepare_vendor_archive():
 
 
 def clean_build(root, *, dry_run=False):
-    from freecm.workspace_lock import workspace_mutation_lock
+    from configs.workspace_lock import workspace_mutation_lock
 
     with workspace_mutation_lock(root):
         build = root / "build"
