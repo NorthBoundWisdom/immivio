@@ -27,7 +27,7 @@ Current-source APKs from H2 (version numbers are unchanged):
 | Pico | `HEAD-Immivio-PICO-0.9.4-debug-20261104.apk` | 170403011 | `48c320734e004c594cd74379ec5d5562993ea484a8ba360b3140f67ec2a79740` | +246343 bytes |
 | OpenXR | `HEAD-Immivio-OpenXR-0.9.4-debug-20261104.apk` | 170402779 | `8320d63fb520119ea794c728d38f4670a081a6b8656e56c9316cc902248a5ec2` | +246359 bytes |
 
-The first live Jellyfin fixture used paused playback and did not retain resume position. The final fixture reports normal playing state and passed all lifecycle/privacy assertions. An initial Docker port setup failure and the paused-fixture failure are retained in the ignored logs. Host/JVM/headless checks do not establish headset rendering, controller ergonomics, runtime permissions or smoothness.
+Round 5 reproduced the apparent paused-resume failure on Jellyfin 12.4.0: the grouped movie returned 0 ms while the selected alternate version item retained 120000 ms. Jellyfin stores resume on the selected MediaSource item, and the version list ordering can change after playback. Both paused-start and playing 60s → 120s → pause → stop retain 120000 ms when read from that selected item. The live test now checks that identity (including a 60000 ms progress readback), independent of version ordering; no playback reporter change or media/threshold adjustment was needed. Original failure and corrected readback evidence are retained under artifacts/upstream-round5/I1/. Host/JVM/headless checks do not establish headset rendering, controller ergonomics, runtime permissions or smoothness.
 
 ### Headset acceptance still required
 
