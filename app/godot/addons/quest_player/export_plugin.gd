@@ -36,9 +36,13 @@ class QuestPlayerExport:
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="content" /><data android:scheme="file" />
                 <data android:scheme="http" /><data android:scheme="https" />
+                <data android:mimeType="video/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" /><data android:scheme="file" />
                 <data android:mimeType="video/*" /><data android:mimeType="application/octet-stream" />
             </intent-filter>
             <intent-filter>
