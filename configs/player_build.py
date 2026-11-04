@@ -5,7 +5,7 @@ Tools/SDKs and Android libmpv are supplied by the host.
 The OpenXR addon comes from the project's verified archive cache.
 """
 
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from datetime import datetime
 import json
 import os
@@ -54,18 +54,24 @@ def stop_process(process):
 
 
 def run(
-    args, *, cwd=ROOT, env=None, log=None, timeout=1800, fail_on_engine_error=False
+    args, *, cwd=ROOT, env=None, log=None, timeout=1800, fail_on_engine_error=False, stderr_log=None
 ):
     if log:
         LOGS.mkdir(parents=True, exist_ok=True)
         path = LOGS / log
-        with path.open("w", encoding="utf-8") as stream:
+        stderr_path = LOGS / stderr_log if stderr_log else None
+        def failure(message):
+            detail = stderr_path.read_text(encoding="utf-8", errors="replace") if stderr_path else ""
+            return RuntimeError(message + (f"; stderr ({stderr_log}):\n{detail}" if stderr_path else ""))
+        with path.open("w", encoding="utf-8") as stream, (
+            stderr_path.open("w", encoding="utf-8") if stderr_path else nullcontext(subprocess.STDOUT)
+        ) as errors:
             process = subprocess.Popen(
                 [str(x) for x in args],
                 cwd=cwd,
                 env=env,
                 stdout=stream,
-                stderr=subprocess.STDOUT,
+                stderr=errors,
                 start_new_session=os.name != "nt",
             )
             deadline = time.monotonic() + timeout
@@ -87,7 +93,7 @@ def run(
             finally:
                 stop_process(process)
         if process.returncode:
-            raise RuntimeError(f"Command failed; see artifacts/logs/{log}")
+            raise failure(f"Command failed; see artifacts/logs/{log}")
     else:
         subprocess.run(
             [str(x) for x in args], cwd=cwd, env=env, check=True, timeout=timeout
@@ -628,12 +634,13 @@ def inspect_package(path, env, sdk):
     )
     badging = (LOGS / "base-apk-manifest.log").read_text()
     run([tools / ("aapt2.exe" if os.name == "nt" else "aapt2"), "dump", "xmltree", path, "--file", "AndroidManifest.xml"], env=env,
-        log="base-apk-xmltree.log")
+        log="base-apk-xmltree.log", stderr_log="base-apk-xmltree-stderr.log")
     manifest_dump = (LOGS / "base-apk-xmltree.log").read_text(encoding="utf-8")
     try:
         manifest = verify_xmltree(manifest_dump)
     except (ValueError, TypeError) as error:
-        raise RuntimeError(f"APK manifest validation failed: {error}") from error
+        stderr = (LOGS / "base-apk-xmltree-stderr.log").read_text(encoding="utf-8", errors="replace")
+        raise RuntimeError(f"APK manifest validation failed: {error}; stderr:\n{stderr}") from error
     application = manifest.find("application")
     if application.get(ANDROID + "appCategory") != "2" or application.get(ANDROID + "isGame") == "true":
         raise RuntimeError("APK must be classified as a video application, not a game")

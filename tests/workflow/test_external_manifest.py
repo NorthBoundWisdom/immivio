@@ -72,26 +72,28 @@ class ExportManifestGate(unittest.TestCase):
 
     def test_apk_inspection_rejects_compiled_broad_filters_and_accepts_narrow_filters(self):
         # Mock native tools/signature checks only; execute the production APK inspection gate.
-        for broad, browsable in [(False, False), (True, False), (False, True)]:
-            with self.subTest(broad=broad, browsable=browsable), tempfile.TemporaryDirectory() as directory:
+        for broad, browsable, unknown in [(False, False, False), (True, False, False), (False, True, False), (False, False, True)]:
+            with self.subTest(broad=broad, browsable=browsable, unknown=unknown), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory); logs = root / "logs"; logs.mkdir()
                 apk = root / "fixture.apk"
                 with zipfile.ZipFile(apk, "w") as archive:
                     for lib in ["libquest_media.so", "libquest_mpv.so", "libquest_render_bridge.so", "libgodot_android.so", "libmpv.so"]:
                         archive.writestr("lib/arm64-v8a/" + lib, b"fixture")
-                tree = self.xmltree(broad, browsable)
-                def run(_args, *, env, log):
+                tree = self.xmltree(broad, browsable) + ("unknown stdout record\n" if unknown else "")
+                real_run = builder.run
+                def run(_args, *, env, log, **kwargs):
                     if log == "base-apk-manifest.log":
                         (logs / log).write_text("package: name='com.northboundwisdom.immivio'\napplication-label:'Immivio'\n")
                     elif log == "base-apk-xmltree.log":
-                        (logs / log).write_text(tree)
+                        real_run([sys.executable, "-c", "import sys; sys.stdout.write(" + repr(tree) + "); sys.stderr.write('aapt2 warning on stderr\\n')"], cwd=root, log=log, **kwargs)
                 with patch.object(builder, "ROOT", root), patch.object(builder, "LOGS", logs), \
                      patch.object(builder, "run", side_effect=run), \
                      patch.object(builder.subprocess, "check_output", return_value="AArch64\n LOAD fixture 0x4000\n"), \
                      patch.dict("os.environ", {"IMMIVIO_DEVELOPMENT_PACKAGE": "0"}):
-                    if broad or browsable:
-                        with self.assertRaisesRegex(RuntimeError, "manifest"):
+                    if broad or browsable or unknown:
+                        with self.assertRaisesRegex(RuntimeError, "manifest") as failure:
                             builder.inspect_package(apk, {"ANDROID_NDK_HOME": str(root / "ndk")}, root / "sdk")
+                        self.assertIn("aapt2 warning on stderr", str(failure.exception))
                     else:
                         self.assertEqual(builder.digest(apk), builder.inspect_package(apk, {"ANDROID_NDK_HOME": str(root / "ndk")}, root / "sdk"))
 
@@ -109,3 +111,13 @@ class ExportManifestGate(unittest.TestCase):
                        tree.replace('A: android:isGame(0x010103f4)=false', 'A: android:isGame(0x010103f4)=false\n      A: android:isGame(0x010103f4)=true')]:
             with self.subTest(broken=broken[-80:]), self.assertRaises(ValueError):
                 manifest.verify_xmltree(broken)
+
+
+class SeparateToolStreams(unittest.TestCase):
+    def test_failed_tool_preserves_and_surfaces_stderr(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(builder, "LOGS", Path(directory)):
+            with self.assertRaisesRegex(RuntimeError, "warning and failure"):
+                builder.run([sys.executable, "-c", "import sys; print('stdout'); print('warning and failure', file=sys.stderr); sys.exit(2)"],
+                            log="stdout.log", stderr_log="stderr.log")
+            self.assertEqual((Path(directory) / "stdout.log").read_text(), "stdout\n")
+            self.assertEqual((Path(directory) / "stderr.log").read_text(), "warning and failure\n")
