@@ -115,8 +115,8 @@ func _run() -> void:
 	)
 	check(
 		(
-			menu.rows.size() == 1
-			and menu.rows[0].compact
+			menu.rows.filter(func(row): return row.get("key", "") == "output_width").size() == 1
+			and menu.rows.filter(func(row): return row.get("key", "") == "output_width")[0].compact
 			and not menu.rows.any(func(row): return row.get("key") == "seek_mode")
 		),
 		"Resolution retains compact choices and retired seek preference is absent"

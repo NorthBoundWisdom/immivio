@@ -73,3 +73,9 @@ Change the headset refresh-rate default to 72 Hz for power saving, or the closes
 `immersive_adjustments.gd`, `picture_center_guide.gd` and its shader derive from upstream. The passive overlay, persistence and input dispatch are rewritten for Immivio. No upstream ControllerBindings, interface-move or seek-HUD subsystem is imported. Lists, popups, focus loss and pointer capture suppress adjustments; a fresh grip or a suppressed stick must centre first. Vertical/flat stereo alignment remains ±5%. Orientation still recentres at the current gaze on opening; only translations/zoom are remembered. No new haptic behavior is enabled.
 
 Add centred grip-stick immersive translation/zoom, ±10% immersive horizontal stereo alignment, fading numeric range feedback and a passive centre ring/cross during picture movement. Store translations and zoom per video; recenter clears those offsets while preserving existing stereo calibration. Flat video and photos keep their previous ranges and controls.
+
+### P9 — Optional last video mode
+
+`video_mode_default.gd` layout sanitization derives from upstream; resolution, preference persistence and migration are integrated into Immivio. Default is off. The existing mode lock remains the default when reuse is off or no valid last layout exists. No 2D-to-3D option, effect state, file identity or alignment is stored in this global preference.
+
+Add an opt-in last-video projection/stereo fallback for otherwise unrecognized formats. Per-file modes and recognized filename, container stereo or established frame-shape rules still win. Store only layout, projection, fisheye angle and eye order; photos and removed effects stay independent.

@@ -46,6 +46,7 @@ func _library_settings() -> Dictionary:
 		),
 		"sharpness": Quality.load_sharpness(host.settings, host.low_end_gpu),
 		"history": host.video.history_enabled,
+		"reuse_last_mode": host.video.reuse_last_mode,
 		"browse_memory": bool(host.settings.get_value("library", "browse_memory", true)),
 		"controls_opacity": float(host.settings.get_value("ui", "controls_opacity", 0.86)),
 		"reclining_mode": host.reclining_mode,
@@ -140,6 +141,13 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 						Quality.load_output_choice(host.settings), host.low_end_gpu
 					)
 				)
+		"reuse_last_mode":
+			if not value is bool:
+				return
+			host.video.reuse_last_mode = value
+			host.settings.set_value("video", "reuse_last_mode", value)
+			host._capture_last_video_mode()
+			host.settings.save(host.settings_path)
 		"history":
 			host.recent_menu.remember_browse()
 			host.recent_menu.browse_memory.configure(

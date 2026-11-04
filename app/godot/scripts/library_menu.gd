@@ -821,6 +821,7 @@ func _rebuild_rows() -> void:
 				settings_provider.call() if settings_provider.is_valid() else {}
 			)
 			if tab == VIDEO_TAB:
+				rows.append(_choice_row("Reuse last video mode", "reuse_last_mode", bool(settings.get("reuse_last_mode", false)), [{"value": false, "label": "Off"}, {"value": true, "label": "On"}]))
 				rows.append(
 					_choice_row(
 						"Resolution",

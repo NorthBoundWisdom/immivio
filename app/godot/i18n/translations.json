@@ -539,7 +539,8 @@
     "External video unavailable": "无法打开外部视频",
     "Refresh rate": "显示刷新率",
     "Depth / zoom": "深度／缩放",
-    "Stereo horizontal alignment": "立体水平对齐"
+    "Stereo horizontal alignment": "立体水平对齐",
+    "Reuse last video mode": "沿用上次视频模式"
   },
   "zh_Hant": {
     "Reset": "重設",
@@ -1081,7 +1082,8 @@
     "External video unavailable": "無法開啟外部影片",
     "Refresh rate": "顯示更新率",
     "Depth / zoom": "深度／縮放",
-    "Stereo horizontal alignment": "立體水平對齊"
+    "Stereo horizontal alignment": "立體水平對齊",
+    "Reuse last video mode": "沿用上次影片模式"
   },
   "ja": {
     "Reset": "リセット",
@@ -1623,6 +1625,7 @@
     "External video unavailable": "外部動画を開けません",
     "Refresh rate": "リフレッシュレート",
     "Depth / zoom": "奥行き／ズーム",
-    "Stereo horizontal alignment": "ステレオ水平調整"
+    "Stereo horizontal alignment": "ステレオ水平調整",
+    "Reuse last video mode": "前回の動画モードを使用"
   }
 }

@@ -62,6 +62,8 @@ var reclining_mode := false
 ## What the file name left open; filled from the first frame's shape, then cleared.
 var _layout_pending: Variant = null
 var _layout_basename := ""
+var reuse_last_mode := false
+var last_video_mode: Dictionary = {}
 var _rvm_alpha := false  # the bound pair carries an inferred Alpha
 var _clone_applied := false
 var loop_enabled := false
@@ -528,7 +530,7 @@ func open_local(
 			stereo_horizontal = float(saved.get("stereo_horizontal", 0.0))
 			stereo_vertical = float(saved.get("stereo_vertical", 0.0))
 			depth_requested = bool(saved.get("depth_requested", false)) and not stereo_sbs
-		elif not mode_lock.is_empty() and not stated.has("geometry") and not stated.has("stereo"):
+		elif not mode_lock.is_empty() and not stated.has("geometry") and not stated.has("stereo") and (not reuse_last_mode or last_video_mode.is_empty()):
 			geometry = int(mode_lock.geometry)
 			stereo_sbs = int(mode_lock.layout) != 0
 			top_bottom = int(mode_lock.layout) in [2, 4]
@@ -1687,14 +1689,18 @@ func _apply_stereo_view() -> void:
 func _complete_layout() -> void:
 	if _layout_pending == null:
 		return
-	var chosen := Naming.complete(
+	var chosen := preload("res://scripts/video_mode_default.gd").resolve(
 		_layout_pending,
 		int(media.format.width),
 		int(media.format.height),
 		media.format,
-		_layout_basename
+		_layout_basename,
+		last_video_mode,
+		reuse_last_mode
 	)
 	_layout_pending = null
+	if chosen.has("fisheye_fov"):
+		fisheye_fov = int(chosen.fisheye_fov)
 	swap_eyes = chosen.swap
 	stereo_half = chosen.stereo_half
 	var tb := bool(chosen.stereo) and bool(chosen.top_bottom)
