@@ -536,7 +536,8 @@
     "Unable to load text subtitle. Select it again.": "无法加载文本字幕，请重新选择。",
     "Matching subtitles load automatically; choose other files manually.": "匹配字幕会自动加载，其他文件可手动选择。",
     "Clear": "清除",
-    "External video unavailable": "无法打开外部视频"
+    "External video unavailable": "无法打开外部视频",
+    "Refresh rate": "显示刷新率"
   },
   "zh_Hant": {
     "Reset": "重設",
@@ -1075,7 +1076,8 @@
     "Unable to load text subtitle. Select it again.": "無法載入文字字幕，請重新選擇。",
     "Matching subtitles load automatically; choose other files manually.": "符合檔名的字幕會自動載入，其他檔案可手動選擇。",
     "Clear": "清除",
-    "External video unavailable": "無法開啟外部影片"
+    "External video unavailable": "無法開啟外部影片",
+    "Refresh rate": "顯示更新率"
   },
   "ja": {
     "Reset": "リセット",
@@ -1614,6 +1616,7 @@
     "Unable to load text subtitle. Select it again.": "テキスト字幕を読み込めません。選択し直してください。",
     "Matching subtitles load automatically; choose other files manually.": "一致する字幕は自動で読み込み、他のファイルは手動で選択できます。",
     "Clear": "クリア",
-    "External video unavailable": "外部動画を開けません"
+    "External video unavailable": "外部動画を開けません",
+    "Refresh rate": "リフレッシュレート"
   }
 }

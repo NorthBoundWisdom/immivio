@@ -895,6 +895,11 @@ func _rebuild_rows() -> void:
 					}
 				)
 			elif tab == DISPLAY_TAB:
+				var rate_choices: Array = []
+				for rate in settings.get("refresh_rates", []):
+					rate_choices.append({"value": rate, "label": str(rate) + " Hz"})
+				if not rate_choices.is_empty():
+					rows.append(_choice_row("Refresh rate", "refresh_rate", float(settings.get("refresh_rate", 72.0)), rate_choices))
 				var quality_choices: Array = [{"value": Quality.AUTO, "label": "Auto"}]
 				for i in Quality.SCALES.size():
 					quality_choices.append({"value": i, "label": Quality.NAMES[i]})
