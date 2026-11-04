@@ -6,6 +6,8 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 ## Unreleased
 
+- Keep media-server resume item IDs separate from version queries, retain per-version resume rows, and preselect the resumed Emby/Jellyfin version on its details page.
+
 - Keep external subtitle tracks available when bounded transcoding fails, falling back to the original mpv source. Mark failed manual encoding overrides as invalid without rewriting source files.
 
 - Add Left/Right/Both as the shared primary hand for content pinches and summoning controls. Change the default from either hand to Right, matching upstream. Both hands still select controls in an already-open menu; the other hand may join an active photo zoom. Changing the setting cancels ownership and requires a fresh open-then-pinch.
