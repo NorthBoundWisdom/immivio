@@ -571,7 +571,8 @@
     "GitHub rate limit. Try later.": "GitHub 请求限流，请稍后重试。",
     "Update check failed. Retry.": "检查更新失败，请重试。",
     "Open release page": "打开发布页面",
-    "Unable to open browser": "无法打开浏览器"
+    "Unable to open browser": "无法打开浏览器",
+    "Original stream unavailable": "原始媒体流不可用"
   },
   "zh_Hant": {
     "Reset": "重設",
@@ -1145,7 +1146,8 @@
     "GitHub rate limit. Try later.": "GitHub 請求限流，請稍後重試。",
     "Update check failed. Retry.": "檢查更新失敗，請重試。",
     "Open release page": "開啟發布頁面",
-    "Unable to open browser": "無法開啟瀏覽器"
+    "Unable to open browser": "無法開啟瀏覽器",
+    "Original stream unavailable": "無法使用原始串流"
   },
   "ja": {
     "Reset": "リセット",
@@ -1719,6 +1721,7 @@
     "GitHub rate limit. Try later.": "GitHub の制限に達しました。後で再試行してください。",
     "Update check failed. Retry.": "更新を確認できません。再試行してください。",
     "Open release page": "リリースページを開く",
-    "Unable to open browser": "ブラウザーを開けません"
+    "Unable to open browser": "ブラウザーを開けません",
+    "Original stream unavailable": "元のストリームを利用できません"
   }
 }

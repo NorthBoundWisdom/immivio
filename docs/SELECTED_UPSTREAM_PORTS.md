@@ -153,3 +153,7 @@ Third-round completion of F4. A shared configs/android_manifest.py policy serves
 ### G3 — third-round review
 
 Third-round correction to P17. ReleasePageOpener validates the same fixed release URL, schedules ACTION_VIEW, and emits a request-ID/tag-scoped result only after startActivity succeeds or throws. The bridge returns that request ID for queue acceptance; late results, including an older launch of the same tag, cannot overwrite a newer check or retry. Failure leaves the release action available for a user-requested retry. There is no automatic browser retry or network check.
+
+### G4 — third-round review
+
+Third-round text completion for F2. media_server_browser.gd already renders menu.status through I18n.t; no routing change is needed. The resume/version integration test now removes the requested version, receives the actual error status and verifies the rendered text snapshot in all three locales. English remains the source-key fallback.
