@@ -60,6 +60,19 @@ const LIBRARY_TABS := [
 	Library.BACKGROUND_TAB,
 	Library.ABOUT_TAB
 ]
+# Dedicated offscreen data, never the user's history, accounts or media.
+class NavigationCatalog:
+	extends RefCounted
+	var populated := false
+	func list_recent() -> Array:
+		return [{"uri": "", "title": "Immivio · 示例 / サンプル", "position_ms": 60000, "kind": "video"},
+			{"uri": "", "title": "Immivio image", "position_ms": 0, "kind": "image"}] if populated else []
+
+var navigation_pages_rendered := 0
+var navigation_sections_rendered: Array[int] = []
+var navigation_complete := false
+
+
 var complete := false
 var pages_rendered := 0
 var max_build_us := 0
@@ -70,6 +83,33 @@ func prepare_library(menu: Node3D, tab: int) -> void:
 	menu.section = Library.Section.SETTINGS
 	menu.tab = tab
 	menu._cache_usage = Vector2i.ZERO
+	menu.refresh()
+
+
+## Only use with an isolated offscreen Library; no _load_section/request calls.
+func prepare_navigation(menu: Node3D, section_id: int, populated: bool, list_mode: bool = false) -> void:
+	menu.section = section_id
+	menu.tab = Library.GENERAL_TAB if section_id == Library.Section.SETTINGS else 0
+	menu.scroll = 0
+	menu.list_view = list_mode
+	menu.status = ""
+	menu._cache_usage = Vector2i.ZERO
+	var catalog := NavigationCatalog.new()
+	catalog.populated = populated
+	menu.catalog = catalog
+	menu._local_stack = []
+	menu._local_entries = [{"id": "warmup-volume", "title": menu.I18n.t("Internal storage"), "container": true, "volume": true},
+		{"id": "warmup-usb", "title": "USB", "container": true, "volume": true, "removable": true}] if populated else []
+	menu._smb_server = ""
+	menu._smb_servers = [{"id": "warmup-smb", "name": "SMB", "host": "warmup.invalid"}] if populated else []
+	menu._dlna_server = ""
+	menu._dlna_servers = [{"id": "warmup-dlna", "name": "DLNA"}] if populated else []
+	menu.server_browser.view = "servers"
+	menu.server_browser.busy = false
+	menu.server_browser.servers = []
+	if populated:
+		for provider in ["emby", "jellyfin", "plex", "xbvr"]:
+			menu.server_browser.servers.append({"id": "warmup-" + provider, "name": provider.capitalize(), "provider": provider})
 	menu.refresh()
 
 
@@ -128,13 +168,6 @@ func prepare(menu: Node3D, page: String) -> void:
 
 
 func _run() -> void:
-	# Spread SVG decoding/texture uploads across startup frames.
-	var count := 0
-	for key in Icons.PATHS:
-		Icons.texture(key)
-		count += 1
-		if count % 4 == 0:
-			await get_tree().process_frame
 	var target := SubViewport.new()
 	target.size = Vector2i(256, 192)
 	target.own_world_3d = true
@@ -150,13 +183,30 @@ func _run() -> void:
 	camera.far = 3
 	target.add_child(camera)
 	camera.current = true
-	# Settings are reachable as soon as the library opens; warm them first.
+	# Navigation is available immediately. Warm all six entry surfaces first.
 	var library := Library.new()
+	library.browse_memory.path = "user://ui_warmup/no_store.cfg"
+	library.browse_memory.enabled = false
+	library.browse_memory.persist = false
 	target.add_child(library)
 	library.session_controls_provider = func(): return SESSION_STATE
 	library.set_process(false)
 	library.position = Vector3.ZERO
 	library.visible = true
+	for section_id in Library.NAV_ORDER:
+		for variant in ["empty", "loading", "populated", "list"]:
+			var started := Time.get_ticks_usec()
+			prepare_navigation(library, section_id, variant in ["populated", "list"], variant == "list")
+			if variant == "loading":
+				library.status = "Loading…"
+				library.server_browser.busy = section_id == Library.Section.MEDIA_SERVER
+				library.refresh()
+			max_build_us = maxi(max_build_us, Time.get_ticks_usec() - started)
+			await RenderingServer.frame_post_draw
+			await RenderingServer.frame_post_draw
+			navigation_pages_rendered += 1
+		navigation_sections_rendered.append(section_id)
+	navigation_complete = true
 	for tab in LIBRARY_TABS:
 		var started := Time.get_ticks_usec()
 		prepare_library(library, tab)
@@ -167,6 +217,13 @@ func _run() -> void:
 		await RenderingServer.frame_post_draw
 		library_pages_rendered += 1
 	library.free()
+	# Spread SVG decoding/texture uploads across startup frames.
+	var count := 0
+	for key in Icons.PATHS:
+		Icons.texture(key)
+		count += 1
+		if count % 4 == 0:
+			await get_tree().process_frame
 	var menu := Menu.new()
 	target.add_child(menu)
 	menu.session_controls_provider = func(): return SESSION_STATE
@@ -195,6 +252,9 @@ func snapshot() -> Dictionary:
 		"pages_rendered": pages_rendered,
 		"max_build_us": max_build_us,
 		"library_pages_rendered": library_pages_rendered,
+		"navigation_pages_rendered": navigation_pages_rendered,
+		"navigation_sections_rendered": navigation_sections_rendered.duplicate(),
+		"navigation_complete": navigation_complete,
 		"synthetic_only": true,
 		"cpu_readback": false
 	}

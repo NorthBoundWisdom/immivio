@@ -6,6 +6,8 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 ## Unreleased
 
+- Pre-render empty, loading and populated UI states for all six library navigation entries before playback settings warmup. Reuse the left navigation across section switches while updating its selection in place.
+
 - Increase separation between unselected controls and dark menu panels with filled blue-gray surfaces and clear outlines. Give dropdowns opaque containers, wider left-aligned option rows, larger labels and explicit selection marks.
 
 - Restore dropdown opening, selection and slider capture on curved XR menus by keeping pointer travel in canvas coordinates. Remove the in-app Restart and Close buttons; use the headset's app controls. Match curved-menu radius to viewing distance, and retain left navigation while scrolling credits or other lists.
