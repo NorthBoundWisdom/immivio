@@ -80,11 +80,11 @@ static func valid_mode(value: Variant) -> bool:
 		):
 			return false
 	if value.has("track_choices"):
-		if not value.track_choices is Dictionary or value.track_choices.size() > 2:
+		if not value.track_choices is Dictionary or value.track_choices.size() > 3:
 			return false
 		for kind in value.track_choices:
 			if (
-				kind not in ["audio", "subtitle"]
+				kind not in ["audio", "subtitle", "secondary_subtitle"]
 				or not preload("res://scripts/track_preference.gd").valid(value.track_choices[kind])
 			):
 				return false

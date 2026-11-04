@@ -405,6 +405,7 @@ func _ready() -> void:
 	player_menu.adjustment_requested.connect(_on_playback_adjustment)
 	player_menu.adjustment_committed.connect(_save_playback_adjustments)
 	player_menu.subtitle_requested.connect(video.set_subtitle_track)
+	player_menu.secondary_subtitle_requested.connect(video.dual_subtitles.select)
 	player_menu.depth_strength_requested.connect(_on_depth_strength.bind(false))
 	player_menu.depth_strength_committed.connect(_save_depth_strength)
 	_connect_session_controls(player_menu)

@@ -572,7 +572,10 @@
     "Update check failed. Retry.": "检查更新失败，请重试。",
     "Open release page": "打开发布页面",
     "Unable to open browser": "无法打开浏览器",
-    "Original stream unavailable": "原始媒体流不可用"
+    "Original stream unavailable": "原始媒体流不可用",
+    "Dual subtitles": "双语字幕",
+    "Primary subtitle": "主字幕",
+    "Secondary subtitle": "第二字幕"
   },
   "zh_Hant": {
     "Reset": "重設",
@@ -1147,7 +1150,10 @@
     "Update check failed. Retry.": "檢查更新失敗，請重試。",
     "Open release page": "開啟發布頁面",
     "Unable to open browser": "無法開啟瀏覽器",
-    "Original stream unavailable": "無法使用原始串流"
+    "Original stream unavailable": "無法使用原始串流",
+    "Dual subtitles": "雙語字幕",
+    "Primary subtitle": "主字幕",
+    "Secondary subtitle": "第二字幕"
   },
   "ja": {
     "Reset": "リセット",
@@ -1722,6 +1728,9 @@
     "Update check failed. Retry.": "更新を確認できません。再試行してください。",
     "Open release page": "リリースページを開く",
     "Unable to open browser": "ブラウザーを開けません",
-    "Original stream unavailable": "元のストリームを利用できません"
+    "Original stream unavailable": "元のストリームを利用できません",
+    "Dual subtitles": "二言語字幕",
+    "Primary subtitle": "主字幕",
+    "Secondary subtitle": "第二字幕"
   }
 }

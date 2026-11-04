@@ -157,3 +157,12 @@ Third-round correction to P17. ReleasePageOpener validates the same fixed releas
 ### G4 — third-round review
 
 Third-round text completion for F2. media_server_browser.gd already renders menu.status through I18n.t; no routing change is needed. The resume/version integration test now removes the requested version, receives the actual error status and verifies the rendered text snapshot in all three locales. English remains the source-key fallback.
+
+
+### J1 — dual text subtitles (0.16.2, GPL-3.0)
+
+Behavior and selection/composition scenarios derive from upstream `42bbca9` (0.16.2), within `9a6a905..da5f86c`: `app/godot/scripts/dual_subtitles.gd`, `app/godot/tests/test_dual_subtitles.gd` and secondary-channel portions of `native/mpv/mpv_source.cpp`. Immivio's `dual_subtitles.gd`, native secondary snapshot/control channel, Kotlin boundary, mode-record extension and compact subtitle-panel integration are adapted to its own playback/session owners. No upstream store or rendering architecture is copied. `@UsedByGodot` registers `set_mpv_secondary_subtitle` in Godot's Java method registry; availability uses `PlatformMethods.supports`.
+
+Both text tracks use the existing single subtitle delay and per-track charset overrides. The ordinary import action still selects primary. Secondary preferences live in existing `track_choices` records, migrate with file operations, and are written only when history and per-file memory are enabled. Missing/ambiguous track metadata does not select a different language. Caption sizing fits both wrapped text blocks inside the flat display or projected patch. Narration, live subtitles, cast, independent delays and 3D text protection are excluded; bitmap subtitles remain unsupported.
+
+Native host tests decode production subtitle JSON with an independent Python parser, test separate command IDs/track IDs, shared delay metadata and blank text on timeline invalidation. Android NDK compilation verifies the complete JNI/libmpv integration. These checks do not execute an XR libmpv session or certify headset rendering.

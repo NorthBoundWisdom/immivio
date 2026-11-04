@@ -6,6 +6,8 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 ## Unreleased
 
+- Add optional dual text subtitles: primary above secondary in one flat or immersive caption, with a shared delay and per-track encoding choices. Remember the second track per video when history and file memory are enabled; primary-off hides both, and selecting the same primary track turns secondary off. Bitmap subtitles remain unsupported.
+
 - Detect common external text subtitle encodings on bounded copies without changing originals. Per-track overrides apply when reopening the video; failed conversion retains the original subtitle, and failed manual choices show an invalid-encoding hint. Bitmap subtitles remain unsupported.
 - Filter subtitle filenames using the media title as the starting query, with a ray keyboard and scroll-only thumbsticks. Local/SMB selection lists up to 128 adjacent text files without recursion; media servers filter their available external tracks. The system picker remains available for document providers and other locations.
 - Preserve Emby/Jellyfin UserView and provider-defined folders while excluding unsupported audio, book, game and photo leaves. Folder artwork keeps the folder's own identity; server photo browsing is not added.

@@ -41,5 +41,9 @@ internal class PlaybackHost(
     fun closeDescriptors() = synchronized(this) { resources.close() }
     @Volatile
     var subtitleCommand = 0L
+    @Volatile
+    var secondarySubtitleCommand = 0L
+    @Volatile
+    var subtitleTracks = org.json.JSONArray()
     var nextStatusNs = 0L // GL only
 }
