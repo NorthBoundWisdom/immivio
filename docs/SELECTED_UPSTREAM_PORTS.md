@@ -149,3 +149,7 @@ Third-round correction to F3. A missing/unreadable settings file seeds Right in 
 ### G2 — third-round review
 
 Third-round completion of F4. A shared configs/android_manifest.py policy serves both the XML CLI and player_build.inspect_package after its actual aapt2 APK dump. Indentation, namespaces, resource IDs and typed scalar values are decoded structurally; category/game checks also use the tree. This keeps standalone configs-only workflows viable, adds no tool/dependency, and avoids any signing operation during host tests. The regression test executes inspect_package with only native/signature tool boundaries mocked and rejects compiled broad-network/BROWSABLE fixtures.
+
+### G3 — third-round review
+
+Third-round correction to P17. ReleasePageOpener validates the same fixed release URL, schedules ACTION_VIEW, and emits a request-ID/tag-scoped result only after startActivity succeeds or throws. The bridge returns that request ID for queue acceptance; late results, including an older launch of the same tag, cannot overwrite a newer check or retry. Failure leaves the release action available for a user-requested retry. There is no automatic browser retry or network check.

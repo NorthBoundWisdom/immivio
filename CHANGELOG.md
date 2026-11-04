@@ -6,6 +6,8 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 ## Unreleased
 
+- Report the actual UI-thread result of opening a release page, and show a translated browser-opening error in About when no browser or Activity is available.
+
 - Enforce the shared external playback intent policy against the final APK manifest in the export gate, parsing aapt2 xmltree into a complete element tree and failing closed on malformed or broad filters.
 
 - Preserve the new-install Right pinch default across the first settings save and restart, while retaining Both for legacy settings without a choice.

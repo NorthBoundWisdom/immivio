@@ -35,15 +35,21 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     @UsedByGodot
     fun request_update_check(version: String): Int = if (closed.get()) -1 else updateChecks.request(version)
 
+    private val releasePageOpener = ReleasePageOpener(
+        active = { !closed.get() },
+        post = { operation ->
+            check(activity != null) { "Activity unavailable" }
+            runOnHostThread { operation() }
+        },
+        launch = { url ->
+            val host = activity ?: error("Activity unavailable")
+            host.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+        },
+        report = { id, tag, opened -> emitSignal("update_release_opened", id, tag, opened) }
+    )
+
     @UsedByGodot
-    fun open_update_release(tag: String): Boolean {
-        val url = UpdateCheck.releaseUrl(tag) ?: return false
-        if (closed.get()) return false
-        runOnHostThread {
-            if (!closed.get()) runCatching { activity?.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))) }
-        }
-        return true
-    }
+    fun open_update_release(tag: String): Int = releasePageOpener.open(tag)
 
     @Volatile
     private var signalsReady = false
@@ -205,6 +211,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     }
 
     override fun getPluginSignals() = setOf(
+        SignalInfo("update_release_opened", Int::class.javaObjectType, String::class.java, Boolean::class.javaObjectType),
         SignalInfo("update_check_ready", Int::class.javaObjectType, String::class.java),
         SignalInfo("diagnostic_log_saved", Int::class.javaObjectType, String::class.java),
         SignalInfo("capabilities_ready", Int::class.javaObjectType, String::class.java),
