@@ -133,3 +133,7 @@ Review correction to P3. Godot resume parsing now separates and validates the it
 ### F3 — second-round review
 
 Review correction to P16 following the updated product instruction. Preference migration receives the actual ConfigFile load result: an existing, successfully loaded file without controls/pinch_hand gets Both and saves once; missing/corrupt files use the fresh Right default. Explicit Left/Right/Both choices are preserved. Only optical pinch content gestures and pinch taps use the preference; official palm menu events remain left-only, and physical controller buttons are unchanged.
+
+### F4 — second-round review
+
+Review narrowing of P6. VIEW uses separate filters to avoid Android combining network schemes with application/octet-stream. SEND retains its video/binary type association (its URI is carried in EXTRA_STREAM), and request validation rejects binary/network SEND payloads too. Explicit text/plain STRM intents are rejected; content/file application/octet-stream STRM remains supported. Actual unsigned Godot export is checked through its final merged manifest; signing preparation and installation are not used.

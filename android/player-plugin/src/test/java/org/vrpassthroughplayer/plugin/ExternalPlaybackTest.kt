@@ -13,6 +13,14 @@ class ExternalPlaybackTest {
         assertFalse(parse("https://host/video?token=secret").toString().contains("secret"))
         assertThrows(Exception::class.java) { ExternalPlaybackRequest.parse("android.intent.action.VIEW", "https://host/film", "Film", "application/pdf", false) }
     }
+    @Test fun binaryAndTextAssociationsCannotOpenNetworkDownloads() {
+        fun parse(uri: String, mime: String) = ExternalPlaybackRequest.parse("android.intent.action.VIEW", uri, "film.strm", mime, true)
+        assertEquals("content", parse("content://provider/document/film", "application/octet-stream").scheme)
+        assertEquals("https", parse("https://host/film", "video/mp4").scheme)
+        for (mime in listOf("application/octet-stream", "text/plain"))
+            assertThrows(Exception::class.java) { parse("https://host/film.strm", mime) }
+        assertThrows(Exception::class.java) { parse("content://provider/document/film.strm", "text/plain") }
+    }
     @Test fun replacementExpiryCapacityAndReleaseCloseExactlyOnce() {
         var clock = 0L; var closed = 0
         val leases = ExternalPlaybackLeases { clock }

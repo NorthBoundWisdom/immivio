@@ -12,8 +12,8 @@ internal class ExternalPlaybackRequest private constructor(val uri: String, val 
             require(raw != null && raw.length in 1..8192 && raw.none { it.isISOControl() })
             val uri = URI(raw)
             require(uri.scheme in setOf("file", "content", "http", "https") && uri.rawUserInfo == null && uri.fragment == null)
-            require(mime.isNullOrEmpty() || mime.startsWith("video/") || mime == "application/octet-stream" ||
-                (mime == "text/plain" && (StrmFile.location(raw) || StrmFile.named(title.orEmpty()))))
+            require(if (uri.scheme in setOf("http", "https")) mime?.startsWith("video/") == true
+                else mime.isNullOrEmpty() || mime.startsWith("video/") || mime == "application/octet-stream")
             when (uri.scheme) {
                 "content" -> require(readGranted && !uri.rawAuthority.isNullOrBlank() && !uri.rawPath.isNullOrBlank())
                 "file" -> {
