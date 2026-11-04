@@ -490,7 +490,7 @@ class DlnaLibraryTest {
     @Test
     fun repeatedChangedIncompleteOversizedAndFailedPagesNeverReturnPartialListing() {
         for (failure in listOf("repeat", "update", "total", "empty", "count", "oversize", "http")) {
-            val offsets = mutableListOf<Int>()
+            val offsets = java.util.concurrent.CopyOnWriteArrayList<Int>()
             MediaServerClientTest.Fixture { _, _, body ->
                 val offset =
                     Regex("<StartingIndex>([0-9]+)</StartingIndex>").find(body)!!.groupValues[1].toInt()
@@ -512,7 +512,7 @@ class DlnaLibraryTest {
                     )
                 }
             }.use { fixture ->
-                assertThrows(Exception::class.java) {
+                val rejected = assertThrows(Exception::class.java) {
                     DlnaClient.browse(
                         DlnaClient.Server(
                             "id",
@@ -522,7 +522,7 @@ class DlnaLibraryTest {
                         ), "0"
                     )
                 }
-                assertEquals(if (failure == "oversize") listOf(0) else listOf(0, 1), offsets)
+                assertEquals("$failure rejected by $rejected", if (failure == "oversize") listOf(0) else listOf(0, 1), offsets.toList())
             }
         }
     }
