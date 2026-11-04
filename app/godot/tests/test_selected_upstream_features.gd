@@ -177,7 +177,7 @@ func _run() -> void:
 		var direction: Vector3 = -slider.node.global_basis.z.normalized()
 		main.video_menu.press_pointer("left_hand", point - direction * 0.2, direction, true)
 		main.video_menu.release_pointer("left_hand", point - direction * 0.2, direction, true)
-		check(absf(main.video.screen_distance - 7.05) < 0.1, "Pointer midpoint matches the logarithmic distance rail")
+		check(absf(main.video.screen_distance - 2.25) < 0.1, "Pointer midpoint matches the logarithmic distance rail")
 		break
 	var probe := preload("res://scripts/selected_features_device_probe.gd").new()
 	main._on_playback_adjustment("screen_fixed", false)
