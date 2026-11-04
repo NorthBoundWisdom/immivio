@@ -11,6 +11,11 @@ const RETIRED_KEYS := [
 
 static func apply(settings: ConfigFile) -> bool:
 	var changed := false
+	if settings.has_section_key("display", "refresh_rate"):
+		var rate: Variant = settings.get_value("display", "refresh_rate")
+		if not (rate is int or rate is float) or not is_finite(float(rate)) or float(rate) <= 0.0:
+			settings.set_value("display", "refresh_rate", 72.0)
+			changed = true
 	for item in RETIRED_KEYS:
 		if settings.has_section_key(item[0], item[1]):
 			settings.erase_section_key(item[0], item[1])

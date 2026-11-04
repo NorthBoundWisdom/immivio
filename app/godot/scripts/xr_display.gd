@@ -11,6 +11,8 @@ var applied_passthrough := false
 var session_state := "uninitialized"
 var error_code := ""
 var render_scale := 1.0
+var preferred_refresh_rate := 72.0
+var applied_refresh_rate := 0.0
 var msaa_3d := Viewport.MSAA_2X
 var flat_msaa_3d := Viewport.MSAA_4X
 var scenery: Sky
@@ -146,6 +148,7 @@ func _on_session_event(event: String) -> void:
 		# Reapply the user's mode after session resume; do not destroy the runtime.
 		_apply_requested_mode()
 		_apply_performance_levels()
+		_apply_refresh_rate()
 	status_changed.emit()
 
 
@@ -188,6 +191,55 @@ func _on_presence_changed(present: bool) -> void:
 	DiagnosticLog.record("user_presence_changed", {"present": present})
 
 
+static func refresh_rates_from(target: Object) -> Array[float]:
+	var result: Array[float] = []
+	if target == null or not target.has_method("get_available_display_refresh_rates"):
+		return result
+	for item in target.get_available_display_refresh_rates():
+		if (item is int or item is float) and is_finite(float(item)) and float(item) > 0.0 and float(item) not in result:
+			result.append(float(item))
+	result.sort()
+	return result
+
+
+static func closest_refresh_rate(values: Array, preferred: float = 72.0) -> float:
+	var chosen := 0.0
+	var distance := INF
+	for rate in values:
+		var delta := absf(rate - preferred)
+		if delta < distance or (is_equal_approx(delta, distance) and rate < chosen):
+			chosen = rate
+			distance = delta
+	return chosen
+
+
+func available_refresh_rates() -> Array[float]:
+	var empty: Array[float] = []
+	if xr != null and xr.is_initialized() and not preview:
+		return refresh_rates_from(xr)
+	return empty
+
+
+func set_refresh_preference(value: float) -> bool:
+	if not is_finite(value) or value not in available_refresh_rates():
+		return false
+	preferred_refresh_rate = value
+	_apply_refresh_rate()
+	return true
+
+
+func _apply_refresh_to(target: Object) -> float:
+	var selected := closest_refresh_rate(refresh_rates_from(target), preferred_refresh_rate)
+	if selected > 0:
+		target.set("display_refresh_rate", selected)
+	return selected
+
+
+func _apply_refresh_rate() -> void:
+	if xr != null and xr.is_initialized() and not preview:
+		applied_refresh_rate = _apply_refresh_to(xr)
+
+
 func capabilities() -> Dictionary:
 	var report := {
 		"preview": preview,
@@ -203,6 +255,8 @@ func capabilities() -> Dictionary:
 		"performance_levels": performance_levels,
 		"foveation_level": foveation_level,
 		"render_scale": render_scale,
+		"preferred_refresh_rate": preferred_refresh_rate,
+		"requested_refresh_rate": applied_refresh_rate,
 		"viewport_msaa_3d": viewport.msaa_3d if viewport else Viewport.MSAA_DISABLED,
 		# Vendors can shrink the actual render region without changing the allocated eye buffers.
 		"meta_dynamic_resolution_enabled":

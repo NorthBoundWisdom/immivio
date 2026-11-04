@@ -38,6 +38,8 @@ func _library_settings() -> Dictionary:
 		"output_width": Quality.load_output_choice(host.settings),
 		"show_fps": host.fps_overlay != null and host.fps_overlay.visible,
 		"display_quality": host.display_quality,
+		"refresh_rate": host.display.closest_refresh_rate(host.display.available_refresh_rates(), host.display.preferred_refresh_rate),
+		"refresh_rates": host.display.available_refresh_rates(),
 		"display_quality_pending":
 		not is_equal_approx(
 			host.display.render_scale, Quality.render_scale(host.display_quality, host.low_end_gpu)
@@ -89,6 +91,12 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 			host.settings.save(host.settings_path)
 		"restart_app", "quit_app":
 			host._finish_app(key == "restart_app")
+		"refresh_rate":
+			if not (value is int or value is float) or not host.display.set_refresh_preference(float(value)):
+				return
+			host.settings.set_value("display", "refresh_rate", host.display.preferred_refresh_rate)
+			host.settings.save(host.settings_path)
+			host.recent_menu.refresh()
 		"display_quality":
 			host.display_quality = clampi(int(value), Quality.AUTO, Quality.SCALES.size() - 1)
 			# Apply at next startup: live OpenXR resizing fails to free GLES3 targets on Quest.

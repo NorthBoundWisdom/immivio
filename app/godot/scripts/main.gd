@@ -259,6 +259,7 @@ func _ready() -> void:
 	display.render_scale = Quality.render_scale(display_quality, low_end_gpu)
 	display.msaa_3d = Quality.MSAA[Quality.resolve(display_quality, low_end_gpu)]
 	display.flat_msaa_3d = Quality.FLAT_MSAA[Quality.resolve(display_quality, low_end_gpu)]
+	display.preferred_refresh_rate = float(settings.get_value("display", "refresh_rate", 72.0))
 	display.configure(get_viewport(), world.environment, XRServer.find_interface("OpenXR"), desktop)
 	input_visuals = InputVisuals.new()
 	input_visuals.name = "InputVisuals"
