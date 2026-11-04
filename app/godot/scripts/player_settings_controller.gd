@@ -110,8 +110,6 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 		"library_orders":
 			host.settings.set_value("library", "orders", value)
 			host.settings.save(host.settings_path)
-		"restart_app", "quit_app":
-			host._finish_app(key == "restart_app")
 		"refresh_rate":
 			if not (value is int or value is float) or not host.display.set_refresh_preference(float(value)):
 				return

@@ -1,7 +1,8 @@
 """Physical-headset checks for the selected upstream ports.
 
-Requires the exact installed Debug APK and synthetic files staged in
-/storage/emulated/0/Movies/ImmivioAcceptance20261024. Uses software-generated
+Requires the exact installed Debug APK. Media scenarios also need synthetic files
+staged in /storage/emulated/0/Movies/ImmivioAcceptance20261024. The menus step
+checks dropdowns/curvature/navigation without staging media. Uses software-generated
 ray events through production menus, not physical controller actuation.
 """
 import argparse
@@ -80,6 +81,10 @@ class Device:
             data = self.adb(*command)
             if data.startswith(b'\x89PNG'):
                 (self.out / local).write_bytes(data)
+        if step == 'menus':
+            data = self.adb('exec-out','run-as',PACKAGE,'cat','files/diagnostics/acceptance_' + key + '_dropdown.png')
+            if data.startswith(b'\x89PNG'):
+                (self.out / 'menus-dropdown-ui.png').write_bytes(data)
         if step == 'library':
             data = self.adb('exec-out','run-as',PACKAGE,'cat','files/diagnostics/acceptance_' + key + '_compact.png')
             if data.startswith(b'\x89PNG'):
@@ -95,7 +100,7 @@ def main():
     parser.add_argument('--serial', required=True)
     parser.add_argument('--apk', type=Path, required=True)
     parser.add_argument('--out', type=Path, required=True)
-    parser.add_argument('--step', choices=['setup','browse','restore','controls','cinema','library','snapshot','error'])
+    parser.add_argument('--step', choices=['setup','browse','restore','controls','cinema','library','menus','snapshot','error'])
     parser.add_argument('--open-local')
     parser.add_argument('--open-uri')
     parser.add_argument('--expect-error')

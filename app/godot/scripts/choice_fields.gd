@@ -467,16 +467,8 @@ func update(hand: String, origin: Vector3, direction: Vector3, tracked: bool) ->
 
 
 func _capture_point(origin: Vector3, direction: Vector3) -> Variant:
-	if not origin.is_finite() or not direction.is_finite() or direction.length_squared() < 0.000001:
-		return null
-	var inverse: Transform3D = menu.global_transform.affine_inverse()
-	var start: Vector3 = inverse * origin
-	var delta: Vector3 = inverse.basis * direction.normalized()
-	var z := float(capture.point.z)
-	if delta.z >= -0.00001 or start.z <= z:
-		return null
-	# Use the pressed button's plane. Projecting to z=0 makes a stationary angled ray drift.
-	return start + delta * ((z - start.z) / delta.z)
+	# Keep the pressed control's depth, but first map physical XR rays to canvas.
+	return menu.pointer_plane_point(origin, direction, float(capture.point.z))
 
 
 func release(hand: String, origin: Vector3, direction: Vector3, tracked: bool) -> void:

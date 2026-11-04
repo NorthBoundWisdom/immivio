@@ -1310,10 +1310,8 @@ func _on_display_debug_command(_id: int, payload: String) -> void:
 		video._write_debug_report()
 	elif operation in ["display_quality", "sharpness"]:
 		_on_setting_changed(operation, command.get("value", 0))
-	elif operation in ["restart_app", "quit_app"]:
-		recent_menu._activate(
-			recent_menu.RESTART_APP if operation == "restart_app" else recent_menu.QUIT_APP
-		)
+	elif operation in ["restart_app", "quit_app"] and OS.is_debug_build():
+		_finish_app(operation == "restart_app")
 	elif operation == "media_library_ui" and OS.is_debug_build():
 		var probe := preload("res://scripts/media_server_device_probe.gd").new()
 		add_child(probe)

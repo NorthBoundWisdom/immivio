@@ -139,9 +139,9 @@ func _run() -> void:
 	)
 	var host := HostProbe.new()
 	main.platform_plugin = host
-	main.recent_menu._activate(main.recent_menu.RESTART_APP)
-	main.recent_menu._activate(main.recent_menu.RESTART_APP)
-	check(host.requests == [true], "Restart button calls Android once and saves settings")
+	main._finish_app(true)
+	main._finish_app(true)
+	check(host.requests == [true], "Lifecycle restart request calls Android once and saves settings")
 	main.platform_plugin = null
 	main.queue_free()
 	await process_frame
@@ -159,8 +159,8 @@ func _run() -> void:
 		"Desktop renderer is not low end and keeps the saved sharpness"
 	)
 	main.platform_plugin = host
-	main.recent_menu._activate(main.recent_menu.QUIT_APP)
-	check(host.requests == [true, false], "Close button requests actual application exit")
+	main._finish_app(false)
+	check(host.requests == [true, false], "Lifecycle close request calls Android")
 	main.platform_plugin = null
 	main.queue_free()
 	await process_frame

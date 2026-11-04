@@ -177,8 +177,6 @@ const SYMBOL_LAYER := 46
 const GRANT := 47
 const CLEAR_HISTORY := 49
 const ALL_FILES := 34
-const RESTART_APP := 82
-const QUIT_APP := 83
 const RECENT_PREVIOUS := 84
 const RECENT_NEXT := 85
 const USB_STORAGE := 86
@@ -256,6 +254,7 @@ var _field := 1
 var _shift := false
 var _symbols := false
 var _side: Node3D  # navigation column, angled towards the viewer
+var _drawn_navigation_key := ""
 var _covers := {}  # DLNA cover URL -> HTTPRequest while it downloads
 
 
@@ -1344,10 +1343,6 @@ func _activate(target: int) -> void:
 		player_requested.emit()
 	elif target == RECENTER:
 		recenter_requested.emit()
-	elif target == RESTART_APP:
-		setting_changed.emit("restart_app", true)
-	elif target == QUIT_APP:
-		setting_changed.emit("quit_app", true)
 	elif target >= NAV_BASE and target < NAV_BASE + NAV.size():
 		file_actions.reset()
 		account_panel.close()
@@ -1769,8 +1764,38 @@ func _editor_input(target: int) -> void:
 # --- drawing --------------------------------------------------------------------------------
 
 
-func _draw() -> void:
+## Keep the navigation's text/material instances alive while only the list scrolls.
+func _clear_content_layout(keep_navigation: bool) -> void:
+	if not keep_navigation:
+		_clear_layout()
+		return
+	var buttons := _buttons.filter(func(button): return _side.is_ancestor_of(button.node))
+	var labels := _labels.filter(func(node): return _side.is_ancestor_of(node))
+	var decorations := _decorations.filter(func(node): return _side.is_ancestor_of(node))
+	var tips := {}
+	var hover := {}
+	for button in buttons:
+		if _tips.has(button.target):
+			tips[button.target] = _tips[button.target]
+	for hand in _hover:
+		if buttons.any(func(button): return button.target == _hover[hand]):
+			hover[hand] = _hover[hand]
+	_buttons = _buttons.filter(func(button): return not _side.is_ancestor_of(button.node))
+	_labels = _labels.filter(func(node): return not _side.is_ancestor_of(node))
+	_decorations = _decorations.filter(func(node): return not _side.is_ancestor_of(node))
 	_clear_layout()
+	_buttons.append_array(buttons)
+	_labels.append_array(labels)
+	_decorations.append_array(decorations)
+	_tips.merge(tips)
+	_hover.merge(hover)
+
+
+func _draw() -> void:
+	var navigation_key := str([I18n.language, section])
+	var keep_navigation := navigation_key == _drawn_navigation_key and is_instance_valid(_side) and _side.get_child_count() > 0
+	_clear_content_layout(keep_navigation)
+	_side.visible = false
 	if subtitle_picker.active:
 		subtitle_picker.draw()
 		return
@@ -1780,18 +1805,21 @@ func _draw() -> void:
 	# Like common VR players: a navigation column angled towards the viewer, the browser beside
 	# it, and round actions floating under the browser.
 	_set_backdrop(Vector2(1.46, 1.12), Vector2(0.13, 0))
-	var column := _quad(Vector2(0.42, 1.12), Vector3.ZERO, PANEL, 10)
-	_side.add_child(column)
-	_decorations.append(column)
-	for position in NAV_ORDER.size():
-		var i: int = NAV_ORDER[position]
-		_nav_button(
-			NAV_BASE + i,
-			I18n.t(NAV[i]),
-			NAV_ICONS[i],
-			Vector2(0, 0.39 - position * 0.13),
-			i == section
-		)
+	_side.visible = true
+	if not keep_navigation:
+		var column := _quad(Vector2(0.42, 1.12), Vector3.ZERO, PANEL, 10)
+		_side.add_child(column)
+		_decorations.append(column)
+		for position in NAV_ORDER.size():
+			var i: int = NAV_ORDER[position]
+			_nav_button(
+				NAV_BASE + i,
+				I18n.t(NAV[i]),
+				NAV_ICONS[i],
+				Vector2(0, 0.39 - position * 0.13),
+				i == section
+			)
+		_drawn_navigation_key = navigation_key
 	if account_panel.active():
 		account_panel.draw()
 		return
@@ -1914,11 +1942,6 @@ func _draw() -> void:
 			not video_queue().is_empty()
 		)
 		_button(QUEUE_DONE, I18n.t("Done adding"), Vector2(0.46, 0.57), Vector2(0.62, 0.07))
-	if section == Section.SETTINGS:
-		_control_button(
-			RESTART_APP, I18n.t("Restart app"), Vector2(0.10, -0.515), 0.42, true, "refresh"
-		)
-		_control_button(QUIT_APP, I18n.t("Close app"), Vector2(0.59, -0.515), 0.42, true, "close")
 	if status in ["Video access needed", "Media access needed", "All files access needed"]:
 		_button(
 			GRANT,
