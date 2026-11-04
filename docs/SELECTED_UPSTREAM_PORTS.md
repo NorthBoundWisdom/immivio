@@ -43,3 +43,9 @@ Report confirmed playback start, throttled progress and stop to Emby/Jellyfin on
 `playableDetail`/selected stream behavior derives from upstream EmbyClient; URI and menu integration are rewritten for Immivio. At most 16 directly playable item MediaSources are listed. Additional parts, transcoding and provider changes are excluded. Server-level resume remains available on the legacy default action; explicit versions use local per-version progress.
 
 Offer direct-play Emby/Jellyfin versions on the details page. Explicit version URIs isolate resume, mode and track preferences; the unselected URI keeps the legacy identity. Report the selected MediaSourceId. Missing or unsupported selected versions fail without silently playing another file.
+
+### P4 — Emby/Jellyfin folder browsing
+
+The folders-mode exclusion policy derives from upstream EmbyClient. Immivio additionally excludes Photo to preserve its existing server-video scope. The 0.15.2 photo/media-type filter path and 0.16.2 child-artwork fallback do not exist in this architecture, so those paths are not introduced.
+
+Preserve UserView and provider-defined folders by excluding unsupported leaves instead of whitelisting container types. Folder artwork continues to use the folder identity. Photo leaves remain excluded; no server photo viewer is added.
