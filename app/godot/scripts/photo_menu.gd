@@ -615,5 +615,5 @@ func _update_highlights() -> void:
 			and not _hover.values().has(button.target)
 		):
 			button.node.material_override.set_shader_parameter(
-				"surface_color", Color(0.16, 0.31, 0.27)
+				"surface_color", SELECTED
 			)

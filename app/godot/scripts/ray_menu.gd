@@ -30,8 +30,11 @@ const SURFACE := preload("res://shaders/menu_surface.gdshader")
 const Icons := preload("res://scripts/menu_icons.gd")
 const I18n := preload("res://scripts/i18n.gd")
 const DeviceStatus := preload("res://scripts/device_status.gd")
-const PANEL := Color(0.065, 0.075, 0.095, 0.98)
-const TILE := Color(0.105, 0.12, 0.15, 1.0)
+const PANEL := Color(0.065, 0.08, 0.105, 0.98)
+const TILE := Color(0.19, 0.235, 0.29, 1.0)
+const SELECTED := Color(0.13, 0.39, 0.31, 1.0)
+const POPUP := Color(0.11, 0.145, 0.19, 1.0)
+const OUTLINE := Color(0.36, 0.44, 0.53, 0.8)
 const ACCENT := Color(0.54, 0.93, 0.77)
 const MUTED := Color(0.56, 0.62, 0.69)
 # File names and the menu are often Chinese/Japanese: fall back to the system CJK font.
@@ -601,6 +604,8 @@ func _quad(size: Vector2, location: Vector3, color: Color, priority: int) -> Mes
 	surface.render_priority = priority
 	surface.set_shader_parameter("surface_color", color)
 	surface.set_shader_parameter("surface_size", size)
+	surface.set_shader_parameter("border_width", 0.002 if priority == 30 else (0.0012 if priority == 11 else 0.0))
+	surface.set_shader_parameter("border_color", OUTLINE)
 	surface.set_shader_parameter("corner_radius", 0.028 if priority == 10 else 0.012)
 	node.material_override = surface
 	return node
@@ -673,12 +678,15 @@ func _update_highlights() -> void:
 			color = (
 				Color(0.26, 0.44, 0.38)
 				if button.get("hover_disabled", false) and button.base_color == ACCENT
-				else Color(0.085, 0.095, 0.115, button.base_color.a)
+				else Color(0.13, 0.16, 0.20, button.base_color.a)
 			)
 		elif hovered:
 			color = (
-				Color(0.67, 1.0, 0.86) if button.base_color == ACCENT else Color(0.23, 0.43, 0.38)
+				Color(0.67, 1.0, 0.86) if button.base_color == ACCENT else Color(0.27, 0.40, 0.39)
 			)
+		var outline: Color = ACCENT if hovered or button.get("open_choice", false) or button.base_color == SELECTED else OUTLINE
+		if button.node.material_override.get_shader_parameter("border_color") != outline:
+			button.node.material_override.set_shader_parameter("border_color", outline)
 		if button.node.material_override.get_shader_parameter("surface_color") != color:
 			button.node.material_override.set_shader_parameter("surface_color", color)
 	_update_tooltip()

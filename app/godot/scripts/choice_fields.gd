@@ -5,7 +5,10 @@ signal previewed(key: String, value: Variant)
 var sliders: Dictionary = {}
 const BASE := 8000
 const POPUP_ROWS := 6
-const PITCH := 0.071
+const PITCH := 0.074
+const POPUP_PADDING := 0.012
+const OPTION_HEIGHT := 0.068
+const OPTION_FONT_SIZE := 20
 var menu: Node3D
 var targets: Dictionary = {}
 var capture: Dictionary = {}
@@ -120,14 +123,23 @@ func field(
 			label = str(row.get("display_value", row.value))
 		var target := _button(
 			{"kind": "open", "key": key},
-			menu._fit_title(label, "  ▾", width - 0.04, 18),
+			menu._fit_title(label, "", width - 0.09, OPTION_FONT_SIZE),
 			centre,
 			Vector2(width, height),
 			parent
 		)
+		var button: Dictionary = menu._buttons.back()
+		button["open_choice"] = opened == key
+		var text: Label3D = button.node.get_child(0)
+		text.font_size = OPTION_FONT_SIZE
+		text.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		text.position.x = -width / 2 + 0.024
+		var arrow: MeshInstance3D = menu._icon("arrow_up" if opened == key else "arrow_down", Vector3(width / 2 - 0.028, 0, 0.006), 0.026, menu.ACCENT if opened == key else menu.MUTED, button.node)
+		arrow.material_override.render_priority = 14
 		menu._tips[target] = menu.I18n.t(str(row.get("hint", "")))
 		if opened == key:
 			popup = row.duplicate(true)
+			popup["width"] = float(row.get("width", width))
 			var point: Vector3 = menu.to_local(menu._buttons.back().node.global_position)
 			anchor = Vector2(point.x, point.y)
 
@@ -318,14 +330,14 @@ func finish() -> void:
 	offset = clampi(offset, 0, maxi(0, options.size() - capacity))
 	var count := mini(capacity, options.size())
 	var width := float(popup.get("width", 0.72))
-	var height := count * PITCH + 0.055 + header_height + footer_height + scroll_height
+	var height := count * PITCH + 2 * POPUP_PADDING + header_height + footer_height + scroll_height
 	var top := anchor.y - 0.04
 	if top - height < bounds.x:
 		top = anchor.y + 0.04 + height
 	top = clampf(top, bounds.x + height, bounds.y)
 	var x := clampf(anchor.x, -0.39, 0.46)
 	var panel: MeshInstance3D = menu._quad(
-		Vector2(width, height), Vector3(x, top - height / 2, 0.028), menu.PANEL, 30
+		Vector2(width, height), Vector3(x, top - height / 2, 0.028), menu.POPUP, 30
 	)
 	menu.add_child(panel)
 	menu._decorations.append(panel)
@@ -337,16 +349,26 @@ func finish() -> void:
 		var target := _button(
 			{"kind": "choose", "key": opened, "value": option.value},
 			menu.I18n.t(option.label),
-			Vector2(x, top - header_height - 0.039 - row_index * PITCH),
-			Vector2(width - 0.07, 0.061),
+			Vector2(x, top - header_height - POPUP_PADDING - PITCH / 2 - row_index * PITCH),
+			Vector2(width - 2 * POPUP_PADDING, OPTION_HEIGHT),
 			null,
 			same(popup.value, option.value)
 		)
 		var node: MeshInstance3D = menu._buttons.back().node
 		node.position.z = 0.036
 		node.material_override.render_priority = 31
-		(node.get_child(0) as Label3D).render_priority = 32
-		menu._tips[target] = menu.I18n.t(str(option.get("hint", "")))
+		var label: Label3D = node.get_child(0)
+		var full_text: String = menu.I18n.t(option.label)
+		label.render_priority = 32
+		label.font_size = OPTION_FONT_SIZE
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		label.position.x = -(width - 2 * POPUP_PADDING) / 2 + 0.022
+		label.text = menu._fit_title(full_text, "", width - 0.10, OPTION_FONT_SIZE)
+		if same(popup.value, option.value):
+			label.modulate = menu.ACCENT
+			var mark: MeshInstance3D = menu._icon("check", Vector3(width / 2 - 0.045, 0, 0.006), 0.028, menu.ACCENT, node)
+			mark.material_override.render_priority = 32
+		menu._tips[target] = full_text if label.text != full_text else menu.I18n.t(str(option.get("hint", "")))
 	if not footer.is_empty():
 		var hint: Label3D = menu._label(
 			menu.I18n.t(footer),

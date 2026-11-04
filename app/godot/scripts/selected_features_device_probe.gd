@@ -243,6 +243,16 @@ func run(host: Node, step: String, request: String) -> Dictionary:
 		menu.scroll = 0
 		menu.refresh()
 		check(navigation_ids(menu) == ids, "Restoring credits position retains navigation")
+		menu.tab = menu.DISPLAY_TAB
+		menu._about_page = 0
+		menu.scroll = 0
+		menu.refresh()
+		await settle(host)
+		if host.menu_compositor.viewport:
+			await RenderingServer.frame_post_draw
+			host.menu_compositor.viewport.get_texture().get_image().save_png("user://diagnostics/acceptance_" + request + "_closed.png")
+		check(await held_choice_tap(menu, choice_target(menu, "display_quality", "open")), "Quality dropdown opener remains ray-selectable")
+		check(menu.choices.opened == "display_quality" and not menu.choices.popup.is_empty(), "Quality dropdown shows filled option rows")
 	elif step == "snapshot":
 		check(not host.display.preview and host._head_tracked(), "Live XR session")
 	elif step == "error":
