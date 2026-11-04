@@ -218,7 +218,7 @@ func draw(key: String) -> void:
 						"IPD compensation",
 						"stereo_horizontal",
 						Vector3(
-							-menu.StereoView.LIMIT, menu.StereoView.LIMIT, menu.StereoView.STEP
+							-10.0 if int(menu._state.get("geometry", 0)) != 0 else -menu.StereoView.LIMIT, 10.0 if int(menu._state.get("geometry", 0)) != 0 else menu.StereoView.LIMIT, menu.StereoView.STEP
 						),
 						0,
 						"%",

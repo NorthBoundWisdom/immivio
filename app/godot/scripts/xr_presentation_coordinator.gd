@@ -987,6 +987,7 @@ func _recenter() -> void:
 	host._system_recenter_pending = false
 	host._library_grab.clear()
 	host._grab.clear()
+	host.get("_input").immersive.suspend()
 	host.photo_hands.cancel()
 	host.photo_swipe.cancel()
 	host.memory_swipe.cancel()
@@ -994,6 +995,8 @@ func _recenter() -> void:
 		host._place_screen(true)
 		if host._viewer().geometry != Geometry.Geometry.FLAT:
 			host._viewer().reset_view()
+			if not host.photo_active:
+				host.video.reset_immersive_adjustments()
 	if host.photo_active:
 		host.photo.gallery.recenter()
 		if host.photo.inspect:

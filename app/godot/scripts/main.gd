@@ -261,6 +261,12 @@ func _ready() -> void:
 	display.flat_msaa_3d = Quality.FLAT_MSAA[Quality.resolve(display_quality, low_end_gpu)]
 	display.preferred_refresh_rate = float(settings.get_value("display", "refresh_rate", 72.0))
 	display.configure(get_viewport(), world.environment, XRServer.find_interface("OpenXR"), desktop)
+	immersive_overlay = preload("res://scripts/immersive_adjustment_overlay.gd").new()
+	immersive_overlay.source = func(): return _input.immersive.feedback_snapshot(video.local_uri) if video else []
+	camera.add_child(immersive_overlay)
+	picture_center_guide = preload("res://scripts/picture_center_guide.gd").new()
+	picture_center_guide.source = _picture_center_sample
+	add_child(picture_center_guide)
 	input_visuals = InputVisuals.new()
 	input_visuals.name = "InputVisuals"
 	origin.add_child(input_visuals)
@@ -516,6 +522,8 @@ func _apply_system_recenter() -> void:
 	_presentation._apply_system_recenter()
 
 
+var picture_center_guide: Node3D
+var immersive_overlay: Node3D
 var _external_poll_ms := 0
 
 func _process(delta: float) -> void:
@@ -578,6 +586,15 @@ func _process(delta: float) -> void:
 	_update_corner_hover()
 	_update_flat_grab_stick(left, right, delta)
 	_process_sticks(left, right, delta)
+
+
+func _picture_center_sample() -> Dictionary:
+	if not video or photo_active or video.geometry == 0 or not video.panel or not video.panel.visible or not _input_focused() or (_active_menu() and (_active_menu() != player_menu or not player_menu.allows_playback_sticks())):
+		return {}
+	var head: Variant = _head_pose()
+	if not head is Transform3D or (_grab.is_empty() and (not picture_center_guide or picture_center_guide.identity.is_empty())):
+		return {}
+	return {"identity": video.local_uri, "hand": str(_grab.get("hand", "")), "held": not _grab.is_empty(), "head": head, "centre": video.panel.to_global(Vector3(0, 0, -video.SPHERE_RADIUS))}
 
 
 func _process_sticks(left: Vector2, right: Vector2, delta: float) -> void:

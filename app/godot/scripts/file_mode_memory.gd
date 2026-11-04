@@ -90,7 +90,7 @@ static func valid_mode(value: Variant) -> bool:
 				return false
 	if value.has("subtitle_encodings") and not preload("res://scripts/file_subtitle_encoding.gd").valid(value.subtitle_encodings):
 		return false
-	return StereoView.valid(value)
+	return StereoView.valid(value) and preload("res://scripts/immersive_adjustments.gd").valid(value)
 
 
 func _bank_path(bank: int) -> String:
