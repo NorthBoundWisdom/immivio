@@ -251,7 +251,8 @@ func _on_menu_action(operation: String) -> void:
 		host._queue_action(operation)
 		return
 	if operation == "load_subtitle":
-		host.video.pick_external_subtitle()
+		host._show_recent_menu(true)
+		host.recent_menu.subtitle_picker.open(host.video.local_uri, host.video.display_name, host.video.subtitle_tracks(), host.video.media.session_id)
 		return
 	if operation == "forget_subtitle":
 		host.video.forget_external_subtitle()

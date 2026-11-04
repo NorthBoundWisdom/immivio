@@ -75,6 +75,7 @@ static func valid_mode(value: Variant) -> bool:
 			and not (
 				value.external_subtitle_uri.begins_with("content://")
 				or value.external_subtitle_uri.begins_with("file://")
+				or value.external_subtitle_uri.begins_with("smb://")
 			)
 		):
 			return false

@@ -335,6 +335,15 @@ func _ready() -> void:
 	recent_menu.file_deleted.connect(_forget_deleted_file)
 	recent_menu.settings_provider = _library_settings
 	recent_menu.chosen.connect(_on_library_chosen)
+	recent_menu.subtitle_system_requested.connect(video.pick_external_subtitle)
+	recent_menu.subtitle_chosen.connect(func(selection):
+		if selection.source_uri != video.local_uri or int(selection.session_id) != video.media.session_id:
+			return
+		if selection.has("track_id"):
+			video.set_subtitle_track(int(selection.track_id))
+		else:
+			video._pending_external_uri = str(selection.get("subtitle_uri", ""))
+	)
 	recent_menu.storage_eject_requested.connect(_on_storage_eject_requested)
 	recent_menu.storage_removed.connect(_release_storage_readers)
 	recent_menu.player_requested.connect(

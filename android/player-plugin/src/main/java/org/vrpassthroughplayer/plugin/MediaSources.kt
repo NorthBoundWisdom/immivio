@@ -262,6 +262,20 @@ internal class MediaSources(
         emptyList()
     }
 
+    fun subtitleCandidates(uri: String): Int = run("subtitle_candidates") {
+        val entries = when {
+            uri.startsWith("smb://") -> smb.subtitleCandidates(uri)
+            uri.startsWith("file://") -> {
+                val file = java.io.File(android.net.Uri.parse(uri).path ?: error("File path unavailable"))
+                org.json.JSONArray(SidecarSubtitles.candidates(file.parentFile?.listFiles().orEmpty().filter { it.isFile }.map { it.name }).map { name ->
+                        JSONObject().put("title", name).put("subtitle_uri", android.net.Uri.fromFile(java.io.File(file.parentFile, name)).toString())
+                    })
+            }
+            else -> org.json.JSONArray()
+        }
+        JSONObject().put("entries", entries)
+    }
+
     fun sidecarSubtitles(uri: String): List<SidecarSubtitles.Track> = try {
         when {
             uri.startsWith("file://") -> {

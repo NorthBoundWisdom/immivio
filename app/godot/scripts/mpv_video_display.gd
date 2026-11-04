@@ -1103,7 +1103,7 @@ func _on_subtitle_import(id: int, payload: String) -> void:
 		subtitles.select(-1)
 	elif result.get("state") == "error":
 		_subtitle_loading = false
-		picker_error = "Unable to load subtitle. Choose an SRT, ASS, SSA or VTT file."
+		picker_error = "Unable to load text subtitle. Select it again."
 	changed.emit()
 
 
@@ -1843,7 +1843,7 @@ func _on_state(id: int, payload: String) -> void:
 			_remember_mode()
 			picker_error = ""
 		else:
-			picker_error = "Unable to load subtitle. Choose an SRT, ASS, SSA or VTT file."
+			picker_error = "Unable to load text subtitle. Select it again."
 		_subtitle_import_command = 0
 		_subtitle_import_uri = ""
 		_subtitle_loading = false

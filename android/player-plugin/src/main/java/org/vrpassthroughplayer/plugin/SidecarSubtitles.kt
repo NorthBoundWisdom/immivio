@@ -11,6 +11,12 @@ internal object SidecarSubtitles {
     // .sub is ambiguous: MPV's detected codec decides whether it is text or bitmap.
     private val extensions = setOf("srt", "ass", "ssa", "vtt", "smi", "sami", "sub")
 
+    fun candidates(names: Collection<String>): List<String> = names.filter {
+        '/' !in it && '\\' !in it && supported(it)
+    }.sortedBy { it.lowercase() }.take(128)
+
+    fun supported(name: String): Boolean = name.substringAfterLast('.', "").lowercase() in extensions
+
     fun select(video: String, names: Collection<String>): List<String> {
         val stem = video.substringBeforeLast('.')
         if (stem.isEmpty()) return emptyList()

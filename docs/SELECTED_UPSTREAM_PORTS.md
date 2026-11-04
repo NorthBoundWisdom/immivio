@@ -49,3 +49,9 @@ Offer direct-play Emby/Jellyfin versions on the details page. Explicit version U
 The folders-mode exclusion policy derives from upstream EmbyClient. Immivio additionally excludes Photo to preserve its existing server-video scope. The 0.15.2 photo/media-type filter path and 0.16.2 child-artwork fallback do not exist in this architecture, so those paths are not introduced.
 
 Preserve UserView and provider-defined folders by excluding unsupported leaves instead of whitelisting container types. Folder artwork continues to use the folder identity. Photo leaves remain excluded; no server photo viewer is added.
+
+### P5 — Subtitle filename filter
+
+`subtitle_picker_filter.gd` clean/default/filter policy derives from upstream, rewritten without DesktopFiles, cloud search or archive dependencies. The picker uses Immivio’s library ray/capture routes. Listings are bounded to 128 files and never recurse. Server APIs expose tracks rather than directory files, so no invented server directory search is performed. Selection is guarded by video URI and session; filename filtering is temporary, not persisted.
+
+Add a title-seeded subtitle filename filter with ray keyboard and scroll-only thumbsticks. Local/SMB adjacent text files are listed within the current directory; server playback filters its available external tracks. Keep the system picker for document providers and other locations.

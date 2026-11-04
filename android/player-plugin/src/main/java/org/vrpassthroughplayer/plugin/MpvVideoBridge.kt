@@ -358,7 +358,8 @@ internal class MpvVideoBridge(
         val uri = Uri.parse(text)
         if (!active(session) || session.host.handle <= 0 || text.length > 8192 || uri.scheme !in setOf(
                 "content",
-                "file"
+                "file",
+                "smb"
             ) ||
             !session.host.importingSubtitle.compareAndSet(false, true)
         ) return false
@@ -382,7 +383,19 @@ internal class MpvVideoBridge(
                 val input = if (uri.scheme == "file") File(
                     uri.path ?: error("Subtitle path missing")
                 ).inputStream()
-                else app.contentResolver.openInputStream(uri) ?: error("Subtitle permission lost")
+                else if (uri.scheme == "smb") {
+                    val lease = resolveNetwork(text)
+                    val connection = java.net.URL(lease).openConnection().apply { connectTimeout = 3000; readTimeout = 5000 }
+                    try {
+                        object : java.io.FilterInputStream(connection.getInputStream()) {
+                            override fun close() {
+                                try { super.close() } finally { (connection as? java.net.HttpURLConnection)?.disconnect(); releaseNetwork(lease) }
+                            }
+                        }
+                    } catch (error: Exception) {
+                        (connection as? java.net.HttpURLConnection)?.disconnect(); releaseNetwork(lease); throw error
+                    }
+                } else app.contentResolver.openInputStream(uri) ?: error("Subtitle permission lost")
                 input.use { source ->
                     SubtitleCopies.write(source, staged, subtitleEncodingChoices[session.host.uri].orEmpty()[SubtitleCopies.key(text)] ?: "auto")
                 }

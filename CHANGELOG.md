@@ -6,6 +6,7 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 ## Unreleased
 
+- Add a title-seeded subtitle filename filter with ray keyboard and scroll-only thumbsticks. Local/SMB adjacent text files are listed within the current directory; server playback filters its available external tracks. Keep the system picker for document providers and other locations.
 - Preserve UserView and provider-defined folders by excluding unsupported leaves instead of whitelisting container types. Folder artwork continues to use the folder identity. Photo leaves remain excluded; no server photo viewer is added.
 - Offer direct-play Emby/Jellyfin versions on the details page. Explicit version URIs isolate resume, mode and track preferences; the unselected URI keeps the legacy identity. Report the selected MediaSourceId. Missing or unsupported selected versions fail without silently playing another file.
 - Report confirmed playback start, throttled progress and stop to Emby/Jellyfin only while playback history is enabled. Turning history off discards queued reports, including stop; already dispatched HTTP cannot be recalled. Failures do not retry starts or affect playback.
