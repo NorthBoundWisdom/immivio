@@ -37,3 +37,9 @@ The parser tests include real loopback HTTP redirects, failures and bounded read
 `MediaServerPlayback.kt`, `media_server_playback.gd` and reporter test scenarios derive from upstream `9a6a905..da5f86c`. Binding uses Immivio’s existing resolved stream table. Plex, STRM, local, SMB and DLNA have no report context. Unknown native/server track mappings are omitted; no guessed track IDs are sent.
 
 Report confirmed playback start, throttled progress and stop to Emby/Jellyfin only while playback history is enabled. Turning history off discards queued reports, including stop; already dispatched HTTP cannot be recalled. Failures do not retry starts or affect playback.
+
+### P3 — Emby/Jellyfin media versions
+
+`playableDetail`/selected stream behavior derives from upstream EmbyClient; URI and menu integration are rewritten for Immivio. At most 16 directly playable item MediaSources are listed. Additional parts, transcoding and provider changes are excluded. Server-level resume remains available on the legacy default action; explicit versions use local per-version progress.
+
+Offer direct-play Emby/Jellyfin versions on the details page. Explicit version URIs isolate resume, mode and track preferences; the unselected URI keeps the legacy identity. Report the selected MediaSourceId. Missing or unsupported selected versions fail without silently playing another file.

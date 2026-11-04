@@ -528,7 +528,8 @@
     "Unable to open the source. Check access and the connection.": "无法打开片源，请检查访问权限和网络连接。",
     "Unable to start playback. Check the media format.": "无法开始播放，请检查媒体格式。",
     "Playback stopped because a video frame could not be displayed.": "视频画面无法显示，播放已停止。",
-    "Encoding (reopen video)": "编码（重新打开视频后生效）"
+    "Encoding (reopen video)": "编码（重新打开视频后生效）",
+    "Version": "版本"
   },
   "zh_Hant": {
     "Reset": "重設",
@@ -1059,7 +1060,8 @@
     "Unable to start playback. Check the media format.": "無法開始播放，請檢查媒體格式。",
     "Playback stopped because a video frame could not be displayed.": "影片畫面無法顯示，播放已停止。",
     "Surround": "環繞",
-    "Encoding (reopen video)": "編碼（重新開啟影片後生效）"
+    "Encoding (reopen video)": "編碼（重新開啟影片後生效）",
+    "Version": "版本"
   },
   "ja": {
     "Reset": "リセット",
@@ -1590,6 +1592,7 @@
     "Unable to open the source. Check access and the connection.": "メディアを開けません。権限と接続を確認してください。",
     "Unable to start playback. Check the media format.": "再生を開始できません。メディア形式を確認してください。",
     "Playback stopped because a video frame could not be displayed.": "映像を表示できないため再生が停止しました。",
-    "Encoding (reopen video)": "文字コード（動画を開き直すと適用）"
+    "Encoding (reopen video)": "文字コード（動画を開き直すと適用）",
+    "Version": "バージョン"
   }
 }

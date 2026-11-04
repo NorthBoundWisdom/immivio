@@ -62,9 +62,20 @@ internal data class MediaServerAccount(
 }
 
 internal object MediaLibraryUri {
-    fun scene(server: String, id: String): String {
+    fun scene(server: String, id: String, sourceId: String = ""): String {
         mediaRequire(server.matches(Regex("[A-Za-z0-9-]{1,64}")) && id.matches(Regex("[A-Za-z0-9-]{1,64}")))
-        return "medialib://$server/scene/$id"
+        mediaRequire(sourceId.length <= 256 && sourceId.none { it.isISOControl() })
+        return "medialib://$server/scene/$id" + if (sourceId.isEmpty()) "" else "?source=" + java.net.URLEncoder.encode(sourceId, "UTF-8")
+    }
+
+    fun sourceId(value: String): String {
+        val query = try { URI(value).rawQuery } catch (_: Exception) { throw MediaServerFailure("Invalid media identity") }
+        if (query == null) return ""
+        mediaRequire(query.startsWith("source=") && !query.contains('&'))
+        val source = runCatching { java.net.URLDecoder.decode(query.removePrefix("source="), "UTF-8") }.getOrNull()
+            ?: throw MediaServerFailure("Invalid media identity")
+        mediaRequire(source.isNotEmpty() && source.length <= 256 && source.none { it.isISOControl() })
+        return source
     }
 
     fun parse(value: String): Pair<String, String> {
@@ -75,8 +86,8 @@ internal object MediaLibraryUri {
         }
         val id = u.path.orEmpty().removePrefix("/scene/")
         mediaRequire(
-            u.scheme == "medialib" && u.port == -1 && u.rawUserInfo == null && u.rawQuery == null && u.fragment == null &&
-                    u.host != null && scene(u.host, id) == value, "Invalid media identity"
+            u.scheme == "medialib" && u.port == -1 && u.rawUserInfo == null && u.fragment == null &&
+                    u.host != null && scene(u.host, id, sourceId(value)) == value, "Invalid media identity"
         )
         return u.host to id
     }
@@ -237,6 +248,10 @@ internal interface MediaLibraryClient {
     fun detail(id: String): JSONObject
     fun cover(id: String): URI
     fun coverFallback(id: String): MediaCover? = null
+    fun stream(id: String, sourceId: String): MediaStreamLink {
+        mediaRequire(sourceId.isEmpty(), "Original stream unavailable")
+        return stream(id)
+    }
     fun stream(id: String): MediaStreamLink
     fun subtitles(id: String, stream: MediaStreamLink): List<MediaSubtitleLink> = stream.subtitles
     fun audio(id: String, stream: MediaStreamLink): List<MediaAudioLink> = stream.audio
