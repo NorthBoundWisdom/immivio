@@ -120,7 +120,7 @@ Use consistent provider marks for existing Emby, Jellyfin, Plex, XBVR, DLNA, SMB
 
 The hand preference/normalization policy and tap hand context derive from upstream ControllerBindings/photo_hand_gestures. No controller remapping subsystem is imported. Settings use Immivio’s migration and General page. The selected hand initiates photo taps/swipes; a secondary hand can assist a selected-hand zoom to preserve the existing two-hand feature. Physical controller buttons and palm-wave navigation are unchanged. This default and the allowed secondary-hand assistance are explicit behavior decisions for review.
 
-Add Left/Right/Both as the shared primary hand for content pinches and summoning controls. Change the default from either hand to Right, matching upstream. Both hands still select controls in an already-open menu; the other hand may join an active photo zoom. Changing the setting cancels ownership and requires a fresh open-then-pinch.
+Add Left/Right/Both as the shared primary hand for content pinches and summoning controls. New installs default to Right; review correction F3 preserves Both for existing settings files without an explicit choice. The official palm menu gesture remains fixed to the left hand and does not use the pinch preference. Both hands still select controls in an already-open menu; the other hand may join an active photo zoom. Changing the setting cancels ownership and requires a fresh open-then-pinch.
 
 ### F1 — second-round review
 
@@ -129,3 +129,7 @@ Review correction to P1. SubtitleCopies now returns the original track on decodi
 ### F2 — second-round review
 
 Review correction to P3. Godot resume parsing now separates and validates the item ID/source query while retaining the full original URI for progress/mode/track memory. Resume deduplication includes source_id; detail progress matches exact URIs. An unavailable requested version offers no default-file action. Audit found Kotlin MediaLibraryUri already separates URI.path and sourceId and rejects foreign query fields; its existing round-trip and selected-stream tests remain authoritative. Other Godot medialib prefix uses only scope account/filter membership, not extract a scene ID.
+
+### F3 — second-round review
+
+Review correction to P16 following the updated product instruction. Preference migration receives the actual ConfigFile load result: an existing, successfully loaded file without controls/pinch_hand gets Both and saves once; missing/corrupt files use the fresh Right default. Explicit Left/Right/Both choices are preserved. Only optical pinch content gestures and pinch taps use the preference; official palm menu events remain left-only, and physical controller buttons are unchanged.

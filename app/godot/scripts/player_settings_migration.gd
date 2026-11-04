@@ -9,8 +9,11 @@ const RETIRED_KEYS := [
 ]
 
 
-static func apply(settings: ConfigFile) -> bool:
+static func apply(settings: ConfigFile, existing_file: bool = false) -> bool:
 	var changed := false
+	if existing_file and not settings.has_section_key("controls", "pinch_hand"):
+		settings.set_value("controls", "pinch_hand", "both")
+		changed = true
 	if settings.has_section_key("display", "refresh_rate"):
 		var rate: Variant = settings.get_value("display", "refresh_rate")
 		if not (rate is int or rate is float) or not is_finite(float(rate)) or float(rate) <= 0.0:

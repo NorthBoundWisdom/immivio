@@ -659,7 +659,7 @@ func _update_hand_input(delta: float) -> void:
 		var event: Dictionary = host.hand_pointers[hand].update(sample, delta)
 		if event.cancelled:
 			host._cancel_pointer(hand)
-		if event.menu and preload("res://scripts/hand_preferences.gd").allows(hand, host.pinch_hand):
+		if event.menu and hand == "left_hand":
 			host._on_pointer_button("menu_button", hand)
 		var pointer: RefCounted = host.hand_pointers[hand]
 		inputs[hand] = event.merged(

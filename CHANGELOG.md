@@ -6,11 +6,13 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 ## Unreleased
 
+- Keep the left palm menu gesture independent of pinch-hand preferences. Preserve Both for existing settings files without an explicit pinch choice; only fresh installs default to Right.
+
 - Keep media-server resume item IDs separate from version queries, retain per-version resume rows, and preselect the resumed Emby/Jellyfin version on its details page.
 
 - Keep external subtitle tracks available when bounded transcoding fails, falling back to the original mpv source. Mark failed manual encoding overrides as invalid without rewriting source files.
 
-- Add Left/Right/Both as the shared primary hand for content pinches and summoning controls. Change the default from either hand to Right, matching upstream. Both hands still select controls in an already-open menu; the other hand may join an active photo zoom. Changing the setting cancels ownership and requires a fresh open-then-pinch.
+- Add Left/Right/Both as the shared primary hand for content pinches and pinch taps that summon controls. New installations default to Right; existing settings without a choice migrate to Both. The official palm menu gesture stays on the left hand independently. Both hands still select controls in an already-open menu; the other hand may join an active photo zoom. Changing the setting cancels ownership and requires a fresh open-then-pinch.
 - Use consistent provider marks for existing Emby, Jellyfin, Plex, XBVR, DLNA, SMB and local sources. Open Plex at its library chooser and distinguish movie/TV libraries; choosing TV opens series navigation instead of a flat episode wall.
 - Improve verified mounted-volume fallback on Android 11+, distinguish missing permission, unmounted storage and provider failure, and give PICO-specific settings/reconnect guidance. Stopping App access closes related video/photo readers and known external descriptor leases without claiming hardware removal.
 - Retain a bounded, redacted step ring and Java crash record across restarts. Show prior-session availability in About and require a separate confirmation before saving a diagnostic log to Download/Immivio/logs. Keep five app-owned exports; never upload or share logs automatically.
