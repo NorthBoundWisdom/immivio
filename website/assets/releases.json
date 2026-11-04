@@ -1,5 +1,21 @@
 {
-  "tag_name": null,
-  "html_url": "https://github.com/NorthBoundWisdom/immivio/releases",
-  "assets": []
+  "tag_name": "v0.9.4",
+  "html_url": "https://github.com/NorthBoundWisdom/immivio/releases/tag/v0.9.4",
+  "assets": [
+    {
+      "name": "Immivio-OpenXR-0.9.4-release-20261024.apk",
+      "size": 160402720,
+      "browser_download_url": "https://github.com/NorthBoundWisdom/immivio/releases/download/v0.9.4/Immivio-OpenXR-0.9.4-release-20261024.apk"
+    },
+    {
+      "name": "Immivio-PICO-0.9.4-release-20261024.apk",
+      "size": 160402976,
+      "browser_download_url": "https://github.com/NorthBoundWisdom/immivio/releases/download/v0.9.4/Immivio-PICO-0.9.4-release-20261024.apk"
+    },
+    {
+      "name": "Immivio-QUEST-0.9.4-release-20261024.apk",
+      "size": 160206220,
+      "browser_download_url": "https://github.com/NorthBoundWisdom/immivio/releases/download/v0.9.4/Immivio-QUEST-0.9.4-release-20261024.apk"
+    }
+  ]
 }
