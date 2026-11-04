@@ -240,6 +240,9 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         !closed.get() && mpv.setSync(id, subtitleMs, audioMs)
 
     @UsedByGodot
+    fun media_server_playback(json: String): Boolean = !closed.get() && sources.reportPlayback(json)
+
+    @UsedByGodot
     fun configure_subtitle_encodings(uri: String, json: String): Boolean = !closed.get() && mpv.subtitleEncodings(uri, json)
 
     @UsedByGodot

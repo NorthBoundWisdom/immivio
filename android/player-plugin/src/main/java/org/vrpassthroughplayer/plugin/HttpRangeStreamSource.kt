@@ -17,7 +17,8 @@ internal data class MediaStreamLink(
     val identity: String,
     val subtitles: List<MediaSubtitleLink> = emptyList(),
     val audio: List<MediaAudioLink> = emptyList(),
-    val basename: String = ""
+    val basename: String = "",
+    val playback: MediaServerPlaybackContext? = null
 )
 
 /** Authenticated, seekable original-file streaming. Only the local token is given to MPV. */

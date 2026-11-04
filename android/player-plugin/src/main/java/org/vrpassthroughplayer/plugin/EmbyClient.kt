@@ -345,7 +345,8 @@ internal class EmbyClient(
             account.endpoint("Videos/${mediaId(id)}/stream?" + mediaQuery(args)),
             sourceId + ":" + source.optLong("Size") + ":" + source.optString("ETag"),
             runCatching { subtitleLinks(id, source) }.getOrDefault(emptyList()),
-            runCatching { audioLinks(source) }.getOrDefault(emptyList())
+            runCatching { audioLinks(source) }.getOrDefault(emptyList()),
+            playback = MediaServerPlaybackContext(id, sourceId, args.getValue("PlaySessionId").toString())
         )
     }
 

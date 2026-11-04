@@ -118,7 +118,11 @@ var mode_memory := ModeMemory.new()
 var _remember_file := false
 var recent_files := RecentFiles.new()
 ## Settings: when off, nothing new is recorded and videos start from the beginning.
-var history_enabled := true
+var server_playback := preload("res://scripts/media_server_playback.gd").new()
+var history_enabled := true:
+	set(value):
+		history_enabled = value
+		server_playback.configure(platform, value)
 var _history_started := false
 var _file_permission_persisted := false
 var _history_save_ms := 0
@@ -598,6 +602,7 @@ func open_local(
 		SeekPolicy.normalize(seek_mode) == SeekPolicy.EXACT
 	)
 	media.begin(id)
+	server_playback.begin(uri, history_enabled)
 	playback_speed = 1.0
 	screen_rotation = 0.0
 	if PlatformMethods.supports(platform, "set_mpv_speed"):
@@ -641,6 +646,8 @@ func _unbind() -> void:
 
 
 func close_video() -> void:
+	server_playback.poll(self, true)
+	server_playback.finish(platform)
 	if _subtitle_pick > 0 and PlatformMethods.supports(platform, "cancel_local_subtitle_pick"):
 		platform.cancel_local_subtitle_pick(_subtitle_pick)
 	_subtitle_pick = 0
@@ -2284,6 +2291,7 @@ func _can_loop() -> bool:
 
 
 func _process(_delta: float) -> void:
+	server_playback.poll(self)
 	if _sync_pending and PlatformMethods.supports(platform, "set_mpv_sync"):
 		_sync_pending = not platform.set_mpv_sync(
 			media.session_id, subtitle_delay_ms, audio_delay_ms
