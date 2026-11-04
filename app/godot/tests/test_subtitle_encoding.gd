@@ -15,6 +15,10 @@ func _initialize() -> void:
 	assert(not video.set_subtitle_encoding({"track_key": "stale".sha256_text(), "encoding": "Big5"}))
 	assert(video.set_subtitle_encoding({"track_key": key, "encoding": "Big5"}))
 	assert(video.subtitle_encodings[key] == "Big5")
+	var menu := preload("res://scripts/player_menu.gd").new()
+	var invalid := {"id": 4, "title": "Caption", "external": true, "encoding_key": key, "encoding_invalid": true}
+	assert(menu._subtitle_label(invalid).contains("Encoding invalid"))
+	menu.free()
 	video.free()
 	var store := Memory.new("user://encoding-test")
 	var mode := {"profile": "320x320", "geometry": 0, "stereo_sbs": false, "swap_eyes": false, "alpha_requested": false, "subtitle_encodings": {key: "Big5"}}

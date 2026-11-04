@@ -77,9 +77,9 @@ class SubtitleEncodingTest {
             for (listing in listOf(listOf(selected), listOf(SidecarSubtitles.Track("file:///other.srt", "movie.en.srt"), selected))) {
                 val track = listing.first { it.title == original.name }
                 val staged = SubtitleCopies.prepare(track, directory, choices) { original.inputStream() }
-                assertEquals(text, staged.file.readText(Charsets.UTF_8))
+                assertEquals(text, requireNotNull(staged.file).readText(Charsets.UTF_8))
                 assertArrayEquals(bytes, original.readBytes())
-                staged.file.delete()
+                requireNotNull(staged.file).delete()
             }
             assertNotEquals(SubtitleCopies.key(SidecarSubtitles.Track("a", "English", "server-stream-1").identity),
                 SubtitleCopies.key(SidecarSubtitles.Track("b", "English", "server-stream-2").identity))

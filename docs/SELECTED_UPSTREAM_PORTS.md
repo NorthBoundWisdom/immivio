@@ -121,3 +121,7 @@ Use consistent provider marks for existing Emby, Jellyfin, Plex, XBVR, DLNA, SMB
 The hand preference/normalization policy and tap hand context derive from upstream ControllerBindings/photo_hand_gestures. No controller remapping subsystem is imported. Settings use Immivio’s migration and General page. The selected hand initiates photo taps/swipes; a secondary hand can assist a selected-hand zoom to preserve the existing two-hand feature. Physical controller buttons and palm-wave navigation are unchanged. This default and the allowed secondary-hand assistance are explicit behavior decisions for review.
 
 Add Left/Right/Both as the shared primary hand for content pinches and summoning controls. Change the default from either hand to Right, matching upstream. Both hands still select controls in an already-open menu; the other hand may join an active photo zoom. Changing the setting cancels ownership and requires a fresh open-then-pinch.
+
+### F1 — second-round review
+
+Review correction to P1. SubtitleCopies now returns the original track on decoding, size-limit, staging or IO failure; discovered original leases remain owned until native shutdown. Failed explicit overrides keep the user choice for review and display “Encoding invalid”; automatic detection failures simply retain mpv’s original behavior. No retry loop or unbounded read is introduced.

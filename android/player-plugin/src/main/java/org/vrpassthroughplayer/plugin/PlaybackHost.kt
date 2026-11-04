@@ -31,6 +31,7 @@ internal class PlaybackHost(
     var subtitleMs = 0
     var audioMs = 0
     val subtitleKeys = ConcurrentHashMap<String, String>() // staged path -> stable, non-secret identity
+    val subtitleEncodingErrors = ConcurrentHashMap.newKeySet<String>()
     val importingSubtitle = AtomicBoolean(false)
     @Volatile
     var audioEnabled = audio

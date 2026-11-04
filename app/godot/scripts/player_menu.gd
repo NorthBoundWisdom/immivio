@@ -741,7 +741,7 @@ func _subtitle_label(track: Dictionary) -> String:
 	var codec := str(track.get("codec", "")).to_upper().replace("SUBRIP", "SRT").replace(
 		"WEBVTT", "VTT"
 	)
-	return _fit_title(title.replace("\n", " "), " · " + codec, 0.76, 20)
+	return _fit_title(title.replace("\n", " "), " · " + (I18n.t("Encoding invalid") if track.get("encoding_invalid", false) else codec), 0.76, 20)
 
 
 func _subtitle_controls() -> Array:
