@@ -17,8 +17,8 @@ func _init(host: Node3D) -> void:
 
 
 func load_preferences() -> void:
-	settings.load(settings_path)
-	if preload("res://scripts/player_settings_migration.gd").apply(settings):
+	var loaded := settings.load(settings_path)
+	if preload("res://scripts/player_settings_migration.gd").apply(settings, loaded == OK):
 		settings.save(settings_path)
 
 
