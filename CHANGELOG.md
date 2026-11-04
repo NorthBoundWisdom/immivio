@@ -6,46 +6,24 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 ## Unreleased
 
-- Add opt-in local Jellyfin integration checks for folders, media versions, playback reporting and history privacy.
-
-- Verify manual update parsing against a minimized real GitHub stable-release response.
-
-- Keep aapt2 warnings separate from the compiled manifest parser while retaining stderr in export failure diagnostics.
-
-- Translate the unavailable-original-stream status in Simplified Chinese, Traditional Chinese and Japanese, keeping the existing translated media-server status rendering path.
-
-- Report the actual UI-thread result of opening a release page, and show a translated browser-opening error in About when no browser or Activity is available.
-
-- Enforce the shared external playback intent policy against the final APK manifest in the export gate, parsing aapt2 xmltree into a complete element tree and failing closed on malformed or broad filters.
-
-- Preserve the new-install Right pinch default across the first settings save and restart, while retaining Both for legacy settings without a choice.
-
-- Add a manual About update check against the latest stable GitHub release, with numeric version comparison, bounded HTTPS requests and distinct network/rate-limit feedback. Open only the validated release page in the system browser; never check automatically or download/install APKs.
-
-- Restrict external video associations: remove BROWSABLE, accept network VIEW intents only for video MIME types, and keep binary associations local to content/file. Remove the unreachable text/plain STRM ingress branch.
-
-- Keep the left palm menu gesture independent of pinch-hand preferences. Preserve Both for existing settings files without an explicit pinch choice; only fresh installs default to Right.
-
-- Keep media-server resume item IDs separate from version queries, retain per-version resume rows, and preselect the resumed Emby/Jellyfin version on its details page.
-
-- Keep external subtitle tracks available when bounded transcoding fails, falling back to the original mpv source. Mark failed manual encoding overrides as invalid without rewriting source files.
-
-- Add Left/Right/Both as the shared primary hand for content pinches and pinch taps that summon controls. New installations default to Right; existing settings without a choice migrate to Both. The official palm menu gesture stays on the left hand independently. Both hands still select controls in an already-open menu; the other hand may join an active photo zoom. Changing the setting cancels ownership and requires a fresh open-then-pinch.
-- Use consistent provider marks for existing Emby, Jellyfin, Plex, XBVR, DLNA, SMB and local sources. Open Plex at its library chooser and distinguish movie/TV libraries; choosing TV opens series navigation instead of a flat episode wall.
-- Improve verified mounted-volume fallback on Android 11+, distinguish missing permission, unmounted storage and provider failure, and give PICO-specific settings/reconnect guidance. Stopping App access closes related video/photo readers and known external descriptor leases without claiming hardware removal.
-- Retain a bounded, redacted step ring and Java crash record across restarts. Show prior-session availability in About and require a separate confirmation before saving a diagnostic log to Download/Immivio/logs. Keep five app-owned exports; never upload or share logs automatically.
-- Draw soft-edged, screen-width-stable pointer ribbons with distinct actionable-target feedback. Coalesce menu repaints, settle changed content across three frames, render continuously during pointer capture, and refresh otherwise idle captured UI at 4 Hz. Preserve both-panel native capture and all existing ray mapping/acknowledgement rules.
-- Extend flat-video distance down to 0.1 m and size down to 5%, keeping the logarithmic sliders and unchanged physical saved values/preset envelopes. Extend library/menu distance to 4 m and normalize malformed or out-of-range stored menu distances. Photos retain 0.3–10 m and 40–600% limits.
-- Cycle the playback-order toolbar icon directly between the existing Sequence and Shuffle behaviors. Keep the separate queue editor and saved boolean preference; each queue still ends once its available entries are exhausted.
-- Add an opt-in last-video projection/stereo fallback for otherwise unrecognized formats. Per-file modes and recognized filename, container stereo or established frame-shape rules still win. Store only layout, projection, fisheye angle and eye order; photos and removed effects stay independent.
-- Add centred grip-stick immersive translation/zoom, ±10% immersive horizontal stereo alignment, fading numeric range feedback and a passive centre ring/cross during picture movement. Store translations and zoom per video; recenter clears those offsets while preserving existing stereo calibration. Flat video and photos keep their previous ranges and controls.
-- Change the headset refresh-rate default to 72 Hz for power saving, or the closest available rate (lower on a tie). Offer only runtime-advertised rates in Display settings and reapply after session resume. This changes the previous runtime-selected refresh behavior.
-- Accept one validated Android VIEW/SEND video through a separate ingress, preserving the existing single-engine Activity reuse route. Content access is a temporary descriptor lease, never a persisted URI grant. Requests expire after 60 seconds and own at most four leases; provider preparation has an 8-second UI deadline and a bounded worker queue.
-- Add a title-seeded subtitle filename filter with ray keyboard and scroll-only thumbsticks. Local/SMB adjacent text files are listed within the current directory; server playback filters its available external tracks. Keep the system picker for document providers and other locations.
-- Preserve UserView and provider-defined folders by excluding unsupported leaves instead of whitelisting container types. Folder artwork continues to use the folder identity. Photo leaves remain excluded; no server photo viewer is added.
-- Offer direct-play Emby/Jellyfin versions on the details page. Explicit version URIs isolate resume, mode and track preferences; the unselected URI keeps the legacy identity. Report the selected MediaSourceId. Missing or unsupported selected versions fail without silently playing another file.
-- Report confirmed playback start, throttled progress and stop to Emby/Jellyfin only while playback history is enabled. Turning history off discards queued reports, including stop; already dispatched HTTP cannot be recalled. Failures do not retry starts or affect playback.
-- Detect external text subtitle encodings on bounded session copies; remember an encoding override per track, applied when reopening the video. Package only the verified ICU charset detector classes.
+- Detect common external text subtitle encodings on bounded copies without changing originals. Per-track overrides apply when reopening the video; failed conversion retains the original subtitle, and failed manual choices show an invalid-encoding hint. Bitmap subtitles remain unsupported.
+- Filter subtitle filenames using the media title as the starting query, with a ray keyboard and scroll-only thumbsticks. Local/SMB selection lists up to 128 adjacent text files without recursion; media servers filter their available external tracks. The system picker remains available for document providers and other locations.
+- Preserve Emby/Jellyfin UserView and provider-defined folders while excluding unsupported audio, book, game and photo leaves. Folder artwork keeps the folder's own identity; server photo browsing is not added.
+- Select directly playable Emby/Jellyfin versions on the details page, with separate resume, mode and track memories. Continue watching preselects the matching version, while the default action retains existing memory. Missing or unsupported versions do not silently play a different file; unavailable-stream feedback is localized.
+- Report confirmed Emby/Jellyfin playback start, throttled progress and stop only while playback history is enabled. Disabling history discards queued reports and does not backfill them on re-enabling; already dispatched requests cannot be recalled. Failures do not affect playback. Plex, STRM, local, SMB and DLNA playback do not report.
+- Open one eligible Android VIEW/SEND video using temporary access and the existing single-engine launcher route. Network associations accept video MIME types; binary types are restricted to content/file, and BROWSABLE web links are excluded. External openings stay session-only. Custom HTTP credentials, arbitrary providers and DRM are not promised; external STRM targets are limited to HTTP(S) and saved SMB sources.
+- Prefer 72 Hz, or the closest runtime-advertised refresh rate (lower on a tie), and expose only supported choices in Display settings. Reapply the preference after XR session resume. This changes the previous runtime-selected refresh behavior; headset smoothness and power use remain device-dependent.
+- Adjust immersive video with centred grip-stick input: left moves horizontally/vertically, right adjusts zoom or horizontal stereo alignment up to ±10%. Show fading numeric ranges and a passive centre guide while moving the picture. Remember translations/zoom per video; recenter clears those offsets while preserving stereo calibration. Lists, popups, focus loss and pointer capture suppress shortcuts until sticks return to centre. Flat video and photos retain their controls and alignment ranges.
+- Optionally reuse the last video projection/stereo layout for unrecognized formats, off by default. Per-file memory and recognized filename/container/frame-shape rules take priority; photos and effects remain independent.
+- Cycle the playback-order toolbar icon directly between the existing Sequence and Shuffle behaviors. Keep the queue editor; each queue ends after its available entries, without adding repeat modes.
+- Extend flat-video placement to 0.1–50 m and 5–3000% size, retaining logarithmic sliders and existing saved values, presets and fixed defaults. Extend library/menu distance to 4 m. Photos keep their separate 0.3–10 m and 40–600% limits.
+- Draw soft-edged, screen-width-stable pointer ribbons with distinct actionable-target feedback, and schedule captured-menu repaints while preserving both-panel native capture, acknowledged layouts and ray mapping.
+- Retain bounded, redacted step trails and Java crash records privately across restarts. About shows prior-session availability and requires confirmation before saving to Download/Immivio/logs; retain five app-owned exports. Never upload/share automatically. Unclean exits may be OS reclamation, and full native backtraces are not included.
+- Improve permission-aware, reversible fallback for verified system-mounted USB storage, with distinct permission/mount/provider errors and PICO settings/reconnect guidance. Stop app access closes related readers, including known external descriptor leases; it does not unmount hardware. Some PICO/provider paths remain unavailable, and a raw USB storage backend is not included.
+- Use consistent marks for supported local/network providers, and open Plex at its library chooser with separate movie/TV presentation and series navigation. Plex connection selection remains unchanged.
+- Choose Left/Right/Both for content pinches and pinch taps that summon controls. New installs keep Right across later settings saves; legacy settings without a choice migrate to Both, and explicit choices are preserved. The official palm menu gesture remains fixed to the left hand. Both hands can select already-open controls, and the other hand may assist photo zoom. Changing the preference cancels ownership and requires a fresh pinch.
+- Check the latest stable GitHub release manually from About, compare numeric versions, and open only the validated release page in the system browser. Show current/new versions, network/rate-limit failures and browser-opening errors. Never check automatically, download an APK or request installation permission.
+- Verify final APK manifests structurally during export, keeping aapt2 warnings separate from parser input and retaining stderr in failures. Exercise update parsing with a captured GitHub release fixture and offer explicit opt-in local Jellyfin integration checks.
 
 ## 0.9.4 — 2026-10-24
 
