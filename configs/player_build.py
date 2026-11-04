@@ -25,6 +25,7 @@ CACHE = ROOT / ".cache"
 PROJECT = ROOT / "app/godot"
 BIN = PROJECT / "addons/quest_player/bin"
 LOGS = ROOT / "artifacts/logs"
+from configs.android_manifest import ANDROID, verify_xmltree
 from configs.dependencies import (
     TOOLCHAIN,
     digest,
@@ -628,8 +629,13 @@ def inspect_package(path, env, sdk):
     badging = (LOGS / "base-apk-manifest.log").read_text()
     run([tools / ("aapt2.exe" if os.name == "nt" else "aapt2"), "dump", "xmltree", path, "--file", "AndroidManifest.xml"], env=env,
         log="base-apk-xmltree.log")
-    manifest_xml = (LOGS / "base-apk-xmltree.log").read_text()
-    if not re.search(r"android:appCategory[^\n]*=2\b", manifest_xml) or re.search(r"android:isGame[^\n]*=true", manifest_xml):
+    manifest_dump = (LOGS / "base-apk-xmltree.log").read_text(encoding="utf-8")
+    try:
+        manifest = verify_xmltree(manifest_dump)
+    except (ValueError, TypeError) as error:
+        raise RuntimeError(f"APK manifest validation failed: {error}") from error
+    application = manifest.find("application")
+    if application.get(ANDROID + "appCategory") != "2" or application.get(ANDROID + "isGame") == "true":
         raise RuntimeError("APK must be classified as a video application, not a game")
     identity = android_identity()
     if not re.search(

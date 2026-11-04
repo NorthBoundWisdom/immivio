@@ -145,3 +145,7 @@ Implemented independently in Kotlin UpdateCheck and an asynchronous, single-requ
 ### G1 — fresh pinch default persistence
 
 Third-round correction to F3. A missing/unreadable settings file seeds Right in the in-memory ConfigFile without an immediate write. Saving any subsequent preference carries that value, so a later launch cannot misclassify a fresh installation as legacy. Successfully loaded legacy files without a choice still migrate once to Both; explicit choices are preserved. No new schema or version flag is introduced.
+
+### G2 — third-round review
+
+Third-round completion of F4. A shared configs/android_manifest.py policy serves both the XML CLI and player_build.inspect_package after its actual aapt2 APK dump. Indentation, namespaces, resource IDs and typed scalar values are decoded structurally; category/game checks also use the tree. This keeps standalone configs-only workflows viable, adds no tool/dependency, and avoids any signing operation during host tests. The regression test executes inspect_package with only native/signature tool boundaries mocked and rejects compiled broad-network/BROWSABLE fixtures.

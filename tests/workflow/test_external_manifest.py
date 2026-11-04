@@ -1,8 +1,14 @@
-"""The actual exported manifest is checked by the same verifier used for these fixtures."""
+"""Verify the APK inspection gate and external playback rules using compiled-manifest fixtures."""
 import importlib.util
 from pathlib import Path
 import tempfile
 import unittest
+import sys
+from unittest.mock import patch
+import zipfile
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from configs import player_build as builder
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location("external_manifest", ROOT / "tools/check_external_playback_manifest.py")
@@ -32,3 +38,74 @@ class ExternalManifest(unittest.TestCase):
                 else:
                     with self.assertRaises(ValueError):
                         manifest.verify(path)
+
+
+class ExportManifestGate(unittest.TestCase):
+    # Representative aapt2 xmltree output, including namespace/resource IDs and typed booleans.
+    @staticmethod
+    def xmltree(binary_network=False, browsable=False):
+        lines = [
+            "N: android=http://schemas.android.com/apk/res/android (line=2)",
+            "  E: manifest (line=2)",
+            '    A: package="com.northboundwisdom.immivio" (Raw: "com.northboundwisdom.immivio")',
+            "    E: application (line=3)",
+            "      A: http://schemas.android.com/apk/res/android:appCategory(0x01010545)=2",
+            "      A: android:isGame(0x010103f4)=false",
+            "      E: activity (line=4)",
+            '        A: android:name(0x01010003)="org.vrpassthroughplayer.plugin.ExternalPlaybackActivity" (Raw: "org.vrpassthroughplayer.plugin.ExternalPlaybackActivity")',
+            "        A: android:exported(0x01010010)=(type 0x12)0xffffffff",
+        ]
+        groups = [("VIEW", ["http", "https"], ["video/*"] + (["application/octet-stream"] if binary_network else [])),
+                  ("VIEW", ["content", "file"], ["video/*", "application/octet-stream"]),
+                  ("SEND", [], ["video/*", "application/octet-stream"])]
+        for action, schemes, mimes in groups:
+            lines += ["        E: intent-filter (line=5)", "          E: action (line=6)",
+                      f'            A: android:name(0x01010003)="android.intent.action.{action}" (Raw: "android.intent.action.{action}")',
+                      "          E: category (line=7)",
+                      '            A: android:name(0x01010003)="android.intent.category.DEFAULT" (Raw: "android.intent.category.DEFAULT")']
+            if browsable and action == "VIEW":
+                lines += ["          E: category (line=8)", '            A: android:name(0x01010003)="android.intent.category.BROWSABLE" (Raw: "android.intent.category.BROWSABLE")']
+            for kind, values in [("scheme", schemes), ("mimeType", mimes)]:
+                for value in values:
+                    lines += ["          E: data (line=9)", f'            A: android:{kind}(0x01010000)="{value}" (Raw: "{value}")']
+        return "\n".join(lines) + "\n"
+
+    def test_apk_inspection_rejects_compiled_broad_filters_and_accepts_narrow_filters(self):
+        # Mock native tools/signature checks only; execute the production APK inspection gate.
+        for broad, browsable in [(False, False), (True, False), (False, True)]:
+            with self.subTest(broad=broad, browsable=browsable), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory); logs = root / "logs"; logs.mkdir()
+                apk = root / "fixture.apk"
+                with zipfile.ZipFile(apk, "w") as archive:
+                    for lib in ["libquest_media.so", "libquest_mpv.so", "libquest_render_bridge.so", "libgodot_android.so", "libmpv.so"]:
+                        archive.writestr("lib/arm64-v8a/" + lib, b"fixture")
+                tree = self.xmltree(broad, browsable)
+                def run(_args, *, env, log):
+                    if log == "base-apk-manifest.log":
+                        (logs / log).write_text("package: name='com.northboundwisdom.immivio'\napplication-label:'Immivio'\n")
+                    elif log == "base-apk-xmltree.log":
+                        (logs / log).write_text(tree)
+                with patch.object(builder, "ROOT", root), patch.object(builder, "LOGS", logs), \
+                     patch.object(builder, "run", side_effect=run), \
+                     patch.object(builder.subprocess, "check_output", return_value="AArch64\n LOAD fixture 0x4000\n"), \
+                     patch.dict("os.environ", {"IMMIVIO_DEVELOPMENT_PACKAGE": "0"}):
+                    if broad or browsable:
+                        with self.assertRaisesRegex(RuntimeError, "manifest"):
+                            builder.inspect_package(apk, {"ANDROID_NDK_HOME": str(root / "ndk")}, root / "sdk")
+                    else:
+                        self.assertEqual(builder.digest(apk), builder.inspect_package(apk, {"ANDROID_NDK_HOME": str(root / "ndk")}, root / "sdk"))
+
+    def test_compiled_decoder_preserves_typed_values_and_rejects_malformed_trees(self):
+        tree = self.xmltree()
+        root = manifest.verify_xmltree(tree)
+        android = "{http://schemas.android.com/apk/res/android}"
+        self.assertEqual(root.find("application").get(android + "appCategory"), "2")
+        activity = root.find("application/activity")
+        self.assertEqual(activity.get(android + "exported"), "true")
+        self.assertEqual(len(activity.findall("intent-filter")), 3)
+        for broken in [tree + "  E: manifest (line=50)\n",
+                       tree + "garbage that must not be skipped\n",
+                       tree.replace("(type 0x12)0xffffffff", "(type 0x12)0x0"),
+                       tree.replace('A: android:isGame(0x010103f4)=false', 'A: android:isGame(0x010103f4)=false\n      A: android:isGame(0x010103f4)=true')]:
+            with self.subTest(broken=broken[-80:]), self.assertRaises(ValueError):
+                manifest.verify_xmltree(broken)

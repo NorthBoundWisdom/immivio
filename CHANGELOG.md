@@ -6,6 +6,8 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 ## Unreleased
 
+- Enforce the shared external playback intent policy against the final APK manifest in the export gate, parsing aapt2 xmltree into a complete element tree and failing closed on malformed or broad filters.
+
 - Preserve the new-install Right pinch default across the first settings save and restart, while retaining Both for legacy settings without a choice.
 
 - Add a manual About update check against the latest stable GitHub release, with numeric version comparison, bounded HTTPS requests and distinct network/rate-limit feedback. Open only the validated release page in the system browser; never check automatically or download/install APKs.
