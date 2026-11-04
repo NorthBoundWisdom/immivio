@@ -1,5 +1,48 @@
 # Device and build acceptance
 
+## Unreleased (`52f2fb5..HEAD`) — pending device acceptance
+
+No headset was available for this round. The checks below cover the unshipped selected ports and review corrections; historical device results later in this document do not certify this source. Raw logs, APK inspection output, size reports and synthetic-server evidence remain under ignored `artifacts/upstream-round4/`; emulator evidence is under `artifacts/emulator-acceptance-2026-11-04/`.
+
+### Offline and local integration results — 2026-11-04
+
+| Check | Actual result and boundary |
+| --- | --- |
+| H2 Debug packaging | Quest, Pico and OpenXR each completed configure → build → package using existing tools/dependencies and the existing signing identity. Final APK inspection passed the shared manifest gate, ELF checks, alignment and signature verification. No key was created or changed. APK source revision at this step was `d9f3f6e`; subsequent changes in this round add tests or documentation, not runtime behavior. |
+| H2 size baseline | Built the same three Debug targets from local tag `v0.9.4` (commit `63584ef`) in a detached worktree. Used Analyze-ApkSize.py on each pair; growth is about 246 KB per target, mainly DEX (application changes plus ICU detector classes), ICU notices and new scripts. DEX costs cannot be attributed to ICU alone. |
+| H3 upgrade migration | In AVD Thru3D_Perf_API36, baseline and current signed Debug packages used the same existing key. Seeded legacy history=false, then changed sharpness to 0.4 through the existing Debug settings route. After adb install -r and 2D diagnostic restart, both values remained and controls/pinch_hand was both. |
+| H3 clean install | Cleared only this app's isolated test-emulator data, launched current 2D diagnostics, changed another setting through the existing Debug route, and restarted. controls/pinch_hand remained right_hand. This is Android persistence validation, not physical hand interaction. |
+| H3 external intents | HTTP video and file video matched the ingress and forwarded to the normal launcher. HTTP application/octet-stream and BROWSABLE intents did not resolve to this app. The private-file case reached only the rejecting ingress, without forwarding; no independent rejection receipt was available. The shell could not grant the external-storage document URI (SecurityException), and SEND matched ingress without proving readable provider access. |
+| H3 external playback/reuse | Not certified: the normal VR launcher on the emulator crashed in OvrContextFactory/EGL context creation. Repeated launches therefore did not provide a stable Godot session for instance-reuse or playback acceptance. No product code was changed for the emulator. The 2D diagnostic route itself ran successfully. |
+| H3 browser | Chrome resolved and ACTION_VIEW launched its first-run Activity with emulator networking disabled. Actual release-page loading/browser return behavior remains unverified. No extra remote page download was performed. |
+| H4 GitHub schema | One unauthenticated curl with User-Agent Immivio-dev returned HTTP 200, tag v0.9.4 and the exact matching repository release URL. Minimized real-response fixture passes latest/same-version and available/newer-tag JVM checks. No automatic check, APK download or install was added. |
+| H5 Jellyfin | Official jellyfin/jellyfin:latest, server 12.4.0, synthetic two-version movie and nested folder. Production JVM clients retained folder containers, listed two versions, selected the requested PlaybackInfo source and read an authenticated range. Playing/Progress/Stopped all returned success; server resume was 120000 ms. History-off sent zero additional reports and did not change server progress. |
+| H5 isolation and cleanup | Docker internal-network port publishing was unavailable, so a loopback-only test bridge forwarded to container localhost via Docker exec. The container had no external egress. Removed the owned container/network, bridge, server data, temporary credentials and synthetic media. The official image remains cached. No Emby server was exercised. |
+
+Current-source APKs from H2 (version numbers are unchanged):
+
+| Platform | APK under artifacts/upstream-round4/H2 | Bytes | SHA-256 | Growth vs same-platform v0.9.4 |
+| --- | --- | --- | --- | --- |
+| Quest | `HEAD-Immivio-QUEST-0.9.4-debug-20261104.apk` | 170206259 | `69f0c727b467e7a1e0ad413a6d7b551519ef0388b6cc1f3155fbee302335e9f4` | +246339 bytes |
+| Pico | `HEAD-Immivio-PICO-0.9.4-debug-20261104.apk` | 170403011 | `48c320734e004c594cd74379ec5d5562993ea484a8ba360b3140f67ec2a79740` | +246343 bytes |
+| OpenXR | `HEAD-Immivio-OpenXR-0.9.4-debug-20261104.apk` | 170402779 | `8320d63fb520119ea794c728d38f4670a081a6b8656e56c9316cc902248a5ec2` | +246359 bytes |
+
+The first live Jellyfin fixture used paused playback and did not retain resume position. The final fixture reports normal playing state and passed all lifecycle/privacy assertions. An initial Docker port setup failure and the paused-fixture failure are retained in the ignored logs. Host/JVM/headless checks do not establish headset rendering, controller ergonomics, runtime permissions or smoothness.
+
+### Headset acceptance still required
+
+Use the matching current Debug or release-candidate package and a separate synthetic test library. Record headset/runtime, APK SHA-256, settings state and concrete results; do not publish credentials or personal media.
+
+1. **Official palm menu gesture.** With controls hidden, use the left official palm gesture under each Left/Right/Both pinch preference. Expect exactly one open/close per deliberate gesture, regardless of pinch preference. A held gesture must not repeat; the right system-reserved gesture must not be relied on to open the app menu.
+2. **Primary pinch and migration.** On a fresh installation change an unrelated setting, restart, and confirm Right remains selected. Upgrade a legacy settings profile without the key and confirm Both plus retained ordinary preferences. Test Left, Right and Both on single-hand photo swipes/taps and video control summoning; either hand must still select an already-open menu. The secondary hand may assist an active photo zoom. Changing preference during a pinch must cancel ownership and require release before reuse.
+3. **Grip-stick immersive adjustments and mutual exclusion.** Play synthetic VR180, VR360 and fisheye clips. Centre the sticks before holding grip; test left X/Y translation, right zoom and horizontal alignment to ±10%. Confirm numeric/range feedback, centre guide fade and per-file reopen memory. Open a list/popup or capture a slider while deflecting a stick: only scrolling/UI interaction may occur, with no seek or picture adjustment. After leaving it, input must remain suppressed until centre. Verify flat video/photos retain their previous controls and ranges; recenter clears immersive offsets while preserving stereo calibration.
+4. **Open the release page on the headset.** Click About → Check for updates explicitly, verify checking/current/new-version/error states, then open the offered GitHub release page. Expect the system browser and a usable return to Immivio; without a handler, expect the localized browser-opening error and manual retry. Startup, backgrounding and redraw must not initiate update requests. Do not install an APK as part of this check.
+5. **External opening from a real file manager.** Share/open one synthetic readable content/file video with the required temporary read grant, then SEND. Expect playback, release of temporary resources after close, no new permanent grant/history identity, and one normal Godot engine on two successive deliveries. Confirm BROWSABLE and binary HTTP associations remain excluded and app-private file paths are rejected. Distinguish a provider grant denial from player decoding failure.
+6. **Real Emby server.** Use an owned test account with nested/plugin folders and two direct-play versions. Confirm folder visibility, separate version resume/mode/track preferences, exact resumed-version selection and correct MediaSourceId in start/progress/stop reports. Disable history and verify no newly dispatched reports or backfill when re-enabled. Server failures must not interrupt local playback; record requests without retaining account tokens.
+7. **GBK/Big5 subtitle playback.** Use known synthetic Chinese lines with timed cues in GBK/GB18030 and Big5 beside local/SMB video. Verify native subtitle text, cue timing, Auto detection and manual override after reopen. An invalid override must show the hint while retaining the original track. Confirm source-file hashes are unchanged. Repeat a document-provider selection where readable sibling access is unavailable.
+8. **PICO 72 Hz with 60 fps video.** Select 72 Hz if advertised, play a known synthetic 60 fps clip, and record buffering, presented-frame/drop counters and perceived cadence over a sustained interval. Compare another advertised rate if available and repeat after pause/resume. Expect the requested supported rate/fallback to reapply and playback to remain stable; 72/60 is not an integer cadence, so do not assume zero judder. Owner acceptance of smoothness and power/thermal behavior is still pending.
+
+
 ## Selected upstream ports on PICO 4 — 2026-10-24
 
 A physical PICO 4 (A8110), PICO OS 5.13.7 / Android 10, passed automated checks through the normal OpenXR launcher with live head tracking and two views. Test media was synthetic; captured UI layers and binocular compositor screenshots were reviewed. Ray events were generated in software through production pointer methods, not by physically pressing controllers.
