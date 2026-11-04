@@ -329,6 +329,19 @@ internal class SmbLibrary(
         }
     }
 
+    fun subtitleCandidates(uri: String): org.json.JSONArray {
+        val rest = uri.removePrefix("smb://")
+        val id = rest.substringBefore('/')
+        val server = server(id)
+        val path = rest.substringAfter('/')
+        val folder = path.substringBeforeLast('/', "")
+        if (folder.isEmpty() && !server.host.contains('/')) return org.json.JSONArray()
+        val names = SmbFile("smb://${server.host}/" + if (folder.isEmpty()) "" else "$folder/", cifs(server)).use { it.list().toList() }
+        return org.json.JSONArray(SidecarSubtitles.candidates(names).map { name ->
+                org.json.JSONObject().put("title", name).put("subtitle_uri", "smb://$id/" + listOf(folder, name).filter(String::isNotEmpty).joinToString("/"))
+            })
+    }
+
     fun sidecarSubtitles(uri: String): List<SidecarSubtitles.Track> {
         val rest = uri.removePrefix("smb://")
         val id = rest.substringBefore('/')

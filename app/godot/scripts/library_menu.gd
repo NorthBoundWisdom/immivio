@@ -5,6 +5,9 @@ extends "res://scripts/ray_menu.gd"
 ## asynchronously through the platform's media_list(id, json) signal. Selection is controller ray + trigger only.
 
 signal chosen(uri: String, title: String)
+signal subtitle_chosen(selection: Dictionary)
+signal subtitle_system_requested
+var subtitle_picker := preload("res://scripts/subtitle_picker.gd").new(self)
 signal player_requested
 signal queue_requested(operation: String)
 var queue_add_mode := false
@@ -21,6 +24,8 @@ var _browse_restore := {}
 
 
 func directory_scope() -> String:
+	if subtitle_picker.active:
+		return ""
 	if account_panel.active() or not _editor.is_empty():
 		return ""
 	match section:
@@ -251,6 +256,7 @@ var _covers := {}  # DLNA cover URL -> HTTPRequest while it downloads
 
 
 func dismiss() -> void:
+	subtitle_picker.close()
 	remember_browse()
 	browse_memory.flush()
 	file_actions.reset()
@@ -591,6 +597,8 @@ func _place_list() -> void:
 
 
 func _grid() -> bool:
+	if subtitle_picker.active:
+		return false
 	if account_panel.active():
 		return false
 	if section == Section.MEDIA_SERVER:
@@ -604,6 +612,8 @@ func _cols() -> int:
 
 ## Visible lines (tile rows or list rows); [scroll] counts lines.
 func _lines() -> int:
+	if subtitle_picker.active:
+		return 4
 	if account_panel.active():
 		return VISIBLE_ROWS
 	if section == Section.MEDIA_SERVER:
@@ -612,6 +622,8 @@ func _lines() -> int:
 
 
 func _pitch() -> float:
+	if subtitle_picker.active:
+		return ROW_PITCH
 	if account_panel.active():
 		return ROW_PITCH
 	if section == Section.MEDIA_SERVER:
@@ -659,6 +671,8 @@ func _request(kind: String, id: Variant) -> void:
 
 
 func _on_media_list(id: int, payload: String) -> void:
+	if subtitle_picker.receive(id, payload):
+		return
 	_sources._on_media_list(id, payload)
 
 
@@ -730,6 +744,10 @@ func _load_section() -> void:
 
 func _rebuild_rows() -> void:
 	rows.clear()
+	if subtitle_picker.active:
+		rows.assign(subtitle_picker.rows())
+		scroll = clampf(scroll, 0, _max_scroll())
+		return
 	if account_panel.active():
 		rows.assign(account_panel.rows())
 		scroll = clampf(scroll, 0.0, _max_scroll())
@@ -1258,6 +1276,9 @@ func _exit_tree() -> void:
 ## Video state changes arrive several times a second: redraw only when the Alpha profiles
 ## (current, compiling, cold) shown on the Alpha tab change.
 func _activate(target: int) -> void:
+	if subtitle_picker.active:
+		subtitle_picker.action(target)
+		return
 	remember_browse()
 	if target == VIEW_MODE:
 		var index := _first_line() * _cols()
@@ -1374,6 +1395,9 @@ func _activate(target: int) -> void:
 
 
 func _choose(row: Dictionary) -> void:
+	if subtitle_picker.active:
+		subtitle_picker.choose(row)
+		return
 	remember_browse()
 	if file_actions.select(row):
 		return
@@ -1706,6 +1730,9 @@ func _editor_input(target: int) -> void:
 
 func _draw() -> void:
 	_clear_layout()
+	if subtitle_picker.active:
+		subtitle_picker.draw()
+		return
 	if not file_actions.modal.is_empty():
 		file_actions.draw_modal()
 		return

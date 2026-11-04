@@ -12,9 +12,9 @@ internal object SubtitleImport {
                 "srt",
                 "ass",
                 "ssa",
-                "vtt"
+                "vtt", "smi", "sami", "sub"
             )
-        ) { "Choose an SRT, ASS, SSA or VTT subtitle" }
+        ) { "Choose a supported text subtitle file" }
     }
 
     fun copy(input: InputStream, output: OutputStream): Int {

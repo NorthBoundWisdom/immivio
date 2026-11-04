@@ -529,7 +529,13 @@
     "Unable to start playback. Check the media format.": "无法开始播放，请检查媒体格式。",
     "Playback stopped because a video frame could not be displayed.": "视频画面无法显示，播放已停止。",
     "Encoding (reopen video)": "编码（重新打开视频后生效）",
-    "Version": "版本"
+    "Version": "版本",
+    "Filter subtitles": "筛选字幕",
+    "No matching files": "没有匹配文件",
+    "System file picker": "系统文件选择器",
+    "Unable to load text subtitle. Select it again.": "无法加载文本字幕，请重新选择。",
+    "Matching subtitles load automatically; choose other files manually.": "匹配字幕会自动加载，其他文件可手动选择。",
+    "Clear": "清除"
   },
   "zh_Hant": {
     "Reset": "重設",
@@ -1061,7 +1067,13 @@
     "Playback stopped because a video frame could not be displayed.": "影片畫面無法顯示，播放已停止。",
     "Surround": "環繞",
     "Encoding (reopen video)": "編碼（重新開啟影片後生效）",
-    "Version": "版本"
+    "Version": "版本",
+    "Filter subtitles": "篩選字幕",
+    "No matching files": "沒有符合的檔案",
+    "System file picker": "系統檔案選擇器",
+    "Unable to load text subtitle. Select it again.": "無法載入文字字幕，請重新選擇。",
+    "Matching subtitles load automatically; choose other files manually.": "符合檔名的字幕會自動載入，其他檔案可手動選擇。",
+    "Clear": "清除"
   },
   "ja": {
     "Reset": "リセット",
@@ -1593,6 +1605,12 @@
     "Unable to start playback. Check the media format.": "再生を開始できません。メディア形式を確認してください。",
     "Playback stopped because a video frame could not be displayed.": "映像を表示できないため再生が停止しました。",
     "Encoding (reopen video)": "文字コード（動画を開き直すと適用）",
-    "Version": "バージョン"
+    "Version": "バージョン",
+    "Filter subtitles": "字幕を絞り込む",
+    "No matching files": "一致するファイルがありません",
+    "System file picker": "システムのファイル選択",
+    "Unable to load text subtitle. Select it again.": "テキスト字幕を読み込めません。選択し直してください。",
+    "Matching subtitles load automatically; choose other files manually.": "一致する字幕は自動で読み込み、他のファイルは手動で選択できます。",
+    "Clear": "クリア"
   }
 }

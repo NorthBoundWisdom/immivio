@@ -872,7 +872,7 @@ func _draw_subtitles() -> void:
 	)
 	_button(SYNC_SETTINGS, I18n.t("Synchronization"), Vector2(0.25, 0.365), Vector2(0.47, 0.065))
 	var hint := _label(
-		I18n.t("External subtitles must match the video filename."), Vector3(0, 0.31, 0.004), 13
+		I18n.t("Matching subtitles load automatically; choose other files manually."), Vector3(0, 0.31, 0.004), 13
 	)
 	hint.modulate = MUTED
 	var example := _label(I18n.t("movie.mp4 → movie.srt"), Vector3(0, 0.28, 0.004), 12)

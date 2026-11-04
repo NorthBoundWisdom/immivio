@@ -240,6 +240,9 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         !closed.get() && mpv.setSync(id, subtitleMs, audioMs)
 
     @UsedByGodot
+    fun subtitle_candidates(uri: String): Int = if (closed.get() || uri.length > 8192) -1 else sources.subtitleCandidates(uri)
+
+    @UsedByGodot
     fun media_server_playback(json: String): Boolean = !closed.get() && sources.reportPlayback(json)
 
     @UsedByGodot
