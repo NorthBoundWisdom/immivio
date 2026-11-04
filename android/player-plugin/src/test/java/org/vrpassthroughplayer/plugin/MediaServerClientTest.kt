@@ -6,14 +6,18 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.Closeable
 import java.net.ServerSocket
+import java.net.InetAddress
+import java.net.BindException
 import java.net.URI
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 
 class MediaServerClientTest {
     internal data class Reply(val code: Int = 200, val headers: String = "", val body: ByteArray)
-    internal class Fixture(val handle: (String, Map<String, String>, String) -> Reply) : Closeable {
-        private val socket = ServerSocket(0)
+    internal class Fixture(port: Int = 0, val handle: (String, Map<String, String>, String) -> Reply) : Closeable {
+        // Match the advertised URL exactly. On macOS a wildcard listener can share
+        // a port with a specific loopback listener, routing requests to another service.
+        private val socket = ServerSocket(port, 50, InetAddress.getByName("127.0.0.1"))
         val url = "http://127.0.0.1:${socket.localPort}"
         private val pool = Executors.newCachedThreadPool { Thread(it).apply { isDaemon = true } }
 
@@ -62,6 +66,15 @@ class MediaServerClientTest {
 
         override fun close() {
             socket.close(); pool.shutdownNow()
+        }
+    }
+
+    @Test
+    fun fixtureCannotShareAnOccupiedLoopbackPort() {
+        ServerSocket(0, 50, InetAddress.getByName("127.0.0.1")).use { occupied ->
+            assertThrows(BindException::class.java) {
+                Fixture(occupied.localPort) { _, _, _ -> error("Must never accept traffic") }.close()
+            }
         }
     }
 
