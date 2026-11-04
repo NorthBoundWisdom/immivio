@@ -790,7 +790,7 @@ func _subtitle_controls() -> Array:
 				{
 					"key": "subtitle_flat_position",
 					"enabled": not _state.get("subtitle_below_screen", false),
-					"display_value": str(_state.get("subtitle_flat_position", 0.0)) + "%",
+					"display_value": "%.0f%%" % float(_state.get("subtitle_flat_position", 0.0)),
 					"value": _state.get("subtitle_flat_position", 0.0),
 					"slider": true,
 					"span": Vector3(0, 100, 1),

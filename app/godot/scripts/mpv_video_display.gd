@@ -1443,18 +1443,22 @@ func set_subtitle_below_screen(value: bool) -> bool:
 func _place_caption_below(pose: Transform3D) -> void:
 	caption.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	caption.global_transform = Transform3D(pose.basis, pose * Vector3(0, 0, 0.01))
-	# Transform all corners, including roll/reclining pose. A mesh AABB is conservative
-	# for a curved flat screen and exact for a rectangular one.
+	# Work in the caption plane, not gravity coordinates. Reclining placement must
+	# move along the screen's down axis while retaining its normal/depth offset.
+	var to_plane := pose.affine_inverse()
+	var panel_in_plane := to_plane * panel.global_transform
+	var caption_in_plane := to_plane * caption.global_transform
 	var screen_bounds := panel.get_aabb()
 	var text_bounds := caption.get_aabb()
 	var screen_bottom := INF
 	var text_top := -INF
 	for index in 8:
-		screen_bottom = minf(screen_bottom, (panel.global_transform * screen_bounds.get_endpoint(index)).y)
-		text_top = maxf(text_top, (caption.global_transform * text_bounds.get_endpoint(index)).y)
-	# Label3D bounds do not include the outline. Include its upward projection too.
-	var outline := caption.outline_size * caption.pixel_size * (absf(pose.basis.x.y) + absf(pose.basis.y.y))
-	caption.global_position.y += screen_bottom - SUBTITLE_BELOW_GAP - text_top - outline
+		screen_bottom = minf(screen_bottom, (panel_in_plane * screen_bounds.get_endpoint(index)).y)
+		text_top = maxf(text_top, (caption_in_plane * text_bounds.get_endpoint(index)).y)
+	# Label3D bounds omit the outline; project its extent onto this plane's up axis.
+	var basis := caption_in_plane.basis
+	var outline := caption.outline_size * caption.pixel_size * (absf(basis.x.y) + absf(basis.y.y))
+	caption.global_position += pose.basis.y * (screen_bottom - SUBTITLE_BELOW_GAP - text_top - outline)
 
 
 func _place_caption() -> void:
