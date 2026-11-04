@@ -560,7 +560,8 @@
     "Left hand": "左手",
     "Right hand": "右手",
     "Both hands": "双手",
-    "Other hand may assist photo zoom": "另一只手可加入照片缩放"
+    "Other hand may assist photo zoom": "另一只手可加入照片缩放",
+    "Encoding invalid": "编码无效"
   },
   "zh_Hant": {
     "Reset": "重設",
@@ -1123,7 +1124,8 @@
     "Left hand": "左手",
     "Right hand": "右手",
     "Both hands": "雙手",
-    "Other hand may assist photo zoom": "另一手可加入照片縮放"
+    "Other hand may assist photo zoom": "另一手可加入照片縮放",
+    "Encoding invalid": "編碼無效"
   },
   "ja": {
     "Reset": "リセット",
@@ -1686,6 +1688,7 @@
     "Left hand": "左手",
     "Right hand": "右手",
     "Both hands": "両手",
-    "Other hand may assist photo zoom": "もう一方の手は写真のズームを補助できます"
+    "Other hand may assist photo zoom": "もう一方の手は写真のズームを補助できます",
+    "Encoding invalid": "文字コードが無効です"
   }
 }

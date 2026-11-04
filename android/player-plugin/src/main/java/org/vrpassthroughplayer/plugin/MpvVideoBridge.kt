@@ -183,9 +183,9 @@ internal class MpvVideoBridge(
                 val discovered = sidecarSubtitles(uri)
                 host.resources.adoptSubtitles(discovered)
                 val choices = subtitleEncodingChoices[uri].orEmpty()
-                val captions = discovered.mapNotNull { caption ->
+                val captions = discovered.map { caption ->
                     var staged: SubtitleCopies.Prepared? = null
-                    runCatching {
+                    try {
                         val prepared = SubtitleCopies.prepare(caption, app.cacheDir, choices) { location ->
                             val connection = java.net.URL(location).openConnection().apply {
                                 connectTimeout = 3000; readTimeout = 5000
@@ -201,12 +201,13 @@ internal class MpvVideoBridge(
                         staged = prepared
                         synchronized(host) {
                             check(!host.closing)
-                            host.resources.importedSubtitles.add(prepared.file)
-                            host.subtitleKeys[prepared.file.absolutePath] = prepared.key
+                            prepared.file?.let { host.resources.importedSubtitles.add(it) }
+                            host.subtitleKeys[prepared.track.location] = prepared.key
+                            if (prepared.encodingInvalid) host.subtitleEncodingErrors.add(prepared.key)
                         }
                         staged = null
                         prepared.track
-                    }.getOrNull().also { staged?.file?.delete() }
+                    } finally { staged?.file?.delete() }
                 }
                 host.markStartup("subtitle_sidecars_resolved_ms")
 
@@ -572,7 +573,9 @@ internal class MpvVideoBridge(
                         for (i in 0 until tracks.length()) {
                             val track = tracks.getJSONObject(i)
                             val path = track.optString("external_path")
-                            session.host.subtitleKeys[path]?.let { track.put("encoding_key", it) }
+                            session.host.subtitleKeys[path]?.let { key ->
+                                track.put("encoding_key", key).put("encoding_invalid", key in session.host.subtitleEncodingErrors)
+                            }
                             track.remove("external_path")
                         }
                     }
