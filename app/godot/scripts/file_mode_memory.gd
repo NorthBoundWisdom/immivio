@@ -53,7 +53,7 @@ static func valid_mode(value: Variant) -> bool:
 	for name in ["stereo_sbs", "swap_eyes", "alpha_requested"]:
 		if not value.get(name) is bool:
 			return false
-	for name in ["top_bottom", "stereo_half"]:
+	for name in ["top_bottom", "stereo_half", "subtitle_below_screen"]:
 		if value.has(name) and not value[name] is bool:
 			return false
 	for key in ["subtitle_delay_ms", "audio_delay_ms"]:
