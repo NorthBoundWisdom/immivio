@@ -32,9 +32,10 @@ Immivio continues development of [zerochocobo/Thru3D-Media-Player](https://githu
 - **Free and open source.** Download, use and build the player under GPL-3.0; third-party services follow their own terms and may have their own fees.
 - **Bring your own library.** Local files, SMB, DLNA, supported media servers. Available operations depend on the source and your account permissions.
 - **Get comfortable.** Move the picture and panels, adjust supported screen size/distance/curvature, and use reclining mode or head-follow when you want them.
-- **Keep control.** Compact playback popups with slider resets, subtitles, playback speed, per-video audio/subtitle timing, automatic queue advance and optional shuffle.
-- **Return to familiar settings.** Remembered per-video track choices and stereo alignment, system-controlled volume, and full filename hover tips.
-- **Explore photos.** Single images, side previews, 1–3-row photo walls and memory fragments. HEIF photo decoding depends on the Android device and source format.
+- **Keep control.** Compact playback popups with slider resets, detected external-subtitle encodings and per-track overrides, filename filtering, playback speed, per-video timing, and a direct sequence/shuffle switch.
+- **Return to familiar settings.** Remembered per-video track choices, stereo alignment and immersive adjustments; optional last-mode reuse, a 72 Hz display preference, and system-controlled volume. Emby/Jellyfin versions keep separate memories and report playback only with history enabled.
+- **Explore photos.** Single images, side previews, 1–3-row photo walls and memory fragments, with a configurable primary pinch hand (Right by default). HEIF photo decoding depends on the Android device and source format.
+- **Open and diagnose.** Eligible Android VIEW/SEND videos use temporary access; redacted crash trails stay private until you confirm saving a log to Downloads. USB access uses verified system mounts; some PICO/provider paths remain unavailable.
 
 Version 0.9.4 adds STRM shortcuts, list/icon browsing with folder-position memory, compact browsing during playback, spatially locked controls and flat-screen cinema presets. See the [release notes](CHANGELOG.md) and [feature boundaries](docs/SELECTED_UPSTREAM_PORTS.md); published APKs may predate these additions.
 
@@ -70,10 +71,14 @@ Quest 2 and PICO Neo3 are compatibility targets. Actual performance depends on h
 | Select a control | Controller ray + trigger; supported hand pointing/pinching also works |
 | Move the picture or library window | Hold grip; use the same hand's thumbstick for distance where supported |
 | Seek | Drag the timeline or use horizontal thumbstick shortcuts while lists/sliders are inactive |
+| Adjust immersive video | Left grip + stick moves it horizontally/vertically; right grip + stick adjusts zoom or horizontal stereo alignment |
+| Choose the primary pinch hand | **Settings → General → Pinch/menu hand**; Right is the default, and the other hand can assist photo zoom |
 | Change volume | Use the headset’s system volume controls |
 | Scroll a library or settings list | Use the thumbstick while the list is open |
 | Return to the library | Choose **Close video** |
 | Watch while reclined | **Settings → General → Reclining mode**; Follow is a separate setting |
+
+The current source also extends flat videos down to 0.1 m / 5% and menu distance to 4 m; photos retain their own ranges. These source changes require device acceptance and may not be in published APKs.
 
 The interface supports English, Simplified Chinese, Traditional Chinese and Japanese. Text subtitles offer five color palettes. Color grading offers Original, Warm, Cool and Custom presets, with individual slider resets and a reset for the current popup page. Subtitle, timing, eye-alignment and photo sliders also reset independently. See the [user guide](https://northboundwisdom.github.io/immivio/guide/) for sources, layouts, timing and queues.
 

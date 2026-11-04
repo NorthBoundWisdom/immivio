@@ -36,6 +36,12 @@ static func apply(settings: ConfigFile) -> bool:
 		if distance != normalized:
 			settings.set_value("ui", "library_distance", normalized)
 			changed = true
+	if settings.has_section_key("controls", "pinch_hand"):
+		var hand: Variant = settings.get_value("controls", "pinch_hand")
+		var normalized := preload("res://scripts/hand_preferences.gd").normalize(hand)
+		if hand != normalized:
+			settings.set_value("controls", "pinch_hand", normalized)
+			changed = true
 	for item in RETIRED_KEYS:
 		if settings.has_section_key(item[0], item[1]):
 			settings.erase_section_key(item[0], item[1])

@@ -904,6 +904,7 @@ func _rebuild_rows() -> void:
 						"empty": cache.x == 0
 					}
 				)
+				rows.append(_choice_row("Pinch/menu hand", "pinch_hand", str(settings.get("pinch_hand", "right_hand")), [{"value": "left_hand", "label": "Left hand"}, {"value": "right_hand", "label": "Right hand"}, {"value": "both", "label": "Both hands"}], false, "Other hand may assist photo zoom"))
 			elif tab == DISPLAY_TAB:
 				var rate_choices: Array = []
 				for rate in settings.get("refresh_rates", []):

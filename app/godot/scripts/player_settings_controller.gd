@@ -46,6 +46,7 @@ func _library_settings() -> Dictionary:
 		),
 		"sharpness": Quality.load_sharpness(host.settings, host.low_end_gpu),
 		"history": host.video.history_enabled,
+		"pinch_hand": host.pinch_hand,
 		"diagnostic_previous": PlatformMethods.supports(host.video.platform, "diagnostic_previous_available") and host.video.platform.diagnostic_previous_available(),
 		"reuse_last_mode": host.video.reuse_last_mode,
 		"browse_memory": bool(host.settings.get_value("library", "browse_memory", true)),
@@ -75,6 +76,16 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 				host.video.platform.save_diagnostic_log()
 			else:
 				host.recent_menu.status = "Diagnostic log could not be saved"
+		"pinch_hand":
+			if not value is String or value not in preload("res://scripts/hand_preferences.gd").CHOICES:
+				return
+			host.pinch_hand = value
+			host.photo_hands.set_initiator_hand(value)
+			for hand in host.hand_pointers:
+				host.hand_pointers[hand].update({}, 0)
+				host._cancel_pointer(hand)
+			host.settings.set_value("controls", "pinch_hand", value)
+			host.settings.save(host.settings_path)
 		"controls_opacity":
 			_on_playback_adjustment(key, value)
 		"browse_memory":

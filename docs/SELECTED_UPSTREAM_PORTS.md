@@ -115,3 +115,9 @@ Improve verified mounted-volume fallback on Android 11+, distinguish missing per
 `provider_icons.gd` normalization and Plex collection-type/library-mode behavior derive from upstream. Marks are independently drawn monograms in the existing MenuIcons line system; no third-party brand SVG assets or unrelated provider aliases are imported. Existing Stash support keeps its generic server icon. Plex retains its current first-library default/data queries and all PlexConnectionSelector behavior; global history queries, library-artwork transcoding and Plex version selection are not imported.
 
 Use consistent provider marks for existing Emby, Jellyfin, Plex, XBVR, DLNA, SMB and local sources. Open Plex at its library chooser and distinguish movie/TV libraries; choosing TV opens series navigation instead of a flat episode wall.
+
+### P16 — Primary pinch and menu hand
+
+The hand preference/normalization policy and tap hand context derive from upstream ControllerBindings/photo_hand_gestures. No controller remapping subsystem is imported. Settings use Immivio’s migration and General page. The selected hand initiates photo taps/swipes; a secondary hand can assist a selected-hand zoom to preserve the existing two-hand feature. Physical controller buttons and palm-wave navigation are unchanged. This default and the allowed secondary-hand assistance are explicit behavior decisions for review.
+
+Add Left/Right/Both as the shared primary hand for content pinches and summoning controls. Change the default from either hand to Right, matching upstream. Both hands still select controls in an already-open menu; the other hand may join an active photo zoom. Changing the setting cancels ownership and requires a fresh open-then-pinch.
