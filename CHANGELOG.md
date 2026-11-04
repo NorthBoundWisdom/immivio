@@ -6,6 +6,8 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 ## Unreleased
 
+- Keep aapt2 warnings separate from the compiled manifest parser while retaining stderr in export failure diagnostics.
+
 - Translate the unavailable-original-stream status in Simplified Chinese, Traditional Chinese and Japanese, keeping the existing translated media-server status rendering path.
 
 - Report the actual UI-thread result of opening a release page, and show a translated browser-opening error in About when no browser or Activity is available.
