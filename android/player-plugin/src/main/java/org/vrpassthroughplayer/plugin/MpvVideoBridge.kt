@@ -178,9 +178,36 @@ internal class MpvVideoBridge(
                 val extra = if (audio) sidecarAudio(uri) else emptyList()
                 host.markStartup("audio_sidecars_resolved_ms")
                 host.resources.adoptAudio(extra)
-                val captions = sidecarSubtitles(uri)
+                val discovered = sidecarSubtitles(uri)
+                host.resources.adoptSubtitles(discovered)
+                val choices = subtitleEncodingChoices[uri].orEmpty()
+                val captions = discovered.mapNotNull { caption ->
+                    var staged: SubtitleCopies.Prepared? = null
+                    runCatching {
+                        val prepared = SubtitleCopies.prepare(caption, app.cacheDir, choices) { location ->
+                            val connection = java.net.URL(location).openConnection().apply {
+                                connectTimeout = 3000; readTimeout = 5000
+                            }
+                            try {
+                                object : java.io.FilterInputStream(connection.getInputStream()) {
+                                    override fun close() {
+                                        try { super.close() } finally { (connection as? java.net.HttpURLConnection)?.disconnect() }
+                                    }
+                                }
+                            } catch (error: Exception) { (connection as? java.net.HttpURLConnection)?.disconnect(); throw error }
+                        }
+                        staged = prepared
+                        synchronized(host) {
+                            check(!host.closing)
+                            host.resources.importedSubtitles.add(prepared.file)
+                            host.subtitleKeys[prepared.file.absolutePath] = prepared.key
+                        }
+                        staged = null
+                        prepared.track
+                    }.getOrNull().also { staged?.file?.delete() }
+                }
                 host.markStartup("subtitle_sidecars_resolved_ms")
-                host.resources.adoptSubtitles(captions)
+
                 if (host.closing || stopped) {
                     host.closeDescriptors(); return@post
                 }
@@ -312,6 +339,20 @@ internal class MpvVideoBridge(
         }
     }
 
+    private val subtitleEncodingChoices = java.util.concurrent.ConcurrentHashMap<String, Map<String, String>>()
+    fun subtitleEncodings(uri: String, json: String): Boolean = runCatching {
+        require(uri.length <= 8192 && json.length <= 8192)
+        val values = JSONObject(json)
+        require(values.length() <= 16)
+        val choices = values.keys().asSequence().associateWith { key ->
+            require(key.matches(Regex("[a-f0-9]{64}")))
+            SubtitleEncoding.canonical(values.getString(key)) ?: error("Unsupported encoding")
+        }
+        subtitleEncodingChoices.clear()
+        subtitleEncodingChoices[uri] = choices
+        true
+    }.getOrDefault(false)
+
     fun addSubtitle(id: Int, text: String): Boolean {
         val session = sessions[id] ?: return false
         val uri = Uri.parse(text)
@@ -343,7 +384,7 @@ internal class MpvVideoBridge(
                 ).inputStream()
                 else app.contentResolver.openInputStream(uri) ?: error("Subtitle permission lost")
                 input.use { source ->
-                    staged.outputStream().use { SubtitleImport.copy(source, it) }
+                    SubtitleCopies.write(source, staged, subtitleEncodingChoices[session.host.uri].orEmpty()[SubtitleCopies.key(text)] ?: "auto")
                 }
                 synchronized(session.host) {
                     val current =
@@ -357,6 +398,7 @@ internal class MpvVideoBridge(
                     )
                     check(serial > 0) { "Subtitle import busy" }
                     session.host.resources.importedSubtitles.add(staged)
+                    session.host.subtitleKeys[staged.absolutePath] = SubtitleCopies.key(text)
                     temporary = null // MPV may read it until the host fully closes.
                     session.host.subtitleCommand = maxOf(session.host.subtitleCommand, serial)
                     event(
@@ -511,6 +553,14 @@ internal class MpvVideoBridge(
                     status.put("normal_fast_path", session.normalFastPath)
                         .put("video_fps_cap", frameCap(session))
                     val details = status.optJSONObject("details")
+                    details?.optJSONArray("subtitle_tracks")?.let { tracks ->
+                        for (i in 0 until tracks.length()) {
+                            val track = tracks.getJSONObject(i)
+                            val path = track.optString("external_path")
+                            session.host.subtitleKeys[path]?.let { track.put("encoding_key", it) }
+                            track.remove("external_path")
+                        }
+                    }
                     if (!details?.optString("codec").isNullOrEmpty()) {
                         val available = (details?.optJSONArray("audio_tracks")?.length()
                             ?: 0) > 0 && session.host.audio

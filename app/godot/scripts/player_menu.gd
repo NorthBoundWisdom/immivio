@@ -744,6 +744,9 @@ func _subtitle_label(track: Dictionary) -> String:
 
 func _subtitle_controls() -> Array:
 	var rows: Array = []
+	var encoding: Dictionary = _state.get("subtitle_encoding_row", {})
+	if not encoding.is_empty():
+		rows.append({"title": "Encoding (reopen video)", "field": encoding})
 	if _immersive_subtitles():
 		rows.append(
 			{

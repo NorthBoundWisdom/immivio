@@ -87,6 +87,8 @@ static func valid_mode(value: Variant) -> bool:
 				or not preload("res://scripts/track_preference.gd").valid(value.track_choices[kind])
 			):
 				return false
+	if value.has("subtitle_encodings") and not preload("res://scripts/file_subtitle_encoding.gd").valid(value.subtitle_encodings):
+		return false
 	return StereoView.valid(value)
 
 

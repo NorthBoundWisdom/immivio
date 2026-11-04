@@ -346,6 +346,7 @@ struct Source final {
             ",\"title\":" + quote(node_text(track, "title")) +
             ",\"language\":" + quote(node_text(track, "lang")) +
             ",\"codec\":" + quote(node_text(track, "codec")) +
+            (type == "sub" ? ",\"external_path\":" + quote(node_text(track, "external-filename")) : "") +
             ",\"external\":" +
             (external && external->format == MPV_FORMAT_FLAG && external->u.flag
                  ? "true"
@@ -551,6 +552,8 @@ struct Source final {
       option("user-agent", "Thru3D-Media-Player (Android; libmpv)");
       option("osd-level", "0");
       option("sub", "no");
+      // External text sidecars are staged and decoded by the session owner.
+      option("sub-auto", "no");
       option("sub-visibility", "no");
       option("interpolation", "no");
       option("dither", "no");

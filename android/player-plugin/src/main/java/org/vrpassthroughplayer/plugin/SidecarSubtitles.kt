@@ -6,7 +6,7 @@ import java.net.URI
 /** Text subtitles beside a network video. Keep discovery separate from media filtering:
  * SRT/ASS files should become CC tracks, not playable library entries. */
 internal object SidecarSubtitles {
-    data class Track(val location: String, val title: String)
+    data class Track(val location: String, val title: String, val identity: String = title)
 
     // .sub is ambiguous: MPV's detected codec decides whether it is text or bitmap.
     private val extensions = setOf("srt", "ass", "ssa", "vtt", "smi", "sami", "sub")
@@ -35,7 +35,7 @@ internal object SidecarSubtitles {
             validate(bytes)
             val source = Bytes(bytes)
             try {
-                Track(publish(source, "subtitle-$index.${caption.extension}"), caption.title)
+                Track(publish(source, "subtitle-$index.${caption.extension}"), caption.title, SubtitleCopies.key("${caption.url.path}:${caption.title}"))
             } catch (error: Exception) {
                 source.close(); throw error
             }
@@ -53,7 +53,7 @@ internal object SidecarSubtitles {
                 validate(bytes)
                 val source = Bytes(bytes)
                 try {
-                    Track(publish(source, "subtitle-$index.${caption.extension}"), caption.title)
+                    Track(publish(source, "subtitle-$index.${caption.extension}"), caption.title, SubtitleCopies.key("${caption.url.path}:${caption.title}"))
                 } catch (error: Exception) {
                     source.close(); throw error
                 }

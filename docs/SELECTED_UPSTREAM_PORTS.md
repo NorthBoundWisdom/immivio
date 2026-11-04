@@ -25,3 +25,9 @@ TV presets fit 100/150-inch 16:9 envelopes; giant presets fit 22/32 m-wide 1.43:
 ## Verification
 
 The parser tests include real loopback HTTP redirects, failures and bounded reads. `test_selected_upstream_features.gd` exercises navigation persistence/privacy, list/grid position, independent sorting, spatial lock, fixed screen defaults and buffering/error presentation. The existing JVM and Godot suites remain applicable. Physical PICO 4 automated playback, persistence, production ray routes and native UI captures are recorded in [ACCEPTANCE.md](ACCEPTANCE.md). The final package also passed normal Android launcher cold/repeat entry and native playback. PICO lists the sideloaded immersive SDK entry under Library → Unknown sources; simulated resource-pane automatic foreground handoff is not certified. These checks do not certify physical controller actuation, lens comfort, other headsets or sustained thermal performance.
+
+## Selective 0.16.5 ports (`9a6a905..da5f86c`)
+
+### P1 — subtitle encoding
+
+`SubtitleEncoding.kt`, `SubtitleCharsetDetector.kt`, `third_party/icu-charset/`, the detection fixtures in `SubtitleEncodingTest.kt`, and the choice policy in `file_subtitle_encoding.gd` derive from upstream GPL-3.0 code (ICU material retains Unicode-3.0). `SubtitleCopies.kt` and integration use Immivio's existing resource and per-file persistence owners. Read at most 8 MiB per text subtitle, retain at most eight discovered sidecars, and delete converted copies after native shutdown. No original is rewritten. Sidecar keys follow stable filenames/server-track identities rather than listing order; source locators remain behind hashes. Per-track overrides take effect on reopening, to avoid replacing live native resources. Opaque document providers still require explicit subtitle selection; no sibling access is inferred. No narration, translation or cloud integration is included.

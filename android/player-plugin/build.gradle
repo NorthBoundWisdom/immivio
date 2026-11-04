@@ -55,6 +55,7 @@ tasks.named('preBuild').configure { dependsOn stagePlayerAssets }
 // local jar so the Godot export cannot reintroduce these unused adapters.
 configurations {
     smbUpstream { canBeConsumed = false; transitive = false }
+    subtitleCharsetUpstream { canBeConsumed = false; transitive = false }
 }
 def smbClientJar = tasks.register('smbClientJar', Jar) {
     archiveFileName = 'jcifs-smb-client.jar'
@@ -63,6 +64,21 @@ def smbClientJar = tasks.register('smbClientJar', Jar) {
     exclude 'org/codelibs/jcifs/smb/http/**', 'org/codelibs/jcifs/smb/https/**'
     exclude 'org/codelibs/jcifs/smb1/http/**', 'org/codelibs/jcifs/smb1/https/**'
     exclude 'META-INF/MANIFEST.MF'
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+
+def subtitleCharsetJar = tasks.register('subtitleCharsetJar', Jar) {
+    archiveFileName = 'subtitle-charset.jar'
+    destinationDirectory = layout.buildDirectory.dir('subtitle-charset')
+    from({
+        def source = configurations.subtitleCharsetUpstream.singleFile
+        def record = new groovy.json.JsonSlurper().parse(file('../../third_party/icu-charset/distribution.json'))
+        def actual = java.security.MessageDigest.getInstance('SHA-256').digest(source.bytes).encodeHex().toString()
+        if (actual != record.upstream_jar_sha256) throw new GradleException('ICU charset checksum mismatch')
+        zipTree(source)
+    })
+    include 'com/ibm/icu/text/Charset*.class'
     preserveFileTimestamps = false
     reproducibleFileOrder = true
 }
@@ -76,6 +92,8 @@ dependencies {
     compileOnly files(godotApi.get())
     implementation libs.media3.exoplayer
     // Preserve SMB2/3, NTLM authentication, signing and encryption (LGPL-2.1).
+    subtitleCharsetUpstream libs.icu.charset
+    implementation files(subtitleCharsetJar)
     smbUpstream libs.jcifs
     implementation files(smbClientJar)
     // Match jcifs 3.0.4's upstream runtime dependencies; exported by Godot too.

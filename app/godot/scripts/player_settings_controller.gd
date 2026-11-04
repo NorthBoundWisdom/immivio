@@ -257,6 +257,9 @@ func _on_playback_adjustment(key: String, value: Variant) -> void:
 			return
 		host.video.set_playback_speed(float(value))
 		return
+	elif key == "subtitle_encoding":
+		host.video.set_subtitle_encoding(value)
+		return
 	elif key == "subtitle_palette":
 		host.video.subtitle_palette = host.video.CaptionPalette.index(value)
 	elif key == "subtitle_size":
