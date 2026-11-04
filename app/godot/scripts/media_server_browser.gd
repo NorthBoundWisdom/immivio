@@ -114,6 +114,7 @@ func request(action_name: String, extra: Dictionary = {}) -> void:
 
 
 func open_home() -> void:
+	var library_chooser: bool = view == "libraries" and capabilities.get("home_layout", "") == "libraries"
 	cancel()
 	view = "home"
 	entries = []
@@ -123,7 +124,7 @@ func open_home() -> void:
 	query = {"page": 1, "q": "", "all_tags": true}
 	labels.clear()
 	menu._reset_navigation()
-	request("home", {"library_id": library_id})
+	request("home", {"library_id": library_id, "library_chooser": library_chooser})
 	menu.refresh()
 
 
@@ -194,6 +195,8 @@ func receive(id: int, payload: String) -> bool:
 			home_data = data
 			capabilities = data.get("capabilities", capabilities)
 			library_id = str(data.get("library_id", ""))
+			if capabilities.get("home_layout", "") == "libraries" and (str(expected.get("library_id", "")).is_empty() or expected.get("library_chooser", false)):
+				view = "libraries"
 			total = int(data.get("total", 0))
 			entries = []
 			_append_unique(entries, _resume_entries())
@@ -376,7 +379,7 @@ func rows() -> Array[Dictionary]:
 					{
 						"title": str(item.name),
 						"detail": str(item.get("provider", "")).capitalize(),
-						"icon": "media_library",
+						"icon": preload("res://scripts/provider_icons.gd").key(str(item.get("provider", ""))),
 						"server_account": item
 					}
 				)
@@ -411,7 +414,7 @@ func rows() -> Array[Dictionary]:
 		"libraries":
 			for item in home_data.get("libraries", []):
 				result.append(
-					{"title": str(item.title), "detail": "", "icon": "library", "library": item}
+					{"title": str(item.title), "detail": I18n.t("TV library" if item.get("collection_type", "") == "tvshows" else "Movie library") if item.has("collection_type") else "", "icon": "library", "library": item}
 				)
 		"facets":
 			if kind in capabilities.get("unclassified", []):
@@ -646,8 +649,16 @@ func choose(row: Dictionary) -> void:
 		query.mode = "folders"
 		browse()
 	elif row.has("library"):
-		library_id = str(row.library.id)
-		open_home()
+		if capabilities.get("home_layout", "") == "libraries":
+			_remember()
+			library_id = str(row.library.id)
+			folder_path.clear()
+			labels.clear()
+			query = {"page": 1, "q": "", "all_tags": true, "mode": "library", "collection_type": row.library.get("collection_type", "movies")}
+			browse()
+		else:
+			library_id = str(row.library.id)
+			open_home()
 	elif row.has("facet") or row.has("detail_filter") or row.has("unclassified"):
 		_remember()
 		if row.has("unclassified"):
