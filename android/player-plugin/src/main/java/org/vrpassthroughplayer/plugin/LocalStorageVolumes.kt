@@ -24,6 +24,14 @@ internal object LocalStorageVolumePolicy {
         return candidates.distinct()
     }
 
+    fun chooseDirectory(preferred: String?, fallbacks: List<String>, permission: Boolean,
+                        verified: (String) -> Boolean, readable: (String) -> Boolean): String? {
+        if (preferred != null && (!permission || readable(preferred))) return preferred
+        val valid = fallbacks.distinct().filter(verified)
+        return if (!permission) preferred ?: valid.firstOrNull()
+        else valid.firstOrNull(readable) ?: preferred ?: valid.firstOrNull()
+    }
+
     // Third-party apps cannot call StorageManager.unmount. These open the system's own UI.
     fun openEjectSettings(launch: (String) -> Unit): Boolean {
         for (action in listOf(
@@ -45,22 +53,18 @@ internal object LocalStorageVolumes {
         val manager = context.getSystemService(StorageManager::class.java) ?: return result
         for (volume in manager.storageVolumes) {
             if (!LocalStorageVolumePolicy.mounted(volume.state)) continue
-            val directory =
-                if (Build.VERSION.SDK_INT >= 30) volume.directory else if (volume.isPrimary)
-                    Environment.getExternalStorageDirectory() else {
-                    // Android 10 has no public StorageVolume.directory. Verify every fallback through
-                    // the public manager; a UUID-shaped path alone is never considered a mounted disk.
-                    fun verified(paths: List<String>) = paths.asSequence().map(::File).firstOrNull {
-                        runCatching { manager.getStorageVolume(it) == volume }.getOrDefault(false)
-                    }
-                    verified(LocalStorageVolumePolicy.legacyCandidates(volume.uuid, emptyList()))
-                        ?: verified(
-                            LocalStorageVolumePolicy.legacyCandidates(
-                                volume.uuid,
-                                context.getExternalFilesDirs(null).filterNotNull()
-                                    .map { it.absolutePath })
-                        )
-                }
+            val preferred = if (Build.VERSION.SDK_INT >= 30) volume.directory else if (volume.isPrimary)
+                Environment.getExternalStorageDirectory() else null
+            val permission = LocalStoragePermissions.allFiles(Build.VERSION.SDK_INT,
+                Build.VERSION.SDK_INT >= 30 && Environment.isExternalStorageManager(),
+                Build.VERSION.SDK_INT < 30 && Environment.isExternalStorageLegacy(),
+                context.checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) == android.content.pm.PackageManager.PERMISSION_GRANTED)
+            val candidates = LocalStorageVolumePolicy.legacyCandidates(volume.uuid,
+                context.getExternalFilesDirs(null).filterNotNull().take(32).map { it.absolutePath })
+            val selected = LocalStorageVolumePolicy.chooseDirectory(preferred?.absolutePath, candidates, permission,
+                verified = { runCatching { manager.getStorageVolume(File(it)) == volume }.getOrDefault(false) },
+                readable = { File(it).isDirectory && File(it).canRead() })
+            val directory = selected?.let(::File)
             if (directory == null) continue
             result.put(
                 JSONObject().put("id", directory.absolutePath)
@@ -75,6 +79,7 @@ internal object LocalStorageVolumes {
                         )
                     )
                     .put("read_only", volume.state == Environment.MEDIA_MOUNTED_READ_ONLY)
+                    .put("readable", directory.canRead()).put("permission_needed", !permission && !directory.canRead())
             )
         }
         return result

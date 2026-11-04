@@ -435,7 +435,7 @@ func _on_local_access(id: int, payload: String) -> void:
 	_access_pending = {}
 	_access_request = 0
 	if result.get("state") != "readable" or not result.get("persisted_permission") is bool:
-		picker_error = str(result.get("error", "File unavailable; select it again"))
+		picker_error = preload("res://scripts/playback_errors.gd").summary(str(result.get("error", "File unavailable; select it again")))
 		changed.emit()
 		return
 	requested_play = true

@@ -6,6 +6,7 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 ## Unreleased
 
+- Improve verified mounted-volume fallback on Android 11+, distinguish missing permission, unmounted storage and provider failure, and give PICO-specific settings/reconnect guidance. Stopping App access closes related video/photo readers and known external descriptor leases without claiming hardware removal.
 - Retain a bounded, redacted step ring and Java crash record across restarts. Show prior-session availability in About and require a separate confirmation before saving a diagnostic log to Download/Immivio/logs. Keep five app-owned exports; never upload or share logs automatically.
 - Draw soft-edged, screen-width-stable pointer ribbons with distinct actionable-target feedback. Coalesce menu repaints, settle changed content across three frames, render continuously during pointer capture, and refresh otherwise idle captured UI at 4 Hz. Preserve both-panel native capture and all existing ray mapping/acknowledgement rules.
 - Extend flat-video distance down to 0.1 m and size down to 5%, keeping the logarithmic sliders and unchanged physical saved values/preset envelopes. Extend library/menu distance to 4 m and normalize malformed or out-of-range stored menu distances. Photos retain 0.3–10 m and 40–600% limits.

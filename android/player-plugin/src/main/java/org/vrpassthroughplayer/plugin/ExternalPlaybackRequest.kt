@@ -32,15 +32,16 @@ internal class ExternalPlaybackRequest private constructor(val uri: String, val 
 
 /** Own at most four leases, one pending delivery, and no persistent URI rights. */
 internal class ExternalPlaybackLeases(private val clock: () -> Long = { System.nanoTime() / 1_000_000 }) {
-    private class Lease(val title: String, val target: String, val cleanup: () -> Unit, val created: Long, var claimed: Boolean = false)
+    private class Lease(val title: String, val target: String, val origin: String, val cleanup: () -> Unit, val created: Long, var claimed: Boolean = false)
     private val leases = LinkedHashMap<String, Lease>()
     private var pending = ""
-    @Synchronized fun offer(title: String, target: String, cleanup: () -> Unit): String {
+    fun offer(title: String, target: String, cleanup: () -> Unit): String = offerOrigin(title, target, "", cleanup)
+    @Synchronized fun offerOrigin(title: String, target: String, origin: String, cleanup: () -> Unit): String {
         release(pending)
         leases.keys.toList().filter { !leases.getValue(it).claimed && clock() - leases.getValue(it).created > 60000 }.forEach(::release)
         if (leases.size >= 4) { cleanup(); error("External playback busy") }
         val key = "externalvideo://${java.util.UUID.randomUUID()}/video"
-        leases[key] = Lease(title, target, cleanup, clock()); pending = key
+        leases[key] = Lease(title, target, origin, cleanup, clock()); pending = key
         return key
     }
     @Synchronized fun claim(): Pair<String, String>? {
@@ -54,6 +55,18 @@ internal class ExternalPlaybackLeases(private val clock: () -> Long = { System.n
     @Synchronized fun release(uri: String) {
         if (pending == uri) pending = ""
         leases.remove(uri)?.let { runCatching { it.cleanup() } }
+    }
+    @Synchronized fun belongsTo(uri: String, root: String, uuid: String): Boolean {
+        val origin = leases[uri]?.origin ?: return false
+        val parsed = runCatching { URI(origin) }.getOrNull() ?: return false
+        if (parsed.scheme == "file") return UsbAccessPolicy.inside(root, parsed.path)
+        if (parsed.scheme == "content" && parsed.authority == "com.android.externalstorage.documents" && uuid.isNotEmpty()) {
+            val path = parsed.path.orEmpty()
+            for (marker in listOf("/document/", "/tree/")) {
+                if (path.contains(marker)) return path.substringAfter(marker).substringBefore(':').equals(uuid, true)
+            }
+        }
+        return false
     }
     @Synchronized fun expire() { leases.keys.toList().filter { !leases.getValue(it).claimed && clock() - leases.getValue(it).created >= 60000 }.forEach(::release) }
     @Synchronized fun close() { leases.keys.toList().forEach(::release) }

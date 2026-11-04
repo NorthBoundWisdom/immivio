@@ -840,7 +840,7 @@ func _on_storage_eject_requested(volume: Dictionary) -> void:
 
 
 func _release_storage_readers(volume: Dictionary) -> void:
-	if video and StorageVolume.contains_uri(volume, video.local_uri):
+	if video and (StorageVolume.contains_uri(volume, video.local_uri) or StorageVolume.contains_external(volume, video.local_uri, video.get("platform"))):
 		video.close_video()
 	video_queue = video_queue.filter(
 		func(item): return not StorageVolume.contains_uri(volume, str(item.get("uri", "")))
