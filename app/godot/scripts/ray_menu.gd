@@ -50,9 +50,13 @@ static func _make_font() -> Font:
 	elif I18n.language == "ja":
 		names = ["Noto Sans CJK JP", "Noto Sans JP", "Yu Gothic", "Meiryo", "Hiragino Sans"]
 	font.font_names = PackedStringArray(names + ["sans-serif"])
-	font.multichannel_signed_distance_field = true
-	font.msdf_size = 96
-	font.msdf_pixel_range = 8
+	# Complex CJK outlines in Android system fonts can self-intersect under MSDF
+	# (visible missing strokes/triangles). Oversampled grayscale glyphs retain
+	# their actual outlines and stay sharp in the fixed-resolution UI capture.
+	font.multichannel_signed_distance_field = false
+	font.antialiasing = TextServer.FONT_ANTIALIASING_GRAY
+	font.subpixel_positioning = TextServer.SUBPIXEL_POSITIONING_DISABLED
+	font.oversampling = 2.0
 	font.generate_mipmaps = true
 	var fallback := ThemeDB.fallback_font.duplicate() as Font
 	if fallback is FontFile:

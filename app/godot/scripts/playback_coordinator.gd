@@ -218,7 +218,7 @@ func _advance_queue(session_id: int, uri: String) -> void:
 
 func _on_video_changed() -> void:
 	var host := _host_ref.get_ref() as Node3D
-	if not is_instance_valid(host):
+	if not is_instance_valid(host) or host.is_queued_for_deletion() or not host.is_inside_tree() or host.get("_finishing_app") == true:
 		return
 	if host.photo_active:
 		return
