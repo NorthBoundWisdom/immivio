@@ -43,3 +43,13 @@ Use [ACCEPTANCE.md](ACCEPTANCE.md) for recorded local checks and the remaining d
 Each headless Godot test calls `preload("res://tests/support/test_result.gd").prepare(self)` first. This creates a separate `user://` directory for that script and process, so caches and saved settings cannot come from a previous test or a normal app session. The directory is printed in its log for failure diagnosis. It ends with `preload("res://tests/support/test_result.gd").finish(self, exit_code)`. Keep the assertions in the test; the helper reports completion and exits. Do not print a success report from initialization or a timeout handler. The runner rejects missing, duplicate, malformed and foreign-script reports, nonzero exits, and engine errors even after a success report.
 
 Prefer a small test that fails when a real contract is broken: stale callbacks must not revive a closed session, failed file operations must preserve the original, or corrupt bytes must not be published. Mock hardware/network boundaries where needed, while executing the production behavior being checked. Avoid tests that replace the whole subject with a mock, merely repeat constants or private control layouts, or duplicate a dependency's own suite.
+
+## Owned local Jellyfin port integration
+
+`JellyfinLivePortsTest` skips explicitly unless `IMMIVIO_JELLYFIN_LIVE_JSON` names a private JSON file containing `url`, `username`, `password`, `movie_id` and `library_id`. Only loopback endpoints are accepted. Use an isolated server with synthetic, two-version movie media and a nested directory; the movie must be long enough for the server's resume threshold. The test logs in, checks folder containers and version selection, streams an authenticated byte range, reports a playing (not paused) start/progress/stop session, reads server resume state, and verifies disabling history sends no more reports or progress. Run with the existing offline Gradle dependency cache:
+
+```sh
+"$GRADLE_EXE" -p android --offline :player-plugin:testDebugUnitTest --tests '*JellyfinLivePortsTest'
+```
+
+Keep the JSON file, credentials, server data, media and logs under ignored `artifacts/`; remove the owned server/container and synthetic media after the run. Never point this mutating test at a personal library or commit its credentials.
