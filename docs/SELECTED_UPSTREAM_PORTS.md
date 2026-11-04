@@ -141,3 +141,7 @@ Review narrowing of P6. VIEW uses separate filters to avoid Android combining ne
 ### P17 — second-round review
 
 Implemented independently in Kotlin UpdateCheck and an asynchronous, single-request Godot bridge. Only the About action initiates IO; construction, rendering, startup/resume and backgrounding do not check. The production endpoint is fixed HTTPS; the injectable HTTP test seam permits loopback only. Connect/read timeouts are 5/10 seconds, responses at most 256 KiB, and redirects are all rejected (including same-host, a conservative subset of the required cross-host ban). Only exact vMAJOR.MINOR.PATCH tags and an exact matching repository html_url are accepted. Version components compare numerically without integer overflow; draft/prerelease flags are rejected defensively. No account store, auth token, APK download, install permission or persistent update setting is used. About website/source entries in this edition are informational labels, so the release button uses a narrow new ACTION_VIEW bridge rather than adding a general URL opener.
+
+### G1 — fresh pinch default persistence
+
+Third-round correction to F3. A missing/unreadable settings file seeds Right in the in-memory ConfigFile without an immediate write. Saving any subsequent preference carries that value, so a later launch cannot misclassify a fresh installation as legacy. Successfully loaded legacy files without a choice still migrate once to Both; explicit choices are preserved. No new schema or version flag is introduced.

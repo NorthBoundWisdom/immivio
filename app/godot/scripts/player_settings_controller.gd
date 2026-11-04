@@ -18,6 +18,9 @@ func _init(host: Node3D) -> void:
 
 func load_preferences() -> void:
 	var loaded := settings.load(settings_path)
+	if loaded != OK:
+		# Seed the fresh default now so any later settings save preserves it.
+		settings.set_value("controls", "pinch_hand", preload("res://scripts/hand_preferences.gd").DEFAULT)
 	if preload("res://scripts/player_settings_migration.gd").apply(settings, loaded == OK):
 		settings.save(settings_path)
 

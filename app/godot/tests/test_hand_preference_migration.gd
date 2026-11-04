@@ -8,6 +8,13 @@ func _initialize() -> void:
 	fresh.load_preferences()
 	assert(fresh.settings.get_value("controls", "pinch_hand", "right_hand") == "right_hand")
 	assert(not FileAccess.file_exists(fresh.settings_path), "Fresh defaults need no migration write")
+	fresh.settings.set_value("library", "history", false)
+	assert(fresh.settings.save(fresh.settings_path) == OK)
+	var restarted := Preferences.new(host)
+	restarted.settings_path = fresh.settings_path
+	restarted.load_preferences()
+	assert(restarted.settings.get_value("controls", "pinch_hand", "missing") == "right_hand", "A fresh install keeps Right after saving another setting and restarting")
+	assert(not restarted.settings.get_value("library", "history"))
 	var old := ConfigFile.new()
 	old.set_value("audio", "volume", 37.0)
 	old.set_value("library", "history", false)
