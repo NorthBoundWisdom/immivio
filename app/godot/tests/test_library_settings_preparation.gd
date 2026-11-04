@@ -16,6 +16,26 @@ class CacheHost:
 		return '{"files":2,"bytes":10485760}'
 
 
+class SourceProbe:
+	extends RefCounted
+	var calls := 0
+	func media_local_browse(_path: String) -> int:
+		calls += 1
+		return 1
+	func media_smb_servers() -> int:
+		calls += 1
+		return 2
+	func media_dlna_servers() -> int:
+		calls += 1
+		return 3
+	func media_dlna_discover() -> int:
+		calls += 1
+		return 4
+	func media_server_request(_body: String) -> int:
+		calls += 1
+		return 5
+
+
 func check(value: bool, message: String) -> void:
 	if not value:
 		failures.append(message)
@@ -88,6 +108,31 @@ func _run() -> void:
 		events.is_empty() and library.platform == host,
 		"Synthetic page preparation cannot activate settings or replace its platform"
 	)
+	var synthetic := Library.new()
+	synthetic.browse_memory.path = "user://warmup-test/no_store.cfg"
+	synthetic.browse_memory.enabled = false
+	synthetic.browse_memory.persist = false
+	root.add_child(synthetic)
+	synthetic.set_process(false)
+	synthetic.visible = true
+	var sources := SourceProbe.new()
+	synthetic.platform = sources
+	var emitted: Array = []
+	synthetic.setting_changed.connect(func(key, value): emitted.append([key, value]))
+	var visited: Array = []
+	for destination in Library.NAV_ORDER:
+		for variant in ["empty", "populated", "list"]:
+			var populated: bool = variant != "empty"
+			warmer.prepare_navigation(synthetic, destination, populated, variant == "list")
+			check(synthetic.section == destination and not synthetic._buttons.is_empty(), "Every navigation entry has prepared controls")
+			if populated:
+				check(not synthetic.rows.is_empty(), "Populated navigation variants prepare real row geometry")
+		visited.append(destination)
+	for required in [Library.Section.RECENT, Library.Section.LOCAL, Library.Section.SMB, Library.Section.DLNA, Library.Section.SETTINGS, Library.Section.MEDIA_SERVER]:
+		check(visited.count(required) == 1, "Each of the six entry types is warmed exactly once")
+	check(sources.calls == 0 and synthetic._pending.is_empty() and synthetic.server_browser.pending.is_empty(), "Preparing source UI never invokes local/network browsing or server discovery")
+	check(emitted.is_empty() and not synthetic.browse_memory.dirty, "Warmup cannot change settings or directory history")
+	synthetic.free()
 	warmer.free()
 	compositor.free()
 	library.free()

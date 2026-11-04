@@ -39,9 +39,14 @@ func _run() -> void:
 		check(not menu._buttons.any(func(button): return button.target in [82, 83]), "Restart and Close controls are absent on every settings tab")
 	menu.section = Library.Section.LOCAL
 	menu.refresh()
-	check(navigation_ids(menu) != original, "Changing navigation section refreshes its selection")
+	check(navigation_ids(menu) == original, "Changing section reuses navigation and updates only selection")
 	var selected := menu._buttons.filter(func(button): return button.target == menu.NAV_BASE + menu.Section.LOCAL)
 	check(selected.size() == 1 and selected[0].base_color == menu.SELECTED, "New section is visibly selected")
+	for destination in menu.NAV_ORDER:
+		menu._activate(menu.NAV_BASE + destination)
+		check(navigation_ids(menu) == original, "All six entry switches preserve navigation instances")
+		var active := menu._buttons.filter(func(button): return button.target >= menu.NAV_BASE and button.target < menu.NAV_BASE + menu.NAV.size() and button.base_color == menu.SELECTED)
+		check(active.size() == 1 and active[0].target == menu.NAV_BASE + destination, "Exactly the current entry is highlighted")
 	menu.free()
 	for failure in failures:
 		push_error(failure)

@@ -1791,7 +1791,7 @@ func _clear_content_layout(keep_navigation: bool) -> void:
 
 
 func _draw() -> void:
-	var navigation_key := str([I18n.language, section])
+	var navigation_key := I18n.language
 	var keep_navigation := navigation_key == _drawn_navigation_key and is_instance_valid(_side) and _side.get_child_count() > 0
 	_clear_content_layout(keep_navigation)
 	_side.visible = false
@@ -1819,6 +1819,7 @@ func _draw() -> void:
 				i == section
 			)
 		_drawn_navigation_key = navigation_key
+	_update_navigation_selection()
 	if account_panel.active():
 		account_panel.draw()
 		return
@@ -2384,6 +2385,18 @@ func _nav_button(target: int, text: String, icon: String, centre: Vector2, selec
 		ACCENT if selected else button.foreground,
 		node
 	)
+
+
+func _update_navigation_selection() -> void:
+	for button in _buttons:
+		if button.target < NAV_BASE or button.target >= NAV_BASE + NAV.size():
+			continue
+		var selected: bool = button.target == NAV_BASE + section
+		button.base_color = SELECTED if selected else TILE
+		var label: Label3D = button.node.get_child(0)
+		label.modulate = ACCENT if selected else button.foreground
+		var icon: MeshInstance3D = button.node.get_child(1)
+		icon.material_override.albedo_color = ACCENT if selected else button.foreground
 
 
 func _draw_about() -> void:
