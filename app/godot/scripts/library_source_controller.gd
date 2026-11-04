@@ -173,7 +173,7 @@ func _on_media_list(id: int, payload: String) -> void:
 					if host._local_release_notice:
 						host._local_release_notice = false
 						if host.section == Section.LOCAL:
-							host.status = "Storage access stopped. You can unplug."
+							host.status = "App access stopped. Use system settings before unplugging."
 			"smb_servers":
 				host._smb_servers = result.get("servers", [])
 			"smb_found":

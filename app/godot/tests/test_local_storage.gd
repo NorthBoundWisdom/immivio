@@ -11,6 +11,7 @@ var failures: Array[String] = []
 class Reader:
 	extends Node3D
 	var local_uri := ""
+	var platform: Object
 	var queue: Array[Dictionary] = []
 	var closes := 0
 
@@ -28,6 +29,12 @@ class Reader:
 			close_image()
 			return true
 		return false
+
+
+class ExternalHost extends RefCounted:
+	var related := true
+	func external_playback_belongs_to(_uri: String, root_path: String, uuid: String) -> bool:
+		return related and root_path == "/storage/1234-5678" and uuid == "1234-5678"
 
 
 class Library:
@@ -149,6 +156,15 @@ func _run() -> void:
 		),
 		"Unrelated current media continues while USB queue entries are removed"
 	)
+	var external_host := ExternalHost.new()
+	app.video.platform = external_host
+	app.video.local_uri = "externalvideo://session/video"
+	external_host.related = false
+	app._release_storage_readers(external)
+	check(app.video.closes == 1, "Unrelated opaque external playback is preserved")
+	external_host.related = true
+	app._release_storage_readers(external)
+	check(app.video.closes == 2, "Related opaque descriptor lease closes through the production release route")
 	app.video.free()
 	app.photo.free()
 	app.recent_menu.free()
@@ -242,7 +258,7 @@ func _run() -> void:
 		"USB quick entry opens the removable root"
 	)
 	check(
-		menu._tips[Menu.EJECT_STORAGE] == "Stop using storage",
+		menu._tips[Menu.EJECT_STORAGE] == "Stop app access",
 		"Release tooltip describes the software action"
 	)
 	menu._activate(Menu.EJECT_STORAGE)
@@ -256,7 +272,7 @@ func _run() -> void:
 		(
 			menu._local_eject_pending.is_empty()
 			and menu._local_path().is_empty()
-			and menu.status == "Storage access stopped. You can unplug."
+			and menu.status == "App access stopped. Use system settings before unplugging."
 		),
 		"Completion returns to roots and shows the unplug message"
 	)

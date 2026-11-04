@@ -1858,7 +1858,7 @@ func _draw() -> void:
 				_local_eject_pending.is_empty(),
 				"eject"
 			)
-			_tips[EJECT_STORAGE] = I18n.t("Stop using storage")
+			_tips[EJECT_STORAGE] = I18n.t("Stop app access")
 	if section == Section.RECENT and not rows.is_empty():
 		# Two presses: the first lights the button, the second clears.
 		_button(

@@ -19,3 +19,7 @@ static func contains_uri(volume: Dictionary, uri: String) -> bool:
 			if path.contains(marker):
 				return path.get_slice(marker, 1).get_slice(":", 0).nocasecmp_to(uuid) == 0
 	return false
+
+
+static func contains_external(volume: Dictionary, uri: String, platform: Object) -> bool:
+	return bool(volume.get("removable", false)) and uri.begins_with("externalvideo://") and preload("res://scripts/platform_methods.gd").supports(platform, "external_playback_belongs_to") and platform.external_playback_belongs_to(uri, str(volume.get("id", "")), str(volume.get("uuid", "")))

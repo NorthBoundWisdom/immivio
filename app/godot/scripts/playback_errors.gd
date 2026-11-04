@@ -1,5 +1,6 @@
 extends RefCounted
 const MESSAGES := {
+	"LOCAL_DOCUMENT_PROVIDER_UNAVAILABLE": "Storage provider unavailable. Check system storage settings and retry.",
 	"STRM_EMPTY": "The STRM file is empty.",
 	"STRM_TOO_LARGE": "The STRM file exceeds 64 KiB.",
 	"STRM_INVALID_TEXT": "The STRM text encoding is invalid.",

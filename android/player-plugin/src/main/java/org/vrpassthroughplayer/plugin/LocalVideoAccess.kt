@@ -138,7 +138,7 @@ internal class LocalVideoAccess(
                         id,
                         request,
                         "error",
-                        if (lost) "LOCAL_DOCUMENT_PERMISSION_LOST" else "LOCAL_DOCUMENT_MISSING",
+                        if (uri.scheme == "content") UsbAccessPolicy.documentFailure(!lost, missing).code else "LOCAL_DOCUMENT_MISSING",
                         missingConfirmed = missing
                     )
                 } catch (_: OperationCanceledException) {

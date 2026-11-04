@@ -42,6 +42,7 @@ class ExternalPlaybackActivity : Activity() {
         try {
             var name = request.title
             var target = request.uri
+            val origin = request.uri
             if (request.scheme in setOf("content", "file")) {
                 val uri = Uri.parse(request.uri)
                 val descriptor = if (request.scheme == "content") {
@@ -78,7 +79,7 @@ class ExternalPlaybackActivity : Activity() {
                 handler.removeCallbacks(timeout)
                 var key = ""
                 try {
-                    key = ExternalPlaybackPending.offer(name.ifBlank { "Video" }, target, owned)
+                    key = ExternalPlaybackPending.offer(name.ifBlank { "Video" }, target, origin, owned)
                     startActivity(ImmivioLauncherActivity.playerIntent(this))
                 } catch (_: Exception) {
                     if (key.isNotEmpty()) ExternalPlaybackPending.leases.release(key) else owned()
@@ -105,8 +106,8 @@ internal object ExternalPlaybackPending {
     val leases = ExternalPlaybackLeases()
     private val handler = Handler(Looper.getMainLooper())
     private val expiry = Runnable { leases.expire() }
-    @Synchronized fun offer(title: String, target: String, cleanup: () -> Unit): String {
-        val key = leases.offer(title, target, cleanup)
+    @Synchronized fun offer(title: String, target: String, origin: String, cleanup: () -> Unit): String {
+        val key = leases.offerOrigin(title, target, origin, cleanup)
         handler.removeCallbacks(expiry); handler.postDelayed(expiry, 60000)
         return key
     }

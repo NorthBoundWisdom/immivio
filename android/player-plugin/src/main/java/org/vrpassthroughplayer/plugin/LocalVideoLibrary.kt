@@ -239,18 +239,23 @@ internal class LocalVideoLibrary(
             try {
                 val volumes = LocalStorageVolumes.roots(context)
                 val entries = if (path.isEmpty()) volumes else folder(path)
-                    ?: return@execute emit(
-                        id,
-                        JSONObject(state("denied", "ALL_FILES_ACCESS_NEEDED")).put("path", path)
-                            .toString()
-                    )
+                if (entries == null) {
+                    val mounted = (0 until volumes.length()).any { UsbAccessPolicy.inside(volumes.getJSONObject(it).getString("id"), path) }
+                    val reason = UsbAccessPolicy.folderFailure(allFiles(), mounted, UsbAccessPolicy.pico(Build.MANUFACTURER, Build.BRAND))
+                    emit(id, JSONObject().put("source", "local").put("state", if (reason == UsbAccessPolicy.FolderFailure.PERMISSION) "denied" else "error")
+                        .put("error", if (reason == UsbAccessPolicy.FolderFailure.PERMISSION) "ALL_FILES_ACCESS_NEEDED" else reason.message)
+                        .put("error_code", reason.code).put("path", path).put("volumes", volumes).toString())
+                    return@execute
+                }
                 emit(
                     id, JSONObject().put("source", "local").put("state", "ready").put("path", path)
                         .put("all_files", allFiles()).put("entries", entries)
                         .put("volumes", volumes).toString()
                 )
-            } catch (error: Throwable) {
-                emit(id, state("error", error.message ?: "LOCAL_LIST_FAILED"))
+            } catch (_: SecurityException) {
+                emit(id, JSONObject(state("denied", "ALL_FILES_ACCESS_NEEDED")).put("path", path).put("error_code", "STORAGE_PERMISSION_NEEDED").toString())
+            } catch (_: Throwable) {
+                emit(id, JSONObject(state("error", "Storage device unavailable")).put("path", path).put("error_code", "LOCAL_LIST_FAILED").toString())
             }
         }
     }

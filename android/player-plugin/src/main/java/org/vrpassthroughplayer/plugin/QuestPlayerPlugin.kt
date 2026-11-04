@@ -259,6 +259,10 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     }
 
     @UsedByGodot
+    fun external_playback_belongs_to(uri: String, root: String, uuid: String): Boolean =
+        uri.length <= 8192 && root.length <= 8192 && uuid.length <= 64 && ExternalPlaybackPending.leases.belongsTo(uri, root, uuid)
+
+    @UsedByGodot
     fun external_playback_release(uri: String) { if (uri.startsWith("externalvideo://")) ExternalPlaybackPending.leases.release(uri) }
 
     @UsedByGodot
