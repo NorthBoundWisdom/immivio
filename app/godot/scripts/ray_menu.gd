@@ -25,6 +25,7 @@ var curve_radius := 0.0
 var allow_user_dismiss := true
 const TOOLTIP_MAX_WIDTH := 0.64
 var layout_revision := 0
+const PointerRay := preload("res://scripts/pointer_ray.gd")
 const SURFACE := preload("res://shaders/menu_surface.gdshader")
 const Icons := preload("res://scripts/menu_icons.gd")
 const I18n := preload("res://scripts/i18n.gd")
@@ -272,14 +273,13 @@ func update_pointer(hand: String, origin: Vector3, direction: Vector3, tracked: 
 			if not hit.is_empty()
 			else origin + direction.normalized() * max_ray_metres
 		)
-		var mesh: ImmediateMesh = pointer.line.mesh
-		mesh.clear_surfaces()
-		mesh.surface_begin(Mesh.PRIMITIVE_LINES)
-		mesh.surface_add_vertex(to_local(origin))
-		mesh.surface_add_vertex(to_local(endpoint) + Vector3(0, 0, 0.006))
-		mesh.surface_end()
+		PointerRay.draw(pointer.line, origin, to_global(to_local(endpoint) + Vector3(0, 0, 0.006)))
+		var actionable := not hit.is_empty() and bool(hit.get("enabled", false)) and int(hit.get("target", NONE)) != NONE
+		pointer.line.material_override.set_shader_parameter("ray_color", Color(pointer.color, 0.8 if actionable else 0.5))
 		if not hit.is_empty():
 			pointer.dot.position = hit.point + Vector3(0, 0, 0.008)
+			pointer.dot.scale = Vector3.ONE * (1.25 if actionable else 1.0)
+			pointer.dot.material_override.albedo_color = pointer.color.lerp(Color.WHITE, 0.7) if actionable else pointer.color
 	_update_highlights()
 
 
@@ -617,11 +617,9 @@ func _pointer(hand: String) -> Dictionary:
 	if _pointers.has(hand):
 		return _pointers[hand]
 	var color := Color(0.15, 0.9, 1.0) if hand == "left_hand" else Color(1.0, 0.65, 0.15)
-	var line := MeshInstance3D.new()
+	var line := PointerRay.create(Color(color, 0.5), 14)
 	line.set_meta("xr_ui_pointer", true)
 	line.set_meta("xr_ui_scene_ray", true)
-	line.mesh = ImmediateMesh.new()
-	line.material_override = _material(color, 14, true)
 	add_child(line)
 	var dot := MeshInstance3D.new()
 	dot.set_meta("xr_ui_pointer", true)
@@ -631,7 +629,7 @@ func _pointer(hand: String) -> Dictionary:
 	dot.mesh = sphere
 	dot.material_override = _material(color, 15, true)
 	add_child(dot)
-	_pointers[hand] = {"line": line, "dot": dot}
+	_pointers[hand] = {"line": line, "dot": dot, "color": color}
 	return _pointers[hand]
 
 
@@ -657,7 +655,8 @@ func _update_highlights() -> void:
 			color = (
 				Color(0.67, 1.0, 0.86) if button.base_color == ACCENT else Color(0.23, 0.43, 0.38)
 			)
-		button.node.material_override.set_shader_parameter("surface_color", color)
+		if button.node.material_override.get_shader_parameter("surface_color") != color:
+			button.node.material_override.set_shader_parameter("surface_color", color)
 	_update_tooltip()
 
 

@@ -34,6 +34,25 @@ class PresentationQueue:
 		committed = serial
 
 
+## Dirty frames settle through the existing GPU acknowledgement path; idle UI refreshes at 4 Hz.
+class PaintSchedule:
+	extends RefCounted
+	var previous: Variant = null
+	var settle := 3
+	var deadline := 0
+	func invalidate() -> void:
+		settle = 3
+	func poll(key: int, interacting: bool, now: int) -> bool:
+		if previous != key:
+			previous = key
+			settle = 3
+		if interacting or settle > 0 or now >= deadline:
+			settle = maxi(0, settle - 1)
+			deadline = now + 250
+			return true
+		return false
+
+var paint := PaintSchedule.new()
 var warmup: Node
 var presentations := PresentationQueue.new()
 var presented := {}
@@ -276,12 +295,16 @@ func _process(_delta: float) -> void:
 	var centre := surface_rect.get_center()
 	camera.global_transform = capture * Transform3D(Basis.IDENTITY, Vector3(centre.x, centre.y, 1))
 	camera.size = surface_rect.size.y
-	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	var interacting := menus.any(func(menu): return is_instance_valid(menu) and menu.is_visible_in_tree() and menu.has_method("has_pointer_capture") and menu.has_pointer_capture())
+	var repaint := paint.poll(_paint_state(capture), interacting, Time.get_ticks_msec())
+	viewport.render_target_update_mode = SubViewport.UPDATE_ONCE if repaint else SubViewport.UPDATE_DISABLED
 	if use_scene:
 		_apply_curved_mesh(capture, surface_rect, active_menu.curve_radius)
 	else:
 		_apply_presented_layer()
 		_bridge.setEnabled(true)
+		if not repaint:
+			return
 		_submit_capture(
 			{
 				"visible": true,
@@ -293,6 +316,18 @@ func _process(_delta: float) -> void:
 				"curve_radius": active_menu.curve_radius
 			}
 		)
+
+
+func _paint_state(capture: Transform3D) -> int:
+	var values: Array = [capture, surface_rect, _generation]
+	for menu in menus:
+		if not is_instance_valid(menu) or not menu.is_visible_in_tree():
+			continue
+		values.append([menu.get_instance_id(), menu.layout_revision, menu.global_transform, menu.get("_state"), menu.get("status"), menu.get("scroll"), menu.get("_editor"), menu._hover])
+		for pointer in menu._pointers.values():
+			if pointer.dot.visible:
+				values.append([pointer.dot.position, pointer.dot.scale])
+	return hash(values)
 
 
 func _apply_curved_mesh(pose: Transform3D, rect: Rect2, radius: float) -> void:
@@ -386,6 +421,7 @@ func _set_native_ready(value: bool) -> void:
 
 func invalidate() -> void:
 	_bounds_due = 0
+	paint.invalidate()
 
 
 func _belongs_to_menu(node: Node) -> bool:
@@ -409,6 +445,7 @@ func _node_removed(node: Node) -> void:
 		if is_instance_valid(node):
 			node.layers = _original_layers[id].layers
 		_original_layers.erase(id)
+		invalidate()
 
 
 func _tag(node: GeometryInstance3D) -> void:

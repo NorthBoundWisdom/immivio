@@ -91,3 +91,9 @@ Cycle the playback-order toolbar icon directly between the existing Sequence and
 The upstream numeric range behavior is adapted to Immivio’s existing ScreenPresets, surface setters and menu-distance owner. No preset distances or fixed default values are rescaled. Existing valid saved values pass through unchanged; only corrupt/out-of-range menu values are clamped. No photo range changes are imported.
 
 Extend flat-video distance down to 0.1 m and size down to 5%, keeping the logarithmic sliders and unchanged physical saved values/preset envelopes. Extend library/menu distance to 4 m and normalize malformed or out-of-range stored menu distances. Photos retain 0.3–10 m and 40–600% limits.
+
+### P12 — Pointer feedback and scheduled UI repaints
+
+`pointer_ray.gd`, `pointer_ray.gdshader` and `pointer_ray.gdshaderinc` derive from upstream. Repaint scheduling is rewritten around Immivio’s existing compositor, presentation queue and menu owners. No browser/Gecko branches or new interaction targets are imported. World-space rays remain excluded from the UI capture texture; reticles retain the existing mapped coordinates. Headset GPU appearance, latency and thermal effects require physical verification.
+
+Draw soft-edged, screen-width-stable pointer ribbons with distinct actionable-target feedback. Coalesce menu repaints, settle changed content across three frames, render continuously during pointer capture, and refresh otherwise idle captured UI at 4 Hz. Preserve both-panel native capture and all existing ray mapping/acknowledgement rules.
