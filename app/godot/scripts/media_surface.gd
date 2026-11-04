@@ -49,6 +49,8 @@ const SPHERE_RADIUS := 50.0
 var view_yaw := 0.0
 var view_pitch := 0.0
 var view_zoom := 0.0
+var view_horizontal := 0.0
+var view_vertical := 0.0
 const ZOOM_LIMITS := Vector2(-0.5, 0.6)
 var _view_basis := Basis.IDENTITY  # World orientation captured once, independent of later head turns.
 var _applied_geometry := Geometry.Geometry.FLAT
@@ -167,7 +169,7 @@ func _center_on_view() -> void:
 		panel.global_position = view_camera.global_position
 	else:
 		panel.position = Vector3(0, 1.6, 0)
-	panel.global_position += panel.global_basis * Vector3(0, 0, -view_zoom * SPHERE_RADIUS)
+	panel.global_position += panel.global_basis * Vector3(view_horizontal, view_vertical, -view_zoom) * SPHERE_RADIUS
 
 
 ## Drag: the picture follows the controller (radians; positive yaw turns it left, pitch up).
@@ -396,6 +398,8 @@ func reset_view() -> void:
 	view_yaw = 0.0
 	view_pitch = 0.0
 	view_zoom = 0.0
+	view_horizontal = 0.0
+	view_vertical = 0.0
 	if view_camera and view_camera.is_inside_tree():
 		# Centre on the gaze once, keeping the picture free of head roll.
 		var forward := -view_camera.global_basis.orthonormalized().z

@@ -2,6 +2,8 @@ extends RefCounted
 ## Owns controller/hand routing and drag state; the host supplies scene objects.
 
 var _host_ref: WeakRef
+var immersive := preload("res://scripts/immersive_adjustments.gd").new()
+var immersive_grips := {}
 const Log := preload("res://scripts/diagnostic_log.gd")
 const HandPointer := preload("res://scripts/hand_pointer.gd")
 const Geometry := preload("res://scripts/video_geometry.gd")
@@ -156,9 +158,13 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 
 func _on_controller_release(action: String, hand: String = "") -> void:
+	if action == "grip_click":
+		immersive_grips.erase(hand)
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
+	if action == "grip_click" and host.video and host.video.has_method("commit_immersive_adjustments"):
+		host.video.commit_immersive_adjustments()
 	if not host._controller_allowed(hand):
 		return
 	if host.input_visuals:
@@ -208,6 +214,8 @@ func _on_pointer_release(action: String, hand: String) -> void:
 		and action == host._grab.get("action", "trigger_click")
 	):
 		var grab = host._grab
+		if host.picture_center_guide:
+			host.picture_center_guide.release(hand)
 		host._grab = {}
 		host._viewer().set_corner_hover(-1)
 		if (
@@ -244,6 +252,8 @@ func _on_controller_button(action: String, hand: String = "") -> void:
 		return
 	if host.input_visuals:
 		host.input_visuals.controller_activity(hand)
+	if action == "grip_click":
+		immersive_grips[hand] = true
 	host._on_pointer_button(action, hand)
 
 
@@ -275,7 +285,7 @@ func _on_pointer_button(action: String, hand: String) -> void:
 		if (
 			not host._viewer().local_uri.is_empty()
 			and host._ray(hand) != null
-			and (menu == null or (menu == host.player_menu and not menu.has_pointer_capture()))
+			and (menu == null or (menu == host.player_menu and not menu.has_pointer_capture() and (host.photo_active or host._viewer().geometry == Geometry.Geometry.FLAT or menu.allows_playback_sticks())))
 		):
 			host._trigger_taps.clear()
 			if menu == host.player_menu:
@@ -345,6 +355,8 @@ func _process_sticks(left: Vector2, right: Vector2, delta: float) -> void:
 			host.input_visuals.controller_activity("left_hand")
 		if right.length() >= 0.3:
 			host.input_visuals.controller_activity("right_hand")
+	if _process_immersive(left, right, delta):
+		return
 	if not host._library_grab.is_empty():
 		host._update_library_grab_stick(left, right, delta)
 		host._update_menu_pointer("left_hand")
@@ -408,6 +420,45 @@ func _process_sticks(left: Vector2, right: Vector2, delta: float) -> void:
 			host._menu_touched_ms = Time.get_ticks_msec()
 			host.player_menu.refresh_values()
 		host._update_controls_visibility(menu)
+
+
+func _process_immersive(left: Vector2, right: Vector2, delta: float) -> bool:
+	var host := _host_ref.get_ref() as Node3D
+	if not is_instance_valid(host) or not host.video or host.photo_active or host.video.geometry == Geometry.Geometry.FLAT or host.video.local_uri.is_empty():
+		immersive.suspend()
+		immersive.clear_feedback()
+		return false
+	var menu: Node3D = host._active_menu()
+	if not host._input_focused() or not host._library_grab.is_empty() or (menu and (menu != host.player_menu or not menu.allows_playback_sticks())) or (not host._grab.is_empty() and host._grab.get("action") != "grip_click"):
+		immersive.suspend()
+		immersive.clear_feedback()
+		if not host._input_focused():
+			immersive_grips.clear()
+		return false
+	var held := false
+	var changed := false
+	for hand in ["left_hand", "right_hand"]:
+		var pressed: bool = immersive_grips.get(hand, false) and host._controller_allowed(hand) and host._ray(hand) != null
+		held = held or pressed
+		var axis: Vector2 = left if hand == "left_hand" else right
+		var action: Dictionary = immersive.poll(hand, axis, pressed)
+		if action.is_empty():
+			continue
+		var key: String = action.key
+		if key == "stereo_horizontal":
+			if is_nan(immersive.alignment_value):
+				immersive.alignment_value = host.video.stereo_horizontal
+			immersive.alignment_value = clampf(immersive.alignment_value + float(action.amount) * immersive.ALIGNMENT_SPEED * minf(delta, 0.1), -10, 10)
+			changed = host.video.set_stereo_alignment(key, immersive.alignment_value) or changed
+		else:
+			changed = host.video.set_immersive_adjustment(key, float(host.video.get(key)) + float(action.amount) * immersive.MOVE_SPEED * minf(delta, 0.1)) or changed
+		if changed:
+			immersive.show_feedback(key, float(host.video.get(key)), host.video.local_uri)
+	if left.length() < 0.3 and right.length() < 0.3:
+		host.video.commit_immersive_adjustments()
+	if held:
+		host.stick_controls.suspend()
+	return held
 
 
 func _update_controls_visibility(menu: Node3D) -> void:
@@ -1237,6 +1288,8 @@ func _apply_stick_actions(actions: Array[Dictionary], delta: float = 1.0 / 72.0)
 		match action.operation:
 			"zoom":
 				host.video.zoom_view(float(action.amount) * host.ZOOM_SPEED * delta)
+				if host.video.has_method("set_immersive_adjustment"):
+					immersive.show_feedback("view_zoom", host.video.view_zoom, host.video.local_uri)
 			"seek":
 				host.video.seek_relative(int(action.get("delta_ms", int(action.direction) * 10000)))
 			"audio_track":

@@ -21,6 +21,7 @@ var viewing_eye := 0  # 0 binocular; 1/2 duplicate the logical left/right view a
 var stereo_horizontal := 0.0
 var stereo_vertical := 0.0
 var _stereo_view_dirty := false
+var _immersive_dirty := false
 const RecentFiles := preload("res://scripts/recent_files.gd")
 const BookmarkStore := preload("res://scripts/bookmark_store.gd")
 var bookmark_store := BookmarkStore.new()
@@ -617,7 +618,11 @@ func open_local(
 	subtitles.clear(true)
 	if _subtitle_surface:
 		_subtitle_surface.visible = false
-	reset_view()  # every video starts straight ahead at its natural size
+	reset_view()  # Orientation starts at the current gaze; per-file translations are independent.
+	if geometry != Geometry.Geometry.FLAT:
+		for key in preload("res://scripts/immersive_adjustments.gd").KEYS:
+			set(key, float(saved_sync.get(key, 0.0)))
+		_center_on_view()
 	_audio_pending = id > 0
 	_sync_pending = id > 0
 	if id <= 0:
@@ -657,7 +662,7 @@ func close_video() -> void:
 	_subtitle_import_command = 0
 	_subtitle_loading = false
 	_sync_pending = false
-	commit_stereo_view()
+	commit_immersive_adjustments()
 	viewing_eye = 0
 	stereo_horizontal = 0.0
 	stereo_vertical = 0.0
@@ -1608,10 +1613,45 @@ func set_stereo_alignment(key: String, value: float) -> bool:
 		return false
 	if key not in ["stereo_horizontal", "stereo_vertical"]:
 		return false
-	set(key, clampf(snappedf(value, StereoView.STEP), -StereoView.LIMIT, StereoView.LIMIT))
+	var limit := 10.0 if key == "stereo_horizontal" and geometry != Geometry.Geometry.FLAT else StereoView.LIMIT
+	set(key, clampf(snappedf(value, StereoView.STEP), -limit, limit))
 	_stereo_view_dirty = true
 	_apply_stereo_view()
 	return true
+
+
+func zoom_view(amount: float) -> void:
+	super(amount)
+	if geometry != Geometry.Geometry.FLAT:
+		_immersive_dirty = true
+
+
+func set_immersive_adjustment(key: String, value: float) -> bool:
+	var policy := preload("res://scripts/immersive_adjustments.gd")
+	if geometry == Geometry.Geometry.FLAT or key not in policy.KEYS or not is_finite(value):
+		return false
+	var limits: Vector2 = policy.limits(key)
+	set(key, clampf(value, limits.x, limits.y))
+	_immersive_dirty = true
+	_center_on_view()
+	return true
+
+
+func commit_immersive_adjustments() -> void:
+	if _immersive_dirty:
+		_immersive_dirty = false
+		_remember_mode()
+	commit_stereo_view()
+
+
+func reset_immersive_adjustments() -> void:
+	if geometry == Geometry.Geometry.FLAT:
+		return
+	for key in preload("res://scripts/immersive_adjustments.gd").KEYS:
+		set(key, 0.0)
+	_center_on_view()
+	_immersive_dirty = true
+	commit_immersive_adjustments()
 
 
 func reset_stereo_alignment() -> void:
@@ -1631,6 +1671,8 @@ func commit_stereo_view() -> void:
 
 
 func _apply_stereo_view() -> void:
+	if geometry == Geometry.Geometry.FLAT:
+		stereo_horizontal = clampf(stereo_horizontal, -StereoView.LIMIT, StereoView.LIMIT)
 	if not material:
 		return
 	# Native stereo only: mono and generated 2D->3D never inherit these corrections.
@@ -1714,6 +1756,9 @@ func _remember_mode() -> void:
 		"viewing_eye": viewing_eye,
 		"stereo_horizontal": stereo_horizontal,
 		"stereo_vertical": stereo_vertical,
+		"view_horizontal": view_horizontal,
+		"view_vertical": view_vertical,
+		"view_zoom": view_zoom,
 		"alpha_requested": alpha_requested,
 		"profile": profile,
 		"depth_requested": depth_requested,
@@ -1919,13 +1964,20 @@ func _reopen_after_context_loss(
 	var persisted := _file_permission_persisted
 	var eye := viewing_eye
 	var alignment := Vector2(stereo_horizontal, stereo_vertical)
+	var adjustment := Vector3(view_horizontal, view_vertical, view_zoom)
 	if open_local(uri, title, position_ms, false, alpha_requested):
 		_remember_file = remember_file
 		_file_permission_persisted = persisted
 		viewing_eye = eye
 		stereo_horizontal = alignment.x
 		stereo_vertical = alignment.y
+		view_horizontal = adjustment.x
+		view_vertical = adjustment.y
+		view_zoom = adjustment.z
+		_immersive_dirty = true
 		_apply_stereo_view()
+		if geometry != Geometry.Geometry.FLAT:
+			_center_on_view()
 
 
 func _on_debug_command(id: int, payload: String) -> void:

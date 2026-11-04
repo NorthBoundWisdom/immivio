@@ -2,6 +2,7 @@ extends RefCounted
 ## Display-only selection and alignment. Offsets are total inter-eye displacement,
 ## in percent of one displayed eye's width/height; neither decoding nor XR IPD changes.
 const LIMIT := 5.0
+const HORIZONTAL := Vector2(-10.0, 10.0)
 const STEP := 0.05
 const MODES := ["Both eyes", "Left eye", "Right eye"]
 
@@ -22,7 +23,7 @@ static func valid(value: Dictionary) -> bool:
 		if (
 			not (offset is int or offset is float)
 			or not is_finite(float(offset))
-			or absf(float(offset)) > LIMIT
+			or absf(float(offset)) > (10.0 if key == "stereo_horizontal" and int(value.get("geometry", 0)) != 0 else LIMIT)
 		):
 			return false
 	return true

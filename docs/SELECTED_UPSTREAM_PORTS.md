@@ -67,3 +67,9 @@ Accept one validated Android VIEW/SEND video through a separate ingress, preserv
 Implemented against Immivio XrDisplay and settings migration, without importing an upstream display subsystem. Invalid stored rates migrate to 72 Hz; valid stored requests survive device changes, with a runtime fallback. A runtime with no advertised rates receives no request and shows no selector. Physical rate acceptance and power consumption require headset verification.
 
 Change the headset refresh-rate default to 72 Hz for power saving, or the closest available rate (lower on a tie). Offer only runtime-advertised rates in Display settings and reapply after session resume. This changes the previous runtime-selected refresh behavior.
+
+### P8 — Immersive adjustments and centre guide
+
+`immersive_adjustments.gd`, `picture_center_guide.gd` and its shader derive from upstream. The passive overlay, persistence and input dispatch are rewritten for Immivio. No upstream ControllerBindings, interface-move or seek-HUD subsystem is imported. Lists, popups, focus loss and pointer capture suppress adjustments; a fresh grip or a suppressed stick must centre first. Vertical/flat stereo alignment remains ±5%. Orientation still recentres at the current gaze on opening; only translations/zoom are remembered. No new haptic behavior is enabled.
+
+Add centred grip-stick immersive translation/zoom, ±10% immersive horizontal stereo alignment, fading numeric range feedback and a passive centre ring/cross during picture movement. Store translations and zoom per video; recenter clears those offsets while preserving existing stereo calibration. Flat video and photos keep their previous ranges and controls.
