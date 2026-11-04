@@ -1,6 +1,6 @@
 find_package(Python3 3.11 REQUIRED COMPONENTS Interpreter)
 
-foreach(name IN ITEMS mpv_json_oracle seek_trace_test subtitle_snapshot_test)
+foreach(name IN ITEMS mpv_json_oracle seek_trace_test subtitle_snapshot_test subtitle_selection_test)
   add_executable(${name} ${name}.cpp)
   target_link_libraries(${name} PRIVATE Immivio::MpvHeaders)
   if(MSVC)
@@ -25,3 +25,5 @@ add_test(NAME seek_trace COMMAND seek_trace_test)
 
 add_test(NAME subtitle_snapshot COMMAND "${Python3_EXECUTABLE}"
   "${CMAKE_CURRENT_SOURCE_DIR}/verify_subtitle_snapshot.py" "$<TARGET_FILE:subtitle_snapshot_test>")
+
+add_test(NAME subtitle_selection COMMAND subtitle_selection_test)

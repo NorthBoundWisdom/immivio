@@ -12,6 +12,7 @@
 #include <dlfcn.h>
 #include <immivio/mpv/json_quote.h>
 #include <immivio/mpv/subtitle_snapshot.h>
+#include <immivio/mpv/subtitle_selection.h>
 #include <jni.h>
 #include <limits>
 #include <memory>
@@ -780,37 +781,37 @@ struct Source final {
           subtitle_command_applied =
               std::max(subtitle_command_applied, sync_command);
         }
-        if (!import_path.empty()) {
-          const char *add[] = {
-              "sub-add", import_path.c_str(),
-              (!set_subtitle || import_command > subtitle_command) ? "select"
-                                                                   : "auto",
-              import_title.c_str(), nullptr};
-          const int added = mpv_command(core, add);
-          imported_subtitle_command = import_command;
-          subtitle_import_error = added < 0 ? mpv_error_string(added) : "";
-          subtitle_command_applied =
-              std::max(subtitle_command_applied, import_command);
-        }
-        if (set_subtitle &&
-            (import_path.empty() || subtitle_command > import_command)) {
-          const auto selected =
-              subtitle_id < 0
-                  ? "auto"
-                  : (subtitle_id == 0 ? "no" : std::to_string(subtitle_id));
-          checked(mpv_set_property_string(core, "sid", selected.c_str()),
-                  "MPV subtitle track");
-          subtitle_command_applied =
-              std::max(subtitle_command_applied, subtitle_command);
-          next_snapshot = std::chrono::steady_clock::now();
-        }
-        if (set_secondary) {
-          const auto selected = secondary_id == 0 ? "no" : std::to_string(secondary_id);
-          checked(mpv_set_property_string(core, "secondary-sid", selected.c_str()),
-                  "MPV secondary subtitle track");
-          secondary_command_applied = std::max(secondary_command_applied, secondary_command);
-          next_snapshot = std::chrono::steady_clock::now();
-        }
+        quest::apply_subtitle_selection(
+            set_secondary, secondary_id,
+            set_subtitle && (import_path.empty() || subtitle_command > import_command),
+            subtitle_id,
+            [&] { return property(core, "secondary-sid"); },
+            [&](int track) {
+              const auto selected = track == 0 ? "no" : std::to_string(track);
+              checked(mpv_set_property_string(core, "secondary-sid", selected.c_str()),
+                      "MPV secondary subtitle track");
+              secondary_command_applied = std::max(secondary_command_applied, secondary_command);
+              next_snapshot = std::chrono::steady_clock::now();
+            },
+            [&] {
+              if (import_path.empty())
+                return;
+              const char *add[] = {
+                  "sub-add", import_path.c_str(),
+                  (!set_subtitle || import_command > subtitle_command) ? "select" : "auto",
+                  import_title.c_str(), nullptr};
+              const int added = mpv_command(core, add);
+              imported_subtitle_command = import_command;
+              subtitle_import_error = added < 0 ? mpv_error_string(added) : "";
+              subtitle_command_applied = std::max(subtitle_command_applied, import_command);
+            },
+            [&](int track) {
+              const auto selected = track < 0 ? "auto" : (track == 0 ? "no" : std::to_string(track));
+              checked(mpv_set_property_string(core, "sid", selected.c_str()),
+                      "MPV subtitle track");
+              subtitle_command_applied = std::max(subtitle_command_applied, subtitle_command);
+              next_snapshot = std::chrono::steady_clock::now();
+            });
         if (seek >= 0) {
           ActiveFlag seeking(seek_in_progress);
           seek_requested_at_us.store(startup_us());
