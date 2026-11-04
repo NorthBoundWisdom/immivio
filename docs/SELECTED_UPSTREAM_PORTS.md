@@ -44,6 +44,8 @@ Report confirmed playback start, throttled progress and stop to Emby/Jellyfin on
 
 Offer direct-play Emby/Jellyfin versions on the details page. Explicit version URIs isolate resume, mode and track preferences; the unselected URI keeps the legacy identity. Report the selected MediaSourceId. Missing or unsupported selected versions fail without silently playing another file.
 
+Known server-resume limitation: `detail().position_ms` reads the grouped item, while explicit version rows resume only from Immivio's local per-version history. Jellyfin can store the selected version's progress on its own item rather than the grouped item. Progress from watching a non-default version in another client is therefore not adopted by the explicit version row, and the default action can use older grouped-item progress. Emby's version model has not been verified against an owned server; this round documents the limitation without changing either provider's resume behavior.
+
 ### P4 — Emby/Jellyfin folder browsing
 
 The folders-mode exclusion policy derives from upstream EmbyClient. Immivio additionally excludes Photo to preserve its existing server-video scope. The 0.15.2 photo/media-type filter path and 0.16.2 child-artwork fallback do not exist in this architecture, so those paths are not introduced.
