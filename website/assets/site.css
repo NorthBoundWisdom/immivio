@@ -293,8 +293,8 @@ html[lang="zh-CN"] .hero h1 {
 }
 .hero-media img {
   width: 100%;
-  aspect-ratio: 16/11;
-  object-fit: cover;
+  aspect-ratio: 16/9;
+  object-fit: contain;
   object-position: center 60%;
 }
 .caption {
@@ -377,10 +377,10 @@ html[lang="zh-CN"] .hero h1 {
   background: var(--surface);
 }
 .gallery img {
-  aspect-ratio: 16/10;
+  aspect-ratio: 16/9;
   width: 100%;
-  object-fit: cover;
-  object-position: center 65%;
+  object-fit: contain;
+  object-position: center;
   transition: transform 0.25s;
 }
 .gallery a:hover img {

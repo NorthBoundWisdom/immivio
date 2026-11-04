@@ -165,7 +165,7 @@ def main():
     assert release["html_url"].startswith(
         "https://github.com/NorthBoundWisdom/immivio/releases"
     )
-    # Until the first branded release, the site links to current development builds.
+    # A release snapshot is complete or falls back to development downloads.
     assert len(release["assets"]) in [0, 3]
     if release["assets"]:
         assert release["tag_name"]
@@ -184,8 +184,13 @@ def main():
             assert matches[0]["browser_download_url"].startswith(
                 "https://github.com/NorthBoundWisdom/immivio/releases/download/"
             )
-    for name in ["playback", "settings", "display"]:
-        data = (SITE / f"assets/screenshots/{name}.png").read_bytes()
+    screenshot_names = {
+        prefix + name + ".png"
+        for prefix in ("", "zh-")
+        for name in ("playback", "settings", "display")
+    }
+    for name in screenshot_names:
+        data = (SITE / "assets/screenshots" / name).read_bytes()
         assert data[:8] == b"\x89PNG\r\n\x1a\n" and struct.unpack(
             ">II", data[16:24]
         ) == (1920, 1080)
@@ -193,7 +198,13 @@ def main():
             len(data) > 100000
         ), f"{name}: unexpectedly small screenshot; inspect for blank playback"
     capture = json.loads((SITE / "assets/screenshots/capture.json").read_text())
+    assert re.fullmatch(r"[0-9a-f]{40}", capture["application_commit"])
+    assert re.fullmatch(r"[0-9a-f]{64}", capture["apk_sha256"])
+    assert capture["source_included"] is False
+    assert {shot["file"] for shot in capture["screenshots"]} == screenshot_names
+    assert len(capture["screenshots"]) == len(screenshot_names)
     for shot in capture["screenshots"]:
+        assert shot["language"] == ("zh-CN" if shot["file"].startswith("zh-") else "en")
         assert (
             hashlib.sha256(
                 (SITE / "assets/screenshots" / shot["file"]).read_bytes()
@@ -201,7 +212,7 @@ def main():
             == shot["sha256"]
         )
     print(
-        f"Website checks passed: {len(pages)} pages, 2 languages, search metadata and structured data, single-edition downloads, 3 emulator screenshots."
+        f"Website checks passed: {len(pages)} pages, 2 languages, search metadata and structured data, single-edition downloads, 6 emulator screenshots."
     )
 
 
