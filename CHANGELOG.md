@@ -6,6 +6,7 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 ## Unreleased
 
+- Add an opt-in last-video projection/stereo fallback for otherwise unrecognized formats. Per-file modes and recognized filename, container stereo or established frame-shape rules still win. Store only layout, projection, fisheye angle and eye order; photos and removed effects stay independent.
 - Add centred grip-stick immersive translation/zoom, ±10% immersive horizontal stereo alignment, fading numeric range feedback and a passive centre ring/cross during picture movement. Store translations and zoom per video; recenter clears those offsets while preserving existing stereo calibration. Flat video and photos keep their previous ranges and controls.
 - Change the headset refresh-rate default to 72 Hz for power saving, or the closest available rate (lower on a tie). Offer only runtime-advertised rates in Display settings and reapply after session resume. This changes the previous runtime-selected refresh behavior.
 - Accept one validated Android VIEW/SEND video through a separate ingress, preserving the existing single-engine Activity reuse route. Content access is a temporary descriptor lease, never a persisted URI grant. Requests expire after 60 seconds and own at most four leases; provider preparation has an 8-second UI deadline and a bounded worker queue.

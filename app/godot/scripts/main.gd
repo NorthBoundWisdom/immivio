@@ -285,6 +285,8 @@ func _ready() -> void:
 	video.history_enabled = bool(settings.get_value("library", "history", true))
 	_restore_seek_settings()
 	video.auto_depth = false
+	video.reuse_last_mode = bool(settings.get_value("video", "reuse_last_mode", false))
+	video.last_video_mode = preload("res://scripts/video_mode_default.gd").clean(settings.get_value("video", "last_mode", {}))
 	video.load_mode_lock(settings.get_value("video", "mode_lock", {}))
 	video.subtitle_distance = float(settings.get_value("subtitles", "distance", 5.0))
 	video.subtitle_position = video.SubtitleDepth.restore_position(settings)
@@ -1058,7 +1060,19 @@ func _toggle_display() -> void:
 	_presentation._toggle_display()
 
 
+func _capture_last_video_mode() -> void:
+	if not video or not video.reuse_last_mode or video.local_uri.is_empty() or not video._remember_file or video._layout_pending != null or video._waiting_first or not video.media.accepts(video.media.session_id):
+		return
+	var mode := preload("res://scripts/video_mode_default.gd").clean(video.current_lock().merged({"swap_eyes": video.swap_eyes}, true))
+	if mode.is_empty() or mode == video.last_video_mode:
+		return
+	video.last_video_mode = mode
+	settings.set_value("video", "last_mode", mode)
+	settings.save(settings_path)
+
+
 func _on_video_changed() -> void:
+	_capture_last_video_mode()
 	_playback._on_video_changed()
 
 
