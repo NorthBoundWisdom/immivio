@@ -109,3 +109,9 @@ Retain a bounded, redacted step ring and Java crash record across restarts. Show
 PICO detection and permission-aware recovery intent derive from upstream UsbClaimPolicy/LocalStorageVolumes; implementation follows Immivio’s existing OS-mounted source and LocalStoragePermissions policy. Fallback is reevaluated after permissions/mount changes, never persisted as a ban. Provider FileNotFound is “missing” only after a successful empty metadata query. Direct USB interface claiming, block IO, partition scanning and filesystem backends are skipped: upstream UsbStorage depends on additional UsbBulkDevice/UsbPartitions/native filesystem infrastructure absent here, making that a new storage-driver stack rather than a small port. Some PICO paths and opaque third-party providers can still fail; no hardware unmount or forced claim is attempted.
 
 Improve verified mounted-volume fallback on Android 11+, distinguish missing permission, unmounted storage and provider failure, and give PICO-specific settings/reconnect guidance. Stopping App access closes related video/photo readers and known external descriptor leases without claiming hardware removal.
+
+### P15 — Provider marks and Plex libraries
+
+`provider_icons.gd` normalization and Plex collection-type/library-mode behavior derive from upstream. Marks are independently drawn monograms in the existing MenuIcons line system; no third-party brand SVG assets or unrelated provider aliases are imported. Existing Stash support keeps its generic server icon. Plex retains its current first-library default/data queries and all PlexConnectionSelector behavior; global history queries, library-artwork transcoding and Plex version selection are not imported.
+
+Use consistent provider marks for existing Emby, Jellyfin, Plex, XBVR, DLNA, SMB and local sources. Open Plex at its library chooser and distinguish movie/TV libraries; choosing TV opens series navigation instead of a flat episode wall.

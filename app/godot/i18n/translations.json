@@ -553,7 +553,9 @@
     "Storage device is no longer mounted. Reconnect and retry.": "存储设备未挂载，请重新连接后重试。",
     "Stop app access": "停止本应用访问",
     "Storage provider unavailable. Check system storage settings and retry.": "存储提供程序不可用，请检查系统存储设置后重试。",
-    "App access stopped. Use system settings before unplugging.": "已停止本应用访问。拔出前请检查系统存储设置。"
+    "App access stopped. Use system settings before unplugging.": "已停止本应用访问。拔出前请检查系统存储设置。",
+    "TV library": "电视剧媒体库",
+    "Movie library": "电影媒体库"
   },
   "zh_Hant": {
     "Reset": "重設",
@@ -1109,7 +1111,9 @@
     "Storage device is no longer mounted. Reconnect and retry.": "儲存裝置未掛載，請重新連接後重試。",
     "Stop app access": "停止本 App 存取",
     "Storage provider unavailable. Check system storage settings and retry.": "儲存提供者無法使用，請檢查系統儲存設定後重試。",
-    "App access stopped. Use system settings before unplugging.": "已停止本 App 存取。拔除前請檢查系統儲存設定。"
+    "App access stopped. Use system settings before unplugging.": "已停止本 App 存取。拔除前請檢查系統儲存設定。",
+    "TV library": "電視劇媒體庫",
+    "Movie library": "電影媒體庫"
   },
   "ja": {
     "Reset": "リセット",
@@ -1665,6 +1669,8 @@
     "Storage device is no longer mounted. Reconnect and retry.": "ストレージがマウントされていません。再接続して再試行してください。",
     "Stop app access": "アプリのアクセスを停止",
     "Storage provider unavailable. Check system storage settings and retry.": "ストレージを利用できません。システム設定を確認して再試行してください。",
-    "App access stopped. Use system settings before unplugging.": "アプリのアクセスを停止しました。取り外す前にシステム設定を確認してください。"
+    "App access stopped. Use system settings before unplugging.": "アプリのアクセスを停止しました。取り外す前にシステム設定を確認してください。",
+    "TV library": "テレビ番組ライブラリ",
+    "Movie library": "映画ライブラリ"
   }
 }

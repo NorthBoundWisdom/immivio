@@ -174,7 +174,7 @@ func rows() -> Array[Dictionary]:
 			}
 		)
 		for p in ["emby", "jellyfin", "plex", "stash", "xbvr"]:
-			result.append({"title": provider_name(p), "icon": "server", "account_provider": p})
+			result.append({"title": provider_name(p), "icon": preload("res://scripts/provider_icons.gd").key(p), "account_provider": p})
 	elif view == "accounts":
 		for item in items:
 			result.append(

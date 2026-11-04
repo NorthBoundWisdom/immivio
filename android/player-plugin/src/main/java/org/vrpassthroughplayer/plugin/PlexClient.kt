@@ -21,7 +21,7 @@ internal class PlexClient(
         navigation = listOf("genres", "tags", "folders"),
         filters = listOf("watched", "min_rating"),
         tree = true
-    )
+    ).put("home_layout", "libraries")
 
     override fun probe(): String {
         val info = get("identity")
@@ -49,6 +49,7 @@ internal class PlexClient(
     private fun library(data: JSONObject) = JSONObject().put("id", numeric(data.getString("key")))
         .put("title", data.optString("title").take(256)).put("kind", "container")
         .put("container", true).put("has_cover", false)
+        .put("collection_type", if (data.optString("type") == "show") "tvshows" else "movies")
 
     override fun home(request: JSONObject): JSONObject {
         val all = sections();
@@ -72,7 +73,8 @@ internal class PlexClient(
         val selected =
             section(request) ?: return JSONObject().put("entries", JSONArray()).put("total", 0)
                 .put("page", page)
-        val folder = request.optString("mode") == "folders"
+        val folder = request.optString("mode") == "folders" ||
+            (request.optString("mode") == "library" && selected.optString("type") == "show")
         val parent = request.optString("parent_id")
         val args = linkedMapOf<String, Any>(
             "X-Plex-Container-Start" to (page - 1) * 48,
