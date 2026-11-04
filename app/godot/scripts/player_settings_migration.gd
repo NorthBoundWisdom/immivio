@@ -28,6 +28,14 @@ static func apply(settings: ConfigFile) -> bool:
 	if settings.has_section_key("playback", "queue_shuffle") and not settings.get_value("playback", "queue_shuffle") is bool:
 		settings.set_value("playback", "queue_shuffle", false)
 		changed = true
+	if settings.has_section_key("ui", "library_distance"):
+		var distance: Variant = settings.get_value("ui", "library_distance")
+		var normalized := 1.4
+		if (distance is int or distance is float) and is_finite(float(distance)):
+			normalized = clampf(float(distance), 0.8, 4.0)
+		if distance != normalized:
+			settings.set_value("ui", "library_distance", normalized)
+			changed = true
 	for item in RETIRED_KEYS:
 		if settings.has_section_key(item[0], item[1]):
 			settings.erase_section_key(item[0], item[1])

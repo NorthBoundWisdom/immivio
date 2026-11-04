@@ -85,3 +85,9 @@ Add an opt-in last-video projection/stereo fallback for otherwise unrecognized f
 Only the upstream direct-cycle interaction is adapted. No repeat-all, repeat-one, single-play enum or mpv loop protocol is introduced. Existing queue_shuffle booleans retain their meaning, malformed stored values migrate to false, and the existing internal single-file loop behavior is unchanged.
 
 Cycle the playback-order toolbar icon directly between the existing Sequence and Shuffle behaviors. Keep the separate queue editor and saved boolean preference; each queue still ends once its available entries are exhausted.
+
+### P11 — Smaller flat screens and farther menus
+
+The upstream numeric range behavior is adapted to Immivio’s existing ScreenPresets, surface setters and menu-distance owner. No preset distances or fixed default values are rescaled. Existing valid saved values pass through unchanged; only corrupt/out-of-range menu values are clamped. No photo range changes are imported.
+
+Extend flat-video distance down to 0.1 m and size down to 5%, keeping the logarithmic sliders and unchanged physical saved values/preset envelopes. Extend library/menu distance to 4 m and normalize malformed or out-of-range stored menu distances. Photos retain 0.3–10 m and 40–600% limits.

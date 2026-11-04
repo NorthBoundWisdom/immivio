@@ -132,7 +132,7 @@ var stick_controls := StickControls.new()
 var recent_menu: Node3D
 var player_menu: Node3D
 var menu_compositor: Node3D
-const LIBRARY_DISTANCE_LIMITS := Vector2(0.8, 3.0)
+const LIBRARY_DISTANCE_LIMITS := Vector2(0.8, 4.0)
 var library_distance: float:
 	get:
 		return _presentation.library_distance

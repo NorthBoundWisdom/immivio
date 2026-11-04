@@ -119,7 +119,7 @@ func _run() -> void:
 	main._update_library_grab_stick(Vector2.ZERO, Vector2(0, 1), .2)
 	check(is_equal_approx(main.library_distance, 1.7), "Grip plus stick up moves library farther")
 	main._update_library_grab_stick(Vector2.ZERO, Vector2(0, 1), 20)
-	check(is_equal_approx(main.library_distance, 3.0), "Far distance is bounded")
+	check(is_equal_approx(main.library_distance, 4.0), "Far distance is bounded")
 	main._update_library_grab_stick(Vector2.ZERO, Vector2(0, -1), 20)
 	check(is_equal_approx(main.library_distance, .8), "Near distance is bounded")
 	main._update_library_grab_stick(Vector2.ZERO, Vector2(0, 1), .4666666667)

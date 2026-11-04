@@ -90,8 +90,8 @@ func draw(key: String) -> void:
 				},
 				y
 			)
-			_slider("Distance", "screen_distance", Vector3(1, 50, 0.05), 2, " m", y - 0.09, 2)
-			_slider("Size", "screen_scale", Vector3(100, 3000, 5), 100, "%", y - 0.18, 0)
+			_slider("Distance", "screen_distance", Vector3(0.1, 50, 0.05), 2, " m", y - 0.09, 2)
+			_slider("Size", "screen_scale", Vector3(5, 3000, 5), 100, "%", y - 0.18, 0)
 			_slider("Eye level", "screen_eye_level", Vector3(0, 1, 0.05), 0.5, "", y - 0.27, 2)
 			_row(
 				"Curvature",
