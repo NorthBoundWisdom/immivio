@@ -114,8 +114,7 @@ internal class EmbyClient(
         val page = request.optInt("page", 1).coerceIn(1, 100000)
         val folders = request.optString("mode") == "folders"
         val args = linkedMapOf<String, Any>(
-            "Recursive" to !folders, "IncludeItemTypes" to if (folders)
-                "CollectionFolder,Folder,Series,Season,Movie,Episode,Video,BoxSet,Playlist" else "Movie,Episode,Video",
+            "Recursive" to !folders,
             "StartIndex" to (page - 1) * 48, "Limit" to 48, "EnableTotalRecordCount" to true,
             "Fields" to "MediaSources,MediaStreams,Overview,People,Genres,Studios,Chapters,Tags,ParentId,ChildCount,PrimaryImageAspectRatio",
             "SortBy" to (mapOf(
@@ -126,6 +125,8 @@ internal class EmbyClient(
             )[request.optString("sort")] ?: "DateCreated"),
             "SortOrder" to if (request.optString("direction") == "ASC") "Ascending" else "Descending"
         )
+        if (folders) args["ExcludeItemTypes"] = "Audio,AudioBook,Book,Game,Photo"
+        else args["IncludeItemTypes"] = "Movie,Episode,Video"
         val parent = request.optString("parent_id").ifBlank { request.optString("library_id") }
         if (parent.isNotBlank()) args["ParentId"] = mediaId(parent)
         val q = request.optString("q").take(200)
