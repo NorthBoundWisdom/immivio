@@ -36,6 +36,20 @@ func _run() -> void:
 	assert(action.play_scene.uri == first, "Details from a version resume must preselect that version")
 	browser.choose(action)
 	assert(browser.selection.uri == first and browser.selection.start_ms == -1)
+	# A removed version renders its actual source-unavailable status through I18n.t.
+	menu.section = Menu.Section.MEDIA_SERVER
+	menu.visible = true
+	browser.choose({"scene": version})
+	platform.answer(platform.next, {"detail": {"id": "movie", "uri": legacy, "title": "Movie", "versions": []}})
+	assert(menu.status == "Original stream unavailable")
+	var i18n := preload("res://scripts/i18n.gd")
+	var translations := {"zh": "原始媒体流不可用", "zh_Hant": "無法使用原始串流", "ja": "元のストリームを利用できません"}
+	for language in translations:
+		i18n.use(language)
+		menu.refresh()
+		assert(menu.text_snapshot().contains(translations[language]), "The displayed status is translated in " + language)
+		assert(not menu.text_snapshot().contains("Original stream unavailable"))
+	i18n.use("en")
 	browser.cancel()
 	menu.free()
 	platform.free()
