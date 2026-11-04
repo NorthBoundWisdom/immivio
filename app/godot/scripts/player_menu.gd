@@ -5,6 +5,7 @@ signal recent_requested
 signal seek_requested(position_ms: int)
 signal bookmark_requested(operation: String, marker_id: String, scope: String)
 signal subtitle_requested(track_id: int)
+signal secondary_subtitle_requested(track_id: int)
 signal depth_strength_requested(strength: float)
 signal adjustment_requested(key: String, value: Variant)
 signal adjustment_committed
@@ -178,6 +179,7 @@ var _depth_label: Label3D
 var _depth_busy: MeshInstance3D
 static var _busy_shader: Shader
 var _subtitle_open := false
+var _subtitle_secondary := false
 var _subtitle_offset := 0
 var _subtitle_scroll := 0.0
 var _subtitle_source := ""
@@ -556,6 +558,7 @@ func _draw_uncached() -> void:
 		_update_highlights()
 		return
 	if not _state.get("has_video", false) or _subtitle_source != str(_state.get("source_uri", "")):
+		_subtitle_secondary = false
 		_subtitle_open = false
 		_subtitle_offset = 0
 	_subtitle_source = str(_state.get("source_uri", ""))
@@ -746,7 +749,7 @@ func _subtitle_label(track: Dictionary) -> String:
 
 func _subtitle_controls() -> Array:
 	var rows: Array = []
-	var encoding: Dictionary = _state.get("subtitle_encoding_row", {})
+	var encoding: Dictionary = _state.get("secondary_subtitle_encoding_row" if _subtitle_secondary else "subtitle_encoding_row", {})
 	if not encoding.is_empty():
 		rows.append({"title": "Encoding (reopen video)", "field": encoding})
 	if _immersive_subtitles():
@@ -829,6 +832,7 @@ func _draw_subtitles() -> void:
 		0.26
 		+ (1 + mini(tracks.size(), SUBTITLE_ROWS)) * 0.075
 		+ rows.size() * 0.10
+		+ 0.18
 		+ (0.06 if scrolling else 0.0)
 	)
 	var top := 0.285 + height
@@ -841,6 +845,16 @@ func _draw_subtitles() -> void:
 	var heading := _label(I18n.t("Subtitles"), Vector3(-0.48, top - 0.05, 0.004), 18)
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	var y := top - 0.125
+	choices.field(null, {"key": "dual_subtitles", "value": _state.get("dual_subtitles", false),
+		"enabled": _state.get("dual_subtitles_available", false),
+		"choices": [{"value": false, "label": "Off"}, {"value": true, "label": "On"}]}, Vector2(0.14, y), 0.64)
+	var dual_title := _label(I18n.t("Dual subtitles"), Vector3(-0.48, y, 0.004), 17)
+	dual_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	y -= 0.09
+	choices.field(null, {"key": "subtitle_target", "value": _subtitle_secondary,
+		"enabled": _state.get("dual_subtitles_available", false),
+		"choices": [{"value": false, "label": "Primary subtitle"}, {"value": true, "label": "Secondary subtitle"}]}, Vector2(0, y), 0.96)
+	y -= 0.09
 	_subtitle_row(SUBTITLE_ROW, 0, I18n.t("Off"), y)
 	y -= 0.075
 	for index in range(_subtitle_offset, mini(tracks.size(), _subtitle_offset + SUBTITLE_ROWS)):
@@ -889,13 +903,15 @@ func _immersive_subtitles() -> bool:
 
 func _subtitle_row(target: int, id: int, text: String, y: float) -> void:
 	_subtitle_ids[target] = id
-	_button(target, text, Vector2(0, y), Vector2(0.92, 0.065))
+	var enabled: bool = not _subtitle_secondary or (
+		_state.get("dual_subtitles", false) and (id == 0 or id != int(_state.get("primary_subtitle_id", 0))))
+	_button(target, text, Vector2(0, y), Vector2(0.92, 0.065), enabled)
 	var button: Dictionary = _buttons.back()
 	var label: Label3D = button.node.get_child(0)
 	label.font_size = 20
 	label.position.x = -0.42
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	if id == int(_state.get("subtitle_track", 0)):
+	if id == int(_state.get("secondary_subtitle_track" if _subtitle_secondary else "subtitle_track", 0)):
 		button.base_color = SELECTED
 		_icon("check", Vector3(0.414, 0, 0.004), 0.029, ACCENT, button.node)
 
@@ -1159,6 +1175,10 @@ func _bar_key() -> String:
 			_state.get("source_uri", ""),
 			_subtitle_tracks(),
 			_state.get("subtitle_track", 0),
+			_subtitle_secondary,
+			_state.get("dual_subtitles", false),
+			_state.get("secondary_subtitle_track", 0),
+			_state.get("primary_subtitle_id", 0),
 			bookmarks.key(),
 			_state.get("audio_options", []),
 			_state.get("audio_track_id", -1),
@@ -1365,6 +1385,10 @@ func _ready() -> void:
 
 
 func _on_choice_changed(key: String, value: Variant) -> void:
+	if key == "subtitle_target":
+		_subtitle_secondary = bool(value)
+		refresh()
+		return
 	if (
 		(
 			key
@@ -1528,7 +1552,12 @@ func _activate(target: int) -> void:
 			_scroll_subtitles(-SUBTITLE_ROWS if target == SUBTITLE_UP else SUBTITLE_ROWS)
 			return
 		if _subtitle_ids.has(target):
-			subtitle_requested.emit(int(_subtitle_ids[target]))
+			if not _buttons.any(func(button): return button.target == target and button.enabled):
+				return
+			if _subtitle_secondary:
+				secondary_subtitle_requested.emit(int(_subtitle_ids[target]))
+			else:
+				subtitle_requested.emit(int(_subtitle_ids[target]))
 			_subtitle_open = false
 			refresh()
 			return

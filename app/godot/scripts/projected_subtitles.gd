@@ -21,7 +21,8 @@ func _ready() -> void:
 	viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	add_child(viewport)
 	label = Label.new()
-	label.size = Vector2(PATCH_SIZE, PATCH_SIZE)
+	label.position = Vector2(40, 40)
+	label.size = Vector2(PATCH_SIZE - 80, PATCH_SIZE - 80)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -77,6 +78,25 @@ func update_patch(
 			vertical_text.set_text(_text, preload("res://scripts/ray_menu.gd").ui_font(), _size)
 		else:
 			label.text = _text
+			var available := Vector2(PATCH_SIZE - 80, PATCH_SIZE - 80)
+			var pixels := roundi(40 * _size)
+			label.scale = Vector2.ONE
+			label.position = Vector2(40, 40)
+			while true:
+				label.add_theme_font_size_override("font_size", pixels)
+				label.add_theme_constant_override("outline_size", maxi(2, roundi(pixels / 5.0)))
+				label.size = available
+				# Measure Label's real smart wrapping and theme line spacing. Font's
+				# default word-only breaks underestimate long unbroken translations.
+				var needed := label.get_minimum_size().y + 2 * label.get_theme_constant("outline_size")
+				if needed <= available.y or pixels <= 1:
+					break
+				pixels -= 1
+			label.size = Vector2(available.x, maxf(available.y, label.get_minimum_size().y))
+			var fit := minf(1.0, available.y / (label.size.y + 2 * label.get_theme_constant("outline_size")))
+			label.scale = Vector2.ONE * fit
+			label.position = (Vector2(PATCH_SIZE, PATCH_SIZE) - label.size * fit) / 2
+
 		viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 	target.set_shader_parameter("subtitle_texture", viewport.get_texture())
 	target.set_shader_parameter("subtitle_enabled", true)

@@ -238,6 +238,7 @@ internal class MpvVideoBridge(
                             host.subtitleCommand =
                                 MpvSourceNative.setSync(host.handle, host.subtitleMs, host.audioMs)
                             check(host.subtitleCommand > 0)
+                            host.secondarySubtitleCommand = host.subtitleCommand
                         }
                         MpvSourceNative.setFrameCap(host.handle, frameCap(session))
                         // Native creation stays paused until focus policy has
@@ -336,6 +337,7 @@ internal class MpvVideoBridge(
                 val serial = MpvSourceNative.setSync(session.host.handle, subtitleMs, audioMs)
                 if (serial <= 0) return false
                 session.host.subtitleCommand = maxOf(session.host.subtitleCommand, serial)
+                session.host.secondarySubtitleCommand = maxOf(session.host.secondarySubtitleCommand, serial)
             }
             session.host.subtitleMs = subtitleMs; session.host.audioMs = audioMs
             return true
@@ -452,6 +454,19 @@ internal class MpvVideoBridge(
         return true
     }
 
+    fun setSecondarySubtitle(id: Int, trackId: Int): Boolean {
+        val session = sessions[id] ?: return false
+        if (!active(session) || session.host.handle <= 0) return false
+        val serial = SecondarySubtitleSelection.request(trackId, session.host.subtitleTracks) {
+            MpvSourceNative.setSecondarySubtitle(session.host.handle, it)
+        }
+        if (serial <= 0) return false
+        synchronized(session.host) {
+            session.host.secondarySubtitleCommand = maxOf(session.host.secondarySubtitleCommand, serial)
+        }
+        return true
+    }
+
     fun subtitles(id: Int, afterSequence: Long): String {
         val session = sessions[id] ?: return ""
         if (!active(session) || session.host.handle <= 0 || afterSequence < 0) return ""
@@ -460,7 +475,8 @@ internal class MpvVideoBridge(
         return JSONObject(text).put("session_id", session.id)
             .put("generation", session.scope.generation)
             .put("mpv_source_handle", session.host.handle)
-            .put("required_command_id", session.host.subtitleCommand).toString()
+            .put("required_command_id", session.host.subtitleCommand)
+            .put("required_secondary_command_id", session.host.secondarySubtitleCommand).toString()
     }
 
 
@@ -570,6 +586,7 @@ internal class MpvVideoBridge(
                         .put("video_fps_cap", frameCap(session))
                     val details = status.optJSONObject("details")
                     details?.optJSONArray("subtitle_tracks")?.let { tracks ->
+                        session.host.subtitleTracks = JSONArray(tracks.toString())
                         for (i in 0 until tracks.length()) {
                             val track = tracks.getJSONObject(i)
                             val path = track.optString("external_path")

@@ -554,6 +554,10 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         !closed.get() && mpv.setSubtitle(id, trackId)
 
     @UsedByGodot
+    fun set_mpv_secondary_subtitle(id: Int, trackId: Int): Boolean =
+        !closed.get() && mpv.setSecondarySubtitle(id, trackId)
+
+    @UsedByGodot
     fun get_mpv_subtitles(id: Int, afterSequence: Long): String =
         if (closed.get()) "" else mpv.subtitles(id, afterSequence)
 

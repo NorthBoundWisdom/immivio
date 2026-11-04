@@ -368,6 +368,8 @@ func _on_player_setting(key: String, value: Variant) -> void:
 	if host.photo_active:
 		return
 	match key:
+		"dual_subtitles":
+			host.video.dual_subtitles.set_enabled(bool(value))
 		"subtitle_distance", "subtitle_position", "subtitle_direction":
 			host._on_setting_changed(key, value)
 		"viewing_eye":

@@ -86,6 +86,7 @@ var _subtitle_loading := false
 var _subtitle_requested_uri := ""
 var _subtitle_import_floor := 0
 var subtitles := SubtitleState.new()
+var dual_subtitles := preload("res://scripts/dual_subtitles.gd").new(self)
 ## Text subtitles: on the flat screen near its lower edge; in immersive modes floating at
 ## a video-local projection with stereo disparity controlled by [subtitle_distance].
 var playback_speed := 1.0
@@ -504,8 +505,11 @@ func open_local(
 	subtitle_encodings = saved_sync.get("subtitle_encodings", {}).duplicate(true)
 	if PlatformMethods.supports(platform, "configure_subtitle_encodings"):
 		platform.configure_subtitle_encodings(uri, JSON.stringify(subtitle_encodings))
+	dual_subtitles.reset()
 	_track_choices = saved_sync.get("track_choices", {}).duplicate(true)
 	_tracks_pending = _track_choices.duplicate(true)
+	if not history_enabled:
+		_tracks_pending.erase("secondary_subtitle")
 	subtitle_delay_ms = int(saved_sync.get("subtitle_delay_ms", 0))
 	audio_delay_ms = int(saved_sync.get("audio_delay_ms", 0))
 	external_subtitle_uri = str(saved_sync.get("external_subtitle_uri", ""))
@@ -617,7 +621,7 @@ func open_local(
 	audio_track_id = -1
 	_clone_applied = false
 	subtitles.select(0)
-	subtitles.clear(true)
+	_clear_subtitle_text(true)
 	if _subtitle_surface:
 		_subtitle_surface.visible = false
 	reset_view()  # Orientation starts at the current gaze; per-file translations are independent.
@@ -694,6 +698,7 @@ func close_video() -> void:
 	_audio_pending = false
 	control.close()
 	_remember_file = false
+	dual_subtitles.reset()
 	_track_choices.clear()
 	_tracks_pending.clear()
 	local_uri = ""
@@ -701,7 +706,7 @@ func close_video() -> void:
 	alpha_requested = false
 	depth_requested = false
 	set_corner_hover(-1)
-	subtitles.clear(true)
+	_clear_subtitle_text(true)
 	if _subtitle_surface:
 		_subtitle_surface.visible = false
 	changed.emit()
@@ -770,7 +775,7 @@ func _request_revision(position_ms: int = -1, mode: String = "") -> void:
 	}
 	platform.set_mpv_playing(media.session_id, false)
 	_waiting_first = true
-	subtitles.clear()
+	_clear_subtitle_text()
 	if _subtitle_surface:
 		_subtitle_surface.visible = false
 	if caption:
@@ -893,6 +898,8 @@ func _try_revision() -> void:
 	if _is_frozen():
 		media.format = held_format
 	_tracks_pending = _track_choices.duplicate(true)
+	if not history_enabled:
+		_tracks_pending.erase("secondary_subtitle")
 	platform.set_mpv_playing(id, false)
 	if int(request.position_ms) >= 0:
 		_last_seek_mode = request.seek_mode
@@ -1056,7 +1063,7 @@ func set_sync_delay(key: String, value: float) -> bool:
 		return false
 	subtitle_delay_ms = sub
 	audio_delay_ms = audio
-	subtitles.clear()
+	_clear_subtitle_text()
 	changed.emit()
 	return true
 
@@ -1148,16 +1155,18 @@ func select_audio_track(track_id: int) -> bool:
 
 
 func _remember_track(kind: String, id: int) -> void:
+	if kind == "secondary_subtitle" and (not history_enabled or not _remember_file):
+		return
 	var tracks: Array = (
 		subtitle_tracks()
-		if kind == "subtitle"
+		if kind in ["subtitle", "secondary_subtitle"]
 		else media.playback.get("details", {}).get("audio_tracks", [])
 	)
 	var choice := TrackPreference.capture(id, tracks)
 	if choice.is_empty():
 		return
 	_track_choices[kind] = choice
-	if kind == "subtitle" and (_subtitle_loading or not _pending_external_uri.is_empty()):
+	if kind in ["subtitle", "secondary_subtitle"] and (_subtitle_loading or not _pending_external_uri.is_empty()):
 		_tracks_pending[kind] = choice.duplicate(true)
 	else:
 		_tracks_pending.erase(kind)
@@ -1168,20 +1177,25 @@ func _restore_track_choices() -> void:
 	if not media.accepts(media.session_id):
 		return
 	var details: Dictionary = media.playback.get("details", {})
-	for kind in _tracks_pending.keys():
-		if kind == "subtitle" and (_subtitle_loading or not _pending_external_uri.is_empty()):
+	for kind in ["audio", "subtitle", "secondary_subtitle"]:
+		if not _tracks_pending.has(kind):
 			continue
-		if not details.has(kind + "_tracks"):
+		if kind in ["subtitle", "secondary_subtitle"] and (_subtitle_loading or not _pending_external_uri.is_empty()):
 			continue
-		var tracks: Array = subtitle_tracks() if kind == "subtitle" else details.audio_tracks
+		var track_kind: String = "subtitle" if kind == "secondary_subtitle" else kind
+		if not details.has(track_kind + "_tracks"):
+			continue
+		var tracks: Array = subtitle_tracks() if track_kind == "subtitle" else details.audio_tracks
 		var id: Variant = TrackPreference.resolve(_tracks_pending[kind], tracks)
 		if id == null:
 			continue
-		var accepted := (
-			set_subtitle_track(int(id), false)
-			if kind == "subtitle"
-			else _apply_audio_track(int(id))
-		)
+		var accepted: bool
+		if kind == "secondary_subtitle":
+			accepted = dual_subtitles.select(int(id), false)
+		elif kind == "subtitle":
+			accepted = set_subtitle_track(int(id), false)
+		else:
+			accepted = _apply_audio_track(int(id))
 		if accepted:
 			_tracks_pending.erase(kind)
 			if kind == "audio":
@@ -1303,6 +1317,11 @@ func bookmark_action(operation: String, marker_id: String, scope: String) -> Str
 	return ""
 
 
+func _clear_subtitle_text(reset_sequence: bool = false) -> void:
+	subtitles.clear(reset_sequence)
+	dual_subtitles.state.clear(reset_sequence)
+
+
 func set_subtitle_track(track_id: int, remember: bool = true) -> bool:
 	if track_id < -1 or not platform or not media.accepts(media.session_id):
 		return false
@@ -1311,6 +1330,7 @@ func set_subtitle_track(track_id: int, remember: bool = true) -> bool:
 	if not platform.set_mpv_subtitle(media.session_id, track_id):
 		return false
 	subtitles.select(track_id)
+	dual_subtitles.primary_changed()
 	if remember:
 		_remember_track("subtitle", track_id)
 	if _subtitle_surface:
@@ -1336,8 +1356,8 @@ func set_subtitle_encoding(value: Variant) -> bool:
 	return true
 
 
-func subtitle_encoding_row() -> Dictionary:
-	return preload("res://scripts/file_subtitle_encoding.gd").row(subtitle_tracks(), subtitles.requested_track, subtitle_encodings)
+func subtitle_encoding_row(secondary: bool = false) -> Dictionary:
+	return preload("res://scripts/file_subtitle_encoding.gd").row(subtitle_tracks(), dual_subtitles.state.requested_track if secondary else subtitles.requested_track, subtitle_encodings)
 
 
 func subtitle_tracks() -> Array[Dictionary]:
@@ -1376,6 +1396,7 @@ func _poll_subtitles() -> void:
 		and panel.visible
 	)
 	if not ready:
+		dual_subtitles.state.clear()
 		caption.visible = false
 		projected_subtitles.clear(material)
 		if _subtitle_surface:
@@ -1386,15 +1407,14 @@ func _poll_subtitles() -> void:
 		_subtitle_poll_ms = now + 50
 		var payload: String = platform.get_mpv_subtitles(media.session_id, subtitles.sequence)
 		var snapshot: Variant = JSON.parse_string(payload) if not payload.is_empty() else null
-		if (
-			snapshot is Dictionary
-			and subtitles.observe(snapshot, media.session_id, media.last_pair)
-		):
-			_subtitle_received_ms = now
+		if snapshot is Dictionary:
+			if subtitles.observe(snapshot, media.session_id, media.last_pair):
+				_subtitle_received_ms = now
+			dual_subtitles.observe(snapshot)
 	if now - _subtitle_received_ms > 1000:
-		subtitles.clear()
-	caption.text = subtitles.text
-	caption.visible = not subtitles.text.is_empty()
+		_clear_subtitle_text()
+	caption.text = dual_subtitles.compose()
+	caption.visible = not caption.text.is_empty()
 	if caption.visible:
 		_place_caption()
 	else:
@@ -1415,7 +1435,10 @@ func _place_caption() -> void:
 		var margin := minf(0.06 * screen_scale, _flat.size.y * 0.1)
 		# Include the actual multiline text height in the usable travel range.
 		caption.width = _flat.size.x * 0.9 / pixel_size
-		var text_height := minf(_flat.size.y - 2 * margin, caption.get_aabb().size.y)
+		var available_height := maxf(0.001, _flat.size.y - 2 * margin)
+		var fit := minf(1.0, available_height / maxf(0.001, caption.get_aabb().size.y))
+		caption.pixel_size = pixel_size * fit
+		var text_height := caption.get_aabb().size.y
 		var y := lerpf(
 			-_flat.size.y * 0.5 + margin,
 			_flat.size.y * 0.5 - margin - maxf(0.064 * subtitle_size * screen_scale, text_height),
@@ -1898,6 +1921,7 @@ func _on_state(id: int, payload: String) -> void:
 		_subtitle_import_command = 0
 		_subtitle_import_uri = ""
 		_subtitle_loading = false
+	dual_subtitles.primary_changed()
 	_restore_track_choices()
 	var size := str(details.get("file_size", ""))
 	if (
@@ -1939,7 +1963,7 @@ func _on_error(id: int, payload: String) -> void:
 	_pending_revision = {}
 	_waiting_first = false
 	control.reject()
-	subtitles.clear()
+	_clear_subtitle_text()
 	_recover = media.error == "MPV_GL_CONTEXT_RECREATED"
 	_recover_ms = control.observed_position_ms
 	_unbind()

@@ -48,6 +48,10 @@ internal object MpvSourceNative {
     @JvmStatic
     external fun setSubtitle(handle: Long, trackId: Int): Long
 
+    /** 0 off or an existing text track. Independent command fence, shared subtitle delay. */
+    @JvmStatic
+    external fun setSecondarySubtitle(handle: Long, trackId: Int): Long
+
     /** Positive milliseconds delay the selected audio/subtitles. Returns a subtitle fence serial. */
     @JvmStatic
     external fun setSync(handle: Long, subtitleMs: Int, audioMs: Int): Long

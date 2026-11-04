@@ -81,6 +81,17 @@ func _button(
 func field(
 	parent: Node3D, row: Dictionary, centre: Vector2, width: float, height: float = 0.065
 ) -> void:
+	if not row.get("enabled", true):
+		# Disabled fields keep their value and explanatory hint, without capture targets.
+		var value_label := str(row.get("display_value", row.get("value", "")))
+		for option in row.get("choices", []):
+			if same(row.get("value"), option.value):
+				value_label = menu.I18n.t(option.label)
+		var target := BASE + targets.size()
+		targets[target] = {"kind": "disabled"}
+		menu._control_button(target, value_label, centre, width, false, "", false, parent)
+		menu._tips[target] = menu.I18n.t(str(row.get("hint", "")))
+		return
 	if row.get("slider", false):
 		_slider(parent, row, centre, width, height)
 		return

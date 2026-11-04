@@ -11,6 +11,7 @@
 #include <cstdlib>
 #include <dlfcn.h>
 #include <immivio/mpv/json_quote.h>
+#include <immivio/mpv/subtitle_snapshot.h>
 #include <jni.h>
 #include <limits>
 #include <memory>
@@ -200,6 +201,10 @@ struct Source final {
            subtitle_sequence = 0;          // control thread
   std::vector<int64_t> subtitle_track_ids; // commands_mutex
   int desired_subtitle_id = 0;
+  std::vector<int64_t> text_subtitle_track_ids; // commands_mutex
+  uint64_t desired_secondary_command = 0, secondary_command_applied = 0;
+  int desired_secondary_id = 0;
+  bool secondary_dirty = false;
   bool subtitle_dirty = false;
   int desired_subtitle_ms = 0, desired_audio_ms = 0;
   bool sync_dirty = false;
@@ -323,7 +328,7 @@ struct Source final {
     std::string tracks_json = "[";
     std::vector<int64_t> track_ids;
     std::string subtitles_json = "[";
-    std::vector<int64_t> subtitle_ids;
+    std::vector<int64_t> subtitle_ids, text_subtitle_ids;
     OwnedNode tracks;
     if (mpv_get_property(core, "track-list", MPV_FORMAT_NODE, &tracks.value) >=
             0 &&
@@ -340,6 +345,8 @@ struct Source final {
         if (!ids.empty())
           list += ',';
         ids.push_back(id->u.int64);
+        if (type == "sub" && quest::text_subtitle_codec(node_text(track, "codec")))
+          text_subtitle_ids.push_back(id->u.int64);
         const auto *external = member(track, "external");
         list +=
             "{\"id\":" + std::to_string(id->u.int64) +
@@ -360,6 +367,7 @@ struct Source final {
       std::lock_guard<std::mutex> lock(commands_mutex);
       audio_track_ids = std::move(track_ids);
       subtitle_track_ids = std::move(subtitle_ids);
+      text_subtitle_track_ids = std::move(text_subtitle_ids);
     }
     const auto subtitle_id = property(core, "current-tracks/sub/id");
     const bool subtitle_timeline_valid =
@@ -391,14 +399,17 @@ struct Source final {
                        paused == "yes");
     }
 #endif
-    const auto subtitle_json =
-        "{\"sequence\":" + std::to_string(++subtitle_sequence) +
-        ",\"command_id\":" + std::to_string(subtitle_command_applied) +
-        ",\"track_id\":" + quote(subtitle_id) + ",\"subtitle_delay_seconds\":" +
-        quote(seconds_property(core, "sub-delay")) +
-        ",\"text\":" + quote(subtitle_text) +
-        ",\"start_seconds\":" + quote(subtitle_start) +
-        ",\"end_seconds\":" + quote(subtitle_end) +
+    ++subtitle_sequence;
+    auto subtitle_json = quest::subtitle_cue_json(subtitle_sequence, subtitle_command_applied,
+        subtitle_id, seconds_property(core, "sub-delay"), subtitle_text,
+        subtitle_start, subtitle_end, subtitle_timeline_valid);
+    const auto secondary_json = quest::subtitle_cue_json(subtitle_sequence, secondary_command_applied,
+        property(core, "secondary-sid"), seconds_property(core, "secondary-sub-delay"),
+        subtitle_timeline_valid ? property(core, "secondary-sub-text") : "",
+        seconds_property(core, "secondary-sub-start"), seconds_property(core, "secondary-sub-end"),
+        subtitle_timeline_valid);
+    subtitle_json.pop_back();
+    subtitle_json += ",\"secondary\":" + secondary_json +
         ",\"position_seconds\":" + quote(seconds_property(core, "time-pos")) +
         ",\"source_epoch\":" + std::to_string(last_epoch.load()) +
         ",\"timeline_valid\":" + (subtitle_timeline_valid ? "true" : "false") +
@@ -555,6 +566,8 @@ struct Source final {
       // External text sidecars are staged and decoded by the session owner.
       option("sub-auto", "no");
       option("sub-visibility", "no");
+      option("secondary-sub-visibility", "no");
+      option("secondary-sid", "no");
       option("interpolation", "no");
       option("dither", "no");
       option("scale", "bilinear");
@@ -625,6 +638,8 @@ struct Source final {
       initialized_us.store(startup_us());
       checked(mpv_observe_property(core, 41, "sub-text", MPV_FORMAT_STRING),
               "MPV subtitle text observation");
+      checked(mpv_observe_property(core, 42, "secondary-sub-text", MPV_FORMAT_STRING),
+              "MPV secondary subtitle text observation");
       render_thread = std::thread([this, core] { render(core); });
       const auto deadline =
           std::chrono::steady_clock::now() + std::chrono::seconds(15);
@@ -676,7 +691,9 @@ struct Source final {
         bool set_play = false, play = false, set_audio = false, muted = false,
              set_subtitle = false, seek_exact = true, set_speed = false;
         double speed = 1.0;
-        bool set_sync = false;
+        bool set_sync = false, set_secondary = false;
+        int secondary_id = 0;
+        uint64_t secondary_command = 0;
         int subtitle_ms = 0, audio_ms = 0;
         uint64_t sync_command = 0, import_command = 0;
         std::string import_path, import_title;
@@ -721,6 +738,10 @@ struct Source final {
             subtitle_dirty = false;
             subtitle_id = desired_subtitle_id;
             subtitle_command = desired_subtitle_command;
+            set_secondary = secondary_dirty;
+            secondary_dirty = false;
+            secondary_id = desired_secondary_id;
+            secondary_command = desired_secondary_command;
           }
         }
         if (set_play && !play) {
@@ -750,6 +771,9 @@ struct Source final {
           checked(mpv_set_property(core, "sub-delay", MPV_FORMAT_DOUBLE,
                                    &sub_seconds),
                   "MPV subtitle delay");
+          checked(mpv_set_property(core, "secondary-sub-delay", MPV_FORMAT_DOUBLE,
+                                   &sub_seconds), "MPV secondary subtitle shared delay");
+          secondary_command_applied = std::max(secondary_command_applied, sync_command);
           checked(mpv_set_property(core, "audio-delay", MPV_FORMAT_DOUBLE,
                                    &audio_seconds),
                   "MPV audio delay");
@@ -778,6 +802,13 @@ struct Source final {
                   "MPV subtitle track");
           subtitle_command_applied =
               std::max(subtitle_command_applied, subtitle_command);
+          next_snapshot = std::chrono::steady_clock::now();
+        }
+        if (set_secondary) {
+          const auto selected = secondary_id == 0 ? "no" : std::to_string(secondary_id);
+          checked(mpv_set_property_string(core, "secondary-sid", selected.c_str()),
+                  "MPV secondary subtitle track");
+          secondary_command_applied = std::max(secondary_command_applied, secondary_command);
           next_snapshot = std::chrono::steady_clock::now();
         }
         if (seek >= 0) {
@@ -2056,6 +2087,28 @@ Java_org_vrpassthroughplayer_plugin_MpvSourceNative_setSubtitle(JNIEnv *env,
     source->subtitle_dirty = true;
     source->wake.notify_one();
     return static_cast<jlong>(source->desired_subtitle_command);
+  } catch (const std::exception &failure) {
+    error(env, failure);
+    return 0;
+  }
+}
+extern "C" JNIEXPORT jlong JNICALL
+Java_org_vrpassthroughplayer_plugin_MpvSourceNative_setSecondarySubtitle(
+    JNIEnv *env, jclass, jlong handle, jint track) {
+  try {
+    if (track < 0) return 0;
+    auto source = find(handle);
+    std::lock_guard<std::mutex> lock(source->commands_mutex);
+    if (source->closing.load() || source->subtitle_requests >=
+            static_cast<uint64_t>(std::numeric_limits<jlong>::max()) ||
+        (track > 0 && std::find(source->text_subtitle_track_ids.begin(),
+                               source->text_subtitle_track_ids.end(), track) ==
+                          source->text_subtitle_track_ids.end())) return 0;
+    source->desired_secondary_id = track;
+    source->desired_secondary_command = ++source->subtitle_requests;
+    source->secondary_dirty = true;
+    source->wake.notify_one();
+    return static_cast<jlong>(source->desired_secondary_command);
   } catch (const std::exception &failure) {
     error(env, failure);
     return 0;
