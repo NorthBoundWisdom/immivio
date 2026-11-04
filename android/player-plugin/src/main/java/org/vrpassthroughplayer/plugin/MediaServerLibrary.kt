@@ -292,7 +292,7 @@ internal class MediaServerLibrary(
         val (server, scene) = MediaLibraryUri.parse(uri)
         val account = getAccount(server)
         val source = HttpRangeStreamSource(account) { http ->
-            mediaClient(account, http).stream(scene)
+            mediaClient(account, http).stream(scene, MediaLibraryUri.sourceId(uri))
         }
         try {
             synchronized(MediaServerStore) {

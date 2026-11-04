@@ -532,6 +532,8 @@ func rows() -> Array[Dictionary]:
 						"play_scene": detail
 					}
 				)
+				for version in detail.get("versions", []):
+					result.append({"title": I18n.t("Version") + " · " + str(version.get("version_name", "")), "icon": "play", "play_scene": version})
 				result.append(
 					{
 						"title": I18n.t("Favorited" if _is_favorite(detail) else "Favorite"),
@@ -681,11 +683,11 @@ func choose(row: Dictionary) -> void:
 		set_filter(kind, row.candidate, exclude)
 	elif row.has("play_scene") or row.has("marker"):
 		_play(
-			detail,
+			row.get("play_scene", detail),
 			(
 				int(row.marker.position_ms)
 				if row.has("marker")
-				else (int(detail.position_ms) if int(detail.get("position_ms", 0)) > 0 else -1)
+				else (-1 if row.get("play_scene", {}).has("source_id") else (int(detail.position_ms) if int(detail.get("position_ms", 0)) > 0 else -1))
 			)
 		)
 	elif row.has("favorite"):

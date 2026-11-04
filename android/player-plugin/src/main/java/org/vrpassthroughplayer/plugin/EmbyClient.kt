@@ -316,37 +316,58 @@ internal class EmbyClient(
             JSONObject().put("title", it.optString("Name").take(150))
                 .put("position_ms", it.optLong("StartPositionTicks").coerceAtLeast(0) / 10000)
         }
-        return summary(data).put("markers", JSONArray(markers))
+        return playableDetail(data).put("markers", JSONArray(markers))
+    }
+
+    private fun direct(source: JSONObject): Boolean = source.optBoolean("SupportsDirectPlay", true) &&
+        source.optString("Protocol", "File") == "File" && !source.optBoolean("IsRemote") && !source.optBoolean("RequiresOpening")
+
+    private fun playableDetail(data: JSONObject): JSONObject {
+        val result = summary(data)
+        val sources = (data.optJSONArray("MediaSources") ?: JSONArray()).objects().filter(::direct).take(16)
+        if (sources.size <= 1) return result
+        val versions = sources.mapNotNull { source ->
+            val sourceId = source.optString("Id")
+            if (sourceId.isBlank() || sourceId.length > 256 || sourceId.any { it.isISOControl() }) return@mapNotNull null
+            val name = source.optString("Name").ifBlank { source.optString("Path").substringAfterLast('/').substringAfterLast('\\') }
+                .ifBlank { sourceId }.take(150)
+            val video = (source.optJSONArray("MediaStreams") ?: JSONArray()).objects().firstOrNull { it.optString("Type") == "Video" }
+            JSONObject().put("id", result.getString("id")).put("source_id", sourceId).put("version_name", name)
+                .put("uri", MediaLibraryUri.scene(account.id, result.getString("id"), sourceId))
+                .put("title", result.getString("title") + " · " + name)
+                .put("basename", source.optString("Path").substringAfterLast('/').substringAfterLast('\\'))
+                .put("width", video?.optInt("Width") ?: 0).put("height", video?.optInt("Height") ?: 0)
+                .put("duration_ms", source.optLong("RunTimeTicks").coerceAtLeast(0) / 10000)
+        }
+        return result.put("versions", JSONArray(versions))
     }
 
     override fun cover(id: String): URI =
         account.endpoint("Items/${mediaId(id)}/Images/Primary?maxWidth=512&quality=85")
 
-    override fun stream(id: String): MediaStreamLink {
-        val data = get("Items/${mediaId(id)}/PlaybackInfo", mapOf("UserId" to user()))
+    override fun stream(id: String): MediaStreamLink = stream(id, "")
+
+    override fun stream(id: String, sourceId: String): MediaStreamLink {
+        val request = linkedMapOf<String, Any>("UserId" to user())
+        if (sourceId.isNotEmpty()) request["MediaSourceId"] = sourceId
+        val data = get("Items/${mediaId(id)}/PlaybackInfo", request)
         val sources =
             data.optJSONArray("MediaSources") ?: throw MediaServerFailure("Video unavailable")
         // Direct play preserves the file and enables true byte seeking through our proxy.
-        val source = sources.objects().firstOrNull {
-            it.optBoolean("SupportsDirectPlay", true) &&
-                    it.optString(
-                        "Protocol",
-                        "File"
-                    ) == "File" && !it.optBoolean("IsRemote") && !it.optBoolean("RequiresOpening")
-        }
+        val source = sources.objects().firstOrNull { direct(it) && (sourceId.isEmpty() || it.optString("Id") == sourceId) }
             ?: throw MediaServerFailure("Original stream unavailable")
-        val sourceId = source.getString("Id")
-        mediaRequire(sourceId.length in 1..256)
+        val selectedId = source.getString("Id")
+        mediaRequire(selectedId.length in 1..256)
         val args = mapOf(
-            "Static" to true, "MediaSourceId" to sourceId,
+            "Static" to true, "MediaSourceId" to selectedId,
             "PlaySessionId" to data.optString("PlaySessionId")
                 .ifBlank { UUID.randomUUID().toString().replace("-", "") })
         return MediaStreamLink(
             account.endpoint("Videos/${mediaId(id)}/stream?" + mediaQuery(args)),
-            sourceId + ":" + source.optLong("Size") + ":" + source.optString("ETag"),
+            selectedId + ":" + source.optLong("Size") + ":" + source.optString("ETag"),
             runCatching { subtitleLinks(id, source) }.getOrDefault(emptyList()),
             runCatching { audioLinks(source) }.getOrDefault(emptyList()),
-            playback = MediaServerPlaybackContext(id, sourceId, args.getValue("PlaySessionId").toString())
+            playback = MediaServerPlaybackContext(id, selectedId, args.getValue("PlaySessionId").toString())
         )
     }
 
