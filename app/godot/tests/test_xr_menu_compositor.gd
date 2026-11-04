@@ -85,8 +85,8 @@ func _run() -> void:
 	)
 	var font: Font = menu.ui_font()
 	check(
-		font.multichannel_signed_distance_field and font.generate_mipmaps,
-		"Menu fonts use scalable distance fields and mipmaps"
+		not font.multichannel_signed_distance_field and font.generate_mipmaps and font.oversampling >= 2.0 and font.antialiasing == TextServer.FONT_ANTIALIASING_GRAY,
+		"System-font UI uses antialiased oversampling and mipmaps for reliable CJK outlines"
 	)
 	check(
 		font.has_char("播".unicode_at(0)) and font.has_char("A".unicode_at(0)),

@@ -17,6 +17,42 @@ func _init(host: Node3D) -> void:
 	_host_ref = weakref(host)
 
 
+## Desktop and the explicit 2D diagnostic entry share the real 3D menu path.
+## Pointer release/capture ownership stays the same as controller interaction.
+func _preview_menu_input(event: InputEvent) -> bool:
+	var host := _host_ref.get_ref() as Node3D
+	if not is_instance_valid(host) or not host.display.preview or not event is InputEventMouse:
+		return false
+	var menu: Node3D = host._active_menu()
+	for candidate in [host.recent_menu, host.player_menu]:
+		if is_instance_valid(candidate) and candidate.visible and candidate.has_method("has_pointer_capture") and candidate.has_pointer_capture():
+			menu = candidate
+			break
+	if not menu or not is_instance_valid(host.xr_camera):
+		return false
+	var origin: Vector3 = host.xr_camera.project_ray_origin(event.position)
+	var direction: Vector3 = host.xr_camera.project_ray_normal(event.position)
+	if menu == host.recent_menu and host.player_menu and host.player_menu.visible and not menu.has_pointer_capture():
+		var controls: Dictionary = host.player_menu.ray_hit(origin, direction)
+		var library: Dictionary = menu.ray_panel_hit(origin, direction)
+		if not controls.is_empty() and (library.is_empty() or float(controls.distance) < float(library.distance)):
+			menu = host.player_menu
+	if event is InputEventMouseMotion:
+		menu.update_pointer("desktop", origin, direction, true)
+	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		host._menu_touched_ms = Time.get_ticks_msec()
+		if event.pressed:
+			menu.press_pointer("desktop", origin, direction, true)
+		else:
+			menu.release_pointer("desktop", origin, direction, true)
+	elif event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN] and menu.has_method("stick_scroll"):
+		menu.stick_scroll(1.0 if event.button_index == MOUSE_BUTTON_WHEEL_UP else -1.0, 0.12)
+	else:
+		return false
+	host.get_viewport().set_input_as_handled()
+	return true
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
@@ -34,6 +70,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			and event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]
 		):
 			host._close_photo_inspect()
+		return
+	if _preview_menu_input(event):
 		return
 	if host._active_menu() or not host.video or host._viewer().local_uri.is_empty():
 		return

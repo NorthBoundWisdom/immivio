@@ -6,6 +6,10 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 ## Unreleased
 
+- Render system-font menu text with antialiased oversampling to avoid malformed CJK glyphs. Stop playback-change callbacks from rebuilding menus during application teardown.
+
+- Route mouse input in desktop/2D previews through the same menu capture and release handling as controller rays. Explicitly showing playback controls refreshes their idle timer, including when they are already visible.
+
 - Pre-render empty, loading and populated UI states for all six library navigation entries before playback settings warmup. Reuse the left navigation across section switches while updating its selection in place.
 
 - Increase separation between unselected controls and dark menu panels with filled blue-gray surfaces and clear outlines. Give dropdowns opaque containers, wider left-aligned option rows, larger labels and explicit selection marks.

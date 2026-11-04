@@ -583,9 +583,10 @@ func _show_player_menu() -> void:
 		host.recent_menu.dismiss()
 	if host.player_menu:
 		host._place_menu(host.player_menu)
-	if host.player_menu and not host.player_menu.visible:
+	if host.player_menu:
 		host._menu_touched_ms = Time.get_ticks_msec()
-		host.player_menu.toggle()
+		if not host.player_menu.visible:
+			host.player_menu.toggle()
 
 
 func _show_recent_menu(preserve_navigation: bool = false) -> void:
