@@ -6,6 +6,8 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 ## Unreleased
 
+- Restore dropdown opening, selection and slider capture on curved XR menus by keeping pointer travel in canvas coordinates. Remove the in-app Restart and Close buttons; use the headset's app controls. Match curved-menu radius to viewing distance, and retain left navigation while scrolling credits or other lists.
+
 - Optionally place text captions below the flat video screen with a fixed gap, including rotated, reclined and packed stereo screens. Keep the original vertical-position value while its slider is disabled; restore layout per video when history and file memory are enabled. Immersive projections retain their existing caption path and show the control as unavailable.
 
 - Add optional dual text subtitles: primary above secondary in one flat or immersive caption, with a shared delay and per-track encoding choices. Remember the second track per video when history and file memory are enabled; primary-off hides both, and selecting the same primary track turns secondary off. Bitmap subtitles remain unsupported.

@@ -79,6 +79,33 @@ func _run() -> void:
 		main.menu_compositor.scene_curved and main.menu_compositor.curved_mesh.visible,
 		"Unsupported native layers use a curved texture mesh"
 	)
+	for distance in [0.8, 1.4, 2.5, 4.0]:
+		main.library_distance = distance
+		main._place_menu(library)
+		main.menu_compositor._process(0)
+		var centre: Vector2 = library.capture_envelope().get_center()
+		var viewing_distance := library.to_global(Vector3(centre.x, centre.y, 0)).distance_to(main._eye())
+		check(is_equal_approx(library.curve_radius, viewing_distance), "Menu curvature follows the viewing ring at " + str(distance) + "m")
+	main.library_distance = 1.4
+	main._place_menu(library)
+	main.menu_compositor._process(0)
+	var held_radius: float = library.curve_radius
+	library.choices.capture = {"hand": "left_hand", "item": {"kind": "open", "key": "language"}}
+	main.library_distance = 2.5
+	main._place_menu(library)
+	main.menu_compositor._process(0)
+	check(is_equal_approx(library.curve_radius, held_radius), "Pointer capture freezes menu curvature")
+	library.choices.capture.clear()
+	main.menu_compositor._process(0)
+	check(is_equal_approx(library.curve_radius, 2.5), "Release applies the new viewing distance")
+	var eye_before: Vector3 = main.xr_camera.global_position
+	main.xr_camera.global_position += Vector3(0.3, 0, 0.2)
+	main.menu_compositor._process(0)
+	check(is_equal_approx(library.curve_radius, 2.5), "Head motion alone does not deform a placed menu")
+	main.xr_camera.global_position = eye_before
+	main.library_distance = 1.4
+	main._place_menu(library)
+	main.menu_compositor._process(0)
 	var pose: Transform3D = library.global_transform
 	var origin: Vector3 = main._eye() + Vector3(.2, -.2, -.3)
 	main.test_ray = [origin, (library.global_position - origin).normalized()]

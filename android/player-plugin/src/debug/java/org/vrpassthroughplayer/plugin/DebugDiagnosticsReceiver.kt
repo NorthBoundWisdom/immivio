@@ -170,7 +170,7 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                 }
                                 if (operation == "selected_features_ui") {
                                     val step = intent.getStringExtra("step") ?: "snapshot"
-                                    require(step in setOf("setup", "browse", "restore", "controls", "cinema", "library", "snapshot", "error"))
+                                    require(step in setOf("setup", "browse", "restore", "controls", "cinema", "library", "menus", "snapshot", "error"))
                                     command.put("step", step)
                                 }
                                 if (operation == "media_library_ui") {

@@ -44,6 +44,42 @@ func tap(menu: Node3D, target: int) -> bool:
 		return true
 	return false
 
+func choice_target(menu: Node3D, key: String, kind: String, value: Variant = null) -> int:
+	for target in menu.choices.targets:
+		var item: Dictionary = menu.choices.targets[target]
+		if item.get("key") == key and item.get("kind") == kind and (kind == "open" or menu.choices.same(item.get("value"), value)):
+			return int(target)
+	return -1
+
+# A separate capture owner keeps live controller motion from changing injected rays.
+func held_choice_tap(menu: Node3D, target: int) -> bool:
+	if target < 0 or not await presented(menu): return false
+	for button in menu._buttons:
+		if button.target != target or not button.enabled: continue
+		var radial := ray_for(menu, menu.to_local(button.node.global_position))
+		var point: Vector3 = radial[0] + radial[1] * 0.5
+		var pose: Transform3D = menu.xr_surface.capture_pose(menu)
+		var origin := pose * Vector3(-0.25, -0.45, 1.5)
+		var direction := (point - origin).normalized()
+		if int(menu.ray_hit(origin, direction).get("target", -1)) != target: return false
+		if not menu.press_pointer("diagnostic_choice", origin, direction, true): return false
+		for frame in 4:
+			await menu.get_tree().process_frame
+			menu.get_parent()._menu_touched_ms = Time.get_ticks_msec()
+			menu.update_pointer("diagnostic_choice", origin, direction, true)
+		var valid: bool = not menu.choices.capture.is_empty() and not menu.choices.capture.get("moved", false)
+		menu.release_pointer("diagnostic_choice", origin, direction, true)
+		menu.cancel_pointer("diagnostic_choice")
+		return valid
+	return false
+
+func navigation_ids(menu: Node3D) -> Array:
+	var ids: Array = []
+	for button in menu._buttons:
+		if button.target >= menu.NAV_BASE and button.target < menu.NAV_BASE + menu.NAV.size():
+			ids.append(button.node.get_instance_id())
+	return ids
+
 func choose(menu: Node3D, key: String, value: Variant) -> bool:
 	for target in menu.choices.targets:
 		var item: Dictionary = menu.choices.targets[target]
@@ -165,6 +201,48 @@ func run(host: Node, step: String, request: String) -> Dictionary:
 		await settle(host)
 		check(not menu.compact and menu.visible and bar.visible, "Expanded library retains playback")
 		check(await tap(menu, menu.PLAYER), "Ray returns from library to video")
+	elif step == "menus":
+		host._show_recent_menu(true)
+		menu.compact = false
+		menu.section = menu.Section.SETTINGS
+		menu.tab = menu.GENERAL_TAB
+		menu.scroll = 0
+		menu.refresh()
+		await settle(host)
+		check(not menu._buttons.any(func(button): return button.target in [82, 83]), "Restart/Close buttons removed")
+		var centre: Vector2 = menu.capture_envelope().get_center()
+		var distance := menu.to_global(Vector3(centre.x, centre.y, 0)).distance_to(host.xr_camera.global_position)
+		check(absf(menu.curve_radius - distance) < 0.02, "Curved menu matches viewing distance", {"radius": menu.curve_radius, "distance": distance})
+		var language_rows: Array = menu.rows.filter(func(row): return row.get("key", "") == "language")
+		var current_language: Variant = language_rows[0].value if not language_rows.is_empty() else null
+		var events: Array = []
+		var observer := func(key, value):
+			if key == "language": events.append(value)
+		menu.setting_changed.connect(observer)
+		check(await held_choice_tap(menu, choice_target(menu, "language", "open")), "Stationary angled trigger hold survives four XR frames")
+		check(menu.choices.opened == "language" and not menu.choices.popup.is_empty(), "Language dropdown visibly opens")
+		await settle(host)
+		if host.menu_compositor.viewport:
+			await RenderingServer.frame_post_draw
+			host.menu_compositor.viewport.get_texture().get_image().save_png("user://diagnostics/acceptance_" + request + "_dropdown.png")
+		check(await held_choice_tap(menu, choice_target(menu, "language", "choose", current_language)), "Current language option is ray-selectable")
+		check(events.size() == 1 and menu.choices.same(events[0], current_language) and menu.choices.opened.is_empty(), "Selection commits once without changing language")
+		menu.setting_changed.disconnect(observer)
+		menu.tab = menu.ABOUT_TAB
+		menu._about_page = 2
+		menu.scroll = 0
+		menu.refresh()
+		await settle(host)
+		var ids := navigation_ids(menu)
+		var title: String = menu.rows[menu._first_line()].title
+		for frame in 10:
+			menu.stick_scroll(-1.0, 0.05)
+			await host.get_tree().process_frame
+		check(menu.scroll > 0 and menu.rows[menu._first_line()].title != title, "Credits scroll through actual rows")
+		check(navigation_ids(menu) == ids, "Credits keep the same left navigation nodes through scrolling")
+		menu.scroll = 0
+		menu.refresh()
+		check(navigation_ids(menu) == ids, "Restoring credits position retains navigation")
 	elif step == "snapshot":
 		check(not host.display.preview and host._head_tracked(), "Live XR session")
 	elif step == "error":
@@ -182,4 +260,4 @@ func run(host: Node, step: String, request: String) -> Dictionary:
 		"loading_message": host.playback_feedback.message, "menu_visible": bar.visible,
 		"library_visible": menu.visible, "list_view": menu.list_view, "library_scroll": menu.scroll,
 		"screen_distance": video.screen_distance, "screen_size": video._flat.size,
-		"scope": "Physical PICO/OpenXR/native playback with software-generated ray events; physical controller ergonomics require wearer confirmation"}
+		"scope": "Physical XR menu capture with software-generated rays; no media or physical controller actuation" if step == "menus" else "Physical PICO/OpenXR/native playback with software-generated ray events; physical controller ergonomics require wearer confirmation"}

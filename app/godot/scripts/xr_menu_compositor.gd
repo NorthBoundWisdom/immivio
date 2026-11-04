@@ -77,6 +77,8 @@ var _bridge_status := {}
 var camera: Camera3D
 var active_menu: Node3D
 var _shown_menu_ids: Array = []
+var _curve_menu_id := 0
+var _curve_placement := Transform3D.IDENTITY
 var native_supported := false
 var content_bounds := Rect2()
 var surface_rect := Rect2()
@@ -193,6 +195,26 @@ func _set_scene_curved(value: bool) -> void:
 			_tag(node)
 
 
+## Match the horizontal viewing ring when a curved menu opens or is placed.
+## Head motion alone does not deform a stationary/locked menu, and an active
+## pointer capture freezes its geometry until release.
+func _update_view_curve() -> void:
+	if not is_instance_valid(active_menu) or active_menu.curve_radius <= 0 or not is_instance_valid(head):
+		return
+	if menus.any(func(menu): return is_instance_valid(menu) and menu.is_visible_in_tree() and menu.has_method("has_pointer_capture") and menu.has_pointer_capture()):
+		return
+	var pose: Transform3D = active_menu.global_transform
+	if _curve_menu_id == active_menu.get_instance_id() and _curve_placement.is_equal_approx(pose):
+		return
+	var centre: Vector2 = active_menu.capture_envelope().get_center()
+	var distance := active_menu.to_global(Vector3(centre.x, centre.y, 0)).distance_to(head.global_position)
+	if is_finite(distance) and distance >= 0.1 and not is_equal_approx(active_menu.curve_radius, distance):
+		active_menu.curve_radius = distance
+		paint.invalidate()
+	_curve_menu_id = active_menu.get_instance_id()
+	_curve_placement = pose
+
+
 func _process(_delta: float) -> void:
 	if not _configured:
 		return
@@ -220,6 +242,7 @@ func _process(_delta: float) -> void:
 	var shown_ids := menus.filter(func(menu): return is_instance_valid(menu) and menu.is_visible_in_tree()).map(func(menu): return menu.get_instance_id())
 	if shown_ids != _shown_menu_ids:
 		_shown_menu_ids = shown_ids
+		_curve_menu_id = 0
 		content_bounds = Rect2()
 		_bounds_due = 0
 	if shown != active_menu:
@@ -228,6 +251,7 @@ func _process(_delta: float) -> void:
 		_bounds_due = 0
 		_clear_frames = 2 if not shown else 0
 		_set_scene_curved(false)
+	_update_view_curve()
 	var target := _display_layer()
 	var use_native := target != null and target.is_natively_supported() and _bridge != null
 	var use_scene: bool = active_menu != null and active_menu.curve_radius > 0.0 and not use_native
@@ -319,7 +343,7 @@ func _process(_delta: float) -> void:
 
 
 func _paint_state(capture: Transform3D) -> int:
-	var values: Array = [capture, surface_rect, _generation]
+	var values: Array = [capture, surface_rect, _generation, active_menu.curve_radius if active_menu else 0.0]
 	for menu in menus:
 		if not is_instance_valid(menu) or not menu.is_visible_in_tree():
 			continue

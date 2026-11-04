@@ -251,6 +251,30 @@ func ray_panel_hit(origin: Vector3, direction: Vector3) -> Dictionary:
 	return best
 
 
+## Captures measure travel on the same flattened canvas used by ray_hit().
+## Mixing physical cylinder rays with canvas points turns a stationary angled
+## trigger hold into a drag, and moves sliders away from their pressed value.
+func pointer_plane_point(origin: Vector3, direction: Vector3, plane_z: float) -> Variant:
+	if not origin.is_finite() or not direction.is_finite() or direction.length_squared() < 0.000001:
+		return null
+	if (
+		xr_surface
+		and (xr_surface.native_supported or xr_surface.get("scene_curved") == true)
+		and (xr_surface.active_menu == self or (xr_surface.has_method("captures_menu") and xr_surface.captures_menu(self)))
+	):
+		var mapped: Dictionary = xr_surface.map_ray(self, origin, direction)
+		if mapped.is_empty() or float(mapped.distance) > max_ray_metres:
+			return null
+		origin = mapped.origin
+		direction = mapped.direction
+	var inverse := global_transform.affine_inverse()
+	var start := inverse * origin
+	var delta := inverse.basis * direction.normalized()
+	if delta.z >= -0.00001 or start.z <= plane_z:
+		return null
+	return start + delta * ((plane_z - start.z) / delta.z)
+
+
 func update_pointer(hand: String, origin: Vector3, direction: Vector3, tracked: bool) -> void:
 	if not visible:
 		return
