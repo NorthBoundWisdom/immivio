@@ -46,7 +46,7 @@ Prefer a small test that fails when a real contract is broken: stale callbacks m
 
 ## Owned local Jellyfin port integration
 
-`JellyfinLivePortsTest` skips explicitly unless `IMMIVIO_JELLYFIN_LIVE_JSON` names a private JSON file containing `url`, `username`, `password`, `movie_id` and `library_id`. Only loopback endpoints are accepted. Use an isolated server with synthetic, two-version movie media and a nested directory; the movie must be long enough for the server's resume threshold. The test logs in, checks folder containers and version selection, streams an authenticated byte range, reports a playing (not paused) start/progress/stop session, reads server resume state, and verifies disabling history sends no more reports or progress. Run with the existing offline Gradle dependency cache:
+`JellyfinLivePortsTest` skips explicitly unless `IMMIVIO_JELLYFIN_LIVE_JSON` names a private JSON file containing `url`, `username`, `password`, `movie_id` and `library_id`. Only loopback endpoints are accepted. Use an isolated server with synthetic, two-version movie media and a nested directory; the movie must be long enough for the server's resume threshold. The test logs in, checks folder containers and version selection, streams an authenticated byte range, reports both paused-start and playing → pause → stop sessions, reads resume from the selected version item (not the grouped movie, whose UserData may differ), and verifies disabling history sends no more reports or progress. Run with the existing offline Gradle dependency cache:
 
 ```sh
 "$GRADLE_EXE" -p android --offline :player-plugin:testDebugUnitTest --tests '*JellyfinLivePortsTest'
