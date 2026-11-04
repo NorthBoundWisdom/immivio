@@ -12,6 +12,7 @@ signal player_requested
 signal queue_requested(operation: String)
 var queue_add_mode := false
 var diagnostic_confirmation := false
+var update_check := preload("res://scripts/update_check_menu.gd").new(self)
 signal layout_changed
 const VIEW_MODE := 90
 const BROWSER_SIZE := 91
@@ -309,6 +310,7 @@ func _ready() -> void:
 
 func attach_platform(value: Object) -> void:
 	platform = value
+	update_check.attach(value)
 	file_actions.sync_platform()
 	if (
 		platform
@@ -1066,6 +1068,7 @@ func _rebuild_rows() -> void:
 						rows.append(_about_info(I18n.t(credit[0]), I18n.t(credit[1])))
 				else:
 					rows.append(_about_info("Immivio", str(settings.get("version", ""))))
+					rows.append_array(update_check.rows())
 					rows.append(
 						_about_info(
 							I18n.t("Official website"),
@@ -1414,6 +1417,12 @@ func _activate(target: int) -> void:
 
 
 func _choose(row: Dictionary) -> void:
+	if row.get("check_updates", false):
+		update_check.request()
+		return
+	if row.get("open_update_release", false):
+		update_check.open_release()
+		return
 	if subtitle_picker.active:
 		subtitle_picker.choose(row)
 		return
