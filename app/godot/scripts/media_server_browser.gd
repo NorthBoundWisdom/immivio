@@ -152,14 +152,18 @@ func browse(reset: bool = true) -> void:
 	menu.refresh()
 
 
+static func _entry_key(item: Dictionary) -> String:
+	return JSON.stringify([str(item.get("id", "")), str(item.get("source_id", ""))])
+
+
 func _append_unique(target: Array, incoming: Array) -> int:
 	var seen := {}
 	for item in target:
-		seen[str(item.get("id", ""))] = true
+		seen[_entry_key(item)] = true
 	var added := 0
 	for item in incoming:
-		if item is Dictionary and not seen.has(str(item.get("id", ""))):
-			seen[str(item.get("id", ""))] = true
+		if item is Dictionary and not seen.has(_entry_key(item)):
+			seen[_entry_key(item)] = true
 			target.append(item)
 			added += 1
 	return added
@@ -228,8 +232,16 @@ func receive(id: int, payload: String) -> bool:
 		"detail":
 			detail = data.get("detail", {})
 			view = "detail"
+			var source_id := str(expected.get("source_id", ""))
+			if not source_id.is_empty():
+				var versions: Array = detail.get("versions", []).filter(func(version): return str(version.get("source_id", "")) == source_id)
+				if versions.is_empty():
+					detail.clear()
+					menu.status = "Original stream unavailable"
+				else:
+					detail.merge(versions[0], true)
 			for local in _local_resume():
-				if local.id == detail.get("id"):
+				if local.uri == detail.get("uri") :
 					detail.position_ms = local.position_ms
 		"favorite":
 			if str(detail.get("id", "")) == str(data.get("scene_id", "")):
@@ -256,6 +268,29 @@ func receive(id: int, payload: String) -> bool:
 	return true
 
 
+static func _scene_identity(uri: String, server_id: String) -> Dictionary:
+	var prefix := "medialib://" + server_id + "/scene/"
+	if not uri.begins_with(prefix) or uri.contains("#"):
+		return {}
+	var suffix := uri.trim_prefix(prefix)
+	var id := suffix.get_slice("?", 0)
+	if not RegEx.create_from_string("^[A-Za-z0-9-]{1,64}$").search(id):
+		return {}
+	var result := {"id": id}
+	if suffix.contains("?"):
+		var query := suffix.substr(suffix.find("?") + 1)
+		if not query.begins_with("source=") or query.contains("&") or query.contains("?"):
+			return {}
+		var source_id := query.trim_prefix("source=").replace("+", " ").uri_decode()
+		if source_id.is_empty() or source_id.length() > 256:
+			return {}
+		for character in source_id:
+			if character.unicode_at(0) < 32 or character.unicode_at(0) == 127:
+				return {}
+		result.source_id = source_id
+	return result
+
+
 func _local_resume() -> Array:
 	var result: Array = []
 	if not menu.catalog:
@@ -271,7 +306,10 @@ func _local_resume() -> Array:
 			)
 		):
 			var node: Dictionary = item.duplicate(true)
-			node.id = str(item.uri).trim_prefix(prefix)
+			var identity := _scene_identity(str(item.uri), str(server.get("id", "")))
+			if identity.is_empty():
+				continue
+			node.merge(identity, true)
 			node.resume_source = "local"
 			node.kind = "video"
 			result.append(node)
@@ -680,7 +718,7 @@ func choose(row: Dictionary) -> void:
 		detail = {}
 		view = "detail"
 		menu._reset_navigation()
-		request("detail", {"scene_id": str(row.scene.id)})
+		request("detail", {"scene_id": str(row.scene.id), "source_id": str(row.scene.get("source_id", ""))})
 	elif row.has("category"):
 		_remember()
 		cancel()

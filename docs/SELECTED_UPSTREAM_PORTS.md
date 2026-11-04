@@ -125,3 +125,7 @@ Add Left/Right/Both as the shared primary hand for content pinches and summoning
 ### F1 — second-round review
 
 Review correction to P1. SubtitleCopies now returns the original track on decoding, size-limit, staging or IO failure; discovered original leases remain owned until native shutdown. Failed explicit overrides keep the user choice for review and display “Encoding invalid”; automatic detection failures simply retain mpv’s original behavior. No retry loop or unbounded read is introduced.
+
+### F2 — second-round review
+
+Review correction to P3. Godot resume parsing now separates and validates the item ID/source query while retaining the full original URI for progress/mode/track memory. Resume deduplication includes source_id; detail progress matches exact URIs. An unavailable requested version offers no default-file action. Audit found Kotlin MediaLibraryUri already separates URI.path and sourceId and rejects foreign query fields; its existing round-trip and selected-stream tests remain authoritative. Other Godot medialib prefix uses only scope account/filter membership, not extract a scene ID.
