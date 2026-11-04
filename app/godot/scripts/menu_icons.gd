@@ -2,6 +2,8 @@ extends RefCounted
 
 # Original vector glyphs, generated once and shared by both ray menus.
 const PATHS := {
+	"shuffle": '<path d="M3 5H6L18 19H22M18 15L22 19 18 23M3 19H6L11 13M14 10L18 5H22M18 1L22 5 18 9"/>',
+	"sequence": '<path d="M3 5H18M3 12H18M3 19H14M18 15L22 19 18 23"/>',
 	"head_follow":
 	'<path d="M4 5H17A2 2 0 0 1 19 7V13A2 2 0 0 1 17 15H14L12 12H9L7 15H4A2 2 0 0 1 2 13V7A2 2 0 0 1 4 5Z"/><path d="M16 18H20M15 16H14A3 3 0 0 0 14 22H16M19 16H20A3 3 0 0 1 20 22H18"/>',
 	"passthrough":
