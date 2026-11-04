@@ -343,6 +343,13 @@ func _ready() -> void:
 	recent_menu.file_delete_preparing.connect(_prepare_file_delete)
 	recent_menu.file_deleted.connect(_forget_deleted_file)
 	recent_menu.settings_provider = _library_settings
+	if video.platform and video.platform.has_signal("diagnostic_log_saved"):
+		video.platform.connect("diagnostic_log_saved", func(_id, raw):
+			var result: Variant = JSON.parse_string(raw)
+			if result is Dictionary:
+				recent_menu.status = "Log saved to Downloads" if result.get("ok", false) else "Diagnostic log could not be saved"
+				recent_menu.refresh()
+		)
 	recent_menu.chosen.connect(_on_library_chosen)
 	recent_menu.subtitle_system_requested.connect(video.pick_external_subtitle)
 	recent_menu.subtitle_chosen.connect(func(selection):

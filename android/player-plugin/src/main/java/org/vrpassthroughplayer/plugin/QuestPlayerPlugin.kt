@@ -189,6 +189,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     }
 
     override fun getPluginSignals() = setOf(
+        SignalInfo("diagnostic_log_saved", Int::class.javaObjectType, String::class.java),
         SignalInfo("capabilities_ready", Int::class.javaObjectType, String::class.java),
         SignalInfo("android_lifecycle", String::class.java),
         SignalInfo("photo_ready", Int::class.javaObjectType, String::class.java),
@@ -238,6 +239,24 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     @UsedByGodot
     fun set_mpv_sync(id: Int, subtitleMs: Int, audioMs: Int): Boolean =
         !closed.get() && mpv.setSync(id, subtitleMs, audioMs)
+
+    @UsedByGodot
+    fun record_diagnostic_event(event: String, json: String): Boolean = runCatching {
+        require(!closed.get() && event.length <= 64 && json.length <= 16384)
+        val app = activity?.applicationContext ?: return false
+        DiagnosticLogs.record(File(app.filesDir, "diagnostics"), event, json)
+        true
+    }.getOrDefault(false)
+
+    @UsedByGodot
+    fun diagnostic_previous_available(): Boolean = activity?.applicationContext?.let { File(it.filesDir, "diagnostics/crash/last-report.txt").isFile } ?: false
+
+    @UsedByGodot
+    fun save_diagnostic_log(): Int {
+        val app = activity?.applicationContext ?: return -1
+        val id = requestId.incrementAndGet()
+        return if (!closed.get() && DiagnosticLogs.request(app) { result -> if (!closed.get()) emitSignal("diagnostic_log_saved", id, result.toString()) }) id else -1
+    }
 
     @UsedByGodot
     fun external_playback_release(uri: String) { if (uri.startsWith("externalvideo://")) ExternalPlaybackPending.leases.release(uri) }
@@ -683,11 +702,13 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
 
     // Android can resume before Godot registers the plugin's native signals.
     override fun onGodotSetupCompleted() {
+        activity?.applicationContext?.let { CrashRecords.start(it) }
         signalsReady = true
     }
 
     override fun onMainPause() {
         if (!closed.get()) {
+            CrashRecords.foreground(false)
             media.pause(); mpv.pause(); if (signalsReady) emitSignal(
                 "android_lifecycle",
                 "pause"
@@ -697,6 +718,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
 
     override fun onMainResume() {
         if (!closed.get()) {
+            CrashRecords.foreground(true)
             media.resume(); mpv.resume(); if (signalsReady) {
                 sources.refreshLocalStorage(); emitSignal("android_lifecycle", "resume")
             }
@@ -713,6 +735,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
 
     private fun close() {
         if (closed.compareAndSet(false, true)) {
+            CrashRecords.cleanExit()
             accounts.close(); photos.close(); photoPreloads.close(); photoPreviews.close(); picker.close(); subtitlePicker.close(); localAccess.close(); probe.shutdownNow(); media.shutdown(); mpv.shutdown(); sources.close()
         }
     }

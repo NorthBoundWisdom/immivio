@@ -11,6 +11,7 @@ var subtitle_picker := preload("res://scripts/subtitle_picker.gd").new(self)
 signal player_requested
 signal queue_requested(operation: String)
 var queue_add_mode := false
+var diagnostic_confirmation := false
 signal layout_changed
 const VIEW_MODE := 90
 const BROWSER_SIZE := 91
@@ -24,6 +25,8 @@ var _browse_restore := {}
 
 
 func directory_scope() -> String:
+	if diagnostic_confirmation:
+		return ""
 	if subtitle_picker.active:
 		return ""
 	if account_panel.active() or not _editor.is_empty():
@@ -256,6 +259,7 @@ var _covers := {}  # DLNA cover URL -> HTTPRequest while it downloads
 
 
 func dismiss() -> void:
+	diagnostic_confirmation = false
 	subtitle_picker.close()
 	remember_browse()
 	browse_memory.flush()
@@ -597,6 +601,8 @@ func _place_list() -> void:
 
 
 func _grid() -> bool:
+	if diagnostic_confirmation:
+		return false
 	if subtitle_picker.active:
 		return false
 	if account_panel.active():
@@ -744,6 +750,9 @@ func _load_section() -> void:
 
 func _rebuild_rows() -> void:
 	rows.clear()
+	if diagnostic_confirmation:
+		rows.assign([{"title": I18n.t("Save diagnostic log to Downloads?"), "detail": "", "about_info": true}, {"title": I18n.t("Save"), "confirm_diagnostic_save": true}, {"title": I18n.t("Cancel"), "cancel_diagnostic_save": true}])
+		return
 	if subtitle_picker.active:
 		rows.assign(subtitle_picker.rows())
 		scroll = clampf(scroll, 0, _max_scroll())
@@ -1075,6 +1084,7 @@ func _rebuild_rows() -> void:
 							"open_licenses": true
 						}
 					)
+					rows.append({"title": I18n.t("Save diagnostic log"), "icon": "info", "save_diagnostic_log": true, "detail": I18n.t("Previous session log available") if settings.get("diagnostic_previous", false) else ""})
 	if section == Section.MEDIA_SERVER:
 		rows = server_browser.rows()
 	if media_filter > 0 and section not in [Section.SETTINGS, Section.MEDIA_SERVER]:
@@ -1282,6 +1292,8 @@ func _exit_tree() -> void:
 ## Video state changes arrive several times a second: redraw only when the Alpha profiles
 ## (current, compiling, cold) shown on the Alpha tab change.
 func _activate(target: int) -> void:
+	if target == ABOUT_HOME or (target >= NAV_BASE and target < NAV_BASE + NAV.size()) or (target >= TAB_BASE and target < TAB_BASE + SETTING_TABS.size()):
+		diagnostic_confirmation = false
 	if subtitle_picker.active:
 		subtitle_picker.action(target)
 		return
@@ -1408,6 +1420,19 @@ func _choose(row: Dictionary) -> void:
 	if file_actions.select(row):
 		return
 	if account_panel.choose(row):
+		return
+	if row.has("save_diagnostic_log"):
+		diagnostic_confirmation = true
+		scroll = 0
+		refresh()
+		return
+	if row.has("cancel_diagnostic_save") or row.has("confirm_diagnostic_save"):
+		if not diagnostic_confirmation:
+			return
+		diagnostic_confirmation = false
+		if row.has("confirm_diagnostic_save"):
+			setting_changed.emit("save_diagnostic_log", true)
+		refresh()
 		return
 	if row.has("open_licenses"):
 		_open_licenses()
