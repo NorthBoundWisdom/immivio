@@ -41,6 +41,7 @@ internal class MediaSources(
     private var server: LocalStreamServer? = null
     private val smb by lazy { SmbLibrary(context() ?: error("Activity unavailable")) { streams() } }
     private val mediaServers = MediaServerLibrary(::context, ::streams, ::nextId, emit = emit)
+    fun reportPlayback(json: String): Boolean = mediaServers.reportPlayback(json)
     fun serverRequest(json: String): Int = mediaServers.request(json)
     fun serverCancel(id: Int) = mediaServers.cancel(id)
     fun releaseMediaStream(uri: String) {

@@ -31,3 +31,9 @@ The parser tests include real loopback HTTP redirects, failures and bounded read
 ### P1 — subtitle encoding
 
 `SubtitleEncoding.kt`, `SubtitleCharsetDetector.kt`, `third_party/icu-charset/`, the detection fixtures in `SubtitleEncodingTest.kt`, and the choice policy in `file_subtitle_encoding.gd` derive from upstream GPL-3.0 code (ICU material retains Unicode-3.0). `SubtitleCopies.kt` and integration use Immivio's existing resource and per-file persistence owners. Read at most 8 MiB per text subtitle, retain at most eight discovered sidecars, and delete converted copies after native shutdown. No original is rewritten. Sidecar keys follow stable filenames/server-track identities rather than listing order; source locators remain behind hashes. Per-track overrides take effect on reopening, to avoid replacing live native resources. Opaque document providers still require explicit subtitle selection; no sibling access is inferred. No narration, translation or cloud integration is included.
+
+### P2 — Emby/Jellyfin playback reporting
+
+`MediaServerPlayback.kt`, `media_server_playback.gd` and reporter test scenarios derive from upstream `9a6a905..da5f86c`. Binding uses Immivio’s existing resolved stream table. Plex, STRM, local, SMB and DLNA have no report context. Unknown native/server track mappings are omitted; no guessed track IDs are sent.
+
+Report confirmed playback start, throttled progress and stop to Emby/Jellyfin only while playback history is enabled. Turning history off discards queued reports, including stop; already dispatched HTTP cannot be recalled. Failures do not retry starts or affect playback.

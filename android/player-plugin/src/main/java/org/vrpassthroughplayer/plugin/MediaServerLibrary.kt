@@ -67,7 +67,8 @@ internal class MediaServerLibrary(
         MediaServerStore.accounts(context() ?: throw MediaServerFailure("Server unavailable"))
     }, private val getAccount: (String) -> MediaServerAccount = { id ->
         MediaServerStore.get(context() ?: throw MediaServerFailure("Server unavailable"), id)
-    }, private val emit: (Int, String) -> Unit
+    }, private val reporterFactory: (() -> Boolean) -> MediaServerPlaybackReporter = { MediaServerPlaybackReporter(it) },
+    private val emit: (Int, String) -> Unit
 ) {
     private val pool = ThreadPoolExecutor(
         3,
@@ -93,6 +94,26 @@ internal class MediaServerLibrary(
     )
 
     private val playback = ConcurrentHashMap<String, Playback>()
+    @Volatile private var historyAllowed = false
+    private val reporter = reporterFactory { historyAllowed }
+    fun reportPlayback(raw: String): Boolean = runCatching {
+        require(raw.length <= 8192 && !closed)
+        val data = JSONObject(raw)
+        when (data.getString("action")) {
+            "privacy" -> { historyAllowed = data.getBoolean("enabled"); reporter.privacyChanged() }
+            "stop" -> reporter.stop(data.getString("token"))
+            "state" -> {
+                val uri = data.getString("uri")
+                val selected = playback[uri] ?: return false
+                val context = selected.stream.playback ?: return false
+                if (getAccount(selected.account.id) != selected.account) return false
+                reporter.observe(data.getString("token"), selected.account, context,
+                    MediaServerPlaybackState(data.getLong("position_ms"), data.getBoolean("paused"), data.optBoolean("can_seek")))
+            }
+            else -> return false
+        }
+        true
+    }.getOrDefault(false)
     @Volatile
     private var closed = false
 
@@ -356,6 +377,7 @@ internal class MediaServerLibrary(
     }
 
     fun close() {
+        reporter.close()
         closed = true; jobs.keys.toList().forEach(::cancel); pool.shutdownNow(); instances.remove(
             this
         )
@@ -366,6 +388,7 @@ internal class MediaServerLibrary(
         private val instances = ConcurrentHashMap.newKeySet<MediaServerLibrary>()
         fun invalidate(server: String) {
             instances.forEach { instance ->
+                instance.reporter.invalidate(server)
                 instance.jobs.filterValues { it.server == server }.keys.toList()
                     .forEach(instance::cancel)
                 instance.leases.filterValues { it.first == server }.keys.toList()
