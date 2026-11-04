@@ -540,7 +540,9 @@
     "Refresh rate": "显示刷新率",
     "Depth / zoom": "深度／缩放",
     "Stereo horizontal alignment": "立体水平对齐",
-    "Reuse last video mode": "沿用上次视频模式"
+    "Reuse last video mode": "沿用上次视频模式",
+    "Playback order: Sequence": "播放顺序：顺序播放",
+    "Playback order: Shuffle": "播放顺序：随机播放"
   },
   "zh_Hant": {
     "Reset": "重設",
@@ -1083,7 +1085,9 @@
     "Refresh rate": "顯示更新率",
     "Depth / zoom": "深度／縮放",
     "Stereo horizontal alignment": "立體水平對齊",
-    "Reuse last video mode": "沿用上次影片模式"
+    "Reuse last video mode": "沿用上次影片模式",
+    "Playback order: Sequence": "播放順序：依序播放",
+    "Playback order: Shuffle": "播放順序：隨機播放"
   },
   "ja": {
     "Reset": "リセット",
@@ -1626,6 +1630,8 @@
     "Refresh rate": "リフレッシュレート",
     "Depth / zoom": "奥行き／ズーム",
     "Stereo horizontal alignment": "ステレオ水平調整",
-    "Reuse last video mode": "前回の動画モードを使用"
+    "Reuse last video mode": "前回の動画モードを使用",
+    "Playback order: Sequence": "再生順序：順番どおり",
+    "Playback order: Shuffle": "再生順序：シャッフル"
   }
 }

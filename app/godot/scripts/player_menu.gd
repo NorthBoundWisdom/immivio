@@ -57,6 +57,7 @@ const SUBTITLE_POSITION := 292
 const PLAYBACK_SETTINGS := 470
 const SYNC_SETTINGS := 490
 const QUEUE_SETTINGS := 491
+const PLAYBACK_ORDER := 492
 const SUBTITLE_LOAD := 492
 const SUBTITLE_FORGET := 493
 const SUBTITLE_DELAY_RESET := 494
@@ -606,6 +607,7 @@ func _draw_bar() -> void:
 			"tip": "Synchronization",
 			"enabled": has_video
 		},
+		{"target": PLAYBACK_ORDER, "icon": "shuffle" if _state.get("queue_shuffle", false) else "sequence", "tip": "Playback order: Shuffle" if _state.get("queue_shuffle", false) else "Playback order: Sequence", "enabled": has_video},
 		{"target": QUEUE_SETTINGS, "icon": "list", "tip": "Queue", "enabled": has_video},
 		{
 			"target": BookmarkMenu.LIST,
@@ -1148,7 +1150,7 @@ func _bar_key() -> String:
 				else ""
 			),
 			_state.get("queue_revision", 0) if _quick_open == "queue" else -1,
-			_state.get("queue_shuffle", false) if _quick_open == "queue" else false,
+			_state.get("queue_shuffle", false),
 			_state.get("clone_voice", false),
 			_state.get("geometry", 0),
 			_state.get("has_video", false),
@@ -1493,6 +1495,9 @@ func _activate(target: int) -> void:
 		return
 	if target == QUICK_CLOSE:
 		_toggle_popup("")
+		return
+	if target == PLAYBACK_ORDER:
+		setting_requested.emit("queue_shuffle", not bool(_state.get("queue_shuffle", false)))
 		return
 	if POPUP_TARGETS.has(target):
 		if target == 110 and not _enabled("subtitles"):

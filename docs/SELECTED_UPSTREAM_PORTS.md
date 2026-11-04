@@ -79,3 +79,9 @@ Add centred grip-stick immersive translation/zoom, ±10% immersive horizontal st
 `video_mode_default.gd` layout sanitization derives from upstream; resolution, preference persistence and migration are integrated into Immivio. Default is off. The existing mode lock remains the default when reuse is off or no valid last layout exists. No 2D-to-3D option, effect state, file identity or alignment is stored in this global preference.
 
 Add an opt-in last-video projection/stereo fallback for otherwise unrecognized formats. Per-file modes and recognized filename, container stereo or established frame-shape rules still win. Store only layout, projection, fisheye angle and eye order; photos and removed effects stay independent.
+
+### P10 — Direct playback order cycle
+
+Only the upstream direct-cycle interaction is adapted. No repeat-all, repeat-one, single-play enum or mpv loop protocol is introduced. Existing queue_shuffle booleans retain their meaning, malformed stored values migrate to false, and the existing internal single-file loop behavior is unchanged.
+
+Cycle the playback-order toolbar icon directly between the existing Sequence and Shuffle behaviors. Keep the separate queue editor and saved boolean preference; each queue still ends once its available entries are exhausted.
