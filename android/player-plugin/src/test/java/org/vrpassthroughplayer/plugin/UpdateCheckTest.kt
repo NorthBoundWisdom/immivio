@@ -44,6 +44,23 @@ class UpdateCheckTest {
         assertTrue(UpdateCheck.newer("999999999999999999999999.0.0", "999999999999999999999998.0.0"))
         assertThrows(IllegalArgumentException::class.java) { UpdateCheck(URI("http://external.invalid/latest")) }
     }
+    // Minimized from the one unauthenticated GitHub /releases/latest response captured 2026-11-04.
+    @Test fun capturedGitHubReleaseStructureMatchesTheProductionVersionContract() {
+        val fixture = JSONObject(requireNotNull(javaClass.getResource("/github-latest-release.json")).readText())
+        val local = fixture.getString("tag_name").removePrefix("v")
+        assertEquals(UpdateCheck.releaseUrl(fixture.getString("tag_name")), fixture.getString("html_url"))
+        var response = fixture.toString().toByteArray()
+        MediaServerClientTest.Fixture { _, _, _ -> MediaServerClientTest.Reply(body = response) }.use { server ->
+            UpdateCheck(URI(server.url)).use { checker ->
+                assertEquals("latest", checker.check(local).state)
+                val parts = local.split('.')
+                val newer = "v${parts[0]}.${parts[1]}.${parts[2].toInt() + 1}"
+                response = JSONObject(fixture.toString()).put("tag_name", newer)
+                    .put("html_url", UpdateCheck.releaseUrl(newer)).toString().toByteArray()
+                assertEquals("available", checker.check(local).state)
+            }
+        }
+    }
     @Test fun boundedTimeoutsRateLimitsAndCrossHostRedirectNeverBecomeSuccess() {
         var status = 403
         var headers = ""
