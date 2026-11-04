@@ -82,9 +82,10 @@ class Device:
             if data.startswith(b'\x89PNG'):
                 (self.out / local).write_bytes(data)
         if step == 'menus':
-            data = self.adb('exec-out','run-as',PACKAGE,'cat','files/diagnostics/acceptance_' + key + '_dropdown.png')
-            if data.startswith(b'\x89PNG'):
-                (self.out / 'menus-dropdown-ui.png').write_bytes(data)
+            for suffix in ['dropdown', 'closed']:
+                data = self.adb('exec-out','run-as',PACKAGE,'cat','files/diagnostics/acceptance_' + key + '_' + suffix + '.png')
+                if data.startswith(b'\x89PNG'):
+                    (self.out / ('menus-' + suffix + '-ui.png')).write_bytes(data)
         if step == 'library':
             data = self.adb('exec-out','run-as',PACKAGE,'cat','files/diagnostics/acceptance_' + key + '_compact.png')
             if data.startswith(b'\x89PNG'):

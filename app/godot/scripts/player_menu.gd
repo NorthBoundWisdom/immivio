@@ -28,7 +28,6 @@ const SubtitleDepth := preload("res://scripts/subtitle_depth.gd")
 var choices := ChoiceFields.new(self)
 signal setting_requested(key: String, value: Variant)
 const MODE := 120
-const SELECTED := Color(0.16, 0.31, 0.27)
 const MODE_PROJECTION := 130
 const MODE_STEREO := 140
 const MODE_LENS := 150
@@ -1648,7 +1647,7 @@ func _update_highlights() -> void:
 			and _state.get("alpha_requested", false)
 		):
 			button.node.material_override.set_shader_parameter(
-				"surface_color", Color(0.16, 0.31, 0.27)
+				"surface_color", SELECTED
 			)
 		if (
 			section == 0
@@ -1658,7 +1657,7 @@ func _update_highlights() -> void:
 			and _state.get("depth_requested", false)
 		):
 			button.node.material_override.set_shader_parameter(
-				"surface_color", Color(0.16, 0.31, 0.27)
+				"surface_color", SELECTED
 			)
 		if section == 0 and button.target == 111:
 			button.node.get_child(1).material_override.albedo_color = (

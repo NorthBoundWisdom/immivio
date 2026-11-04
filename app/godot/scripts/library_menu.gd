@@ -193,7 +193,6 @@ const RECENT_PAGE_SIZE := COLS * GRID_LINES
 const TILE_SIZE := Vector2(0.3, 0.27)
 const GRID_PITCH := Vector2(0.33, 0.29)
 const GRID_TOP := 0.375
-const SELECTED := Color(0.16, 0.31, 0.27)
 const Thumbnails := preload("res://scripts/thumbnail_cache.gd")
 const COVER_BYTES := 2 * 1024 * 1024
 const FOLDER := Color(0.98, 0.78, 0.36)
@@ -2189,7 +2188,7 @@ func _tile(target: int, row: Dictionary, centre: Vector2) -> void:
 	button.base_color = (
 		SELECTED
 		if file_actions.editing and file_actions.row_uri(row) == file_actions.selected
-		else Color(TILE, 0.0)
+		else TILE
 	)
 	button.enabled = not file_actions.editing or not file_actions.row_uri(row).is_empty()
 	button.node.material_override.set_shader_parameter("surface_color", button.base_color)
@@ -2372,7 +2371,7 @@ func _row_button(
 func _nav_button(target: int, text: String, icon: String, centre: Vector2, selected: bool) -> void:
 	_control_button(target, text, centre, 0.36, true, "", false, _side)
 	var button: Dictionary = _buttons.back()
-	button.base_color = SELECTED if selected else Color(TILE, 0.0)
+	button.base_color = SELECTED if selected else TILE
 	var node: MeshInstance3D = button.node
 	var label: Label3D = node.get_child(0)
 	label.position.x = -0.08
