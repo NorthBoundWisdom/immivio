@@ -3004,5 +3004,13 @@
             <sha256 value="0fe31326e83b7622cbcd9c75d467b291f01ffe3cc6e3e76651ac05a1c1c7a360" origin="source_roots.lock.jsonc.in" />
          </artifact>
       </component>
+      <component group="com.ibm.icu" name="icu4j" version="78.1">
+         <artifact name="icu4j-78.1.jar">
+            <sha256 value="bbb70d3be23110d7295823eee0c2e896ac3b619b3c0f26168f65eb972df51d2a" origin="Pinned ICU 78.1; jar verified against third_party/icu-charset/distribution.json"/>
+         </artifact>
+         <artifact name="icu4j-78.1.pom">
+            <sha256 value="234ba057fc6b3400274bc0e603c154f15c4be4a15a346fa973f8194ffb6e8eef" origin="Pinned ICU 78.1; jar verified against third_party/icu-charset/distribution.json"/>
+         </artifact>
+      </component>
    </components>
 </verification-metadata>

@@ -30,6 +30,7 @@ internal class PlaybackHost(
     var speed = 1.0 // synchronized(host), retained across processing revisions
     var subtitleMs = 0
     var audioMs = 0
+    val subtitleKeys = ConcurrentHashMap<String, String>() // staged path -> stable, non-secret identity
     val importingSubtitle = AtomicBoolean(false)
     @Volatile
     var audioEnabled = audio

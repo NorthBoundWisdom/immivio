@@ -72,6 +72,7 @@ var audio_track_id := -1
 var subtitle_delay_ms := 0
 var audio_delay_ms := 0
 var external_subtitle_uri := ""
+var subtitle_encodings: Dictionary = {}
 var _sync_pending := false
 var _subtitle_pick := 0
 var _subtitle_pick_session := 0
@@ -493,6 +494,9 @@ func open_local(
 	packed_alpha = packed_file
 	_layout_pending = null
 	var saved_sync := mode_memory.lookup(uri) if restore_mode else {}
+	subtitle_encodings = saved_sync.get("subtitle_encodings", {}).duplicate(true)
+	if PlatformMethods.supports(platform, "configure_subtitle_encodings"):
+		platform.configure_subtitle_encodings(uri, JSON.stringify(subtitle_encodings))
 	_track_choices = saved_sync.get("track_choices", {}).duplicate(true)
 	_tracks_pending = _track_choices.duplicate(true)
 	subtitle_delay_ms = int(saved_sync.get("subtitle_delay_ms", 0))
@@ -1305,6 +1309,23 @@ func set_subtitle_track(track_id: int, remember: bool = true) -> bool:
 	return true
 
 
+func set_subtitle_encoding(value: Variant) -> bool:
+	if not value is Dictionary or not preload("res://scripts/file_subtitle_encoding.gd").valid({value.get("track_key", ""): value.get("encoding", "")}):
+		return false
+	if not subtitle_tracks().any(func(t): return t.get("external", false) and str(t.get("encoding_key", "")) == value.track_key):
+		return false
+	if subtitle_encodings.size() >= 16 and not subtitle_encodings.has(value.track_key):
+		return false
+	subtitle_encodings[value.track_key] = value.encoding
+	_remember_mode()
+	changed.emit()
+	return true
+
+
+func subtitle_encoding_row() -> Dictionary:
+	return preload("res://scripts/file_subtitle_encoding.gd").row(subtitle_tracks(), subtitles.requested_track, subtitle_encodings)
+
+
 func subtitle_tracks() -> Array[Dictionary]:
 	var tracks: Array[Dictionary] = []
 	var details: Dictionary = media.playback.get("details", {})
@@ -1694,7 +1715,8 @@ func _remember_mode() -> void:
 		"fisheye_fov": fisheye_fov,
 		"subtitle_delay_ms": subtitle_delay_ms,
 		"audio_delay_ms": audio_delay_ms,
-		"external_subtitle_uri": external_subtitle_uri
+		"external_subtitle_uri": external_subtitle_uri,
+		"subtitle_encodings": subtitle_encodings.duplicate(true)
 	}
 	if not _track_choices.is_empty():
 		mode["track_choices"] = _track_choices.duplicate(true)

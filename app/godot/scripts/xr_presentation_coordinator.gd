@@ -755,6 +755,7 @@ func _menu_state() -> Dictionary:
 		"depth_error": str(host.video.media.playback.get("depth_error", "")),
 		"text_subtitle_tracks": text_tracks.size(),
 		"subtitle_options": text_tracks,
+		"subtitle_encoding_row": host.video.subtitle_encoding_row(),
 		"subtitle_track": host.video.subtitles.requested_track,
 		"source_uri": host.video.local_uri,
 		"title": host.video.display_name,

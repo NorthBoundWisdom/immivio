@@ -5,6 +5,7 @@ aapt2 = "9.2.0-15009934"
 kotlin = "2.3.21"
 media3 = "1.10.1"
 jcifs = "3.0.4"
+icu-charset = "78.1"
 slf4j = "1.7.36"
 bouncycastle = "1.85"
 junit = "4.13.2"
@@ -13,6 +14,7 @@ fragment = "1.8.6"
 openxr-loader = "1.1.54"
 
 [libraries]
+icu-charset = { module = "com.ibm.icu:icu4j", version.ref = "icu-charset" }
 media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "media3" }
 jcifs = { module = "org.codelibs:jcifs", version.ref = "jcifs" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }

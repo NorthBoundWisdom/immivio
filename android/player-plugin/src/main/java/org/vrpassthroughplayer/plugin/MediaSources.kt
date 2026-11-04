@@ -263,6 +263,12 @@ internal class MediaSources(
 
     fun sidecarSubtitles(uri: String): List<SidecarSubtitles.Track> = try {
         when {
+            uri.startsWith("file://") -> {
+                val video = java.io.File(android.net.Uri.parse(uri).path ?: error("File path unavailable"))
+                SidecarSubtitles.select(video.name, video.parentFile?.list()?.toList().orEmpty()).map {
+                    SidecarSubtitles.Track(java.io.File(video.parentFile, it).toURI().toString(), it)
+                }
+            }
             uri.startsWith("smb://") -> smb.sidecarSubtitles(uri)
             uri.startsWith("medialib://") -> mediaServers.sidecarSubtitles(uri)
             uri.startsWith("http://") || uri.startsWith("https://") -> SidecarSubtitles.forDlna(

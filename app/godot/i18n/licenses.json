@@ -69,5 +69,13 @@
       "gradle/NOTICE.txt",
       "gradle/LICENSE.txt"
     ]
+  },
+  {
+    "id": "icu-charset",
+    "name": "ICU4J charset detector 78.1",
+    "license": "Unicode-3.0",
+    "assets": [
+      "icu-charset/LICENSE.txt"
+    ]
   }
 ]
