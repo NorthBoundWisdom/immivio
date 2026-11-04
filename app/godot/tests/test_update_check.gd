@@ -2,14 +2,18 @@ extends SceneTree
 const Menu := preload("res://scripts/library_menu.gd")
 class Platform extends RefCounted:
 	signal update_check_ready(id: int, json: String)
+	signal update_release_opened(id: int, tag: String, opened: bool)
 	var requested: Array = []
 	var opened: Array = []
+	var reject_open := false
 	func request_update_check(version: String) -> int:
 		requested.append(version)
 		return requested.size()
-	func open_update_release(tag: String) -> bool:
+	func open_update_release(tag: String) -> int:
+		if reject_open:
+			return -1
 		opened.append(tag)
-		return true
+		return opened.size()
 func _initialize() -> void:
 	preload("res://tests/support/test_result.gd").prepare(self)
 	call_deferred("_run")
@@ -35,8 +39,25 @@ func _run() -> void:
 	var release: Dictionary = menu.rows.filter(func(row): return row.get("open_update_release", false))[0]
 	menu._choose(release)
 	assert(platform.opened == ["v9.9.9"] and platform.requested.size() == 1)
+	platform.update_release_opened.emit(1, "v8.8.8", false)
+	assert(not menu.update_check.browser_error, "A different tag cannot overwrite this launch")
+	platform.update_release_opened.emit(1, "v9.9.9", false)
+	assert("\n".join(menu.find_children("*", "Label3D", true, false).map(func(label): return label.text)).contains("Unable to open browser"))
+	menu._choose(release)
+	assert(platform.opened.size() == 2)
+	platform.update_release_opened.emit(1, "v9.9.9", false)
+	assert(not menu.update_check.browser_error, "An older launch of the same tag cannot overwrite the retry")
+	platform.update_release_opened.emit(2, "v9.9.9", true)
+	assert(not menu.update_check.browser_error)
+	assert(not "\n".join(menu.find_children("*", "Label3D", true, false).map(func(label): return label.text)).contains("Unable to open browser"))
+	platform.reject_open = true
+	menu._choose(release)
+	assert(menu.update_check.browser_error, "A rejected dispatch also reports browser failure")
+	platform.reject_open = false
 	for state in ["latest", "rate_limited", "network_error", "invalid_response"]:
 		menu._choose(menu.rows[1])
+		platform.update_release_opened.emit(1, "v9.9.9", false)
+		assert(not menu.update_check.browser_error)
 		platform.update_check_ready.emit(platform.requested.size(), JSON.stringify({"state": state, "version": version}))
 		assert(menu.update_check.state == state)
 		assert(menu.rows.filter(func(row): return row.get("open_update_release", false)).is_empty())
