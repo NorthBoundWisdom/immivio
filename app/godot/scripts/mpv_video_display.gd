@@ -1330,6 +1330,9 @@ func set_subtitle_track(track_id: int, remember: bool = true) -> bool:
 		return false
 	if track_id > 0 and not subtitle_tracks().any(func(t): return int(t.id) == track_id):
 		return false
+	if track_id > 0 and track_id == dual_subtitles.state.requested_track:
+		if not dual_subtitles.select(0):
+			return false
 	if not platform.set_mpv_subtitle(media.session_id, track_id):
 		return false
 	subtitles.select(track_id)

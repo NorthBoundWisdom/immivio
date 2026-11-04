@@ -23,7 +23,7 @@ cmake --build build/native-host --config Release --parallel 2
 ctest --test-dir build/native-host -C Release --output-on-failure
 ```
 
-These tests exercise the production JSON writer against an independent Python Unicode oracle, numeric seek tracing, and both production subtitle-channel snapshots (independent command IDs, shared delay metadata and invalid-timeline clearing). They require CMake, a C++17 compiler and Python 3.11+, and keep assertions enabled in Release builds. GitHub CI runs them on both build hosts.
+These tests exercise the production JSON writer against an independent Python Unicode oracle, numeric seek tracing, and both production subtitle-channel snapshots (independent command IDs, shared delay metadata and invalid-timeline clearing), plus collision-safe subtitle-slot application order. They require CMake, a C++17 compiler and Python 3.11+, and keep assertions enabled in Release builds. GitHub CI runs them on both build hosts.
 
 Workflow tests cover corrupt assets, offline acquisition boundaries, configuration staleness, separate Build/Package stages, safe cleanup, process timeouts and signing identity preservation. Release tests reject incomplete dependency provenance and mismatched tag/commit/host/variant or APK bytes.
 
