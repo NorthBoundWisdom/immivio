@@ -542,7 +542,13 @@
     "Stereo horizontal alignment": "立体水平对齐",
     "Reuse last video mode": "沿用上次视频模式",
     "Playback order: Sequence": "播放顺序：顺序播放",
-    "Playback order: Shuffle": "播放顺序：随机播放"
+    "Playback order: Shuffle": "播放顺序：随机播放",
+    "Save diagnostic log": "保存诊断日志",
+    "Save diagnostic log to Downloads?": "将诊断日志保存到下载文件夹？",
+    "Previous session log available": "有上次会话日志",
+    "Log saved to Downloads": "日志已保存到下载文件夹",
+    "Diagnostic log could not be saved": "无法保存诊断日志",
+    "Save": "保存"
   },
   "zh_Hant": {
     "Reset": "重設",
@@ -1087,7 +1093,13 @@
     "Stereo horizontal alignment": "立體水平對齊",
     "Reuse last video mode": "沿用上次影片模式",
     "Playback order: Sequence": "播放順序：依序播放",
-    "Playback order: Shuffle": "播放順序：隨機播放"
+    "Playback order: Shuffle": "播放順序：隨機播放",
+    "Save diagnostic log": "儲存診斷記錄",
+    "Save diagnostic log to Downloads?": "將診斷記錄儲存至下載資料夾？",
+    "Previous session log available": "有上次工作階段記錄",
+    "Log saved to Downloads": "記錄已儲存至下載資料夾",
+    "Diagnostic log could not be saved": "無法儲存診斷記錄",
+    "Save": "儲存"
   },
   "ja": {
     "Reset": "リセット",
@@ -1632,6 +1644,12 @@
     "Stereo horizontal alignment": "ステレオ水平調整",
     "Reuse last video mode": "前回の動画モードを使用",
     "Playback order: Sequence": "再生順序：順番どおり",
-    "Playback order: Shuffle": "再生順序：シャッフル"
+    "Playback order: Shuffle": "再生順序：シャッフル",
+    "Save diagnostic log": "診断ログを保存",
+    "Save diagnostic log to Downloads?": "診断ログをダウンロードに保存しますか？",
+    "Previous session log available": "前回のセッションログあり",
+    "Log saved to Downloads": "ログをダウンロードに保存しました",
+    "Diagnostic log could not be saved": "診断ログを保存できませんでした",
+    "Save": "保存"
   }
 }

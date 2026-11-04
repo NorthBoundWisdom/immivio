@@ -97,3 +97,9 @@ Extend flat-video distance down to 0.1 m and size down to 5%, keeping the logari
 `pointer_ray.gd`, `pointer_ray.gdshader` and `pointer_ray.gdshaderinc` derive from upstream. Repaint scheduling is rewritten around Immivio’s existing compositor, presentation queue and menu owners. No browser/Gecko branches or new interaction targets are imported. World-space rays remain excluded from the UI capture texture; reticles retain the existing mapped coordinates. Headset GPU appearance, latency and thermal effects require physical verification.
 
 Draw soft-edged, screen-width-stable pointer ribbons with distinct actionable-target feedback. Coalesce menu repaints, settle changed content across three frames, render continuously during pointer capture, and refresh otherwise idle captured UI at 4 Hz. Preserve both-panel native capture and all existing ray mapping/acknowledgement rules.
+
+### P13 — Private crash trails and consented log export
+
+`CrashTrail.kt` memory-mapped ring derives from upstream. CrashRecords, DiagnosticLogs, consent UI and the existing Godot DiagnosticLog integration are rewritten for Immivio and reuse PlaybackErrors redaction. Private events rotate across two 256 KiB files; Java records are at most 64 Ki characters, prior reports 128 Ki characters, and exports at most 512 KiB. Unclean exits are described as possible crashes or OS reclamation, not automatically labeled crashes. Binary native tombstones, logcat and Wi-Fi sharing are omitted to keep privacy/resource bounds reviewable. Native faults retain the ring and available Android exit summary; their full native backtrace is not claimed.
+
+Retain a bounded, redacted step ring and Java crash record across restarts. Show prior-session availability in About and require a separate confirmation before saving a diagnostic log to Download/Immivio/logs. Keep five app-owned exports; never upload or share logs automatically.

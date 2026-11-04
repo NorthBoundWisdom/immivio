@@ -46,6 +46,7 @@ func _library_settings() -> Dictionary:
 		),
 		"sharpness": Quality.load_sharpness(host.settings, host.low_end_gpu),
 		"history": host.video.history_enabled,
+		"diagnostic_previous": PlatformMethods.supports(host.video.platform, "diagnostic_previous_available") and host.video.platform.diagnostic_previous_available(),
 		"reuse_last_mode": host.video.reuse_last_mode,
 		"browse_memory": bool(host.settings.get_value("library", "browse_memory", true)),
 		"controls_opacity": float(host.settings.get_value("ui", "controls_opacity", 0.86)),
@@ -69,6 +70,11 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 	if not is_instance_valid(host):
 		return
 	match key:
+		"save_diagnostic_log":
+			if value is bool and value and PlatformMethods.supports(host.video.platform, "save_diagnostic_log"):
+				host.video.platform.save_diagnostic_log()
+			else:
+				host.recent_menu.status = "Diagnostic log could not be saved"
 		"controls_opacity":
 			_on_playback_adjustment(key, value)
 		"browse_memory":
