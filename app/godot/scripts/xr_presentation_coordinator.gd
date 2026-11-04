@@ -757,6 +757,7 @@ func _menu_state() -> Dictionary:
 		"subtitle_options": text_tracks,
 		"subtitle_encoding_row": host.video.subtitle_encoding_row(),
 		"subtitle_track": host.video.subtitles.requested_track,
+		"subtitle_below_screen": host.video.subtitle_below_screen,
 		"primary_subtitle_id": host.video.dual_subtitles.primary_id(),
 		"dual_subtitles": host.video.dual_subtitles.enabled,
 		"dual_subtitles_available": host.video.dual_subtitles.supported(),

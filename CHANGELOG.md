@@ -6,6 +6,8 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 ## Unreleased
 
+- Optionally place text captions below the flat video screen with a fixed gap, including rotated and packed stereo screens. Keep the original vertical-position value while its slider is disabled; restore layout per video when history and file memory are enabled. Immersive projections retain their existing caption path and show the control as unavailable.
+
 - Add optional dual text subtitles: primary above secondary in one flat or immersive caption, with a shared delay and per-track encoding choices. Remember the second track per video when history and file memory are enabled; primary-off hides both, and selecting the same primary track turns secondary off. Bitmap subtitles remain unsupported.
 
 - Detect common external text subtitle encodings on bounded copies without changing originals. Per-track overrides apply when reopening the video; failed conversion retains the original subtitle, and failed manual choices show an invalid-encoding hint. Bitmap subtitles remain unsupported.

@@ -82,7 +82,7 @@ Quest 2 and PICO Neo3 are compatibility targets. Actual performance depends on h
 
 The current source also extends flat videos down to 0.1 m / 5% and menu distance to 4 m; photos retain their own ranges. These source changes require device acceptance and may not be in published APKs.
 
-The interface supports English, Simplified Chinese, Traditional Chinese and Japanese. Text subtitles offer five color palettes and optional bilingual primary/secondary captions with a shared delay and per-video track memory. Color grading offers Original, Warm, Cool and Custom presets, with individual slider resets and a reset for the current popup page. Subtitle, timing, eye-alignment and photo sliders also reset independently. See the [user guide](https://northboundwisdom.github.io/immivio/guide/) for sources, layouts, timing and queues.
+The interface supports English, Simplified Chinese, Traditional Chinese and Japanese. Text subtitles offer five color palettes and optional bilingual primary/secondary captions with a shared delay and per-video track memory. Flat video captions can also sit below the screen, with per-video layout memory. Color grading offers Original, Warm, Cool and Custom presets, with individual slider resets and a reset for the current popup page. Subtitle, timing, eye-alignment and photo sliders also reset independently. See the [user guide](https://northboundwisdom.github.io/immivio/guide/) for sources, layouts, timing and queues.
 
 ## Useful answers
 

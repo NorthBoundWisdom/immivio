@@ -789,6 +789,8 @@ func _subtitle_controls() -> Array:
 				"field":
 				{
 					"key": "subtitle_flat_position",
+					"enabled": not _state.get("subtitle_below_screen", false),
+					"display_value": str(_state.get("subtitle_flat_position", 0.0)) + "%",
 					"value": _state.get("subtitle_flat_position", 0.0),
 					"slider": true,
 					"span": Vector3(0, 100, 1),
@@ -820,6 +822,11 @@ func _subtitle_controls() -> Array:
 			)
 		}
 	)
+	rows.append({"title": "Subtitles below screen", "field": {
+		"key": "subtitle_below_screen", "value": _state.get("subtitle_below_screen", false),
+		"enabled": _state.get("has_video", false) and not _immersive_subtitles(),
+		"hint": "Available for flat video only" if _immersive_subtitles() else "",
+		"choices": [{"value": false, "label": "Off"}, {"value": true, "label": "On"}]}})
 	return rows
 
 
@@ -876,6 +883,9 @@ func _draw_subtitles() -> void:
 	y -= 0.01
 	for row in rows:
 		var title := _label(I18n.t(row.title), Vector3(-0.48, y, 0.004), 17)
+		if row.field.get("key", "") == "subtitle_below_screen" and _immersive_subtitles():
+			var unavailable := _label(I18n.t("Available for flat video only"), Vector3(0.14, y - 0.032, 0.004), 12)
+			unavailable.modulate = MUTED
 		title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		choices.field(null, row.field, Vector2(0.14, y), 0.64, 0.075)
 		y -= 0.10
@@ -1187,6 +1197,7 @@ func _bar_key() -> String:
 			_state.get("subtitle_direction", 0),
 			_state.get("subtitle_size", 100),
 			_state.get("subtitle_flat_position", 0),
+			_state.get("subtitle_below_screen", false),
 			_state.get("subtitle_loading", false),
 			_state.get("subtitle_palette", 0)
 		]

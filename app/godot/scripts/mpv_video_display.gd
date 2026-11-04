@@ -93,6 +93,8 @@ var playback_speed := 1.0
 var subtitle_size := 1.0:
 	set(value):
 		subtitle_size = clampf(value, 0.5, 2.0) if is_finite(value) else 1.0
+const SUBTITLE_BELOW_GAP := 0.02 # Fixed metres, independent of screen size/distance.
+var subtitle_below_screen := false
 var subtitle_flat_position := 0.0:
 	set(value):
 		subtitle_flat_position = clampf(value, 0.0, 1.0) if is_finite(value) else 0.0
@@ -502,6 +504,7 @@ func open_local(
 	packed_alpha = packed_file
 	_layout_pending = null
 	var saved_sync := mode_memory.lookup(uri) if restore_mode else {}
+	subtitle_below_screen = bool(saved_sync.get("subtitle_below_screen", false)) if history_enabled else false
 	subtitle_encodings = saved_sync.get("subtitle_encodings", {}).duplicate(true)
 	if PlatformMethods.supports(platform, "configure_subtitle_encodings"):
 		platform.configure_subtitle_encodings(uri, JSON.stringify(subtitle_encodings))
@@ -1422,6 +1425,35 @@ func _poll_subtitles() -> void:
 	_sync_subtitle_surface()
 
 
+func set_subtitle_below_screen(value: bool) -> bool:
+	if geometry != Geometry.Geometry.FLAT or not media.accepts(media.session_id):
+		return false
+	subtitle_below_screen = value
+	if history_enabled:
+		_remember_mode()
+	if caption and caption.visible:
+		_place_caption()
+	changed.emit()
+	return true
+
+
+func _place_caption_below(pose: Transform3D) -> void:
+	caption.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	caption.global_transform = Transform3D(pose.basis, pose * Vector3(0, 0, 0.01))
+	# Transform all corners, including roll/reclining pose. A mesh AABB is conservative
+	# for a curved flat screen and exact for a rectangular one.
+	var screen_bounds := panel.get_aabb()
+	var text_bounds := caption.get_aabb()
+	var screen_bottom := INF
+	var text_top := -INF
+	for index in 8:
+		screen_bottom = minf(screen_bottom, (panel.global_transform * screen_bounds.get_endpoint(index)).y)
+		text_top = maxf(text_top, (caption.global_transform * text_bounds.get_endpoint(index)).y)
+	# Label3D bounds do not include the outline. Include its upward projection too.
+	var outline := caption.outline_size * caption.pixel_size * (absf(pose.basis.x.y) + absf(pose.basis.y.y))
+	caption.global_position.y += screen_bottom - SUBTITLE_BELOW_GAP - text_top - outline
+
+
 func _place_caption() -> void:
 	caption.modulate = CaptionPalette.INK[CaptionPalette.index(subtitle_palette)]
 	caption.outline_modulate = CaptionPalette.outline(subtitle_palette)
@@ -1435,6 +1467,7 @@ func _place_caption() -> void:
 		var margin := minf(0.06 * screen_scale, _flat.size.y * 0.1)
 		# Include the actual multiline text height in the usable travel range.
 		caption.width = _flat.size.x * 0.9 / pixel_size
+		caption.vertical_alignment = VERTICAL_ALIGNMENT_TOP if subtitle_below_screen else VERTICAL_ALIGNMENT_BOTTOM
 		var available_height := maxf(0.001, _flat.size.y - 2 * margin)
 		var fit := minf(1.0, available_height / maxf(0.001, caption.get_aabb().size.y))
 		caption.pixel_size = pixel_size * fit
@@ -1450,6 +1483,8 @@ func _place_caption() -> void:
 		projected_subtitles.clear(material)
 		caption.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 		caption.global_transform = Transform3D(pose.basis, anchor)
+		if subtitle_below_screen:
+			_place_caption_below(pose)
 		return
 	# Anchor in the video's coordinates, like burned-in captions. Head pose never changes it.
 	# Direction/recenter/zoom move captions with the video; roll is excluded by the independent surface.
@@ -1799,6 +1834,13 @@ func _remember_mode() -> void:
 		"external_subtitle_uri": external_subtitle_uri,
 		"subtitle_encodings": subtitle_encodings.duplicate(true)
 	}
+	if history_enabled:
+		mode["subtitle_below_screen"] = subtitle_below_screen
+	else:
+		# Other allowed mode changes must not persist this private session's preference.
+		var previous := mode_memory.lookup(local_uri)
+		if previous.has("subtitle_below_screen"):
+			mode["subtitle_below_screen"] = previous.subtitle_below_screen
 	if not _track_choices.is_empty():
 		mode["track_choices"] = _track_choices.duplicate(true)
 	if mode_memory.remember(local_uri, mode) and not mode_memory.save():

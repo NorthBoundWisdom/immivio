@@ -575,7 +575,9 @@
     "Original stream unavailable": "原始媒体流不可用",
     "Dual subtitles": "双语字幕",
     "Primary subtitle": "主字幕",
-    "Secondary subtitle": "第二字幕"
+    "Secondary subtitle": "第二字幕",
+    "Subtitles below screen": "字幕放在画面下方",
+    "Available for flat video only": "仅适用于平面视频"
   },
   "zh_Hant": {
     "Reset": "重設",
@@ -1153,7 +1155,9 @@
     "Original stream unavailable": "無法使用原始串流",
     "Dual subtitles": "雙語字幕",
     "Primary subtitle": "主字幕",
-    "Secondary subtitle": "第二字幕"
+    "Secondary subtitle": "第二字幕",
+    "Subtitles below screen": "字幕放在畫面下方",
+    "Available for flat video only": "僅適用於平面影片"
   },
   "ja": {
     "Reset": "リセット",
@@ -1731,6 +1735,8 @@
     "Original stream unavailable": "元のストリームを利用できません",
     "Dual subtitles": "二言語字幕",
     "Primary subtitle": "主字幕",
-    "Secondary subtitle": "第二字幕"
+    "Secondary subtitle": "第二字幕",
+    "Subtitles below screen": "字幕を画面の下に表示",
+    "Available for flat video only": "平面動画でのみ利用できます"
   }
 }
