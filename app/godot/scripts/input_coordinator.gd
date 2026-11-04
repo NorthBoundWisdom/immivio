@@ -206,7 +206,8 @@ func _on_pointer_release(action: String, hand: String) -> void:
 		var tap: Dictionary = host._trigger_taps[hand]
 		host._trigger_taps.erase(hand)
 		if tap.uri == host._viewer().local_uri and tap.photo == host.photo_active:
-			host._toggle_player_menu()
+			if host._active_menu() or host._picture_pinch_allowed(hand):
+				host._toggle_player_menu()
 		return
 	if (
 		not host._grab.is_empty()
@@ -227,7 +228,7 @@ func _on_pointer_release(action: String, hand: String) -> void:
 		if action == "trigger_click" and not grab.moved:
 			if host.player_menu.visible:
 				host.player_menu.dismiss()
-			elif not grab.get("hid_menu", false):
+			elif not grab.get("hid_menu", false) and host._picture_pinch_allowed(hand):
 				host._show_player_menu()
 		return
 	var menu = host._active_menu()
@@ -260,6 +261,8 @@ func _on_controller_button(action: String, hand: String = "") -> void:
 func _on_pointer_button(action: String, hand: String) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
+		return
+	if action == "trigger_click" and not host._picture_pinch_allowed(hand) and not host._active_menu():
 		return
 	if host._inspect_blocked.has(hand):
 		return
@@ -656,7 +659,7 @@ func _update_hand_input(delta: float) -> void:
 		var event: Dictionary = host.hand_pointers[hand].update(sample, delta)
 		if event.cancelled:
 			host._cancel_pointer(hand)
-		if event.menu and hand == "left_hand":
+		if event.menu and preload("res://scripts/hand_preferences.gd").allows(hand, host.pinch_hand):
 			host._on_pointer_button("menu_button", hand)
 		var pointer: RefCounted = host.hand_pointers[hand]
 		inputs[hand] = event.merged(
@@ -785,7 +788,7 @@ func _dispatch_hand_input(inputs: Dictionary, _delta: float = 1.0 / 72.0) -> voi
 	var inspecting: bool = host.photo_active and host.photo != null and host.photo.inspect
 	if inspecting:
 		for hand in inputs:
-			if inputs[hand].get("source") == "hand" and inputs[hand].get("pressed", false):
+			if inputs[hand].get("source") == "hand" and inputs[hand].get("pressed", false) and preload("res://scripts/hand_preferences.gd").allows(hand, host.pinch_hand):
 				for side in inputs:
 					if inputs[side].get("down", false) or inputs[side].get("pressed", false):
 						host._inspect_blocked[side] = true
@@ -813,7 +816,8 @@ func _dispatch_hand_input(inputs: Dictionary, _delta: float = 1.0 / 72.0) -> voi
 	for action in result.actions:
 		match action.operation:
 			"tap":
-				host._show_player_menu()
+				if preload("res://scripts/hand_preferences.gd").allows(str(action.get("hand", "")), host.pinch_hand):
+					host._show_player_menu()
 			"navigate":
 				var accepted: bool = host.photo.navigate(int(action.direction))
 				if action.has("hand"):
@@ -1124,6 +1128,8 @@ func _update_corner_hover() -> void:
 func _begin_grab(hand: String, action: String = "grip_click") -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
+		return
+	if not host._picture_pinch_allowed(hand):
 		return
 	if not host._grab.is_empty() or (host.photo_active and host.photo.inspect):
 		return

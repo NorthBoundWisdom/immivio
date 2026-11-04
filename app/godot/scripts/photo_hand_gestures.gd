@@ -5,6 +5,14 @@ const SWIPE_METRES := 0.09
 const MOVE_METRES := 0.015
 const MIN_SPAN := 0.08
 var owners := {}
+var initiator_hand := preload("res://scripts/hand_preferences.gd").DEFAULT
+
+
+func set_initiator_hand(value: String) -> void:
+	initiator_hand = preload("res://scripts/hand_preferences.gd").normalize(value)
+	cancel()
+	owners.clear()
+
 var mode := ""
 var hand := ""
 var start: Variant = null
@@ -46,7 +54,10 @@ func update(
 	enabled = enabled and is_finite(scale) and scale > 0 and head_basis.is_finite()
 	if not enabled:
 		cancel()
-	for side in HANDS:
+	var order: Array = HANDS.duplicate()
+	if initiator_hand == "right_hand":
+		order.reverse()
+	for side in order:
 		var sample: Dictionary = inputs.get(side, {})
 		if (
 			sample.get("cancelled", false)
@@ -57,7 +68,7 @@ func update(
 				cancel()
 			owners.erase(side)
 			continue
-		if enabled and sample.get("pressed", false) and not owners.has(side):
+		if enabled and sample.get("pressed", false) and not owners.has(side) and (preload("res://scripts/hand_preferences.gd").allows(side, initiator_hand) or (mode == "single" and owners.has(initiator_hand))):
 			owners[side] = true
 			if side not in consumed:
 				consumed.append(side)
@@ -128,7 +139,7 @@ func update(
 				preview = offset.x
 			if sample.get("released", false):
 				if not moved:
-					actions.append({"operation": "tap"})
+					actions.append({"operation": "tap", "hand": hand})
 				elif (
 					absf(offset.x) >= SWIPE_METRES
 					and absf(offset.x) > maxf(absf(offset.y), absf(offset.z)) * 1.5

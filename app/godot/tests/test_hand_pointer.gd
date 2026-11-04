@@ -394,6 +394,8 @@ func _run() -> void:
 	tracker.has_tracking_data = true
 	library.dismiss()
 	player.dismiss()
+	check(main.pinch_hand == "right_hand", "Primary pinch hand defaults to Right")
+	main.pinch_hand = "left_hand"
 	var left_optical := make_tracker()
 	left_optical.name = "/user/hand_tracker/left"
 	var left_aim := make_aim()
@@ -408,7 +410,7 @@ func _run() -> void:
 	main._update_hand_input(1.0 / 72)
 	check(
 		player.visible and main._grab.is_empty(),
-		"Left official palm menu pinch opens controls without a picture grab"
+		"Selected left official palm menu pinch opens controls without a picture grab"
 	)
 	main._update_hand_input(1.0 / 72)
 	check(player.visible, "Holding left official menu pinch cannot toggle twice")

@@ -86,6 +86,7 @@ var right_controller: XRController3D
 var left_controller: XRController3D
 var hand_pointers := {}
 var photo_hands := PhotoHandGestures.new()
+var pinch_hand := preload("res://scripts/hand_preferences.gd").DEFAULT
 var photo_swipe := PhotoPalmSwipe.new()
 var memory_swipe := preload("res://scripts/memory_swipe.gd").new()
 var _gallery_save_after: int:
@@ -232,6 +233,8 @@ func _ready() -> void:
 	display.status_changed.connect(_update_status)
 	display.status_changed.connect(_on_input_session_changed)
 	_preferences.load_preferences()
+	pinch_hand = preload("res://scripts/hand_preferences.gd").normalize(settings.get_value("controls", "pinch_hand", preload("res://scripts/hand_preferences.gd").DEFAULT))
+	photo_hands.set_initiator_hand(pinch_hand)
 	var saved_library_distance := float(settings.get_value("ui", "library_distance", 1.4))
 	library_distance = (
 		clampf(saved_library_distance, LIBRARY_DISTANCE_LIMITS.x, LIBRARY_DISTANCE_LIMITS.y)
@@ -644,6 +647,10 @@ func _controller_ray(hand: String) -> Variant:
 
 func _update_hand_input(delta: float) -> void:
 	_input._update_hand_input(delta)
+
+
+func _picture_pinch_allowed(hand: String) -> bool:
+	return not (hand_pointers.has(hand) and hand_pointers[hand].source == "hand") or preload("res://scripts/hand_preferences.gd").allows(hand, pinch_hand)
 
 
 func _is_photo_hand(hand: String) -> bool:
