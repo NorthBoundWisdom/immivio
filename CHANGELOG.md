@@ -6,6 +6,8 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 ## Unreleased
 
+- Preserve the new-install Right pinch default across the first settings save and restart, while retaining Both for legacy settings without a choice.
+
 - Add a manual About update check against the latest stable GitHub release, with numeric version comparison, bounded HTTPS requests and distinct network/rate-limit feedback. Open only the validated release page in the system browser; never check automatically or download/install APKs.
 
 - Restrict external video associations: remove BROWSABLE, accept network VIEW intents only for video MIME types, and keep binary associations local to content/file. Remove the unreachable text/plain STRM ingress branch.
