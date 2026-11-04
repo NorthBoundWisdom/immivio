@@ -240,6 +240,12 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         !closed.get() && mpv.setSync(id, subtitleMs, audioMs)
 
     @UsedByGodot
+    fun external_playback_release(uri: String) { if (uri.startsWith("externalvideo://")) ExternalPlaybackPending.leases.release(uri) }
+
+    @UsedByGodot
+    fun external_playback_poll(): String = if (!closed.get() && signalsReady) ExternalPlaybackPending.poll() else "{}"
+
+    @UsedByGodot
     fun subtitle_candidates(uri: String): Int = if (closed.get() || uri.length > 8192) -1 else sources.subtitleCandidates(uri)
 
     @UsedByGodot

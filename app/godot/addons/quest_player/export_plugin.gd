@@ -26,9 +26,31 @@ class QuestPlayerExport:
 	func _get_android_manifest_application_element_contents(
 		_platform: EditorExportPlatform, _debug: bool
 	) -> String:
-		if not bool(get_option("xr_features/enable_pico_plugin")):
-			return ""
-		return """
+		return application_entries(bool(get_option("xr_features/enable_pico_plugin")))
+
+	static func application_entries(pico: bool) -> String:
+		var external := """
+        <activity android:name="org.vrpassthroughplayer.plugin.ExternalPlaybackActivity"
+            android:exported="true" android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.Material.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" /><data android:scheme="file" />
+                <data android:scheme="http" /><data android:scheme="https" />
+                <data android:mimeType="video/*" /><data android:mimeType="application/octet-stream" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="video/*" /><data android:mimeType="application/octet-stream" />
+            </intent-filter>
+        </activity>
+"""
+		if not pico:
+			return external
+		return external + """
         <activity android:name="org.vrpassthroughplayer.plugin.ImmivioLauncherActivity"
             android:exported="true" android:noHistory="true"
             android:theme="@android:style/Theme.NoDisplay">

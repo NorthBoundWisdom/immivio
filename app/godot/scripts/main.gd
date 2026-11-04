@@ -515,7 +515,14 @@ func _apply_system_recenter() -> void:
 	_presentation._apply_system_recenter()
 
 
+var _external_poll_ms := 0
+
 func _process(delta: float) -> void:
+	if video and Time.get_ticks_msec() >= _external_poll_ms and preload("res://scripts/platform_methods.gd").supports(video.platform, "external_playback_poll"):
+		_external_poll_ms = Time.get_ticks_msec() + 250
+		var external: Variant = JSON.parse_string(video.platform.external_playback_poll())
+		if external is Dictionary and str(external.get("uri", "")).begins_with("externalvideo://"):
+			_playback.open_external(external)
 	screen_layout.tick()
 	if is_instance_valid(playback_feedback):
 		playback_feedback.tick()
