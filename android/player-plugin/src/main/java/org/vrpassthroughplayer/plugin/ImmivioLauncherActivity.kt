@@ -10,11 +10,13 @@ class ImmivioLauncherActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.i("ImmivioLauncher", "Opening the immersive player")
-        startActivity(Intent(Intent.ACTION_MAIN)
-            .setClassName(packageName, "com.godot.game.GodotAppLauncher")
-            .addCategory("org.khronos.openxr.intent.category.IMMERSIVE_HMD")
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or
-                Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+        startActivity(playerIntent(this))
         finish()
+    }
+    companion object {
+        internal fun playerIntent(context: android.content.Context): Intent = Intent(Intent.ACTION_MAIN)
+            .setClassName(context.packageName, "com.godot.game.GodotAppLauncher")
+            .addCategory("org.khronos.openxr.intent.category.IMMERSIVE_HMD")
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
     }
 }

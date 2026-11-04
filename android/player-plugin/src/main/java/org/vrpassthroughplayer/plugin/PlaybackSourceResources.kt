@@ -12,6 +12,12 @@ internal class PlaybackSourceResources(private val releaseNetwork: (String) -> U
     private var descriptor: ParcelFileDescriptor? = null
     private var sidecars: List<ParcelFileDescriptor> = emptyList()
     private var networkLease: String? = null
+    private var externalLease: String? = null
+    @Synchronized fun adoptExternal(uri: String) {
+        if (!uri.startsWith("externalvideo://")) return
+        if (closed) { releaseNetwork(uri); error("Playback source closed") }
+        externalLease = uri
+    }
     private var subtitleLeases: List<String> = emptyList()
     private var audioLeases: List<String> = emptyList()
     val importedSubtitles = mutableListOf<File>() // accessed under the playback host lock
@@ -20,6 +26,7 @@ internal class PlaybackSourceResources(private val releaseNetwork: (String) -> U
         val source = Uri.parse(uri)
         return when (source.scheme) {
             "file" -> source.path ?: error("Local file path unavailable")
+            "externalvideo" -> network(uri)
             "smb", "medialib", "http", "https" -> network(uri).also { location ->
                 if (source.scheme in setOf("medialib", "smb")) synchronized(this) {
                     if (closed) {
@@ -68,6 +75,7 @@ internal class PlaybackSourceResources(private val releaseNetwork: (String) -> U
     @Synchronized
     fun close() {
         closed = true
+        externalLease?.let(releaseNetwork); externalLease = null
         networkLease?.let(releaseNetwork); networkLease = null
         subtitleLeases.forEach(releaseNetwork); subtitleLeases = emptyList()
         audioLeases.forEach(releaseNetwork); audioLeases = emptyList()

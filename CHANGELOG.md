@@ -6,6 +6,7 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 ## Unreleased
 
+- Accept one validated Android VIEW/SEND video through a separate ingress, preserving the existing single-engine Activity reuse route. Content access is a temporary descriptor lease, never a persisted URI grant. Requests expire after 60 seconds and own at most four leases; provider preparation has an 8-second UI deadline and a bounded worker queue.
 - Add a title-seeded subtitle filename filter with ray keyboard and scroll-only thumbsticks. Local/SMB adjacent text files are listed within the current directory; server playback filters its available external tracks. Keep the system picker for document providers and other locations.
 - Preserve UserView and provider-defined folders by excluding unsupported leaves instead of whitelisting container types. Folder artwork continues to use the folder identity. Photo leaves remain excluded; no server photo viewer is added.
 - Offer direct-play Emby/Jellyfin versions on the details page. Explicit version URIs isolate resume, mode and track preferences; the unselected URI keeps the legacy identity. Report the selected MediaSourceId. Missing or unsupported selected versions fail without silently playing another file.

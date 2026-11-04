@@ -144,6 +144,7 @@ internal class MpvVideoBridge(
                 "file",
                 "smb",
                 "medialib",
+                "externalvideo",
                 "http",
                 "https"
             )
@@ -169,6 +170,7 @@ internal class MpvVideoBridge(
                 if (host.closing || stopped) return@post
                 val app = context() ?: error("Activity unavailable")
                 event("mpv_state", session, JSONObject().put("state", "opening").put("loading_stage", "Resolving source"))
+                host.resources.adoptExternal(uri)
                 val resolved = resolveShortcut(uri)
                 if (host.closing || stopped) return@post
                 val path = host.resources.resolve(app, resolved, resolveNetwork)

@@ -16,6 +16,26 @@ func _init(host: Node3D) -> void:
 	_host_ref = weakref(host)
 
 
+func open_external(value: Dictionary) -> void:
+	var host := _host_ref.get_ref() as Node3D
+	if not is_instance_valid(host):
+		return
+	var uri := str(value.get("uri", ""))
+	if not uri.begins_with("externalvideo://"):
+		return
+	host.recent_menu.dismiss()
+	host.player_menu.dismiss()
+	host._grab = {}
+	host.stick_controls.suspend()
+	host.photo.close_image()
+	host.photo_active = false
+	host.player_menu = host.video_menu
+	if host.video.open_library(uri, str(value.get("title", "Video"))):
+		host._show_player_menu()
+	elif preload("res://scripts/platform_methods.gd").supports(host.video.platform, "external_playback_release"):
+		host.video.platform.external_playback_release(uri)
+
+
 func _on_library_chosen(uri: String, title: String) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):

@@ -45,6 +45,7 @@ internal class MediaSources(
     fun serverRequest(json: String): Int = mediaServers.request(json)
     fun serverCancel(id: Int) = mediaServers.cancel(id)
     fun releaseMediaStream(uri: String) {
+        ExternalPlaybackPending.leases.release(uri)
         mediaServers.release(uri)
         server?.revoke(uri)
     }
@@ -202,7 +203,11 @@ internal class MediaSources(
     }
 
     /** Resolve shortcuts on the playback worker, retaining the original URI for sidecars/history. */
-    fun resolveShortcut(uri: String): String {
+    fun resolveShortcut(uri: String, external: Boolean = false): String {
+        if (uri.startsWith("externalvideo://")) {
+            val target = ExternalPlaybackPending.leases.target(uri)
+            return if (StrmFile.location(target)) resolveShortcut(target, true) else uri
+        }
         val app = context() ?: error("Activity unavailable")
         fun named(value: String): Boolean {
             if (StrmFile.location(value)) return true
@@ -227,6 +232,7 @@ internal class MediaSources(
                 else -> throw StrmFailure("STRM_UNSUPPORTED_ADDRESS")
             }
         }, isStrm = ::named, mapTarget = { origin, target ->
+            if (external) require(java.net.URI(target).scheme in setOf("http", "https", "smb")) { "External STRM target unavailable" }
             if (!target.startsWith("smb://")) target else {
                 val servers = smb.serversJson()
                 StrmFile.smbTarget(target, (0 until servers.length()).map {
@@ -238,6 +244,9 @@ internal class MediaSources(
 
     /** MPV-playable location for a library URI; blocks (SMB connects). Worker threads only. */
     fun playable(uri: String): String = when {
+        uri.startsWith("externalvideo://") -> ExternalPlaybackPending.leases.target(uri).let {
+            if (it.startsWith("file:")) java.io.File(java.net.URI(it)).path else it
+        }
         uri.startsWith("medialib://") -> mediaServers.playable(uri)
         uri.startsWith("smb://") -> smb.stream(uri)
         else -> uri
@@ -318,6 +327,7 @@ internal class MediaSources(
 
     fun close() {
         stopped = true
+        ExternalPlaybackPending.leases.close()
         mediaServers.close()
         network.shutdownNow(); local.close()
         server?.close(); server = null
