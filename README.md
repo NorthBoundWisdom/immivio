@@ -38,7 +38,7 @@ Immivio continues development of [zerochocobo/Thru3D-Media-Player](https://githu
 - **Check releases when you choose.** Settings → About → Check for updates contacts GitHub only after a click and opens a newer release in the system browser; the app never downloads or installs an APK.
 - **Open and diagnose.** Eligible Android VIEW/SEND videos use temporary access; redacted crash trails stay private until you confirm saving a log to Downloads. USB access uses verified system mounts; some PICO/provider paths remain unavailable.
 
-Version 0.9.4 adds STRM shortcuts, list/icon browsing with folder-position memory, compact browsing during playback, spatially locked controls and flat-screen cinema presets. See the [release notes](CHANGELOG.md) and [feature boundaries](docs/SELECTED_UPSTREAM_PORTS.md); published APKs may predate these additions.
+Version 0.9.4 introduced STRM shortcuts, list/icon browsing with folder-position memory, compact browsing during playback, spatially locked controls and flat-screen cinema presets. The overview above describes the current source, including later selected upstream ports that remain Unreleased. Published APKs may omit those Unreleased features; see the [changelog](CHANGELOG.md) and [feature boundaries](docs/SELECTED_UPSTREAM_PORTS.md).
 
 Immivio has **one playback edition**. It displays existing stereo/spatial content; it does not generate 3D from 2D. The earlier live AI depth, person-matting, model preparation and inference features have been removed.
 
