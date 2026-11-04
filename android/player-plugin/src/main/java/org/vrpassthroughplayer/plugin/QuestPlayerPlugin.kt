@@ -28,6 +28,22 @@ import javax.microedition.khronos.opengles.GL10
 @UnstableApi
 class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     private val closed = AtomicBoolean(false)
+    private val updateChecks = UpdateCheckRequests { id, result ->
+        if (!closed.get()) emitSignal("update_check_ready", id, result)
+    }
+
+    @UsedByGodot
+    fun request_update_check(version: String): Int = if (closed.get()) -1 else updateChecks.request(version)
+
+    @UsedByGodot
+    fun open_update_release(tag: String): Boolean {
+        val url = UpdateCheck.releaseUrl(tag) ?: return false
+        if (closed.get()) return false
+        runOnHostThread {
+            if (!closed.get()) runCatching { activity?.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))) }
+        }
+        return true
+    }
 
     @Volatile
     private var signalsReady = false
@@ -189,6 +205,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     }
 
     override fun getPluginSignals() = setOf(
+        SignalInfo("update_check_ready", Int::class.javaObjectType, String::class.java),
         SignalInfo("diagnostic_log_saved", Int::class.javaObjectType, String::class.java),
         SignalInfo("capabilities_ready", Int::class.javaObjectType, String::class.java),
         SignalInfo("android_lifecycle", String::class.java),
@@ -739,6 +756,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
 
     private fun close() {
         if (closed.compareAndSet(false, true)) {
+            updateChecks.close()
             CrashRecords.cleanExit()
             accounts.close(); photos.close(); photoPreloads.close(); photoPreviews.close(); picker.close(); subtitlePicker.close(); localAccess.close(); probe.shutdownNow(); media.shutdown(); mpv.shutdown(); sources.close()
         }

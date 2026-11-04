@@ -612,7 +612,7 @@ func _run() -> void:
 		),
 		"About brand and support"
 	)
-	menu._activate(Menu.ROW_BASE + 3)
+	menu._choose(menu.rows.filter(func(row): return row.get("about_page", -1) == 2)[0])
 	check(
 		(
 			menu.rows[0].title == "Belfast Sunset (Pure Sky)"

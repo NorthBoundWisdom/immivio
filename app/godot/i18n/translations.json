@@ -561,7 +561,16 @@
     "Right hand": "右手",
     "Both hands": "双手",
     "Other hand may assist photo zoom": "另一只手可加入照片缩放",
-    "Encoding invalid": "编码无效"
+    "Encoding invalid": "编码无效",
+    "Check for updates": "检查更新",
+    "Checking for updates…": "正在检查更新…",
+    "Up to date": "已是最新",
+    "New version available": "有新版本",
+    "Current version": "当前版本",
+    "Network error. Retry.": "网络错误，请重试。",
+    "GitHub rate limit. Try later.": "GitHub 请求限流，请稍后重试。",
+    "Update check failed. Retry.": "检查更新失败，请重试。",
+    "Open release page": "打开发布页面"
   },
   "zh_Hant": {
     "Reset": "重設",
@@ -1125,7 +1134,16 @@
     "Right hand": "右手",
     "Both hands": "雙手",
     "Other hand may assist photo zoom": "另一手可加入照片縮放",
-    "Encoding invalid": "編碼無效"
+    "Encoding invalid": "編碼無效",
+    "Check for updates": "檢查更新",
+    "Checking for updates…": "正在檢查更新…",
+    "Up to date": "已是最新",
+    "New version available": "有新版本",
+    "Current version": "目前版本",
+    "Network error. Retry.": "網路錯誤，請重試。",
+    "GitHub rate limit. Try later.": "GitHub 請求限流，請稍後重試。",
+    "Update check failed. Retry.": "檢查更新失敗，請重試。",
+    "Open release page": "開啟發布頁面"
   },
   "ja": {
     "Reset": "リセット",
@@ -1689,6 +1707,15 @@
     "Right hand": "右手",
     "Both hands": "両手",
     "Other hand may assist photo zoom": "もう一方の手は写真のズームを補助できます",
-    "Encoding invalid": "文字コードが無効です"
+    "Encoding invalid": "文字コードが無効です",
+    "Check for updates": "更新を確認",
+    "Checking for updates…": "更新を確認中…",
+    "Up to date": "最新です",
+    "New version available": "新しいバージョンがあります",
+    "Current version": "現在のバージョン",
+    "Network error. Retry.": "ネットワークエラー。再試行してください。",
+    "GitHub rate limit. Try later.": "GitHub の制限に達しました。後で再試行してください。",
+    "Update check failed. Retry.": "更新を確認できません。再試行してください。",
+    "Open release page": "リリースページを開く"
   }
 }
