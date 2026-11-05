@@ -106,7 +106,8 @@ func configure(
 			warmup.playback_menu = menu
 			break
 	add_child(warmup)
-	_session_state = session_state
+	# Desktop/2D diagnostic previews have no XR session to become focused.
+	_session_state = session_state if xr_enabled else Callable()
 	if not xr_enabled or OS.get_name() != "Android":
 		return
 	if RenderingServer.get_current_rendering_driver_name() not in ["opengl3", "opengl3_es"]:

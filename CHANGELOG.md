@@ -6,6 +6,8 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 ## Unreleased
 
+- Preserve antialiasing outside menu surface edges so the timeline's hover highlight and rounded outlines stay smooth, without changing their hit areas or hover feedback.
+
 - Make the playback file browser mutually exclusive with video setting, subtitle, queue and bookmark popups. Apply viewing-distance curvature to playback and photo menus as well as the library, with matching curved-ray coordinates for captured sliders and timeline seeks.
 
 - Show a newly opened video's playback controls only after its first frame resolves the screen layout, placing the timeline once at its final anchor. Keep loading feedback visible and preserve error recovery and user cancellation.
