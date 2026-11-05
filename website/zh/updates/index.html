@@ -146,7 +146,8 @@
     <main id="main" class="wrap guide-layout">
       <nav class="guide-nav" aria-label="更新说明目录">
         <p class="eyebrow">更新说明</p>
-        <a href="#current">v0.9.5</a>
+        <a href="#current">v0.9.6</a>
+        <a href="#v0-9-5">v0.9.5</a>
         <a href="#development">开发构建</a>
         <a href="#v0-9-4">v0.9.4</a>
         <a href="#v0-9-3">v0.9.3</a>
@@ -163,6 +164,21 @@
           这里按版本 tag 记录改动。Android APK 会在构建校验完成后附加到发布页；请核对下载选择器显示的版本及安装包对应的说明。
         </p>
         <section id="current">
+          <h2>v0.9.6 — 2026 年 11 月 6 日</h2>
+          <p>专注视频播放，统一网络入口，并优化播放小窗和文件管理布局。正式 APK 会在两个构建平台校验通过后附加到对应发布页。</p>
+          <ul>
+            <li>打开字幕、设置、队列、书签等小窗时，保留播放条、标题和时间轴；轻微头部跟随移动也不会误隐藏整层。等待新弹窗画面期间保留悬停反馈，控件显示后才接受点击。</li>
+            <li>文件管理内容使用统一四边内边距，网格／列表居中，滚动条内缩；设置与网络媒体切换时保持窗口连续显示。</li>
+            <li>SMB、DLNA、Emby、Jellyfin、Plex、Stash、XBVR 统一放入“网络媒体”，添加／管理来源直接进入对应表单。补齐来源标题，避免延迟返回的后台列表关闭添加页面。</li>
+            <li>移除照片播放、图库、空间／HEIF 解码和照片手势。本地始终显示视频与文件夹，迁移旧照片设置和历史记录时保留原始文件。</li>
+            <li>各菜单默认下移 12 厘米；“设置 → 显示 → 窗口高度”可保存 −60 至 +30 厘米的偏移。</li>
+            <li>默认使用 appstore 编译渠道，不展示“检查更新”；GitHub tag 构建使用 web／Release，保留手动检查更新。</li>
+            <li>官网新增中英文隐私政策和用户协议，说明维护者不收集用户数据，并区分本地存储、可选媒体服务、主动反馈和网站托管。</li>
+          </ul>
+          <p>播放界面改动通过主机回归与移动镜头 GPU 像素检查，PICO 开发包已安装供真机验收。头显舒适度和媒体兼容性仍以对应设备为准；位图字幕仍不支持。</p>
+          <p><a href="https://github.com/NorthBoundWisdom/immivio/releases/tag/v0.9.6">v0.9.6 发布与 APK →</a> · <a href="../guide/">安装与操作指南 →</a></p>
+        </section>
+        <section id="v0-9-5">
           <h2>v0.9.5 — 2026 年 11 月 5 日</h2>
           <p>新增双语文字字幕、媒体来源改进与更清晰的曲面界面。Quest、PICO 和实验性 OpenXR APK 会在两个构建平台校验通过后附加到对应发布页；仅有源码归档时还不能安装。</p>
           <ul>
@@ -182,7 +198,6 @@
         <section id="development">
           <h2>开发构建</h2>
           <p>主分支构建可能包含后续改动。<a href="https://github.com/NorthBoundWisdom/immivio/actions/workflows/android-release.yml">成功的工作流与 APK 制品 →</a>（需要登录 GitHub）。</p>
-          <p>播放小窗独立刷新，开关字幕、模式、倍速等窗口时保留播放条与渲染区域；资料库与小窗互相切换也保持播放条原位置。</p>
         </section>
         <section id="v0-9-4">
           <h2>v0.9.4 — 2026 年 10 月 24 日</h2>

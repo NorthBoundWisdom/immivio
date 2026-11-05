@@ -6,6 +6,12 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 ## Unreleased
 
+## 0.9.6 — 2026-11-06
+
+- Set application version 0.9.6 / versionCode 20 for Quest, PICO and experimental OpenXR packages.
+
+- Preserve moving playback controls while subtitle/other popup captures await GPU acknowledgement. Reuse the toolbar at its current rigid pose on the same projection, retain hover feedback without enabling pending controls, and cover moving-viewer ray clicks with title/timeline pixel comparisons.
+
 - Keep playback transport/header/timeline nodes alive when opening, closing or updating popups. Reserve subtitle and other popup bounds in advance and preserve the toolbar capture anchor and placement when replacing the compact file browser, avoiding full-bar flashes while retaining capture acknowledgement for input.
 
 - Give file-browser panels one shared inset on all four edges. Align headers, centred grids/lists, footer actions and settings tabs to it; inset the scrollbar's visible rail while preserving its wider ray target. Apply the shared layout to network and media-server browsers, and keep status messages inside the panel.
@@ -17,7 +23,7 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 - Keep the library window continuously visible when switching Settings ↔ Network media. Retain the preceding image while redrawing an unchanged window, while continuing to wait for matching pixels when its placement, projection or visible menu set changes.
 - Consolidate SMB shares, DLNA libraries and media-server accounts under one Network media entry. Show saved/discovered sources together, explain connection types when adding or managing sources, retain existing account/folder state and reject listings that arrive after leaving their section.
 - Prevent library and subtitle/page transitions from briefly displaying the preceding UI texture on a new projection. Wait for the matching capture before revealing curved scene or native XR layers, while retaining continuous value updates and scrolling.
-- Lower library, settings, playback and photo control windows by 12 cm by default. Add a persistent Window height slider under Settings → Display, adjustable from −60 to +30 cm; apply movement on release and retain the offset across recentering and reclining placement.
+- Lower library, settings and playback control windows by 12 cm by default. Add a persistent Window height slider under Settings → Display, adjustable from −60 to +30 cm; apply movement on release and retain the offset across recentering and reclining placement.
 
 ## 0.9.5 — 2026-11-05
 
