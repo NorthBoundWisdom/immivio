@@ -6,6 +6,8 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 ## Unreleased
 
+- Project neutral ray feedback onto the playback title and battery/clock pills, including beside the file browser. Informational surfaces stop the ray without triggering actions or dismissing controls; taps outside the UI still dismiss it.
+
 - Preserve antialiasing outside menu surface edges so the timeline's hover highlight and rounded outlines stay smooth, without changing their hit areas or hover feedback.
 
 - Make the playback file browser mutually exclusive with video setting, subtitle, queue and bookmark popups. Apply viewing-distance curvature to playback and photo menus as well as the library, with matching curved-ray coordinates for captured sliders and timeline seeks.

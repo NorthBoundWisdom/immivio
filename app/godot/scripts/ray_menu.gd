@@ -225,6 +225,8 @@ func ray_panel_hit(origin: Vector3, direction: Vector3) -> Dictionary:
 	var best := {}
 	var panels: Array[Node3D] = [_backdrop]
 	panels.append_array(_decorations)
+	if is_instance_valid(device_status):
+		panels.append(device_status.pointer_surface())
 	for panel in panels:
 		if (
 			not is_instance_valid(panel)

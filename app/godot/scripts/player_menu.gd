@@ -580,6 +580,7 @@ func _draw_bar() -> void:
 	)
 	_backdrop.material_override.set_shader_parameter("corner_radius", 0.05)
 	_title_pill = _quad(Vector2(0.60, DeviceStatus.HEIGHT), Vector3(0, HEADER_Y, 0.002), TILE, 11)
+	_title_pill.set_meta("xr_ui_panel", true)
 	_title_pill.material_override.set_shader_parameter("corner_radius", DeviceStatus.HEIGHT / 2)
 	add_child(_title_pill)
 	_decorations.append(_title_pill)

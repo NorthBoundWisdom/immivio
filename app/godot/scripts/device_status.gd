@@ -38,6 +38,7 @@ func _ready() -> void:
 				var parsed: Variant = JSON.parse_string(str(plugin.device_status()))
 				return parsed if parsed is Dictionary else {}
 	_pill = _quad(Vector2(0.2, HEIGHT), Vector3.ZERO, Menu.TILE, 11)
+	_pill.set_meta("xr_ui_panel", true)
 	_pill.material_override.set_shader_parameter("corner_radius", HEIGHT * 0.5)
 	_battery = _icon("battery", Color(0.93, 0.95, 0.98))
 	# Inside of the battery outline (icon units 8.5..15.5 x 5.5..20.5 of 24), filled from the bottom.
@@ -133,6 +134,10 @@ func text_snapshot() -> String:
 
 func pill_width() -> float:
 	return _pill.mesh.size.x if is_instance_valid(_pill) else minimum_width
+
+
+func pointer_surface() -> MeshInstance3D:
+	return _pill
 
 
 func _icon(key: String, color: Color) -> MeshInstance3D:
