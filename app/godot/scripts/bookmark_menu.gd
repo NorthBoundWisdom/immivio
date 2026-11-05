@@ -229,6 +229,8 @@ func _activate(target: int, item: Dictionary, media_scope: String) -> void:
 		offset = 0
 		_close_other_popups()
 		menu.refresh()
+		if opened:
+			menu.popup_opened.emit()
 	elif target == CLOSE:
 		opened = false
 		menu.refresh()
@@ -248,6 +250,7 @@ func _activate(target: int, item: Dictionary, media_scope: String) -> void:
 			offset = 0
 			_close_other_popups()
 			menu.refresh()
+			menu.popup_opened.emit()
 
 
 func _close_other_popups() -> void:

@@ -2,6 +2,7 @@ extends "res://scripts/ray_menu.gd"
 
 signal action_requested(operation: String)
 signal recent_requested
+signal popup_opened
 signal seek_requested(position_ms: int)
 signal bookmark_requested(operation: String, marker_id: String, scope: String)
 signal subtitle_requested(track_id: int)
@@ -728,6 +729,8 @@ func _toggle_popup(key: String) -> void:
 			_:
 				_quick_open = key
 	refresh()
+	if not close and _popup_is_open(key):
+		popup_opened.emit()
 
 
 func _subtitle_tracks() -> Array:
@@ -1062,14 +1065,7 @@ func _set_depth_at(y: float) -> void:
 
 ## Point on the menu plane (local), even off the track, so a drag past either end clamps.
 func _plane_point(origin: Vector3, direction: Vector3) -> Variant:
-	if not origin.is_finite() or not direction.is_finite() or direction.length_squared() < 0.000001:
-		return null
-	var inverse := global_transform.affine_inverse()
-	var start := inverse * origin
-	var delta := inverse.basis * direction.normalized()
-	if delta.z >= -0.00001 or start.z <= 0.0:
-		return null
-	return start + delta * (-start.z / delta.z)
+	return pointer_plane_point(origin, direction, 0.0)
 
 
 func press_pointer(hand: String, origin: Vector3, direction: Vector3, tracked: bool) -> bool:

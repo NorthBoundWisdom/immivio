@@ -106,6 +106,10 @@ func _run() -> void:
 	video.open_local("file:///slider-reset_SBS.mp4", "slider-reset_SBS.mp4")
 	video.stereo_sbs = true
 	video._apply_geometry()
+	# This UI test operates on a presented file, not the initial loading state.
+	video.media.frame_counter = 1
+	video._waiting_first = false
+	video.panel.visible = true
 	main._show_player_menu()
 	var menu: Node3D = main.player_menu
 	menu.set_process(false)

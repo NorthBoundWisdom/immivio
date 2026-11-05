@@ -240,6 +240,8 @@ func _on_video_changed() -> void:
 	host._update_background()
 	host._update_status()
 	if host.player_menu and host.player_menu.visible:
+		if not host.recent_menu.visible and host.get("_presentation")._defer_video_controls():
+			return
 		host.player_menu.refresh_values()
 
 

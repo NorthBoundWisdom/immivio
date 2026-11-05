@@ -1,0 +1,126 @@
+extends SceneTree
+const Main := preload("res://scripts/main.gd")
+const Menu := preload("res://scripts/player_menu.gd")
+const Surface := preload("res://scripts/xr_menu_compositor.gd")
+var checks := 0
+var failures: Array[String] = []
+
+func check(ok: bool, message: String) -> void:
+	checks += 1
+	if not ok:
+		failures.append(message)
+
+func _initialize() -> void:
+	if not preload("res://tests/support/test_result.gd").prepare(self):
+		return
+	_run.call_deferred()
+
+func button_point(menu: Node3D, target: int) -> Vector3:
+	for button in menu._buttons:
+		if button.target == target:
+			return button.node.global_position
+	return Vector3(INF, INF, INF)
+
+func bent_ray(host: Node3D, flat: Vector3) -> Array:
+	var surface: Node3D = host.menu_compositor
+	var pose := Surface.capture_pose(surface.active_menu)
+	var local: Vector3 = pose.affine_inverse() * flat
+	var centre: Vector2 = surface.surface_rect.get_center()
+	var radius: float = surface.active_menu.curve_radius
+	if radius <= 0:
+		return [host._eye(), (flat - host._eye()).normalized()]
+	var angle: float = (local.x - centre.x) / radius
+	var point: Vector3 = pose * Vector3(centre.x + sin(angle) * radius, local.y, (1 - cos(angle)) * radius)
+	var origin: Vector3 = host._eye() + Vector3(.18, -.06, .08)
+	return [origin, (point - origin).normalized()]
+
+func tap(host: Node3D, target: int) -> bool:
+	host.menu_compositor._process(0)
+	var menu: Node3D = host.player_menu
+	var flat := button_point(menu, target)
+	if not flat.is_finite():
+		return false
+	var ray := bent_ray(host, flat)
+	var handled: bool = menu.press_pointer("right_hand", ray[0], ray[1], true)
+	menu.release_pointer("right_hand", ray[0], ray[1], true)
+	host.menu_compositor._process(0)
+	return handled
+
+func _run() -> void:
+	var host := Main.new()
+	host.settings_path = "user://playback-surfaces.cfg"
+	root.add_child(host)
+	host.set_process(false)
+	host.menu_compositor.set_process(false)
+	host.video.set_process(false)
+	host.photo.set_process(false)
+	host.player_menu.set_process(false)
+	host.report_timer.stop()
+	host.video.media.begin(1)
+	host.video.local_uri = "file:///pages-SBS.mp4"
+	host.video.media.frame_counter = 1
+	host.video.media.state = "paused"
+	host.video._waiting_first = false
+	host.video.stereo_sbs = true
+	host.video.media.format = {"width": 3840, "height": 1080}
+	host.video.control.duration_ms = 60000
+	host.video._apply_geometry()
+	host.video.panel.visible = true
+	host._show_player_menu()
+	var menu: Node3D = host.player_menu
+	menu.state_provider = func():
+		var state: Dictionary = host._menu_state()
+		state.merge({"bookmarks": [{"id": "sample", "position_ms": 12000}], "bookmark_scope": "synthetic", "bookmark_ready": true, "bookmark_seekable": true}, true)
+		return state
+	for target in [Menu.QUICK_SCREEN, Menu.MODE, 110, Menu.QUICK_SPEED, Menu.QUICK_COLOR, Menu.IPD_SETTINGS, Menu.SYNC_SETTINGS, Menu.QUEUE_SETTINGS, 12]:
+		host._show_recent_menu()
+		host.recent_menu.compact = true
+		host._place_menu(host.recent_menu)
+		check(host.recent_menu.visible and menu._quick_open.is_empty() and not menu._mode_open and not menu._subtitle_open, "Browsing replaces the previous playback page")
+		check(tap(host, target), "Toolbar page remains ray-selectable beside the compact browser: %d" % target)
+		check(menu._popup_is_open(Menu.POPUP_TARGETS[target]) and not host.recent_menu.visible, "Browser and playback page are mutually exclusive: %d" % target)
+		check(menu.curve_radius > 0 and host.menu_compositor.scene_curved, "Playback page uses the same curved renderer: %d" % target)
+		var centre: Vector2 = menu.capture_envelope().get_center()
+		var distance := menu.to_global(Vector3(centre.x, centre.y, 0)).distance_to(host._eye())
+		check(is_equal_approx(menu.curve_radius, distance), "Playback curvature matches its placed viewing distance")
+	host._show_recent_menu()
+	check(tap(host, Menu.BookmarkMenu.LIST), "Bookmark list remains selectable beside the browser")
+	check(menu.bookmarks.opened and not host.recent_menu.visible, "Bookmark list also replaces the browser")
+	host._show_recent_menu()
+	check(not menu.bookmarks.opened, "Browsing closes bookmark pages")
+	# Bending the timeline must not move a stationary drag's preview.
+	host._show_player_menu()
+	menu._reset_navigation()
+	menu.refresh()
+	menu.curve_radius = 1.4
+	host.menu_compositor._process(0)
+	var flat := menu.to_global(Vector3(Menu.BAR_SEEK * .3, Menu.BAR_SEEK_Y, 0))
+	var ray := bent_ray(host, flat)
+	check(menu.press_pointer("left_hand", ray[0], ray[1], true), "Curved timeline starts a seek")
+	var at_press: int = menu._seek_preview
+	var held_radius: float = menu.curve_radius
+	var eye_before: Vector3 = host.xr_camera.global_position
+	host.xr_camera.global_position += Vector3(.12, .02, .1)
+	host.menu_compositor._process(0)
+	check(is_equal_approx(menu.curve_radius, held_radius), "Pointer capture freezes the playback curve")
+	host.xr_camera.global_position = eye_before
+	menu.update_pointer("left_hand", ray[0], ray[1], true)
+	check(absi(menu._seek_preview - at_press) <= 1, "Stationary curved timeline drag cannot shift the seek position")
+	menu.release_pointer("left_hand", ray[0], ray[1], false)
+	host.photo_active = true
+	host.player_menu = host.photo_menu
+	host.video_menu.dismiss()
+	host.photo.local_uri = "file:///panorama.jpg"
+	host.photo.panel.visible = true
+	host._show_player_menu()
+	host.menu_compositor._process(0)
+	check(host.photo_menu.curve_radius > 0 and host.menu_compositor.scene_curved, "Photo controls share the viewing-circle curve")
+	host.photo_menu._activate(host.photo_menu.PHOTO_ADJUST)
+	host.menu_compositor._process(0)
+	check(host.menu_compositor.active_menu == host.photo_menu and host.menu_compositor.scene_curved, "Photo adjustment pages retain the curved renderer")
+	host.queue_free()
+	await process_frame
+	for failure in failures:
+		push_error(failure)
+	print("Playback page surfaces checks=", checks, " failures=", failures.size())
+	preload("res://tests/support/test_result.gd").finish(self, 0 if failures.is_empty() else 1)
