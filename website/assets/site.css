@@ -569,6 +569,9 @@ input[type="radio"] {
   gap: 2rem;
   margin: 2rem 0 0;
 }
+.family > a:only-child {
+  grid-column: 1 / -1;
+}
 .family a {
   display: flex;
   align-items: center;
