@@ -34,9 +34,14 @@ func _preview_menu_input(event: InputEvent) -> bool:
 	var direction: Vector3 = host.xr_camera.project_ray_normal(event.position)
 	if menu == host.recent_menu and host.player_menu and host.player_menu.visible and not menu.has_pointer_capture():
 		var controls: Dictionary = host.player_menu.ray_hit(origin, direction)
+		if controls.is_empty():
+			controls = host.player_menu.ray_panel_hit(origin, direction)
 		var library: Dictionary = menu.ray_panel_hit(origin, direction)
 		if not controls.is_empty() and (library.is_empty() or float(controls.distance) < float(library.distance)):
 			menu = host.player_menu
+	for other in [host.recent_menu, host.player_menu]:
+		if is_instance_valid(other) and other != menu:
+			other.update_pointer("desktop", origin, direction, false)
 	if event is InputEventMouseMotion:
 		menu.update_pointer("desktop", origin, direction, true)
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
@@ -345,7 +350,11 @@ func _on_pointer_button(action: String, hand: String) -> void:
 				if not host._update_menu_pointer(hand, true) and menu == host.player_menu:
 					var ray: Variant = host._ray(hand)
 					# A slider owned by the other hand rejects this press; it is not a screen drag.
-					if ray != null and menu.ray_hit(ray[0], ray[1]).is_empty():
+					if (
+						ray != null
+						and menu.ray_hit(ray[0], ray[1]).is_empty()
+						and menu.ray_panel_hit(ray[0], ray[1]).is_empty()
+					):
 						host._begin_picture_press(hand)
 			"by_button":
 				if menu.get("allow_user_dismiss") != false:

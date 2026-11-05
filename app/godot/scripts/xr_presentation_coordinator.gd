@@ -183,6 +183,8 @@ func _update_menu_pointer(hand: String, pressed: bool = false) -> bool:
 	):
 		var controls: Node3D = host.player_menu
 		var hit: Dictionary = controls.ray_hit(origin, direction) if tracked else {}
+		if tracked and hit.is_empty():
+			hit = controls.ray_panel_hit(origin, direction)
 		var library_hit: Dictionary = menu.ray_panel_hit(origin, direction) if tracked else {}
 		if (
 			controls.has_pointer_capture()
