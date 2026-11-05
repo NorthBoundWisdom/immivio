@@ -19,6 +19,7 @@ var view_follow := ViewFollow.new()
 var temporary_passthrough := false
 var reclining_mode := false
 var _menu_touched_ms := 0
+var _pending_video_controls_session := 0
 
 
 func _init(host: Node3D) -> void:
@@ -522,6 +523,27 @@ func _update_player_menu_anchor() -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
+	if _pending_video_controls_session > 0:
+		if (
+			host.photo_active
+			or host.video.media.session_id != _pending_video_controls_session
+			or host.video.local_uri.is_empty()
+			or host.recent_menu.visible
+		):
+			_pending_video_controls_session = 0
+		elif (
+			host._system_recenter_pending
+			or (not host.display.preview and host._head_pose() == null)
+			or (
+				host.video.media.accepts(_pending_video_controls_session)
+				and (host.video.media.frame_counter == 0 or host.video._waiting_first or not host.video.panel.visible)
+			)
+		):
+			return
+		else:
+			_pending_video_controls_session = 0
+			if host.video.panel.visible or host.video.media.state == "failed":
+				host._show_player_menu()
 	if host._system_recenter_pending:
 		return
 	if host.player_menu is PlayerMenu and host.player_menu.space_locked:
@@ -551,6 +573,10 @@ func _toggle_player_menu() -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
+	if _pending_video_controls_session > 0:
+		_pending_video_controls_session = 0
+		host._show_recent_menu()
+		return
 	if (
 		host.recent_menu
 		and host.recent_menu.visible
@@ -567,6 +593,26 @@ func _toggle_player_menu() -> void:
 		host._show_player_menu()
 
 
+## A newly opened file can resolve a different projection/aspect on its first
+## frame. Keep the requested controls hidden until that layout owns placement.
+func _defer_video_controls() -> bool:
+	var host := _host_ref.get_ref() as Node3D
+	if not is_instance_valid(host) or host.photo_active or host.player_menu != host.video_menu:
+		return false
+	var video: Node3D = host.video
+	if not is_instance_valid(video) or video.get("_waiting_first") != true or video.panel.visible:
+		return false
+	if (
+		video.local_uri.is_empty()
+		or not video.media.accepts(video.media.session_id)
+		or video.media.frame_counter > 0
+	):
+		return false
+	_pending_video_controls_session = video.media.session_id
+	host.player_menu.dismiss()
+	return true
+
+
 func _show_player_menu() -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
@@ -581,18 +627,22 @@ func _show_player_menu() -> void:
 	host._trigger_taps.clear()
 	if host.recent_menu:
 		host.recent_menu.dismiss()
-	if host.player_menu:
-		host._place_menu(host.player_menu)
+	if _defer_video_controls():
+		return
+	_pending_video_controls_session = 0
 	if host.player_menu:
 		host._menu_touched_ms = Time.get_ticks_msec()
 		if not host.player_menu.visible:
 			host.player_menu.toggle()
+		# toggle resets the page; position that final page before the next draw.
+		host._place_menu(host.player_menu)
 
 
 func _show_recent_menu(preserve_navigation: bool = false) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
+	_pending_video_controls_session = 0
 	host.memory_swipe.cancel()
 	if host.photo:
 		host.photo.gallery.cancel_all()
@@ -608,10 +658,14 @@ func _show_recent_menu(preserve_navigation: bool = false) -> void:
 	if host.player_menu:
 		if playing:
 			host.player_menu._reset_navigation()
-			if not host.player_menu.visible:
-				host._place_menu(host.player_menu)
-			host.player_menu.visible = true
-			host.player_menu.refresh()
+			if _defer_video_controls():
+				# Browsing cancels an earlier request to reveal the video toolbar.
+				_pending_video_controls_session = 0
+			else:
+				if not host.player_menu.visible:
+					host._place_menu(host.player_menu)
+				host.player_menu.visible = true
+				host.player_menu.refresh()
 		else:
 			host.player_menu.dismiss()
 	if host.recent_menu and not host.recent_menu.visible:

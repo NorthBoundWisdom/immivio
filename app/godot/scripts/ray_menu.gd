@@ -21,7 +21,7 @@ const CONTROL_FONT_SIZE := 18
 const CONTROL_ICON_SIZE := 0.032
 var max_ray_metres := MAX_RAY_METRES
 var xr_surface: Node
-var curve_radius := 0.0
+var curve_radius := 1.4
 var allow_user_dismiss := true
 const TOOLTIP_MAX_WIDTH := 0.64
 var layout_revision := 0

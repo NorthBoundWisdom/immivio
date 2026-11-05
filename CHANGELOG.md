@@ -6,6 +6,10 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 ## Unreleased
 
+- Make the playback file browser mutually exclusive with video setting, subtitle, queue and bookmark popups. Apply viewing-distance curvature to playback and photo menus as well as the library, with matching curved-ray coordinates for captured sliders and timeline seeks.
+
+- Show a newly opened video's playback controls only after its first frame resolves the screen layout, placing the timeline once at its final anchor. Keep loading feedback visible and preserve error recovery and user cancellation.
+
 - Render system-font menu text with antialiased oversampling to avoid malformed CJK glyphs. Stop playback-change callbacks from rebuilding menus during application teardown.
 
 - Route mouse input in desktop/2D previews through the same menu capture and release handling as controller rays. Explicitly showing playback controls refreshes their idle timer, including when they are already visible.

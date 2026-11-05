@@ -394,6 +394,12 @@ func _ready() -> void:
 	)
 	player_menu.state_provider = _menu_state
 	player_menu.action_requested.connect(_on_menu_action)
+	# The compact browser and playback popups share one content area.
+	player_menu.popup_opened.connect(
+		func():
+			if recent_menu.visible and recent_menu.playback_browser:
+				_show_player_menu()
+	)
 	player_menu.recent_requested.connect(
 		func():
 			recent_menu.compact = true
