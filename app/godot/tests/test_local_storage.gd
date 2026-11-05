@@ -3,7 +3,6 @@ const Menu := preload("res://scripts/library_menu.gd")
 const Fixture := preload("res://tests/test_library_menu.gd")
 const Volume := preload("res://scripts/storage_volume.gd")
 const Main := preload("res://scripts/main.gd")
-const Photo := preload("res://scripts/photo_display.gd")
 var checks := 0
 var failures: Array[String] = []
 
@@ -43,18 +42,6 @@ class Library:
 
 	func finish_storage_release(path: String) -> void:
 		finished = path
-
-
-class PhotoHost:
-	extends RefCounted
-	var cancelled: Array[int] = []
-	var released: Array[int] = []
-
-	func cancel_photo(id: int) -> void:
-		cancelled.append(id)
-
-	func release_photo(id: int) -> void:
-		released.append(id)
 
 
 func check(ok: bool, message: String) -> void:
@@ -124,38 +111,21 @@ func _run() -> void:
 	)
 	var app := Main.new()
 	app.video = Reader.new()
-	app.photo = Reader.new()
 	app.recent_menu = Library.new()
 	app.video.local_uri = "file:///storage/1234-5678/movie.mp4"
-	app.photo.local_uri = "file:///storage/1234-5678/image.jpg"
-	app.photo.queue.assign([{"uri": app.photo.local_uri}])
-	app.photo_active = true
 	app.video_queue.assign([{"uri": app.video.local_uri}, {"uri": "smb://server/movie.mp4"}])
 	app._on_storage_eject_requested(external)
 	check(
-		app.video.closes == 1 and app.photo.closes == 1 and not app.photo_active,
-		"Release closes target video and photo"
+		app.video.closes == 1,
+		"Release closes target video"
 	)
 	check(
 		app.recent_menu.finished == external.id and app.video_queue.size() == 1,
 		"Release completes after pruning playback references"
 	)
 	app.video.local_uri = "smb://server/movie.mp4"
-	app.photo.local_uri = "file:///storage/emulated/0/internal.jpg"
-	app.photo_active = true
-	app.photo.queue.assign(
-		[{"uri": app.photo.local_uri}, {"uri": "file:///storage/1234-5678/image.jpg"}]
-	)
 	app._on_storage_eject_requested(external)
-	check(
-		(
-			app.video.closes == 1
-			and app.photo.closes == 1
-			and app.photo_active
-			and app.photo.queue.size() == 1
-		),
-		"Unrelated current media continues while USB queue entries are removed"
-	)
+	check(app.video.closes == 1, "Unrelated video keeps playing")
 	var external_host := ExternalHost.new()
 	app.video.platform = external_host
 	app.video.local_uri = "externalvideo://session/video"
@@ -166,66 +136,8 @@ func _run() -> void:
 	app._release_storage_readers(external)
 	check(app.video.closes == 2, "Related opaque descriptor lease closes through the production release route")
 	app.video.free()
-	app.photo.free()
 	app.recent_menu.free()
 	app.free()
-	var photo := Photo.new()
-	root.add_child(photo)
-	photo.set_process(false)
-	var host := PhotoHost.new()
-	photo.platform = host
-	photo.local_uri = "file:///storage/emulated/0/internal.jpg"
-	photo.queue.assign(
-		[
-			{"uri": "file:///storage/1234-5678/a.jpg"},
-			{"uri": photo.local_uri},
-			{"uri": "smb://server/other.jpg"}
-		]
-	)
-	photo.index = 1
-	photo.pending_index = 0
-	photo.loading = true
-	photo._display_request = 20
-	photo._request = 21
-	photo._prefetched = {0: {"id": 11}, 2: {"id": 12}}
-	photo._recent_files = {0: {"id": 13}}
-	check(
-		(
-			not photo.release_storage(external)
-			and photo.local_uri.ends_with("internal.jpg")
-			and photo.index == 0
-		),
-		"Production photo keeps an unrelated display and remaps its queue"
-	)
-	check(
-		(
-			photo.queue.size() == 2
-			and photo._prefetched.is_empty()
-			and photo._recent_files.is_empty()
-			and 11 in host.cancelled
-			and 13 in host.cancelled
-			and 21 in host.cancelled
-		),
-		"Queued and cached USB photo requests are cancelled"
-	)
-	check(
-		(
-			not photo.loading
-			and photo.pending_index == -1
-			and photo._request == 20
-			and 20 not in host.cancelled
-			and 20 not in host.released
-		),
-		"Pending USB navigation cannot replace the unrelated displayed photo"
-	)
-	photo.local_uri = "file:///storage/1234-5678/b.jpg"
-	photo.queue.append({"uri": photo.local_uri})
-	check(
-		photo.release_storage(external) and photo.local_uri.is_empty() and photo.queue.size() == 2,
-		"Displayed USB photo closes and USB queue references disappear"
-	)
-	photo.queue_free()
-	await process_frame
 	var platform := Fixture.FakePlatform.new()
 	var menu := Menu.new()
 	root.add_child(menu)

@@ -217,7 +217,6 @@ func playback_checks() -> void:
 	root.add_child(app)
 	app.set_process(false)
 	app.video.set_process(false)
-	app.photo.set_process(false)
 	app.display.preview = true
 	app.video.local_uri = "file:///movie.mp4"
 	app.video.panel.visible = true

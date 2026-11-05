@@ -6,7 +6,7 @@
     <meta name="color-scheme" content="dark light" />
     <meta
       name="application-name"
-      content="Immivio – VR &amp; Spatial Media Player"
+      content="Immivio – VR Video Player"
     />
     <title>Immivio — Quest &amp; PICO APK Installation and Playback Guide</title>
     <meta
@@ -149,7 +149,7 @@
         <a href="#install">Install</a>
         <a href="#first-video">Your first video</a>
         <a href="#controls">Everyday controls</a>
-        <a href="#library">Libraries & photos</a>
+        <a href="#library">Video libraries</a>
         <a href="#troubleshooting">Troubleshooting</a>
       </nav>
       <article class="guide-content">
@@ -184,7 +184,7 @@
             data until you have confirmed compatibility.
           </div>
         </section>
-        <p>In Settings → About, Check for updates contacts GitHub only when you click it; it opens the release page and never automatically downloads an APK.</p>
+        <p>Web builds provide Check for updates in Settings → About; the default appstore build hides this button. The web checker contacts GitHub only when you click it; it opens the release page and never automatically downloads an APK.</p>
         <section id="first-video">
           <h2>02 / Play your first video</h2>
           <ol>
@@ -288,8 +288,7 @@
             Use the reset icon beside a slider to restore just that value.
             Grading offers Original, Warm, Cool and Custom; Reset page restores
             only the three fields in the current popup, while Reset custom
-            restores the entire custom look. Subtitle, timing, eye-alignment and
-            photo sliders reset independently. Resets leave disabled effects
+            restores the entire custom look. Subtitle, timing, eye-alignment sliders reset independently. Resets leave disabled effects
             off. Older Daylight settings use Original and retain remembered
             custom values.
           </p>
@@ -303,22 +302,17 @@
           <p>Version 0.9.5 extends flat video to 0.1–50 m and 5–3000% size while retaining presets and existing memories. Adjust library distance with grip and the same-hand stick; curved menus follow viewing distance. Display settings list only advertised refresh rates and prefer 72 Hz. Eligible Android file-manager Open/Share video requests use temporary access supplied by the source app.</p>
         </section>
         <section id="library">
-          <h2>04 / Connect a library. Explore photos.</h2>
+          <h2>04 / Connect your video library.</h2>
           <p>
             Use local files, SMB, DLNA, Plex, Emby, Jellyfin or XBVR as supported. Add a
-            source, then supply its address and required authorization.
+            source from Network media; SMB, DLNA and each supported server provider appear together. Supply its address and required authorization.
             Browsing, favorites, sidecar subtitles and file management depend on
             the source.
           </p>
-          <p>
-            Photos can be viewed individually, with side previews, on a photo
-            wall or as memory fragments. Version 0.9.5 supports 1–3 wall
-            rows. Supported HEIC/HEIF spatial photos retain their stereo views.
-            MV-HEVC dual-view video playback has not been validated.
-          </p>
+          <p>File lists contain videos and folders. Local, SMB and DLNA sources use the same video-only browsing policy. MV-HEVC dual-view video playback has not been validated.</p>
           <p>
             Immivio displays existing stereo content and does not generate 3D
-            from 2D. Photo decoding depends on the Android device and source format.
+            from 2D.
           </p>
           <p>Version 0.9.5 offers direct-play Emby/Jellyfin version selection with separate local resume, mode and track preferences. Progress from watching a non-default version in another client may not be adopted, and the default action can use older grouped-item progress. Disabling playback history stops new server playback reports.</p>
         </section>
@@ -373,6 +367,8 @@
           preserved.
         </p>
         <div class="footer-links">
+          <a data-legal-link href="../privacy/">Privacy policy</a>
+          <a data-legal-link href="../terms/">Terms of use</a>
           <a href="https://github.com/NorthBoundWisdom/immivio">GitHub ↗</a>
           <a href=".././updates/">Release notes ↗</a>
           <a href="https://github.com/NorthBoundWisdom/immivio/issues"

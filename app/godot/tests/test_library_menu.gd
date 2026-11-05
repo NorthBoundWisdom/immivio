@@ -352,26 +352,19 @@ func _run() -> void:
 		"Thumbstick does not choose or turn recent pages"
 	)
 	check(
-		menu.video_queue().size() == 30 and menu.image_queue().size() == 2,
-		"Playback queues retain the complete bounded history across pages"
+		menu.video_queue().size() == 30,
+		"Video queues retain history across pages and exclude unsupported legacy entries"
 	)
 	menu._turn_recent_page(99)
 	check(
 		(
 			menu._recent_page == 2
-			and menu.rows.size() == 8
+			and menu.rows.size() == 6
 			and not menu._buttons.filter(func(b): return b.target == Menu.RECENT_NEXT)[0].enabled
 		),
 		"Final partial page disables next"
 	)
-	menu.media_filter = 2
-	menu.refresh()
-	check(
-		menu._recent_page == 0 and menu.rows.size() == 2 and menu._recent_page_count() == 1,
-		"Filter recalculates and clamps the recent page"
-	)
 	paged.count = 0
-	menu.media_filter = 0
 	menu.refresh()
 	check(
 		menu.rows.is_empty() and menu._recent_page_count() == 1,
@@ -480,7 +473,8 @@ func _run() -> void:
 	# Editor: typing with the ray keyboard, shift, backspace, save.
 	menu._activate(Menu.BACK)
 	await settle()
-	menu._activate(Menu.ADD)
+	menu._activate(menu.network.ADD)
+	menu._activate(Menu.ROW_BASE)
 	check(
 		not menu._editor.is_empty() and menu._field == 1, "Add opens the editor on the host field"
 	)
@@ -510,8 +504,8 @@ func _run() -> void:
 		"Save sends the server"
 	)
 	check(
-		menu._editor.is_empty() and titles(menu) == ["NAS", "Other"],
-		"Editor closes; saved and still-unsaved discovered hosts listed"
+		menu._editor.is_empty() and menu.section == Menu.Section.NETWORK and titles(menu).has("NAS") and titles(menu).has("Other"),
+		"Saving a source returns to the unified saved/discovered list"
 	)
 	# DLNA: discovery on entry, containers, items.
 	menu._activate(Menu.NAV_BASE + Menu.Section.DLNA)
@@ -709,12 +703,12 @@ func _run() -> void:
 	menu.update_pointer("right_hand", at.call(first_line - 9.0), direction, true)
 	menu.release_pointer("right_hand", at.call(first_line - 9.0), direction, true)
 	check(menu.scroll == 0.0, "Dragging down past the top clamps")
-	var bar_bottom := Menu.GRID_TOP - (Menu.GRID_LINES * Menu.GRID_PITCH.y - 0.012) + 0.01
+	var bar_bottom := menu._bar_span().x - menu._bar_span().y + .01
 	menu.press_pointer(
-		"left_hand", menu.to_global(Vector3(0.835, bar_bottom, 1.0)), direction, true
+		"left_hand", menu.to_global(Vector3(Menu.SCROLLBAR_X, bar_bottom, 1.0)), direction, true
 	)
 	menu.release_pointer(
-		"left_hand", menu.to_global(Vector3(0.835, bar_bottom, 1.0)), direction, true
+		"left_hand", menu.to_global(Vector3(Menu.SCROLLBAR_X, bar_bottom, 1.0)), direction, true
 	)
 	check(menu.scroll == menu._max_scroll(), "Pointing at the scrollbar bottom jumps to the end")
 	# A press in the gap between tiles also drags; mid-way the rows shift smoothly instead of jumping.
@@ -763,12 +757,12 @@ func _run() -> void:
 	menu.stick_scroll(1.0, 5.0)
 	check(menu.scroll == 0.0, "Stick up scrolls back and clamps at the top")
 	# The navigation column is angled towards the viewer: a ray aimed at an entry from the front hits it.
-	var smb_entry: Vector3 = menu._side.to_global(Vector3(0, 0.39 - Menu.Section.SMB * 0.13, 0.002))
+	var smb_entry: Vector3 = menu._side.to_global(Vector3(0, 0.39 - Menu.NAV_ORDER.find(Menu.Section.NETWORK) * 0.13, 0.002))
 	var eye := smb_entry + menu._side.global_basis.z * 1.2
 	check(
 		(
 			menu.press_pointer("left_hand", eye, smb_entry - eye, true)
-			and menu.section == Menu.Section.SMB
+			and menu.section == Menu.Section.NETWORK
 		),
 		"Ray selects an entry on the angled navigation column"
 	)

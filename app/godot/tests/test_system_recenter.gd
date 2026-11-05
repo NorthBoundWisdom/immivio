@@ -45,7 +45,6 @@ func _run() -> void:
 	main.report_timer.stop()
 	main.menu_compositor.set_process(false)
 	main.video.set_process(false)
-	main.photo.set_process(false)
 	main.display.preview = false
 	main.display.session_state = "session_focussed"
 	main._head_placed = true
@@ -67,6 +66,7 @@ func _run() -> void:
 					var offset: Vector3 = (
 						menu.to_global(Vector3(centre.x, centre.y, 0)) - pose.origin
 					)
+					offset -= menu.global_basis.y.normalized() * main._presentation.window_height
 					check(
 						main.centres == before + 1 and not main._system_recenter_pending,
 						"Updated tracking is used synchronously for Home"
@@ -76,7 +76,7 @@ func _run() -> void:
 							is_zero_approx(offset.y)
 							and is_equal_approx(offset.length(), main.library_distance)
 						),
-						"Home puts the complete window on the fixed eye-height ring"
+						"Home retains the fixed viewing ring plus configured window height"
 					)
 					check(
 						offset.normalized().is_equal_approx(-Main._upright_pose(pose).basis.z),
@@ -121,7 +121,7 @@ func _run() -> void:
 		(
 			main.centres == before + 1
 			and is_equal_approx(
-				menu.to_global(Vector3(centre.x, centre.y, 0)).distance_to(
+				(menu.to_global(Vector3(centre.x, centre.y, 0)) - menu.global_basis.y.normalized() * main._presentation.window_height).distance_to(
 					main.xr_camera.global_position
 				),
 				1.9

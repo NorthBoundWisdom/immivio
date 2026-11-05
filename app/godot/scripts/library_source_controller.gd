@@ -4,8 +4,9 @@ extends RefCounted
 var _host_ref: WeakRef
 const PlatformMethods := preload("res://scripts/platform_methods.gd")
 
-enum Section { RECENT, LOCAL, SMB, DLNA, SETTINGS, MEDIA_SERVER }
+enum Section { RECENT, LOCAL, SMB, DLNA, SETTINGS, MEDIA_SERVER, NETWORK }
 var _pending := {}  # request id -> kind
+var _request_sections := {}
 var _local_stack: Array = []  # [{id, title}] from a storage volume down to the open folder
 var _local_entries: Array = []
 
@@ -23,11 +24,14 @@ func _request(kind: String, id: Variant) -> void:
 			for previous in host._pending.keys():
 				if host._pending[previous] == kind:
 					host._pending.erase(previous)
+					_request_sections.erase(previous)
 		host._pending[id] = kind
+		_request_sections[id] = host.section
 		if kind == "local":
 			for previous in host._pending.keys():
 				if previous != id and host._pending[previous] == "local":
 					host._pending.erase(previous)
+					_request_sections.erase(previous)
 		host.status = "Loading…"
 	else:
 		host.status = "Unavailable"
@@ -100,7 +104,7 @@ func _on_media_list(id: int, payload: String) -> void:
 			and event.get("state") == "accounts_changed"
 		):
 			host.server_browser.setup = false
-			if host.section == Section.MEDIA_SERVER:
+			if host.section in [Section.MEDIA_SERVER, Section.NETWORK]:
 				# Let a VR deletion finish its saved-filter cleanup before reloading.
 				if host.server_browser.pending.values().any(
 					func(request): return request.action == "remove"
@@ -115,7 +119,11 @@ func _on_media_list(id: int, payload: String) -> void:
 		return
 	var kind: String = host._pending[id]
 	host._pending.erase(id)
-	if kind.begins_with("dlna") and host.section != Section.DLNA:
+	var requested_section: int = _request_sections.get(id, host.section)
+	_request_sections.erase(id)
+	if requested_section != host.section:
+		return
+	if kind.begins_with("dlna") and host.section not in [Section.DLNA, Section.NETWORK]:
 		return
 	var parsed: Variant = JSON.parse_string(payload)
 	if not parsed is Dictionary:
@@ -204,6 +212,9 @@ func _on_media_list(id: int, payload: String) -> void:
 					and str(result.get("object_id", current_object)) == current_object
 				):
 					host._dlna_entries = result.get("entries", [])
+	if state == "ready" and host.network.mode == "add" and id == host.network.save_request and host._editor.is_empty() and kind in ["smb_servers", "dlna_save"]:
+		host.network.open()
+		return
 	if host.visible:
 		host.refresh()
 
@@ -211,6 +222,9 @@ func _on_media_list(id: int, payload: String) -> void:
 func _load_section() -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
+		return
+	if host.section == Section.NETWORK:
+		host.network.load_sources()
 		return
 	if host.section == Section.MEDIA_SERVER:
 		host.server_browser.load_servers()
@@ -245,6 +259,10 @@ func _local_path() -> String:
 func _refresh_source() -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
+		return
+	if host.section == Section.NETWORK:
+		host.network.load_sources(true)
+		host.refresh()
 		return
 	if not host.platform:
 		return

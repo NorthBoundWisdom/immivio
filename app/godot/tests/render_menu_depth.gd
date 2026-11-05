@@ -191,12 +191,12 @@ func _run() -> void:
 	media.mesh.size = Vector2(1, 1)
 	media.position.z = 0.2
 	viewport.add_child(media)
-	for shader_name in ["video_pair", "photo"]:
+	for shader_name in ["video_pair"]:
 		var material := ShaderMaterial.new()
 		material.shader = load("res://shaders/" + shader_name + ".gdshader")
 		material.render_priority = -10
 		material.set_shader_parameter(
-			"photo_texture" if shader_name == "photo" else "color_texture", texture
+			"color_texture", texture
 		)
 		material.set_shader_parameter("alpha_enabled", false)
 		material.set_shader_parameter("source_size", Vector2(2, 2))

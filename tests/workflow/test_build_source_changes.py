@@ -12,6 +12,15 @@ from configs import android_workflow as android
 
 
 class BuildSourceChanges(unittest.TestCase):
+    def test_channel_change_rejects_a_copied_build_receipt(self):
+        with self.workspace() as (root, args, marker):
+            self.mark_built(args, marker)
+            args.channel = "web"
+            web_marker = android.configuration_path("Quest", "Debug", "web").with_suffix(".built.json")
+            web_marker.write_bytes(marker.read_bytes())
+            with self.assertRaisesRegex(RuntimeError, "Build inputs changed"):
+                android.require_build(args)
+
     @contextmanager
     def workspace(self):
         with tempfile.TemporaryDirectory() as folder, ExitStack() as stack:

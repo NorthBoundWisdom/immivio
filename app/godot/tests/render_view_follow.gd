@@ -75,7 +75,6 @@ func _run() -> void:
 	viewport.add_child(main)
 	main.set_process(false)
 	main.video.set_process(false)
-	main.photo.set_process(false)
 	main.report_timer.stop()
 	main.xr_camera.fov = 70
 	await capture(viewport, main.xr_camera, main.recent_menu, "library-off")
@@ -120,10 +119,6 @@ func _run() -> void:
 	)
 	await capture(viewport, main.xr_camera, main.recent_menu, "alpha-disabled-tooltip")
 	main.video.close_video()
-	main.photo_active = true
-	main.player_menu = main.photo_menu
-	main._show_player_menu()
-	await capture(viewport, main.xr_camera, main.photo_menu, "photo-follow")
 	viewport.queue_free()
 	await process_frame
 	FileAccess.open(output.path_join("verification.json"), FileAccess.WRITE).store_string(

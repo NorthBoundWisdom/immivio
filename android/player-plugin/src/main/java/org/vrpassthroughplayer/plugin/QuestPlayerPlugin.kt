@@ -100,96 +100,6 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         sources::sidecarSubtitles,
         sources::resolveShortcut
     )
-    private val photos = PhotoBridge(
-        { activity?.applicationContext },
-        sources::playable,
-        sources::releasePhotoStream
-    ) { name, id, json ->
-        if (!closed.get()) emitSignal(name, id, json)
-    }
-    private val photoPreloads = PhotoBridge(
-        { activity?.applicationContext }, sources::playable, sources::releasePhotoStream,
-        "photo-preloads", true
-    ) { name, id, json ->
-        if (!closed.get()) emitSignal(name, id, json)
-    }
-
-    @UsedByGodot
-    fun open_photo(uri: String): Int {
-        if (closed.get()) return -1
-        val id = requestId.incrementAndGet()
-        return if (photos.open(id, uri)) id else -1
-    }
-
-    private val photoPreviews = PhotoPreviewBridge(
-        { activity?.applicationContext },
-        sources::playable,
-        sources::releasePhotoStream
-    ) { id, json ->
-        if (!closed.get()) emitSignal("photo_preview_ready", id, json)
-    }
-
-    @UsedByGodot
-    fun open_photo_preview(uri: String): Int {
-        if (closed.get()) return -1
-        val id = requestId.incrementAndGet()
-        return if (photoPreviews.open(id, uri)) id else -1
-    }
-
-    @UsedByGodot
-    fun cancel_photo_preview(id: Int) = photoPreviews.cancel(id)
-
-    @UsedByGodot
-    fun release_photo_preview(id: Int) = photoPreviews.release(id)
-
-    @UsedByGodot
-    fun preload_photo(uri: String): Int {
-        if (closed.get()) return -1
-        val id = requestId.incrementAndGet()
-        return if (photoPreloads.open(id, uri)) id else -1
-    }
-
-    @UsedByGodot
-    fun activate_photo(id: Int): Boolean = synchronized(PhotoCache.lock) {
-        if (closed.get()) return@synchronized false
-        if (photos.activate(id)) return@synchronized true
-        photoPreloads.promoteTo(id, photos)
-    }
-
-    @UsedByGodot
-    fun cancel_photo(id: Int) {
-        photos.cancel(id); photoPreloads.cancel(id)
-    }
-
-    @UsedByGodot
-    fun release_photo(id: Int) {
-        photos.release(id); photoPreloads.release(id)
-    }
-
-    @UsedByGodot
-    fun photo_cache_usage(): String {
-        val app = activity?.applicationContext ?: return "{}"
-        return runCatching {
-            val (files, bytes) = PhotoCache.usage(app.cacheDir)
-            JSONObject().put("files", files).put("bytes", bytes).toString()
-        }.getOrDefault("{}")
-    }
-
-    @UsedByGodot
-    fun clear_photo_cache(): Boolean {
-        if (closed.get()) return false
-        val app = activity?.applicationContext ?: return false
-        return runCatching {
-            synchronized(PhotoCache.lock) {
-                PhotoCache.clear(
-                    app.cacheDir,
-                    photos.cacheDirectories() + photoPreloads.cacheDirectories() + photoPreviews.cacheDirectories()
-                )
-            }
-            true
-        }.getOrElse { Log.w("QuestPhotoCache", "Photo cache cleanup failed", it); false }
-    }
-
     init {
         DiagnosticRequests.attach(this)
     }
@@ -216,8 +126,6 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         SignalInfo("diagnostic_log_saved", Int::class.javaObjectType, String::class.java),
         SignalInfo("capabilities_ready", Int::class.javaObjectType, String::class.java),
         SignalInfo("android_lifecycle", String::class.java),
-        SignalInfo("photo_ready", Int::class.javaObjectType, String::class.java),
-        SignalInfo("photo_preview_ready", Int::class.javaObjectType, String::class.java),
         SignalInfo("media_list", Int::class.javaObjectType, String::class.java),
         SignalInfo("local_video_selected", String::class.java),
         SignalInfo("local_subtitle_selected", String::class.java),
@@ -769,7 +677,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         if (closed.compareAndSet(false, true)) {
             updateChecks.close()
             CrashRecords.cleanExit()
-            accounts.close(); photos.close(); photoPreloads.close(); photoPreviews.close(); picker.close(); subtitlePicker.close(); localAccess.close(); probe.shutdownNow(); media.shutdown(); mpv.shutdown(); sources.close()
+            accounts.close(); picker.close(); subtitlePicker.close(); localAccess.close(); probe.shutdownNow(); media.shutdown(); mpv.shutdown(); sources.close()
         }
     }
 }

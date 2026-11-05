@@ -53,6 +53,16 @@ python3 configs/android_workflow.py package --vendor Quest --build-type Debug
 
 Use `Pico` or `OpenXR` for the other targets and `Release` for distributable packages. The same Python commands run in PowerShell.
 
+The distribution channel is independent of the headset and Debug/Release mode. All commands default to `--channel appstore`; this builds a store-distributed app with no Check for updates or external update-release action. Use `--channel web` consistently for Configure, Build, Test, Package and Run to include the explicit GitHub update checker:
+
+```sh
+python3 configs/android_workflow.py configure --vendor Pico --build-type Debug --channel web
+python3 configs/android_workflow.py build --vendor Pico --build-type Debug --channel web
+python3 configs/android_workflow.py package --vendor Pico --build-type Debug --channel web
+```
+
+Channels use mutually exclusive Godot export features (`immivio_appstore` / `immivio_web`), separate configuration/build receipts and APK names. Channel changes require matching Configure and Build stages. Direct Godot exports also default to appstore through the checked-in presets. GitHub branch/PR builds default to appstore; manual CI runs offer a channel selector. Tag refs always force `Release` and `web`, including when a caller requests appstore. GitHub publication rejects non-web or channel-less receipts.
+
 `prepare_assets.py --download` explicitly downloads the OpenXR archive if its cache is missing or invalid. Run it without `--download` to verify the cache offline. `prepare-packages` prepares ordinary Gradle application package caches using their native manifests; it does not install Gradle, Python or any other host tool. Configure/Build/Test/Package consume prepared inputs offline. Gradle respects the host's normal cache locations and environment overrides. Valid caches let subsequent builds skip these preparation commands.
 
 Configure is explicit. Build/Test/Package reject missing or stale configuration; Package requires a successful current Build. `run` installs an already packaged APK on the attached device. Generated projects and outputs stay under ignored build directories. `python3 configs/android_workflow.py clean --dry-run` previews cleanup; `clean` removes `build/` while preserving the addon cache and signing material. Configure again afterward.
@@ -61,11 +71,11 @@ Configure is explicit. Build/Test/Package reject missing or stale configuration;
 
 Immivio uses the unmodified Android ARM64 mpv/FFmpeg release libraries recorded in `third_party/mpv/manifest.json`. The app embeds libmpv through its public OpenGL render API. Native build targets compile the app's JNI bridges against these prepared libraries.
 
-Ordinary and packed SBS/TB playback use the same pipeline. Frame timestamps observe the playback clock; they do not claim exact decoded-image PTS. Subtitles are exposed as text and rendered in Godot's separate caption layers. Bitmap subtitle tracks are not offered. MV-HEVC dual-view video and Dolby Vision colour correctness are not certified by the current build; container recognition or a filename does not establish playback support. HEIF photo decoding uses the Android photo pipeline.
+Ordinary and packed SBS/TB playback use the same pipeline. Frame timestamps observe the playback clock; they do not claim exact decoded-image PTS. Subtitles are exposed as text and rendered in Godot's separate caption layers. Bitmap subtitle tracks are not offered. MV-HEVC dual-view video and Dolby Vision colour correctness are not certified by the current build; container recognition or a filename does not establish playback support.
 
 ## Outputs, signing and CI
 
-APKs retain `Immivio-<QUEST|PICO|OpenXR>-<version>-<debug|release>-<YYYYMMDD>.apk`. Each schema-version-5 `.build.json` receipt includes the source commit, verified OpenXR addon version/checksum, Gradle locks, manifest digests, toolchain, APK checksum and signing certificate. Changes to build scripts or the addon manifest invalidate previous build configurations. The current release publisher requires version-5 receipts; rebuild older packages before publishing them with this workflow.
+APKs use `Immivio-<QUEST|PICO|OpenXR>-<version>-<appstore|web>-<debug|release>-<YYYYMMDD>.apk`. Each schema-version-5 `.build.json` receipt includes the distribution channel, source commit, verified OpenXR addon version/checksum, Gradle locks, manifest digests, toolchain, APK checksum and signing certificate. Packaging verifies the channel feature in the exported project. Changes to build scripts or the addon manifest invalidate previous build configurations. The current release publisher requires version-5 web-channel receipts; rebuild older packages before publishing them with this workflow.
 
 The exported application is categorized as video (`package/app_category=8` in Godot, `appCategory=2` and `isGame=false` in Android); package verification rejects a game-classified APK.
 

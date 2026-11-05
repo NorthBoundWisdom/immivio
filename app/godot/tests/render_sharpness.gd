@@ -38,12 +38,12 @@ func _run() -> void:
 			picture.set_pixel(x, y, Color(v, v, v))
 	var mask := Image.create(64, 32, false, Image.FORMAT_R8)
 	mask.fill(Color(.5, 0, 0))
-	for name in ["video_pair", "photo"]:
+	for name in ["video_pair"]:
 		var material := ShaderMaterial.new()
 		material.shader = load("res://shaders/%s.gdshader" % name)
 		material.set_shader_parameter("source_size", Vector2(32, 32))
 		material.set_shader_parameter(
-			"color_texture" if name == "video_pair" else "photo_texture",
+			"color_texture",
 			ImageTexture.create_from_image(picture)
 		)
 		if name == "video_pair":
@@ -78,7 +78,7 @@ func _run() -> void:
 			for x in 32:
 				picture.set_pixel(x, y, Color(.8, .1, .1) if x < 16 else Color(.1, .1, .8))
 		material.set_shader_parameter(
-			"color_texture" if name == "video_pair" else "photo_texture",
+			"color_texture",
 			ImageTexture.create_from_image(picture)
 		)
 		var seam_before := await frame(viewport)

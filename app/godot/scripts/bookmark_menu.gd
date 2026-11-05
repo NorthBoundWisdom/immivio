@@ -52,7 +52,7 @@ func _scope() -> String:
 	return str(menu._state.get("bookmark_scope", ""))
 
 
-func draw(toolbar_buttons: bool = true) -> void:
+func draw(toolbar_buttons: bool = true, with_popup: bool = true) -> void:
 	if scope != _scope():
 		reset()
 		notice = ""
@@ -116,6 +116,14 @@ func draw(toolbar_buttons: bool = true) -> void:
 			else menu.I18n.t("Bookmarks") + " · " + str(group.markers.size())
 		)
 		targets[target] = {"kind": "group", "ids": group.markers.map(func(item): return item.id)}
+	if with_popup:
+		draw_popup()
+
+
+func draw_popup() -> void:
+	for target in targets.keys():
+		if targets[target].kind != "group":
+			targets.erase(target)
 	if not opened:
 		return
 	var entries := _markers()

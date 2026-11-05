@@ -35,7 +35,6 @@ func _run() -> void:
 	root.add_child(main)
 	main.set_process(false)
 	main.video.set_process(false)
-	main.photo.set_process(false)
 	main.menu_compositor.set_process(false)
 	main.report_timer.stop()
 	var host := Host.new()
@@ -62,7 +61,7 @@ func _run() -> void:
 		"Close stops video and removes its surface"
 	)
 	check(
-		library.visible and not main.video_menu.visible and not main.photo_menu.visible,
+		library.visible and not main.video_menu.visible,
 		"Close removes all playback controls and returns to library"
 	)
 	check(
@@ -76,8 +75,8 @@ func _run() -> void:
 	check(library.curve_radius > 0.0, "Library requests a curved surface")
 	main.menu_compositor._process(0)
 	check(
-		main.menu_compositor.scene_curved and main.menu_compositor.curved_mesh.visible,
-		"Unsupported native layers use a curved texture mesh"
+		main.menu_compositor.scene_curved and main.menu_compositor.curved_mesh == null,
+		"Scene fallback waits for its first rendered texture before revealing the curved mesh"
 	)
 	for distance in [0.8, 1.4, 2.5, 4.0]:
 		main.library_distance = distance
@@ -97,11 +96,12 @@ func _run() -> void:
 	check(is_equal_approx(library.curve_radius, held_radius), "Pointer capture freezes menu curvature")
 	library.choices.capture.clear()
 	main.menu_compositor._process(0)
-	check(is_equal_approx(library.curve_radius, 2.5), "Release applies the new viewing distance")
+	var lowered_distance := Vector2(2.5, main._presentation.window_height).length()
+	check(is_equal_approx(library.curve_radius, lowered_distance), "Release applies the new viewing distance")
 	var eye_before: Vector3 = main.xr_camera.global_position
 	main.xr_camera.global_position += Vector3(0.3, 0, 0.2)
 	main.menu_compositor._process(0)
-	check(is_equal_approx(library.curve_radius, 2.5), "Head motion alone does not deform a placed menu")
+	check(is_equal_approx(library.curve_radius, lowered_distance), "Head motion alone does not deform a placed menu")
 	main.xr_camera.global_position = eye_before
 	main.library_distance = 1.4
 	main._place_menu(library)
@@ -169,7 +169,7 @@ func _run() -> void:
 	check(
 		is_equal_approx(
 			library.to_global(Vector3(ring_centre.x, ring_centre.y, 0)).distance_to(main._eye()),
-			1.5
+			Vector2(1.5, main._presentation.window_height).length()
 		),
 		"Reopened library visual centre uses remembered ring distance"
 	)
@@ -208,8 +208,8 @@ func _run() -> void:
 	main._show_player_menu()
 	main.menu_compositor._process(0)
 	check(
-		not main.menu_compositor.scene_curved and not main.menu_compositor.curved_mesh.visible,
-		"Returning to video hides curved library capture"
+		main.menu_compositor.active_menu != library and (main.menu_compositor.curved_mesh == null or not main.menu_compositor.curved_mesh.visible),
+		"Opening video hides the library capture while controls await the first media frame"
 	)
 	main.queue_free()
 	await process_frame

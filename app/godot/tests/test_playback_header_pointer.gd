@@ -40,7 +40,6 @@ func _run() -> void:
 	host.set_process(false)
 	host.menu_compositor.set_process(false)
 	host.video.set_process(false)
-	host.photo.set_process(false)
 	host.report_timer.stop()
 	host.video.local_uri = "file:///header-SBS.mp4"
 	host.video.media.begin(1)

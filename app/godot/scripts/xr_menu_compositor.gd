@@ -80,6 +80,8 @@ var _shown_menu_ids: Array = []
 var _curve_menu_id := 0
 var _curve_placement := Transform3D.IDENTITY
 var native_supported := false
+var _native_capture := false
+var _scene_capture := {}
 var content_bounds := Rect2()
 var surface_rect := Rect2()
 var _original_mask := 0
@@ -240,22 +242,30 @@ func _process(_delta: float) -> void:
 		if is_instance_valid(menu) and menu.is_visible_in_tree():
 			shown = menu
 			break
+	# The compact browser occupies the playback popup area; retain the toolbar's
+	# camera and curvature when that companion window appears or disappears.
+	if shown and shown.get("compact") == true and shown.get("playback_browser") == true:
+		for menu in menus:
+			if is_instance_valid(menu) and menu.is_visible_in_tree() and menu.has_method("has_persistent_toolbar"):
+				shown = menu
+				break
 	var shown_ids := menus.filter(func(menu): return is_instance_valid(menu) and menu.is_visible_in_tree()).map(func(menu): return menu.get_instance_id())
 	if shown_ids != _shown_menu_ids:
 		_shown_menu_ids = shown_ids
-		_curve_menu_id = 0
-		content_bounds = Rect2()
+		if shown != active_menu or not shown or not shown.has_method("has_persistent_toolbar"):
+			_curve_menu_id = 0
+			content_bounds = Rect2()
 		_bounds_due = 0
 	if shown != active_menu:
 		active_menu = shown
 		content_bounds = Rect2()
 		_bounds_due = 0
 		_clear_frames = 2 if not shown else 0
-		_set_scene_curved(false)
 	_update_view_curve()
 	var target := _display_layer()
 	var use_native := target != null and target.is_natively_supported() and _bridge != null
 	var use_scene: bool = active_menu != null and active_menu.curve_radius > 0.0 and not use_native
+	_set_native_capture(use_native)
 	if not viewport and (use_native or use_scene):
 		_create_capture()
 	if not viewport:
@@ -324,23 +334,58 @@ func _process(_delta: float) -> void:
 	var repaint := paint.poll(_paint_state(capture), interacting, Time.get_ticks_msec())
 	viewport.render_target_update_mode = SubViewport.UPDATE_ONCE if repaint else SubViewport.UPDATE_DISABLED
 	if use_scene:
-		_apply_curved_mesh(capture, surface_rect, active_menu.curve_radius)
+		# A shared window can retain its last image while the content redraws.
+		# A different surface/projection must wait for its own completed capture.
+		var metadata := _capture_metadata(capture)
+		if not _can_display_capture(_scene_capture):
+			if curved_mesh:
+				curved_mesh.visible = false
+		else:
+			_apply_curved_mesh(capture, surface_rect, active_menu.curve_radius)
+		if repaint:
+			_finish_scene_capture.call_deferred(metadata)
 	else:
 		_apply_presented_layer()
 		_bridge.setEnabled(true)
 		if not repaint:
 			return
-		_submit_capture(
-			{
-				"visible": true,
-				"menu_id": active_menu.get_instance_id(),
-				"layout_revision": active_menu.layout_revision,
-				"menu_revisions": _capture_revisions(),
-				"pose": capture,
-				"rect": surface_rect,
-				"curve_radius": active_menu.curve_radius
-			}
-		)
+		_submit_capture(_capture_metadata(capture))
+
+
+func _capture_metadata(pose: Transform3D) -> Dictionary:
+	return {"visible": true, "menu_id": active_menu.get_instance_id(),
+		"layout_revision": active_menu.layout_revision, "menu_revisions": _capture_revisions(),
+		"menu_pages": _capture_pages(),
+		"pose": pose, "rect": surface_rect, "curve_radius": active_menu.curve_radius}
+
+
+func _matches_capture(metadata: Dictionary) -> bool:
+	return (is_instance_valid(active_menu) and metadata.get("visible", false)
+		and metadata.get("menu_id") == active_menu.get_instance_id()
+		and metadata.get("menu_pages", {}) == _capture_pages())
+
+
+func _can_display_capture(metadata: Dictionary) -> bool:
+	if (not is_instance_valid(active_menu) or not metadata.get("visible", false)
+		or metadata.get("menu_id") != active_menu.get_instance_id()
+		or metadata.get("rect") != surface_rect):
+		return false
+	if _matches_capture(metadata):
+		return true
+	# Input still waits for its own capture acknowledgement. A persistent toolbar
+	# may retain pixels while its companion browser changes, on the same projection.
+	return ((metadata.get("menu_pages", {}).keys() == _capture_pages().keys()
+			or active_menu.has_method("has_persistent_toolbar"))
+		and metadata.get("pose", Transform3D.IDENTITY).is_equal_approx(capture_pose(active_menu))
+		and is_equal_approx(float(metadata.get("curve_radius", 0.0)), active_menu.curve_radius))
+
+
+func _finish_scene_capture(metadata: Dictionary) -> void:
+	await RenderingServer.frame_post_draw
+	if not scene_curved or not _matches_capture(metadata) or metadata.rect != surface_rect:
+		return
+	_scene_capture = metadata
+	_apply_curved_mesh(capture_pose(active_menu), metadata.rect, active_menu.curve_radius)
 
 
 func _paint_state(capture: Transform3D) -> int:
@@ -397,13 +442,11 @@ static func presented_pose(metadata: Dictionary, menu: Node3D) -> Transform3D:
 func _apply_presented_layer() -> void:
 	if (
 		not native_supported
-		or not presented.get("visible", false)
-		or presented.get("menu_id") != active_menu.get_instance_id()
+		or not _can_display_capture(presented)
 	):
 		_hide_layers()
 		return
-	# Rigid head/canvas motion is safe with the same layout. A page transition
-	# retains its old pose as well as its old projection until the new image arrives.
+	# Preserve a shared window through a page redraw; new projections still wait.
 	var pose := presented_pose(presented, active_menu)
 	var rect: Rect2 = presented.rect
 	var radius: float = presented.get("curve_radius", 0.0)
@@ -430,7 +473,7 @@ func refresh_placement() -> void:
 		return
 	if native_supported:
 		_apply_presented_layer()
-	elif scene_curved:
+	elif scene_curved and _can_display_capture(_scene_capture):
 		_apply_curved_mesh(capture_pose(active_menu), surface_rect, active_menu.curve_radius)
 
 
@@ -438,6 +481,16 @@ func _set_native_ready(value: bool) -> void:
 	if native_supported == value:
 		return
 	native_supported = value
+	for item in _original_layers.values():
+		var node: Object = item.node.get_ref()
+		if is_instance_valid(node):
+			_tag(node)
+
+
+func _set_native_capture(value: bool) -> void:
+	if _native_capture == value:
+		return
+	_native_capture = value
 	for item in _original_layers.values():
 		var node: Object = item.node.get_ref()
 		if is_instance_valid(node):
@@ -487,7 +540,7 @@ func _tag(node: GeometryInstance3D) -> void:
 		| (
 			int(_original_layers[id].layers)
 			if (
-				not (native_supported or scene_curved)
+				not (_native_capture or native_supported or scene_curved)
 				or (
 					node.get_meta("xr_ui_pointer", false)
 					and not (active_menu and active_menu.curve_radius > 0.0)
@@ -542,6 +595,13 @@ func _capture_revisions() -> Dictionary:
 	var result := {}
 	for menu in _capture_menus():
 		result[str(menu.get_instance_id())] = menu.layout_revision
+	return result
+
+
+func _capture_pages() -> Dictionary:
+	var result := {}
+	for menu in _capture_menus():
+		result[str(menu.get_instance_id())] = menu.presentation_page()
 	return result
 
 func _update_bounds() -> void:

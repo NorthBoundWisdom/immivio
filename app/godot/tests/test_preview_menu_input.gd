@@ -33,7 +33,6 @@ func _run() -> void:
 	host.set_process(false)
 	host.menu_compositor.set_process(false)
 	host.video.set_process(false)
-	host.photo.set_process(false)
 	host.report_timer.stop()
 	var menu: Node3D = host.recent_menu
 	menu.set_process(false)

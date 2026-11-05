@@ -3,6 +3,7 @@ extends "res://scripts/file_mode_memory.gd"
 # Private recent-file catalog. Unlike per-file mode keys, reopening requires
 # retaining the original URI. Permissions are checked again before each open.
 const RECENT_LIMIT := 32
+const MediaFiles := preload("res://scripts/media_files.gd")
 
 
 func _bank_path(bank: int) -> String:
@@ -17,6 +18,8 @@ static func valid_entry(entry: Variant, serial: int) -> bool:
 		or entry.title.length() > 256
 		or not entry.get("persisted") is bool
 	):
+		return false
+	if not MediaFiles.is_video(str(entry.uri), str(entry.get("title", "")), str(entry.get("kind", "video"))):
 		return false
 	if entry.has("cover") and not valid_cover(entry.cover):
 		return false
@@ -93,7 +96,8 @@ func lookup(uri: String) -> Dictionary:
 func list_recent() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	for value in entries.values():
-		result.append(value.duplicate(true))
+		if MediaFiles.is_video(str(value.uri), str(value.get("title", "")), str(value.get("kind", "video"))):
+			result.append(value.duplicate(true))
 	result.sort_custom(
 		func(a: Dictionary, b: Dictionary) -> bool:
 			return (
@@ -103,15 +107,15 @@ func list_recent() -> Array[Dictionary]:
 	return result
 
 
-func opened(uri: String, title: String, persisted: bool, kind: String = "video") -> bool:
+func opened(uri: String, title: String, persisted: bool) -> bool:
 	var key := key_for(uri)
-	if key.is_empty():
+	if key.is_empty() or not MediaFiles.is_video(uri, title):
 		return false
 	var old := lookup(uri)
 	entries[key] = {
 		"uri": uri,
 		"title": title.replace("\n", " ").replace("\r", " ").replace("\t", " ").left(256),
-		"kind": "image" if kind == "image" else "video",
+		"kind": "video",
 		"persisted": persisted,
 		"position_ms": int(old.get("position_ms", 0)),
 		"duration_ms": int(old.get("duration_ms", -1)),

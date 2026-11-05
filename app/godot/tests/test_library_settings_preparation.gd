@@ -5,17 +5,6 @@ const Warmup := preload("res://scripts/ui_warmup.gd")
 var failures: Array[String] = []
 
 
-class CacheHost:
-	extends RefCounted
-	var gate := Semaphore.new()
-	var started := Semaphore.new()
-
-	func photo_cache_usage() -> String:
-		started.post()
-		gate.wait()
-		return '{"files":2,"bytes":10485760}'
-
-
 class SourceProbe:
 	extends RefCounted
 	var calls := 0
@@ -52,7 +41,7 @@ func _run() -> void:
 	root.add_child(library)
 	library.set_process(false)
 	library.visible = true
-	var host := CacheHost.new()
+	var host := RefCounted.new()
 	library.platform = host
 	library._activate(Library.NAV_BASE + Library.Section.SETTINGS)
 	check(
@@ -61,7 +50,7 @@ func _run() -> void:
 			and library.tab == Library.GENERAL_TAB
 			and library._cache_usage == null
 		),
-		"First settings entry returns before blocked disk scan completes"
+		"First settings entry returns before thumbnail statistics are collected"
 	)
 	var row: Dictionary = library.rows.filter(func(item): return item.has("clear_cache"))[0]
 	check(
@@ -72,15 +61,14 @@ func _run() -> void:
 	library._activate(Library.TAB_BASE + Library.DISPLAY_TAB)
 	check(
 		library.tab == Library.DISPLAY_TAB and not library.rows.is_empty(),
-		"Slow cache scan cannot block settings navigation"
+		"Pending cache statistics do not block settings navigation"
 	)
-	host.gate.post()
 	while library._cache_thread and library._cache_thread.is_alive():
 		await process_frame
 	library._poll_cache_usage()
 	check(
-		library._cache_usage.y >= 10485760,
-		"Worker publishes Android and local statistics after completion"
+		library._cache_usage.y >= 0,
+		"Worker publishes video thumbnail statistics after completion"
 	)
 	library._activate(Library.TAB_BASE + Library.GENERAL_TAB)
 	check(library._cache_thread == null, "Switching tabs reuses the completed count")
@@ -128,8 +116,8 @@ func _run() -> void:
 			if populated:
 				check(not synthetic.rows.is_empty(), "Populated navigation variants prepare real row geometry")
 		visited.append(destination)
-	for required in [Library.Section.RECENT, Library.Section.LOCAL, Library.Section.SMB, Library.Section.DLNA, Library.Section.SETTINGS, Library.Section.MEDIA_SERVER]:
-		check(visited.count(required) == 1, "Each of the six entry types is warmed exactly once")
+	for required in [Library.Section.RECENT, Library.Section.LOCAL, Library.Section.NETWORK, Library.Section.SETTINGS]:
+		check(visited.count(required) == 1, "Each of the four entry types is warmed exactly once")
 	check(sources.calls == 0 and synthetic._pending.is_empty() and synthetic.server_browser.pending.is_empty(), "Preparing source UI never invokes local/network browsing or server discovery")
 	check(emitted.is_empty() and not synthetic.browse_memory.dirty, "Warmup cannot change settings or directory history")
 	synthetic.free()

@@ -44,7 +44,6 @@ const BAR_SEEK_Y := -0.08
 const HEADER_Y := 0.13
 const HEADER_CLOSE_SIZE := 0.072
 const HEADER_GAP := 0.018
-const CAPTURE_ENVELOPE := Rect2(-.82, -.72, 1.64, 1.44)
 const PANEL_SCALE := Vector3(0.75, 2.0 / 3.0, 1.0)
 const DISTANCE_SCALE := 0.8
 const EXTRA_DROP := 0.08
@@ -166,6 +165,7 @@ var _thumb: MeshInstance3D
 var _modes: Dictionary = {}  # bar button target -> its mode caption
 var _mode_open := false
 var _quick_open := ""
+var _transport: Dictionary = {}
 var _bar_drawn := ""  # what decides the bar's buttons (clone voice, projection) when it was drawn
 var _settings_drawn := ""
 var _lit_modes: Dictionary = {}  # video mode tiles lit as current; pressing one again locks the mode
@@ -187,8 +187,22 @@ var _subtitle_ids: Dictionary = {}
 
 
 func capture_envelope() -> Rect2:
-	# Reserve the whole ordinary page family before the transport bar first opens.
-	return CAPTURE_ENVELOPE
+	# Reserve every popup before its first frame, including either subtitle target.
+	# The unused space below the timeline is kept small to preserve texture detail.
+	var tracks := _subtitle_tracks().size()
+	var rows := 7 if _immersive_subtitles() else 5
+	var top := maxf(1.20, 0.285 + 0.26 + (1 + mini(tracks, SUBTITLE_ROWS)) * 0.075
+		+ rows * 0.10 + 0.18 + (0.06 if tracks > SUBTITLE_ROWS else 0.0))
+	return Rect2(-.82, -.24, 1.64, top + .24)
+
+
+func has_persistent_toolbar() -> bool:
+	return true
+
+
+func presentation_page() -> Variant:
+	return [section, _quick_open, _mode_open, _subtitle_open, _depth_open,
+		_adjustment, _grade_page, bookmarks.opened, choices.opened, I18n.language]
 
 
 ## Playback has its own top action row; session toggles belong to the library.
@@ -336,6 +350,10 @@ func refresh_values() -> void:
 	if section == 1 and _settings_drawn != _settings_key():
 		refresh()
 		return
+	_refresh_live_values()
+
+
+func _refresh_live_values() -> void:
 	for button in _buttons:
 		if button.target >= BookmarkMenu.GROUP and button.target < BookmarkMenu.GROUP + 1000:
 			button.enabled = _state.get("bookmark_seekable", false)
@@ -413,6 +431,7 @@ func _layout_cache_key() -> String:
 func _park_settings_layout() -> void:
 	if _drawn_settings_key.is_empty() or _buttons.is_empty():
 		return
+	_transport.clear()
 	var container := Node3D.new()
 	container.visible = false
 	add_child(container)
@@ -472,6 +491,12 @@ func _trim_settings_cache() -> void:
 
 
 func _draw() -> void:
+	if section == 0 and _adjustment.is_empty() and _drawn_settings_key.is_empty() and not _transport.is_empty() and _transport.key == _transport_key():
+		_clear_popups()
+		_begin_choices()
+		_draw_bar_popups()
+		_refresh_live_values()
+		return
 	_park_settings_layout()
 	var cached_key := _layout_cache_key()
 	if not cached_key.is_empty() and _settings_layouts.has(cached_key):
@@ -531,6 +556,12 @@ func _reset_draw_fields() -> void:
 	_duration = null
 	_status = null
 	_modes = {}
+	_reset_popup_fields()
+
+
+func _reset_popup_fields() -> void:
+	_info = null
+	_lit_modes = {}
 	_depth_fill = null
 	_depth_knob = null
 	_depth_label = null
@@ -540,12 +571,16 @@ func _reset_draw_fields() -> void:
 	_preset_buttons = {}
 
 
-func _draw_uncached() -> void:
-	_clear_layout()
+func _begin_choices() -> void:
 	choices.begin(
 		str([section, _state.get("source_uri", ""), _state.get("bookmark_scope", "")]),
 		Vector2(-0.43, 0.32)
 	)
+
+
+func _draw_uncached() -> void:
+	_clear_layout()
+	_begin_choices()
 	_reset_draw_fields()
 	if not _immersive_subtitles():
 		if choices.opened == "subtitle_distance":
@@ -673,7 +708,15 @@ func _draw_bar() -> void:
 	_bar_drawn = _bar_key()
 	_seek_bar(BAR_SEEK_Y)
 	_place_device_status(Vector2(0, HEADER_Y))
-	bookmarks.draw(false)
+	bookmarks.draw(false, false)
+	_transport = {"key": _transport_key(), "buttons": _buttons.size(), "labels": _labels.size(),
+		"decorations": _decorations.size(), "tips": _tips.duplicate()}
+	_draw_bar_popups()
+
+
+func _draw_bar_popups() -> void:
+	_reset_popup_fields()
+	bookmarks.draw_popup()
 	if not _quick_open.is_empty():
 		_draw_quick_settings()
 	if _mode_open:
@@ -682,6 +725,7 @@ func _draw_bar() -> void:
 		_draw_depth()
 	if _subtitle_open:
 		_draw_subtitles()
+	_bar_drawn = _bar_key()
 
 
 ## Compact controls share the normal setting/adjustment signals and persistence.
@@ -1159,6 +1203,42 @@ func release_pointer(hand: String, _origin: Vector3, _direction: Vector3, _track
 		_finish_depth_drag()
 
 
+## Only changes that alter the transport structure require replacing its nodes.
+func _transport_key() -> String:
+	return str([I18n.language, _state.get("source_uri", ""), _state.get("has_video", false),
+		int(_state.get("geometry", 0)) == 0, _enabled("subtitles"), _enabled("stereo_view"),
+		_enabled("previous_video"), _enabled("next_video"), space_locked, controls_opacity,
+		_state.get("queue_shuffle", false), bookmarks.key(), _state.get("bookmarks", [])])
+
+
+func _clear_layout() -> void:
+	_transport.clear()
+	super._clear_layout()
+
+
+## Keep the transport, timeline and pointer nodes alive when replacing an overlay.
+func _clear_popups() -> void:
+	layout_revision += 1
+	if xr_surface:
+		xr_surface.invalidate()
+	for index in range(_buttons.size() - 1, int(_transport.buttons) - 1, -1):
+		_buttons[index].node.free()
+		_buttons.remove_at(index)
+	for index in range(_labels.size() - 1, int(_transport.labels) - 1, -1):
+		_labels[index].free()
+		_labels.remove_at(index)
+	for index in range(_decorations.size() - 1, int(_transport.decorations) - 1, -1):
+		_decorations[index].free()
+		_decorations.remove_at(index)
+	_tips = _transport.tips.duplicate()
+	var retained := _buttons.map(func(button): return button.target)
+	for hand in _hover.keys():
+		if _hover[hand] not in retained:
+			_hover.erase(hand)
+	if _tooltip:
+		_tooltip.visible = false
+
+
 func _bar_key() -> String:
 	return str(
 		[
@@ -1291,7 +1371,6 @@ func _draw_modes() -> void:
 			true
 		)
 	var controls_y := top - (0.15 if half_choices else 0.09)
-	# Photos retain their existing controls; video depth is on the bar, eye order in Settings.
 	if not half_choices:
 		_mode_tile(
 			MODE_STEREO + 2, _caption("eyes"), "eyes", Vector2(0.4, controls_y), false, stereo

@@ -29,7 +29,7 @@ func restore() -> void:
 
 func save(force: bool = false) -> void:
 	var host: Node3D = host_ref.get_ref()
-	if host.photo_active or (fixed() and not force):
+	if fixed() and (not force):
 		return
 	for pair in [
 		["distance", host.video.screen_distance],
@@ -52,7 +52,7 @@ func adjust(key: String, value: Variant) -> bool:
 	if key == "screen_save_default":
 		save(true)
 		return true
-	if host.photo_active or host.video.geometry != 0:
+	if host.video.geometry != 0:
 		return false
 	if key == "screen_preset":
 		var preset := Presets.find(str(value))
@@ -83,7 +83,7 @@ func adjust(key: String, value: Variant) -> bool:
 func show_guide() -> void:
 	var host: Node3D = host_ref.get_ref()
 	var head: Variant = host._head_pose()
-	if head == null or host.photo_active or host.video.geometry != 0:
+	if head == null or host.video.geometry != 0:
 		return
 	if not is_instance_valid(guide):
 		guide = MeshInstance3D.new()
@@ -113,7 +113,6 @@ func tick() -> void:
 		var host: Node3D = host_ref.get_ref()
 		guide.visible = (
 			Time.get_ticks_msec() < guide_until
-			and not host.photo_active
 			and host.video.geometry == 0
 			and host.video.panel.visible
 		)

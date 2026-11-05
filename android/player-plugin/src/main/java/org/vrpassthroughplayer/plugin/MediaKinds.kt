@@ -1,12 +1,6 @@
 package org.vrpassthroughplayer.plugin
 
-/** File type is independent from projection and stereo packing. */
+/** Only videos and STRM shortcuts are selectable media. Covers are fetched separately. */
 internal object MediaKinds {
-    val images = setOf("jpg", "jpeg", "png", "webp", "heic", "heif")
-    fun image(name: String) =
-        name.substringBefore('?').substringBefore('#').substringAfterLast('.', "")
-            .lowercase() in images
-
-    fun supported(name: String) = image(name) || StrmFile.named(name) || DlnaClient.isVideoName(name)
-    fun kind(name: String) = if (image(name)) "image" else "video"
+    fun supported(name: String) = StrmFile.named(name) || DlnaClient.isVideoName(name)
 }

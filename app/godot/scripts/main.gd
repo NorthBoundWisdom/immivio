@@ -17,11 +17,6 @@ const StorageVolume := preload("res://scripts/storage_volume.gd")
 const Quality := preload("res://scripts/display_quality.gd")
 const ThumbnailCache := preload("res://scripts/thumbnail_cache.gd")
 const SETTINGS_PATH := "user://player_settings.cfg"
-const PhotoDisplay := preload("res://scripts/photo_display.gd")
-const PhotoMenu := preload("res://scripts/photo_menu.gd")
-const PhotoHandGestures := preload("res://scripts/photo_hand_gestures.gd")
-const PhotoPalmSwipe := preload("res://scripts/photo_palm_swipe.gd")
-const ImageInfo := preload("res://scripts/image_info.gd")
 const PlayerMenu := preload("res://scripts/player_menu.gd")
 const MediaSurface := preload("res://scripts/media_surface.gd")
 const I18n := preload("res://scripts/i18n.gd")
@@ -32,9 +27,6 @@ const ViewFollow := preload("res://scripts/view_follow.gd")
 
 const InputCoordinator := preload("res://scripts/input_coordinator.gd")
 var _input := InputCoordinator.new(self)
-
-const PhotoCoordinator := preload("res://scripts/photo_coordinator.gd")
-var _photos := PhotoCoordinator.new(self)
 
 const PlaybackCoordinator := preload("res://scripts/playback_coordinator.gd")
 var _playback := PlaybackCoordinator.new(self)
@@ -55,14 +47,7 @@ var report_timer: Timer
 var platform_plugin: Object
 var last_request := 0
 var android_report: Dictionary = {}
-var photo: Node3D
-var photo_active: bool:
-	get:
-		return _photos.photo_active
-	set(value):
-		_photos.photo_active = value
 var video_menu: Node3D
-var photo_menu: Node3D
 var video: Node3D
 const PlaybackQueue := preload("res://scripts/playback_queue.gd")
 var playback_queue := PlaybackQueue.new()
@@ -85,45 +70,7 @@ var calibration_board: Node3D
 var right_controller: XRController3D
 var left_controller: XRController3D
 var hand_pointers := {}
-var photo_hands := PhotoHandGestures.new()
 var pinch_hand := preload("res://scripts/hand_preferences.gd").DEFAULT
-var photo_swipe := PhotoPalmSwipe.new()
-var memory_swipe := preload("res://scripts/memory_swipe.gd").new()
-var _gallery_save_after: int:
-	get:
-		return _photos._gallery_save_after
-	set(value):
-		_photos._gallery_save_after = value
-var _gallery_saved_state: String:
-	get:
-		return _photos._gallery_saved_state
-	set(value):
-		_photos._gallery_saved_state = value
-var _photo_open_hide_controls: bool:
-	get:
-		return _photos._photo_open_hide_controls
-	set(value):
-		_photos._photo_open_hide_controls = value
-var _photo_pointer_hand: String:
-	get:
-		return _photos._photo_pointer_hand
-	set(value):
-		_photos._photo_pointer_hand = value
-var _inspect_hand: String:
-	get:
-		return _photos._inspect_hand
-	set(value):
-		_photos._inspect_hand = value
-var _inspect_blocked: Dictionary:
-	get:
-		return _photos._inspect_blocked
-	set(value):
-		_photos._inspect_blocked = value
-var _inspect_desktop_ray: Variant:
-	get:
-		return _photos._inspect_desktop_ray
-	set(value):
-		_photos._inspect_desktop_ray = value
 var hand_marks := {}
 var input_visuals: Node3D
 var xr_origin: XROrigin3D
@@ -233,8 +180,15 @@ func _ready() -> void:
 	display.status_changed.connect(_update_status)
 	display.status_changed.connect(_on_input_session_changed)
 	_preferences.load_preferences()
+	var saved_window_height := float(
+		settings.get_value("ui", "window_height", XrPresentationCoordinator.WINDOW_HEIGHT_DEFAULT)
+	)
+	_presentation.window_height = (
+		clampf(saved_window_height, XrPresentationCoordinator.WINDOW_HEIGHT_LIMITS.x,
+			XrPresentationCoordinator.WINDOW_HEIGHT_LIMITS.y)
+		if is_finite(saved_window_height) else XrPresentationCoordinator.WINDOW_HEIGHT_DEFAULT
+	)
 	pinch_hand = preload("res://scripts/hand_preferences.gd").normalize(settings.get_value("controls", "pinch_hand", preload("res://scripts/hand_preferences.gd").DEFAULT))
-	photo_hands.set_initiator_hand(pinch_hand)
 	var saved_library_distance := float(settings.get_value("ui", "library_distance", 1.4))
 	library_distance = (
 		clampf(saved_library_distance, LIBRARY_DISTANCE_LIMITS.x, LIBRARY_DISTANCE_LIMITS.y)
@@ -319,18 +273,6 @@ func _ready() -> void:
 	_update_thumbnail_protection()
 	video.sharpness = Quality.load_sharpness(settings, low_end_gpu)
 	video.view_camera = camera
-	photo = PhotoDisplay.new()
-	photo.name = "PhotoDisplay"
-	photo.auto_depth = false
-	photo.load_mode_lock(settings.get_value("photo", "mode_lock", {}))
-	photo.catalog = video.recent_files
-	photo.history_enabled = video.history_enabled
-	photo.changed.connect(_on_photo_changed)
-	photo.mode_lock_changed.connect(_on_mode_lock_changed.bind("photo"))
-	photo.restore_view_settings(settings)
-	add_child(photo)
-	photo.sharpness = Quality.load_sharpness(settings, low_end_gpu)
-	photo.view_camera = camera
 	display.set_foveation(int(settings.get_value("video", "foveation", 0)))
 	recent_menu = LibraryMenu.new()
 	recent_menu.catalog = video.recent_files
@@ -398,7 +340,7 @@ func _ready() -> void:
 	player_menu.popup_opened.connect(
 		func():
 			if recent_menu.visible and recent_menu.playback_browser:
-				_show_player_menu()
+				_presentation._show_player_menu(false)
 	)
 	player_menu.recent_requested.connect(
 		func():
@@ -412,41 +354,26 @@ func _ready() -> void:
 	player_menu.adjustment_committed.connect(_save_playback_adjustments)
 	player_menu.subtitle_requested.connect(video.set_subtitle_track)
 	player_menu.secondary_subtitle_requested.connect(video.dual_subtitles.select)
-	player_menu.depth_strength_requested.connect(_on_depth_strength.bind(false))
+	player_menu.depth_strength_requested.connect(_on_depth_strength)
 	player_menu.depth_strength_committed.connect(_save_depth_strength)
 	_connect_session_controls(player_menu)
 	add_child(player_menu)
 	video_menu = player_menu
-	photo_menu = PhotoMenu.new()
-	photo_menu.state_provider = photo.snapshot
-	photo_menu.queue_provider = func(): return photo.queue
-	photo_menu.action_requested.connect(_on_photo_action)
-	photo_menu.adjustment_requested.connect(_on_photo_adjustment)
-	photo_menu.adjustment_committed.connect(_save_photo_adjustments)
-	photo_menu.depth_strength_requested.connect(_on_depth_strength.bind(true))
-	photo_menu.depth_strength_committed.connect(_save_depth_strength)
-	photo_menu.recent_requested.connect(_show_recent_menu)
-	_connect_session_controls(photo_menu)
-	add_child(photo_menu)
 	menu_compositor = preload("res://scripts/xr_menu_compositor.gd").new()
 	add_child(menu_compositor)
 	menu_compositor.configure(
-		[recent_menu, video_menu, photo_menu],
+		[recent_menu, video_menu],
 		camera,
 		not display.preview and display.xr != null and display.xr.is_initialized(),
 		func(): return display.session_state
 	)
 	background = Background.new()
 	background.choice = str(settings.get_value("appearance", "background", "belfast"))
-	background.custom_path = str(settings.get_value("appearance", "custom_path", ""))
-	background.custom_title = str(settings.get_value("appearance", "custom_title", ""))
-	background.custom_orientation = int(settings.get_value("appearance", "custom_orientation", 1))
 	background.yaw = fposmod(float(settings.get_value("appearance", "background_yaw", 0.0)), 360.0)
 	background.brightness = clampf(
 		float(settings.get_value("appearance", "background_brightness", 1.0)), 0.5, 1.25
 	)
 	background.changed.connect(_on_background_changed)
-	background.custom_saved.connect(_on_custom_background_saved)
 	add_child(background)
 	if Engine.has_singleton("QuestPlayer"):
 		platform_plugin = Engine.get_singleton("QuestPlayer")
@@ -557,9 +484,6 @@ func _process(delta: float) -> void:
 	_apply_system_recenter()
 	_update_view_follow()
 	_refresh_session_controls()
-	if _gallery_save_after > 0 and Time.get_ticks_msec() >= _gallery_save_after:
-		_gallery_save_after = 0
-		_save_photo_adjustments()
 	_update_hand_input(delta)
 	if video and is_instance_valid(_viewer().get("panel")):
 		display.set_flat_surface_visible(
@@ -572,33 +496,11 @@ func _process(delta: float) -> void:
 	if video and _viewer().local_uri != _screen_uri:
 		_screen_uri = _viewer().local_uri
 		if not _screen_uri.is_empty():
-			if not photo_active and screen_layout.fixed():
+			if screen_layout.fixed():
 				screen_layout.restore()
-			if not photo_active or photo.gallery.mode == 0 or photo.placement_pending:
-				_place_screen()
-			if photo_active:
-				photo.placement_pending = false
-	_update_photo_inspect()
+			_place_screen()
 	_update_grab()
 	_update_library_grab()
-	if photo_active and not _active_menu() and not photo.inspect:
-		for hand in ["left_hand", "right_hand"]:
-			var ray: Variant = _ray(hand)
-			photo.gallery.update_pointer(
-				hand,
-				ray[0] if ray != null else Vector3.ZERO,
-				ray[1] if ray != null else Vector3.ZERO,
-				ray != null
-			)
-	if photo:
-		var targeted: bool = (
-			photo_active
-			and not _active_menu()
-			and not photo.inspect
-			and (photo.gallery.hover.values().has(photo.index) or photo.gallery.focus >= 0)
-		)
-		var held: bool = targeted and (not photo_hands.owners.is_empty() or not _grab.is_empty())
-		photo.set_target_feedback(2 if held else (1 if targeted else 0))
 	_update_player_menu_anchor()
 	var right := _stick(right_controller)
 	var left := _stick(left_controller)
@@ -608,7 +510,7 @@ func _process(delta: float) -> void:
 
 
 func _picture_center_sample() -> Dictionary:
-	if not video or photo_active or video.geometry == 0 or not video.panel or not video.panel.visible or not _input_focused() or (_active_menu() and (_active_menu() != player_menu or not player_menu.allows_playback_sticks())):
+	if not video or video.geometry == 0 or (not video.panel) or (not video.panel.visible) or (not _input_focused()) or (_active_menu() and (_active_menu() != player_menu or not player_menu.allows_playback_sticks())):
 		return {}
 	var head: Variant = _head_pose()
 	if not head is Transform3D or (_grab.is_empty() and (not picture_center_guide or picture_center_guide.identity.is_empty())):
@@ -658,10 +560,6 @@ func _update_hand_input(delta: float) -> void:
 
 func _picture_pinch_allowed(hand: String) -> bool:
 	return not (hand_pointers.has(hand) and hand_pointers[hand].source == "hand") or preload("res://scripts/hand_preferences.gd").allows(hand, pinch_hand)
-
-
-func _is_photo_hand(hand: String) -> bool:
-	return _input._is_photo_hand(hand)
 
 
 func _dispatch_hand_input(inputs: Dictionary, _delta: float = 1.0 / 72.0) -> void:
@@ -787,7 +685,7 @@ var _menu_touched_ms: int:
 
 
 func _viewer() -> Node3D:
-	return photo if photo_active and photo else video
+	return video
 
 
 func _on_library_chosen(uri: String, title: String) -> void:
@@ -801,13 +699,6 @@ func _on_file_renamed(old_uri: String, new_uri: String, title: String) -> void:
 	video.mode_memory.relocate(old_uri, new_uri)
 	if not video.mode_memory.save():
 		recent_menu.file_actions.rename.migration_failed = true
-	photo.mode_memory.relocate(old_uri, new_uri)
-	if not photo.mode_memory.save():
-		recent_menu.file_actions.rename.migration_failed = true
-	if not video.bookmark_store.relocate(
-		old_uri, new_uri, title, int(recent_menu.file_actions.target.get("size", -1))
-	):
-		recent_menu.file_actions.rename.migration_failed = true
 	LibraryMenu.Thumbnails.relocate(old_uri, new_uri)
 	playback_queue.relocate(old_uri, new_uri, title)
 	_save_queue()
@@ -817,16 +708,6 @@ func _on_file_renamed(old_uri: String, new_uri: String, title: String) -> void:
 func _prepare_file_delete(uri: String) -> void:
 	if video.local_uri == uri or video.local_uri.begins_with(uri.trim_suffix("/") + "/"):
 		video.close_video()
-	if (
-		photo.local_uri == uri
-		or photo.local_uri.begins_with(uri.trim_suffix("/") + "/")
-		or photo.queue.any(func(item): return str(item.get("uri", "")) == uri or str(item.get("uri", "")).begins_with(uri.trim_suffix("/") + "/"))
-	):
-		photo.close_image()
-		photo_active = false
-		if photo_menu:
-			photo_menu.dismiss()
-		player_menu = video_menu
 	_grab = {}
 	stick_controls.suspend()
 
@@ -836,11 +717,6 @@ func _forget_deleted_file(uri: String) -> void:
 		func(item): return ( str(item.get("uri", "")) != uri and not str(item.get("uri", "")).begins_with(uri.trim_suffix("/") + "/") )
 	)
 	_save_queue()
-	# Photo preload readers must be released before removing a queued image.
-	if photo.queue.any(func(item): return str(item.get("uri", "")) == uri):
-		photo.close_image()
-		photo_active = false
-		player_menu = video_menu
 	for entry in video.recent_files.list_recent():
 		if str(entry.uri) == uri or str(entry.uri).begins_with(uri.trim_suffix("/") + "/"):
 			video.recent_files.forget(str(entry.uri))
@@ -860,11 +736,6 @@ func _release_storage_readers(volume: Dictionary) -> void:
 		func(item): return not StorageVolume.contains_uri(volume, str(item.get("uri", "")))
 	)
 	_save_queue()
-	if photo and photo.release_storage(volume):
-		photo_active = false
-		if photo_menu:
-			photo_menu.dismiss()
-		player_menu = video_menu
 	_grab = {}
 	stick_controls.suspend()
 
@@ -887,34 +758,6 @@ func _save_queue() -> void:
 
 func _advance_queue(session_id: int, uri: String) -> void:
 	_playback._advance_queue(session_id, uri)
-
-
-func _on_photo_changed() -> void:
-	_photos._on_photo_changed()
-
-
-func _on_photo_adjustment(key: String, value: Variant) -> void:
-	_photos._on_photo_adjustment(key, value)
-
-
-func _save_photo_adjustments() -> void:
-	_photos._save_photo_adjustments()
-
-
-func _toggle_photo_inspect(hand: String = "") -> void:
-	_photos._toggle_photo_inspect(hand)
-
-
-func _close_photo_inspect(show_controls: bool = true) -> void:
-	_photos._close_photo_inspect(show_controls)
-
-
-func _update_photo_inspect() -> void:
-	_photos._update_photo_inspect()
-
-
-func _on_photo_action(operation: String) -> void:
-	_photos._on_photo_action(operation)
 
 
 var _screen_uri := ""
@@ -1031,20 +874,16 @@ func _on_bookmark_request(operation: String, marker_id: String, scope: String) -
 
 
 ## Persist accepted depth adjustments for the current media.
-func _on_depth_strength(strength: float, for_photo: bool) -> void:
-	var viewer: Node3D = photo if for_photo else video
-	if viewer.set_depth_strength(strength):
-		settings.set_value(
-			"photo" if for_photo else "video", "depth_strength", viewer.depth_strength
-		)
-		_remember_auto_depth(viewer.auto_depth)
+func _on_depth_strength(strength: float) -> void:
+	if video.set_depth_strength(strength):
+		settings.set_value("video", "depth_strength", video.depth_strength)
+		_remember_auto_depth(video.auto_depth)
 
 
 func _remember_auto_depth(enabled: bool) -> void:
 	if settings.has_section_key("effects", "auto_3d"):
 		settings.erase_section_key("effects", "auto_3d")
 	video.auto_depth = false
-	photo.auto_depth = false
 
 
 func _on_mode_lock_changed(lock: Dictionary, media_kind: String) -> void:
@@ -1148,10 +987,6 @@ func _save_background() -> void:
 	_preferences._save_background()
 
 
-func _on_custom_background_saved(path: String, title: String, orientation: int) -> void:
-	_preferences._on_custom_background_saved(path, title, orientation)
-
-
 func _recenter() -> void:
 	_presentation._recenter()
 
@@ -1195,11 +1030,10 @@ func _save_report() -> void:
 		"video_device_validation": "pending",
 		"media": video.media.snapshot() if video else {},
 		"video_layout": video.layout_snapshot() if video else {},
-		"active_media": "image" if photo_active else "video",
+		"active_media": "video",
 		"hand_input": _hand_input_report(),
 		"input_visuals": input_visuals.snapshot() if input_visuals else {},
 		"background": background.choice if background else "",
-		"photo": photo.snapshot() if photo else {},
 		"rvm_implemented": true,
 		"rvm_video_integrated": true,
 		"mpv_rvm_device_validation": "pending",
@@ -1287,7 +1121,7 @@ func _save_playback_adjustments() -> void:
 
 
 func _fps_sample() -> Dictionary:
-	if not video or photo_active or not video.panel or not video.panel.visible:
+	if not video or not video.panel or (not video.panel.visible):
 		return {}
 	return {
 		"frames": video.media.frame_counter, "target": 0, "active": video.media.state == "playing"
@@ -1335,14 +1169,11 @@ var _finishing_app := false
 
 
 func _finish_app(restart: bool) -> void:
-	if photo and _gallery_save_after > 0:
-		_save_photo_adjustments()
 	if _finishing_app:
 		return
 	_finishing_app = true
 	_save_playback_adjustments()
 	video.close_video()
-	photo.close_image()
 	settings.save(settings_path)
 	DiagnosticLog.record("app_restart" if restart else "app_close")
 	if PlatformMethods.supports(platform_plugin, "finish_app"):
@@ -1351,8 +1182,3 @@ func _finish_app(restart: bool) -> void:
 		if restart:
 			OS.set_restart_on_exit(true)
 		get_tree().quit()
-
-
-func _notification(what: int) -> void:
-	if what == NOTIFICATION_APPLICATION_PAUSED and photo and _gallery_save_after > 0:
-		_save_photo_adjustments()

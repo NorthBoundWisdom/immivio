@@ -1,7 +1,6 @@
 extends SceneTree
 const Main := preload("res://scripts/main.gd")
 const Menu := preload("res://scripts/player_menu.gd")
-const PhotoMenu := preload("res://scripts/photo_menu.gd")
 var failures: Array[String] = []
 
 
@@ -35,17 +34,14 @@ func _run() -> void:
 	root.add_child(main)
 	main.set_process(false)
 	main.video.set_process(false)
-	main.photo.set_process(false)
 	main.report_timer.stop()
 	check(
-		not main.video.auto_depth and not main.photo.auto_depth,
+		not main.video.auto_depth,
 		"Old automatic conversion choices cannot become active"
 	)
 	check(
 		(
 			not main.video.set_depth(true)
-			and not main.photo.set_depth(true)
-			and not main.photo.set_portrait(true)
 		),
 		"Legacy effect calls are rejected"
 	)
@@ -98,22 +94,7 @@ func _run() -> void:
 		),
 		"Native SBS remains selectable"
 	)
-	var photo := PhotoMenu.new()
-	root.add_child(photo)
-	photo.state_provider = func():
-		return {
-			"has_image": true, "geometry": 0, "depth_available": true, "portrait_available": true
-		}
-	photo.visible = true
-	photo.refresh()
-	check(
-		not photo._buttons.any(
-			func(button): return button.target in [PhotoMenu.PHOTO_DEPTH, PhotoMenu.PHOTO_PORTRAIT]
-		),
-		"Photo controls have no live conversion or matting"
-	)
 	menu.queue_free()
-	photo.queue_free()
 	main.queue_free()
 	await process_frame
 	DirAccess.remove_absolute(path)

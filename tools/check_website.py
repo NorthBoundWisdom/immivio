@@ -76,7 +76,13 @@ class Page(HTMLParser):
 
 def main():
     pages = {path.resolve(): Page(path) for path in SITE.rglob("*.html")}
-    routes = {"index.html", "guide/index.html", "updates/index.html"}
+    routes = {
+        "index.html",
+        "guide/index.html",
+        "updates/index.html",
+        "privacy/index.html",
+        "terms/index.html",
+    }
     expected = routes | {"zh/" + route for route in routes}
     assert {str(path.relative_to(SITE)) for path in pages} == expected
     sitemap = ET.parse(SITE / "sitemap.xml")
@@ -161,6 +167,16 @@ def main():
                 assert (
                     unquote(uri.fragment) in pages[target].ids
                 ), f"{path}: missing anchor {link}"
+        locale_root = SITE / "zh" if zh else SITE
+        local_targets = {
+            (path.parent / unquote(urlsplit(link).path)).resolve()
+            for link in page.links
+            if not urlsplit(link).scheme and not urlsplit(link).netloc
+        }
+        for legal in ("privacy", "terms"):
+            assert (locale_root / legal).resolve() in local_targets, (
+                f"{path}: missing localized {legal} link"
+            )
     release = json.loads((SITE / "assets/releases.json").read_text())
     assert release["html_url"].startswith(
         "https://github.com/NorthBoundWisdom/immivio/releases"

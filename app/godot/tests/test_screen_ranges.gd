@@ -15,11 +15,6 @@ func _run() -> void:
 	var span := Vector3(0.1, 50, 0.05)
 	for value in [0.1, 1.0, 3.05, 24.0, 50.0]:
 		assert(is_equal_approx(Presets.slider_value(Presets.slider_fraction(value, span), span), value))
-	var photo := preload("res://scripts/photo_display.gd").new()
-	root.add_child(photo)
-	photo.set_screen_distance(0.1)
-	photo.set_screen_scale(0.05)
-	assert(is_equal_approx(photo.screen_distance, 0.3) and is_equal_approx(photo.screen_scale, 0.4))
 	var settings := ConfigFile.new()
 	settings.set_value("ui", "library_distance", 9.0)
 	settings.set_value("screen", "fixed", true)
@@ -29,6 +24,5 @@ func _run() -> void:
 	assert(settings.get_value("ui", "library_distance") == 4.0)
 	assert(settings.get_value("screen", "distance") == 3.05 and settings.get_value("screen", "scale") == 0.4)
 	assert(not preload("res://scripts/player_settings_migration.gd").apply(settings))
-	photo.free()
 	video.free()
 	preload("res://tests/support/test_result.gd").finish(self, 0)

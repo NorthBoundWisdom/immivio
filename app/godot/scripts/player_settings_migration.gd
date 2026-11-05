@@ -4,7 +4,6 @@ extends RefCounted
 const RETIRED_KEYS := [
 	["effects", "auto_3d"],
 	["video", "depth_strength"],
-	["photo", "depth_strength"],
 	["video", "alpha_fps"],
 ]
 
@@ -52,11 +51,22 @@ static func apply(settings: ConfigFile, existing_file: bool = false) -> bool:
 	if settings.has_section("alpha"):
 		settings.erase_section("alpha")
 		changed = true
-	for section in ["video", "photo"]:
+	for section in ["video"]:
 		var previous: Variant = settings.get_value(section, "mode_lock", {})
 		if previous is Dictionary and bool(previous.get("depth", false)):
 			var migrated: Dictionary = previous.duplicate(true)
 			migrated.depth = false
 			settings.set_value(section, "mode_lock", migrated)
+			changed = true
+	for retired in ["photo", "photo_screen", "photo_gallery"]:
+		if settings.has_section(retired):
+			settings.erase_section(retired)
+			changed = true
+	if settings.get_value("appearance", "background", "belfast") == "custom":
+		settings.set_value("appearance", "background", "belfast")
+		changed = true
+	for key in ["custom_path", "custom_title", "custom_orientation"]:
+		if settings.has_section_key("appearance", key):
+			settings.erase_section_key("appearance", key)
 			changed = true
 	return changed

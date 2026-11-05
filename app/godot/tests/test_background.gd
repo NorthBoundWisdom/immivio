@@ -126,8 +126,6 @@ func _run() -> void:
 		),
 		"Legacy model choice is removed while ordinary playback remains configured"
 	)
-	main.photo.history_enabled = false
-	main.background.directory = folder.path_join("backgrounds")
 	check(
 		(
 			main.background.choice == "dark"
@@ -198,70 +196,6 @@ func _run() -> void:
 		)
 		main.recent_menu.dismiss()
 		await frame(viewport, "belfast")
-	# A private copy survives navigation/deleting the original file and app restart.
-	var pixels := Image.create(512, 256, false, Image.FORMAT_RGB8)
-	pixels.fill(Color(.2, .4, .7))
-	var source := ProjectSettings.globalize_path(folder.path_join("source_360_2D.jpg"))
-	pixels.save_jpg(source)
-	main._on_library_chosen("file://" + source, "source_360_2D.jpg")
-	var deadline := Time.get_ticks_msec() + 5000
-	while main.photo.loading and Time.get_ticks_msec() < deadline:
-		await create_timer(.01).timeout
-	check(
-		main.photo.geometry == 3 and main.photo.can_background(),
-		"Full mono panorama offers use-as-background"
-	)
-	check(
-		main.display.environment.background_mode == Environment.BG_COLOR,
-		"Immersive media temporarily hides scenery"
-	)
-	main._on_photo_action("photo_background")
-	await settle(main.background)
-	check(
-		(
-			main.background.choice == "custom"
-			and not main.photo.panel.visible
-			and main.display.environment.background_mode == Environment.BG_SKY
-		),
-		"Using panorama as background closes viewer and restores app sky"
-	)
-	var saved := str(main.background.custom_path)
-	check(
-		FileAccess.file_exists(saved) and saved != source, "Background has independent private copy"
-	)
-	DirAccess.remove_absolute(source)
-	config.load(main.settings_path)
-	check(
-		(
-			config.get_value("appearance", "custom_path") == saved
-			and config.get_value("appearance", "background") == "custom"
-		),
-		"Custom background selection persists"
-	)
-	var restored := Background.new()
-	restored.directory = main.background.directory
-	restored.choice = "custom"
-	restored.custom_path = saved
-	root.add_child(restored)
-	await settle(restored)
-	check(
-		restored.ready_sky() != null and restored.error.is_empty(),
-		"Custom background reloads without original file"
-	)
-	main._on_setting_changed("background", "belfast")
-	await settle(main.background)
-	check(main.background.has_custom(), "Changing preset retains the custom choice")
-	main.photo.open_image(saved, "plain.jpg")
-	deadline = Time.get_ticks_msec() + 5000
-	while main.photo.loading and Time.get_ticks_msec() < deadline:
-		await create_timer(.01).timeout
-	check(
-		main.photo.geometry == 0 and main.display.environment.background_mode == Environment.BG_SKY,
-		"Flat photo preserves the application backdrop"
-	)
-	main.photo.set_stereo_layout(1)
-	check(not main.photo.can_background(), "Packed stereo cannot be used as a monoscopic sky")
-	main.photo.close_image()
 	main._on_setting_changed("background", "passthrough")
 	check(
 		(
@@ -283,12 +217,11 @@ func _run() -> void:
 	var supported := SupportedDisplay.new()
 	supported.configure(viewport, main.display.environment, null, true)
 	main.display = supported
-	main.photo_active = false
 	main.video.local_uri = "smb://test/share/clip.mp4"
 	main.video.media.begin(7)
 	main.video.geometry = 1
 	main.video.alpha_requested = true
-	for choice in ["belfast", "custom", "dark", "passthrough"]:
+	for choice in ["belfast", "dark", "passthrough"]:
 		main.background.select(choice)
 		main._update_background()
 		check(
@@ -376,16 +309,6 @@ func _run() -> void:
 	main.video.local_uri = ""
 	main._update_background()
 	check(supported.applied_passthrough, "Passthrough stays active after closing video")
-	main.photo_active = true
-	main.photo.local_uri = "file://photo.jpg"
-	for geometry in [0, 1, 2, 3]:
-		main.photo.geometry = geometry
-		main._update_background()
-		check(
-			supported.applied_passthrough,
-			"Explicit passthrough works behind photo geometry %d" % geometry
-		)
-	main.photo.local_uri = ""
 	main.visible = false
 	if DisplayServer.get_name() != "headless":
 		var transparent_frame: Image = await frame(viewport, "passthrough-alpha")
@@ -407,7 +330,6 @@ func _run() -> void:
 		),
 		"Dark is opaque and distinct from passthrough"
 	)
-	restored.queue_free()
 	viewport.queue_free()
 	await process_frame
 	for failure in failures:

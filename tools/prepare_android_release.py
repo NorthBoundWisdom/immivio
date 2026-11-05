@@ -37,6 +37,8 @@ def prepare(packages, output, tag, commit):
         seen.add(vendor)
         if record.get("product") != "Immivio" or record.get("build_type") != "Release":
             raise ValueError("Only Immivio Release packages can be published")
+        if record.get("channel") != "web":
+            raise ValueError("Only web-channel packages can be published on GitHub Releases")
         if (
             record.get("source_commit") != commit
             or record.get("ci_ref") != "refs/tags/" + tag
@@ -81,7 +83,7 @@ def prepare(packages, output, tag, commit):
         if not required_manifests <= record.get("dependency_manifests", {}).keys():
             raise ValueError("Release receipt is missing dependency manifest digests")
         name = record.get("apk", "")
-        pattern = rf"Immivio-{PLATFORMS[vendor]}-[A-Za-z0-9._-]+-release-\d{{8}}\.apk"
+        pattern = rf"Immivio-{PLATFORMS[vendor]}-[A-Za-z0-9._-]+-web-release-\d{{8}}\.apk"
         if (
             not re.fullmatch(pattern, name)
             or receipt.name != Path(name).with_suffix(".build.json").name

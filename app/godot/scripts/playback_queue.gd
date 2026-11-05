@@ -1,6 +1,7 @@
 extends RefCounted
 ## Session queue. Entries retain stable library URIs; decoded sessions remain owned by the player.
 const LIMIT := 500
+const MediaFiles := preload("res://scripts/media_files.gd")
 var items: Array[Dictionary] = []
 var shuffle := false
 var revision := 0
@@ -30,7 +31,7 @@ func append(entries: Array) -> void:
 		if not entry is Dictionary:
 			continue
 		var uri := str(entry.get("uri", ""))
-		if uri.is_empty() or uri.length() > 8192 or known.has(uri):
+		if uri.is_empty() or uri.length() > 8192 or known.has(uri) or not MediaFiles.is_video(uri, str(entry.get("title", "")), str(entry.get("kind", "video"))):
 			continue
 		if not (
 			uri.get_slice(":", 0)

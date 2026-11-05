@@ -34,7 +34,6 @@ func _run() -> void:
 	root.add_child(main)
 	main.set_process(false)
 	main.video.set_process(false)
-	main.photo.set_process(false)
 	main.video.platform = TestHost.Host.new()
 	main.video.mode_memory = Memory.new(directory.path_join("modes"))
 	main.video.recent_files = Catalog.new(directory.path_join("recent"))
@@ -76,37 +75,24 @@ func _run() -> void:
 	)
 	main.video.set_projection(1)
 	check(aligned(main.video), "Explicit VR180 transition aligns current gaze")
-	# The shared fix also applies to panorama photos and keeps their detail window coherent.
-	main.photo_active = true
-	main.player_menu = main.photo_menu
-	main.photo.local_uri = "file:///alignment/panorama.jpg"
-	main.photo.set_projection(3)
-	check(aligned(main.photo), "Panorama photo enters aligned")
-	main.photo.turn_view(-0.4, 0.1)
-	head.rotate_y(-0.5)
-	await main._recenter()
-	check(aligned(main.photo), "Photo recenter aligns current gaze")
 	# Mode persistence must survive a new application instance after manual switching.
 	main.video.set_projection(1)
 	main.video.toggle_mode_lock()
 	main.video.set_projection(3)
-	main.photo.toggle_mode_lock()
-	main.photo.set_stereo_layout(1)
 	var saved := ConfigFile.new()
 	saved.load(main.settings_path)
 	check(
 		(
 			saved.get_value("video", "mode_lock").is_empty()
-			and saved.get_value("photo", "mode_lock").is_empty()
 		),
-		"Both manual unlocks saved"
+		"Video manual unlock is saved"
 	)
 	var restored := Main.new()
 	restored.settings_path = main.settings_path
 	root.add_child(restored)
 	check(
-		restored.video.mode_lock.is_empty() and restored.photo.mode_lock.is_empty(),
-		"Restart keeps both media types unlocked"
+		restored.video.mode_lock.is_empty(),
+		"Restart retains the video unlock"
 	)
 	restored.queue_free()
 	main.queue_free()

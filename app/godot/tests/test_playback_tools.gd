@@ -107,7 +107,6 @@ func _run() -> void:
 	root.add_child(main)
 	main.set_process(false)
 	main.video.set_process(false)
-	main.photo.set_process(false)
 	main.report_timer.stop()
 	var host := Host.new()
 	main.video.platform = host

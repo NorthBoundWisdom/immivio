@@ -138,7 +138,7 @@ internal class SmbLibrary(
                     .put("delete_reason", "File deletion unavailable for this source"))
                 else if (MediaKinds.supported(name)) entries.put(
                     JSONObject().put("id", childPath)
-                    .put("title", name).put("kind", MediaKinds.kind(name))
+                    .put("title", name).put("kind", "video")
                     .put("container", false).put("size", child.length())
                     .put("uri", "smb://$id/$childPath")
                     .put("modified", child.lastModified().takeIf { it > 0 } ?: -1)

@@ -282,13 +282,13 @@ func receive(id: int, payload: String) -> bool:
 func draw_header() -> void:
 	if not sortable():
 		return
-	menu._button(SORT, "", Vector2(0.25, 0.46), Vector2(0.09, 0.07), not editing, "sort")
+	menu._button(SORT, "", Vector2(.205, menu.HEADER_Y), Vector2(0.09, 0.07), not editing, "sort")
 	menu._tips[SORT] = menu.I18n.t("Sort")
 	if enabled and folder():
 		menu._button(
 			EDIT_MODE,
 			"",
-			Vector2(0.36, 0.46),
+			Vector2(.315, menu.HEADER_Y),
 			Vector2(0.09, 0.07),
 			pending == 0,
 			"check" if editing else "select",
@@ -300,16 +300,16 @@ func draw_header() -> void:
 func draw_footer() -> void:
 	var row := selected_row()
 	var text: String = (
-		str(row.get("title", "")) if not row.is_empty() else menu.I18n.t("Select a file or folder")
+		menu.I18n.t(menu.status) if not menu.status.is_empty() else (str(row.get("title", "")) if not row.is_empty() else menu.I18n.t("Select a file or folder"))
 	)
 	var label: Label3D = menu._label(
-		menu._fit_title(text, "", 0.65, 18), Vector3(-0.43, -0.515, 0.004), 18
+		menu._fit_title(text, "", 0.65, 18), Vector3(menu.CONTENT_LEFT, menu.FOOTER_Y, .004), 18
 	)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	menu._button(
 		Rename.OPEN,
 		menu.I18n.t("Rename"),
-		Vector2(0.38, -0.515),
+		Vector2(menu.CONTENT_RIGHT - .43, menu.FOOTER_Y),
 		Vector2(0.24, 0.07),
 		rename.can_rename(row),
 		"edit"
@@ -317,7 +317,7 @@ func draw_footer() -> void:
 	menu._button(
 		DELETE_FILE,
 		menu.I18n.t("Delete folder" if row.get("folder", false) else "Delete file"),
-		Vector2(0.68, -0.515),
+		Vector2(menu.CONTENT_RIGHT - .14, menu.FOOTER_Y),
 		Vector2(0.28, 0.07),
 		can_delete(row),
 		"trash"
