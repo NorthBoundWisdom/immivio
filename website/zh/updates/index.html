@@ -146,8 +146,9 @@
     <main id="main" class="wrap guide-layout">
       <nav class="guide-nav" aria-label="更新说明目录">
         <p class="eyebrow">更新说明</p>
-        <a href="#development">开发中</a>
-        <a href="#current">v0.9.4</a>
+        <a href="#current">v0.9.5</a>
+        <a href="#development">开发构建</a>
+        <a href="#v0-9-4">v0.9.4</a>
         <a href="#v0-9-3">v0.9.3</a>
         <a href="#v0-9-2">v0.9.2</a>
         <a href="#v0-9-1">v0.9.1</a>
@@ -159,23 +160,30 @@
         <p class="eyebrow">IMMIVIO / 更新</p>
         <h1>Immivio 的新变化。</h1>
         <p>
-          这里分别记录当前开发进展与已发布版本。截图展示开发版界面；安装包包含哪些功能，请以对应版本的发布说明为准。
+          这里按版本 tag 记录改动。Android APK 会在构建校验完成后附加到发布页；请核对下载选择器显示的版本及安装包对应的说明。
         </p>
-        <section id="development">
-          <h2>开发中 — 尚未发布</h2>
-          <p>官网截图展示当前开发版。以下功能属于主分支／开发构建，不代表 2026 年 10 月 24 日发布的 v0.9.4 已包含这些改动。</p>
+        <section id="current">
+          <h2>v0.9.5 — 2026 年 11 月 5 日</h2>
+          <p>新增双语文字字幕、媒体来源改进与更清晰的曲面界面。Quest、PICO 和实验性 OpenXR APK 会在两个构建平台校验通过后附加到对应发布页；仅有源码归档时还不能安装。</p>
           <ul>
             <li>双语文字字幕、主／第二轨选择、共享字幕延迟与逐视频记忆；平面视频字幕可放到画面下方，支持旋转与躺卧放置。</li>
             <li>外挂字幕编码检测、按轨覆盖与文件名筛选。转换失败保留原字幕，原文件保持不变。</li>
             <li>Emby／Jellyfin 多版本选择、文件夹兼容与受播放历史开关控制的播放回报。跨客户端非默认版本续播仍有已知限制。</li>
             <li>符合条件的 Android 打开／分享视频入口、手动检查更新、设备支持的刷新率选择和默认优先 72 Hz。</li>
-            <li>更清晰的中文字形、下拉框和未选中控件、随观看距离调整的曲面菜单、列表滚动时保留导航，以及六类入口的界面预热。</li>
+            <li>更清晰的中文字形、下拉框和未选中控件，滚动时保留导航，并预热六类入口。播放与照片子页面统一使用随观看距离调整的曲面。</li>
+            <li>播放控件等首帧布局确定后一次显示；文件浏览与设置、字幕、队列、书签页面互斥。修复高亮框边缘抗锯齿，视频名称和电量／时间胶囊也能接住中性射线点，点击信息区不会误触发操作或关闭控件。</li>
+            <li>平面视频支持 0.1–50 米与 5%–3000% 大小，资料库／菜单距离上限为 4 米；照片保留独立范围。</li>
             <li>沉浸式画面的抓握＋摇杆调整、逐文件偏好、左手手掌菜单与独立捏合手设置。列表和拖动期间保持输入互斥。</li>
             <li>有界且隐藏敏感信息的本地诊断日志、手动导出和更明确的 USB 权限／回退提示。设备体验与媒体兼容仍以真机验收为准。</li>
           </ul>
-          <p><a href="https://github.com/NorthBoundWisdom/immivio/actions/workflows/android-release.yml">开发版工作流与 APK 制品 →</a></p>
+          <p>字幕仅支持文字，位图字幕仍不支持；服务器非默认版本的跨客户端续播仍有限制。最新界面改动通过主机、GPU 像素和 Android 虚拟机检查，真机交互与舒适度仍需对应版本的设备验收。</p>
+          <p><a href="https://github.com/NorthBoundWisdom/immivio/releases/tag/v0.9.5">v0.9.5 发布与 APK →</a> · <a href="../guide/">安装与操作指南 →</a></p>
         </section>
-        <section id="current">
+        <section id="development">
+          <h2>开发构建</h2>
+          <p>主分支构建可能包含后续改动。<a href="https://github.com/NorthBoundWisdom/immivio/actions/workflows/android-release.yml">成功的工作流与 APK 制品 →</a>（需要登录 GitHub）。</p>
+        </section>
+        <section id="v0-9-4">
           <h2>v0.9.4 — 2026 年 10 月 24 日</h2>
           <ul>
             <li>新增本地、SMB 与兼容 HTTP 来源的 STRM 索引播放，显示加载阶段、等待时间、视频读取速度和明确的播放错误。</li>

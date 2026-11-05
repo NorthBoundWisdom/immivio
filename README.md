@@ -22,23 +22,24 @@ Immivio continues development of [zerochocobo/Thru3D-Media-Player](https://githu
 
 ![The playback interface displaying the supplied VR180 stereo video](website/assets/screenshots/playback.png)
 
-*Actual Android emulator capture using `blandscape-60mbps.mp4`, recorded before the Immivio rename. The 2D diagnostic view demonstrates the interface, not headset stereoscopy, passthrough or frame rate. The original video is not bundled. Current playback controls use toolbar popups; these captures predate that layout.*
+*Actual Android 16 ARM64 emulator captures from a development build before the v0.9.5 tag. The supplied landscape sample is shown through the real renderer and 2D diagnostic entry; these images do not establish headset stereoscopy, passthrough or frame rate. The original video is not bundled. Capture provenance is recorded in [capture.json](website/assets/screenshots/capture.json).*
 
-| Playback settings | Display preferences |
+| Library and general settings | Display preferences |
 | --- | --- |
-| ![Playback settings](website/assets/screenshots/settings.png) | ![Display preferences](website/assets/screenshots/display.png) |
+| ![Library and general settings](website/assets/screenshots/settings.png) | ![Display preferences](website/assets/screenshots/display.png) |
 
 - **Watch flat or immersive media.** Flat screens, VR180, VR360 and fisheye projections; side-by-side and top-bottom stereo layouts, including half-width/half-height formats.
 - **Free and open source.** Download, use and build the player under GPL-3.0; third-party services follow their own terms and may have their own fees.
 - **Bring your own library.** Local files, SMB, DLNA, supported media servers. Available operations depend on the source and your account permissions.
 - **Get comfortable.** Move the picture and panels, adjust supported screen size/distance/curvature, and use reclining mode or head-follow when you want them.
 - **Keep control.** Compact playback popups with slider resets, detected external-subtitle encodings and per-track overrides, filename filtering, playback speed, per-video timing, and a direct sequence/shuffle switch.
+- **Read both languages.** Choose primary and secondary text captions with one shared delay and per-video memory, or place captions below a flat screen. Bitmap subtitles remain unsupported.
 - **Return to familiar settings.** Remembered per-video track choices, stereo alignment and immersive adjustments; optional last-mode reuse, a 72 Hz display preference, and system-controlled volume. Emby/Jellyfin versions keep separate memories and report playback only with history enabled.
 - **Explore photos.** Single images, side previews, 1–3-row photo walls and memory fragments, with a configurable primary pinch hand (Right for new installs; existing settings without a choice retain Both). HEIF photo decoding depends on the Android device and source format.
 - **Check releases when you choose.** Settings → About → Check for updates contacts GitHub only after a click and opens a newer release in the system browser; the app never downloads or installs an APK.
 - **Open and diagnose.** Eligible Android VIEW/SEND videos use temporary access; redacted crash trails stay private until you confirm saving a log to Downloads. USB access uses verified system mounts; some PICO/provider paths remain unavailable.
 
-Version 0.9.4 introduced STRM shortcuts, list/icon browsing with folder-position memory, compact browsing during playback, spatially locked controls and flat-screen cinema presets. The overview above describes the current source, including later selected upstream ports that remain Unreleased. Published APKs may omit those Unreleased features; see the [changelog](CHANGELOG.md) and [feature boundaries](docs/SELECTED_UPSTREAM_PORTS.md).
+Version 0.9.5 adds dual text captions, below-screen caption placement, selected media-server and Android opening features, and clearer curved menus with mutually exclusive playback popups. It builds on v0.9.4’s STRM shortcuts, list/icon browsing, folder-position memory and cinema presets. See the [changelog](CHANGELOG.md) and [feature boundaries](docs/SELECTED_UPSTREAM_PORTS.md) for details and known limitations. Tagged APKs appear after the release build checks complete.
 
 Immivio has **one playback edition**. It displays existing stereo/spatial content; it does not generate 3D from 2D. The earlier live AI depth, person-matting, model preparation and inference features have been removed.
 
@@ -46,7 +47,7 @@ Immivio has **one playback edition**. It displays existing stereo/spatial conten
 
 Use [Releases](https://github.com/NorthBoundWisdom/immivio/releases) for published APKs. Current development packages are under a successful [Android workflow run](https://github.com/NorthBoundWisdom/immivio/actions/workflows/android-release.yml) → **Artifacts**; GitHub sign-in is required for those artifacts. Releases from before the rename retain their historical names and behavior.
 
-Version 0.9.4 uses the independent Android ID `com.northboundwisdom.immivio`. Its packages install separately from the legacy player; existing data is not automatically migrated.
+Version 0.9.4 and later use the independent Android ID `com.northboundwisdom.immivio`. Its packages install separately from the legacy player; existing data is not automatically migrated.
 
 Choose an APK matching your headset:
 
@@ -80,7 +81,7 @@ Quest 2 and PICO Neo3 are compatibility targets. Actual performance depends on h
 | Return to the library | Choose **Close video** |
 | Watch while reclined | **Settings → General → Reclining mode**; Follow is a separate setting |
 
-The current source also extends flat videos down to 0.1 m / 5% and menu distance to 4 m; photos retain their own ranges. These source changes require device acceptance and may not be in published APKs.
+Version 0.9.5 extends flat videos to 0.1–50 m / 5–3000% and menu distance to 4 m; photos retain their own ranges. Compatibility, readability and comfort still depend on the headset and media.
 
 The interface supports English, Simplified Chinese, Traditional Chinese and Japanese. Text subtitles offer five color palettes and optional bilingual primary/secondary captions with a shared delay and per-video track memory. Flat video captions can also sit below the screen, with per-video layout memory. Color grading offers Original, Warm, Cool and Custom presets, with individual slider resets and a reset for the current popup page. Subtitle, timing, eye-alignment and photo sliders also reset independently. See the [user guide](https://northboundwisdom.github.io/immivio/guide/) for sources, layouts, timing and queues.
 

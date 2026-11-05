@@ -157,7 +157,7 @@
         <h1>Start with your own media.</h1>
         <p>
           Choose an APK, open a video, and put the picture where you want it.
-          The guide covers published behavior and the current development interface; new features such as dual subtitles require a development build. The published v0.9.4 package follows its own release notes.
+          This guide covers v0.9.5. Tagged APKs appear after build verification; earlier packages follow their own release notes.
         </p>
         <section id="install">
           <h2>01 / Install on your headset</h2>
@@ -241,7 +241,7 @@
             <tbody>
               <tr>
                 <th>Show playback controls</th>
-                <td>Left Menu button, or tap the picture with the trigger. In development builds, the left palm menu gesture stays fixed; pinch preference can use Left, Right or Both.</td>
+                <td>Left Menu button, or tap the picture with the trigger. In v0.9.5, the left palm menu gesture stays fixed; pinch preference can use Left, Right or Both.</td>
               </tr>
               <tr>
                 <th>Select and adjust</th>
@@ -281,7 +281,7 @@
           </table>
           <h3>Subtitles, timing and queues</h3>
           <p>Select a text track or load SRT, ASS, SSA or VTT. The synchronization popup adjusts audio and subtitle timing independently by up to ten seconds. Queues support sequential or shuffled playback and return to the library after the final item.</p>
-          <p>In the development build, enable Dual subtitles and switch the Primary/Secondary target to choose tracks. Primary appears above secondary, with one shared subtitle delay. Primary Off hides both while retaining the second choice; choosing the same track for primary turns secondary off. Bitmap subtitles remain unsupported.</p>
+          <p>In v0.9.5, enable Dual subtitles and switch the Primary/Secondary target to choose tracks. Primary appears above secondary, with one shared subtitle delay. Primary Off hides both while retaining the second choice; choosing the same track for primary turns secondary off. Bitmap subtitles remain unsupported.</p>
           <p>External text subtitles have encoding detection; manual overrides apply on reopening. Subtitles below screen is a per-video flat-screen layout, including SBS/TB and rotated or reclined placement. Immersive projections keep their projected caption path. The second track and layout use existing file memory and respect history/file-memory privacy settings.</p>
           <p>Text captions offer five color palettes. Playback volume follows the headset system volume; use the headset's app controls to close or reopen the player.</p>
           <p>
@@ -295,12 +295,12 @@
           </p>
         </section>
         <section id="development-controls">
-          <h2>Browsing, screen layout and current development features</h2>
+          <h2>Browsing, screen layout and v0.9.5 features</h2>
           <p>On PICO, find the sideloaded VR player under Library → Unknown sources → Immivio.</p>
           <p>Open the folder icon on the video toolbar to browse without stopping playback. Switch between compact/full browsing and list/icon views. General settings can remember each folder's position; turning off playback history keeps new positions only for this session.</p>
           <p>Use the lock icon to hold the control bar in space. Display settings adjust its background opacity. Screen layout offers TV and giant-screen presets, distance, size, curvature, eye height and a temporary positioning grid. Enable Fix viewing defaults to keep temporary changes from replacing your preferred layout; Save as default explicitly replaces it.</p>
           <p>A STRM file contains one accessible media address. Browse it from local storage or SMB; use a full address when selecting an opaque document through the system picker. Connect the matching SMB account first. Buffering shows stages and elapsed time; measured video read speed appears when available. Failure details provide a return to the library.</p>
-          <p>The development build extends flat video to 0.1–50 m and 5–3000% size while retaining presets and existing memories. Adjust library distance with grip and the same-hand stick; curved menus follow viewing distance. Display settings list only advertised refresh rates and prefer 72 Hz. Eligible Android file-manager Open/Share video requests use temporary access supplied by the source app.</p>
+          <p>Version 0.9.5 extends flat video to 0.1–50 m and 5–3000% size while retaining presets and existing memories. Adjust library distance with grip and the same-hand stick; curved menus follow viewing distance. Display settings list only advertised refresh rates and prefer 72 Hz. Eligible Android file-manager Open/Share video requests use temporary access supplied by the source app.</p>
         </section>
         <section id="library">
           <h2>04 / Connect a library. Explore photos.</h2>
@@ -312,7 +312,7 @@
           </p>
           <p>
             Photos can be viewed individually, with side previews, on a photo
-            wall or as memory fragments. The development build supports 1–3 wall
+            wall or as memory fragments. Version 0.9.5 supports 1–3 wall
             rows. Supported HEIC/HEIF spatial photos retain their stereo views.
             MV-HEVC dual-view video playback has not been validated.
           </p>
@@ -320,7 +320,7 @@
             Immivio displays existing stereo content and does not generate 3D
             from 2D. Photo decoding depends on the Android device and source format.
           </p>
-          <p>The development build offers direct-play Emby/Jellyfin version selection with separate local resume, mode and track preferences. Progress from watching a non-default version in another client may not be adopted, and the default action can use older grouped-item progress. Disabling playback history stops new server playback reports.</p>
+          <p>Version 0.9.5 offers direct-play Emby/Jellyfin version selection with separate local resume, mode and track preferences. Progress from watching a non-default version in another client may not be adopted, and the default action can use older grouped-item progress. Disabling playback history stops new server playback reports.</p>
         </section>
         <section id="troubleshooting">
           <h2>05 / When something needs attention</h2>

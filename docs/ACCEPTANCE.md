@@ -1,8 +1,10 @@
 # Device and build acceptance
 
-## Unreleased (`v0.9.4..HEAD`) — pending device acceptance
+## 0.9.5 (`v0.9.4..v0.9.5`) — device acceptance remains pending
 
-No headset was available for rounds 4 and 5. The checks below cover the unshipped selected ports and review corrections; historical device results later in this document do not certify this source. Raw logs, APK inspection output, size reports and synthetic-server evidence remain under ignored `artifacts/upstream-round4/`; emulator evidence is under `artifacts/emulator-acceptance-2026-11-04/`. Round 5 host, native, Jellyfin and new APK evidence is under `artifacts/upstream-round5/`. This range includes the first post-v0.9.4 commit (FreeCM removal).
+No headset was available for rounds 4 and 5. The checks below cover the selected ports and review corrections included in v0.9.5; historical device results later in this document do not certify this source. Raw logs, APK inspection output, size reports and synthetic-server evidence remain under ignored `artifacts/upstream-round4/`; emulator evidence is under `artifacts/emulator-acceptance-2026-11-04/`. Round 5 host, native, Jellyfin and new APK evidence is under `artifacts/upstream-round5/`. This range includes the first post-v0.9.4 commit (FreeCM removal).
+
+Latest UI regression evidence is retained under `artifacts/playback-startup-20261105/` and `artifacts/header-pointer-20261105/`: all 99 Godot scripts pass, including first-frame control placement, exclusive curved pages and informational header reticles. A real GPU pixel test reproduces and fixes clipped highlight antialiasing; the owned Android emulator confirms zero visible startup timeline displacement and curved popup switching. These checks do not certify physical controller/hand interaction or headset comfort for the final tag.
 
 ### Offline and local integration results — 2026-11-04
 
