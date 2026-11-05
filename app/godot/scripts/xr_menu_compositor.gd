@@ -372,10 +372,12 @@ func _can_display_capture(metadata: Dictionary) -> bool:
 		return false
 	if _matches_capture(metadata):
 		return true
-	# Input still waits for its own capture acknowledgement. A persistent toolbar
-	# may retain pixels while its companion browser changes, on the same projection.
-	return ((metadata.get("menu_pages", {}).keys() == _capture_pages().keys()
-			or active_menu.has_method("has_persistent_toolbar"))
+	# A toolbar may move with the viewer while its popup awaits GPU acknowledgement.
+	# Its pixels are still valid at the current pose on an unchanged projection.
+	# Requiring the preceding pose here blanks one frame on ordinary head motion.
+	if active_menu.has_method("has_persistent_toolbar"):
+		return is_equal_approx(float(metadata.get("curve_radius", 0.0)), active_menu.curve_radius)
+	return (metadata.get("menu_pages", {}).keys() == _capture_pages().keys()
 		and metadata.get("pose", Transform3D.IDENTITY).is_equal_approx(capture_pose(active_menu))
 		and is_equal_approx(float(metadata.get("curve_radius", 0.0)), active_menu.curve_radius))
 
@@ -436,7 +438,8 @@ func _submit_capture(metadata: Dictionary) -> void:
 
 
 static func presented_pose(metadata: Dictionary, menu: Node3D) -> Transform3D:
-	return capture_pose(menu) if metadata.layout_revision == menu.layout_revision else metadata.pose
+	return capture_pose(menu) if (metadata.layout_revision == menu.layout_revision
+		or menu.has_method("has_persistent_toolbar")) else metadata.pose
 
 
 func _apply_presented_layer() -> void:
@@ -667,6 +670,14 @@ func is_layout_presented(menu: Node3D) -> bool:
 	var revisions: Dictionary = presented.get("menu_revisions", {})
 	var revision: int = int(revisions.get(str(menu.get_instance_id()), presented.get("layout_revision", -1) if menu == active_menu else -1))
 	return revision == menu.layout_revision
+
+
+## Keep visual hover/reticle feedback on the retained transport while input is
+## gated for a new popup. This never makes unacknowledged controls interactive.
+func retains_toolbar(menu: Node3D) -> bool:
+	return (native_supported and menu == active_menu
+		and menu.has_method("has_persistent_toolbar")
+		and not is_layout_presented(menu) and _can_display_capture(presented))
 
 
 func native_placement_available() -> bool:

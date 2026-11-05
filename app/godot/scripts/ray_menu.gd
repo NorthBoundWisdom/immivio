@@ -292,6 +292,15 @@ func pointer_plane_point(origin: Vector3, direction: Vector3, plane_z: float) ->
 func update_pointer(hand: String, origin: Vector3, direction: Vector3, tracked: bool) -> void:
 	if not visible:
 		return
+	# A popup capture gates clicks for one or more frames. Its unchanged toolbar
+	# should not lose hover and its reticle in that interval. Popup rebuilds already
+	# remove hover targets whose nodes were retired; tracking loss still clears it.
+	if (tracked and origin.is_finite() and direction.is_finite()
+		and direction.length_squared() > .000001
+		and xr_surface and xr_surface.has_method("retains_toolbar")
+		and xr_surface.retains_toolbar(self)):
+		_update_highlights()
+		return
 	var hit := ray_hit(origin, direction) if tracked else {}
 	_hover[hand] = int(hit.get("target", NONE))
 	if tracked and hit.is_empty():

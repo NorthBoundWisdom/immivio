@@ -50,8 +50,8 @@ func _run() -> void:
 	menu.layout_revision = 2
 	menu.position = Vector3(1, 2, -3)
 	check(
-		Surface.presented_pose(displayed, menu) == old_pose,
-		"Unpresented page movement cannot move the old page"
+		Surface.presented_pose(displayed, menu) == Surface.capture_pose(menu),
+		"Persistent toolbar motion remains responsive while its popup awaits capture"
 	)
 	menu.layout_revision = 1
 	check(
@@ -101,7 +101,8 @@ func _run() -> void:
 	check(compositor.layer.quad_size == old_rect.size, "A page redraw preserves the native window when its projection is unchanged")
 	menu.position.x += .2
 	compositor._apply_presented_layer()
-	check(compositor.layer.quad_size == Vector2.ONE * .001, "Page changes cannot reuse pixels at a different placement")
+	check(compositor.layer.quad_size == old_rect.size, "Toolbar motion cannot blank a popup awaiting acknowledgement")
+	check(compositor.layer.global_position.is_equal_approx((Surface.capture_pose(menu) * Transform3D(Basis.IDENTITY, Vector3(old_rect.get_center().x, old_rect.get_center().y, 0))).origin), "Retained native toolbar follows its current placement")
 	compositor.presented = compositor._capture_metadata(Surface.capture_pose(menu))
 	compositor._apply_presented_layer()
 	check(compositor.layer.quad_size == old_rect.size, "Acknowledging the new page reveals its own projection")

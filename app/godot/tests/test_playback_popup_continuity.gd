@@ -44,8 +44,13 @@ func _run() -> void:
 	root.add_child(surface)
 	surface.active_menu = menu
 	surface.menus = [menu]
+	surface.layer = OpenXRCompositionLayerQuad.new()
+	surface.add_child(surface.layer)
+	surface.cylinder_layer = OpenXRCompositionLayerCylinder.new()
+	surface.add_child(surface.cylinder_layer)
 	for geometry in [0, 1, 3]:
 		state.geometry = geometry
+		menu.curve_radius = 0.0 if geometry == 0 else 1.6
 		menu._reset_navigation()
 		menu.refresh()
 		var original := transport_ids(menu)
@@ -58,6 +63,7 @@ func _run() -> void:
 				continue
 			var metadata: Dictionary = surface._capture_metadata(Surface.capture_pose(menu))
 			menu._activate(target)
+			menu.position.x += .0007
 			check(transport_ids(menu) == original, "Opening a popup retains transport/header nodes for target %d" % target)
 			surface._update_bounds()
 			check(surface.surface_rect == rect, "Popup target %d keeps the first transport capture projection" % target)
@@ -65,6 +71,24 @@ func _run() -> void:
 			surface.presented = metadata
 			surface.native_supported = true
 			check(not surface.is_layout_presented(menu), "New popup cannot consume input before its own capture acknowledgement")
+			menu.xr_surface = surface
+			menu._hover["right_hand"] = 110
+			menu.update_pointer("right_hand", Vector3(0, 0, 1), Vector3.FORWARD, true)
+			check(menu._hover.get("right_hand") == 110, "Acknowledgement wait keeps persistent toolbar hover from pulsing")
+			check(menu.ray_hit(Vector3(0, 0, 1), Vector3.FORWARD).is_empty(), "Retained hover cannot bypass input acknowledgement")
+			menu.update_pointer("right_hand", Vector3.ZERO, Vector3.ZERO, false)
+			check(menu._hover.get("right_hand") == menu.NONE, "Tracking loss still clears retained hover")
+			menu.xr_surface = null
+			check(Surface.presented_pose(metadata, menu).is_equal_approx(Surface.capture_pose(menu)), "Pending popup cannot freeze native toolbar placement")
+			surface._apply_presented_layer()
+			check(surface.layer.quad_size == rect.size if menu.curve_radius == 0 else surface.cylinder_layer.central_angle > .001, "Native quad/cylinder retains the moving toolbar during popup redraw")
+			var radius: float = menu.curve_radius
+			menu.curve_radius += .1
+			check(not surface._can_display_capture(metadata), "A changed curve still requires its own capture")
+			menu.curve_radius = radius
+			surface.surface_rect = rect.grow(.1)
+			check(not surface._can_display_capture(metadata), "A changed projection still requires its own capture")
+			surface.surface_rect = rect
 			surface.native_supported = false
 			menu._activate(Menu.QUICK_CLOSE)
 			check(transport_ids(menu) == original, "Closing a popup retains the transport nodes")

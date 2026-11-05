@@ -146,7 +146,8 @@
     <main id="main" class="wrap guide-layout">
       <nav class="guide-nav" aria-label="Release notes sections">
         <p class="eyebrow">RELEASE NOTES</p>
-        <a href="#current">v0.9.5</a>
+        <a href="#current">v0.9.6</a>
+        <a href="#v0-9-5">v0.9.5</a>
         <a href="#development">Development builds</a>
         <a href="#v0-9-4">v0.9.4</a>
         <a href="#v0-9-3">v0.9.3</a>
@@ -163,6 +164,21 @@
           Read the changes for each release tag. Android APKs are attached after build verification; check the version shown by the download selector and the notes accompanying your package.
         </p>
         <section id="current">
+          <h2>v0.9.6 — November 6, 2026</h2>
+          <p>Video-only libraries, one network entry and smoother playback controls. Tagged APKs are attached after both build hosts pass verification.</p>
+          <ul>
+            <li>Keep the transport, title and timeline visible when opening subtitles, settings, queues and bookmarks, including during small head-follow movements. Preserve hover feedback while new popup controls wait for their displayed frame.</li>
+            <li>Use one shared inset around file-browser content, centred grids/lists and inset scrollbars. Keep the window visible when switching Settings and Network media.</li>
+            <li>Bring SMB, DLNA, Emby, Jellyfin, Plex, Stash and XBVR into one Network media entry. Add/manage sources directly with complete titles; delayed background listings no longer close source setup.</li>
+            <li>Remove photo playback, galleries, spatial/HEIF decoding and photo gestures. Local libraries show videos and folders; migration retires old photo preferences/history without deleting original media.</li>
+            <li>Lower menus by 12 cm by default. Settings → Display → Window height adjusts the saved offset from −60 to +30 cm.</li>
+            <li>Default builds use the appstore channel without a Check for updates button. GitHub tag packages use web/Release and retain the explicit update check.</li>
+            <li>Add English and Chinese Privacy Policy and Terms of Use pages. The maintainer collects no user data; local storage, optional media services, voluntary feedback and website hosting are explained separately.</li>
+          </ul>
+          <p>Playback changes passed host regressions and moving-viewer GPU pixel checks. The PICO development package was installed for device acceptance; headset comfort and media compatibility remain device-dependent. Bitmap subtitles remain unsupported.</p>
+          <p><a href="https://github.com/NorthBoundWisdom/immivio/releases/tag/v0.9.6">v0.9.6 release and APKs →</a> · <a href="../guide/">Installation and controls →</a></p>
+        </section>
+        <section id="v0-9-5">
           <h2>v0.9.5 — November 5, 2026</h2>
           <p>Dual text captions, selected media-source improvements and a clearer curved interface. Quest, PICO and experimental OpenXR APKs are attached to the tagged release after both build hosts pass verification. Source archives alone are not installable apps.</p>
           <ul>
@@ -182,7 +198,6 @@
         <section id="development">
           <h2>Development builds</h2>
           <p>Builds from main may include later changes. <a href="https://github.com/NorthBoundWisdom/immivio/actions/workflows/android-release.yml">Successful workflows and APK artifacts →</a> (GitHub sign-in required).</p>
-          <p>Playback popups now update their own controls while preserving the transport bar and its capture projection. Switching between the compact file browser and a popup also keeps the toolbar in place.</p>
         </section>
         <section id="v0-9-4">
           <h2>v0.9.4 — October 24, 2026</h2>
