@@ -127,7 +127,6 @@ func run(host: Node, step: String, request: String) -> Dictionary:
 		if FileAccess.file_exists(host.settings_path): host.settings.load(host.settings_path)
 		host.settings.save(host.settings_path)
 		video.history_enabled = false
-		host.photo.history_enabled = false
 		video.mode_memory.directory = "user://acceptance/settings"
 		video.recent_files.directory = "user://acceptance/settings"
 		video.bookmark_store.directory = "user://acceptance/bookmarks"

@@ -201,21 +201,33 @@ def build_type_for_ref(requested=None, environment=None):
     return selected
 
 
-def latest_receipt(vendor, build_type):
+def build_channel_for_ref(requested=None, environment=None):
+    environment = os.environ if environment is None else environment
+    if environment.get("GITHUB_REF", "").startswith("refs/tags/"):
+        return "web"
+    selected = requested or environment.get("CI_BUILD_CHANNEL", "appstore")
+    if selected not in player.CHANNELS:
+        raise ValueError("Distribution channel must be appstore or web")
+    return selected
+
+
+def latest_receipt(vendor, build_type, channel="appstore"):
     platform = {"Pico": "PICO", "Quest": "QUEST", "OpenXR": "OpenXR"}[vendor]
-    paths = list(
+    paths = [
+        path for path in
         (player.ROOT / "artifacts").glob(
             f"Immivio-{platform}-*-{build_type.lower()}-*.build.json"
         )
-    )
+        if json.loads(path.read_text()).get("channel") == channel
+    ]
     if not paths:
         raise RuntimeError("No packaged APK for this target")
     path = max(paths, key=lambda p: p.stat().st_mtime)
     return json.loads(path.read_text())
 
 
-def ci_package_metadata(vendor, build_type):
-    receipt = latest_receipt(vendor, build_type)
+def ci_package_metadata(vendor, build_type, channel="appstore"):
+    receipt = latest_receipt(vendor, build_type, channel)
     receipt.update(
         ci_ref=os.environ.get("GITHUB_REF", ""),
         ci_host=os.environ.get("RUNNER_OS", sys.platform),
@@ -230,7 +242,7 @@ def ci_package_metadata(vendor, build_type):
     receipts = []
     for v in ("Pico", "Quest", "OpenXR"):
         try:
-            receipts.append(latest_receipt(v, build_type))
+            receipts.append(latest_receipt(v, build_type, channel))
         except RuntimeError:
             pass
     (player.ROOT / "artifacts/SHA256SUMS.txt").write_text(

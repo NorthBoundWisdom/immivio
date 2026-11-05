@@ -4,15 +4,15 @@
 
 ### Free, open-source VR video player for Meta Quest and PICO
 
-**VR180 · VR360 · 3D · Spatial Video · Photos**
+**VR180 · VR360 · 3D Video**
 
-Immivio is a **free, open-source VR video and spatial media player** for standalone Android XR headsets. No player purchase or subscription is required.
+Immivio is a **free, open-source VR video player** for standalone Android XR headsets. No player purchase or subscription is required.
 
-Watch VR180, 360° and 3D side-by-side (SBS) videos and supported spatial photos on Meta Quest, PICO, or a compatible Android OpenXR headset. Choose a virtual cinema screen or an immersive projection, connect your NAS or media library, and keep playback controls within reach.
+Watch VR180, 360° and 3D side-by-side (SBS) videos on Meta Quest, PICO, or a compatible Android OpenXR headset. Choose a virtual cinema screen or an immersive projection, connect your NAS or media library, and keep playback controls within reach.
 
 **Designed for high-performance playback:** libmpv uses Android hardware video decoding where supported, with shared GPU textures for rendering and adjustable display quality. Actual performance depends on headset, codec, resolution and bitrate.
 
-Immivio 是面向 Meta Quest 与 PICO 的免费开源 VR 视频播放器，支持 VR180、360° 全景、3D 左右立体视频与空间照片，提供硬件解码、GPU 渲染，以及 SMB、DLNA 网络媒体库访问。[查看中文官网](https://northboundwisdom.github.io/immivio/zh/)。
+Immivio 是面向 Meta Quest 与 PICO 的免费开源 VR 视频播放器，支持 VR180、360° 全景、3D 左右立体视频，提供硬件解码、GPU 渲染，以及 SMB、DLNA 网络媒体库访问。[查看中文官网](https://northboundwisdom.github.io/immivio/zh/)。
 
 [Website](https://northboundwisdom.github.io/immivio/) · [Releases](https://github.com/NorthBoundWisdom/immivio/releases) · [Development builds](https://github.com/NorthBoundWisdom/immivio/actions/workflows/android-release.yml) · [User guide](https://northboundwisdom.github.io/immivio/guide/) · [中文官网与使用指南](https://northboundwisdom.github.io/immivio/zh/)
 
@@ -30,13 +30,12 @@ Immivio continues development of [zerochocobo/Thru3D-Media-Player](https://githu
 
 - **Watch flat or immersive media.** Flat screens, VR180, VR360 and fisheye projections; side-by-side and top-bottom stereo layouts, including half-width/half-height formats.
 - **Free and open source.** Download, use and build the player under GPL-3.0; third-party services follow their own terms and may have their own fees.
-- **Bring your own library.** Local files, SMB, DLNA, supported media servers. Available operations depend on the source and your account permissions.
+- **Bring your own library.** Local files and one Network media entry for SMB shares, DLNA libraries and supported media-server accounts. Saved and discovered sources appear together; adding a source lists sharing protocols and server providers side by side, with direct setup. Available operations depend on the source and your account permissions.
 - **Get comfortable.** Move the picture and panels, adjust supported screen size/distance/curvature, and use reclining mode or head-follow when you want them.
 - **Keep control.** Compact playback popups with slider resets, detected external-subtitle encodings and per-track overrides, filename filtering, playback speed, per-video timing, and a direct sequence/shuffle switch.
 - **Read both languages.** Choose primary and secondary text captions with one shared delay and per-video memory, or place captions below a flat screen. Bitmap subtitles remain unsupported.
 - **Return to familiar settings.** Remembered per-video track choices, stereo alignment and immersive adjustments; optional last-mode reuse, a 72 Hz display preference, and system-controlled volume. Emby/Jellyfin versions keep separate memories and report playback only with history enabled.
-- **Explore photos.** Single images, side previews, 1–3-row photo walls and memory fragments, with a configurable primary pinch hand (Right for new installs; existing settings without a choice retain Both). HEIF photo decoding depends on the Android device and source format.
-- **Check releases when you choose.** Settings → About → Check for updates contacts GitHub only after a click and opens a newer release in the system browser; the app never downloads or installs an APK.
+- **Choose your update channel.** The default appstore build has no update-check button. In web builds, Settings → About → Check for updates contacts GitHub only after a click and opens a newer release in the system browser; the app never downloads or installs an APK.
 - **Open and diagnose.** Eligible Android VIEW/SEND videos use temporary access; redacted crash trails stay private until you confirm saving a log to Downloads. USB access uses verified system mounts; some PICO/provider paths remain unavailable.
 
 Version 0.9.5 adds dual text captions, below-screen caption placement, selected media-server and Android opening features, and clearer curved menus with mutually exclusive playback popups. It builds on v0.9.4’s STRM shortcuts, list/icon browsing, folder-position memory and cinema presets. See the [changelog](CHANGELOG.md) and [feature boundaries](docs/SELECTED_UPSTREAM_PORTS.md) for details and known limitations. Tagged APKs appear after the release build checks complete.
@@ -75,15 +74,15 @@ Quest 2 and PICO Neo3 are compatibility targets. Actual performance depends on h
 | Move the picture or library window | Hold grip; use the same hand's thumbstick for distance where supported |
 | Seek | Drag the timeline or use horizontal thumbstick shortcuts while lists/sliders are inactive |
 | Adjust immersive video | Left grip + stick moves it horizontally/vertically; right grip + stick adjusts zoom or horizontal stereo alignment |
-| Choose the primary pinch hand | **Settings → General → Pinch/menu hand**; new installs use Right; existing settings without a choice retain Both. The other hand can assist photo zoom |
+| Choose the primary pinch hand | **Settings → General → Pinch/menu hand**; new installs use Right; existing settings without a choice retain Both |
 | Change volume | Use the headset’s system volume controls |
 | Scroll a library or settings list | Use the thumbstick while the list is open |
 | Return to the library | Choose **Close video** |
 | Watch while reclined | **Settings → General → Reclining mode**; Follow is a separate setting |
 
-Version 0.9.5 extends flat videos to 0.1–50 m / 5–3000% and menu distance to 4 m; photos retain their own ranges. Compatibility, readability and comfort still depend on the headset and media.
+Version 0.9.5 extends flat videos to 0.1–50 m / 5–3000% and menu distance to 4 m. Compatibility, readability and comfort still depend on the headset and media.
 
-The interface supports English, Simplified Chinese, Traditional Chinese and Japanese. Text subtitles offer five color palettes and optional bilingual primary/secondary captions with a shared delay and per-video track memory. Flat video captions can also sit below the screen, with per-video layout memory. Color grading offers Original, Warm, Cool and Custom presets, with individual slider resets and a reset for the current popup page. Subtitle, timing, eye-alignment and photo sliders also reset independently. See the [user guide](https://northboundwisdom.github.io/immivio/guide/) for sources, layouts, timing and queues.
+The interface supports English, Simplified Chinese, Traditional Chinese and Japanese. Text subtitles offer five color palettes and optional bilingual primary/secondary captions with a shared delay and per-video track memory. Flat video captions can also sit below the screen, with per-video layout memory. Color grading offers Original, Warm, Cool and Custom presets, with individual slider resets and a reset for the current popup page. Subtitle, timing, eye-alignment sliders also reset independently. See the [user guide](https://northboundwisdom.github.io/immivio/guide/) for sources, layouts, timing and queues.
 
 ## Useful answers
 
@@ -99,7 +98,7 @@ The interface supports English, Simplified Chinese, Traditional Chinese and Japa
 
 ## Project and development
 
-- Store listing name: **Immivio – VR & Spatial Media Player**
+- Store listing name: **Immivio – VR Video Player**
 - [Changelog](CHANGELOG.md) · [Release notes / 更新说明](https://northboundwisdom.github.io/immivio/updates/)
 - [Build from source](docs/BUILD.md) · [Architecture](docs/ARCHITECTURE.md) · [Refactor plan](docs/REFACTOR_PLAN.md) · [Testing](docs/TESTING.md) · [Refactor acceptance](docs/ACCEPTANCE.md) · [Contributing](CONTRIBUTING.md)
 - Project source is [GPL-3.0-only](LICENSE). Third-party components retain their licenses. See [licensing details](docs/LICENSING.md).

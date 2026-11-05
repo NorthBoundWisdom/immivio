@@ -285,22 +285,13 @@ internal object DlnaClient {
             val item = items.item(i) as Element
             val resources = item.getElementsByTagNameNS("*", "res")
             val itemClass = item.getElementsByTagNameNS("*", "class").item(0)?.textContent.orEmpty()
-            val imageItem = itemClass.startsWith("object.item.imageItem")
+            if (itemClass.startsWith("object.item.imageItem")) continue
             var chosen: Element? = null
-            var largest = -1L
             for (r in 0 until resources.length) {
                 val res = resources.item(r) as Element
                 val info = res.getAttribute("protocolInfo")
-                if (!imageItem && (info.contains(":video/") || isVideoName(res.textContent))) {
+                if (info.contains(":video/") || isVideoName(res.textContent)) {
                     chosen = res; break
-                }
-                if (imageItem && (info.contains(":image/") || MediaKinds.image(res.textContent))) {
-                    val dimensions =
-                        res.getAttribute("resolution").split('x').mapNotNull { it.toLongOrNull() }
-                    val area = if (dimensions.size == 2) dimensions[0] * dimensions[1] else 0L
-                    if (area > largest) {
-                        chosen = res; largest = area
-                    }
                 }
             }
             val res = chosen ?: continue
@@ -309,8 +300,8 @@ internal object DlnaClient {
                 .put(
                     "uri",
                     httpUri(res.textContent.trim(), base)?.toString() ?: res.textContent.trim()
-                ).put("kind", if (imageItem) "image" else "video")
-            if (!imageItem) entry.put("subtitles", subtitles(item, base))
+                ).put("kind", "video")
+            entry.put("subtitles", subtitles(item, base))
             res.getAttribute("size").toLongOrNull()?.let { entry.put("size", it) }
             parseDuration(res.getAttribute("duration"))?.let { entry.put("duration_ms", it) }
             res.getAttribute("resolution").split('x').mapNotNull { it.toIntOrNull() }

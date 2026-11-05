@@ -54,13 +54,12 @@ func _library_settings() -> Dictionary:
 		"reuse_last_mode": host.video.reuse_last_mode,
 		"browse_memory": bool(host.settings.get_value("library", "browse_memory", true)),
 		"controls_opacity": float(host.settings.get_value("ui", "controls_opacity", 0.86)),
+		"window_height": host._presentation.window_height * 100.0,
 		"reclining_mode": host.reclining_mode,
 		"subtitle_distance": host.video.subtitle_distance,
 		"subtitle_position": host.video.subtitle_position,
 		"subtitle_direction": host.video.subtitle_direction,
 		"background": host.background.choice if host.background else "belfast",
-		"background_custom": host.background.has_custom() if host.background else false,
-		"background_title": host.background.custom_title if host.background else "",
 		"background_yaw": host.background.yaw if host.background else 0.0,
 		"background_brightness": host.background.brightness if host.background else 1.0,
 		"background_loading": host.background.loading if host.background else false,
@@ -74,6 +73,12 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 	if not is_instance_valid(host):
 		return
 	match key:
+		"window_height":
+			if not (value is int or value is float) or not is_finite(float(value)):
+				return
+			host._presentation.set_window_height(float(value) / 100.0)
+			host.settings.set_value("ui", "window_height", host._presentation.window_height)
+			host.settings.save(host.settings_path)
 		"save_diagnostic_log":
 			if value is bool and value and PlatformMethods.supports(host.video.platform, "save_diagnostic_log"):
 				host.video.platform.save_diagnostic_log()
@@ -83,7 +88,6 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 			if not value is String or value not in preload("res://scripts/hand_preferences.gd").CHOICES:
 				return
 			host.pinch_hand = value
-			host.photo_hands.set_initiator_hand(value)
 			for hand in host.hand_pointers:
 				host.hand_pointers[hand].update({}, 0)
 				host._cancel_pointer(hand)
@@ -123,9 +127,6 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 			host.settings.save(host.settings_path)
 		"sharpness":
 			host.video.sharpness = float(value)
-			host.photo.sharpness = float(value)
-			if host.photo._detail_material:
-				host.photo._detail_material.set_shader_parameter("sharpness", host.photo.sharpness)
 			host.settings.set_value("video", "sharpness", host.video.sharpness)
 			host.settings.save(host.settings_path)
 		"background":
@@ -172,7 +173,6 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 				host.recent_menu.browse_memory.enabled, bool(value)
 			)
 			host.video.history_enabled = bool(value)
-			host.photo.history_enabled = bool(value)
 			host.settings.set_value("library", "history", bool(value))
 			host.settings.save(host.settings_path)
 		"clear_history":
@@ -184,7 +184,7 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 			I18n.use(str(value))
 			if PlatformMethods.supports(host.platform_plugin, "set_ui_language"):
 				host.platform_plugin.set_ui_language(I18n.choice)
-			for menu in [host.recent_menu, host.player_menu, host.photo_menu]:
+			for menu in [host.recent_menu, host.player_menu]:
 				if menu.visible:
 					menu.refresh()
 		"subtitle_distance":
@@ -220,23 +220,12 @@ func _save_background() -> void:
 	host.settings.save(host.settings_path)
 
 
-func _on_custom_background_saved(path: String, title: String, orientation: int) -> void:
-	var host := _host_ref.get_ref() as Node3D
-	if not is_instance_valid(host):
-		return
-	host.settings.set_value("appearance", "custom_path", path)
-	host.settings.set_value("appearance", "custom_title", title)
-	host.settings.set_value("appearance", "custom_orientation", orientation)
-	host.settings.set_value("appearance", "background", host.background.choice)
-	host.settings.save(host.settings_path)
-	if host.background.choice == "custom" and host.photo_active:
-		host.photo.close_image()
-
-
 func _on_playback_adjustment(key: String, value: Variant) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
+	if key == "window_height":
+		return # Keep the slider stationary during its preview; commit on release.
 	if key == "controls_opacity":
 		host.video_menu.controls_opacity = clampf(float(value), 0, 1)
 		host.settings.set_value("ui", "controls_opacity", host.video_menu.controls_opacity)
@@ -247,23 +236,16 @@ func _on_playback_adjustment(key: String, value: Variant) -> void:
 	if host.screen_layout.adjust(key, value):
 		return
 	if key in ["subtitle_delay_ms", "audio_delay_ms"]:
-		if not host.photo_active:
-			host.video.set_sync_delay(key, float(value))
+		host.video.set_sync_delay(key, float(value))
 		return
 	if key in ["stereo_horizontal", "stereo_vertical"]:
-		if not host.photo_active:
-			host.video.set_stereo_alignment(key, float(value))
+		host.video.set_stereo_alignment(key, float(value))
 		return
 	elif key == "stereo_reset":
-		if not host.photo_active:
-			host.video.reset_stereo_alignment()
+		host.video.reset_stereo_alignment()
 		return
 	elif key == "screen_distance":
-		if (
-			host.photo_active
-			or host.video.geometry != Geometry.Geometry.FLAT
-			or not is_finite(float(value))
-		):
+		if host.video.geometry != Geometry.Geometry.FLAT or not is_finite(float(value)):
 			return
 		host._push_screen(
 			(
@@ -273,22 +255,14 @@ func _on_playback_adjustment(key: String, value: Variant) -> void:
 		)
 		return
 	elif key == "screen_scale":
-		if (
-			host.photo_active
-			or host.video.geometry != Geometry.Geometry.FLAT
-			or not is_finite(float(value))
-		):
+		if host.video.geometry != Geometry.Geometry.FLAT or not is_finite(float(value)):
 			return
 		host.video.set_screen_scale(float(value) / 100.0)
 		return
 	elif key == "screen_rotation":
-		if host.photo_active:
-			return
 		host.video.set_screen_rotation(float(value))
 		return
 	elif key == "playback_speed":
-		if host.photo_active:
-			return
 		host.video.set_playback_speed(float(value))
 		return
 	elif key == "subtitle_encoding":

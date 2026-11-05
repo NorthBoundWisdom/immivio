@@ -119,30 +119,19 @@ func _initialize() -> void:
 	)
 	var app := preload("res://scripts/main.gd").new()
 	app.video = Reader.new()
-	app.photo = Reader.new()
 	app.video.local_uri = "file:///storage/test/folder/movie.mp4"
-	app.photo.local_uri = "file:///storage/test/folder/photo.jpg"
-	app.photo_active = true
 	app._prepare_file_delete("file:///storage/test/folder")
 	check(
-		app.video.closes == 1 and app.photo.closes == 1 and not app.photo_active,
-		"Folder deletion releases descendant video and image readers before mutation"
+		app.video.closes == 1,
+		"Folder deletion releases descendant video readers before mutation"
 	)
 	app.video.local_uri = "smb://other/share/movie.mp4"
-	app.photo.local_uri = "file:///storage/test/other/photo.jpg"
 	app._prepare_file_delete("file:///storage/test/folder")
 	check(
-		app.video.closes == 1 and app.photo.closes == 1,
+		app.video.closes == 1,
 		"Deleting a folder leaves unrelated readers running"
 	)
-	app.photo.queue.assign([{"uri": "file:///storage/test/folder/preloaded.jpg"}])
-	app._prepare_file_delete("file:///storage/test/folder")
-	check(
-		app.photo.closes == 2,
-		"A descendant preloaded image is released even with an unrelated current display"
-	)
 	app.video.free()
-	app.photo.free()
 	app.free()
 	print("file editing memory checks=%d failures=%d" % [checks, failures.size()])
 	for failure in failures:

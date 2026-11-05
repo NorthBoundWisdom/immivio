@@ -13,6 +13,15 @@ from configs import ci_support as ci
 
 
 class CiBoundaries(unittest.TestCase):
+    def test_channels_default_to_appstore_and_tags_force_web(self):
+        for ref in ("", "refs/heads/main", "refs/pull/1/merge"):
+            self.assertEqual(ci.build_channel_for_ref(environment={"GITHUB_REF": ref}), "appstore")
+        self.assertEqual(ci.build_channel_for_ref("web", {}), "web")
+        self.assertEqual(ci.build_channel_for_ref(environment={"CI_BUILD_CHANNEL": "web"}), "web")
+        self.assertEqual(ci.build_channel_for_ref("appstore", {"GITHUB_REF": "refs/tags/v1", "CI_BUILD_CHANNEL": "appstore"}), "web")
+        with self.assertRaisesRegex(ValueError, "appstore or web"):
+            ci.build_channel_for_ref("other", {})
+
     def test_tag_ref_forces_release_even_when_debug_is_requested(self):
         self.assertEqual(
             ci.build_type_for_ref("Debug", {"GITHUB_REF": "refs/tags/v1"}), "Release"

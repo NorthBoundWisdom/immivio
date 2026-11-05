@@ -21,7 +21,7 @@ import java.util.concurrent.Executors
 /** The headset's own storage as folders, like a file manager: storage volumes (internal, USB) at
  * the top, then folders and media read straight from the disk. The media index (MediaStore) is
  * not used: files it has not scanned yet would be missing. Results are file:// URIs.
- * Reading needs the matching image/video permission; folders other than media ones and non-media files beside
+ * Reading needs the video permission; folders other than media ones and non-media files beside
  * the videos need "All files access", which [grantAllFiles] opens in system settings. */
 internal class LocalVideoLibrary(
     private val host: () -> Activity?,
@@ -43,7 +43,6 @@ internal class LocalVideoLibrary(
     private val permissions
         get() = if (Build.VERSION.SDK_INT >= 33) arrayOf(
             permission,
-            Manifest.permission.READ_MEDIA_IMAGES,
             Manifest.permission.READ_MEDIA_AUDIO
         )
         else if (Build.VERSION.SDK_INT < 30 && fileManagementEnabled) arrayOf(
@@ -141,8 +140,7 @@ internal class LocalVideoLibrary(
             waiting.add(id to path); return
         }
         val readable =
-            activity.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED ||
-                    (Build.VERSION.SDK_INT >= 33 && activity.checkSelfPermission(Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED)
+            activity.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
         if ((allFiles() && (Build.VERSION.SDK_INT >= 30 || !fileManagementEnabled || writable())) || permissions.all {
                 activity.checkSelfPermission(
                     it
@@ -396,7 +394,7 @@ internal class LocalVideoLibrary(
                     )
                     .put("delete_reason", "File deletion permission denied")
                 if (!it.isDirectory) entry.put("uri", Uri.fromFile(it).toString())
-                    .put("size", it.length()).put("kind", MediaKinds.kind(it.name))
+                    .put("size", it.length()).put("kind", "video")
                     .put(
                         "can_delete",
                         writable() && directory.canWrite() && MediaDeletePolicy.regular(it) && it.canonicalPath == it.absolutePath

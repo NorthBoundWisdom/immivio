@@ -29,6 +29,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var main := InputMain.new()
+	var height: float = main._presentation.window_height
 	main.settings_path = "user://controller-canvas-%d.cfg" % Time.get_ticks_usec()
 	var video := Video.new()
 	root.add_child(video)
@@ -78,7 +79,7 @@ func _run() -> void:
 	var timeline := menu.to_global(Vector3(0, Menu.BAR_SEEK_Y, 0))
 	check(
 		(
-			(timeline + Vector3.UP * Menu.EXTRA_DROP - camera.global_position)
+			(timeline + Vector3.UP * (Menu.EXTRA_DROP - height) - camera.global_position)
 			. normalized()
 			. is_equal_approx((centre.origin - camera.global_position).normalized())
 		),
@@ -126,7 +127,7 @@ func _run() -> void:
 	menu.section = 1
 	main._update_player_menu_anchor()
 	check(
-		(menu.global_position - camera.global_position).normalized().is_equal_approx(
+		(menu.global_position - Vector3.UP * height - camera.global_position).normalized().is_equal_approx(
 			(centre.origin - camera.global_position).normalized()
 		),
 		"Expanded settings remain visually centred on canvas"
@@ -214,7 +215,7 @@ func _run() -> void:
 		(
 			(
 				menu.to_global(Vector3(0, Menu.BAR_SEEK_Y, 0))
-				+ Vector3.UP * Menu.EXTRA_DROP
+				+ Vector3.UP * (Menu.EXTRA_DROP - height)
 				- camera.global_position
 			)
 			. normalized()
@@ -233,7 +234,7 @@ func _run() -> void:
 		* (menu.to_global(Vector3(0, Menu.BAR_SEEK_Y, 0)) - camera.global_position)
 	)
 	check(
-		in_content.is_equal_approx(Vector3(0, -Menu.IMMERSIVE_DROP, -Menu.IMMERSIVE_DISTANCE)),
+		in_content.is_equal_approx(Vector3(0, -Menu.IMMERSIVE_DROP + height, -Menu.IMMERSIVE_DISTANCE)),
 		"Immersive timeline sits below the content/reset gaze centre"
 	)
 	check(
@@ -290,7 +291,7 @@ func _run() -> void:
 		menu.global_basis.y.normalized().is_equal_approx(Vector3.UP),
 		"Coincident eye/canvas cannot inherit tilted content axes"
 	)
-	# Non-playback reset must stay at eye height and horizontal viewing distance.
+	# Non-playback reset retains the configured height and horizontal distance.
 	video.local_uri = ""
 	menu.visible = false
 	library.visible = true
@@ -305,7 +306,7 @@ func _run() -> void:
 			)
 			check(
 				(
-					is_equal_approx(delta.y, 0.0)
+					is_equal_approx(delta.y, height)
 					and absf(Vector2(delta.x, delta.z).length() - 1.4) < .0001
 				),
 				"Library reset uses fixed horizontal distance and eye-relative height"

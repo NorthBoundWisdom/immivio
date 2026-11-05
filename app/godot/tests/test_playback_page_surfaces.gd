@@ -53,7 +53,6 @@ func _run() -> void:
 	host.set_process(false)
 	host.menu_compositor.set_process(false)
 	host.video.set_process(false)
-	host.photo.set_process(false)
 	host.player_menu.set_process(false)
 	host.report_timer.stop()
 	host.video.media.begin(1)
@@ -77,8 +76,16 @@ func _run() -> void:
 		host.recent_menu.compact = true
 		host._place_menu(host.recent_menu)
 		check(host.recent_menu.visible and menu._quick_open.is_empty() and not menu._mode_open and not menu._subtitle_open, "Browsing replaces the previous playback page")
+		host.menu_compositor._process(0)
+		var original_pose: Transform3D = menu.global_transform
+		var original_rect: Rect2 = host.menu_compositor.surface_rect
+		var original_title: int = menu._title.get_instance_id()
+		check(host.menu_compositor.active_menu == menu, "Compact browser retains playback capture anchor")
 		check(tap(host, target), "Toolbar page remains ray-selectable beside the compact browser: %d" % target)
 		check(menu._popup_is_open(Menu.POPUP_TARGETS[target]) and not host.recent_menu.visible, "Browser and playback page are mutually exclusive: %d" % target)
+		check(menu.global_transform.is_equal_approx(original_pose), "Opening a popup beside the browser preserves toolbar placement")
+		check(host.menu_compositor.surface_rect == original_rect, "Replacing compact browser retains capture bounds")
+		check(menu._title.get_instance_id() == original_title, "Replacing compact browser retains transport nodes")
 		check(menu.curve_radius > 0 and host.menu_compositor.scene_curved, "Playback page uses the same curved renderer: %d" % target)
 		var centre: Vector2 = menu.capture_envelope().get_center()
 		var distance := menu.to_global(Vector3(centre.x, centre.y, 0)).distance_to(host._eye())
@@ -107,17 +114,6 @@ func _run() -> void:
 	menu.update_pointer("left_hand", ray[0], ray[1], true)
 	check(absi(menu._seek_preview - at_press) <= 1, "Stationary curved timeline drag cannot shift the seek position")
 	menu.release_pointer("left_hand", ray[0], ray[1], false)
-	host.photo_active = true
-	host.player_menu = host.photo_menu
-	host.video_menu.dismiss()
-	host.photo.local_uri = "file:///panorama.jpg"
-	host.photo.panel.visible = true
-	host._show_player_menu()
-	host.menu_compositor._process(0)
-	check(host.photo_menu.curve_radius > 0 and host.menu_compositor.scene_curved, "Photo controls share the viewing-circle curve")
-	host.photo_menu._activate(host.photo_menu.PHOTO_ADJUST)
-	host.menu_compositor._process(0)
-	check(host.menu_compositor.active_menu == host.photo_menu and host.menu_compositor.scene_curved, "Photo adjustment pages retain the curved renderer")
 	host.queue_free()
 	await process_frame
 	for failure in failures:

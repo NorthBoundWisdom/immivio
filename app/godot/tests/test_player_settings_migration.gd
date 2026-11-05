@@ -64,16 +64,16 @@ func _initialize() -> void:
 	)
 	check(source_lock.depth, "Migration does not mutate another owner's dictionary")
 	check(
-		settings.get_value("photo", "mode_lock") == {"geometry": 3, "layout": 2, "depth": false},
-		"Native stereo photo locks stay unchanged"
+		not settings.has_section("photo"),
+		"Retired still-image settings are removed"
 	)
 	check(not Migration.apply(settings), "Running migration again does not request another write")
 	var malformed := ConfigFile.new()
 	malformed.set_value("video", "mode_lock", "invalid legacy data")
 	malformed.set_value("photo", "mode_lock", [])
 	check(
-		not Migration.apply(malformed),
-		"Malformed mode locks are left to the existing lock validator"
+		Migration.apply(malformed) and not malformed.has_section("photo"),
+		"Retired sections are removed while video locks keep their own validator"
 	)
 	var empty := ConfigFile.new()
 	check(not Migration.apply(empty), "Fresh installations require no migration write")

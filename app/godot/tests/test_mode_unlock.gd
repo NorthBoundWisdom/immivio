@@ -43,10 +43,9 @@ func _run() -> void:
 	root.add_child(main)
 	main.set_process(false)
 	main.video.set_process(false)
-	main.photo.set_process(false)
-	for viewer in [main.video, main.photo]:
-		var kind := "video" if viewer == main.video else "photo"
-		var menu: Node3D = main.player_menu if kind == "video" else main.photo_menu
+	for viewer in [main.video]:
+		var kind := "video"
+		var menu: Node3D = main.player_menu
 		viewer.geometry = 1
 		viewer.stereo_sbs = true
 		viewer.top_bottom = false
@@ -69,8 +68,6 @@ func _run() -> void:
 		menu._mode_open = true
 		menu.refresh()
 		check(locks(menu) == 2, kind + " both locked tiles visible")
-		if kind == "photo":
-			main.photo_active = true
 		menu._activate(Menu.MODE_PROJECTION + 3)
 		check(
 			viewer.geometry == 3 and viewer.mode_lock.is_empty() and locks(menu) == 0,
@@ -81,7 +78,7 @@ func _run() -> void:
 		menu._activate(Menu.MODE_PROJECTION + 3)
 		check(not viewer.mode_lock.is_empty(), kind + " selected projection can lock again")
 		menu._activate(Menu.MODE_STEREO + 1)
-		# 360 video defaults to mono, photos preserve SBS. Ensure an actual different layout next.
+		# 360 video defaults to mono. Ensure an actual different layout next.
 		if not viewer.mode_lock.is_empty():
 			menu._activate(Menu.MODE_STEREO)
 		check(viewer.mode_lock.is_empty() and locks(menu) == 0, kind + " layout choice unlocks")
@@ -112,7 +109,6 @@ func _run() -> void:
 		viewer.set_stereo_layout(0)
 		viewer.set_fisheye_fov(200)
 		check(viewer.mode_lock == before, kind + " unchanged choices retain lock")
-		main.photo_active = false
 		viewer.toggle_mode_lock()
 	main.queue_free()
 	await process_frame

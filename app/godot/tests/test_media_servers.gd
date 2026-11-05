@@ -181,10 +181,10 @@ func _run() -> void:
 	check(b.pending.is_empty(), "leaving server cancels requests")
 	check(
 		(
-			Menu.NAV_ORDER.find(Menu.Section.MEDIA_SERVER) + 1
+			Menu.NAV_ORDER.find(Menu.Section.NETWORK) + 1
 			== Menu.NAV_ORDER.find(Menu.Section.SETTINGS)
 		),
-		"servers immediately above settings"
+		"Unified network media is immediately above settings"
 	)
 	for provider in ["emby", "jellyfin"]:
 		b.server = {"id": "test", "provider": provider}

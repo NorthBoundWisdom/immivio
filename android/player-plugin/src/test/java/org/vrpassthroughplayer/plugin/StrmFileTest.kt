@@ -101,7 +101,6 @@ class StrmFileTest {
     }
     @Test fun libraryScanningAndFileActionsRecognizeTheShortcut() {
         assertTrue(MediaKinds.supported("Movie.SBS.STRM"))
-        assertEquals("video", MediaKinds.kind("Movie.strm"))
         assertEquals("share/Movie.strm", MediaDeletePolicy.smbPath("share/Movie.strm"))
         assertTrue(StrmFile.location("https://nas/movie.STRM?token=secret"))
         assertFalse(StrmFile.location("https://nas/movie.mkv?name=a.strm"))

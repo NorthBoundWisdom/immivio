@@ -203,7 +203,7 @@ func _run() -> void:
 			startup = child
 	check(
 		startup != null and startup.catalog == main.video.recent_files,
-		"Application startup scans the shared video/photo Recent catalog"
+		"Application startup scans the video Recent catalog"
 	)
 	main.free()
 	for failure in failures:

@@ -60,7 +60,7 @@ internal object CrashTrail {
         return Session(map.getInt(12), map.getLong(16), flags and CLEAN != 0, flags and FOREGROUND != 0, lines)
     }
 
-    /** One step: "photo.decode", "w=4000 h=3000 sample=2". Cheap enough for every image, not every frame. */
+    /** Record a bounded processing stage without exposing source media or credentials. */
     fun mark(stage: String, detail: String = "") {
         val map = buffer ?: return
         val text = DiagnosticLogs.redact("[" + Thread.currentThread().name.take(24) + "] " + stage + (if (detail.isEmpty()) "" else " $detail"))

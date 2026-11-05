@@ -5,6 +5,7 @@ const Methods := preload("res://scripts/platform_methods.gd")
 const BASE := 2000
 const FIELD := 2100
 const KEY := 2200
+const PROVIDERS := ["emby", "jellyfin", "plex", "stash", "xbvr"]
 var menu: Node
 var view := ""
 var kind := ""
@@ -21,6 +22,7 @@ var revision := -1
 var paused := false
 var license_lines: Array[String] = []
 var title := ""
+var provider_filter := ""
 
 
 func _init(owner: Node) -> void:
@@ -49,9 +51,10 @@ func close() -> void:
 	revision = -1
 	paused = false
 	_defaults = {}
+	provider_filter = ""
 
 
-func open(source: String, manage: bool = false) -> void:
+func open(source: String, manage: bool = false, selected_provider: String = "") -> void:
 	close()
 	kind = source
 	menu.server_browser.cancel()
@@ -60,17 +63,23 @@ func open(source: String, manage: bool = false) -> void:
 		menu.refresh()
 		return
 	view = "accounts" if manage else "choose"
-	title = "Media servers"
+	provider_filter = selected_provider if manage else ""
+	title = provider_name(selected_provider) if not selected_provider.is_empty() else "Media servers"
 	if manage:
 		load_accounts()
 	menu.status = ""
 	menu._reset_navigation()
-	menu.refresh()
+	if not manage and not selected_provider.is_empty():
+		start(source, selected_provider)
+	else:
+		menu.refresh()
 
 
 func load_accounts() -> void:
 	var parsed: Variant = JSON.parse_string(menu.platform.account_list(kind))
 	items = parsed if parsed is Array else []
+	if not provider_filter.is_empty():
+		items = items.filter(func(item): return str(item.get("provider", "")) == provider_filter)
 	if not parsed is Array:
 		menu.status = "Account settings unavailable"
 
@@ -124,7 +133,10 @@ func poll() -> void:
 	var state := str(data.get("state", "form"))
 	if state == "done":
 		close()
-		menu.server_browser.load_servers()
+		if menu.network.mode in ["add", "manage"]:
+			menu.network.open()
+		else:
+			menu.server_browser.load_servers()
 		menu.refresh()
 		return
 	if state in ["discover", "plex_link", "plex_servers"]:
@@ -173,7 +185,7 @@ func rows() -> Array[Dictionary]:
 				"account_discover": true
 			}
 		)
-		for p in ["emby", "jellyfin", "plex", "stash", "xbvr"]:
+		for p in PROVIDERS:
 			result.append({"title": provider_name(p), "icon": preload("res://scripts/provider_icons.gd").key(p), "account_provider": p})
 	elif view == "accounts":
 		for item in items:
@@ -243,6 +255,9 @@ func action(target: int) -> bool:
 		return true
 	if target == BASE:
 		close()
+		if menu.network.mode in ["add", "manage"]:
+			menu.network.open()
+			return true
 		menu._load_section()
 		menu.refresh()
 		return true
@@ -272,6 +287,16 @@ func action(target: int) -> bool:
 		6:
 			command("save_server")
 		22:
+			if not provider_filter.is_empty():
+				start(kind, provider_filter)
+				return true
+			if menu.network.mode in ["add", "manage"]:
+				close()
+				menu.section = menu.Section.NETWORK
+				menu.network.mode = "add"
+				menu._reset_navigation()
+				menu.refresh()
+				return true
 			if session > 0:
 				menu.platform.account_cancel(session)
 				session = 0

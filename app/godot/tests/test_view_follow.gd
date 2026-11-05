@@ -140,7 +140,6 @@ func close_menu_check(main: Node3D, menu: Node3D, name: String) -> void:
 	var passthrough: bool = main.temporary_passthrough
 	var alpha: bool = main.video.alpha_wanted()
 	var video_state: String = main.video.media.state
-	var photo_uri: String = main.photo.local_uri
 	main._on_pointer_button("by_button", "right_hand")
 	if menu == main.recent_menu:
 		check(
@@ -167,7 +166,6 @@ func close_menu_check(main: Node3D, menu: Node3D, name: String) -> void:
 		(
 			main.video.media.state == video_state
 			and main.video.alpha_wanted() == alpha
-			and main.photo.local_uri == photo_uri
 		),
 		name + " does not close or change media"
 	)
@@ -187,7 +185,6 @@ func _run() -> void:
 	root.add_child(main)
 	main.set_process(false)
 	main.video.set_process(false)
-	main.photo.set_process(false)
 	main.report_timer.stop()
 	main.video.platform = HostTest.Host.new()
 	main.video.mode_memory = Memory.new(directory.path_join("modes.cfg"))
@@ -581,81 +578,8 @@ func _run() -> void:
 		button(main.recent_menu, Menu.FOLLOW).node.position == control_position,
 		"Changing battery/time cannot shift ray controls"
 	)
-	# Flat photos, placeholders, transition/departure and detail window travel together.
-	main.photo_active = true
-	main.player_menu = main.photo_menu
-	main.photo.local_uri = "file:///follow/photo.jpg"
-	main.photo.geometry = 0
-	main.photo.gallery.mode = 0
-	main.photo._apply_geometry()
-	main.photo.panel.visible = true
-	main._place_screen()
-	main._show_player_menu()
-	main._on_session_control("follow")
-	var photo_local := placement(main, main.photo)
-	main.photo.set_screen_rotation(15)
-	main.photo._departing = main.photo.panel.duplicate()
-	main.photo.add_child(main.photo._departing)
-	main.photo._departing_pose = main.photo.flat_pose
-	main.photo._transition_active = true
-	main.photo._transition_time = .08
-	main.photo._transition_width = 1.0
-	var departing_local: Transform3D = (
-		main.xr_camera.global_transform.affine_inverse()
-		* (main.photo.global_transform * main.photo._departing_pose)
-	)
-	main.xr_camera.transform = Transform3D(
-		Basis.from_euler(Vector3(1.4, .8, 1.5)), Vector3(2, .3, -1)
-	)
-	main._update_view_follow()
-	check(
-		placement(main, main.photo).is_equal_approx(photo_local),
-		"Single flat photo follows complete head pose"
-	)
-	check(
-		(
-			(
-				main.xr_camera.global_transform.affine_inverse()
-				* (main.photo.global_transform * main.photo._departing_pose)
-			)
-			. is_equal_approx(departing_local)
-		),
-		"Departing photo retains head-relative placement during transition"
-	)
-	check(
-		main.photo.panel.basis.is_equal_approx(
-			main.photo.flat_pose.basis * Basis(Vector3.FORWARD, deg_to_rad(15))
-		),
-		"Photo transition preserves content rotation while following"
-	)
-	main.photo.finish_transition()
-	check(
-		main.photo.panel.basis.is_equal_approx(
-			main.photo.flat_pose.basis * Basis(Vector3.FORWARD, deg_to_rad(15))
-		),
-		"Finishing transition preserves photo content rotation"
-	)
-	footer_check(main.photo_menu, "Photo controls")
-	main.photo_menu._adjustment = "photo_view"
-	main.photo_menu.refresh()
-	footer_check(main.photo_menu, "Photo adjustment")
-	main.photo.gallery.mode = 2
-	main.photo_menu.refresh()
-	footer_check(main.photo_menu, "Gallery adjustment")
-	var gallery_pose: Transform3D = main.photo.flat_pose
-	main.xr_camera.rotate_y(.5)
-	main._update_view_follow()
-	check(
-		main.photo.flat_pose.is_equal_approx(gallery_pose) and main.view_follow.enabled,
-		"Multi-object photo layout does not inherit flat-screen follow"
-	)
-	main.photo.gallery.mode = 0
-	main._update_view_follow()
-	check(
-		placement(main, main.photo).is_equal_approx(photo_local),
-		"Returning to single photo resumes follow pose"
-	)
-	# Exercise Main's real ray press/release and each menu's dismiss/cleanup path.
+	# Without active video, the library and its confirmations must remain open.
+	main.video.close_video()
 	I18n.use("zh")
 	main._on_session_control("temporary_passthrough")
 	main._show_recent_menu()
@@ -674,8 +598,9 @@ func _run() -> void:
 		"Dismissal cannot hide a file confirmation; its own cancel action remains available"
 	)
 	main.recent_menu.file_actions.reset()
-	main.photo_active = false
-	main.player_menu = main.video_menu
+	main._on_library_chosen("file:///follow/popup_2D.mp4", "popup_2D.mp4")
+	main.video._waiting_first = false
+	main.video.panel.visible = true
 	main._show_player_menu()
 	main.video_menu._mode_open = true
 	main.video_menu.refresh()
@@ -684,12 +609,6 @@ func _run() -> void:
 	main._show_player_menu()
 	close_menu_check(main, main.video_menu, "Person passthrough")
 	main.video.set_alpha(false)
-	main.photo_active = true
-	main.player_menu = main.photo_menu
-	main._show_player_menu()
-	main.photo_menu._adjustment = "photo_view"
-	main.photo_menu.refresh()
-	close_menu_check(main, main.photo_menu, "Photo adjustments")
 	_check_reclining(main)
 	main.settings.save(main.settings_path)
 	var restarted := FollowMain.new()
@@ -755,7 +674,6 @@ func _choose_reclining(main: Node3D, enabled: bool) -> void:
 
 func _check_reclining(main: Node3D) -> void:
 	I18n.use("en")
-	main.photo_active = false
 	main.player_menu = main.video_menu
 	main.video.geometry = 0
 	main.video.panel.visible = true

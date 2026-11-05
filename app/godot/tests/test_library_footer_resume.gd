@@ -37,7 +37,6 @@ func _run() -> void:
 	root.add_child(main)
 	main.set_process(false)
 	main.video.set_process(false)
-	main.photo.set_process(false)
 	main.menu_compositor.set_process(false)
 	main.report_timer.stop()
 	var menu: Node3D = main.recent_menu
@@ -111,7 +110,7 @@ func _run() -> void:
 			var before := menu.global_transform
 			var video_before: Transform3D = main.video.flat_pose
 			var offsets: Dictionary = main.view_follow._poses.duplicate(true)
-			main._notification(Main.NOTIFICATION_APPLICATION_PAUSED)
+			main.notification(Main.NOTIFICATION_APPLICATION_PAUSED)
 			main.display.session_state = "session_visible"
 			main._on_input_session_changed()
 			main.tracked = false
@@ -129,7 +128,7 @@ func _run() -> void:
 			main.tracked = true
 			main.display.session_state = "session_focussed"
 			main._on_input_session_changed()
-			main._notification(Main.NOTIFICATION_APPLICATION_RESUMED)
+			main.notification(Main.NOTIFICATION_APPLICATION_RESUMED)
 			for frame in 5:
 				main._apply_system_recenter()
 			check(

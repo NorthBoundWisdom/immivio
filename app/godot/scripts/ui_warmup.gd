@@ -65,8 +65,8 @@ class NavigationCatalog:
 	extends RefCounted
 	var populated := false
 	func list_recent() -> Array:
-		return [{"uri": "", "title": "Immivio · 示例 / サンプル", "position_ms": 60000, "kind": "video"},
-			{"uri": "", "title": "Immivio image", "position_ms": 0, "kind": "image"}] if populated else []
+		return [{"uri": "warmup://navigation/video.mp4", "title": "Immivio · 示例 / サンプル", "position_ms": 60000, "kind": "video"},
+			{"uri": "warmup://navigation/second.mp4", "title": "Immivio video", "position_ms": 0, "kind": "video"}] if populated else []
 
 var navigation_pages_rendered := 0
 var navigation_sections_rendered: Array[int] = []
@@ -88,6 +88,7 @@ func prepare_library(menu: Node3D, tab: int) -> void:
 
 ## Only use with an isolated offscreen Library; no _load_section/request calls.
 func prepare_navigation(menu: Node3D, section_id: int, populated: bool, list_mode: bool = false) -> void:
+	menu.network.mode = ""
 	menu.section = section_id
 	menu.tab = Library.GENERAL_TAB if section_id == Library.Section.SETTINGS else 0
 	menu.scroll = 0
@@ -183,7 +184,7 @@ func _run() -> void:
 	camera.far = 3
 	target.add_child(camera)
 	camera.current = true
-	# Navigation is available immediately. Warm all six entry surfaces first.
+	# Navigation is available immediately. Warm the four entry surfaces first.
 	var library := Library.new()
 	library.browse_memory.path = "user://ui_warmup/no_store.cfg"
 	library.browse_memory.enabled = false

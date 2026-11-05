@@ -7,7 +7,6 @@
         android:version="1" />
     <!-- In-headset library: shared-storage videos, DLNA (SSDP multicast) and SMB shares. -->
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <!-- Clone-voice M4A tracks stored beside library videos are MediaStore audio. -->
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <!-- The library's folder browser reads the whole disk once the user allows "All files access". -->

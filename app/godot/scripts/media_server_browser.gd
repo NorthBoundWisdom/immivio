@@ -349,6 +349,9 @@ func _remember() -> void:
 
 
 func back() -> void:
+	if view == "servers":
+		menu.network.open()
+		return
 	menu.remember_browse()
 	cancel()
 	keyboard = ""
@@ -395,7 +398,7 @@ func visible_lines() -> int:
 
 
 func pitch() -> float:
-	return 0.29 if grid() else (0.10 if view == "filters" else 0.105)
+	return menu.GRID_PITCH.y if grid() else (0.10 if view == "filters" else 0.105)
 
 
 func list_top() -> float:
@@ -1236,10 +1239,10 @@ func _fit_picture(picture: MeshInstance3D, texture: Texture2D, area: Vector2) ->
 
 
 func tile(target: int, row: Dictionary, center: Vector2) -> void:
-	menu._button(target, "", center, Vector2(0.30, 0.27), true, "", false, menu._list)
+	menu._button(target, "", center, menu.TILE_SIZE, true, "", false, menu._list)
 	var node: MeshInstance3D = menu._buttons.back().node
 	var picture: MeshInstance3D = menu._quad(
-		Vector2(0.278, 0.192), Vector3(0, 0.026, 0.003), menu.TILE, 12
+		Vector2(menu.TILE_SIZE.x - .022, menu.TILE_SIZE.y - .078), Vector3(0, 0.026, 0.003), menu.TILE, 12
 	)
 	node.add_child(picture)
 	var texture := cover(row)
@@ -1247,15 +1250,15 @@ func tile(target: int, row: Dictionary, center: Vector2) -> void:
 		var material = menu._material(Color.WHITE, 12)
 		material.albedo_texture = texture
 		picture.material_override = material
-		_fit_picture(picture, texture, Vector2(0.278, 0.192))
+		_fit_picture(picture, texture, Vector2(menu.TILE_SIZE.x - .022, menu.TILE_SIZE.y - .078))
 	else:
 		menu._icon(str(row.get("icon", "video")), Vector3(0, 0.026, 0.006), 0.064, menu.MUTED, node)
 	menu._tips[target] = str(row.title)
 	var title: Label3D = menu._label(
-		menu._fit_title(str(row.title), "", 0.265, 22), Vector3(0, -0.087, 0.006), 22, node
+		menu._fit_title(str(row.title), "", 0.265, 22), Vector3(0, -.077, .006), 22, node
 	)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var meta: Label3D = menu._label(str(row.get("detail", "")), Vector3(0, -0.119, 0.006), 16, node)
+	var meta: Label3D = menu._label(str(row.get("detail", "")), Vector3(0, -.105, .006), 16, node)
 	meta.modulate = menu.MUTED
 
 
@@ -1264,7 +1267,7 @@ func draw() -> void:
 		_draw_keyboard()
 		return
 	prioritize_covers()
-	menu._button(ACTION, "", Vector2(-0.52, 0.46), Vector2(0.09, 0.07), view != "servers", "up")
+	menu._button(ACTION, "", Vector2(menu.CONTENT_LEFT + .045, menu.HEADER_Y), Vector2(0.09, 0.07), true, "up")
 	var management := view in ["servers", "remove_servers", "confirm_remove"]
 	var caption := (
 		I18n.t("Remove server")
@@ -1272,7 +1275,7 @@ func draw() -> void:
 		else str(server.get("name", I18n.t("Media servers")))
 	)
 	var heading: Label3D = menu._label(
-		menu._fit_title(caption, "", 0.77, 22), Vector3(-0.43, 0.46, 0.004), 22
+		menu._fit_title(caption, "", 0.77, 22), Vector3(menu.CONTENT_LEFT + .12, menu.HEADER_Y, .004), 22
 	)
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	if view == "servers":
@@ -1280,7 +1283,7 @@ func draw() -> void:
 			menu._button(
 				ACTION + item[0],
 				"",
-				Vector2(0.43 + (0.12 * ([1, 14, 12, 13].find(item[0]))), 0.46),
+				Vector2(menu.CONTENT_RIGHT - .405 + .12 * [1, 14, 12, 13].find(item[0]), menu.HEADER_Y),
 				Vector2(0.09, 0.07),
 				not busy or int(item[0]) in [1, 14],
 				item[1]
@@ -1294,7 +1297,7 @@ func draw() -> void:
 			menu._button(
 				ACTION + 2,
 				"",
-				Vector2(0.55, 0.46),
+				Vector2(menu.CONTENT_RIGHT - .285, menu.HEADER_Y),
 				Vector2(0.09, 0.07),
 				view != "filters",
 				"search"
@@ -1302,7 +1305,7 @@ func draw() -> void:
 		menu._button(
 			ACTION + 17,
 			"",
-			Vector2(0.67, 0.46),
+			Vector2(menu.CONTENT_RIGHT - .165, menu.HEADER_Y),
 			Vector2(0.09, 0.07),
 			not busy and view != "filters",
 			"heart"
@@ -1315,7 +1318,7 @@ func draw() -> void:
 			)
 		)
 		menu._button(
-			ACTION + 15, "", Vector2(0.79, 0.46), Vector2(0.09, 0.07), view != "filters", "settings"
+			ACTION + 15, "", Vector2(menu.CONTENT_RIGHT - .045, menu.HEADER_Y), Vector2(0.09, 0.07), view != "filters", "settings"
 		)
 		var tabs := _navigation()
 		for i in tabs.size():
@@ -1356,9 +1359,9 @@ func draw() -> void:
 		chips.append({"key": "unclassified", "id": "", "label": I18n.t("Uncategorized")})
 	if view == "scenes":
 		menu._button(
-			ACTION + 3, "", Vector2(0.79, 0.245), Vector2(0.08, 0.06), not busy, "settings"
+			ACTION + 3, "", Vector2(menu.CONTENT_RIGHT - .04, .245), Vector2(0.08, 0.06), not busy, "settings"
 		)
-		menu._button(ACTION + 4, "", Vector2(0.68, 0.245), Vector2(0.08, 0.06), not busy, "list")
+		menu._button(ACTION + 4, "", Vector2(menu.CONTENT_RIGHT - .15, .245), Vector2(0.08, 0.06), not busy, "list")
 		menu._tips[ACTION + 4] = I18n.t(
 			SORT_NAMES[maxi(0, SORTS.find(str(query.get("sort", "created_at"))))]
 		)
@@ -1384,20 +1387,20 @@ func draw() -> void:
 				Vector2(0.40, -0.44),
 				Vector2(0.30, 0.065)
 			)
-	if view in ["scenes", "facets", "candidates"]:
+	if view in ["scenes", "facets", "candidates"] and menu.status.is_empty():
 		var count := candidate_total if view in ["facets", "candidates"] else total
 		var loaded := candidates.size() if view in ["facets", "candidates"] else entries.size()
-		menu._label("%d / %d" % [loaded, count], Vector3(-0.36, -0.515, 0.004), 15)
+		menu._label("%d / %d" % [loaded, count], Vector3(menu.CONTENT_LEFT + .12, menu.FOOTER_Y, .004), 15)
 		var has_more := not candidate_end if view in ["facets", "candidates"] else not end_reached
 		if loaded < count and has_more:
 			menu._button(
-				ACTION + 6, I18n.t("More"), Vector2(0.73, -0.515), Vector2(0.18, 0.065), not busy
+				ACTION + 6, I18n.t("More"), Vector2(menu.CONTENT_RIGHT - .09, menu.FOOTER_Y), Vector2(0.18, 0.065), not busy
 			)
 		if view == "scenes":
 			menu._button(
 				ACTION + 9,
 				"",
-				Vector2(0.52, -0.515),
+				Vector2(.52, menu.FOOTER_Y),
 				Vector2(0.08, 0.065),
 				not busy,
 				"bookmark_add"
@@ -1406,10 +1409,11 @@ func draw() -> void:
 	elif view == "filters":
 		menu._button(ACTION + 11, I18n.t("Apply"), Vector2(0.55, -0.345), Vector2(0.30, 0.065))
 	if not menu.status.is_empty() and menu.status != "Server authentication required":
-		menu._label(I18n.t(menu.status), Vector3(0.15, -0.57, 0.004), 15)
+		var status_label: Label3D = menu._label(menu._fit_title(I18n.t(menu.status), "", menu.CONTENT_RIGHT - menu.CONTENT_LEFT - .12, 15), Vector3(menu.CONTENT_LEFT, menu.FOOTER_Y, .004), 15)
+		status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		if not busy:
 			menu._button(
-				ACTION + 12, "", Vector2(0.79, -0.565), Vector2(0.08, 0.06), true, "refresh"
+				ACTION + 12, "", Vector2(menu.CONTENT_RIGHT - .04, menu.FOOTER_Y), Vector2(0.08, 0.06), true, "refresh"
 			)
 	if menu.status == "Server authentication required" and not management:
 		_draw_sign_in_required()
@@ -1534,14 +1538,14 @@ func _draw_home() -> void:
 	menu._button(
 		ACTION + 101,
 		I18n.t("All") + " · " + str(total) + " ›",
-		Vector2(0.64, latest_y),
+		Vector2(menu.CONTENT_RIGHT - .17, latest_y),
 		Vector2(0.34, 0.05)
 	)
 	for i in mini(4, home_data.get("recent", []).size()):
 		tile(
 			menu.ROW_BASE + i + row_offset,
 			menu.rows[i + row_offset],
-			Vector2(-0.36 + i * 0.333, latest_y - 0.16)
+			Vector2(menu.GRID_LEFT + i * menu.GRID_PITCH.x, latest_y - .16)
 		)
 	if menu.rows.is_empty() and not busy and menu.status.is_empty():
 		menu._label(I18n.t("No items"), Vector3(0.16, -0.05, 0.004), 18)
@@ -1624,13 +1628,7 @@ func _draw_detail() -> void:
 
 func _draw_bar() -> void:
 	if menu._max_scroll() > 0:
-		var span := bar_span()
-		var x := 0.75 if view == "filters" else 0.835
-		menu._button(menu.SCROLLBAR, "", Vector2(x, span.x - span.y * 0.5), Vector2(0.04, span.y))
-		var thumb: float = span.y * visible_lines() / menu._line_count()
-		menu._bar_thumb = menu._decoration(
-			Vector2(0.012, thumb), Vector2(x, span.x - thumb * 0.5), menu.MUTED
-		)
+		menu._draw_scrollbar(bar_span())
 
 
 func _draw_keyboard() -> void:

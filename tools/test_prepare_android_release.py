@@ -16,7 +16,7 @@ class ReleaseAssets(unittest.TestCase):
         directory = root / "packages"
         directory.mkdir()
         for vendor, platform in release.PLATFORMS.items():
-            name = f"Immivio-{platform}-0.6.0-release-20261013.apk"
+            name = f"Immivio-{platform}-0.6.0-web-release-20261013.apk"
             data = vendor.encode()
             (directory / name).write_bytes(data)
             record = {
@@ -46,6 +46,7 @@ class ReleaseAssets(unittest.TestCase):
                 "sha256": hashlib.sha256(data).hexdigest(),
                 "product": "Immivio",
                 "build_type": "Release",
+                "channel": "web",
                 "source_commit": COMMIT,
                 "ci_ref": "refs/tags/" + TAG,
                 "ci_host": "macOS",
@@ -81,6 +82,8 @@ class ReleaseAssets(unittest.TestCase):
             ("ci_host", "Windows"),
             ("product", "Other"),
             ("build_type", "Debug"),
+            ("channel", "appstore"),
+            ("channel", None),
             ("signing_certificate_sha256", ""),
         ]:
             with self.subTest(key=key), tempfile.TemporaryDirectory() as temporary:

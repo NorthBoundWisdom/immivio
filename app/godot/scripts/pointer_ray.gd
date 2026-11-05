@@ -1,5 +1,4 @@
 extends RefCounted
-## Shared full ray for the existing menu, world and photo pointers. Picking stays
 ## with their owners; soft edges and a stable visual width keep the beam unobtrusive.
 const SHADER := preload("res://shaders/pointer_ray.gdshader")
 static var _overlay_shader: Shader

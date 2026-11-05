@@ -94,15 +94,17 @@ func _run() -> void:
 	main.recent_menu.section = main.recent_menu.Section.SETTINGS
 	main.recent_menu.tab = main.recent_menu.DISPLAY_TAB
 	main.recent_menu.refresh()
+	var quality_rows: Array = main.recent_menu.rows.filter(func(row): return row.get("key") == "display_quality")
+	var sharpness_rows: Array = main.recent_menu.rows.filter(func(row): return row.get("key") == "sharpness")
 	check(
 		(
-			main.recent_menu.rows.size() == 4
-			and main.recent_menu.rows[0].choices.size() == 4
-			and main.recent_menu.rows[0].choices[0].value == Quality.AUTO
-			and main.recent_menu.rows[1].choices.size() == 4
-			and main.recent_menu.rows[2].key == "show_fps"
+			quality_rows.size() == 1 and sharpness_rows.size() == 1
+			and quality_rows[0].choices.size() == 4
+			and quality_rows[0].choices[0].value == Quality.AUTO
+			and sharpness_rows[0].choices.size() == 4
+			and main.recent_menu.rows.any(func(row): return row.get("key") == "show_fps")
 		),
-		"Quality and sharpness each occupy one field with all their choices, followed by the FPS display"
+		"Quality and sharpness each occupy one field with all their choices, alongside the FPS display"
 	)
 	main._on_setting_changed("display_quality", 2)
 	main._on_setting_changed("sharpness", 0.4)
@@ -121,12 +123,8 @@ func _run() -> void:
 	check(main.get_viewport().msaa_3d == Viewport.MSAA_2X, "MSAA quality also waits for restart")
 	check(main._library_settings().display_quality_pending, "Pending quality is visible")
 	check(
-		main.video.sharpness == 0.4 and main.photo.sharpness == 0.4,
-		"Sharpness applies to both media types"
-	)
-	check(
-		main.photo._detail_material.get_shader_parameter("sharpness") == 0.4,
-		"Photo magnifier matches"
+		main.video.sharpness == 0.4,
+		"Sharpness applies to video"
 	)
 	settings.load(path)
 	check(
@@ -182,7 +180,7 @@ func _run() -> void:
 		"Low-end tier starts at Standard through auto quality"
 	)
 	check(
-		main.low_end_gpu and main.video.sharpness == 0.0 and main.photo.sharpness == 0.0,
+		main.low_end_gpu and main.video.sharpness == 0.0,
 		"Low-end tier starts without sharpening"
 	)
 	check(

@@ -40,11 +40,12 @@ BUILD_INPUTS = (
 )
 
 
-def arguments_for(vendor, build_type, tools):
+def arguments_for(vendor, build_type, tools, channel="appstore"):
     components = player.sdk_tools()
     return SimpleNamespace(
         vendor=vendor,
         build_type=build_type,
+        channel=channel,
         godot=tools["godot"],
         templates=Path(tools["templates"]),
         gradle=tools["gradle"],
@@ -57,8 +58,9 @@ def arguments_for(vendor, build_type, tools):
     )
 
 
-def configuration_path(vendor, build_type):
-    return ROOT / f"build/configurations/{vendor}-{build_type}.json"
+def configuration_path(vendor, build_type, channel="appstore"):
+    suffix = "" if channel == "appstore" else "-" + channel
+    return ROOT / f"build/configurations/{vendor}-{build_type}{suffix}.json"
 
 
 def input_signature(args):
@@ -86,6 +88,7 @@ def input_signature(args):
             }
         )
     inputs["android_identity"] = player.android_identity(args.build_type)
+    inputs["distribution_channel"] = player.distribution_channel(args)
     inputs["mpv_libraries"] = {
         name: digest(path) for name, path in player.mpv_libraries().items()
     }
@@ -132,7 +135,7 @@ def configure(args, env, sdk):
     # Stage the OpenXR vendor addon before configuring the Android project.
     stage_vendors()
     player.configure_project(args, env, sdk)
-    marker = configuration_path(args.vendor, args.build_type)
+    marker = configuration_path(args.vendor, args.build_type, player.distribution_channel(args))
     marker.parent.mkdir(parents=True, exist_ok=True)
     marker.write_text(
         json.dumps(
@@ -161,7 +164,7 @@ def configure(args, env, sdk):
 
 
 def require_configuration(args, env, sdk):
-    marker = configuration_path(args.vendor, args.build_type)
+    marker = configuration_path(args.vendor, args.build_type, player.distribution_channel(args))
     if not marker.is_file():
         raise RuntimeError("Configure this target and build type first")
     data = json.loads(marker.read_text())
@@ -210,7 +213,7 @@ def prepare_packages(args, env):
 
 def build(args, env, sdk):
     player.build_plugin(args, env, sdk)
-    path = ROOT / f"build/configurations/{args.vendor}-{args.build_type}.built.json"
+    path = configuration_path(args.vendor, args.build_type, player.distribution_channel(args)).with_suffix(".built.json")
     path.write_text(
         json.dumps(
             {
@@ -226,7 +229,7 @@ def build(args, env, sdk):
 
 
 def require_build(args):
-    path = ROOT / f"build/configurations/{args.vendor}-{args.build_type}.built.json"
+    path = configuration_path(args.vendor, args.build_type, player.distribution_channel(args)).with_suffix(".built.json")
     if not path.exists():
         raise RuntimeError("Run build before package or run")
     data = json.loads(path.read_text())
@@ -303,6 +306,10 @@ def main(argv=None):
     )
     parser.add_argument("--vendor", choices=VENDORS, default="Quest")
     parser.add_argument(
+        "--channel", choices=player.CHANNELS,
+        help="Distribution channel (default: appstore; GitHub tags always use web)",
+    )
+    parser.add_argument(
         "--build-type",
         choices=("Debug", "Release"),
         default=os.environ.get("CI_BUILD_TYPE", "Debug"),
@@ -317,9 +324,10 @@ def main(argv=None):
     if opts.command == "clean":
         clean_build(ROOT, dry_run=opts.dry_run)
         return 0
-    from configs.ci_support import build_type_for_ref
+    from configs.ci_support import build_type_for_ref, build_channel_for_ref
 
     opts.build_type = build_type_for_ref(opts.build_type)
+    opts.channel = build_channel_for_ref(opts.channel)
     if opts.command == "stop-gradle":
         import shutil
 
@@ -332,6 +340,7 @@ def main(argv=None):
         opts.vendor,
         opts.build_type,
         tools,
+        opts.channel,
     )
     env, sdk = player.environment(args)
     with player.build_lock():
@@ -358,12 +367,12 @@ def main(argv=None):
             if os.environ.get("GITHUB_ACTIONS") == "true":
                 from configs.ci_support import ci_package_metadata
 
-                ci_package_metadata(args.vendor, args.build_type)
+                ci_package_metadata(args.vendor, args.build_type, args.channel)
         else:
             require_build(args)
             from configs.ci_support import latest_receipt
 
-            receipt = latest_receipt(args.vendor, args.build_type)
+            receipt = latest_receipt(args.vendor, args.build_type, args.channel)
             apk = ROOT / "artifacts" / receipt["apk"]
             if digest(apk) != receipt["sha256"]:
                 raise RuntimeError("APK differs from its receipt")

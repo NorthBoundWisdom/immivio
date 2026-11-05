@@ -64,6 +64,55 @@ func _run() -> void:
 	var compositor := Surface.new()
 	root.add_child(compositor)
 	compositor.active_menu = menu
+	compositor.menus = [menu]
+	var metadata := compositor._capture_metadata(Surface.capture_pose(menu))
+	check(compositor._matches_capture(metadata), "Current page can publish its captured pixels")
+	menu.refresh()
+	check(compositor._matches_capture(metadata), "Refreshing values on the same page must not blank the menu")
+	menu._quick_open = "info"
+	menu.refresh()
+	check(not compositor._matches_capture(metadata), "A subtitle/page redraw cannot publish the previous page's pixels")
+	var library := preload("res://scripts/library_menu.gd").new()
+	root.add_child(library)
+	library.visible = true
+	compositor.menus.append(library)
+	metadata = compositor._capture_metadata(Surface.capture_pose(menu))
+	library.section = library.Section.SETTINGS
+	library.refresh()
+	check(not compositor._matches_capture(metadata), "A secondary browser redraw also invalidates captured pixels")
+	metadata = compositor._capture_metadata(Surface.capture_pose(menu))
+	library.visible = false
+	check(not compositor._matches_capture(metadata), "Closing the browser invalidates the combined capture")
+	compositor.menus = [menu]
+	library.free()
+	menu.curve_radius = 0
+	compositor.layer = OpenXRCompositionLayerQuad.new()
+	root.add_child(compositor.layer)
+	compositor.native_supported = true
+	compositor.surface_rect = old_rect
+	compositor.presented = compositor._capture_metadata(Surface.capture_pose(menu))
+	compositor._apply_presented_layer()
+	check(compositor.layer.quad_size == old_rect.size, "Acknowledged current pixels reveal the native layer")
+	menu.refresh()
+	check(compositor._matches_capture(compositor.presented), "Ordinary redraws retain the current native page while copying")
+	menu._quick_open = ""
+	menu.refresh()
+	compositor._apply_presented_layer()
+	check(compositor.layer.quad_size == old_rect.size, "A page redraw preserves the native window when its projection is unchanged")
+	menu.position.x += .2
+	compositor._apply_presented_layer()
+	check(compositor.layer.quad_size == Vector2.ONE * .001, "Page changes cannot reuse pixels at a different placement")
+	compositor.presented = compositor._capture_metadata(Surface.capture_pose(menu))
+	compositor._apply_presented_layer()
+	check(compositor.layer.quad_size == old_rect.size, "Acknowledging the new page reveals its own projection")
+	compositor._tag(menu._backdrop)
+	compositor._set_native_capture(true)
+	compositor._set_native_ready(false)
+	check(menu._backdrop.layers == Surface.UI_LAYER, "Waiting for the native surface never flashes flat scene geometry")
+	compositor.layer.free()
+	compositor.layer = null
+	compositor._set_native_capture(false)
+	menu.curve_radius = 1.4
 	var ordinary_rect := Rect2()
 	for page in Warmup.PAGES:
 		warmer.prepare(menu, page)

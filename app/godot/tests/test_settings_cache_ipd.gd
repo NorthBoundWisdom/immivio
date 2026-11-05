@@ -68,7 +68,6 @@ func _run() -> void:
 	main.report_timer.stop()
 	main.menu_compositor.set_process(false)
 	main.video.set_process(false)
-	main.photo.set_process(false)
 	var video: Node3D = main.video
 	var host := Host.new()
 	video.platform = host

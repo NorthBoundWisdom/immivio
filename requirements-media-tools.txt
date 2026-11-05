@@ -2,7 +2,6 @@
 numpy==2.5.3
 opencv-python-headless==5.0.0.93
 pillow==12.3.0
-pillow-heif==1.8.1
 onnxruntime==1.30.0
 flatbuffers==25.12.19
 packaging==26.3

@@ -1,5 +1,4 @@
 extends Node3D
-## Shared spatial surface only: decoding, playback clocks and photo queues live in their owners.
 signal mode_lock_changed(lock: Dictionary)
 
 var mode_lock := {}  # Default for unmarked, unremembered media; manual mode changes unlock it.

@@ -119,6 +119,11 @@ func capture_envelope() -> Rect2:
 	return Rect2()
 
 
+## Navigation changes need fresh pixels; value updates and scrolling share a page.
+func presentation_page() -> Variant:
+	return 0
+
+
 func _reset_navigation() -> void:
 	pass
 

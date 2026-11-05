@@ -45,7 +45,6 @@ func _run() -> void:
 	host.set_process(false)
 	host.menu_compositor.set_process(false)
 	host.video.set_process(false)
-	host.photo.set_process(false)
 	host.player_menu.set_process(false)
 	host.report_timer.stop()
 	for projection in [Geometry.Geometry.FLAT, Geometry.Geometry.FISHEYE]:

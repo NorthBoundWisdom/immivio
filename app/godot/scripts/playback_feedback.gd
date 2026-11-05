@@ -28,11 +28,7 @@ func tick() -> void:
 	var key: String = str(video.media.session_id) + "/" + video.local_uri
 	var details: Dictionary = video.media.playback.get("details", {})
 	var stage := ""
-	if host.photo_active:
-		key = "photo/" + host.photo.local_uri
-		if host.photo.loading:
-			stage = "Loading image"
-	elif video.media.accepts(video.media.session_id):
+	if video.media.accepts(video.media.session_id):
 		if video._waiting_first or video.media.state in ["opening", "buffering"]:
 			stage = str(video.media.playback.get("loading_stage", "Waiting for video"))
 		elif str(details.get("paused_for_cache", "no")) == "yes":
@@ -41,7 +37,7 @@ func tick() -> void:
 		session = key
 		since = 0
 		error_seen = ""
-	var failure: String = video.media.error if not host.photo_active else ""
+	var failure: String = video.media.error
 	if not failure.is_empty() and error_seen != failure:
 		error_seen = failure
 		host._show_player_menu()
@@ -62,7 +58,7 @@ func tick() -> void:
 	var seconds := maxi(0, (Time.get_ticks_msec() - since) / 1000)
 	message = I18n.t(stage) + " · %d s" % seconds
 	var speed := (
-		maxf(0, float(details.get("read_bytes_per_second", 0))) if not host.photo_active else 0.0
+		maxf(0, float(details.get("read_bytes_per_second", 0)))
 	)
 	if speed > 0:
 		message += (

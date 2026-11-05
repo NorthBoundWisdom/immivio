@@ -33,6 +33,14 @@ from configs.dependencies import (
 )
 
 LOCK = {**TOOLCHAIN, **TOOLCHAIN["android"]}
+CHANNELS = ("appstore", "web")
+
+
+def distribution_channel(args=None):
+    channel = getattr(args, "channel", "appstore")
+    if channel not in CHANNELS:
+        raise ValueError("Distribution channel must be appstore or web")
+    return channel
 
 
 def stop_process(process):
@@ -452,7 +460,9 @@ def android_identity(build_type=None):
 
 
 @contextmanager
-def variant_export_presets():
+def variant_export_presets(channel="appstore"):
+    if channel not in CHANNELS:
+        raise ValueError("Distribution channel must be appstore or web")
     path = PROJECT / "export_presets.cfg"
     original = path.read_bytes()
     identity = android_identity()
@@ -468,6 +478,25 @@ def variant_export_presets():
         )
         if count != 3:
             raise RuntimeError("Android export presets changed: " + field)
+
+    def set_channel(match):
+        block = match[0]
+        features = re.search(r'(?m)^custom_features="([^"]*)"\r?$', block)
+        retained = (
+            [value for value in features[1].split(",")
+             if value and value not in ("immivio_appstore", "immivio_web")]
+            if features else []
+        )
+        retained.append("immivio_" + channel)
+        line = "custom_features=" + json.dumps(",".join(retained))
+        if features:
+            return block[:features.start()] + line + block[features.end():]
+        header, body = block.split("\n", 1)
+        return header + "\n" + line + "\n" + body
+
+    text, count = re.subn(r'(?ms)^\[preset\.\d+\]\r?\n.*?(?=^\[|\Z)', set_channel, text)
+    if count != 3:
+        raise RuntimeError("Expected three Android export presets for distribution channels")
     try:
         path.write_text(text, encoding="utf-8")
         yield identity
@@ -779,6 +808,7 @@ def build_plugin(args, env, sdk):
 
 
 def package(args, env, sdk):
+    channel = distribution_channel(args)
     identity = android_identity(args.build_type)
     development_suffix = "-dev" if identity["application_id"].endswith(".dev") else ""
     variant = args.build_type.lower()
@@ -790,7 +820,7 @@ def package(args, env, sdk):
     platform_name = {"Quest": "QUEST", "Pico": "PICO", "OpenXR": "OpenXR"}[args.vendor]
     output = (
         ROOT
-        / f"artifacts/Immivio{development_suffix}-{platform_name}-{version}-{variant}-{datetime.now():%Y%m%d}.apk"
+        / f"artifacts/Immivio{development_suffix}-{platform_name}-{version}-{channel}-{variant}-{datetime.now():%Y%m%d}.apk"
     )
     preset = {"Quest": "Quest 3", "Pico": "PICO 4", "OpenXR": "OpenXR (Experimental)"}[
         args.vendor
@@ -801,7 +831,7 @@ def package(args, env, sdk):
     print(f"Exporting {output.name}", flush=True)
     env["IMMIVIO_OFFLINE_BUILD"] = "1"
     try:
-        with variant_export_presets():
+        with variant_export_presets(channel):
             run(
                 [
                     export_executable(args.godot),
@@ -834,6 +864,12 @@ def package(args, env, sdk):
             "Godot export reported errors; see artifacts/logs/base-godot-export.log"
         )
     sha = inspect_package(output, env, sdk)
+    with zipfile.ZipFile(output) as archive:
+        config = archive.read("assets/project.binary")
+    if ("immivio_" + channel).encode() not in config or any(
+        ("immivio_" + other).encode() in config for other in CHANNELS if other != channel
+    ):
+        raise RuntimeError("Packaged Godot feature does not match the requested distribution channel")
     revision = subprocess.check_output(
         ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
     ).strip()
@@ -860,6 +896,7 @@ def package(args, env, sdk):
         "godot": engine,
         "vendor": args.vendor,
         "build_type": args.build_type,
+        "channel": channel,
         "source_commit": revision,
         "source_dirty": dirty,
         "ndk": args.ndk,

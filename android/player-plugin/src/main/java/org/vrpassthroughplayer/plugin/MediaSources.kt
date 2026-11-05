@@ -54,10 +54,6 @@ internal class MediaSources(
     @Synchronized
     fun streams(): LocalStreamServer = server ?: LocalStreamServer().also { server = it }
 
-    fun releasePhotoStream(uri: String) {
-        if (uri.isNotEmpty()) server?.revoke(uri)
-    }
-
     fun nextId(): Int = ids.incrementAndGet()
 
     /** Main thread: may show the media permission request. path "" lists the storage volumes. */

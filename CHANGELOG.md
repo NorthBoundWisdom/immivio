@@ -6,7 +6,18 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 ## Unreleased
 
-No changes yet.
+- Keep playback transport/header/timeline nodes alive when opening, closing or updating popups. Reserve subtitle and other popup bounds in advance and preserve the toolbar capture anchor and placement when replacing the compact file browser, avoiding full-bar flashes while retaining capture acknowledgement for input.
+
+- Give file-browser panels one shared inset on all four edges. Align headers, centred grids/lists, footer actions and settings tabs to it; inset the scrollbar's visible rail while preserving its wider ray target. Apply the shared layout to network and media-server browsers, and keep status messages inside the panel.
+- Add independent appstore/web distribution channels. Default local, branch and PR builds to appstore with no update-check UI; include explicit GitHub checks only in web exports. Force tag CI to web/Release, record and verify the baked channel, give APKs distinct channel names, and reject store-channel packages at GitHub publication.
+- Add bilingual Privacy Policy and Terms of Use pages to the website, with localized footer links, search metadata and sitemap entries. State the maintainer's no-collection policy while explaining local processing, optional media-server requests, user-shared feedback and GitHub Pages hosting; preserve GPL rights in the terms.
+- Remove still-photo playback, spatial/HEIF decoding, galleries, magnifier, photo gestures, preloading and photo cache APIs. File libraries now always show videos and folders, with no All/Video/Images filter. Retire still-image history/queue entries and preferences while preserving original media, video playback, subtitles, covers, thumbnails and built-in scenery.
+
+- Flatten Add source and Manage sources so SMB, DLNA, Emby, Jellyfin, Plex, Stash and XBVR appear together; provider choices open their own forms or saved accounts directly. Put descriptions below complete protocol titles with plain paired parentheses. Bind post-save navigation to the submitted request so delayed background listings cannot close the chooser.
+- Keep the library window continuously visible when switching Settings ↔ Network media. Retain the preceding image while redrawing an unchanged window, while continuing to wait for matching pixels when its placement, projection or visible menu set changes.
+- Consolidate SMB shares, DLNA libraries and media-server accounts under one Network media entry. Show saved/discovered sources together, explain connection types when adding or managing sources, retain existing account/folder state and reject listings that arrive after leaving their section.
+- Prevent library and subtitle/page transitions from briefly displaying the preceding UI texture on a new projection. Wait for the matching capture before revealing curved scene or native XR layers, while retaining continuous value updates and scrolling.
+- Lower library, settings, playback and photo control windows by 12 cm by default. Add a persistent Window height slider under Settings → Display, adjustable from −60 to +30 cm; apply movement on release and retain the offset across recentering and reclining placement.
 
 ## 0.9.5 — 2026-11-05
 

@@ -5,7 +5,7 @@ var _host_ref: WeakRef
 const Log := preload("res://scripts/diagnostic_log.gd")
 const Video := preload("res://scripts/mpv_video_display.gd")
 const ThumbnailCache := preload("res://scripts/thumbnail_cache.gd")
-const ImageInfo := preload("res://scripts/image_info.gd")
+const MediaFiles := preload("res://scripts/media_files.gd")
 const I18n := preload("res://scripts/i18n.gd")
 
 var _queue_add_mode := false
@@ -27,8 +27,6 @@ func open_external(value: Dictionary) -> void:
 	host.player_menu.dismiss()
 	host._grab = {}
 	host.stick_controls.suspend()
-	host.photo.close_image()
-	host.photo_active = false
 	host.player_menu = host.video_menu
 	if host.video.open_library(uri, str(value.get("title", "Video"))):
 		host._show_player_menu()
@@ -38,77 +36,62 @@ func open_external(value: Dictionary) -> void:
 
 func _on_library_chosen(uri: String, title: String) -> void:
 	var host := _host_ref.get_ref() as Node3D
-	if not is_instance_valid(host):
+	if not is_instance_valid(host) or not MediaFiles.is_video(uri, title):
 		return
-	var is_photo: bool = ImageInfo.is_image(uri, title) or host.recent_menu.is_image_uri(uri)
 	if host._queue_add_mode:
-		if not is_photo:
-			var metadata: Dictionary = (
-				host.recent_menu.server_browser.selection.duplicate(true)
-				if uri.begins_with("medialib://")
-				else {}
-			)
-			for item in host.recent_menu.video_queue():
-				if item.uri == uri:
-					metadata = item.get("metadata", {})
-					break
-			host.playback_queue.custom = true
-			host.playback_queue.append([{"uri": uri, "title": title, "metadata": metadata}])
-			host._save_queue()
-			host.recent_menu.status = "Added to playback queue"
-			host.recent_menu.refresh()
+		var metadata: Dictionary = (
+			host.recent_menu.server_browser.selection.duplicate(true)
+			if uri.begins_with("medialib://")
+			else {}
+		)
+		for item in host.recent_menu.video_queue():
+			if item.uri == uri:
+				metadata = item.get("metadata", {})
+				break
+		host.playback_queue.custom = true
+		host.playback_queue.append([{"uri": uri, "title": title, "metadata": metadata}])
+		host._save_queue()
+		host.recent_menu.status = "Added to playback queue"
+		host.recent_menu.refresh()
 		return
 	host.recent_menu.dismiss()
 	if host.player_menu:
 		host.player_menu.dismiss()
 	host._grab = {}
 	host.stick_controls.suspend()
-	if is_photo:
-		host.video.close_video()
-		host.photo_active = true
-		host.player_menu = host.photo_menu
-		host._photo_open_hide_controls = host.hand_pointers.values().any(
-			func(pointer): return pointer.source == "hand"
-		)
-		host.photo.open_image(uri, title, host.recent_menu.image_queue())
+	host.player_menu = host.video_menu
+	host.playback_queue.anchor = uri
+	if not host.playback_queue.custom:
+		host.video_queue = host.recent_menu.video_queue()
+	if host.playback_queue.find(uri).is_empty():
+		host.playback_queue.append([{"uri": uri, "title": title}])
+	var metadata: Dictionary = (
+		host.recent_menu.server_browser.selection.duplicate(true)
+		if uri.begins_with("medialib://")
+		else {}
+	)
+	if not uri.begins_with("medialib://"):
+		for row in host.recent_menu.rows:
+			if str(row.get("uri", "")) == uri:
+				metadata = row.duplicate(true)
+				break
+	host.recent_menu.server_browser.selection = {}
+	if metadata.get("uri", "") != uri:
+		metadata = {}
+	if not host.playback_queue.find(uri).is_empty():
+		host.playback_queue.find(uri).metadata = metadata.duplicate(true)
+	if host.playback_queue.shuffle:
+		host.playback_queue.configure("queue_shuffle", true, uri)
+	host._save_queue()
+	if host.video.open_library(uri, title, metadata):
 		host._show_player_menu()
-	else:
-		host._photo_open_hide_controls = false
-		host.photo.close_image()
-		host.photo_active = false
-		host.player_menu = host.video_menu
-		host.playback_queue.anchor = uri
-		if not host.playback_queue.custom:
-			host.video_queue = host.recent_menu.video_queue()
-		if host.playback_queue.find(uri).is_empty():
-			host.playback_queue.append([{"uri": uri, "title": title}])
-		var metadata: Dictionary = (
-			host.recent_menu.server_browser.selection.duplicate(true)
-			if uri.begins_with("medialib://")
-			else {}
-		)
-		if not uri.begins_with("medialib://"):
-			for row in host.recent_menu.rows:
-				if str(row.get("uri", "")) == uri:
-					metadata = row.duplicate(true)
-					break
-		host.recent_menu.server_browser.selection = {}
-		if metadata.get("uri", "") != uri:
-			metadata = {}
-		if not host.playback_queue.find(uri).is_empty():
-			host.playback_queue.find(uri).metadata = metadata.duplicate(true)
-		if host.playback_queue.shuffle:
-			host.playback_queue.configure("queue_shuffle", true, uri)
-		host._save_queue()
-		if host.video.open_library(uri, title, metadata):
-			host._show_player_menu()
 
 
 func _adjacent_video(direction: int) -> Dictionary:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return {}
-	if host.photo_active or not host.video:
+	if not host.video:
 		return {}
 	return host.playback_queue.adjacent(host.video.local_uri, direction)
 
@@ -167,8 +150,6 @@ func _queue_action(operation: String) -> void:
 				var item = host.video_queue[index]
 				if host.playback_queue.shuffle:
 					host.playback_queue.configure("queue_shuffle", true, str(item.uri))
-				host.photo.close_image()
-				host.photo_active = false
 				host.player_menu = host.video_menu
 				host.video.requested_play = true
 				host.video.open_library(str(item.uri), str(item.title), item.get("metadata", {}))
@@ -196,12 +177,7 @@ func _advance_queue(session_id: int, uri: String) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
-	if (
-		host.photo_active
-		or host.video.media.session_id != session_id
-		or host.video.local_uri != uri
-		or not host.video.completed_presentation()
-	):
+	if host.video.media.session_id != session_id or host.video.local_uri != uri or (not host.video.completed_presentation()):
 		return
 	if host.video.loop_enabled:
 		return
@@ -219,8 +195,6 @@ func _advance_queue(session_id: int, uri: String) -> void:
 func _on_video_changed() -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host) or host.is_queued_for_deletion() or not host.is_inside_tree() or host.get("_finishing_app") == true:
-		return
-	if host.photo_active:
 		return
 	if host.video.media.state != "ended":
 		host._queue_end_key = ""
@@ -278,9 +252,6 @@ func _on_menu_action(operation: String) -> void:
 		return
 	if operation == "forget_subtitle":
 		host.video.forget_external_subtitle()
-		return
-	if host.photo_active:
-		host._on_photo_action(operation)
 		return
 	match operation:
 		"open_file":
@@ -353,8 +324,6 @@ func _on_menu_seek(position_ms: int) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
-	if host.photo_active:
-		return
 	host.video.seek_absolute(position_ms)
 
 
@@ -366,8 +335,6 @@ func _on_player_setting(key: String, value: Variant) -> void:
 		host.playback_queue.configure(key, bool(value), host.video.local_uri)
 		host.settings.set_value("playback", key, bool(value))
 		host.settings.save(host.settings_path)
-		return
-	if host.photo_active:
 		return
 	match key:
 		"subtitle_below_screen":
@@ -399,7 +366,7 @@ func _on_bookmark_request(operation: String, marker_id: String, scope: String) -
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
-	if host.photo_active or operation not in ["seek", "delete", "undo"]:
+	if operation not in ['seek', 'delete', 'undo']:
 		return
 	host._menu_touched_ms = Time.get_ticks_msec()
 	var message: String = host.video.bookmark_action(operation, marker_id, scope)

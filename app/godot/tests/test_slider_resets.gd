@@ -2,7 +2,6 @@ extends SceneTree
 const Main := preload("res://scripts/main.gd")
 const Grade := preload("res://scripts/color_grade.gd")
 const Menu := preload("res://scripts/player_menu.gd")
-const PhotoMenu := preload("res://scripts/photo_menu.gd")
 const Memory := preload("res://scripts/file_mode_memory.gd")
 var checks := 0
 var failures: Array[String] = []
@@ -96,7 +95,6 @@ func _run() -> void:
 	root.add_child(main)
 	main.set_process(false)
 	main.report_timer.stop()
-	main.photo.set_process(false)
 	main.video.set_process(false)
 	main.recent_menu.dismiss()
 	var video: Node3D = main.video
@@ -227,100 +225,6 @@ func _run() -> void:
 	check(video.subtitle_position == 0, "Library subtitle settings use the same independent reset")
 	main.recent_menu.dismiss()
 
-	main.photo_active = true
-	main.player_menu = main.photo_menu
-	var photo: Node3D = main.photo
-	var image := Image.create(128, 64, false, Image.FORMAT_RGB8)
-	image.fill(Color.WHITE)
-	photo._texture = ImageTexture.create_from_image(image)
-	photo._size = Vector2(128, 64)
-	photo.material.set_shader_parameter("photo_texture", photo._texture)
-	photo._apply_geometry()
-	photo.panel.visible = true
-	main._place_screen()
-	photo.set_screen_scale(2)
-	photo.set_inspect_magnification(4)
-	menu = main.photo_menu
-	menu.set_process(false)
-	menu.toggle()
-	menu._activate(PhotoMenu.PHOTO_ADJUST)
-	tap(menu, Menu.SLIDER_RESET_BASE + 451)
-	check(
-		photo.screen_scale == 1 and photo.inspect_magnification == 4 and not photo.inspect,
-		"Photo size reset preserves magnification and does not open an effect"
-	)
-	var photo_stored := ConfigFile.new()
-	photo_stored.load(main.settings_path)
-	check(
-		photo_stored.get_value("photo_screen", "scale") == 1.0, "Photo reset persists immediately"
-	)
-	photo.set_projection(3)
-	menu.refresh_values()
-	var pose: Transform3D = photo.panel.global_transform
-	menu._activate(Menu.SLIDER_RESET_BASE + 450)
-	check(
-		(
-			not button(menu, Menu.SLIDER_RESET_BASE + 450).enabled
-			and photo.panel.global_transform == pose
-		),
-		"Disabled panorama distance reset cannot move the image"
-	)
-	tap(menu, Menu.SLIDER_RESET_BASE + 452)
-	check(
-		photo.inspect_magnification == 2 and not photo.inspect,
-		"Magnification reset does not enable the magnifier"
-	)
-	check(
-		(
-			not video.depth_requested
-			and not photo.depth_requested
-			and not video.auto_depth
-			and not photo.auto_depth
-		),
-		"All resets leave retired 3D effects off"
-	)
-	var gallery_state := {
-		"has_image": true,
-		"count": 5,
-		"layout": 2,
-		"gallery_focus": -1,
-		"gallery_scale": 1.5,
-		"gallery_distance": 7.0,
-		"wall_rows": 3
-	}
-	var gallery_menu := PhotoMenu.new()
-	gallery_menu.state_provider = func(): return gallery_state
-	gallery_menu.adjustment_requested.connect(func(key, value): gallery_state[key] = value)
-	root.add_child(gallery_menu)
-	gallery_menu.set_process(false)
-	gallery_menu.toggle()
-	gallery_menu._activate(PhotoMenu.PHOTO_ADJUST)
-	tap(gallery_menu, Menu.SLIDER_RESET_BASE + 451)
-	check(
-		(
-			gallery_state.gallery_distance == 4.0
-			and gallery_state.gallery_scale == 1.5
-			and gallery_state.wall_rows == 3
-		),
-		"Photo wall resets to its own 4m default without changing scale or rows"
-	)
-	tap(gallery_menu, Menu.SLIDER_RESET_BASE + 452)
-	check(gallery_state.wall_rows == 1, "Wall rows restore independently to one row")
-	gallery_state.layout = 3
-	gallery_state.gallery_distance = 7.0
-	gallery_menu.refresh()
-	tap(gallery_menu, Menu.SLIDER_RESET_BASE + 451)
-	check(
-		is_equal_approx(gallery_state.gallery_distance, 3.6),
-		"Memory fragments use their distinct 3.6m default"
-	)
-	gallery_state.count = 0
-	gallery_menu.refresh()
-	check(
-		not button(gallery_menu, Menu.SLIDER_RESET_BASE + 450).enabled,
-		"Empty galleries disable their reset actions"
-	)
-	gallery_menu.queue_free()
 	main.queue_free()
 	await process_frame
 	for failure in failures:
