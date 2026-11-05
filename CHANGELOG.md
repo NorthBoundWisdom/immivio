@@ -6,6 +6,12 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 ## Unreleased
 
+No changes yet.
+
+## 0.9.5 — 2026-11-05
+
+- Set application version 0.9.5 / versionCode 19 for Quest, PICO and experimental OpenXR packages.
+
 - Project neutral ray feedback onto the playback title and battery/clock pills, including beside the file browser. Informational surfaces stop the ray without triggering actions or dismissing controls; taps outside the UI still dismiss it.
 
 - Preserve antialiasing outside menu surface edges so the timeline's hover highlight and rounded outlines stay smooth, without changing their hit areas or hover feedback.
