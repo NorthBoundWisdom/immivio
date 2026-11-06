@@ -297,6 +297,9 @@ html[lang="zh-CN"] .hero h1 {
   object-fit: contain;
   object-position: center 60%;
 }
+.hero-media picture img {
+  aspect-ratio: auto;
+}
 .caption {
   font-size: 0.74rem;
   color: var(--muted);

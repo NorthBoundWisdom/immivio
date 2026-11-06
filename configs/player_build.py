@@ -8,6 +8,7 @@ The OpenXR addon comes from the project's verified archive cache.
 from contextlib import contextmanager, nullcontext
 from datetime import datetime
 import json
+import hashlib
 import os
 from pathlib import Path
 import re
@@ -358,7 +359,46 @@ def template_directory(args, env):
     return base / name, version
 
 
-def signing_environment(env, *, build_type="Release"):
+def signing_directory(env):
+    """Long-lived private identity storage, separate from disposable build outputs."""
+    if selected := env.get("IMMIVIO_SIGNING_DIR"):
+        return Path(selected).expanduser().absolute()
+    if os.name == "nt":
+        return Path(env.get("APPDATA", Path.home() / "AppData/Roaming")) / "Immivio/signing"
+    return Path(env.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "immivio/signing"
+
+
+def migrate_legacy_signing(directory):
+    """Copy an existing project identity out of artifacts without replacing a key."""
+    if any((directory / (stem + "-signing.json")).exists() for stem in ("thru3d", "immivio")):
+        return
+    legacy = ROOT / "artifacts/signing"
+    for stem in ("thru3d", "immivio"):
+        record = legacy / (stem + "-signing.json")
+        if not record.is_file() or legacy.resolve() == directory.resolve():
+            continue
+        saved = json.loads(record.read_text())
+        source = Path(saved["keystore"])
+        if not source.is_file():
+            source = legacy / saved["keystore"].replace("\\", "/").rsplit("/", 1)[-1]
+        if not source.is_file():
+            raise RuntimeError("Saved signing key is missing")
+        destination = directory / (stem + "-release.keystore")
+        if destination.exists() and digest(destination) != digest(source):
+            raise RuntimeError("Persistent signing key differs from the legacy identity; refusing to overwrite it")
+        if not destination.exists():
+            shutil.copyfile(source, destination)
+        if os.name != "nt":
+            destination.chmod(0o600)
+        saved["keystore"] = str(destination)
+        target = directory / record.name
+        target.write_text(json.dumps(saved))
+        if os.name != "nt":
+            target.chmod(0o600)
+        return
+
+
+def signing_environment(env, *, build_type="Release", require_existing=False):
     env = env.copy()
     prefix = "GODOT_ANDROID_KEYSTORE_" + build_type.upper()
     selected = prefix
@@ -374,14 +414,17 @@ def signing_environment(env, *, build_type="Release"):
             }
         )
         return env
-    directory = ROOT / "artifacts/signing"
+    directory = signing_directory(env)
     directory.mkdir(parents=True, exist_ok=True, mode=0o700)
-    # Preserve the existing ordinary-player signing key for upgrade compatibility.
+    migrate_legacy_signing(directory)
+    # Preserve an existing identity; a new identity is created only outside store packaging.
     stem = "thru3d" if (directory / "thru3d-signing.json").exists() else "immivio"
     credentials = directory / (stem + "-signing.json")
     keystore = directory / (stem + "-release.keystore")
     alias = "immivio"
     if not credentials.exists():
+        if require_existing:
+            raise RuntimeError("Store Release builds require an existing project release key or complete GODOT_ANDROID_KEYSTORE_RELEASE_* overrides; no temporary key will be generated")
         if keystore.exists():
             raise RuntimeError(
                 "Signing key exists without credentials; restore its credentials"
@@ -813,7 +856,20 @@ def package(args, env, sdk):
     development_suffix = "-dev" if identity["application_id"].endswith(".dev") else ""
     variant = args.build_type.lower()
     templates, engine = template_directory(args, env)
-    env = signing_environment(env, build_type=args.build_type)
+    store_release = channel == "appstore" and args.build_type == "Release"
+    env = signing_environment(env, build_type=args.build_type, require_existing=store_release)
+    store_certificate = None
+    if store_release and args.vendor == "Pico":
+        prefix = "GODOT_ANDROID_KEYSTORE_RELEASE_"
+        certificate_bytes = subprocess.check_output([
+            Path(env["JAVA_HOME"]) / "bin" / ("keytool.exe" if os.name == "nt" else "keytool"),
+            "-exportcert", "-keystore", env[prefix + "PATH"], "-alias", env[prefix + "USER"],
+            "-storepass:env", prefix + "PASSWORD",
+        ], env=env)
+        store_certificate = hashlib.sha256(certificate_bytes).hexdigest()
+        from configs.pico_store import CERTIFICATE_SHA256
+        if store_certificate != CERTIFICATE_SHA256:
+            raise RuntimeError("PICO store signing key differs from the fixed project store certificate; restore the existing key instead of generating a replacement")
     version = re.search(
         r'(?m)^config/version="([^"]+)"', (PROJECT / "project.godot").read_text()
     )[1]
@@ -828,6 +884,7 @@ def package(args, env, sdk):
     # An early/failed export must not leave a previous package looking current.
     output.unlink(missing_ok=True)
     output.with_suffix(".build.json").unlink(missing_ok=True)
+    output.with_suffix(".store-report.json").unlink(missing_ok=True)
     print(f"Exporting {output.name}", flush=True)
     env["IMMIVIO_OFFLINE_BUILD"] = "1"
     try:
@@ -886,6 +943,26 @@ def package(args, env, sdk):
         raise RuntimeError("APK signing certificate is missing")
     from configs.android_workflow import dependency_receipt
 
+    store_report = None
+    if store_release and args.vendor == "Pico":
+        from configs.pico_store import validate
+        presets = (PROJECT / "export_presets.cfg").read_text()
+        codes = re.findall(r"(?m)^version/code=(\d+)\r?$", presets)
+        if len(codes) != 3 or len(set(codes)) != 1:
+            raise RuntimeError("Android export versions must agree")
+        baseline_path = env.get("IMMIVIO_PICO_STORE_BASELINE")
+        baseline = json.loads(Path(baseline_path).read_text()) if baseline_path else None
+        try:
+            report = validate(output, verify_xmltree((LOGS / "base-apk-xmltree.log").read_text()),
+                certificate=certificate[1], expected_certificate=store_certificate,
+                version=version, version_code=int(codes[0]),
+                expected_app_id=env.get("IMMIVIO_PICO_APP_ID"), baseline=baseline)
+        except ValueError as error:
+            output.unlink(missing_ok=True)
+            raise RuntimeError(str(error)) from error
+        report["sha256"] = sha
+        store_report = output.with_suffix(".store-report.json")
+        store_report.write_text(json.dumps(report, indent=2) + "\n")
     receipt = {
         **dependency_receipt(),
         **android_identity(),
@@ -903,6 +980,8 @@ def package(args, env, sdk):
         "cmake": args.cmake,
         "device_execution": "not_verified",
     }
+    if store_report:
+        receipt["store_report"] = store_report.name
     (output.with_suffix(".build.json")).write_text(json.dumps(receipt, indent=2) + "\n")
     print(f"Built {output}\nSHA256 {sha}", flush=True)
 

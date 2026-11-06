@@ -190,12 +190,13 @@ def check_export_path(templates, gradle, env):
     print("Verified Godot/Gradle export path with spaces and a literal +", flush=True)
 
 
-def build_type_for_ref(requested=None, environment=None):
+def build_type_for_ref(requested=None, environment=None, channel=None):
     environment = os.environ if environment is None else environment
     # A tag is a release boundary even if a caller accidentally requests Debug.
     if environment.get("GITHUB_REF", "").startswith("refs/tags/"):
         return "Release"
-    selected = requested or environment.get("CI_BUILD_TYPE", "Debug")
+    channel = channel or build_channel_for_ref(environment=environment)
+    selected = requested or environment.get("CI_BUILD_TYPE") or ("Release" if channel == "appstore" else "Debug")
     if selected not in ("Debug", "Release"):
         raise ValueError("Build type must be Debug or Release")
     return selected

@@ -277,7 +277,8 @@ class VariantIdentityBoundaries(unittest.TestCase):
             patch.object(builder, "ROOT", Path(directory)),
             patch.object(builder, "run") as run,
         ):
-            signing = Path(directory) / "artifacts/signing"
+            root = Path(directory)
+            signing = root / "artifacts/signing"
             signing.mkdir(parents=True)
             key = signing / "thru3d-release.keystore"
             key.write_bytes(b"original fixture key")
@@ -287,8 +288,9 @@ class VariantIdentityBoundaries(unittest.TestCase):
                 "password": "fixture",
             }
             (signing / "thru3d-signing.json").write_text(json.dumps(record))
-            env = builder.signing_environment({})
-            self.assertEqual(env["GODOT_ANDROID_KEYSTORE_RELEASE_PATH"], str(key))
+            env = builder.signing_environment({"IMMIVIO_SIGNING_DIR": str(root / "persistent")})
+            self.assertEqual(env["GODOT_ANDROID_KEYSTORE_RELEASE_PATH"], str(root / "persistent/thru3d-release.keystore"))
+            self.assertEqual((root / "persistent/thru3d-release.keystore").read_bytes(), key.read_bytes())
             self.assertEqual(
                 json.loads((signing / "thru3d-signing.json").read_text()), record
             )
@@ -312,7 +314,7 @@ class VariantIdentityBoundaries(unittest.TestCase):
                 )
             )
             with self.assertRaisesRegex(RuntimeError, "Saved signing key is missing"):
-                builder.signing_environment({})
+                builder.signing_environment({"IMMIVIO_SIGNING_DIR": str(Path(directory) / "persistent")})
             run.assert_not_called()
 
 

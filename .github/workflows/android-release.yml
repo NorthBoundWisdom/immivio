@@ -11,7 +11,7 @@ on:
       build_type:
         description: APK build type (tags always use Release)
         type: choice
-        default: Debug
+        default: Release
         options: [Debug, Release]
       channel:
         description: Distribution channel (tags always use web)
@@ -134,6 +134,7 @@ jobs:
           path: |
             artifacts/Immivio-*.apk
             artifacts/Immivio-*.build.json
+            artifacts/Immivio-*.store-report.json
             artifacts/SHA256SUMS.txt
             artifacts/ci-summary.json
           if-no-files-found: error

@@ -53,7 +53,7 @@ python3 configs/android_workflow.py package --vendor Quest --build-type Debug
 
 Use `Pico` or `OpenXR` for the other targets and `Release` for distributable packages. The same Python commands run in PowerShell.
 
-The distribution channel is independent of the headset and Debug/Release mode. All commands default to `--channel appstore`; this builds a store-distributed app with no Check for updates or external update-release action. Use `--channel web` consistently for Configure, Build, Test, Package and Run to include the explicit GitHub update checker:
+The distribution channel is independent of the headset. Local commands default to `--channel appstore --build-type Release`; explicit `--build-type Debug` remains available for development and cannot be uploaded as a store release. Web commands default to Debug unless a build type or CI override is supplied. Appstore builds produce a store-distributed app with no Check for updates or external update-release action. Use `--channel web` consistently for Configure, Build, Test, Package and Run to include the explicit GitHub update checker:
 
 ```sh
 python3 configs/android_workflow.py configure --vendor Pico --build-type Debug --channel web
@@ -66,6 +66,26 @@ Channels use mutually exclusive Godot export features (`immivio_appstore` / `imm
 `prepare_assets.py --download` explicitly downloads the OpenXR archive if its cache is missing or invalid. Run it without `--download` to verify the cache offline. `prepare-packages` prepares ordinary Gradle application package caches using their native manifests; it does not install Gradle, Python or any other host tool. Configure/Build/Test/Package consume prepared inputs offline. Gradle respects the host's normal cache locations and environment overrides. Valid caches let subsequent builds skip these preparation commands.
 
 Configure is explicit. Build/Test/Package reject missing or stale configuration; Package requires a successful current Build. `run` installs an already packaged APK on the attached device. Generated projects and outputs stay under ignored build directories. `python3 configs/android_workflow.py clean --dry-run` previews cleanup; `clean` removes `build/` while preserving the addon cache and signing material. Configure again afterward.
+
+## PICO store APKs
+
+The default PICO store workflow uses the existing application identity, project-owned release key, ARM64 and `minSdkVersion=29` for PICO Neo3, PICO 4 and PICO 4 Ultra:
+
+```sh
+python3 configs/android_workflow.py configure --vendor Pico
+python3 configs/android_workflow.py build --vendor Pico
+python3 configs/android_workflow.py package --vendor Pico
+```
+
+Package validates the **compiled APK** using [PICO's first-version upload rules](https://developer-cn.picoxr.com/document/distribute/app-publish-first-version/#3af79c21). It checks the APK format and conservative 4,000,000,000-byte limit, package/version consistency, ARM64, SDK values and actual XR metadata, appstore feature, release-only components and one launcher icon. Existing checks still verify signatures, native dependencies, 16-KB alignment and the video application category. It records MD5 (PICO's duplicate-upload comparison), SHA-256 and the signer in `<APK stem>.store-report.json`; the build receipt names this report. Only the APK is uploaded as the installation package.
+
+The store certificate's **public** SHA-256 fingerprint is pinned in `configs/pico_store.py`. The maintainer prepared the first store identity before any PICO store version was on shelf; earlier draft/side-loaded packages used a retired certificate. Store packaging requires the fixed store key through its persistent local signing record or complete `GODOT_ANDROID_KEYSTORE_RELEASE_*` overrides, verifies the APK signer against the configured key and refuses key drift. It never generates a temporary store key. Keep the private keystore and password backed up outside Git. Changing the first store signing identity later needs an explicit migration agreed with PICO.
+
+Manual CI defaults to Release/appstore and uploads the store report alongside its APK. Provision the same fixed key using the existing `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD` repository secrets before requesting a CI store package. A missing or different key fails closed; this workflow does not transmit local private keys automatically. Branch/PR CI deliberately specifies Debug for development validation; tag CI remains web/Release. Debug APKs are not store submissions.
+
+If an actual `pvr.app.id` is embedded, set `IMMIVIO_PICO_APP_ID` to the real platform-assigned ID so validation can compare it. An APK without this optional field does not receive a fabricated ID. For an **already uploaded version in the same PICO track/region**, set `IMMIVIO_PICO_STORE_BASELINE` to its store-report JSON: validation then requires the same package/certificate, a nondecreasing versionCode and a different APK MD5. Do not treat an unsubmitted local build as an uploaded baseline. Portal state cannot be inferred from local packages.
+
+The current Godot/OpenXR APK reports its actual SDK metadata. The linked Unity/Unreal SDK thresholds for Swan devices in the US are outside this package's device scope; do not relabel the SDK or claim Swan support. A successful local report does not constitute PICO store approval: platform application/package binding, correct feature declarations, store artwork, developer identity/contact, privacy policy, applicable regional filings and device/content review still belong to submission. Existing public policy pages are [Privacy](https://northboundwisdom.github.io/immivio/zh/privacy/) and [Terms](https://northboundwisdom.github.io/immivio/zh/terms/).
 
 ## Playback libraries and formats
 
@@ -83,7 +103,7 @@ Signing is project-local and independent of any employer or company product. Use
 
 For PICO, the project exporter supplies a concrete `ImmivioLauncherActivity`; the engine alias is hidden from the launcher to avoid duplicate entries. The activity forwards to the normal immersive alias and reuses an existing player instance. Other vendors retain their normal Godot entry. PICO may list sideloaded immersive SDK applications under Library → Unknown sources even when the Android category is video.
 
-The application ID is `com.northboundwisdom.immivio`. It installs separately from legacy `com.wapok.thru3d`; existing legacy data is not automatically migrated. PICO may reject the legacy identity through its store entitlement service. Set `IMMIVIO_DEVELOPMENT_PACKAGE=1` for a separate Debug-only `com.northboundwisdom.immivio.dev` build; configuration and receipts include the selected identity. Existing `artifacts/signing/thru3d-signing.json` credentials are reused. Complete `GODOT_ANDROID_KEYSTORE_<DEBUG|RELEASE>_*` overrides take priority. Keep keys outside Git.
+The application ID is `com.northboundwisdom.immivio`. It installs separately from legacy `com.wapok.thru3d`; existing legacy data is not automatically migrated. PICO may reject the legacy identity through its store entitlement service. Set `IMMIVIO_DEVELOPMENT_PACKAGE=1` for a separate Debug-only `com.northboundwisdom.immivio.dev` build; configuration and receipts include the selected identity. Keys and credentials now live outside disposable outputs: `~/.config/immivio/signing/` on macOS/Linux (`XDG_CONFIG_HOME` is respected), or `%APPDATA%/Immivio/signing/` on Windows. `IMMIVIO_SIGNING_DIR` can select another durable private directory. Back up that directory securely. Existing project-local `artifacts/signing/` identities, when still present, are copied into the persistent directory without replacing a different key; subsequent builds use the persistent copy. Never keep the only signing-key copy in `artifacts/`. Complete `GODOT_ANDROID_KEYSTORE_<DEBUG|RELEASE>_*` overrides take priority. Keep keys outside Git.
 
 Windows/macOS CI runs on GitHub-hosted `windows-2025` and `macos-15` machines. The setup action installs Python, Java, Android SDK components, Gradle, matching Godot editor/export templates, and Noto CJK system fonts before checking the environment. `configs/ci_toolchain.json` selects CI host tools and verified download hashes. The mpv APK and extracted ARM64 libraries are verified against `third_party/mpv/manifest.json`. No private runner registration or shared environment file is needed. Tool installation is isolated in `configs/setup_hosted_ci.py`; local Configure/Build/Test/Package commands still never install tools. Pull requests, including forks, can use the hosted machines; release signing secrets are only supplied to Release builds outside pull requests.
 
@@ -92,3 +112,19 @@ Existing queued runs retain the workflow from their original commit and will not
 Tag pushes create a GitHub Release with the tagged changelog on a GitHub-hosted runner, independently of Android runner availability. Android tag builds use Release and repository signing secrets when supplied. Attaching APKs requires successful builds on both hosts and matching tag/commit; canonical APKs come from macOS. Until APK assets appear, the Release contains source archives only. APK checks cover ARM64, ELF symbol/dependency closure and 16KB alignment, signatures, ZIP alignment and application identity. They do not establish headset playback performance.
 
 USB improvements use Android's verified system-mounted volumes. Android 11+ may fall back to a verified public/app-storage mount path when its preferred directory is unavailable and permission permits reading; this is reevaluated rather than persisted. Some PICO system/provider paths may still fail even when a drive appears mounted. Check system storage permissions/mount state and reconnect before retrying. “Stop app access” closes Immivio readers only; system removal/ejection belongs to Android. A raw USB mass-storage, partition or filesystem driver is not included.
+
+## Branding assets
+
+This set was supplied by the maintainer on 2026-11-06. `source-manifest.json` records the original filenames, sizes and SHA-256 values. The six original PNGs are preserved byte-for-byte: the primary app tile lives at `app/godot/branding/immivio-icon.png`, and the three transparent layers plus two posters live in `branding/source/`.
+
+Run the deterministic preparation command from the repository root:
+
+```sh
+godot --headless --xr-mode off --path app/godot --script ../../tools/prepare_branding.gd
+```
+
+It produces the Android 432px adaptive foreground/background and white-alpha monochrome mask, the 256px site icon, responsive WebP posters, a 1200×675 JPEG sharing image, and the 1024px icon/layers plus 2560×1440 and 1024×1024 JPEG posters in `branding/pico/`. The independent play layer is centred at half scale when composing layered icons so its proportions match the supplied posters. Original sources are never modified.
+
+The Android foreground keeps the complete surround/play mark inside the adaptive safe area; the background fills the system mask without a second opaque icon tile. Source layers and posters stay outside the Godot resource tree so the application does not bundle unused marketing originals.
+
+The homepage and social preview use promotional illustrations, labelled as artwork. Actual application screenshots remain under `website/assets/screenshots/` with their original capture manifest and captions.

@@ -27,11 +27,16 @@ class CiBoundaries(unittest.TestCase):
             ci.build_type_for_ref("Debug", {"GITHUB_REF": "refs/tags/v1"}), "Release"
         )
 
-    def test_branch_and_pr_default_to_debug(self):
+    def test_store_defaults_to_release_and_explicit_ci_debug_is_preserved(self):
         for ref in ("refs/heads/main", "refs/pull/1/merge"):
             self.assertEqual(
-                ci.build_type_for_ref(environment={"GITHUB_REF": ref}), "Debug"
+                ci.build_type_for_ref(environment={"GITHUB_REF": ref}), "Release"
             )
+
+    def test_web_default_and_debug_override_are_independent_of_store(self):
+        self.assertEqual(ci.build_type_for_ref(environment={},channel="web"),"Debug")
+        self.assertEqual(ci.build_type_for_ref("Debug",{},channel="appstore"),"Debug")
+        self.assertEqual(ci.build_type_for_ref(environment={"CI_BUILD_TYPE":"Debug"}),"Debug")
 
     def test_manual_release_and_invalid_build_type(self):
         self.assertEqual(ci.build_type_for_ref("Release", {}), "Release")
