@@ -6,13 +6,19 @@
 
 **VR180 · VR360 · 3D Video**
 
-Immivio is a **free, open-source VR video player** for standalone Android XR headsets. No player purchase or subscription is required.
+## 产品简介 / Product overview
 
-Watch VR180, 360° and 3D side-by-side (SBS) videos on Meta Quest, PICO, or a compatible Android OpenXR headset. Choose a virtual cinema screen or an immersive projection, connect your NAS or media library, and keep playback controls within reach.
+**一句话介绍：** 免费开源的 VR 视频播放器，把本地与网络视频带进私人影院。
 
-**Designed for high-performance playback:** libmpv uses Android hardware video decoding where supported, with shared GPU textures for rendering and adjustable display quality. Actual performance depends on headset, codec, resolution and bitrate.
+**Short description:** A free, open-source VR player for local and network videos.
 
-Immivio 是面向 Meta Quest 与 PICO 的免费开源 VR 视频播放器，支持 VR180、360° 全景、3D 左右立体视频，提供硬件解码、GPU 渲染，以及 SMB、DLNA 网络媒体库访问。[查看中文官网](https://northboundwisdom.github.io/immivio/zh/)。
+**中文**
+
+Immivio 是一款面向 PICO 和 Meta Quest 的免费开源 VR 视频播放器，支持普通视频、3D 立体视频以及 180°／360°全景视频。你可以从本地文件、家庭共享文件夹或兼容的媒体服务器中选择影片，在虚拟大屏或环绕画面中观看。屏幕大小、位置和弯曲程度可按坐姿或躺姿调整，配合双语文字字幕、播放队列，以及可记忆的播放进度与观影偏好，让下一次继续观看更方便。播放器免费使用，无需购买或订阅。
+
+**English**
+
+Immivio is a free, open-source VR video player for PICO and Meta Quest. Watch regular, 3D stereo, 180° and 360° videos from local files, home shared folders or compatible media servers, on a virtual screen or in an immersive view. Adjust screen size, position and curvature for seated or reclined viewing. Bilingual text subtitles, playback queues and remembered progress and viewing preferences make it easier to pick up where you left off. The player requires no purchase or subscription.
 
 [Website](https://northboundwisdom.github.io/immivio/) · [Releases](https://github.com/NorthBoundWisdom/immivio/releases) · [Development builds](https://github.com/NorthBoundWisdom/immivio/actions/workflows/android-release.yml) · [User guide](https://northboundwisdom.github.io/immivio/guide/) · [中文官网与使用指南](https://northboundwisdom.github.io/immivio/zh/)
 

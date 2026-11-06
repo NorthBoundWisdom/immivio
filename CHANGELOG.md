@@ -1,284 +1,317 @@
-# Changelog
+# 更新说明 / Changelog
 
-[Bilingual release notes](https://northboundwisdom.github.io/immivio/updates/)
+[中文官网更新说明](https://northboundwisdom.github.io/immivio/zh/updates/) · [English release notes](https://northboundwisdom.github.io/immivio/updates/)
 
-Newest first, following product release milestones. Entries under 0.6.0 and earlier describe the original project; removed conversion features are historical, not current Immivio capabilities. Some development/source snapshots contained features before their product release. Original APK identifiers `0.2` and `0.4` are retained; `0.4` was also called `0.4.0` in release notes. Availability depends on device, server and media capabilities.
+按版本由新到旧排列，只记录与使用体验有关的主要变化。“待发布”不代表已经上线。0.6.0 及更早版本属于原项目历史；文中提到的照片浏览、网盘、AI 转 3D 等功能已在后续版本移除，当前功能以 [README](README.md) 为准。
 
-## Unreleased
+Newest first, with the main changes that affect everyday use. Unreleased items are not yet part of a public release. Versions 0.6.0 and earlier belong to the original project. Photo viewing, cloud drives and AI 3D conversion appear only as historical features and were removed later; see the [README](README.md) for current capabilities.
 
-- Organize generated packages by platform/channel/build type, separate logs, test results, captures and reports, and archive old outputs with a move journal. Add toolchain-free output discovery and scoped cleanup, update nested CI publication, and remove temporary expanded APK libraries after each inspection.
+## 待发布 / Unreleased
 
-- Keep signing identities in a persistent user configuration directory outside the repository/build artifacts. Preserve existing identities when migrating, refuse conflicting key replacement, and prepare the initial PICO store identity before any store version is on shelf.
+**中文**
 
-- Replace application/site icons and homepage/social artwork with the supplied immersive surround/play set. Preserve all six sources and hashes, generate adaptive/themed icons and PICO-ready layers, and distinguish promotional artwork from actual interface screenshots.
+- 更换应用图标，更新官网首页、宣传图和分享预览。
+- 新增中英文 PICO 商店详情图，展示示例视频播放与主要功能，并统一上传海报的尺寸和格式。
+- 完善 PICO 商店安装包的发布前检查。
 
-- Default local appstore commands and manual CI selections to Release. Validate PICO store APKs against the linked upload rules, pin the existing project store signing certificate, reject temporary signing identities, and emit size/ABI/SDK/version/signature/MD5/SHA-256 reports. Keep explicit Debug builds for development and web tag releases separate.
+**English**
+
+- Refresh the app icon, website artwork and sharing previews.
+- Add Chinese and English PICO Store detail images showing sample-video playback and key features, with consistent upload-poster dimensions and formats.
+- Improve pre-release checks for PICO Store packages.
 
 ## 0.9.6 — 2026-11-06
 
-- Set application version 0.9.6 / versionCode 20 for Quest, PICO and experimental OpenXR packages.
+**中文**
 
-- Preserve moving playback controls while subtitle/other popup captures await GPU acknowledgement. Reuse the toolbar at its current rigid pose on the same projection, retain hover feedback without enabling pending controls, and cover moving-viewer ray clicks with title/timeline pixel comparisons.
+- 将共享文件夹、家庭媒体库和媒体服务器合并到“网络媒体”，添加来源更直观，修复添加页面意外返回的问题。
+- 修复播放小窗、设置与网络媒体切换时的闪烁，改善轻微头部移动时播放条的稳定性。
+- 统一文件管理页四周的留白，让列表和网格更整齐。
+- 窗口默认下移 12 厘米；可在“设置 → 显示 → 窗口高度”中调整到舒服的位置。
+- 专注视频播放，移除照片浏览及相关功能；本地文件只显示视频和文件夹，原始照片文件不会被删除。
+- 区分商店版和官网版：商店版不显示“检查更新”，官网版保留手动检查。
+- 官网新增中英文隐私政策和用户协议。
 
-- Keep playback transport/header/timeline nodes alive when opening, closing or updating popups. Reserve subtitle and other popup bounds in advance and preserve the toolbar capture anchor and placement when replacing the compact file browser, avoiding full-bar flashes while retaining capture acknowledgement for input.
+**English**
 
-- Give file-browser panels one shared inset on all four edges. Align headers, centred grids/lists, footer actions and settings tabs to it; inset the scrollbar's visible rail while preserving its wider ray target. Apply the shared layout to network and media-server browsers, and keep status messages inside the panel.
-- Add independent appstore/web distribution channels. Default local, branch and PR builds to appstore with no update-check UI; include explicit GitHub checks only in web exports. Force tag CI to web/Release, record and verify the baked channel, give APKs distinct channel names, and reject store-channel packages at GitHub publication.
-- Add bilingual Privacy Policy and Terms of Use pages to the website, with localized footer links, search metadata and sitemap entries. State the maintainer's no-collection policy while explaining local processing, optional media-server requests, user-shared feedback and GitHub Pages hosting; preserve GPL rights in the terms.
-- Remove still-photo playback, spatial/HEIF decoding, galleries, magnifier, photo gestures, preloading and photo cache APIs. File libraries now always show videos and folders, with no All/Video/Images filter. Retire still-image history/queue entries and preferences while preserving original media, video playback, subtitles, covers, thumbnails and built-in scenery.
-
-- Flatten Add source and Manage sources so SMB, DLNA, Emby, Jellyfin, Plex, Stash and XBVR appear together; provider choices open their own forms or saved accounts directly. Put descriptions below complete protocol titles with plain paired parentheses. Bind post-save navigation to the submitted request so delayed background listings cannot close the chooser.
-- Keep the library window continuously visible when switching Settings ↔ Network media. Retain the preceding image while redrawing an unchanged window, while continuing to wait for matching pixels when its placement, projection or visible menu set changes.
-- Consolidate SMB shares, DLNA libraries and media-server accounts under one Network media entry. Show saved/discovered sources together, explain connection types when adding or managing sources, retain existing account/folder state and reject listings that arrive after leaving their section.
-- Prevent library and subtitle/page transitions from briefly displaying the preceding UI texture on a new projection. Wait for the matching capture before revealing curved scene or native XR layers, while retaining continuous value updates and scrolling.
-- Lower library, settings and playback control windows by 12 cm by default. Add a persistent Window height slider under Settings → Display, adjustable from −60 to +30 cm; apply movement on release and retain the offset across recentering and reclining placement.
+- Bring shared folders, home media libraries and media servers into one Network media entry. Make source setup clearer and stop it from unexpectedly returning to the main page.
+- Fix flashes when opening playback popups or switching between Settings and Network media, and improve control-bar stability during small head movements.
+- Use even spacing around file-browser content for tidier lists and grids.
+- Lower windows by 12 cm by default. Adjust their position under Settings → Display → Window height.
+- Focus on video playback and remove photo viewing. Local files now show videos and folders; original photo files are not deleted.
+- Separate store and website editions: store builds hide Check for updates, while website builds retain the manual check.
+- Add English and Chinese Privacy Policy and Terms of Use pages to the website.
 
 ## 0.9.5 — 2026-11-05
 
-- Set application version 0.9.5 / versionCode 19 for Quest, PICO and experimental OpenXR packages.
+**中文**
 
-- Project neutral ray feedback onto the playback title and battery/clock pills, including beside the file browser. Informational surfaces stop the ray without triggering actions or dismissing controls; taps outside the UI still dismiss it.
+- 新增双语字幕，可同时显示两条文字字幕，并按视频记住选择；平面视频的字幕也可放在画面下方。
+- 自动识别常见外挂字幕的文字编码，减少乱码；可按文件名查找和选择字幕，不改动原字幕文件。
+- Emby、Jellyfin 支持选择可直接播放的影片版本，并分别记住进度和设置；改进媒体库文件夹与 Plex 分类浏览。
+- 支持从系统文件管理器打开或分享兼容的视频，改进 U 盘访问和错误提示。
+- 优化中文显示、下拉框、手柄射线和窗口切换；播放控件等画面准备好后再显示，减少位置跳动和误触。
+- 扩大平面画面的尺寸与距离调整范围，新增更方便的沉浸式画面移动和缩放；可选择左手、右手或双手捏合操作。
+- 默认优先使用 72 Hz，并只列出设备支持的刷新率；新增播放顺序／随机切换，以及未识别视频沿用上次观看模式的选项。
+- 新增手动检查更新和本地问题记录导出；取消应用内的重启、退出按钮，改用头显系统管理。
 
-- Preserve antialiasing outside menu surface edges so the timeline's hover highlight and rounded outlines stay smooth, without changing their hit areas or hover feedback.
+**English**
 
-- Make the playback file browser mutually exclusive with video setting, subtitle, queue and bookmark popups. Apply viewing-distance curvature to playback and photo menus as well as the library, with matching curved-ray coordinates for captured sliders and timeline seeks.
-
-- Show a newly opened video's playback controls only after its first frame resolves the screen layout, placing the timeline once at its final anchor. Keep loading feedback visible and preserve error recovery and user cancellation.
-
-- Render system-font menu text with antialiased oversampling to avoid malformed CJK glyphs. Stop playback-change callbacks from rebuilding menus during application teardown.
-
-- Route mouse input in desktop/2D previews through the same menu capture and release handling as controller rays. Explicitly showing playback controls refreshes their idle timer, including when they are already visible.
-
-- Pre-render empty, loading and populated UI states for all six library navigation entries before playback settings warmup. Reuse the left navigation across section switches while updating its selection in place.
-
-- Increase separation between unselected controls and dark menu panels with filled blue-gray surfaces and clear outlines. Give dropdowns opaque containers, wider left-aligned option rows, larger labels and explicit selection marks.
-
-- Restore dropdown opening, selection and slider capture on curved XR menus by keeping pointer travel in canvas coordinates. Remove the in-app Restart and Close buttons; use the headset's app controls. Match curved-menu radius to viewing distance, and retain left navigation while scrolling credits or other lists.
-
-- Optionally place text captions below the flat video screen with a fixed gap, including rotated, reclined and packed stereo screens. Keep the original vertical-position value while its slider is disabled; restore layout per video when history and file memory are enabled. Immersive projections retain their existing caption path and show the control as unavailable.
-
-- Add optional dual text subtitles: primary above secondary in one flat or immersive caption, with a shared delay and per-track encoding choices. Remember the second track per video when history and file memory are enabled; primary-off hides both, and selecting the same primary track turns secondary off. Bitmap subtitles remain unsupported.
-
-- Detect common external text subtitle encodings on bounded copies without changing originals. Per-track overrides apply when reopening the video; failed conversion retains the original subtitle, and failed manual choices show an invalid-encoding hint. Bitmap subtitles remain unsupported.
-- Filter subtitle filenames using the media title as the starting query, with a ray keyboard and scroll-only thumbsticks. Local/SMB selection lists up to 128 adjacent text files without recursion; media servers filter their available external tracks. The system picker remains available for document providers and other locations.
-- Preserve Emby/Jellyfin UserView and provider-defined folders while excluding unsupported audio, book, game and photo leaves. Folder artwork keeps the folder's own identity; server photo browsing is not added.
-- Select directly playable Emby/Jellyfin versions on the details page, with separate resume, mode and track memories. Continue watching preselects the matching version, while the default action retains existing memory. Missing or unsupported versions do not silently play a different file; unavailable-stream feedback is localized.
-- Report confirmed Emby/Jellyfin playback start, throttled progress and stop only while playback history is enabled. Disabling history discards queued reports and does not backfill them on re-enabling; already dispatched requests cannot be recalled. Failures do not affect playback. Plex, STRM, local, SMB and DLNA playback do not report.
-- Open one eligible Android VIEW/SEND video using temporary access and the existing single-engine launcher route. Network associations accept video MIME types; binary types are restricted to content/file, and BROWSABLE web links are excluded. External openings stay session-only. Custom HTTP credentials, arbitrary providers and DRM are not promised; external STRM targets are limited to HTTP(S) and saved SMB sources.
-- Prefer 72 Hz, or the closest runtime-advertised refresh rate (lower on a tie), and expose only supported choices in Display settings. Reapply the preference after XR session resume. This changes the previous runtime-selected refresh behavior; headset smoothness and power use remain device-dependent.
-- Adjust immersive video with centred grip-stick input: left moves horizontally/vertically, right adjusts zoom or horizontal stereo alignment up to ±10%. Show fading numeric ranges and a passive centre guide while moving the picture. Remember translations/zoom per video; recenter clears those offsets while preserving stereo calibration. Lists, popups, focus loss and pointer capture suppress shortcuts until sticks return to centre. Flat video and photos retain their controls and alignment ranges.
-- Optionally reuse the last video projection/stereo layout for unrecognized formats, off by default. Per-file memory and recognized filename/container/frame-shape rules take priority; photos and effects remain independent.
-- Cycle the playback-order toolbar icon directly between the existing Sequence and Shuffle behaviors. Keep the queue editor; each queue ends after its available entries, without adding repeat modes.
-- Extend flat-video placement to 0.1–50 m and 5–3000% size, retaining logarithmic sliders and existing saved values, presets and fixed defaults. Extend library/menu distance to 4 m. Photos keep their separate 0.3–10 m and 40–600% limits.
-- Draw soft-edged, screen-width-stable pointer ribbons with distinct actionable-target feedback, and schedule captured-menu repaints while preserving both-panel native capture, acknowledged layouts and ray mapping.
-- Retain bounded, redacted step trails and Java crash records privately across restarts. About shows prior-session availability and requires confirmation before saving to Download/Immivio/logs; retain five app-owned exports. Never upload/share automatically. Unclean exits may be OS reclamation, and full native backtraces are not included.
-- Improve permission-aware, reversible fallback for verified system-mounted USB storage, with distinct permission/mount/provider errors and PICO settings/reconnect guidance. Stop app access closes related readers, including known external descriptor leases; it does not unmount hardware. Some PICO/provider paths remain unavailable, and a raw USB storage backend is not included.
-- Use consistent marks for supported local/network providers, and open Plex at its library chooser with separate movie/TV presentation and series navigation. Plex connection selection remains unchanged.
-- Choose Left/Right/Both for content pinches and pinch taps that summon controls. New installs keep Right across later settings saves; legacy settings without a choice migrate to Both, and explicit choices are preserved. The official palm menu gesture remains fixed to the left hand. Both hands can select already-open controls, and the other hand may assist photo zoom. Changing the preference cancels ownership and requires a fresh pinch.
-- Check the latest stable GitHub release manually from About, compare numeric versions, and open only the validated release page in the system browser. Show current/new versions, network/rate-limit failures and browser-opening errors. Never check automatically, download an APK or request installation permission.
-- Verify final APK manifests structurally during export, keeping aapt2 warnings separate from parser input and retaining stderr in failures. Exercise update parsing with a captured GitHub release fixture and offer explicit opt-in local Jellyfin integration checks.
+- Add bilingual subtitles with two text tracks and per-video choices. Captions can also sit below a flat video screen.
+- Detect common external-subtitle text encodings to reduce garbled text. Find subtitles by filename without changing the original files.
+- Choose directly playable Emby/Jellyfin video versions with separate progress and settings. Improve media folders and Plex library browsing.
+- Open compatible videos from the system file manager or sharing menu, with clearer USB access and error feedback.
+- Improve Chinese text, dropdowns, controller rays and window transitions. Show playback controls after the picture is ready to reduce jumps and accidental input.
+- Expand flat-screen size and distance adjustments, make immersive video easier to move and zoom, and offer left-, right- or both-hand pinch preferences.
+- Prefer 72 Hz when available and list only supported refresh rates. Add a sequence/shuffle switch and optional reuse of the last viewing mode for unrecognized videos.
+- Add manual update checks and local problem-log export. Remove in-app Restart and Exit buttons; use the headset’s system controls instead.
 
 ## 0.9.4 — 2026-10-24
 
-- Set application version 0.9.4 / versionCode 18 for Quest, PICO and experimental OpenXR packages.
+**中文**
 
-- Add a concrete PICO launcher forwarding to the existing immersive entry. Reuse the current Godot Activity on repeated launches to prevent a duplicate engine instance from terminating the process. Keep signing independent of company projects.
+- 支持 STRM 视频快捷方式，可从本地、共享文件夹或兼容的视频链接打开。
+- 记住文件夹位置和排序，新增列表／图标浏览，以及紧凑／完整窗口切换。
+- 新增电视与影院屏幕预设，更方便地调整距离、大小和弯曲程度；可锁定播放控件位置并调整底板透明度。
+- 显示加载状态、等待时间和读取速度；闲置手柄会自动隐藏，减少观影干扰。
+- 改善 PICO 启动稳定性，修复文件浏览与播放控件同时显示时的点击问题；新版与旧版分别安装，旧数据不会自动迁移。
+- 移除网盘和 WebDAV 功能，保留本地文件、局域网共享和支持的媒体服务器。
 
-- Give Immivio its own Android application ID, `com.northboundwisdom.immivio`, plus an isolated Debug-only `.dev` identity. Keep the existing signing certificate. Legacy `com.wapok.thru3d` installations are separate; user data needs an explicit migration.
-- Classify exported APKs as video applications instead of games using the Godot export option, and verify the final manifest after export rather than trusting template metadata.
-- Fix native XR capture and ray mapping for the library and playback controls displayed together. Acknowledged layout revisions now include each visible menu.
-- Route cinema preset/default choices through the adjustment handler, retain logarithmic slider interpolation during pointer capture, and flush terminal debug failures even during throttled reporting.
+**English**
 
-- Add bounded STRM shortcut playback from local/SMB files, HTTP(S), and the system document picker. Keep the shortcut identity for history, mode memory and adjacent subtitles; reuse saved SMB connections without importing credentials.
-- Show playback preparation stages, elapsed loading time and measured video input speed. Buffering can use a small independent status plane; failures open readable, redacted diagnostics with a library return action.
-- Remember directory positions by source, folder and media filter, and sorting per directory. History-disabled browsing remains session-only; clearing history also clears directory positions. Add a separate position-memory setting.
-- Add persistent list/icon browsing with available file size, date and resume metadata, plus a compact browser above the playback controls and a full-size switch.
-- Add a session spatial lock for playback controls and their popups, plus saved control-bar background opacity. Explicit recenter remains available.
-- Add flat-screen TV/cinema presets, 1–50 m distance and up to 3000% size controls, curvature, eye-height adjustment and a temporary positioning grid. Defaults follow adjustments unless explicitly fixed; temporary changes do not replace fixed defaults. This is screen placement, not a generated 3D auditorium.
-- Adapt selected GPL-3.0 upstream code and behavior through Thru3D 0.13.3 (`9a6a905`); retain the standard mpv backend and existing source scope. See `docs/SELECTED_UPSTREAM_PORTS.md` for provenance and boundaries.
-
-- Automatically hide idle controller models after three seconds during video viewing. Movement, buttons, sticks and menus restore them while tracking and input remain active.
-
-- Remove cloud drive accounts, authorization, browsing, playback and file operations, including remote WebDAV mounts and the local cloud WebDAV service. Remove OpenList/Go mobile bindings from builds and CI. Keep local files, SMB, DLNA and supported media servers.
+- Play STRM video shortcuts from local files, shared folders and compatible video links.
+- Remember folder positions and sorting. Add list/icon browsing and compact/full browser windows.
+- Add TV and cinema screen presets with easier distance, size and curvature adjustments. Lock playback controls in place and adjust their background opacity.
+- Show loading stages, waiting time and input speed. Hide idle controllers to reduce viewing distractions.
+- Improve PICO startup and fix input when browsing files alongside playback controls. Install separately from legacy versions without automatically migrating their data.
+- Remove cloud-drive and WebDAV features while retaining local files, LAN shares and supported media servers.
 
 ## 0.9.3 — 2026-10-14
 
-- Set application version 0.9.3 / versionCode 17 for Quest, PICO and experimental OpenXR packages.
+**中文**
 
-- Add independent reset actions to existing grading, subtitle, timing, eye-alignment and photo sliders. Reset only the current three-field grading popup page, retain whole-custom reset, and preserve disabled effects and unavailable controls. Adapt the upstream 0.8.0 behavior to the compact toolbar without restoring removed settings pages or conversion features.
-- Keep only Original, Warm, Cool and Custom grading presets. Restore legacy Daylight saves as Original while retaining their custom parameters.
+- 为字幕、画面调色、声音同步和双眼对齐等调节项增加独立重置，方便只恢复当前设置。
+- 调色预设简化为原始、暖色、冷色和自定义；旧的日光预设按原始显示，同时保留自定义参数。
 
-- Use one playback pipeline with verified upstream Android mpv/FFmpeg libraries; simplify the native source layout and remove unused source build dependencies and probes.
-- Run Android CI on GitHub-hosted Windows and macOS machines. Fix MSVC numeric trace compilation and prepare the expanded gomobile module graph before offline AAR builds.
-- Replace old player tests and screenshot-only scripts with focused controller, geometry and download checks. Require explicit Godot test completion, isolate test user data, and separate GPU thumbnail pixels from headless cache tests.
+**English**
+
+- Add individual resets for subtitle, color, timing and eye-alignment adjustments so you can restore one setting at a time.
+- Simplify color presets to Original, Warm, Cool and Custom. Display the old Daylight preset as Original while keeping custom values.
 
 ## 0.9.2 — 2026-10-14
 
-- Set the application version to 0.9.2 / versionCode 16 for all Android targets. Create GitHub Releases on tag push independently of the Android build runners; attach verified APKs after both builds pass.
+**中文**
 
-- Replace the separate video settings pages with one compact toolbar and mutually exclusive popups for subtitles, speed, grading, IPD, synchronization, queues and source information.
-- Centre previous/play/next, move the middle-elided filename beside the battery/clock capsule, separate Close video, reduce padding and omit unavailable actions. Bring controls 20% closer and lower their timeline by 8 cm.
-- Automatically advance after the final presented frame; return to the previous file-browser location at queue end. Remove user-facing looping, bookmark addition and seek-precision selection while retaining stored bookmarks.
-- Follow system volume at unity player gain; remove application volume/mute preferences and their pointer, stick and keyboard controls.
-- Apply Home recentering after the runtime publishes updated tracking in the same frame, refresh the native UI layer immediately and keep the file-browser centre on its remembered horizontal distance ring.
-- Update the About repository URL and remove the contact email. Refresh regressions and guides for the supported controls, including immediate visibility of speed reset after slider edits.
+- 将字幕、倍速、调色、同步和队列等操作收进一条紧凑播放栏，通过小窗调整。
+- 重新整理文件名、电量、时间和播放按钮的位置，控件更靠近、更容易操作。
+- 影片结束后自动播放队列下一条，全部播完后回到原文件夹；取消循环播放和新增书签入口，已有书签保留。
+- 音量统一交给头显系统控制，改善重新居中后的画面与菜单位置。
+
+**English**
+
+- Bring subtitles, speed, color, timing and queue controls into a compact toolbar with popups.
+- Rearrange the filename, battery, clock and playback buttons to make controls closer and easier to use.
+- Advance to the next queued video when playback ends, then return to the original folder. Remove repeat playback and new-bookmark creation while retaining existing bookmarks.
+- Use the headset’s system volume controls and improve picture/menu placement after recentering.
 
 ## 0.9.1 — 2026-10-13
 
-- Set the application version to 0.9.1 / versionCode 15 for all Android targets.
-- Verify the PICO 4 fixes on the physical headset: stable windows, clear menu text and gaze-centred file-browser placement. Related host regressions passed; other build hosts remain delegated to CI.
+**中文**
 
-- Centre the complete file-browser window on the current gaze when opening or explicitly recentering it, removing the downward offset while retaining upright/reclining orientation and fixed placement afterward.
-- Remove the low-frame-rate UI fallback detector and persistent latch. Supported native menu layers remain active independently of application frame rate.
-- Keep PICO windows and media placement when the runtime emits automatic tracking-space reset notifications. Explicit in-app recenter remains available; other runtimes retain their system-recenter handling.
+- 优化 PICO 4 菜单显示与文件浏览窗口的位置。
+- 修复系统自动重新定位时画面和窗口意外移动的问题，保留应用内手动重新居中。
+- 改善播放帧率较低时的菜单显示稳定性。
+
+**English**
+
+- Improve PICO 4 menu display and file-browser placement.
+- Prevent automatic tracking resets from unexpectedly moving the picture and windows, while retaining manual recentering.
+- Improve menu stability when playback frame rates are low.
 
 ## 0.9.0 — 2026-10-13
 
-- Set the application version to 0.9.0 / versionCode 14 for Quest, PICO and experimental OpenXR packages.
+**中文**
 
-- Complete local refactor regression and six Android package checks; migrate obsolete EOF/stereo fixtures to frame contract v2. Remove exact host-tool version requirements and select installed Android SDK components.
+- 项目更名为 Immivio，开始独立维护，继续保持免费开源。
+- 专注播放已有的立体和全景内容，移除 AI 转 3D、人像抠图及 AI／非 AI 版本选择。
+- 新增播放队列与顺序／随机播放，支持逐视频记住音轨、字幕和时间微调。
+- 新增躺卧模式、画面跟随和更方便移动的曲面菜单，改善窗口与提示文字的位置稳定性。
+- 提供五种字幕配色、双眼画面对齐设置和更完整的文件名提示；改进局域网字幕匹配。
 
-- Remove native inference/warp buffers, introduce version-2 playback descriptors, split Godot application controllers and Kotlin source/display ownership, and retire inference-specific verification matrices. Local regression and Debug/Release packaging passed; CI on other hosts and physical-headset acceptance remain pending.
+**English**
 
-- Start the architecture refactor: isolate retired-settings migration, remove dormant model-preheat/Alpha-FPS paths and unused inference JNI entry points, and preserve the current playback lease/fence contracts.
-
-- Simplify dependency management: verify the OpenXR addon archive, restore Gradle/Go manifests and use prepared host tools and Android libraries.
-- Retire superseded Windows test/package wrappers and the checked-in machine-specific mpv build receipt; retain device probes.
-
-- Rename the independently maintained project, application and build artifacts to Immivio; the repository is now `NorthBoundWisdom/immivio`. Retain ordinary-player app identity/signing compatibility.
-- Remove live AI depth, person matting, model preparation/training tools, inference libraries and AI-specific build jobs. Keep existing stereo/spatial media, ordinary photos and precomputed media masks.
-- Remove the AI edition selector and conversion controls. Migrate obsolete preferences without reactivating effects.
-- Make website/README icon corners transparent and apply the formal Immivio brand.
-
-- Replace the application and website icon with the supplied neon panorama artwork.
-- Maintain the bilingual website, installation guide and release notes; keep one repository README and technical changelog.
-
-- Maintain this edition independently; retain the original license and history, and direct contributions/releases to NorthBoundWisdom.
-- Reimplement selected original 0.7.0 behaviors: persist explicit audio/subtitle choices per video (with metadata matching after track renumbering), and retain volume/mute across launches.
-- Double-tap the volume icon to toggle mute; keep existing single-tap controls. Muted volume uses a red icon.
-- Offer five text-caption palettes across flat and projected/vertical captions. Show complete long library filenames in wrapped hover tips.
-- Add persisted 1–3-row photo walls with ordered groups, aspect-preserving cards and bounded vertical placement.
-- Retain DLNA subtitle links when metadata is incomplete, refresh from the containing directory and match by server object ID when resource URLs change. Identify playback HTTP requests as Thru3D rather than a generic libmpv client.
-- Add sustained-low-frame-rate fallback to our existing native menu compositor, retaining its scene/curved fallback and input mapping.
-
-- Made the library curved, added grip dragging with same-hand stick depth adjustment, and return to the previous browse position when closing video. Removed duplicate library/playback actions and aligned status controls with the action row.
-- Stabilized hover tooltip bounds to prevent UI projection jumps, and recenter the visible library after sleep/focus recovery once head tracking returns.
-- Prewarm library settings and 31 playback page/popup states; retain a bounded cache of prepared settings controls and move cache-size scans off the UI thread.
-- Added a dedicated software IPD calibration tab with per-video horizontal/vertical alignment and reset; physical headset IPD remains unchanged.
-
-- Tag pushes now force Release APKs; branch/PR pushes default to Debug, manual builds can choose either, and CI rejects mismatched build-type receipts.
-
-- Added per-video subtitle/audio timing controls, reset actions and manual SRT/ASS/SSA/VTT subtitle selection with retained document permission.
-- Added editable, persistent playback queues with reordering, removal, automatic next playback, queue repeat and shuffle; automatic advance waits for the final presented frame.
-
-- Added a persistent Reclining mode in General settings, off by default, allowing tilted flat-video screens and menus while keeping Follow independent.
-
-- Added a verified standard-libmpv backend and portable Android build entry point; documented its source-timing, PGS and Dolby metadata limits.
-- Updated the color-grading regression to exercise subtitle distance through the current subtitle popup.
+- Rename the project to Immivio and begin independent development while remaining free and open source.
+- Focus on existing stereo and panoramic content. Remove AI 3D conversion, person cutouts and the AI/non-AI edition selector.
+- Add playback queues with sequence/shuffle behavior and per-video audio, subtitle and timing preferences.
+- Add Reclining mode, picture following and easier-to-move curved menus. Improve window and tooltip stability.
+- Offer five subtitle color palettes, eye-alignment settings and fuller filename tips, with better LAN subtitle matching.
 
 ## 0.6.0 — 2026-10-11
 
-- Added native stereo HEIC/HEIF spatial photos. Output is sRGB; compatibility and performance depend on media and device.
-- Added side thumbnails, grouped Photo Wall and randomized Memory Fragments, with hand-driven overview browsing, expand/return placement and remembered layouts.
-- Improved large-photo loading feedback, asynchronous switching and stable photo placement.
-- Added one-button 3D/person preparation for selected ordinary flat photos, with 0%–200% depth strength and synchronized color/mask updates. Native stereo, panoramas and photo overviews retain their own presentation.
-- Added session-scoped head following for flat video, individual/portrait photos and menus; it starts disabled at launch.
-- Added a temporary environment-passthrough footer control, independent of media mode; person-Alpha playback keeps passthrough enabled.
-- Added stereo/left-eye/right-eye video views and saved per-video horizontal/vertical alignment corrections (±5%, 0.05% steps). Monocular views display the selected logical eye to both headset eyes.
-- Simplified menu closing/back controls, stopped treating every 2:1 video as VR180.
-- Updated portable signing validation and public-source export boundaries: caller-owned keys and identity metadata remain private, missing/mismatched keys stop packaging, and export state uses persistent storage.
+**中文**
+
+- 支持立体 HEIC／HEIF 空间照片，加入照片墙、缩略图分组和随机浏览。
+- 改善大图加载提示、照片切换和画面位置稳定性；部分普通照片可准备 3D 效果并调节强弱。
+- 新增画面跟随和临时透视，以及视频单眼／双眼查看与对齐记忆。
+
+**English**
+
+- Add stereo HEIC/HEIF spatial photos, photo walls, grouped thumbnails and randomized browsing.
+- Improve large-photo loading feedback, switching and placement. Prepare adjustable 3D effects for selected ordinary photos.
+- Add picture following, temporary passthrough, and remembered video eye views/alignment.
 
 ## 0.5.2 — 2026-10-11
 
-- Added live 10–40 FPS person-Alpha processing controls (default 20) and an optional video/engine FPS overlay; actual throughput depends on device, media and load.
-- Added device-dependent automatic quality defaults while preserving saved manual overrides.
-- Fixed H.264 startup stalls/exits and cleaned stray photo-3D edges around hair, faces and arms.
-- Raised photo 3D strength to 200% and added animated preparation feedback.
-- Fixed DLNA directories with external subtitle metadata and 115 directory failures caused by duplicate names; ambiguous names now request renaming.
+**中文**
+
+- 改进人像和照片 3D 效果的调节与处理状态提示。
+- 根据设备选择默认画质，并可查看播放帧率。
+- 修复部分 H.264 视频启动卡住或退出，以及部分网络目录、同名文件夹无法打开的问题。
+
+**English**
+
+- Improve person/photo 3D effect controls and processing feedback.
+- Choose default quality for the device and offer a playback frame-rate display.
+- Fix startup stalls or exits for some H.264 videos, plus issues opening certain network directories and same-named folders.
 
 ## 0.5.1 — 2026-10-11
 
-- Added Plex phone/computer pairing, library browsing and original-file playback, with improved LAN connection selection.
-- Added 0.25×–3× playback speed, audio pitch correction and one-button return to 1×.
-- Reorganized Screen/Playback/Info settings. Added flat-screen distance, size and curvature controls, and −90°–90° picture rotation while subtitles stay upright.
-- Added 50%–200% text subtitle sizing, independent flat-video vertical position and filename guidance.
-- Improved modification-time sorting with folders first for local/SMB/cloud libraries, and ascending/descending DLNA name sorting.
-- Fixed screen percentages and slider positions, straightened settings panels, and placed conditional speed/rotation resets beside their sliders.
+**中文**
+
+- 支持通过手机或电脑配对 Plex，浏览媒体库并播放原文件。
+- 新增 0.25～3 倍速，并可一键恢复正常速度。
+- 增加画面距离、大小、弯曲和旋转调节，扩展字幕大小与位置设置。
+- 改善文件排序和控件数值显示。
+
+**English**
+
+- Pair Plex through a phone or computer, browse libraries and play original files.
+- Add 0.25×–3× playback speed with a one-step return to normal speed.
+- Add screen distance, size, curvature and rotation adjustments, plus more subtitle size/position options.
+- Improve file sorting and displayed control values.
 
 ## 0.5.0 — 2026-10-10
 
-- Upgraded media-server sections, Continue Watching, Recently Added, categories, details, continuous loading and restored navigation/scroll state.
-- Added capability-dependent favorites: server-backed where supported, otherwise local; no playback-progress writeback promise.
-- Added Aliyun Drive, Quark and remote WebDAV connections. The 115 Open display name became 115.
-- Added manual DLNA addresses and server-exposed external subtitles.
-- Added photo adjustment controls and a separate 2×–8× magnifier referenced to actual displayed image size; flat-photo distance is 0.3–10 m and size 40%–600%.
-- Fixed immersive opening alignment, stale mode locks and Quest passthrough clarity while retaining selected display quality.
-- Improved embedded web-login scaling/input and reauthentication entry points.
-- Removed unused JCIFS HTTP adapters and strengthened package checks while retaining required HTTP media compatibility.
+**中文**
+
+- 完善媒体服务器中的继续观看、最近添加、分类和详情浏览，并在来源支持时提供收藏。
+- 新增阿里云盘、夸克与 WebDAV 连接，支持手动添加局域网媒体地址。
+- 新增照片调节与局部放大；修复画面朝向、透视显示和账号过期后的重新登录体验。
+
+**English**
+
+- Improve Continue Watching, Recently Added, categories and details in media-server browsing, with favorites where supported.
+- Add Aliyun Drive, Quark and WebDAV connections, plus manually entered LAN media addresses.
+- Add photo adjustments and a magnifier. Improve picture orientation, passthrough display and sign-in after account expiry.
 
 ## 0.4.2 — 2026-10-10
 
-- Added horizontal/vertical immersive text subtitles with improved first-character alignment, multiline/bilingual layouts and long-line wrapping.
-- Added live directional placement and extended subtitle distance to 0.1–10 m.
-- Improved cloud-folder external-subtitle matching, including language suffixes and paged directories.
-- Added text subtitles exposed by supported Emby, Jellyfin, Stash and XBVR servers.
-- Extended external dubbing/audio discovery to supported cloud/media-server sources, including `movie.si.mix.m4a` naming.
+**中文**
+
+- 沉浸式字幕支持横排与竖排，改善多行、双语和首字符位置。
+- 可更自由地调整字幕方向、位置与距离。
+- 改进网盘外挂字幕和配音匹配，支持读取部分媒体服务器提供的文字字幕。
+
+**English**
+
+- Add horizontal and vertical immersive subtitles, with better multiline, bilingual and first-character placement.
+- Offer more flexible subtitle direction, position and distance controls.
+- Improve cloud-drive subtitle/dubbing matching and read text subtitles supplied by supported media servers.
 
 ## 0.4.1 — 2026-10-09
 
-- Rebuilt the QUEST release as application version 0.4.1 / versionCode 8.
-- No separate user-facing feature additions were recorded for this packaging revision; it retains the 0.4 feature set.
+**中文**
+
+- 更新 Quest 安装包，保留 0.4 版本的功能，没有新增使用功能。
+
+**English**
+
+- Update the Quest package while retaining the 0.4 feature set, with no new user-facing features.
 
 ## 0.4 — 2026-10-09
 
-Also called **0.4.0** in release notes; actual APK versionName was **0.4**.
+安装包版本显示为 `0.4`，也称 `0.4.0`。 / The package version is `0.4`, also known as `0.4.0`.
 
-- Improved photo-to-3D processing reuse, landscape/portrait depth and stable placement after zoom/reset.
-- Added half-width SBS and half-height top-bottom stereo layouts, improved format detection and corrected some fisheye proportions.
-- Simplified mode controls and moved eye swapping into playback settings.
-- Added 115 Open/OneDrive authorization and switched Baidu sign-in to authorization. Existing Baidu accounts need reauthorization; saved legacy 115 accounts remain compatible.
-- Added persistent name/modification-time/size sorting for local, SMB and cloud libraries.
-- Added optional, confirmation-based file management, disabled by default: supported local/SMB deletion and 115 Open recycle-bin operations.
-- Added bundled local/SMB video/subtitle/dubbing renaming, preserving history/bookmark links after complete success.
-- Added removable-storage shortcuts, volume-change refresh and a control to stop app reads/preloading; this is not system-level safe eject.
-- Added live subtitle distance/position controls, improved long track lists and refreshed About links.
+**中文**
+
+- 改善照片 3D 处理、横竖图显示和缩放后的画面位置。
+- 扩展左右／上下立体视频格式，修复部分鱼眼画面的比例。
+- 新增 115 和 OneDrive 连接；旧百度账号需要重新授权。
+- 新增默认关闭的文件管理，可在支持的来源中排序、重命名和删除文件；增加 U 盘快捷入口。
+
+**English**
+
+- Improve photo 3D processing, landscape/portrait display and placement after zooming.
+- Expand side-by-side/top-bottom video support and correct proportions for some fisheye videos.
+- Add 115 and OneDrive connections. Existing Baidu accounts require authorization again.
+- Add optional file management, off by default, for sorting, renaming and deleting files on supported sources, plus USB shortcuts.
 
 ## 0.3.1 — 2026-10-09
 
-- Stabilized VR subtitles relative to video and improved PICO controller compatibility.
-- Improved older-Android storage authorization, status/error feedback and directory refresh after permission changes.
-- Distinguished charging from connected-but-not-charging power; showed red battery state below 20% when not charging.
-- Moved 115 SMS send/verify actions above the keyboard.
-- Enlarged launcher artwork while preserving the Thru3D / Media Player wordmark.
+**中文**
+
+- 改善 VR 字幕的稳定性与 PICO 手柄兼容性。
+- 优化旧版 Android 的存储授权，以及权限变化后的文件刷新。
+- 电量显示可区分充电与接入电源，低电量时变红；改善登录按钮和应用图标显示。
+
+**English**
+
+- Improve VR subtitle stability and PICO controller compatibility.
+- Improve storage access on older Android versions and refresh files after permission changes.
+- Distinguish charging from connected power, show low battery in red, and improve sign-in buttons and app-icon display.
 
 ## 0.3.0 — 2026-10-09
 
-- Added persistent timestamp bookmarks with timeline/list navigation, deletion and undo; no ratings or editing.
-- Added larger immersive photo presentation, softer edges and slide/fade transitions.
-- Added single-hand pinch-drag photo navigation and two-hand zoom; capped photo 3D strength at 100%, independently of video.
-- Improved portrait depth, edge completion, adjacent-photo preload, looping and conversion-cache reuse/cleanup.
-- Moved cloud/media-server forms and web login into VR and improved input layout/hand response.
-- Added faster seeking with separate bookmark precision preferences and audio-track selection on the control bar.
-- Allowed thumbstick playback shortcuts with ordinary video controls while retaining list/pointer-capture isolation.
-- Improved subtitle placement/distance, Jellyfin connections, settings and near-hand/menu/background rendering.
+**中文**
+
+- 新增播放书签，可从时间轴或列表跳转，并支持删除和撤销。
+- 改善照片沉浸式展示，支持单手拖动和双手缩放。
+- 可在头显内完成网络来源和账号设置；改善进度拖动、音轨选择、字幕位置和 Jellyfin 连接。
+
+**English**
+
+- Add playback bookmarks with timeline/list navigation, deletion and undo.
+- Improve immersive photo viewing with one-hand dragging and two-hand zoom.
+- Set up network sources/accounts inside the headset. Improve seeking, audio-track selection, subtitle placement and Jellyfin connections.
 
 ## 0.2.1 — 2026-10-08
 
-- Retained the displayed frame while seeking and corrected timeline targets jumping back before completion.
-- Added recent-playback source-frame previews, poster fallback, bounded preview caches and paged history.
-- Added controller/hand visual models and improved input/profile handling.
-- Added separate QUEST/PICO and experimental standard OpenXR exports while retaining Quest 2 compatibility.
+**中文**
+
+- 拖动进度时保留画面，修复进度条提前跳回的问题。
+- 最近播放加入预览图、海报和分页浏览，手柄与手部模型让操作更直观。
+- 提供分别适配 Quest、PICO 的安装包，以及实验性的通用 OpenXR 版本。
+
+**English**
+
+- Keep the picture visible while seeking and fix the timeline jumping back too early.
+- Add previews, posters and paging to recent playback, with controller/hand models for clearer interaction.
+- Provide separate Quest and PICO packages and an experimental generic OpenXR build.
 
 ## 0.2 — 2026-10-07
 
-- Upgraded SMB2/3 compatibility, encryption and direct share/subfolder access without enabling SMB1.
-- Added global display-quality presets and live sharpness for videos/photos.
-- Reorganized settings and added real restart/exit controls.
-- Improved PICO panel/input integration and controller fallbacks, keeping accounts/media links compatible.
+**中文**
+
+- 改善家庭共享文件夹的连接兼容性与加密支持。
+- 新增画质档位和清晰度调节，重新整理设置，并提供重启与退出入口。
+- 优化 PICO 窗口和手柄操作，保留已有账号与媒体链接的兼容性。
+
+**English**
+
+- Improve home file-share compatibility and encryption support.
+- Add quality presets and sharpness controls, reorganize settings, and offer Restart and Exit actions.
+- Improve PICO windows and controller input while retaining existing account and media-link compatibility.
 
 ## 0.1.0 — 2026-10-07
 
-- Initial standalone Android VR/MR video/photo test release.
-- Added flat/180°/360° and stereo viewing, supported person-matting passthrough and depth-based 2D-to-3D rendering.
-- Provided local/LAN/media-library access, audio tracks, subtitles and controller-ray/hand interaction.
-- Supplied separate Quest/PICO builds with multilingual UI and dependency notices.
+**中文**
+
+- 首个独立头显视频／照片测试版，支持平面、180°、360°和立体观看。
+- 提供本地、家庭网络与媒体库访问，可选择音轨和字幕，并使用手柄或手势操作。
+- 包含实验性的 2D 转 3D 与人像透视效果，提供 Quest、PICO 多语言安装包。
+
+**English**
+
+- First standalone-headset video/photo test release with flat, 180°, 360° and stereo viewing.
+- Access local files, home networks and media libraries, choose audio/subtitles, and use controllers or hands.
+- Include experimental 2D-to-3D and person-passthrough effects, with multilingual Quest and PICO packages.
