@@ -2,7 +2,7 @@ extends SceneTree
 const Main := preload("res://scripts/main.gd")
 const Tests := preload("res://tests/test_view_follow.gd")
 const Menu := preload("res://scripts/ray_menu.gd")
-var output := ProjectSettings.globalize_path("res://../../artifacts/captures/ui/view-follow/render")
+var output := OS.get_environment("IMMIVIO_RENDER_OUTPUT_DIR")
 var failures: Array[String] = []
 var checks := 0
 
@@ -33,7 +33,7 @@ func capture(viewport: SubViewport, camera: Camera3D, menu: Node3D, name: String
 	await RenderingServer.frame_post_draw
 	var image := viewport.get_texture().get_image()
 	image.save_png(output.path_join(name + ".png"))
-	for target in [Menu.CLOSE_MENU, Menu.FOLLOW, Menu.TEMP_PASSTHROUGH]:
+	for target in [Menu.FOLLOW, Menu.TEMP_PASSTHROUGH]:
 		var item := button(menu, target)
 		if item.is_empty():
 			check(false, name + " control missing")
@@ -59,6 +59,10 @@ func capture(viewport: SubViewport, camera: Camera3D, menu: Node3D, name: String
 
 func _run() -> void:
 	preload("res://scripts/i18n.gd").use("zh")
+	if output.is_empty():
+		output = ProjectSettings.globalize_path(
+			"res://../../artifacts/captures/ui/view-follow/render"
+		)
 	DirAccess.make_dir_recursive_absolute(output)
 	var viewport := SubViewport.new()
 	viewport.size = Vector2i(1280, 960)
@@ -78,15 +82,6 @@ func _run() -> void:
 	main.report_timer.stop()
 	main.xr_camera.fov = 70
 	await capture(viewport, main.xr_camera, main.recent_menu, "library-off")
-	var close := button(main.recent_menu, Menu.CLOSE_MENU)
-	main.recent_menu.update_pointer(
-		"right_hand",
-		close.node.global_position + close.node.global_basis.z * .3,
-		-close.node.global_basis.z,
-		true
-	)
-	await capture(viewport, main.xr_camera, main.recent_menu, "close-menu-tooltip")
-	main.recent_menu.cancel_pointer("right_hand")
 	main._on_session_control("follow")
 	main.xr_camera.transform = Transform3D(
 		Basis.from_euler(Vector3(PI / 2, .4, .6)), Vector3(2, .4, 1)
@@ -104,9 +99,11 @@ func _run() -> void:
 	main.recent_menu.refresh()
 	await capture(viewport, main.xr_camera, main.recent_menu, "file-confirmation")
 	main.recent_menu.file_actions.modal = ""
-	# Real menu rendering with a simulated active Alpha/XR state.
+	# Real menu rendering with a simulated active packed-Alpha/XR state.
 	main.video.platform = Tests.HostTest.Host.new()
-	main._on_library_chosen("file:///render/person_2D.mp4", "人像视频.mp4")
+	main._on_library_chosen(
+		"file:///render/clip_LR_180_FISHEYE_F180_alpha.mp4", "clip_LR_180_FISHEYE_F180_alpha.mp4"
+	)
 	main.video.set_alpha(true)
 	main._show_recent_menu()
 	main.recent_menu.refresh()

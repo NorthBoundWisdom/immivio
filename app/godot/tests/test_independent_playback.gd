@@ -18,13 +18,11 @@ class Host:
 		start: int,
 		stereo: bool,
 		profile: String,
-		alpha: bool,
 		vulkan: bool,
-		depth: bool = false,
 		tb: bool = false,
 		exact: bool = false
 	) -> int:
-		super.open_mpv_video(uri, start, stereo, profile, alpha, vulkan, depth, tb, exact)
+		super.open_mpv_video(uri, start, stereo, profile, vulkan, tb, exact)
 		serial += 1
 		return serial
 
@@ -41,10 +39,8 @@ class Host:
 	func revise_mpv_video(
 		_id: int,
 		_stereo: bool,
-		_alpha: bool,
 		_profile: String,
 		_position: int,
-		_depth: bool = false,
 		_tb: bool = false,
 		_exact: bool = false
 	) -> int:
@@ -165,23 +161,12 @@ func _run() -> void:
 		"has_video": true,
 		"audio_available": true,
 		"geometry": 0,
-		"depth_strength": 0.7
 	}
-	check(
-		not menu._shortcut_double_tap(109, 1000) and menu._shortcut_double_tap(109, 1200),
-		"Same-target quick taps form a pair"
-	)
-	check(not menu._shortcut_double_tap(109, 1250), "Third tap begins a new pair")
-	menu._state.source_uri = "file:///b"
-	check(not menu._shortcut_double_tap(109, 1300), "Switching videos breaks a tap pair")
-	check(not menu._shortcut_double_tap(112, 1350), "Different targets never form a pair")
 	var state := {
 		"source_uri": "file:///shortcuts",
 		"has_video": true,
 		"audio_available": true,
 		"geometry": 0,
-		"depth_strength": 0.7,
-		"depth_requested": false,
 		"muted": false
 	}
 	menu.state_provider = func(): return state
@@ -190,23 +175,11 @@ func _run() -> void:
 			if action == "mute":
 				state.muted = not state.muted
 	)
-	menu.depth_strength_requested.connect(func(strength): state.depth_requested = strength > 0)
 	menu.visible = true
 	menu.refresh()
 	check(
 		not menu._buttons.any(func(button): return button.target == 109),
 		"System-volume playback exposes no application volume button"
-	)
-	menu._activate_hit({"target": 112, "enabled": true})
-	menu._activate_hit({"target": 112, "enabled": true})
-	check(
-		not state.depth_requested, "A forged old 3D button event cannot enable the removed effect"
-	)
-	menu._activate_hit({"target": 112, "enabled": true})
-	menu._activate_hit({"target": 112, "enabled": true})
-	check(
-		not state.depth_requested and is_equal_approx(state.depth_strength, 0.7),
-		"Removed conversion remains unavailable"
 	)
 	var library := preload("res://scripts/library_menu.gd").new()
 	root.add_child(library)

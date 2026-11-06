@@ -266,7 +266,6 @@ func _close_other_popups() -> void:
 	menu._quick_open = ""
 	menu._subtitle_open = false
 	menu._mode_open = false
-	menu._close_depth_slider()
 
 
 func stick_scroll(y: float, delta: float) -> void:

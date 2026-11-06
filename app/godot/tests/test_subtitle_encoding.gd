@@ -49,7 +49,6 @@ func _initialize() -> void:
 		"geometry": 0,
 		"stereo_sbs": false,
 		"swap_eyes": false,
-		"alpha_requested": false,
 		"subtitle_encodings": {key: "Big5"}
 	}
 	assert(store.remember("file:///movie.mp4", mode))

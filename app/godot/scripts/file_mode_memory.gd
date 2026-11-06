@@ -2,7 +2,8 @@ extends RefCounted
 
 # Two checksummed generations keep the previous valid configuration available
 # while the older bank is replaced. One writer, owned by the video controller.
-const VERSION := 1
+const VERSION := 2
+const RETIRED_FIELDS := ["alpha_requested", "depth_requested", "auto_depth", "depth_strength"]
 const LIMIT := 128
 const MAX_BYTES := 262144
 const StereoView := preload("res://scripts/stereo_view.gd")
@@ -39,6 +40,13 @@ static func key_for(uri: String) -> String:
 	return uri.sha256_text()
 
 
+static func clean_mode(value: Dictionary) -> Dictionary:
+	var mode := value.duplicate(true)
+	for key in RETIRED_FIELDS:
+		mode.erase(key)
+	return mode
+
+
 static func valid_mode(value: Variant) -> bool:
 	if not value is Dictionary or not value.get("profile") in PROFILES:
 		return false
@@ -50,7 +58,7 @@ static func valid_mode(value: Variant) -> bool:
 		or int(geometry) not in [0, 1, 2, 3]
 	):
 		return false
-	for name in ["stereo_sbs", "swap_eyes", "alpha_requested"]:
+	for name in ["stereo_sbs", "swap_eyes"]:
 		if not value.get(name) is bool:
 			return false
 	for name in ["top_bottom", "stereo_half", "subtitle_below_screen"]:
@@ -121,7 +129,7 @@ func _read_bank(path: String) -> Dictionary:
 		and float(version) > VERSION
 	):
 		return {"unsupported_schema": true}
-	if version != VERSION:
+	if version != 1 and version != VERSION:
 		return {}
 	var serial: Variant = envelope.get("sequence")
 	if (
@@ -144,6 +152,7 @@ func _read_bank(path: String) -> Dictionary:
 	):
 		return {}
 	var result: Dictionary = {}
+	var migrated: bool = version != VERSION
 	for key in payload.entries:
 		var entry: Variant = payload.entries[key]
 		if (
@@ -163,10 +172,11 @@ func _read_bank(path: String) -> Dictionary:
 			or float(updated) > float(serial)
 		):
 			continue
-		var mode: Dictionary = entry.mode.duplicate(true)
+		var mode := clean_mode(entry.mode)
+		migrated = migrated or mode != entry.mode
 		mode.geometry = int(mode.geometry)
 		result[key] = {"mode": mode, "updated": int(updated)}
-	return {"sequence": int(serial), "entries": result}
+	return {"sequence": int(serial), "entries": result, "migrated": migrated}
 
 
 func load_saved() -> void:
@@ -184,6 +194,7 @@ func load_saved() -> void:
 			sequence = int(value.sequence)
 			entries = value.entries
 			active_bank = bank
+			dirty = bool(value.get("migrated", false))
 
 
 func lookup(uri: String) -> Dictionary:
@@ -192,6 +203,7 @@ func lookup(uri: String) -> Dictionary:
 
 
 func remember(uri: String, mode: Dictionary) -> bool:
+	mode = clean_mode(mode)
 	var key := key_for(uri)
 	if key.is_empty() or not valid_mode(mode):
 		return false

@@ -38,7 +38,6 @@ const PAGES := [
 	"color1_mono",
 	"color2_mono",
 	"ipd_mono",
-	"depth",
 	"subtitle_immersive",
 	"queue_populated",
 	"bookmarks",
@@ -184,10 +183,11 @@ func prepare(menu: Node3D, page: String) -> void:
 		if name.begins_with("color")
 		else ("speed" if name == "quick_speed" else popup_names.get(name, ""))
 	)
-	menu._depth_open = name == "depth"
 	menu._state = STATE.duplicate(true)
-	menu._state["stereo"] = not page.ends_with("_mono") and name != "depth"
-	menu._state["ai_enabled"] = name in ["depth", "playback_alpha"]
+	menu._state["stereo"] = not page.ends_with("_mono")
+	menu._state["packed_file"] = name == "playback_alpha"
+	menu._state["packed_alpha"] = name == "playback_alpha"
+	menu._state["alpha_enabled"] = name == "playback_alpha"
 	menu._state["top_bottom"] = name == "stereo_tb"
 	menu._state["capabilities_available"] = name == "info_available"
 	menu._state["viewing_eye"] = 1 if name == "stereo_left" else 0

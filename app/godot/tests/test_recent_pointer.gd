@@ -53,7 +53,7 @@ func check_row_geometry(menu: Node3D) -> void:
 			gap = Vector2((a.end.x + b.position.x) * .5, a.get_center().y)
 		elif b.end.y < a.position.y:
 			gap = Vector2(a.get_center().x, (b.end.y + a.position.y) * .5)
-		print("Library row geometry: list=", list_mode, " first=", a, " second=", b, " gap=", gap)
+		check(gap != null, "Adjacent production rows retain a gap")
 		if gap != null:
 			var origin := menu.to_global(Vector3(gap.x, gap.y, 1))
 			check(

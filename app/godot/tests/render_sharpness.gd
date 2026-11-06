@@ -1,8 +1,6 @@
 extends SceneTree
 var failures: Array[String] = []
-var output := ProjectSettings.globalize_path(
-	"res://../../artifacts/captures/ui/compat-quality-20261007"
-)
+var output := OS.get_environment("IMMIVIO_RENDER_OUTPUT_DIR")
 
 
 func _initialize() -> void:
@@ -17,6 +15,10 @@ func frame(viewport: SubViewport) -> Image:
 
 
 func _run() -> void:
+	if output.is_empty():
+		output = ProjectSettings.globalize_path(
+			"res://../../artifacts/captures/ui/compat-quality-20261007"
+		)
 	DirAccess.make_dir_recursive_absolute(output)
 	var viewport := SubViewport.new()
 	viewport.size = Vector2i(128, 128)

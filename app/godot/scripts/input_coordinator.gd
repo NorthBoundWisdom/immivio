@@ -450,7 +450,6 @@ func _update_controls_visibility(menu: Node3D) -> void:
 		or menu._mode_open
 		or not menu._quick_open.is_empty()
 		or not menu._adjustment.is_empty()
-		or menu._depth_open
 	):
 		return
 	if (

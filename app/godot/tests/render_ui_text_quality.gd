@@ -1,6 +1,6 @@
 extends SceneTree
 ## Generated glyphs only. Compare scalable UI text against a large raster reference.
-## Images exist only in memory for numeric comparison and are never saved.
+## Failed comparisons save the three source images for inspection.
 const Menu := preload("res://scripts/ray_menu.gd")
 
 
@@ -96,6 +96,17 @@ func _run() -> void:
 		var file := FileAccess.open(output, FileAccess.WRITE)
 		if file:
 			file.store_string(JSON.stringify(report))
+	if not passed and not output.is_empty():
+		for index in images.size():
+			images[index].save_png(
+				output.get_base_dir().path_join(
+					["legacy.png", "current.png", "reference.png"][index]
+				)
+			)
+		report.images_saved = true
+		var evidence := FileAccess.open(output, FileAccess.WRITE)
+		if evidence:
+			evidence.store_string(JSON.stringify(report))
 	print(JSON.stringify(report))
 	viewport.queue_free()
 	if not passed:

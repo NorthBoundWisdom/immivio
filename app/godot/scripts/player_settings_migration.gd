@@ -4,6 +4,10 @@ extends RefCounted
 const RETIRED_KEYS := [
 	["effects", "auto_3d"],
 	["video", "depth_strength"],
+	["video", "auto_depth"],
+	["effects", "auto_depth"],
+	["video", "alpha_requested"],
+	["video", "depth_requested"],
 	["video", "alpha_fps"],
 ]
 

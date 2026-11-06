@@ -131,7 +131,7 @@ def verify(data):
         expected_action = (
             "DEBUG_MPV_URI" if label == "native_decode" else "DEBUG_LOCAL_ACCESS"
         )
-        assert receipt["action"] == "org.vrpassthroughplayer.quest." + expected_action
+        assert receipt["action"] == "com.northboundwisdom.immivio." + expected_action
         assert (
             report["request_id"] == receipt["id"]
             and report["diagnostic_process"] == receipt["diagnostic_process"]

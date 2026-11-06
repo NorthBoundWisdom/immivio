@@ -30,14 +30,7 @@ class BridgeProbe:
 		return true
 
 	func revise_mpv_video(
-		id: int,
-		_stereo: bool,
-		_alpha: bool,
-		_profile: String,
-		target: int,
-		_depth: bool,
-		_tb: bool,
-		_exact: bool = false
+		id: int, _stereo: bool, _profile: String, target: int, _tb: bool, _exact: bool = false
 	) -> int:
 		revisions.append([id, target])
 		return -1 if busy else id + 1
@@ -74,7 +67,8 @@ func _initialize() -> void:
 	video.control.observe(1000, 120000)
 	video.panel.visible = true
 	video.alpha_enabled = true
-	video._rvm_alpha = true
+	video.packed_file = true
+	video.packed_alpha = true
 	video._thumbnail_busy = true
 	video.seek_absolute(25000)
 	check(
@@ -103,7 +97,7 @@ func _initialize() -> void:
 		"Only the latest target starts after capture"
 	)
 	check(
-		video.panel.visible and video._is_frozen() and video.alpha_enabled and video._rvm_alpha,
+		video.panel.visible and video._is_frozen() and video.alpha_enabled and video.alpha_wanted(),
 		"Freeze preserves surface and same-frame Alpha during buffer wait"
 	)
 	check(

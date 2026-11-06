@@ -52,15 +52,17 @@ func _initialize() -> void:
 		"History survives restart with renamed title and identity"
 	)
 	var modes := preload("res://scripts/file_mode_memory.gd").new(directory)
-	modes.remember(
-		old,
-		{
-			"profile": "320x320",
-			"geometry": 1,
-			"stereo_sbs": true,
-			"swap_eyes": false,
-			"alpha_requested": false
-		}
+	(
+		modes
+		. remember(
+			old,
+			{
+				"profile": "320x320",
+				"geometry": 1,
+				"stereo_sbs": true,
+				"swap_eyes": false,
+			}
+		)
 	)
 	check(
 		modes.relocate(old, new) and modes.lookup(new).stereo_sbs and modes.lookup(old).is_empty(),

@@ -35,8 +35,6 @@ func _run() -> void:
 	main.set_process(false)
 	main.video.set_process(false)
 	main.report_timer.stop()
-	check(not main.video.auto_depth, "Old automatic conversion choices cannot become active")
-	check(not main.video.set_depth(true), "Legacy effect calls are rejected")
 	check(
 		(
 			not main.settings.has_section("alpha")

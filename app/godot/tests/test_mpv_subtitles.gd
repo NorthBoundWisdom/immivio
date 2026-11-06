@@ -21,10 +21,8 @@ class Host:
 	func revise_mpv_video(
 		_id: int,
 		_stereo: bool,
-		_alpha: bool,
 		_profile: String,
 		_position: int,
-		_depth: bool = false,
 		_top_bottom: bool = false,
 		_exact: bool = false
 	) -> int:

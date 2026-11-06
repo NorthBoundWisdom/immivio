@@ -27,6 +27,7 @@ def audit(directory):
     processes = set()
     for item in result["modes"]:
         mode = item["mode"]
+        require(mode == "normal", "Only source playback freeze is supported")
         before = read(directory / f"{mode}-before-report.json")
         during = read(directory / f"{mode}-during-report.json")
         held = read(directory / f"{mode}-held-report.json")
@@ -65,12 +66,6 @@ def audit(directory):
             and held["layout"]["frame_hold"]["frozen"],
             "Wait hid frame",
         )
-        if mode == "alpha":
-            require(
-                before["pixel_probe"]["pair"]["color_target"] == "external",
-                "Direct MediaCodec path not exercised",
-            )
-            require(during["layout"]["alpha_enabled"], "Freeze lost Alpha")
         for report in (before, during):
             require(
                 report["pixel_probe"]["state"] == "captured", "Pixel capture failed"
@@ -115,21 +110,14 @@ def audit(directory):
             )
             require(a.shape == b.shape == (640, 640, 4), "Wrong capture size")
             diff = np.abs(a - b)
-            # Depth uses its R8 as a near map, with Alpha disabled in production.
-            # Deliberately forcing that near map as opacity can be entirely transparent.
-            if not (mode == "depth" and key[2]):
-                require(
-                    a[..., :3].mean() > 1 and b[..., :3].mean() > 1,
-                    "Black reference or frozen image",
-                )
+            require(
+                a[..., :3].mean() > 1 and b[..., :3].mean() > 1,
+                "Black reference or frozen image",
+            )
             require(
                 float(diff.mean()) < 1.5 and int(diff.max()) <= 16,
                 "Frozen copy differs materially from displayed frame",
             )
-            if mode == "alpha" and key[2]:
-                require(
-                    a[..., 3].min() < 64 and a[..., 3].max() > 192, "Mask not exercised"
-                )
             metrics.append(
                 {
                     "rotation": key[0],

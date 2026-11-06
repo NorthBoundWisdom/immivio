@@ -16,6 +16,8 @@ Opening or explicitly recentering the file browser places its stable layout enve
 
 `MpvVideoBridge.kt` coordinates MPV sessions, audio focus and frame delivery. `PlaybackHost` holds decoder lifetime, `PlaybackSourceResources` owns FD/network/subtitle resources, and `PlaybackDisplayLeases` holds consumer GL leases under the session lock. `native/mpv/src/mpv_source.cpp` owns decoding/render transactions, source epochs, seeks and EOF. `native/render-bridge` manages GPU resources and fences; source buffers cannot be reused before the last consumer releases ownership.
 
+The Godot singleton opens playback with `open_mpv_video(uri, startMs, stereo, profile, vulkan, topBottom, exactSeek)` and revises it with `revise_mpv_video(id, stereo, profile, positionMs, topBottom, exactSeek)`. These calls carry no inference requests. Filename-identified packed alpha stays in the source frame and is interpreted by the Godot shader. Per-file mode schema 2 reads schema-1 records while removing retired inference fields; ordinary mode, subtitle and timing preferences are preserved.
+
 The player provides playback-clock estimates rather than verified source-image PTS. It uses the public libmpv render API. Existing SBS/TB, projection, eye alignment, subtitles, playback speed and precomputed mask data remain media/rendering features.
 
 Per-video track intent is stored in the existing checksummed mode store. Track metadata guards against ID reuse; stale-session reports cannot restore another source's choices. Global sound preferences are coalesced and flushed on suspend/close. Timing corrections and playback queues remain independent of track selection.

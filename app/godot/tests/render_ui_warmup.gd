@@ -20,11 +20,11 @@ func _run() -> void:
 	while not warmer.complete and Time.get_ticks_msec() - started < 30000:
 		await process_frame
 	await process_frame
-	menu._activate(11)
-	var first_settings := menu.settings_cache_hits == 1
+	menu._activate(menu.QUICK_COLOR)
+	var first_settings := menu._quick_open == "color"
 	state["capabilities_available"] = true
 	menu._activate(12)
-	var first_info := menu.settings_cache_hits == 2
+	var first_info := menu._quick_open == "info"
 	var passed := (
 		warmer.complete
 		and warmer.pages_rendered == Warmup.PAGES.size()
@@ -36,8 +36,8 @@ func _run() -> void:
 	var report := warmer.snapshot()
 	report["state"] = "passed" if passed else "failed"
 	report["elapsed_ms"] = Time.get_ticks_msec() - started
-	report["first_settings_uses_prepared_controls"] = first_settings
-	report["first_info_uses_prepared_controls"] = first_info
+	report["first_color_popup_opens"] = first_settings
+	report["first_info_popup_opens"] = first_info
 	print(JSON.stringify(report))
 	warmer.queue_free()
 	menu.queue_free()

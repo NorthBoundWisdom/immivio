@@ -30,13 +30,11 @@ class Host:
 		start: int,
 		stereo: bool,
 		profile: String,
-		alpha: bool,
 		_vulkan: bool,
-		_depth: bool = false,
 		_top_bottom: bool = false,
 		_exact: bool = false
 	) -> int:
-		calls.append(["open", uri, start, stereo, profile, alpha])
+		calls.append(["open", uri, start, stereo, profile])
 		return 7
 
 	func close_mpv_video(id: int) -> void:
@@ -48,14 +46,12 @@ class Host:
 	func revise_mpv_video(
 		id: int,
 		stereo: bool,
-		alpha: bool,
 		profile: String,
 		position: int,
-		_depth: bool = false,
 		_top_bottom: bool = false,
 		_exact: bool = false
 	) -> int:
-		calls.append(["revise", id, stereo, alpha, profile, position])
+		calls.append(["revise", id, stereo, profile, position])
 		return 0  # Busy native revision stays queued, just as production.
 
 	func set_mpv_audio(id: int, track: int, volume: float, muted: bool) -> bool:
@@ -64,10 +60,6 @@ class Host:
 
 	func set_mpv_subtitle(id: int, track: int) -> bool:
 		calls.append(["subtitle", id, track])
-		return true
-
-	func set_mpv_depth_view(id: int, shift: float, convergence: float) -> bool:
-		calls.append(["depth_view", id, shift, convergence])
 		return true
 
 	func pick_local_video() -> int:
@@ -307,8 +299,6 @@ func _run() -> void:
 	menu.recent_requested.connect(main._show_recent_menu)
 	menu.seek_requested.connect(main._on_menu_seek)
 	menu.subtitle_requested.connect(video.set_subtitle_track)
-	menu.depth_strength_requested.connect(main._on_depth_strength.bind(false))
-	menu.depth_strength_committed.connect(main._save_depth_strength)
 	root.add_child(menu)
 	menu.set_process(false)
 	main.player_menu = menu
@@ -404,11 +394,6 @@ func _run() -> void:
 		),
 		"VR180 toolbar omits passthrough and unavailable depth without issuing a backend command"
 	)
-	main._on_menu_action("alpha")
-	check(
-		not video.alpha_requested and not video._pending_revision.get("alpha", false),
-		"Removed live matting action does not request inference"
-	)
 	video.set_projection(3)
 	menu.refresh()
 	check(
@@ -417,7 +402,7 @@ func _run() -> void:
 			and not shown.call(112)
 			and not click(menu, 104)
 			and not click(menu, 112)
-			and not video.alpha_requested
+			and not video.alpha_wanted()
 		),
 		"360 hides both unavailable effects and stops the previous Alpha effect"
 	)
@@ -465,13 +450,10 @@ func _run() -> void:
 		"Selecting fisheye preserves a mono source"
 	)
 	check(
-		click(menu, Menu.MODE_PROJECTION) and not click(menu, 112) and not video.depth_requested,
+		click(menu, Menu.MODE_PROJECTION) and not click(menu, 112),
 		"Mono playback never offers generated depth"
 	)
-	check(
-		click(menu, Menu.MODE_STEREO) and not video.depth_requested,
-		"2D tile retains ordinary mono playback"
-	)
+	check(click(menu, Menu.MODE_STEREO), "2D tile retains ordinary mono playback")
 	check(click(menu, Menu.MODE), "Mode panel closes")
 	video.control.observe(20000, 60000)
 	menu.refresh_values()
@@ -804,7 +786,7 @@ func _run() -> void:
 		"Full SBS clears both half and TB"
 	)
 	check(
-		not shown.call(112) and not click(menu, 112) and not video.depth_requested,
+		not shown.call(112) and not click(menu, 112),
 		"Native stereo hides the unavailable depth shortcut"
 	)
 	check(
@@ -1140,10 +1122,6 @@ func _run() -> void:
 	video.load_mode_lock({"geometry": 9, "layout": 1, "depth": false, "fisheye_fov": 180})
 	check(video.mode_lock.is_empty(), "A malformed stored lock is ignored")
 	video.open_local("file:///sticky/first_2D.mp4", "first_2D.mp4")
-	check(
-		not video.set_depth(true) and not video.depth_requested,
-		"Conversion cannot return after another source is opened"
-	)
 
 	main.settings.set_value("video", "mode_lock", {})
 	main.settings.save(main.settings_path)
@@ -1383,7 +1361,7 @@ func _check_control_sticks(main: Node3D, video: Node3D, menu: Node3D, host: RefC
 		video.control.target_ms == 60000 and host.calls.size() == calls,
 		"Capture release submits its own target; held stick remains blocked until center"
 	)
-	for property in ["_depth_hand", "_adjust_hand"]:
+	for property in ["_adjust_hand"]:
 		menu.set(property, "left_hand")
 		check(
 			menu.has_pointer_capture() and not menu.allows_playback_sticks(),

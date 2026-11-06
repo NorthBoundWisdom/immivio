@@ -20,7 +20,11 @@ func _initialize() -> void:
 
 
 func _run() -> void:
-	output = ProjectSettings.globalize_path("res://../../artifacts/captures/ui/stereo-view/render")
+	output = OS.get_environment("IMMIVIO_RENDER_OUTPUT_DIR")
+	if output.is_empty():
+		output = ProjectSettings.globalize_path(
+			"res://../../artifacts/captures/ui/stereo-view/render"
+		)
 	DirAccess.make_dir_recursive_absolute(output)
 	await _menus()
 	viewport = SubViewport.new()

@@ -455,7 +455,6 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     fun media_smb_browse(server: String, path: String): Int =
         if (closed.get()) -1 else sources.smbBrowse(server, path)
 
-    /** Legacy alpha/depth arguments must be false; generated effects are retired. */
     /**
      * topBottom: a stereo source with the views above each other (top = left eye) instead of side
      * by side.
@@ -466,9 +465,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         startMs: Int,
         stereo: Boolean,
         profile: String,
-        alpha: Boolean,
         vulkan: Boolean,
-        depth: Boolean,
         topBottom: Boolean,
         exactSeek: Boolean,
     ): Int =
@@ -479,9 +476,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
                 startMs,
                 stereo,
                 profile,
-                alpha,
                 vulkan,
-                depth = depth,
                 topBottom = topBottom,
                 exactSeek = exactSeek,
             )
@@ -490,10 +485,8 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     fun revise_mpv_video(
         id: Int,
         stereo: Boolean,
-        alpha: Boolean,
         profile: String,
         positionMs: Int,
-        depth: Boolean,
         topBottom: Boolean,
         exactSeek: Boolean,
     ): Int =
@@ -502,10 +495,8 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
             mpv.revise(
                 id,
                 stereo,
-                alpha,
                 profile,
                 positionMs,
-                depth,
                 topBottom,
                 exactSeek,
             )
@@ -709,7 +700,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
             GLES30.glGetStringi(
                 GLES30.GL_EXTENSIONS,
                 index,
-            )
+            ),
         )
         graphicsSnapshot = report.put("extensions", extensions).toString()
         Log.i("VRPassthroughPlayer", "GLES context observed")
