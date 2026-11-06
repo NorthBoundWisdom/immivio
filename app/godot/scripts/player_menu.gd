@@ -7,10 +7,8 @@ signal seek_requested(position_ms: int)
 signal bookmark_requested(operation: String, marker_id: String, scope: String)
 signal subtitle_requested(track_id: int)
 signal secondary_subtitle_requested(track_id: int)
-signal depth_strength_requested(strength: float)
 signal adjustment_requested(key: String, value: Variant)
 signal adjustment_committed
-signal depth_strength_committed
 
 const SEEK := 200
 const QUICK_SCREEN := 223
@@ -32,11 +30,7 @@ const MODE := 120
 const MODE_PROJECTION := 130
 const MODE_STEREO := 140
 const MODE_LENS := 150
-const DepthStrength := preload("res://scripts/depth_strength.gd")
-const DEPTH := 161
 const SLIDER_RESET_BASE := 10000
-const DEPTH_X := 0.32
-const DEPTH_SPAN := Vector2(0.2, 0.44)
 const LENS_FOVS := [180, 190, 200, 220]
 ## Timeline width: the slim bar while watching, the full width in the expanded panel.
 const BAR_SEEK := 0.82
@@ -84,8 +78,7 @@ const POPUP_TARGETS := {
 	QUEUE_SETTINGS: "queue",
 	12: "info",
 	MODE: "mode",
-	110: "subtitles",
-	112: "depth"
+	110: "subtitles"
 }
 const SETTINGS_CACHE_LIMIT := 24
 var _settings_layouts := {}
@@ -119,8 +112,7 @@ const OPERATIONS := [
 		"recenter",
 		"",
 		"subtitles",
-		"audio",
-		"depth"
+		"audio"
 	],
 	["color_grade"],
 	["capabilities"]
@@ -169,15 +161,6 @@ var _transport: Dictionary = {}
 var _bar_drawn := ""  # what decides the bar's buttons (clone voice, projection) when it was drawn
 var _settings_drawn := ""
 var _lit_modes: Dictionary = {}  # video mode tiles lit as current; pressing one again locks the mode
-var _depth_open := false
-var _depth_hand := ""
-var _depth_sent := -1
-var _depth_fill: MeshInstance3D
-var _depth_knob: MeshInstance3D
-var _depth_label: Label3D
-## Comet arc around the bar's 3D icon while depth is requested but not yet running (cold model compile).
-var _depth_busy: MeshInstance3D
-static var _busy_shader: Shader
 var _subtitle_open := false
 var _subtitle_secondary := false
 var _subtitle_offset := 0
@@ -215,7 +198,6 @@ func presentation_page() -> Variant:
 		_quick_open,
 		_mode_open,
 		_subtitle_open,
-		_depth_open,
 		_adjustment,
 		_grade_page,
 		bookmarks.opened,
@@ -284,7 +266,6 @@ func has_pointer_capture() -> bool:
 		not choices.capture.is_empty()
 		or not bookmarks.capture.is_empty()
 		or not _seek_hand.is_empty()
-		or not _depth_hand.is_empty()
 		or not _adjust_hand.is_empty()
 	)
 
@@ -305,17 +286,6 @@ func allows_playback_sticks() -> bool:
 	)
 
 
-func _finish_depth_drag() -> void:
-	if not _depth_hand.is_empty():
-		_depth_hand = ""
-		depth_strength_committed.emit()
-
-
-func _close_depth_slider() -> void:
-	_finish_depth_drag()
-	_depth_open = false
-
-
 func dismiss() -> void:
 	_quick_open = ""
 	choices.reset()
@@ -325,12 +295,10 @@ func dismiss() -> void:
 	_finish_adjustment()
 	_adjustment = ""
 	_subtitle_open = false
-	_close_depth_slider()
 	super.dismiss()
 
 
 func _reset_navigation() -> void:
-	_shortcut_target = -1
 	_quick_open = ""
 	choices.reset()
 	bookmarks.reset()
@@ -343,7 +311,6 @@ func _reset_navigation() -> void:
 	_subtitle_scroll = 0.0
 	section = 0
 	_mode_open = false
-	_close_depth_slider()
 
 
 func refresh() -> void:
@@ -417,7 +384,6 @@ func _refresh_live_values() -> void:
 				18
 			)
 	_refresh_progress()
-	_refresh_depth()
 	_refresh_adjustments()
 	if not _quick_open.is_empty():
 		playback_popups.refresh_values()
@@ -587,10 +553,6 @@ func _reset_draw_fields() -> void:
 func _reset_popup_fields() -> void:
 	_info = null
 	_lit_modes = {}
-	_depth_fill = null
-	_depth_knob = null
-	_depth_label = null
-	_depth_busy = null
 	_subtitle_ids = {}
 	_adjust_rows = {}
 	_preset_buttons = {}
@@ -622,8 +584,6 @@ func _draw_uncached() -> void:
 		_subtitle_open = false
 		_subtitle_offset = 0
 	_subtitle_source = str(_state.get("source_uri", ""))
-	if not _can_depth():
-		_close_depth_slider()
 	if section == 0:
 		_draw_bar()
 	else:
@@ -761,8 +721,6 @@ func _draw_bar_popups() -> void:
 		_draw_quick_settings()
 	if _mode_open:
 		_draw_modes()
-	if _depth_open:
-		_draw_depth()
 	if _subtitle_open:
 		_draw_subtitles()
 	_bar_drawn = _bar_key()
@@ -785,8 +743,6 @@ func _popup_is_open(key: String) -> bool:
 			return _mode_open
 		"subtitles":
 			return _subtitle_open
-		"depth":
-			return _depth_open
 	return not key.is_empty() and _quick_open == key
 
 
@@ -800,7 +756,6 @@ func _toggle_popup(key: String) -> void:
 	section = 0
 	_subtitle_open = false
 	_mode_open = false
-	_close_depth_slider()
 	if not close:
 		match key:
 			"mode":
@@ -809,8 +764,6 @@ func _toggle_popup(key: String) -> void:
 				_subtitle_open = true
 				_subtitle_offset = 0
 				_subtitle_scroll = 0
-			"depth":
-				_toggle_depth_slider()
 			_:
 				_quick_open = key
 	refresh()
@@ -1089,114 +1042,6 @@ func _scroll_subtitles(rows: int) -> void:
 		refresh()
 
 
-func _can_depth() -> bool:
-	return false
-
-
-func _toggle_depth_slider() -> void:
-	if not _can_depth():
-		return
-	if _depth_open:
-		_close_depth_slider()
-	else:
-		_depth_open = true
-		_subtitle_open = false
-		_mode_open = false
-		if not _state.get("depth_requested", false):
-			depth_strength_requested.emit(
-				DepthStrength.remembered(float(_state.get("depth_strength", 1.0)), _depth_maximum())
-			)
-	refresh()
-
-
-func _draw_depth() -> void:
-	var height := DEPTH_SPAN.y - DEPTH_SPAN.x
-	var middle := (DEPTH_SPAN.x + DEPTH_SPAN.y) / 2
-	var panel := _quad(
-		Vector2(0.13, height + 0.13),
-		Vector3(DEPTH_X, middle + 0.025, 0.001),
-		Color(PANEL, 0.94),
-		10
-	)
-	panel.material_override.set_shader_parameter("corner_radius", 0.05)
-	add_child(panel)
-	_decorations.append(panel)
-	_button(DEPTH, "", Vector2(DEPTH_X, middle), Vector2(0.11, height + 0.04), _can_depth())
-	_buttons.back().base_color = Color(TILE, 0.0)
-	_decoration(Vector2(0.012, height), Vector2(DEPTH_X, middle), Color(0.3, 0.35, 0.4))
-	# Ticks mark 100%, 200%, 300%; the original default stays easy to find.
-	for value in [1.0, 2.0, 3.0]:
-		if value > _depth_maximum():
-			continue
-		_decoration(
-			Vector2(0.035, 0.003),
-			Vector2(
-				DEPTH_X, DEPTH_SPAN.x + height * DepthStrength.to_fraction(value, _depth_maximum())
-			),
-			MUTED
-		)
-	_depth_fill = _decoration(Vector2(0.012, height), Vector2(DEPTH_X, middle), ACCENT)
-	_depth_fill.material_override.render_priority = 13
-	_depth_knob = _decoration(Vector2(0.03, 0.03), Vector2(DEPTH_X, DEPTH_SPAN.x), Color.WHITE)
-	_depth_knob.material_override.set_shader_parameter("corner_radius", 0.015)
-	_depth_knob.material_override.render_priority = 14
-	_depth_label = _label("", Vector3(DEPTH_X, DEPTH_SPAN.y + 0.045, 0.004), 16)
-	_refresh_depth()
-
-
-func _depth_maximum() -> float:
-	return DepthStrength.MAX
-
-
-func _depth_caption() -> String:
-	return (
-		(
-			"%d%%"
-			% roundi(
-				(
-					DepthStrength.clamp_value(
-						float(_state.get("depth_strength", 1.0)), _depth_maximum()
-					)
-					* 100
-				)
-			)
-		)
-		if _state.get("depth_requested", false)
-		else I18n.t("Off")
-	)
-
-
-func _refresh_depth() -> void:
-	if not is_instance_valid(_depth_fill):
-		return
-	var fraction := (
-		DepthStrength.to_fraction(float(_state.get("depth_strength", 1.0)), _depth_maximum())
-		if _state.get("depth_requested", false)
-		else 0.0
-	)
-	var height := DEPTH_SPAN.y - DEPTH_SPAN.x
-	_depth_fill.visible = fraction > 0
-	_depth_fill.mesh.size.y = maxf(0.001, height * fraction)
-	_depth_fill.position.y = DEPTH_SPAN.x + height * fraction / 2
-	_depth_fill.material_override.set_shader_parameter("surface_size", _depth_fill.mesh.size)
-	_depth_knob.position.y = DEPTH_SPAN.x + height * fraction
-	_depth_label.text = _depth_caption()
-
-
-func _set_depth_at(y: float) -> void:
-	_shortcut_target = -1
-	var fraction := (y - DEPTH_SPAN.x) / (DEPTH_SPAN.y - DEPTH_SPAN.x)
-	var strength := DepthStrength.from_fraction(fraction, _depth_maximum())
-	if fraction < 0.02:
-		strength = 0.0  # Small bottom dead zone makes Off easy to reach.
-	var level := roundi(strength * 100)
-	if level == _depth_sent:
-		return
-	_depth_sent = level
-	depth_strength_requested.emit(strength)
-	refresh_values()
-
-
 ## Point on the menu plane (local), even off the track, so a drag past either end clamps.
 func _plane_point(origin: Vector3, direction: Vector3) -> Variant:
 	return pointer_plane_point(origin, direction, 0.0)
@@ -1207,7 +1052,7 @@ func press_pointer(hand: String, origin: Vector3, direction: Vector3, tracked: b
 		return true
 	if not bookmarks.capture.is_empty():
 		return true
-	for owner in [_adjust_hand, _depth_hand, _seek_hand]:
+	for owner in [_adjust_hand, _seek_hand]:
 		if not owner.is_empty() and owner != hand:
 			return false
 	update_pointer(hand, origin, direction, tracked)
@@ -1225,13 +1070,6 @@ func press_pointer(hand: String, origin: Vector3, direction: Vector3, tracked: b
 		_adjust_hand = hand
 		_adjust_target = int(hit.target)
 		_set_adjustment_at(float(hit.point.x))
-		return true
-	if not hit.is_empty() and int(hit.target) == DEPTH:
-		if not _depth_hand.is_empty() and _depth_hand != hand:
-			return false
-		_depth_hand = hand
-		_depth_sent = -1
-		_set_depth_at(float(hit.point.y))
 		return true
 	return super(hand, origin, direction, tracked)
 
@@ -1266,13 +1104,6 @@ func update_pointer(hand: String, origin: Vector3, direction: Vector3, tracked: 
 			var adjust_point: Variant = _plane_point(origin, direction)
 			if adjust_point != null:
 				_set_adjustment_at(float(adjust_point.x))
-	if hand == _depth_hand:
-		if not visible or not tracked or not _depth_open or not _can_depth():
-			_finish_depth_drag()
-		else:
-			var depth_point: Variant = _plane_point(origin, direction)
-			if depth_point != null:
-				_set_depth_at(float(depth_point.y))
 
 
 func release_pointer(hand: String, _origin: Vector3, _direction: Vector3, _tracked: bool) -> void:
@@ -1288,8 +1119,6 @@ func release_pointer(hand: String, _origin: Vector3, _direction: Vector3, _track
 			seek_requested.emit(target)
 	if hand == _adjust_hand:
 		_finish_adjustment()
-	if hand == _depth_hand:
-		_finish_depth_drag()
 
 
 ## Only changes that alter the transport structure require replacing its nodes.
@@ -1402,7 +1231,7 @@ func _draw_modes() -> void:
 	var locked := {}
 	if not lock.is_empty():
 		locked[MODE_PROJECTION + int(lock.geometry)] = true
-		locked[MODE_STEREO + (3 if lock.depth and not half_choices else [0, 1, 4, 5, 6][int(lock.layout)])] = true
+		locked[MODE_STEREO + [0, 1, 4, 5, 6][int(lock.layout)]] = true
 	var fisheye := int(_state.get("geometry", 0)) == 2
 	# The lens row sits under the layouts: the panel rises to clear the floating round buttons.
 	var top := 0.61 if fisheye else 0.47
@@ -1432,13 +1261,10 @@ func _draw_modes() -> void:
 			true
 		)
 	var stereo: bool = _state.get("stereo", false)
-	var depth: bool = _state.get("depth_requested", false)
 	var tb: bool = stereo and _state.get("top_bottom", false)
 	var half_layout: bool = stereo and _state.get("stereo_half", false)
 	var layouts_y := top - (0.04 if half_choices else 0.09)
-	_mode_tile(
-		MODE_STEREO, "2D", "screen", Vector2(-0.4, layouts_y), not stereo and not depth, true
-	)
+	_mode_tile(MODE_STEREO, "2D", "screen", Vector2(-0.4, layouts_y), not stereo, true)
 	_mode_tile(
 		MODE_STEREO + 1,
 		I18n.t("3D SBS"),
@@ -1650,43 +1476,8 @@ func _time(milliseconds: int) -> String:
 	)
 
 
-var _shortcut_target := -1
-var _shortcut_time := -1000
-var _shortcut_source := ""
-var _shortcut_depth_was_on := false
-
-
-func _shortcut_double_tap(target: int, now: int) -> bool:
-	var source := str(_state.get("source_uri", ""))
-	var repeated := (
-		target == _shortcut_target
-		and source == _shortcut_source
-		and now >= _shortcut_time
-		and now - _shortcut_time <= 350
-	)
-	if not repeated:
-		_shortcut_depth_was_on = bool(_state.get("depth_requested", false))
-	_shortcut_target = -1 if repeated else target
-	_shortcut_time = now
-	_shortcut_source = source
-	return repeated
-
-
 func _activate_hit(hit: Dictionary) -> void:
 	var target := int(hit.target)
-	if section == 0 and target == 112 and hit.get("enabled", true):
-		if _shortcut_double_tap(target, Time.get_ticks_msec()):
-			if _can_depth():
-				_close_depth_slider()
-				depth_strength_requested.emit(
-					0.0 if _shortcut_depth_was_on else float(_state.get("depth_strength", 1.0))
-				)
-				depth_strength_committed.emit()
-			refresh()
-			return
-	else:
-		_shortcut_target = -1
-
 	if int(hit.target) == SEEK:
 		if _can_seek():
 			var fraction := clampf((float(hit.point.x) + BAR_SEEK / 2) / BAR_SEEK, 0.0, 1.0)
@@ -1750,7 +1541,6 @@ func _activate(target: int) -> void:
 			refresh()
 			return
 	_subtitle_open = false
-	_close_depth_slider()
 	if target < MODE_PROJECTION or target >= MODE_LENS + LENS_FOVS.size():
 		_mode_open = false
 	if target == CLOSE:
@@ -1775,10 +1565,6 @@ func _activate(target: int) -> void:
 		refresh()
 	elif target >= MODE_LENS and target < MODE_LENS + LENS_FOVS.size():
 		action_requested.emit("fov_%d" % LENS_FOVS[target - MODE_LENS])
-		refresh()
-	elif target == MODE_STEREO + 3:
-		if not _state.get("stereo", false):
-			action_requested.emit("depth")
 		refresh()
 	elif target >= 100 and target < 100 + OPERATIONS[0].size():
 		var operation: String = OPERATIONS[0][target - 100]
@@ -1807,8 +1593,6 @@ func _update_highlights() -> void:
 			button.node.material_override.set_shader_parameter("surface_color", SELECTED)
 		if button.get("fixed_current", false):
 			button.node.material_override.set_shader_parameter("surface_color", SELECTED)
-	if _depth_busy:
-		_depth_busy.visible = _depth_preparing()
 	for button in _buttons:
 		if section == 0 and button.target == 110:
 			var active: bool = button.enabled and int(_state.get("subtitle_track", 0)) != 0
@@ -1822,15 +1606,7 @@ func _update_highlights() -> void:
 			and button.enabled
 			and not _hover.values().has(button.target)
 			and button.target == 104
-			and _state.get("alpha_requested", false)
-		):
-			button.node.material_override.set_shader_parameter("surface_color", SELECTED)
-		if (
-			section == 0
-			and button.enabled
-			and not _hover.values().has(button.target)
-			and button.target == 112
-			and _state.get("depth_requested", false)
+			and _state.get("packed_alpha", false)
 		):
 			button.node.material_override.set_shader_parameter("surface_color", SELECTED)
 		if section == 0 and button.target == 111:
@@ -1845,46 +1621,6 @@ func _update_highlights() -> void:
 				and choices.opened == "audio_track"
 			):
 				button.node.material_override.set_shader_parameter("surface_color", SELECTED)
-
-
-func _depth_preparing() -> bool:
-	return (
-		section == 0
-		and _enabled("depth")
-		and _state.get("depth_requested", false)
-		and not _state.get("depth_enabled", false)
-		and str(_state.get("depth_error", "")).is_empty()
-	)
-
-
-## Rotating arc over a round icon; animated by the shader clock, so it costs no per-frame script.
-func _busy_ring(parent: Node3D, diameter: float) -> MeshInstance3D:
-	if not _busy_shader:
-		_busy_shader = Shader.new()
-		_busy_shader.code = """shader_type spatial;
-render_mode unshaded, depth_draw_never, cull_disabled;
-uniform vec4 tint : source_color;
-void fragment() {
-	vec2 p = UV * 2.0 - 1.0;
-	float r = length(p);
-	float lag = mod(atan(p.y, p.x) + TIME * 5.0, 6.2831853);
-	float ring = smoothstep(0.78, 0.83, r) * (1.0 - smoothstep(0.93, 0.98, r));
-	ALBEDO = tint.rgb;
-	ALPHA = tint.a * ring * clamp(1.0 - lag / 4.2, 0.0, 1.0);
-}"""
-	var node := MeshInstance3D.new()
-	var mesh := QuadMesh.new()
-	mesh.size = Vector2.ONE * diameter * 1.15
-	node.mesh = mesh
-	node.position = Vector3(0, 0, 0.005)
-	var material := ShaderMaterial.new()
-	material.shader = _busy_shader
-	material.set_shader_parameter("tint", ACCENT)
-	material.render_priority = 13
-	node.material_override = material
-	node.visible = false
-	parent.add_child(node)
-	return node
 
 
 func _enabled(operation: String) -> bool:
@@ -1908,15 +1644,6 @@ func _enabled(operation: String) -> bool:
 			return has_video
 		"clone_voice":
 			return has_video and _state.get("clone_voice", false)
-		"depth":
-			return (
-				false
-				and has_video
-				and int(_state.get("geometry", 0)) == 0
-				and not _state.get("stereo", false)
-			)
-		"depth_strength":
-			return _can_depth()
 		"subtitles":
 			return has_video
 		"capabilities":
@@ -1975,8 +1702,6 @@ func _caption_text(operation: String) -> String:
 			return str(_state.get("audio_track", "Auto"))
 		"clone_voice":
 			return "Dubbing"
-		"depth_strength":
-			return _depth_caption()
 		"subtitles":
 			return "Subtitles"
 		"capabilities":
@@ -2007,12 +1732,8 @@ func _status_text() -> String:
 		return I18n.t("Error: open Info")
 	if not _state.get("has_video", false):
 		return I18n.t("No video selected")
-	if _state.get("alpha_requested", false):
-		return I18n.t("Alpha on" if _state.get("alpha_enabled", false) else "Preparing Alpha")
-	if _state.get("depth_requested", false):
-		if not str(_state.get("depth_error", "")).is_empty():
-			return I18n.t("3D unavailable")
-		return I18n.t("3D on" if _state.get("depth_enabled", false) else "Preparing 3D")
+	if _state.get("packed_alpha", false) and _state.get("alpha_enabled", false):
+		return I18n.t("Alpha on")
 	return I18n.t(str(_state.get("playback_state", "Ready")).capitalize())
 
 
@@ -2043,8 +1764,6 @@ func _info_text() -> String:
 	)
 	lines.append(I18n.t("Subtitles: %s") % _subtitle_name())
 	lines.append(I18n.t("XR: %s") % I18n.t(str(_state.get("xr_state", "Unavailable"))))
-	if _state.get("depth_requested", false) and not str(_state.get("depth_error", "")).is_empty():
-		lines.append(I18n.t("3D unavailable") + ": " + str(_state.depth_error))
 	var error := str(_state.get("error", ""))
 	if not error.is_empty():
 		lines.append(_fit_title(error.replace("\n", " "), ""))

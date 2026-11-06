@@ -250,7 +250,6 @@ func _ready() -> void:
 	video.prefer_clone_voice = bool(settings.get_value("audio", "prefer_clone_voice", false))
 	video.history_enabled = bool(settings.get_value("library", "history", true))
 	_restore_seek_settings()
-	video.auto_depth = false
 	video.reuse_last_mode = bool(settings.get_value("video", "reuse_last_mode", false))
 	video.last_video_mode = preload("res://scripts/video_mode_default.gd").clean(
 		settings.get_value("video", "last_mode", {})
@@ -375,8 +374,6 @@ func _ready() -> void:
 	player_menu.adjustment_committed.connect(_save_playback_adjustments)
 	player_menu.subtitle_requested.connect(video.set_subtitle_track)
 	player_menu.secondary_subtitle_requested.connect(video.dual_subtitles.select)
-	player_menu.depth_strength_requested.connect(_on_depth_strength)
-	player_menu.depth_strength_committed.connect(_save_depth_strength)
 	_connect_session_controls(player_menu)
 	add_child(player_menu)
 	video_menu = player_menu
@@ -936,26 +933,8 @@ func _on_bookmark_request(operation: String, marker_id: String, scope: String) -
 	_playback._on_bookmark_request(operation, marker_id, scope)
 
 
-## Persist accepted depth adjustments for the current media.
-func _on_depth_strength(strength: float) -> void:
-	if video.set_depth_strength(strength):
-		settings.set_value("video", "depth_strength", video.depth_strength)
-		_remember_auto_depth(video.auto_depth)
-
-
-func _remember_auto_depth(enabled: bool) -> void:
-	if settings.has_section_key("effects", "auto_3d"):
-		settings.erase_section_key("effects", "auto_3d")
-	video.auto_depth = false
-
-
 func _on_mode_lock_changed(lock: Dictionary, media_kind: String) -> void:
 	_preferences._on_mode_lock_changed(lock, media_kind)
-
-
-func _save_depth_strength() -> void:
-	# Keep dragging live without writing settings on every pointer movement.
-	settings.save(settings_path)
 
 
 func _menu_state() -> Dictionary:
@@ -1141,17 +1120,13 @@ func _update_status() -> void:
 	)
 	if video:
 		status_label.text += (
-			"\n%s | %s | %s | %s\n%s | RVM %s"
+			"\n%s | %s | %s | %s\n%s | Buffer %s"
 			% [
 				video.display_name.left(42),
 				video.media.state,
 				"SBS" if video.stereo_sbs else "2D",
 				video.layout_snapshot().geometry,
-				(
-					"Alpha on"
-					if video.alpha_enabled
-					else ("Preparing Alpha" if video.alpha_requested else "Normal playback")
-				),
+				"Alpha on" if video.alpha_enabled else "Normal playback",
 				video.profile
 			]
 		)

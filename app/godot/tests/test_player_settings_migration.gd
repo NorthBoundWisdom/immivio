@@ -17,6 +17,10 @@ func _initialize() -> void:
 	settings.set_value("alpha", "model", "quality")
 	settings.set_value("video", "alpha_fps", 30)
 	settings.set_value("video", "depth_strength", 2.0)
+	settings.set_value("video", "auto_depth", true)
+	settings.set_value("effects", "auto_depth", true)
+	settings.set_value("video", "alpha_requested", true)
+	settings.set_value("video", "depth_requested", true)
 	settings.set_value("photo", "depth_strength", 2.0)
 	settings.set_value("audio", "volume", 37.0)
 	settings.set_value("audio", "muted", true)
@@ -36,6 +40,15 @@ func _initialize() -> void:
 			and not settings.has_section_key("photo", "depth_strength")
 		),
 		"Generated depth strengths are removed"
+	)
+	check(
+		(
+			not settings.has_section_key("video", "auto_depth")
+			and not settings.has_section_key("effects", "auto_depth")
+			and not settings.has_section_key("video", "alpha_requested")
+			and not settings.has_section_key("video", "depth_requested")
+		),
+		"Only retired inference request fields are removed"
 	)
 	check(
 		settings.get_value("effects", "source_mask") == "embedded",

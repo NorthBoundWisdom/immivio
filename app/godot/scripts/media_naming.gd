@@ -38,7 +38,7 @@ static func _has(name: String, alternatives: String) -> bool:
 ## What the name states. Keys appear only when stated: geometry, stereo, top_bottom, swap,
 ## stereo_half, fisheye_fov, alpha, packed.
 ## packed: an alpha-packed fisheye output (mask in the frame's corners, PTMediaServer
-## "_LR_180_FISHEYE_F180_alpha"); other alpha names ask for live matting.
+## "_LR_180_FISHEYE_F180_alpha"); other alpha markers do not enable an effect.
 static func from_name(file_name: String) -> Dictionary:
 	var name := file_name.get_file()
 	if name.get_extension().length() in range(2, 5):

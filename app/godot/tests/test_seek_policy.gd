@@ -33,9 +33,7 @@ class Host:
 		start: int,
 		_stereo: bool,
 		_profile: String,
-		_alpha: bool,
 		_vulkan: bool,
-		_depth: bool,
 		_tb: bool,
 		exact: bool
 	) -> int:
@@ -43,14 +41,7 @@ class Host:
 		return 7
 
 	func revise_mpv_video(
-		id: int,
-		_stereo: bool,
-		_alpha: bool,
-		_profile: String,
-		target: int,
-		_depth: bool,
-		_tb: bool,
-		exact: bool
+		id: int, _stereo: bool, _profile: String, target: int, _tb: bool, exact: bool
 	) -> int:
 		revisions.append([id, target, exact])
 		return 0  # Keep the request queued to exercise busy retries.

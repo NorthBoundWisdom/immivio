@@ -39,7 +39,6 @@ func _run() -> void:
 		"geometry": 0,
 		"stereo_sbs": false,
 		"swap_eyes": false,
-		"alpha_requested": false,
 		"track_choices": {"audio": {"id": 2}}
 	}
 	assert(memory.remember(legacy, mode))

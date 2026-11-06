@@ -71,8 +71,6 @@ func _run() -> void:
 	for mode in ["2d", "sbs", "tb"]:
 		video.stereo_sbs = mode in ["sbs", "tb"]
 		video.top_bottom = mode == "tb"
-		video.depth_requested = false
-		video.depth_enabled = false
 		for curve in [0.0, 0.7]:
 			video.screen_curve = curve
 			video.screen_distance = 2.0

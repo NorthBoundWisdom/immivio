@@ -1,5 +1,5 @@
 param([Parameter(Mandatory = $true)][string]$Serial, [Parameter(Mandatory = $true)][string]$Apk,
-    [string]$Output = 'artifacts/captures/device/seek-hold/run', [string[]]$Modes = @('normal', 'alpha', 'depth'),
+    [string]$Output = 'artifacts/captures/device/seek-hold/run', [ValidateSet('normal')][string[]]$Modes = @('normal'),
     [string]$FixtureOverride = '', [int]$Projection = -1)
 $ErrorActionPreference = 'Stop'
 $workspace = Split-Path -Parent $PSScriptRoot
@@ -29,7 +29,7 @@ function Read-Json([string]$file) {
     try { return $text | ConvertFrom-Json } catch { return $null }
 }
 function Request([string]$label, [string]$operation, [string[]]$extras = @()) {
-    # These probes assert exact source PTS rather than the production speed default.
+    # These probes request exact seeking; source tickets still use playback-clock estimates.
     if ($operation -in @('open', 'seek')) { $extras += @('--es', 'seek_mode', 'exact') }
     $key = $label + '_' + [guid]::NewGuid().ToString('N')
     $args = @('-s', $Serial, 'shell', 'am', 'broadcast', '-n', "$package/org.vrpassthroughplayer.plugin.DebugDiagnosticsReceiver", '-a', "$package.DEBUG_PLAYER_MPV", '--es', 'request', $key, '--es', 'operation', $operation)
@@ -93,13 +93,11 @@ try {
     & $adb -s $Serial shell am start -n "$package/com.godot.game.GodotAppLauncher" -a android.intent.action.MAIN -c com.oculus.intent.category.VR -c org.khronos.openxr.intent.category.IMMERSIVE_HMD | Set-Content "$directory/launch.txt"
     Start-Sleep -Seconds 7
     foreach ($mode in $Modes) {
-        $fixture = if ($FixtureOverride) { $FixtureOverride } elseif ($mode -eq 'normal') { 'mp07_motion_4k' } else { 'mp05_person_still' }
-        $request = Request "$mode-open" open @('--es', 'fixture', $fixture, '--ez', 'enabled', $(if ($mode -eq 'alpha') { 'true' } else { 'false' }),
-            '--ez', 'depth', $(if ($mode -eq 'depth') { 'true' } else { 'false' }), '--ez', 'stereo', $(if ($mode -eq 'depth') { 'false' } else { 'true' }),
+        $fixture = if ($FixtureOverride) { $FixtureOverride } else { 'mp07_motion_4k' }
+        $request = Request "$mode-open" open @('--es', 'fixture', $fixture, '--ez', 'stereo', 'true',
             '--es', 'profile', '256x144', '--ez', 'benchmark', $(if ($Projection -ge 0) { 'true' } else { 'false' }),
             '--ei', 'projection', "$([Math]::Max(0,$Projection))")
-        Wait-Report $request "$mode-open" { param($r) $r.media.frame_counter -ge 2 -and
-            ($mode -ne 'alpha' -or $r.layout.alpha_ready) -and ($mode -ne 'depth' -or $r.layout.depth_enabled) } | Out-Null
+        Wait-Report $request "$mode-open" { param($r) $r.media.frame_counter -ge 2 } | Out-Null
         $request = Request "$mode-pause" playing @('--ez', 'enabled', 'false')
         Wait-Report $request "$mode-pause" { param($r) $r.native_status.details.paused -eq 'yes' } | Out-Null
         Target (Seek "$mode-reference" 1000) "$mode-reference" 1000 | Out-Null

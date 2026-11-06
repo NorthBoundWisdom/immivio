@@ -10,7 +10,7 @@ import subprocess
 import time
 import uuid
 
-PACKAGE = "com.wapok.thru3d"
+PACKAGE = "com.northboundwisdom.immivio"
 
 
 class Device:

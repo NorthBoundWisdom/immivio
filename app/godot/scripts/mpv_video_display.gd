@@ -39,23 +39,10 @@ var control := PlaybackControl.new()
 var platform: Object
 var alpha_encoding := 1
 var alpha_enabled := false
-var alpha_requested := false
-## Realtime 2D->3D: a depth model drives per-eye parallax on mono sources (never with Alpha or SBS).
-var depth_requested := false
-var auto_depth := false  # Global user choice, independent of remembered per-file projection.
-var depth_enabled := false
-const DEPTH_STRENGTHS := [0.5, 1.0, 1.5, 2.0]
-const DepthStrength := preload("res://scripts/depth_strength.gd")
-## Eye-width fraction of the full parallax at strength 1 (PTMediaServer), and the near value kept on
-## the screen plane (nearer content comes out of the screen).
-const DEPTH_SHIFT := 0.035
-const DEPTH_CONVERGENCE := 0.35
-var _depth_view_sent := ""
-var depth_strength := 1.0
 ## Pick the clone-voice track (an extra M4A beside the video) whenever a video has one.
 var prefer_clone_voice := false
 ## The file is an alpha-packed fisheye output (its name says so): the mask is in the frame and
-## the Alpha switch shows it instead of running RVM.
+## the Alpha switch controls this embedded mask.
 var packed_file := false
 var packed_alpha := false
 var reclining_mode := false
@@ -64,7 +51,6 @@ var _layout_pending: Variant = null
 var _layout_basename := ""
 var reuse_last_mode := false
 var last_video_mode: Dictionary = {}
-var _rvm_alpha := false  # the bound pair carries an inferred Alpha
 var _clone_applied := false
 var loop_enabled := false
 var requested_play := true
@@ -213,10 +199,6 @@ func _ready() -> void:
 	_apply_geometry()
 
 
-func ai_available() -> bool:
-	return false
-
-
 ## First usable displayed source frame, for every stable library URI. No second video decoder.
 var _thumb_after_ms := -1  # media position to try; -1: already cached/not wanted
 var _thumb_tries := 0
@@ -333,7 +315,6 @@ func _on_selected(payload: String) -> void:
 			str(result.get("display_name", "Local video")),
 			_resume(uri),
 			true,
-			false,
 			"",
 			{"basename": result.get("display_name", "")}
 		):
@@ -373,9 +354,7 @@ func open_library(
 		if uri.begins_with("content://") and not recent_files.lookup(uri).is_empty():
 			opened = open_recent(uri, true, metadata)
 		else:
-			opened = open_local(
-				uri, title, 0, true, false, str(metadata.get("basename", "")), metadata
-			)
+			opened = open_local(uri, title, 0, true, str(metadata.get("basename", "")), metadata)
 	elif uri.begins_with("medialib://") and not metadata.is_empty():
 		requested_play = true
 		var start: int = int(metadata.get("start_ms", -1))
@@ -384,7 +363,6 @@ func open_library(
 			title,
 			_resume(uri) if start < 0 else start,
 			true,
-			false,
 			str(metadata.get("basename", "")),
 			metadata
 		)
@@ -392,7 +370,7 @@ func open_library(
 		opened = open_recent(uri, false, metadata)
 	else:
 		requested_play = true
-		opened = open_local(uri, title, 0, true, false, "", metadata)
+		opened = open_local(uri, title, 0, true, "", metadata)
 	if opened and RecentFiles.valid_cover(cover):
 		_library_cover = cover
 	return opened
@@ -405,7 +383,7 @@ func open_recent(uri: String, from_start: bool = false, metadata: Dictionary = {
 	if not uri.begins_with("content://"):
 		requested_play = true
 		return open_local(
-			uri, str(entry.title), 0 if from_start else _resume(uri), true, false, "", metadata
+			uri, str(entry.title), 0 if from_start else _resume(uri), true, "", metadata
 		)
 	cancel_pending_open()
 	_access_pending = {
@@ -447,9 +425,7 @@ func _on_local_access(id: int, payload: String) -> void:
 	var metadata: Dictionary = pending.get("metadata", {}).duplicate(true)
 	if not str(result.get("display_name", "")).is_empty():
 		metadata.basename = result.display_name
-	if open_local(
-		str(pending.uri), str(pending.title), int(pending.start_ms), true, false, "", metadata
-	):
+	if open_local(str(pending.uri), str(pending.title), int(pending.start_ms), true, "", metadata):
 		_file_permission_persisted = result.persisted_permission
 
 
@@ -481,7 +457,6 @@ func open_local(
 	title: String,
 	start_ms: int = 0,
 	restore_mode: bool = true,
-	alpha: bool = false,
 	basename: String = "",
 	metadata: Dictionary = {}
 ) -> bool:
@@ -540,7 +515,6 @@ func open_local(
 			viewing_eye = int(saved.get("viewing_eye", 0))
 			stereo_horizontal = float(saved.get("stereo_horizontal", 0.0))
 			stereo_vertical = float(saved.get("stereo_vertical", 0.0))
-			depth_requested = bool(saved.get("depth_requested", false)) and not stereo_sbs
 		elif (
 			not mode_lock.is_empty()
 			and not stated.has("geometry")
@@ -553,9 +527,7 @@ func open_local(
 			stereo_half = int(mode_lock.layout) in [3, 4]
 			fisheye_fov = int(mode_lock.fisheye_fov)
 			swap_eyes = false
-			depth_requested = bool(mode_lock.depth) and not stereo_sbs
 		else:
-			depth_requested = false
 			geometry = int(stated.get("geometry", Geometry.Geometry.FLAT))
 			stereo_sbs = bool(
 				stated.get(
@@ -576,11 +548,6 @@ func open_local(
 				)
 			):
 				_layout_pending = stated
-	# Videos start as normal playback unless the name asks for live Alpha.
-	alpha_requested = (
-		ai_available()
-		and (alpha or (restore_mode and bool(stated.get("alpha", false)) and not packed_file))
-	)
 	_thumb_tries = 0
 	_thumbnail_result = {}
 	_thumb_after_ms = -1
@@ -601,22 +568,13 @@ func open_local(
 		if source:
 			_bookmark_metadata.size = source.get_length()
 	_bookmark_resolve()
-	depth_requested = (
-		ai_available()
-		and auto_depth
-		and geometry == Geometry.Geometry.FLAT
-		and not stereo_sbs
-		and not alpha_requested
-	)
 	_last_seek_mode = SeekPolicy.normalize(seek_mode)
 	var id: int = platform.open_mpv_video(
 		uri,
 		maxi(start_ms, 0),
 		stereo_sbs,
 		profile,
-		alpha_requested,
 		true,
-		depth_requested,
 		stereo_sbs and top_bottom,
 		SeekPolicy.normalize(seek_mode) == SeekPolicy.EXACT
 	)
@@ -661,8 +619,6 @@ func _unbind() -> void:
 		else:
 			platform.detach_mpv_pair(int(previous.session_id), int(previous.slot_token))
 	alpha_enabled = false
-	_rvm_alpha = false
-	depth_enabled = false
 	panel.visible = false
 	if caption:
 		caption.visible = false
@@ -715,8 +671,6 @@ func close_video() -> void:
 	_tracks_pending.clear()
 	local_uri = ""
 	display_name = ""
-	alpha_requested = false
-	depth_requested = false
 	set_corner_hover(-1)
 	_clear_subtitle_text(true)
 	if _subtitle_surface:
@@ -771,17 +725,12 @@ func _record_history(force: bool = false) -> void:
 
 
 func _request_revision(position_ms: int = -1, mode: String = "") -> void:
-	if not ai_available():
-		alpha_requested = false
-		depth_requested = false
 	if not platform or not media.accepts(media.session_id):
 		return
 	_pending_revision = {
 		"stereo": stereo_sbs,
-		"alpha": alpha_requested,
 		"profile": profile,
 		"position_ms": position_ms,
-		"depth": depth_requested and not alpha_requested and not stereo_sbs,
 		"top_bottom": stereo_sbs and top_bottom,
 		"seek_mode": SeekPolicy.normalize(seek_mode if mode.is_empty() else mode)
 	}
@@ -892,10 +841,8 @@ func _try_revision() -> void:
 	var id: int = platform.revise_mpv_video(
 		media.session_id,
 		request.stereo,
-		request.alpha,
 		request.profile,
 		request.position_ms,
-		request.depth,
 		request.top_bottom,
 		request.seek_mode == SeekPolicy.EXACT
 	)
@@ -921,9 +868,9 @@ func _try_revision() -> void:
 	changed.emit()
 
 
-## Alpha as the user sees it: live RVM, or the mask packed in this file.
+## Alpha is the precomputed mask packed in this file.
 func alpha_wanted() -> bool:
-	return alpha_requested or (packed_file and packed_alpha)
+	return packed_file and packed_alpha
 
 
 ## The URI/effect preferences survive close for history; they are not playback state.
@@ -946,49 +893,6 @@ func set_alpha(enabled: bool) -> bool:
 	_apply_packed()
 	changed.emit()
 	return true
-
-
-## 2D->3D for mono sources; switching it on ends Alpha.
-func set_depth(enabled: bool) -> bool:
-	auto_depth = false
-	depth_requested = false
-	depth_enabled = false
-	return not enabled
-
-
-## The bridge renders the stereo pair: tell it the strength once per session and change.
-func _send_depth_view() -> void:
-	if not depth_enabled or media.session_id <= 0 or not platform:
-		return
-	# JNISingleton.has_method() cannot see Java plugin methods. Only inspect host test doubles.
-	if not Engine.has_singleton("QuestPlayer") and not platform.has_method("set_mpv_depth_view"):
-		return
-	var strength := depth_strength if depth_requested else 0.0
-	var key := "%d:%f" % [media.session_id, strength]
-	if (
-		key != _depth_view_sent
-		and platform.set_mpv_depth_view(media.session_id, DEPTH_SHIFT * strength, DEPTH_CONVERGENCE)
-	):
-		_depth_view_sent = key
-
-
-func depth_ready() -> bool:
-	return (
-		depth_enabled and not media.last_pair.is_empty() and media.last_pair.get("depth_ran", false)
-	)
-
-
-## Depth compiled for this device: 3D starts at once (otherwise frames show flat until it is).
-func depth_model_ready() -> bool:
-	return false
-
-
-func cycle_depth_strength() -> void:
-	pass
-
-
-func set_depth_strength(value: float) -> bool:
-	return false
 
 
 ## The extra track titled "Clone voice" (see SidecarAudio.kt); 0 when this video has none.
@@ -1550,10 +1454,7 @@ func seek_relative(delta_ms: int) -> bool:
 ## The current projection and layout as a lock.
 func current_lock() -> Dictionary:
 	return {
-		"geometry": geometry,
-		"layout": stereo_layout(),
-		"depth": depth_requested and not stereo_sbs,
-		"fisheye_fov": fisheye_fov
+		"geometry": geometry, "layout": stereo_layout(), "depth": false, "fisheye_fov": fisheye_fov
 	}
 
 
@@ -1609,14 +1510,8 @@ func set_stereo_layout(layout: int) -> void:
 	stereo_sbs = layout != 0
 	top_bottom = layout in [2, 4]
 	stereo_half = layout in [3, 4]
-	var old_depth := depth_requested
-	if stereo_sbs:
-		depth_requested = false
-	elif ai_available() and auto_depth and geometry == Geometry.Geometry.FLAT:
-		depth_requested = true
-		alpha_requested = false
 	_remember_mode()
-	if repack or old_depth != depth_requested:
+	if repack:
 		_request_revision()
 	_apply_geometry()
 	changed.emit()
@@ -1661,23 +1556,6 @@ func set_projection(value: int) -> void:
 	var revise := false
 	if geometry != Geometry.Geometry.FLAT and stereo != stereo_sbs:
 		stereo_sbs = stereo
-		revise = true
-	# 2D -> 3D applies to the flat screen, Alpha to VR180 and fisheye: stop effects when switching
-	# to an unsupported projection, where their persistent bar buttons are disabled.
-	if geometry != Geometry.Geometry.FLAT and depth_requested:
-		depth_requested = false
-		revise = true
-	if not stereo and alpha_requested:
-		alpha_requested = false
-		revise = true
-	if (
-		geometry == Geometry.Geometry.FLAT
-		and not stereo_sbs
-		and ai_available()
-		and auto_depth
-		and not depth_requested
-	):
-		depth_requested = true
 		revise = true
 	if revise:
 		_request_revision()
@@ -1809,15 +1687,6 @@ func _complete_layout() -> void:
 		var revise := bool(chosen.stereo) != stereo_sbs or tb != top_bottom
 		stereo_sbs = chosen.stereo
 		top_bottom = tb
-		var wanted := (
-			ai_available()
-			and auto_depth
-			and geometry == Geometry.Geometry.FLAT
-			and not stereo_sbs
-			and not alpha_requested
-		)
-		revise = revise or depth_requested != wanted
-		depth_requested = wanted
 		if revise:
 			_request_revision()
 	_apply_geometry()
@@ -1849,7 +1718,7 @@ func _apply_packed() -> void:
 			"packed_size",
 			Vector2(Geometry.packed_dimensions(int(media.format.width), int(media.format.height)))
 		)
-	alpha_enabled = _rvm_alpha or shown
+	alpha_enabled = shown
 
 
 func _remember_mode() -> void:
@@ -1865,9 +1734,7 @@ func _remember_mode() -> void:
 		"view_horizontal": view_horizontal,
 		"view_vertical": view_vertical,
 		"view_zoom": view_zoom,
-		"alpha_requested": alpha_requested,
 		"profile": profile,
-		"depth_requested": depth_requested,
 		"top_bottom": stereo_sbs and top_bottom,
 		"stereo_half": stereo_sbs and stereo_half,
 		"fisheye_fov": fisheye_fov,
@@ -1933,11 +1800,8 @@ func _present_pending() -> void:
 		"stereo_mode": str(claimed.get("stereo_mode", "")),
 		"unapplied_rotation_degrees": 0
 	}
-	_rvm_alpha = false
-	depth_enabled = false
 	_apply_packed()
-	material.set_shader_parameter("alpha_enabled", _rvm_alpha)
-	_send_depth_view()
+	material.set_shader_parameter("alpha_enabled", false)
 	_apply_geometry()
 	panel.visible = true
 	if not platform.acknowledge_mpv_pair(media.session_id, int(claimed.slot_token)):
@@ -2079,7 +1943,7 @@ func _reopen_after_context_loss(
 	var eye := viewing_eye
 	var alignment := Vector2(stereo_horizontal, stereo_vertical)
 	var adjustment := Vector3(view_horizontal, view_vertical, view_zoom)
-	if open_local(uri, title, position_ms, false, alpha_requested):
+	if open_local(uri, title, position_ms, false):
 		_remember_file = remember_file
 		_file_permission_persisted = persisted
 		viewing_eye = eye
@@ -2115,25 +1979,10 @@ func _on_debug_command(id: int, payload: String) -> void:
 		_debug_pairs = []
 		stereo_sbs = bool(command.get("stereo", true))
 		profile = str(command.profile)
-		alpha_requested = bool(command.enabled)
-		depth_requested = bool(command.get("depth", false))
-		auto_depth = depth_requested
 		requested_play = true
-		open_local(
-			str(command.uri),
-			str(command.title),
-			maxi(int(command.position_ms), 0),
-			false,
-			alpha_requested
-		)
+		open_local(str(command.uri), str(command.title), maxi(int(command.position_ms), 0), false)
 	elif command.operation == "alpha":
 		set_alpha(bool(command.enabled))
-	elif command.operation == "depth":
-		command["accepted"] = (
-			set_depth_strength(float(command.strength))
-			if command.has("strength")
-			else set_depth(bool(command.enabled))
-		)
 	elif command.operation == "audio":
 		command["accepted"] = _apply_audio_track(int(command.track_id))
 	elif command.operation == "subtitle":
@@ -2299,7 +2148,7 @@ func _write_debug_report() -> void:
 		},
 		"diagnostic_2d": OS.get_cmdline_user_args().has("--mpv-diagnostic-2d"),
 		"scope":
-		"Production MPV/RVM/Godot ownership trace; independent pixel, audio and performance validation pending"
+		"Production MPV/Godot ownership trace; independent pixel, audio and performance validation pending"
 	}
 	platform.save_mpv_player_report(_debug_request, JSON.stringify(report))
 
@@ -2352,10 +2201,7 @@ func _apply_geometry() -> void:
 		_place_caption()
 	_sync_subtitle_surface()
 	material.set_shader_parameter("stereo_sbs", stereo_sbs or false)
-	material.set_shader_parameter("depth_enabled", depth_enabled and not false)
-	material.set_shader_parameter(
-		"depth_shift", DEPTH_SHIFT * depth_strength if depth_requested else 0.0
-	)
+	material.set_shader_parameter("depth_enabled", false)
 
 
 func layout_snapshot() -> Dictionary:
@@ -2379,13 +2225,8 @@ func layout_snapshot() -> Dictionary:
 		"top_bottom": stereo_sbs and top_bottom,
 		"stereo_half": stereo_sbs and stereo_half,
 		"fisheye_fov": fisheye_fov,
-		"alpha_requested": alpha_requested,
 		"alpha_enabled": alpha_enabled,
 		"profile": profile,
-		"depth_requested": depth_requested,
-		"depth_enabled": depth_enabled,
-		"depth_strength": depth_strength,
-		"auto_depth": auto_depth,
 		"screen_rotation": screen_rotation,
 		"playback_speed": playback_speed,
 		"alpha_ready": alpha_ready(),

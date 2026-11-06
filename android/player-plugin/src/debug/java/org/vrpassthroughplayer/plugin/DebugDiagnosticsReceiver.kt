@@ -48,7 +48,7 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                             "com.godot.game.GodotAppLauncher",
                                         )
                                         .addCategory(
-                                            "org.khronos.openxr.intent.category.IMMERSIVE_HMD"
+                                            "org.khronos.openxr.intent.category.IMMERSIVE_HMD",
                                         )
                                 }
                             context.startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -159,7 +159,7 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                                 "seek_policy_ui",
                                                 "media_library_ui",
                                                 "selected_features_ui",
-                                            )
+                                            ),
                                     )
                                     val command =
                                         JSONObject()
@@ -210,10 +210,7 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                                 intent.getStringExtra("profile") ?: "384x216",
                                             )
                                             .put("loop", intent.getBooleanExtra("loop", false))
-                                            // 2D->3D: a mono open with depth (stereo=false) or the
-                                            // "depth" operation.
                                             .put("stereo", intent.getBooleanExtra("stereo", true))
-                                            .put("depth", false)
                                     if (intent.hasExtra("seek_mode")) {
                                         val mode = intent.getStringExtra("seek_mode")
                                         require(mode in setOf("speed", "exact"))
@@ -233,7 +230,7 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                                     "menus",
                                                     "snapshot",
                                                     "error",
-                                                )
+                                                ),
                                         )
                                         command.put("step", step)
                                     }
@@ -255,11 +252,11 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                                     "retry",
                                                     "snapshot",
                                                     "reauth",
-                                                )
+                                                ),
                                         )
                                         val provider = intent.getStringExtra("provider") ?: "emby"
                                         require(
-                                            provider in setOf("emby", "jellyfin", "stash", "xbvr")
+                                            provider in setOf("emby", "jellyfin", "stash", "xbvr"),
                                         )
                                         command.put("step", step).put("provider", provider)
                                     }
@@ -282,19 +279,14 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                                     "bookmark_add",
                                                     "bookmark_seek",
                                                     "bookmark_delete",
-                                                )
+                                                ),
                                         )
                                         val marker = intent.getStringExtra("marker_id").orEmpty()
                                         require(
                                             marker.isEmpty() ||
-                                                marker.matches(Regex("[a-f0-9]{32}"))
+                                                marker.matches(Regex("[a-f0-9]{32}")),
                                         )
                                         command.put("step", step).put("marker_id", marker)
-                                    }
-                                    if (operation == "depth" && intent.hasExtra("strength")) {
-                                        val strength = intent.getFloatExtra("strength", 1f)
-                                        require(strength.isFinite() && strength in 0f..4f)
-                                        command.put("strength", strength.toDouble())
                                     }
                                     if (operation == "open") {
                                         val projection = intent.getIntExtra("projection", 0)
@@ -314,8 +306,8 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                             val target = File(localPath).canonicalFile
                                             require(
                                                 target.path.startsWith(
-                                                    root.path + File.separator
-                                                ) && target.isFile && target.canRead()
+                                                    root.path + File.separator,
+                                                ) && target.isFile && target.canRead(),
                                             )
                                             command
                                                 .put(
@@ -329,7 +321,7 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                             require(
                                                 network.startsWith("http://") ||
                                                     network.startsWith("https://") ||
-                                                    network.startsWith("smb://")
+                                                    network.startsWith("smb://"),
                                             )
                                             command
                                                 .put("uri", network)
@@ -355,7 +347,7 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                                         "mp08_4k",
                                                         "depth_2d",
                                                         "mpv_performance",
-                                                    )
+                                                    ),
                                             )
                                             val directory =
                                                 File(context.filesDir, "fixtures").apply {
@@ -391,7 +383,7 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                                         else -> 20_000_000L
                                                     }
                                                 require(
-                                                    target.isFile && target.length() in 1..limit
+                                                    target.isFile && target.length() in 1..limit,
                                                 )
                                             }
                                             command
@@ -424,8 +416,8 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                     File(
                                         directory,
                                         "debug_request_$request.json",
-                                    )
-                                )
+                                    ),
+                                ),
                             )
                         } finally {
                             temporary.delete()

@@ -220,13 +220,14 @@ func _run() -> void:
 	main.video.local_uri = "smb://test/share/clip.mp4"
 	main.video.media.begin(7)
 	main.video.geometry = 1
-	main.video.alpha_requested = true
+	main.video.packed_file = true
+	main.video.packed_alpha = true
 	for choice in ["belfast", "dark", "passthrough"]:
 		main.background.select(choice)
 		main._update_background()
 		check(
 			supported.applied_passthrough and viewport.transparent_bg,
-			"Preparing Alpha uses passthrough with " + choice
+			"Packed Alpha uses passthrough with " + choice
 		)
 		check(
 			(
@@ -237,7 +238,7 @@ func _run() -> void:
 			"Alpha removes opaque environment with " + choice
 		)
 		check(main.background.choice == choice, "Alpha preserves saved background " + choice)
-	main.video.alpha_requested = false
+	main.video.packed_alpha = false
 	main.video.alpha_enabled = true
 	main.background.select("belfast")
 	main._update_background()
@@ -245,7 +246,8 @@ func _run() -> void:
 		supported.applied_passthrough, "Displayed Alpha remains transparent during mode transition"
 	)
 	main.video.alpha_enabled = false
-	main.video.alpha_requested = true
+	main.video.packed_file = true
+	main.video.packed_alpha = true
 	main.video.media.state = "ended"
 	main._update_background()
 	check(
@@ -266,7 +268,7 @@ func _run() -> void:
 	main.video.requested_play = true
 	main.video.close_video()
 	check(
-		main.video.local_uri.is_empty() and not main.video.alpha_requested,
+		main.video.local_uri.is_empty() and not main.video.has_active_presentation(),
 		"Closing video clears playback identity and the active Alpha request"
 	)
 	main._update_background()
@@ -288,7 +290,7 @@ func _run() -> void:
 		"Failed Alpha restores saved panorama"
 	)
 	main.video.media.begin(9)
-	main.video.alpha_requested = false
+	main.video.packed_alpha = false
 	main.video.geometry = 0
 	main._update_background()
 	check(

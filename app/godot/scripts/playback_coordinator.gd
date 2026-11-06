@@ -276,13 +276,6 @@ func _on_menu_action(operation: String) -> void:
 			host.video.toggle_play()
 		"alpha":
 			host.video.set_alpha(not host.video.alpha_wanted())
-		"depth":
-			if host.video.set_depth(not host.video.depth_requested):
-				host._remember_auto_depth(host.video.auto_depth)
-		"depth_strength":
-			host.video.cycle_depth_strength()
-			host.settings.set_value("video", "depth_strength", host.video.depth_strength)
-			host.settings.save(host.settings_path)
 		"clone_voice":
 			if host.video.toggle_clone_voice():
 				host.settings.set_value(
@@ -308,8 +301,6 @@ func _on_menu_action(operation: String) -> void:
 		"projection_0", "projection_1", "projection_2", "projection_3":
 			host.video.set_projection(int(operation.right(1)))
 		"stereo_2d":
-			host._remember_auto_depth(false)
-			host.video.set_depth(false)  # plain 2D: also ends 2D -> 3D
 			host.video.set_stereo_layout(0)
 		"lock_mode":
 			host.video.toggle_mode_lock()

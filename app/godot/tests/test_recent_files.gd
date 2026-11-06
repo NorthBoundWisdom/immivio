@@ -24,9 +24,7 @@ class Host:
 		start: int,
 		_stereo: bool,
 		_profile: String,
-		_alpha: bool,
 		_vulkan: bool,
-		_depth: bool = false,
 		_top_bottom: bool = false,
 		_exact: bool = false
 	) -> int:

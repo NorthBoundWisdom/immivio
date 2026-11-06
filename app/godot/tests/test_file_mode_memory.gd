@@ -30,13 +30,11 @@ class Host:
 		start: int,
 		stereo: bool,
 		profile: String,
-		alpha: bool,
 		vulkan: bool,
-		_depth: bool = false,
 		_top_bottom: bool = false,
 		_exact: bool = false
 	) -> int:
-		calls.append([uri, start, stereo, profile, alpha, vulkan])
+		calls.append([uri, start, stereo, profile, vulkan])
 		return next_id
 
 	func set_mpv_playing(_id: int, _playing: bool) -> void:
@@ -48,10 +46,8 @@ class Host:
 	func revise_mpv_video(
 		_id: int,
 		_stereo: bool,
-		_alpha: bool,
 		_profile: String,
 		_position: int,
-		_depth: bool = false,
 		_top_bottom: bool = false,
 		_exact: bool = false
 	) -> int:
@@ -76,6 +72,72 @@ func read_again() -> RefCounted:
 	return fresh
 
 
+func check_retired_mode_migration() -> void:
+	var path := test_path.path_join("retired-field-migration")
+	DirAccess.make_dir_recursive_absolute(path)
+	var uri := "file:///migration/packed_LR_180_FISHEYE_F180_alpha.mp4"
+	var clean := {
+		"geometry": 2,
+		"stereo_sbs": true,
+		"swap_eyes": false,
+		"profile": "320x320",
+		"subtitle_delay_ms": 250.0,
+		"audio_delay_ms": -100.0,
+		"view_zoom": .2
+	}
+	var legacy := clean.duplicate(true)
+	legacy.merge(
+		{
+			"alpha_requested": true,
+			"depth_requested": true,
+			"auto_depth": true,
+			"depth_strength": 2.0
+		}
+	)
+	var encoded := JSON.stringify(
+		{"sequence": 1, "entries": {Memory.key_for(uri): {"mode": legacy, "updated": 1}}}
+	)
+	write(
+		path.path_join("file_modes_0.json"),
+		JSON.stringify(
+			{
+				"schema_version": 1,
+				"sequence": 1,
+				"payload_json": encoded,
+				"payload_sha256": encoded.sha256_text()
+			}
+		)
+	)
+	var memory := Memory.new(path)
+	memory.load_saved()
+	check(
+		memory.lookup(uri) == clean and memory.dirty,
+		"V1 per-file migration removes only retired fields"
+	)
+	check(legacy.alpha_requested, "Per-file migration does not mutate the caller's old record")
+	check(memory.save() and memory.sequence == 2, "Migrated per-file mode commits once")
+	var first := FileAccess.get_file_as_string(path.path_join("file_modes_0.json"))
+	var second := FileAccess.get_file_as_string(path.path_join("file_modes_1.json"))
+	var reloaded := Memory.new(path)
+	reloaded.load_saved()
+	check(
+		reloaded.lookup(uri) == clean and not reloaded.dirty and reloaded.sequence == 2,
+		"Reloading a migrated mode is idempotent"
+	)
+	check(
+		(
+			reloaded.save()
+			and first == FileAccess.get_file_as_string(path.path_join("file_modes_0.json"))
+			and second == FileAccess.get_file_as_string(path.path_join("file_modes_1.json"))
+		),
+		"Repeated per-file migration produces no extra write"
+	)
+	check(
+		reloaded.remember(uri, legacy) and not reloaded.dirty,
+		"Legacy caller fields are never written back"
+	)
+
+
 func _initialize() -> void:
 	if not preload("res://tests/support/test_result.gd").prepare(self):
 		return
@@ -87,14 +149,9 @@ func _run() -> void:
 		"res://../../build/tests/godot/mode-memory-host/" + str(Time.get_ticks_usec())
 	)
 	DirAccess.make_dir_recursive_absolute(test_path)
+	check_retired_mode_migration()
 	var uri := "content://local.documents/document/字幕%20VideoA"
-	var mode := {
-		"geometry": 1,
-		"stereo_sbs": true,
-		"swap_eyes": true,
-		"alpha_requested": true,
-		"profile": "512x288"
-	}
+	var mode := {"geometry": 1, "stereo_sbs": true, "swap_eyes": true, "profile": "512x288"}
 	var memory := Memory.new(test_path)
 	memory.load_saved()
 	check(
@@ -174,7 +231,7 @@ func _run() -> void:
 	write(bank1, JSON.stringify(envelope))
 	check(read_again().lookup(uri) == mode, "Checksum rejects modified payload")
 	envelope = JSON.parse_string(intact)
-	envelope.schema_version = 2
+	envelope.schema_version = Memory.VERSION + 1
 	write(bank1, JSON.stringify(envelope))
 	check(read_again().lookup(uri) == mode, "Unknown schema does not reinterpret settings")
 	var future := read_again()
@@ -236,10 +293,10 @@ func _run() -> void:
 	# Projection, stereo and eye order are restored; Alpha always starts off (player controls switch it on).
 	check(
 		(
-			host.calls.back() == [uri, 0, true, Video.AUTOMATIC_PROFILE, false, true]
+			host.calls.back() == [uri, 0, true, Video.AUTOMATIC_PROFILE, true]
 			and video.geometry == 2
 			and video.swap_eyes
-			and not video.alpha_requested
+			and not video.alpha_wanted()
 		),
 		"Projection and eye order restore while legacy model resolution is replaced automatically"
 	)
@@ -261,14 +318,24 @@ func _run() -> void:
 	var loaded := Memory.new(test_path.path_join("integration"))
 	loaded.load_saved()
 	check(not loaded.lookup(uri).swap_eyes, "Manual eye order persists for the exact file")
+	video.set_stereo_layout(4)
+	loaded = Memory.new(test_path.path_join("integration"))
+	loaded.load_saved()
+	check(
+		(
+			loaded.lookup(uri).stereo_sbs
+			and loaded.lookup(uri).top_bottom
+			and loaded.lookup(uri).stereo_half
+		),
+		"Manual stereo layout still persists after inference retirement"
+	)
 	video.stereo_sbs = false
 	check(not video.toggle_eye_order(), "Mono source has no L/R swap")
 	video.geometry = 0
-	video.alpha_requested = false
 	check(
 		(
 			video.open_local(uri, "Calibration", 1234, false)
-			and not host.calls.back()[4]
+			and host.calls.back()[4]
 			and video.geometry == 0
 		),
 		"Explicit diagnostic open bypasses per-file settings"
@@ -332,7 +399,6 @@ func _run() -> void:
 		{"geometry": 3, "layout": 2, "depth": false, "fisheye_fov": 180}
 	]:
 		video.load_mode_lock(lock)
-		video.auto_depth = lock.depth
 		var expected: Dictionary = lock.duplicate()
 		expected.depth = false
 		check(
@@ -356,11 +422,10 @@ func _run() -> void:
 			"First 2:1 frame preserves locked mode %d" % lock.geometry
 		)
 	video.load_mode_lock({})
-	video.auto_depth = false
 	check(
 		(
 			video.open_local("file:///v/clip_alpha.mp4", "clip_alpha.mp4")
-			and host.calls.back()[4] == false
+			and host.calls.back().size() == 5
 			and not video.packed_file
 		),
 		"An old live-matting filename cannot request inference"
@@ -369,7 +434,7 @@ func _run() -> void:
 	check(
 		(
 			video.open_local(packed_uri, "clip_LR_180_FISHEYE_F180_alpha.mp4")
-			and host.calls.back()[4] == false
+			and host.calls.back().size() == 5
 			and video.packed_file
 			and video.alpha_wanted()
 			and video.geometry == 2
@@ -383,14 +448,7 @@ func _run() -> void:
 		"Alpha switch toggles the packed mask in place"
 	)
 	video.mode_memory.remember(
-		packed_uri,
-		{
-			"geometry": 0,
-			"stereo_sbs": false,
-			"swap_eyes": false,
-			"alpha_requested": false,
-			"profile": "320x320"
-		}
+		packed_uri, {"geometry": 0, "stereo_sbs": false, "swap_eyes": false, "profile": "320x320"}
 	)
 	check(
 		(

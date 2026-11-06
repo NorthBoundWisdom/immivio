@@ -23,7 +23,6 @@ func _initialize() -> void:
 	var video := Video.new()
 	video.media.state = "ended"
 	video.loop_enabled = true
-	video.alpha_requested = false
 	video.media.last_pair = {
 		"contract_version": 2,
 		"slot_token": 9,

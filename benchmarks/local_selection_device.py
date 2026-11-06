@@ -52,9 +52,7 @@ def verify(data):
     requests = set()
     for case in CASES:
         report, receipt = reports[case], receipts[case]
-        assert (
-            receipt["action"] == "org.vrpassthroughplayer.quest.DEBUG_LOCAL_SELECTION"
-        )
+        assert receipt["action"] == "com.northboundwisdom.immivio.DEBUG_LOCAL_SELECTION"
         assert receipt["state"] == "accepted" and receipt["id"] > 0
         assert (
             re.fullmatch(r"selection_[0-9a-f]{32}", receipt["request"])
@@ -75,7 +73,7 @@ def verify(data):
         expected_uri = (
             "content://org.vrpassthroughplayer.urifixture.documents/document/clip"
             if case == "external"
-            else "content://org.vrpassthroughplayer.quest.accessfixture/" + PATHS[case]
+            else "content://com.northboundwisdom.immivio.accessfixture/" + PATHS[case]
         )
         assert report["uri"] == expected_uri
         events = report["events"]
@@ -88,7 +86,7 @@ def verify(data):
             assert [e["selection_id"] for e in events] == [1, 2, 2]
             assert (
                 events[-1]["uri"]
-                == "content://org.vrpassthroughplayer.quest.accessfixture/name_unicode"
+                == "content://com.northboundwisdom.immivio.accessfixture/name_unicode"
             )
             assert 1000 <= events[-1]["elapsed_ms"] < 1800
         else:

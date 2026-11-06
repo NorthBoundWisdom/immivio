@@ -28,7 +28,7 @@ def verify(data):
     for case, (state, error, persisted) in CASES.items():
         receipt, report = receipts[case], reports[case]
         assert receipt["state"] == "accepted"
-        assert receipt["action"] == "org.vrpassthroughplayer.quest.DEBUG_LOCAL_ACCESS"
+        assert receipt["action"] == "com.northboundwisdom.immivio.DEBUG_LOCAL_ACCESS"
         assert re.fullmatch(r"access_[0-9a-f]{32}", receipt["request"])
         assert receipt["request"] not in requests
         requests.add(receipt["request"])
@@ -50,7 +50,7 @@ def verify(data):
         if case.startswith("content_") or case in ("cancel", "timeout"):
             assert (
                 report["uri"]
-                == f"content://org.vrpassthroughplayer.quest.accessfixture/{path}"
+                == f"content://com.northboundwisdom.immivio.accessfixture/{path}"
             )
         else:
             name = (
@@ -59,7 +59,7 @@ def verify(data):
                 else "missing-access-file.bin"
             )
             assert re.fullmatch(
-                r"file:///data/(user/0|data)/org\.vrpassthroughplayer\.quest/cache/"
+                r"file:///data/(user/0|data)/com\.northboundwisdom\.immivio/cache/"
                 + re.escape(name),
                 report["uri"],
             )

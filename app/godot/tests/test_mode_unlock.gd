@@ -95,11 +95,6 @@ func _run() -> void:
 		viewer.set_projection(0)
 		viewer.set_stereo_layout(0)
 		viewer.toggle_mode_lock()
-		viewer.set_depth(false)
-		check(
-			not viewer.depth_requested and not viewer.set_depth(true),
-			kind + " legacy conversion requests cannot activate inference"
-		)
 		viewer.toggle_mode_lock()
 		var before: Dictionary = viewer.mode_lock.duplicate()
 		viewer.set_projection(-1)
