@@ -37,6 +37,7 @@ BUILD_INPUTS = (
     "android/gradle/verification-metadata.xml",
     "app/godot/export_presets.cfg",
     "app/godot/project.godot",
+    "tools/prepare_branding.gd",
 )
 
 
@@ -67,6 +68,9 @@ def input_signature(args):
     inputs = {name: digest(ROOT / name) for name in BUILD_INPUTS}
     for directory, pattern in [
         ("configs", "*.py"),
+        ("app/godot/branding", "*.png"),
+        ("branding/source", "*.png"),
+        ("app/godot/branding", "*.svg"),
         ("android/player-plugin/src/main", "**/*.kt"),
         ("android/player-plugin/src/main", "**/*.java"),
         ("android/player-plugin/src/main", "**/*.xml"),
@@ -312,7 +316,7 @@ def main(argv=None):
     parser.add_argument(
         "--build-type",
         choices=("Debug", "Release"),
-        default=os.environ.get("CI_BUILD_TYPE", "Debug"),
+        help="Default: Release for appstore, Debug for web; explicit Debug is for development only",
     )
     parser.add_argument("--level", choices=("l0", "l1", "l2", "all"), default="all")
     parser.add_argument(
@@ -326,8 +330,8 @@ def main(argv=None):
         return 0
     from configs.ci_support import build_type_for_ref, build_channel_for_ref
 
-    opts.build_type = build_type_for_ref(opts.build_type)
     opts.channel = build_channel_for_ref(opts.channel)
+    opts.build_type = build_type_for_ref(opts.build_type, channel=opts.channel)
     if opts.command == "stop-gradle":
         import shutil
 

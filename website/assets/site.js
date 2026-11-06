@@ -29,10 +29,11 @@
       link.addEventListener("click", (event) => {
         event.preventDefault();
         const image = dialog.querySelector("img");
-        image.src = link.href;
+        const source = link.querySelector("img")?.currentSrc || link.href;
+        image.src = source;
         image.alt = link.querySelector("img")?.alt || "";
         dialog.querySelector("p").textContent = image.alt;
-        dialog.querySelector("a").href = link.href;
+        dialog.querySelector("a").href = source;
         dialog.showModal();
       }),
     );

@@ -6,6 +6,12 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 ## Unreleased
 
+- Keep signing identities in a persistent user configuration directory outside the repository/build artifacts. Preserve existing identities when migrating, refuse conflicting key replacement, and prepare the initial PICO store identity before any store version is on shelf.
+
+- Replace application/site icons and homepage/social artwork with the supplied immersive surround/play set. Preserve all six sources and hashes, generate adaptive/themed icons and PICO-ready layers, and distinguish promotional artwork from actual interface screenshots.
+
+- Default local appstore commands and manual CI selections to Release. Validate PICO store APKs against the linked upload rules, pin the existing project store signing certificate, reject temporary signing identities, and emit size/ABI/SDK/version/signature/MD5/SHA-256 reports. Keep explicit Debug builds for development and web tag releases separate.
+
 ## 0.9.6 — 2026-11-06
 
 - Set application version 0.9.6 / versionCode 20 for Quest, PICO and experimental OpenXR packages.

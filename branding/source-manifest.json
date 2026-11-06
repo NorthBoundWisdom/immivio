@@ -1,0 +1,53 @@
+{
+  "source": "Artwork supplied by the maintainer on 2026-11-06; original PNG bytes preserved.",
+  "assets": [
+    {
+      "file": "app/godot/branding/immivio-icon.png",
+      "original_filename": "沉浸式环幕播放图标.png",
+      "role": "application-icon",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "aabe033fb48a6eba21a7f1f229db9e6dc9ebce27828d2f1f852856f16dd21e99"
+    },
+    {
+      "file": "branding/source/background.png",
+      "original_filename": "ChatGPT 图像 2026年11月6日 00_23_45-1.png",
+      "role": "background-layer",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "d280ee79d4e6d90e7168d2f2a4081da3c02af5511065ff2aa62a2609af7dbb3c"
+    },
+    {
+      "file": "branding/source/surround.png",
+      "original_filename": "ChatGPT 图像 2026年11月6日 00_23_47-2.png",
+      "role": "surround-layer",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "b6914af2f58edf63766162bdc7b55d3e885e4059edb644ac898df299f5fe4f34"
+    },
+    {
+      "file": "branding/source/play.png",
+      "original_filename": "ChatGPT 图像 2026年11月6日 00_23_50-3.png",
+      "role": "play-layer",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "a9247374b88289e57384ef90e314107099b59852d3c23b20c0a2a7355d55a588"
+    },
+    {
+      "file": "branding/source/poster-wide.png",
+      "original_filename": "ChatGPT 图像 2026年11月6日 00_23_52-4.png",
+      "role": "landscape-poster",
+      "width": 1672,
+      "height": 941,
+      "sha256": "ac1f3ec09558ddc8e0ec3273e6ebbaec7c4564a420d8e67854a21c1bf8f67447"
+    },
+    {
+      "file": "branding/source/poster-square.png",
+      "original_filename": "ChatGPT 图像 2026年11月6日 00_23_54-5.png",
+      "role": "square-poster",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "43e128c562f59f7812bfa911b210435dde649b51e7d9b058834b068cebf3789f"
+    }
+  ]
+}
