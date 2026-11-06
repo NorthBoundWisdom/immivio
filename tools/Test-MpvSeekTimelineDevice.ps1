@@ -100,8 +100,7 @@ try {
     $result.state = 'passed_actual_player_menu_target_hold'
     $result.diagnostic_process = $script:process
     $result.scope = 'Normal VR entry; actual player-menu text/thumb geometry and MPV timeline; physical trigger feel/compositor pixels not inferred'
-}
-finally {
+} finally {
     $result | ConvertTo-Json | Set-Content "$directory/result.json"
     & $adb -s $Serial logcat -d -t 1500 | Set-Content "$directory/logcat.txt"
     Write-Output "Timeline evidence: $directory"

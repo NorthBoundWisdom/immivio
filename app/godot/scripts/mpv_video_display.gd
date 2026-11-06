@@ -93,7 +93,7 @@ var playback_speed := 1.0
 var subtitle_size := 1.0:
 	set(value):
 		subtitle_size = clampf(value, 0.5, 2.0) if is_finite(value) else 1.0
-const SUBTITLE_BELOW_GAP := 0.02 # Fixed metres, independent of screen size/distance.
+const SUBTITLE_BELOW_GAP := 0.02  # Fixed metres, independent of screen size/distance.
 var subtitle_below_screen := false
 var subtitle_flat_position := 0.0:
 	set(value):
@@ -438,7 +438,9 @@ func _on_local_access(id: int, payload: String) -> void:
 	_access_pending = {}
 	_access_request = 0
 	if result.get("state") != "readable" or not result.get("persisted_permission") is bool:
-		picker_error = preload("res://scripts/playback_errors.gd").summary(str(result.get("error", "File unavailable; select it again")))
+		picker_error = preload("res://scripts/playback_errors.gd").summary(
+			str(result.get("error", "File unavailable; select it again"))
+		)
 		changed.emit()
 		return
 	requested_play = true
@@ -504,7 +506,9 @@ func open_local(
 	packed_alpha = packed_file
 	_layout_pending = null
 	var saved_sync := mode_memory.lookup(uri) if restore_mode else {}
-	subtitle_below_screen = bool(saved_sync.get("subtitle_below_screen", false)) if history_enabled else false
+	subtitle_below_screen = (
+		bool(saved_sync.get("subtitle_below_screen", false)) if history_enabled else false
+	)
 	subtitle_encodings = saved_sync.get("subtitle_encodings", {}).duplicate(true)
 	if PlatformMethods.supports(platform, "configure_subtitle_encodings"):
 		platform.configure_subtitle_encodings(uri, JSON.stringify(subtitle_encodings))
@@ -537,7 +541,12 @@ func open_local(
 			stereo_horizontal = float(saved.get("stereo_horizontal", 0.0))
 			stereo_vertical = float(saved.get("stereo_vertical", 0.0))
 			depth_requested = bool(saved.get("depth_requested", false)) and not stereo_sbs
-		elif not mode_lock.is_empty() and not stated.has("geometry") and not stated.has("stereo") and (not reuse_last_mode or last_video_mode.is_empty()):
+		elif (
+			not mode_lock.is_empty()
+			and not stated.has("geometry")
+			and not stated.has("stereo")
+			and (not reuse_last_mode or last_video_mode.is_empty())
+		):
 			geometry = int(mode_lock.geometry)
 			stereo_sbs = int(mode_lock.layout) != 0
 			top_bottom = int(mode_lock.layout) in [2, 4]
@@ -1169,7 +1178,10 @@ func _remember_track(kind: String, id: int) -> void:
 	if choice.is_empty():
 		return
 	_track_choices[kind] = choice
-	if kind in ["subtitle", "secondary_subtitle"] and (_subtitle_loading or not _pending_external_uri.is_empty()):
+	if (
+		kind in ["subtitle", "secondary_subtitle"]
+		and (_subtitle_loading or not _pending_external_uri.is_empty())
+	):
 		_tracks_pending[kind] = choice.duplicate(true)
 	else:
 		_tracks_pending.erase(kind)
@@ -1183,7 +1195,10 @@ func _restore_track_choices() -> void:
 	for kind in ["audio", "subtitle", "secondary_subtitle"]:
 		if not _tracks_pending.has(kind):
 			continue
-		if kind in ["subtitle", "secondary_subtitle"] and (_subtitle_loading or not _pending_external_uri.is_empty()):
+		if (
+			kind in ["subtitle", "secondary_subtitle"]
+			and (_subtitle_loading or not _pending_external_uri.is_empty())
+		):
 			continue
 		var track_kind: String = "subtitle" if kind == "secondary_subtitle" else kind
 		if not details.has(track_kind + "_tracks"):
@@ -1350,9 +1365,17 @@ func set_subtitle_track(track_id: int, remember: bool = true) -> bool:
 
 
 func set_subtitle_encoding(value: Variant) -> bool:
-	if not value is Dictionary or not preload("res://scripts/file_subtitle_encoding.gd").valid({value.get("track_key", ""): value.get("encoding", "")}):
+	if (
+		not value is Dictionary
+		or not preload("res://scripts/file_subtitle_encoding.gd").valid(
+			{value.get("track_key", ""): value.get("encoding", "")}
+		)
+	):
 		return false
-	if not subtitle_tracks().any(func(t): return t.get("external", false) and str(t.get("encoding_key", "")) == value.track_key):
+	if not subtitle_tracks().any(
+		func(t):
+			return t.get("external", false) and str(t.get("encoding_key", "")) == value.track_key
+	):
 		return false
 	if subtitle_encodings.size() >= 16 and not subtitle_encodings.has(value.track_key):
 		return false
@@ -1363,7 +1386,11 @@ func set_subtitle_encoding(value: Variant) -> bool:
 
 
 func subtitle_encoding_row(secondary: bool = false) -> Dictionary:
-	return preload("res://scripts/file_subtitle_encoding.gd").row(subtitle_tracks(), dual_subtitles.state.requested_track if secondary else subtitles.requested_track, subtitle_encodings)
+	return preload("res://scripts/file_subtitle_encoding.gd").row(
+		subtitle_tracks(),
+		dual_subtitles.state.requested_track if secondary else subtitles.requested_track,
+		subtitle_encodings
+	)
 
 
 func subtitle_tracks() -> Array[Dictionary]:
@@ -1458,7 +1485,9 @@ func _place_caption_below(pose: Transform3D) -> void:
 	# Label3D bounds omit the outline; project its extent onto this plane's up axis.
 	var basis := caption_in_plane.basis
 	var outline := caption.outline_size * caption.pixel_size * (absf(basis.x.y) + absf(basis.y.y))
-	caption.global_position += pose.basis.y * (screen_bottom - SUBTITLE_BELOW_GAP - text_top - outline)
+	caption.global_position += (
+		pose.basis.y * (screen_bottom - SUBTITLE_BELOW_GAP - text_top - outline)
+	)
 
 
 func _place_caption() -> void:
@@ -1474,7 +1503,9 @@ func _place_caption() -> void:
 		var margin := minf(0.06 * screen_scale, _flat.size.y * 0.1)
 		# Include the actual multiline text height in the usable travel range.
 		caption.width = _flat.size.x * 0.9 / pixel_size
-		caption.vertical_alignment = VERTICAL_ALIGNMENT_TOP if subtitle_below_screen else VERTICAL_ALIGNMENT_BOTTOM
+		caption.vertical_alignment = (
+			VERTICAL_ALIGNMENT_TOP if subtitle_below_screen else VERTICAL_ALIGNMENT_BOTTOM
+		)
 		var available_height := maxf(0.001, _flat.size.y - 2 * margin)
 		var fit := minf(1.0, available_height / maxf(0.001, caption.get_aabb().size.y))
 		caption.pixel_size = pixel_size * fit
@@ -1680,7 +1711,11 @@ func set_stereo_alignment(key: String, value: float) -> bool:
 		return false
 	if key not in ["stereo_horizontal", "stereo_vertical"]:
 		return false
-	var limit := 10.0 if key == "stereo_horizontal" and geometry != Geometry.Geometry.FLAT else StereoView.LIMIT
+	var limit := (
+		10.0
+		if key == "stereo_horizontal" and geometry != Geometry.Geometry.FLAT
+		else StereoView.LIMIT
+	)
 	set(key, clampf(snappedf(value, StereoView.STEP), -limit, limit))
 	_stereo_view_dirty = true
 	_apply_stereo_view()
@@ -2220,14 +2255,24 @@ func _write_debug_report() -> void:
 		"request_id": _debug_request,
 		"commands": _debug_commands,
 		"picker_error": picker_error,
-		"loading_feedback": {"message": host.playback_feedback.message, "visible": host.playback_feedback.visible} if host and is_instance_valid(host.get("playback_feedback")) else {},
+		"loading_feedback":
+		(
+			{"message": host.playback_feedback.message, "visible": host.playback_feedback.visible}
+			if host and is_instance_valid(host.get("playback_feedback"))
+			else {}
+		),
 		"canvas_controls":
 		(
 			host._canvas_controls_snapshot()
 			if host and host.has_method("_canvas_controls_snapshot")
 			else {}
 		),
-		"selected_features_ui": host.selected_features_probe_result if host and host.get("selected_features_probe_result") is Dictionary else {},
+		"selected_features_ui":
+		(
+			host.selected_features_probe_result
+			if host and host.get("selected_features_probe_result") is Dictionary
+			else {}
+		),
 		"seek_policy_ui":
 		(
 			host.seek_policy_probe_result

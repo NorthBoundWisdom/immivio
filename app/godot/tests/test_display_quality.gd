@@ -94,11 +94,16 @@ func _run() -> void:
 	main.recent_menu.section = main.recent_menu.Section.SETTINGS
 	main.recent_menu.tab = main.recent_menu.DISPLAY_TAB
 	main.recent_menu.refresh()
-	var quality_rows: Array = main.recent_menu.rows.filter(func(row): return row.get("key") == "display_quality")
-	var sharpness_rows: Array = main.recent_menu.rows.filter(func(row): return row.get("key") == "sharpness")
+	var quality_rows: Array = main.recent_menu.rows.filter(
+		func(row): return row.get("key") == "display_quality"
+	)
+	var sharpness_rows: Array = main.recent_menu.rows.filter(
+		func(row): return row.get("key") == "sharpness"
+	)
 	check(
 		(
-			quality_rows.size() == 1 and sharpness_rows.size() == 1
+			quality_rows.size() == 1
+			and sharpness_rows.size() == 1
 			and quality_rows[0].choices.size() == 4
 			and quality_rows[0].choices[0].value == Quality.AUTO
 			and sharpness_rows[0].choices.size() == 4
@@ -122,10 +127,7 @@ func _run() -> void:
 	check(main.display.render_scale == 1.1, "Quality keeps current XR targets until restart")
 	check(main.get_viewport().msaa_3d == Viewport.MSAA_2X, "MSAA quality also waits for restart")
 	check(main._library_settings().display_quality_pending, "Pending quality is visible")
-	check(
-		main.video.sharpness == 0.4,
-		"Sharpness applies to video"
-	)
+	check(main.video.sharpness == 0.4, "Sharpness applies to video")
 	settings.load(path)
 	check(
 		Quality.load_quality(settings) == 2 and Quality.load_sharpness(settings) == 0.4,
@@ -139,7 +141,9 @@ func _run() -> void:
 	main.platform_plugin = host
 	main._finish_app(true)
 	main._finish_app(true)
-	check(host.requests == [true], "Lifecycle restart request calls Android once and saves settings")
+	check(
+		host.requests == [true], "Lifecycle restart request calls Android once and saves settings"
+	)
 	main.platform_plugin = null
 	main.queue_free()
 	await process_frame
@@ -180,8 +184,7 @@ func _run() -> void:
 		"Low-end tier starts at Standard through auto quality"
 	)
 	check(
-		main.low_end_gpu and main.video.sharpness == 0.0,
-		"Low-end tier starts without sharpening"
+		main.low_end_gpu and main.video.sharpness == 0.0, "Low-end tier starts without sharpening"
 	)
 	check(
 		(

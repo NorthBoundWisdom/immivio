@@ -60,18 +60,37 @@ const LIBRARY_TABS := [
 	Library.BACKGROUND_TAB,
 	Library.ABOUT_TAB
 ]
+
+
 # Dedicated offscreen data, never the user's history, accounts or media.
 class NavigationCatalog:
 	extends RefCounted
 	var populated := false
+
 	func list_recent() -> Array:
-		return [{"uri": "warmup://navigation/video.mp4", "title": "Immivio · 示例 / サンプル", "position_ms": 60000, "kind": "video"},
-			{"uri": "warmup://navigation/second.mp4", "title": "Immivio video", "position_ms": 0, "kind": "video"}] if populated else []
+		return (
+			[
+				{
+					"uri": "warmup://navigation/video.mp4",
+					"title": "Immivio · 示例 / サンプル",
+					"position_ms": 60000,
+					"kind": "video"
+				},
+				{
+					"uri": "warmup://navigation/second.mp4",
+					"title": "Immivio video",
+					"position_ms": 0,
+					"kind": "video"
+				}
+			]
+			if populated
+			else []
+		)
+
 
 var navigation_pages_rendered := 0
 var navigation_sections_rendered: Array[int] = []
 var navigation_complete := false
-
 
 var complete := false
 var pages_rendered := 0
@@ -87,7 +106,9 @@ func prepare_library(menu: Node3D, tab: int) -> void:
 
 
 ## Only use with an isolated offscreen Library; no _load_section/request calls.
-func prepare_navigation(menu: Node3D, section_id: int, populated: bool, list_mode: bool = false) -> void:
+func prepare_navigation(
+	menu: Node3D, section_id: int, populated: bool, list_mode: bool = false
+) -> void:
 	menu.network.mode = ""
 	menu.section = section_id
 	menu.tab = Library.GENERAL_TAB if section_id == Library.Section.SETTINGS else 0
@@ -99,10 +120,29 @@ func prepare_navigation(menu: Node3D, section_id: int, populated: bool, list_mod
 	catalog.populated = populated
 	menu.catalog = catalog
 	menu._local_stack = []
-	menu._local_entries = [{"id": "warmup-volume", "title": menu.I18n.t("Internal storage"), "container": true, "volume": true},
-		{"id": "warmup-usb", "title": "USB", "container": true, "volume": true, "removable": true}] if populated else []
+	menu._local_entries = (
+		[
+			{
+				"id": "warmup-volume",
+				"title": menu.I18n.t("Internal storage"),
+				"container": true,
+				"volume": true
+			},
+			{
+				"id": "warmup-usb",
+				"title": "USB",
+				"container": true,
+				"volume": true,
+				"removable": true
+			}
+		]
+		if populated
+		else []
+	)
 	menu._smb_server = ""
-	menu._smb_servers = [{"id": "warmup-smb", "name": "SMB", "host": "warmup.invalid"}] if populated else []
+	menu._smb_servers = (
+		[{"id": "warmup-smb", "name": "SMB", "host": "warmup.invalid"}] if populated else []
+	)
 	menu._dlna_server = ""
 	menu._dlna_servers = [{"id": "warmup-dlna", "name": "DLNA"}] if populated else []
 	menu.server_browser.view = "servers"
@@ -110,7 +150,9 @@ func prepare_navigation(menu: Node3D, section_id: int, populated: bool, list_mod
 	menu.server_browser.servers = []
 	if populated:
 		for provider in ["emby", "jellyfin", "plex", "xbvr"]:
-			menu.server_browser.servers.append({"id": "warmup-" + provider, "name": provider.capitalize(), "provider": provider})
+			menu.server_browser.servers.append(
+				{"id": "warmup-" + provider, "name": provider.capitalize(), "provider": provider}
+			)
 	menu.refresh()
 
 
@@ -197,7 +239,9 @@ func _run() -> void:
 	for section_id in Library.NAV_ORDER:
 		for variant in ["empty", "loading", "populated", "list"]:
 			var started := Time.get_ticks_usec()
-			prepare_navigation(library, section_id, variant in ["populated", "list"], variant == "list")
+			prepare_navigation(
+				library, section_id, variant in ["populated", "list"], variant == "list"
+			)
 			if variant == "loading":
 				library.status = "Loading…"
 				library.server_browser.busy = section_id == Library.Section.MEDIA_SERVER

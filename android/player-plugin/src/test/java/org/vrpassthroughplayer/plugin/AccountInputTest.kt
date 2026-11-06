@@ -24,14 +24,18 @@ class AccountInputTest {
         input.append("名称😀")
         input.backspace()
         assertEquals("名称", input.text())
-        input.backspace(); input.backspace(); input.backspace()
+        input.backspace()
+        input.backspace()
+        input.backspace()
         assertEquals(0, input.length)
     }
 
     @Test
     fun multilineAndNulCannotBecomeCredentialInput() {
         val input = AccountInput()
-        input.append("valid"); input.append("bad\nline"); input.append("nul\u0000")
+        input.append("valid")
+        input.append("bad\nline")
+        input.append("nul\u0000")
         assertEquals("valid", input.text())
     }
 

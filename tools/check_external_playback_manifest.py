@@ -1,4 +1,5 @@
 """Check the shared external playback policy in a merged XML or compiled APK manifest dump."""
+
 from pathlib import Path
 import sys
 
@@ -11,5 +12,9 @@ if __name__ == "__main__":
     elif len(sys.argv) == 2:
         verify(Path(sys.argv[1]))
     else:
-        raise SystemExit("Usage: check_external_playback_manifest.py [--xmltree] <manifest>")
-    print("Final manifest: narrow video/local associations verified; no BROWSABLE or APK installation permission")
+        raise SystemExit(
+            "Usage: check_external_playback_manifest.py [--xmltree] <manifest>"
+        )
+    print(
+        "Final manifest: narrow video/local associations verified; no BROWSABLE or APK installation permission"
+    )

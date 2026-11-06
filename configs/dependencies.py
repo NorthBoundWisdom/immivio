@@ -59,9 +59,10 @@ def prepare_vendor_archive():
     path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="download-", dir=path.parent) as temporary:
         staging = Path(temporary) / record["fileName"]
-        with urlopen(record["url"], timeout=60) as response, staging.open(
-            "wb"
-        ) as output:
+        with (
+            urlopen(record["url"], timeout=60) as response,
+            staging.open("wb") as output,
+        ):
             received = 0
             while chunk := response.read(1024 * 1024):
                 received += len(chunk)
@@ -77,6 +78,7 @@ def prepare_vendor_archive():
 
 def clean_build(root, *, dry_run=False):
     from configs.output_paths import clean
+
     clean(root, "build", dry_run)
 
 

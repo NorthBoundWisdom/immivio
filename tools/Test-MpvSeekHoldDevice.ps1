@@ -131,14 +131,13 @@ try {
         Start-Sleep -Milliseconds 350
         $request = Request "$mode-close-observe" observe
         Wait-Report $request "$mode-close" { param($r) $r.media.session_id -le 0 -and -not $r.layout.frame_hold.visible -and -not $r.layout.frame_hold.frozen } | Out-Null
-        $result.modes += @{mode=$mode; reference_request=$before.request_id; frozen_request=$during.request_id;
-            freeze_copy_us=$held.layout.frame_hold.freeze_copy_us; rgba_source_size=$before.media.format; paused_seek=$true; rapid_seek=$true; playing_seek=$true
+        $result.modes += @{mode = $mode; reference_request = $before.request_id; frozen_request = $during.request_id;
+            freeze_copy_us = $held.layout.frame_hold.freeze_copy_us; rgba_source_size = $before.media.format; paused_seek = $true; rapid_seek = $true; playing_seek = $true
         }
         Write-Output "Completed device seek mode: $mode"
     }
     $result.state = 'passed_state_trace_pending_independent_pixel_audit'
-}
-finally {
+} finally {
     $result | ConvertTo-Json -Depth 10 | Set-Content "$directory/result.json"
     & $adb -s $Serial logcat -d -t 3500 | Set-Content "$directory/logcat.txt"
     Write-Output "Seek hold evidence: $directory"

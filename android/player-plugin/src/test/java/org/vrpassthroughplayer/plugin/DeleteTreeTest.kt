@@ -1,8 +1,8 @@
 package org.vrpassthroughplayer.plugin
 
+import java.nio.file.Files
 import org.junit.Assert.*
 import org.junit.Test
-import java.nio.file.Files
 
 class DeleteTreeTest {
     @Test
@@ -22,8 +22,9 @@ class DeleteTreeTest {
             val next = DeleteTree.local(root)
             assertThrows(IllegalStateException::class.java) { next.verify(first.summary()) }
         } finally {
-            root.resolve("sub").listFiles()?.forEach { it.delete() }; root.listFiles()
-                ?.forEach { it.delete() }; root.delete()
+            root.resolve("sub").listFiles()?.forEach { it.delete() }
+            root.listFiles()?.forEach { it.delete() }
+            root.delete()
         }
     }
 }

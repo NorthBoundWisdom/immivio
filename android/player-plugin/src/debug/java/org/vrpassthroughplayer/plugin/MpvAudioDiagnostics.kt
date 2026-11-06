@@ -1,55 +1,73 @@
 package org.vrpassthroughplayer.plugin
 
 import android.content.Context
-import org.json.JSONArray
-import org.json.JSONObject
 import java.io.File
 import java.nio.ByteBuffer
 import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
+import org.json.JSONArray
+import org.json.JSONObject
 
-/** Real production MPV source/control APIs and Android AO, with muted synthesized
- * audio. No speaker recording, RVM or Godot/XR AV synchronization assertion. */
+/**
+ * Real production MPV source/control APIs and Android AO, with muted synthesized audio. No speaker
+ * recording, RVM or Godot/XR AV synchronization assertion.
+ */
 internal object MpvAudioDiagnostics {
     private val ids = AtomicInteger()
-    private val worker = ThreadPoolExecutor(
-        1, 1, 0, TimeUnit.MILLISECONDS, ArrayBlockingQueue(1),
-        { task -> Thread(task, "QuestMpvAudioProbe") }, ThreadPoolExecutor.AbortPolicy()
-    )
+    private val worker =
+        ThreadPoolExecutor(
+            1,
+            1,
+            0,
+            TimeUnit.MILLISECONDS,
+            ArrayBlockingQueue(1),
+            { task -> Thread(task, "QuestMpvAudioProbe") },
+            ThreadPoolExecutor.AbortPolicy(),
+        )
 
     fun request(context: Context, hardware: Boolean = true): Int {
         val id = ids.incrementAndGet()
         return try {
-            worker.execute { run(context.applicationContext, id, hardware) }; id
+            worker.execute { run(context.applicationContext, id, hardware) }
+            id
         } catch (_: Exception) {
             -1
         }
     }
 
     private fun run(context: Context, id: Int, hardware: Boolean) {
-        val report = JSONObject().put("schema_version", 1).put("request_id", id)
-            .put("diagnostic_process", DiagnosticRequests.processId)
-            .put("fixture", "mp06_audio_clock")
-            .put("hardware_requested", hardware).put("audio_owner", "production_libmpv")
-            .put("consumer_context_origin", "debug_offscreen_GLES_pbuffer")
-            .put("godot_display_verified", false).put("xr_verified", false)
-            .put("rvm_verified", false)
-            .put("audible_output_verified", false).put("av_sync_verified", false)
-            .put("performance_verified", false)
-        val owner = OffscreenGlOwner();
+        val report =
+            JSONObject()
+                .put("schema_version", 1)
+                .put("request_id", id)
+                .put("diagnostic_process", DiagnosticRequests.processId)
+                .put("fixture", "mp06_audio_clock")
+                .put("hardware_requested", hardware)
+                .put("audio_owner", "production_libmpv")
+                .put("consumer_context_origin", "debug_offscreen_GLES_pbuffer")
+                .put("godot_display_verified", false)
+                .put("xr_verified", false)
+                .put("rvm_verified", false)
+                .put("audible_output_verified", false)
+                .put("av_sync_verified", false)
+                .put("performance_verified", false)
+        val owner = OffscreenGlOwner()
         var source = 0L
         var focus: MpvAudioFocus? = null
         val focusChanges = ConcurrentLinkedQueue<String>()
         val eofTimeline = JSONArray()
-        val records = JSONArray();
+        val records = JSONArray()
         var phase = "initialize"
         fun status(): JSONObject {
-            if (phase != "initialize" && phase != "cleanup") check(focus?.state() == "held") { "Audio focus unavailable: ${focus?.state()}" }
+            if (phase != "initialize" && phase != "cleanup")
+                check(focus?.state() == "held") { "Audio focus unavailable: ${focus?.state()}" }
             val value = JSONObject(MpvSourceNative.status(source))
-            check(value.getString("state") != "failed" && !value.getBoolean("render_failed")) { value.toString() }
+            check(value.getString("state") != "failed" && !value.getBoolean("render_failed")) {
+                value.toString()
+            }
             return value
         }
 
@@ -81,10 +99,11 @@ internal object MpvAudioDiagnostics {
             val deadline = System.nanoTime() + milliseconds * 1_000_000
             var last = -1L
             while (System.nanoTime() < deadline) {
-                val value = status();
+                val value = status()
                 val sequence = value.getJSONObject("details").getLong("snapshot_sequence")
                 if (sequence != last) {
-                    record(label, value); last = sequence
+                    record(label, value)
+                    last = sequence
                 }
                 Thread.sleep(20)
             }
@@ -97,15 +116,21 @@ internal object MpvAudioDiagnostics {
                 if (raw.isNotEmpty()) pair = JSONObject(raw)
                 pair != null
             }
-            val selected = pair!!;
+            val selected = pair!!
             val token = selected.getLong("producer_token")
             try {
                 val bytes = ByteBuffer.allocateDirect(96)
                 MpvSourceNative.readFrameCode(source, token, bytes)
-                selected.put("phase", label)
-                    .put("source_code", JSONArray((0 until 24).map { pixel ->
-                        JSONArray((0..3).map { bytes.get(pixel * 4 + it).toInt() and 255 })
-                    }))
+                selected
+                    .put("phase", label)
+                    .put(
+                        "source_code",
+                        JSONArray(
+                            (0 until 24).map { pixel ->
+                                JSONArray((0..3).map { bytes.get(pixel * 4 + it).toInt() and 255 })
+                            }
+                        ),
+                    )
                 return selected
             } finally {
                 check(MpvSourceNative.release(source, token))
@@ -113,12 +138,15 @@ internal object MpvAudioDiagnostics {
         }
         try {
             check(MpvSourceNative.supported())
-            val target = File(
-                context.filesDir,
-                "fixtures/mp06_audio_clock.mp4"
-            ).apply { parentFile!!.mkdirs() }
-            context.assets.open("media/mp06_audio_clock.mp4")
-                .use { src -> target.outputStream().use { src.copyTo(it) } }
+            val target =
+                File(
+                        context.filesDir,
+                        "fixtures/mp06_audio_clock.mp4",
+                    )
+                    .apply { parentFile!!.mkdirs() }
+            context.assets.open("media/mp06_audio_clock.mp4").use { src ->
+                target.outputStream().use { src.copyTo(it) }
+            }
             focus = MpvAudioFocus(context) { change -> focusChanges.add(change.name.lowercase()) }
             check(focus!!.acquire(true)) { "Android audio focus request denied" }
             report.put("audio_focus_initial", focus!!.state())
@@ -128,8 +156,10 @@ internal object MpvAudioDiagnostics {
             check(MpvSourceNative.setAudio(source, -1, 25.0, true))
             phase = "initial_paused_audio"
             waitFor {
-                val d = it.getJSONObject("details"); d.optString("paused") == "yes" &&
-                    d.optString("audio_track_id") == "1" && d.optString("mute") == "yes" &&
+                val d = it.getJSONObject("details")
+                d.optString("paused") == "yes" &&
+                    d.optString("audio_track_id") == "1" &&
+                    d.optString("mute") == "yes" &&
                     d.optString("audio_output").isNotEmpty()
             }
             record("initial_paused")
@@ -143,8 +173,8 @@ internal object MpvAudioDiagnostics {
             phase = "play_audio_clock"
             MpvSourceNative.setPlaying(source, true)
             waitFor {
-                val d =
-                    it.getJSONObject("details"); d.getString("paused") == "no" && !d.isNull("audio_pts_us")
+                val d = it.getJSONObject("details")
+                d.getString("paused") == "no" && !d.isNull("audio_pts_us")
             }
             sample("playing_track_1", 1200)
             phase = "pause_audio_clock"
@@ -155,15 +185,16 @@ internal object MpvAudioDiagnostics {
             phase = "switch_audio_track"
             check(MpvSourceNative.setAudio(source, 2, 40.0, true))
             waitFor {
-                val d = it.getJSONObject("details"); d.optString("audio_track_id") == "2" &&
+                val d = it.getJSONObject("details")
+                d.optString("audio_track_id") == "2" &&
                     d.optString("audio_output").isNotEmpty() &&
                     d.optString("volume").toDoubleOrNull() == 40.0
             }
             record("selected_track_2")
             MpvSourceNative.setPlaying(source, true)
             waitFor {
-                val d =
-                    it.getJSONObject("details"); d.getString("paused") == "no" && !d.isNull("audio_pts_us")
+                val d = it.getJSONObject("details")
+                d.getString("paused") == "no" && !d.isNull("audio_pts_us")
             }
             sample("playing_track_2", 800)
             MpvSourceNative.setPlaying(source, false)
@@ -173,8 +204,8 @@ internal object MpvAudioDiagnostics {
             phase = "disable_audio"
             check(MpvSourceNative.setAudio(source, 0, 40.0, true))
             waitFor {
-                val d = it.getJSONObject("details"); d.optString("audio_output")
-                .isEmpty() && d.optString("audio_track_id").isEmpty()
+                val d = it.getJSONObject("details")
+                d.optString("audio_output").isEmpty() && d.optString("audio_track_id").isEmpty()
             }
             record("audio_disabled")
             MpvSourceNative.setPlaying(source, true)
@@ -184,70 +215,72 @@ internal object MpvAudioDiagnostics {
             waitFor { it.getJSONObject("details").getString("paused") == "yes" }
             check(MpvSourceNative.setAudio(source, 2, 40.0, true))
             waitFor {
-                val d = it.getJSONObject("details"); d.optString("audio_output")
-                .isNotEmpty() && d.optString("audio_track_id") == "2"
+                val d = it.getJSONObject("details")
+                d.optString("audio_output").isNotEmpty() && d.optString("audio_track_id") == "2"
             }
             record("restored_track_2")
             phase = "seek_with_audio_paused"
             check(MpvSourceNative.seek(source, 2000))
             report.put("seek_frame", codedFrame("seek_paused_2s"))
             waitFor {
-                val d = it.getJSONObject("details"); kotlin.math.abs(
-                d.getString("position_seconds").toDouble() - 2.0
-            ) < 0.01
+                val d = it.getJSONObject("details")
+                kotlin.math.abs(d.getString("position_seconds").toDouble() - 2.0) < 0.01
             }
             sample("paused_after_seek", 500)
             phase = "unmute_at_zero_volume"
             check(MpvSourceNative.setAudio(source, 2, 0.0, false))
             waitFor {
-                val d =
-                    it.getJSONObject("details"); d.optString("mute") == "no" && d.optString("volume")
-                .toDoubleOrNull() == 0.0
+                val d = it.getJSONObject("details")
+                d.optString("mute") == "no" && d.optString("volume").toDoubleOrNull() == 0.0
             }
             record("unmuted_zero_volume")
             phase = "restore_muted_audio"
             check(MpvSourceNative.setAudio(source, 1, 25.0, true))
             waitFor {
-                val d = it.getJSONObject("details"); d.optString("mute") == "yes" &&
-                    d.optString("audio_track_id") == "1" && d.optString("volume")
-                .toDoubleOrNull() == 25.0 &&
+                val d = it.getJSONObject("details")
+                d.optString("mute") == "yes" &&
+                    d.optString("audio_track_id") == "1" &&
+                    d.optString("volume").toDoubleOrNull() == 25.0 &&
                     d.optString("audio_output").isNotEmpty()
             }
             record("restored_track_1")
             MpvSourceNative.setPlaying(source, true)
             waitFor {
-                val d =
-                    it.getJSONObject("details"); d.getString("paused") == "no" && !d.isNull("audio_pts_us")
+                val d = it.getJSONObject("details")
+                d.getString("paused") == "no" && !d.isNull("audio_pts_us")
             }
             sample("playing_after_seek", 1000)
             phase = "wait_audio_and_video_eof"
-            val ended =
-                waitFor { it.getString("state") == "ended" && it.getBoolean("eof_source_resolved") }
+            val ended = waitFor {
+                it.getString("state") == "ended" && it.getBoolean("eof_source_resolved")
+            }
             record("eof", ended)
             phase = "audio_restart_after_eof"
             MpvSourceNative.setPlaying(source, false)
             check(MpvSourceNative.seek(source, 0))
             report.put("restart_frame", codedFrame("restart_paused_0s"))
             waitFor {
-                val d = it.getJSONObject("details"); d.getString("paused") == "yes" &&
+                val d = it.getJSONObject("details")
+                d.getString("paused") == "yes" &&
                     kotlin.math.abs(d.getString("position_seconds").toDouble()) < 0.01
             }
             sample("restart_paused", 500)
             MpvSourceNative.setPlaying(source, true)
             waitFor {
-                val d =
-                    it.getJSONObject("details"); d.getString("paused") == "no" && !d.isNull("audio_pts_us")
+                val d = it.getJSONObject("details")
+                d.getString("paused") == "no" && !d.isNull("audio_pts_us")
             }
             sample("playing_after_restart", 900)
             report.put("state", "passed_native_checks")
         } catch (failure: Throwable) {
-            report.put("state", "failed")
+            report
+                .put("state", "failed")
                 .put("error", failure.javaClass.simpleName + ": " + failure.message)
                 .put("failure_phase", phase)
-            if (source > 0) try {
-                report.put("failure_native_status", JSONObject(MpvSourceNative.status(source)))
-            } catch (_: Throwable) {
-            }
+            if (source > 0)
+                try {
+                    report.put("failure_native_status", JSONObject(MpvSourceNative.status(source)))
+                } catch (_: Throwable) {}
         } finally {
             phase = "cleanup"
             report.put("records", records).put("eof_wait_observations", eofTimeline)
@@ -257,15 +290,16 @@ internal object MpvAudioDiagnostics {
                     MpvSourceNative.requestClose(source)
                     val closed = waitFor { it.getBoolean("done") }
                     report.put("closed_native_status", closed)
-                    check(MpvSourceNative.close(source, false)); source = 0
+                    check(MpvSourceNative.close(source, false))
+                    source = 0
                     check(closed.getInt("held_slots") == 0 && closed.getInt("retiring_slots") == 0)
                 }
             } catch (failure: Throwable) {
                 cleanupFailure = failure
-                if (source > 0) try {
-                    MpvSourceNative.close(source, true)
-                } catch (_: Throwable) {
-                }
+                if (source > 0)
+                    try {
+                        MpvSourceNative.close(source, true)
+                    } catch (_: Throwable) {}
             }
             try {
                 check(owner.close())
@@ -277,19 +311,24 @@ internal object MpvAudioDiagnostics {
             } catch (failure: Throwable) {
                 if (cleanupFailure == null) cleanupFailure = failure
             }
-            report.put("audio_focus_closed", focus?.state() ?: "none")
+            report
+                .put("audio_focus_closed", focus?.state() ?: "none")
                 .put("audio_focus_changes", JSONArray(focusChanges.toList()))
             if (cleanupFailure == null) report.put("resources_closed", true)
-            else report.put("state", "failed").put("resources_closed", false)
-                .put("cleanup_error", cleanupFailure.message)
+            else
+                report
+                    .put("state", "failed")
+                    .put("resources_closed", false)
+                    .put("cleanup_error", cleanupFailure.message)
             val directory = File(context.filesDir, "diagnostics").apply { mkdirs() }
             val temporary = File.createTempFile("mpv-audio-", ".tmp", directory)
             try {
-                temporary.writeText(report.toString()); check(
+                temporary.writeText(report.toString())
+                check(
                     temporary.renameTo(
                         File(
                             directory,
-                            "mpv_audio_$id.json"
+                            "mpv_audio_$id.json",
                         )
                     )
                 )

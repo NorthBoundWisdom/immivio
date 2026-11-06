@@ -48,9 +48,11 @@ class OpenxrArchive(unittest.TestCase):
 
     def test_wrong_download_cannot_replace_existing_bytes(self):
         for observed in (b"tampered", b"larger than expected"):
-            with self.subTest(
-                observed=observed
-            ), tempfile.TemporaryDirectory() as temporary, served(observed) as origin:
+            with (
+                self.subTest(observed=observed),
+                tempfile.TemporaryDirectory() as temporary,
+                served(observed) as origin,
+            ):
                 root = Path(temporary)
                 self.manifest(root, b"expected", origin + "/tool")
                 archive = root / ".cache/openxr-vendors/addon.zip"

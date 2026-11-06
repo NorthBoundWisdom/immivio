@@ -7,7 +7,10 @@ allprojects {
     configurations.configureEach { configuration ->
         // AGP creates these file-only SDK configurations during task execution.
         // They carry local android.jar/JDK image inputs, not Maven versions.
-        if (configuration.name in ['androidApis', 'androidJdkImage']) {
+        if (configuration.name in [
+            'androidApis',
+            'androidJdkImage'
+        ]) {
             configuration.resolutionStrategy.deactivateDependencyLocking()
         }
     }
@@ -18,8 +21,7 @@ allprojects {
         extendsFrom toolDependencies.get()
     }
     ['linux', 'osx', 'windows'].each { classifier ->
-        dependencies.add('immivioAndroidToolDependencies',
-                "com.android.tools.build:aapt2:${libs.versions.aapt2.get()}:${classifier}")
+        dependencies.add('immivioAndroidToolDependencies', "com.android.tools.build:aapt2:${libs.versions.aapt2.get()}:${classifier}")
     }
     tasks.register('prepareDependencyCache') {
         doLast {
@@ -28,7 +30,9 @@ allprojects {
             }.each { configuration ->
                 // Project/AAR task outputs are built later. Prepare external artifacts only.
                 configuration.incoming.artifactView {
-                    componentFilter { id -> id instanceof org.gradle.api.artifacts.component.ModuleComponentIdentifier }
+                    componentFilter { id ->
+                        id instanceof org.gradle.api.artifacts.component.ModuleComponentIdentifier
+                    }
                 }.files.files
             }
         }

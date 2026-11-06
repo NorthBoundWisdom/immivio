@@ -122,15 +122,11 @@ func _initialize() -> void:
 	app.video.local_uri = "file:///storage/test/folder/movie.mp4"
 	app._prepare_file_delete("file:///storage/test/folder")
 	check(
-		app.video.closes == 1,
-		"Folder deletion releases descendant video readers before mutation"
+		app.video.closes == 1, "Folder deletion releases descendant video readers before mutation"
 	)
 	app.video.local_uri = "smb://other/share/movie.mp4"
 	app._prepare_file_delete("file:///storage/test/folder")
-	check(
-		app.video.closes == 1,
-		"Deleting a folder leaves unrelated readers running"
-	)
+	check(app.video.closes == 1, "Deleting a folder leaves unrelated readers running")
 	app.video.free()
 	app.free()
 	print("file editing memory checks=%d failures=%d" % [checks, failures.size()])

@@ -1,20 +1,24 @@
 package org.vrpassthroughplayer.plugin
 
+import java.io.Closeable
+import java.net.BindException
+import java.net.InetAddress
+import java.net.ServerSocket
+import java.net.URI
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicInteger
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
 import org.junit.Test
-import java.io.Closeable
-import java.net.ServerSocket
-import java.net.InetAddress
-import java.net.BindException
-import java.net.URI
-import java.util.concurrent.Executors
-import java.util.concurrent.atomic.AtomicInteger
 
 class MediaServerClientTest {
     internal data class Reply(val code: Int = 200, val headers: String = "", val body: ByteArray)
-    internal class Fixture(port: Int = 0, val handle: (String, Map<String, String>, String) -> Reply) : Closeable {
+
+    internal class Fixture(
+        port: Int = 0,
+        val handle: (String, Map<String, String>, String) -> Reply,
+    ) : Closeable {
         // Match the advertised URL exactly. On macOS a wildcard listener can share
         // a port with a specific loopback listener, routing requests to another service.
         private val socket = ServerSocket(port, 50, InetAddress.getByName("127.0.0.1"))
@@ -24,38 +28,48 @@ class MediaServerClientTest {
         init {
             pool.execute {
                 while (!socket.isClosed) {
-                    val peer = try {
-                        socket.accept()
-                    } catch (_: Exception) {
-                        break
-                    }
+                    val peer =
+                        try {
+                            socket.accept()
+                        } catch (_: Exception) {
+                            break
+                        }
                     pool.execute {
                         peer.use {
                             val input = peer.getInputStream()
                             fun line(): String {
-                                val out = StringBuilder(); while (true) {
-                                    val b =
-                                        input.read(); if (b < 0 || b == 10) return out.toString()
-                                        .trimEnd('\r'); out.append(b.toChar())
+                                val out = StringBuilder()
+                                while (true) {
+                                    val b = input.read()
+                                    if (b < 0 || b == 10) return out.toString().trimEnd('\r')
+                                    out.append(b.toChar())
                                 }
                             }
 
-                            val request = line();
+                            val request = line()
                             val headers = HashMap<String, String>()
                             while (true) {
-                                val l = line(); if (l.isEmpty()) break; headers[l.substringBefore(
-                                    ':'
-                                ).lowercase()] = l.substringAfter(':').trim()
+                                val l = line()
+                                if (l.isEmpty()) break
+                                headers[l.substringBefore(':').lowercase()] =
+                                    l.substringAfter(':').trim()
                             }
                             val body = ByteArray(headers["content-length"]?.toInt() ?: 0)
-                            var at = 0; while (at < body.size) {
-                            val n = input.read(body, at, body.size - at); if (n < 0) break; at += n
-                        }
+                            var at = 0
+                            while (at < body.size) {
+                                val n = input.read(body, at, body.size - at)
+                                if (n < 0) break
+                                at += n
+                            }
                             val response = handle(request, headers, String(body, Charsets.UTF_8))
                             runCatching {
                                 peer.getOutputStream().apply {
-                                    write(("HTTP/1.1 ${response.code} Test\r\nContent-Length: ${response.body.size}\r\nConnection: close\r\n${response.headers}\r\n").toByteArray())
-                                    write(response.body); flush()
+                                    write(
+                                        ("HTTP/1.1 ${response.code} Test\r\nContent-Length: ${response.body.size}\r\nConnection: close\r\n${response.headers}\r\n")
+                                            .toByteArray()
+                                    )
+                                    write(response.body)
+                                    flush()
                                 }
                             }
                         }
@@ -65,7 +79,8 @@ class MediaServerClientTest {
         }
 
         override fun close() {
-            socket.close(); pool.shutdownNow()
+            socket.close()
+            pool.shutdownNow()
         }
     }
 
@@ -73,7 +88,8 @@ class MediaServerClientTest {
     fun fixtureCannotShareAnOccupiedLoopbackPort() {
         ServerSocket(0, 50, InetAddress.getByName("127.0.0.1")).use { occupied ->
             assertThrows(BindException::class.java) {
-                Fixture(occupied.localPort) { _, _, _ -> error("Must never accept traffic") }.close()
+                Fixture(occupied.localPort) { _, _, _ -> error("Must never accept traffic") }
+                    .close()
             }
         }
     }
@@ -82,37 +98,47 @@ class MediaServerClientTest {
     fun identityRejectsSecretsAndPreservesServerScope() {
         val uri = MediaLibraryUri.scene("abc-123", "89")
         assertEquals("abc-123" to "89", MediaLibraryUri.parse(uri))
-        for (bad in listOf(
-            "medialib://user:key@abc/scene/89",
-            "$uri?apikey=secret",
-            "$uri/../2",
-            "http://abc/scene/89"
-        ))
-            assertThrows(MediaServerFailure::class.java) { MediaLibraryUri.parse(bad) }
+        for (bad in
+            listOf(
+                "medialib://user:key@abc/scene/89",
+                "$uri?apikey=secret",
+                "$uri/../2",
+                "http://abc/scene/89",
+            )) assertThrows(MediaServerFailure::class.java) { MediaLibraryUri.parse(bad) }
         assertNotEquals(uri, MediaLibraryUri.scene("other", "89"))
     }
 
     @Test
     fun stashSpriteFallbackUsesFirstCueAndRejectsInvalidRectangles() {
         val base = URI("http://nas:9999/scene/hash_thumbs.vtt")
-        val cue = StashClient.spriteCover(
-            base,
-            "WEBVTT\n\n00:00:00.000 --> 00:00:10.000\nhash_sprite.jpg#xywh=160,80,160,80\n"
-        )!!
+        val cue =
+            StashClient.spriteCover(
+                base,
+                "WEBVTT\n\n00:00:00.000 --> 00:00:10.000\nhash_sprite.jpg#xywh=160,80,160,80\n",
+            )!!
         assertEquals("http://nas:9999/scene/hash_sprite.jpg", cue.uri.toString())
-        assertEquals(160, cue.x); assertEquals(80, cue.y); assertEquals(
+        assertEquals(160, cue.x)
+        assertEquals(80, cue.y)
+        assertEquals(
             160,
-            cue.width
-        ); assertEquals(80, cue.height)
-        for (rect in listOf("-1,0,160,80", "0,0,0,80", "0,0,999999,80", "0,0,x,80", "0,0,80"))
-            assertNull(StashClient.spriteCover(base, "hash.jpg#xywh=$rect"))
+            cue.width,
+        )
+        assertEquals(80, cue.height)
+        for (rect in
+            listOf("-1,0,160,80", "0,0,0,80", "0,0,999999,80", "0,0,x,80", "0,0,80")) assertNull(
+            StashClient.spriteCover(base, "hash.jpg#xywh=$rect")
+        )
         assertNull(StashClient.spriteCover(base, "WEBVTT\n"))
     }
 
     @Test
     fun filtersHaveExplicitAllAnyExclusionAndVariables() {
         val v =
-            StashClient.variables(JSONObject("""{"q":"quote\"\\中","tags":["1","2","1"],"exclude_tags":["1","3"],"performers":["5"],"watched":false,"min_duration":600,"page":2}"""))
+            StashClient.variables(
+                JSONObject(
+                    """{"q":"quote\"\\中","tags":["1","2","1"],"exclude_tags":["1","3"],"performers":["5"],"watched":false,"min_duration":600,"page":2}"""
+                )
+            )
         assertEquals("quote\"\\中", v.getJSONObject("page").getString("q"))
         val c = v.getJSONObject("criteria")
         assertEquals("INCLUDES_ALL", c.getJSONObject("tags").getString("modifier"))
@@ -121,69 +147,84 @@ class MediaServerClientTest {
         assertEquals("INCLUDES", c.getJSONObject("performers").getString("modifier"))
         assertEquals("EQUALS", c.getJSONObject("play_count").getString("modifier"))
         assertEquals(599, c.getJSONObject("duration").getInt("value"))
-        val exclusion = StashClient.variables(JSONObject("""{"exclude_tags":["9"]}"""))
-            .getJSONObject("criteria").getJSONObject("tags")
+        val exclusion =
+            StashClient.variables(JSONObject("""{"exclude_tags":["9"]}"""))
+                .getJSONObject("criteria")
+                .getJSONObject("tags")
         assertEquals(
             "EXCLUDES",
-            exclusion.getString("modifier")
-        ); assertFalse(exclusion.has("excludes"))
-        assertThrows(MediaServerFailure::class.java) { StashClient.variables(JSONObject("""{"tags":["not-an-id"]}""")) }
+            exclusion.getString("modifier"),
+        )
+        assertFalse(exclusion.has("excludes"))
+        assertThrows(MediaServerFailure::class.java) {
+            StashClient.variables(JSONObject("""{"tags":["not-an-id"]}"""))
+        }
     }
 
     @Test
     fun scopeAndAddressValidationPreserveProxyPath() {
-        val a = MediaServerAccount(
-            "id",
-            "test",
-            MediaServerAccount.address("https://nas.test/stash/"),
-            "secret"
-        )
+        val a =
+            MediaServerAccount(
+                "id",
+                "test",
+                MediaServerAccount.address("https://nas.test/stash/"),
+                "secret",
+            )
         assertEquals("https://nas.test/stash/graphql", a.endpoint("graphql").toString())
         assertTrue(a.accepts(URI("https://nas.test:443/scene/1/stream?signature=x")))
-        for (u in listOf(
-            "http://nas.test/a",
-            "https://nas.test.evil/a",
-            "https://nas.test:8443/a",
-            "https://user@nas.test/a"
-        )) assertFalse(a.accepts(URI(u)))
-        for (u in listOf(
-            "file:///tmp",
-            "https://user:pass@nas/",
-            "http://nas/?key=x"
-        )) assertThrows(MediaServerFailure::class.java) { MediaServerAccount.address(u) }
+        for (u in
+            listOf(
+                "http://nas.test/a",
+                "https://nas.test.evil/a",
+                "https://nas.test:8443/a",
+                "https://user@nas.test/a",
+            )) assertFalse(a.accepts(URI(u)))
+        for (u in
+            listOf(
+                "file:///tmp",
+                "https://user:pass@nas/",
+                "http://nas/?key=x",
+            )) assertThrows(MediaServerFailure::class.java) { MediaServerAccount.address(u) }
         assertFalse(a.json().has("key"))
     }
 
     @Test
     fun graphqlErrorsAndForeignRedirectDoNotExposeCredentials() {
-        Fixture { _, _, _ -> Reply(body = """{"errors":[{"message":"private-secret-url"}]}""".toByteArray()) }.use { fixture ->
-            val a = MediaServerAccount("id", "test", fixture.url, "secret")
-            MediaServerHttp(a).use { http ->
-                val error =
-                    assertThrows(MediaServerFailure::class.java) { StashClient(a, http).probe() }
-                assertEquals("Server query unsupported", error.message)
-            }
+        Fixture { _, _, _ ->
+            Reply(body = """{"errors":[{"message":"private-secret-url"}]}""".toByteArray())
         }
+            .use { fixture ->
+                val a = MediaServerAccount("id", "test", fixture.url, "secret")
+                MediaServerHttp(a).use { http ->
+                    val error =
+                        assertThrows(MediaServerFailure::class.java) {
+                            StashClient(a, http).probe()
+                        }
+                    assertEquals("Server query unsupported", error.message)
+                }
+            }
         Fixture { _, _, _ ->
             Reply(
                 302,
                 "Location: https://foreign.invalid/\r\n",
-                byteArrayOf()
+                byteArrayOf(),
             )
-        }.use { fixture ->
-            val a = MediaServerAccount("id", "test", fixture.url, "secret")
-            MediaServerHttp(a).use { http ->
-                assertEquals(
-                    "Media address differs from server",
-                    assertThrows(MediaServerFailure::class.java) {
-                        http.bytes(
-                            URI(fixture.url),
-                            100
-                        )
-                    }.code
-                )
-            }
         }
+            .use { fixture ->
+                val a = MediaServerAccount("id", "test", fixture.url, "secret")
+                MediaServerHttp(a).use { http ->
+                    assertEquals(
+                        "Media address differs from server",
+                        assertThrows(MediaServerFailure::class.java) {
+                                http.bytes(
+                                    URI(fixture.url),
+                                    100,
+                                )
+                            }
+                            .code,
+                    )
+                }
+            }
     }
 
     @Test
@@ -192,28 +233,35 @@ class MediaServerClientTest {
             Fixture { _, _, _ ->
                 Reply(
                     status,
-                    body = "private-server-body".toByteArray()
+                    body = "private-server-body".toByteArray(),
                 )
-            }.use { fixture ->
-                val account = MediaServerAccount("fixture", "Test", fixture.url, "private-key")
-                MediaServerHttp(account).use { http ->
-                    val error = assertThrows(MediaServerFailure::class.java) {
-                        http.bytes(
-                            URI(fixture.url),
-                            100
-                        )
-                    }
-                    assertEquals(status, error.httpStatus)
-                    assertEquals(
-                        if (status in listOf(
-                                401,
-                                403
-                            )
-                        ) "Server authentication required" else "Server request failed", error.code
-                    )
-                    assertFalse(error.message.orEmpty().contains("private"))
-                }
             }
+                .use { fixture ->
+                    val account = MediaServerAccount("fixture", "Test", fixture.url, "private-key")
+                    MediaServerHttp(account).use { http ->
+                        val error =
+                            assertThrows(MediaServerFailure::class.java) {
+                                http.bytes(
+                                    URI(fixture.url),
+                                    100,
+                                )
+                            }
+                        assertEquals(status, error.httpStatus)
+                        assertEquals(
+                            if (
+                                status in
+                                    listOf(
+                                        401,
+                                        403,
+                                    )
+                            )
+                                "Server authentication required"
+                            else "Server request failed",
+                            error.code,
+                        )
+                        assertFalse(error.message.orEmpty().contains("private"))
+                    }
+                }
         }
     }
 
@@ -224,63 +272,73 @@ class MediaServerClientTest {
         Fixture { _, headers, _ ->
             requests.incrementAndGet()
             val r = headers.getValue("range").removePrefix("bytes=").split('-')
-            val start = r[0].toInt();
+            val start = r[0].toInt()
             val end = r[1].toIntOrNull() ?: bytes.lastIndex
             Reply(
                 if (headers["apikey"] == "fixture-key") 206 else 403,
                 "Content-Range: bytes $start-$end/${bytes.size}\r\nContent-Type: video/mp4\r\n",
-                bytes.copyOfRange(start, end + 1)
+                bytes.copyOfRange(start, end + 1),
             )
-        }.use { fixture ->
-            val a = MediaServerAccount("id", "test", fixture.url, "fixture-key")
-            val source = HttpRangeStreamSource(a) { MediaStreamLink(URI(fixture.url), "identity") }
-            assertEquals(bytes.size.toLong(), source.size)
-            source.open().use { reader ->
-                val buffer = ByteArray(80)
-                assertEquals(80, reader.read(10, buffer, 80)); assertArrayEquals(
-                bytes.copyOfRange(
-                    10,
-                    90
-                ), buffer
-            )
-                reader.read(90, buffer, 80); assertEquals(2, requests.get())
-                reader.read(90000, buffer, 80); assertArrayEquals(
-                bytes.copyOfRange(90000, 90080),
-                buffer
-            )
-            }
-            LocalStreamServer().use { local ->
-                val url = local.publish(source, "fixture.mp4")
-                val c = URI(url).toURL().openConnection() as java.net.HttpURLConnection
-                c.setRequestProperty("Range", "bytes=150000-150039")
-                assertEquals(206, c.responseCode)
-                assertArrayEquals(
-                    bytes.copyOfRange(150000, 150040),
-                    c.inputStream.use { it.readBytes() }); c.disconnect()
-                local.revoke(url)
-                assertThrows(MediaServerFailure::class.java) { source.open() }
-            }
         }
+            .use { fixture ->
+                val a = MediaServerAccount("id", "test", fixture.url, "fixture-key")
+                val source =
+                    HttpRangeStreamSource(a) { MediaStreamLink(URI(fixture.url), "identity") }
+                assertEquals(bytes.size.toLong(), source.size)
+                source.open().use { reader ->
+                    val buffer = ByteArray(80)
+                    assertEquals(80, reader.read(10, buffer, 80))
+                    assertArrayEquals(
+                        bytes.copyOfRange(
+                            10,
+                            90,
+                        ),
+                        buffer,
+                    )
+                    reader.read(90, buffer, 80)
+                    assertEquals(2, requests.get())
+                    reader.read(90000, buffer, 80)
+                    assertArrayEquals(
+                        bytes.copyOfRange(90000, 90080),
+                        buffer,
+                    )
+                }
+                LocalStreamServer().use { local ->
+                    val url = local.publish(source, "fixture.mp4")
+                    val c = URI(url).toURL().openConnection() as java.net.HttpURLConnection
+                    c.setRequestProperty("Range", "bytes=150000-150039")
+                    assertEquals(206, c.responseCode)
+                    assertArrayEquals(
+                        bytes.copyOfRange(150000, 150040),
+                        c.inputStream.use { it.readBytes() },
+                    )
+                    c.disconnect()
+                    local.revoke(url)
+                    assertThrows(MediaServerFailure::class.java) { source.open() }
+                }
+            }
     }
 
     @Test
     fun ignoresRangeAndInvalidContentFailBeforePublication() {
-        for ((status, headers) in listOf(
-            200 to "",
-            206 to "Content-Range: bytes 1-1/10\r\n",
-            206 to "Content-Range: bytes 0-0/10\r\nContent-Type: text/html\r\n"
-        )) {
-            Fixture { _, _, _ -> Reply(status, headers, byteArrayOf(1)) }.use { fixture ->
-                val a = MediaServerAccount("id", "test", fixture.url, "")
-                assertThrows(MediaServerFailure::class.java) {
-                    HttpRangeStreamSource(a) {
-                        MediaStreamLink(
-                            URI(fixture.url),
-                            "id"
-                        )
+        for ((status, headers) in
+            listOf(
+                200 to "",
+                206 to "Content-Range: bytes 1-1/10\r\n",
+                206 to "Content-Range: bytes 0-0/10\r\nContent-Type: text/html\r\n",
+            )) {
+            Fixture { _, _, _ -> Reply(status, headers, byteArrayOf(1)) }
+                .use { fixture ->
+                    val a = MediaServerAccount("id", "test", fixture.url, "")
+                    assertThrows(MediaServerFailure::class.java) {
+                        HttpRangeStreamSource(a) {
+                            MediaStreamLink(
+                                URI(fixture.url),
+                                "id",
+                            )
+                        }
                     }
                 }
-            }
         }
     }
 
@@ -298,73 +356,83 @@ class MediaServerClientTest {
                 val path = request.split(' ')[1]
                 val authorization = headers["authorization"].orEmpty()
                 verify(
-                    authorization.startsWith(if (provider == "jellyfin") "MediaBrowser " else "Emby "),
-                    "provider authorization scheme"
+                    authorization.startsWith(
+                        if (provider == "jellyfin") "MediaBrowser " else "Emby "
+                    ),
+                    "provider authorization scheme",
                 )
                 verify(authorization.contains("DeviceId=\"device\""), "stable device identity")
                 if (path.endsWith("/Users/AuthenticateByName")) {
                     verify(!authorization.contains("Token="), "token sent on login")
                 } else if (provider == "jellyfin") {
                     verify(headers["x-emby-token"] == null, "legacy Jellyfin token header")
-                    // Jellyfin 12 disables legacy authentication: metadata alone is not authentication.
+                    // Jellyfin 12 disables legacy authentication: metadata alone is not
+                    // authentication.
                     if (!authorization.contains("Token=\"private-token\""))
                         return@Fixture Reply(401, body = byteArrayOf())
                 } else {
                     verify(headers["x-emby-token"] == "private-token", "missing Emby user token")
                 }
-                val response = when {
-                    path.endsWith("/Users/AuthenticateByName") -> {
-                        verify(JSONObject(body).getString("Pw") == "password", "login body")
-                        verify(headers["x-emby-token"] == null, "stale token sent on login")
-                        """{"AccessToken":"private-token","User":{"Id":"user1"}}"""
-                    }
+                val response =
+                    when {
+                        path.endsWith("/Users/AuthenticateByName") -> {
+                            verify(JSONObject(body).getString("Pw") == "password", "login body")
+                            verify(headers["x-emby-token"] == null, "stale token sent on login")
+                            """{"AccessToken":"private-token","User":{"Id":"user1"}}"""
+                        }
 
-                    path.contains("System/Info/Public") -> """{"Version":"test","ProductName":"$provider"}"""
-                    path.contains("PlaybackInfo") -> """{"PlaySessionId":"session1","MediaSources":[{"Id":"source","Protocol":"File","Size":100,"SupportsDirectPlay":true}]}"""
-                    path.contains("/Items/ab12-cd34") -> media
-                    else -> {
-                        if (path.contains("StartIndex")) verify(
-                            path.contains("StartIndex=48") && path.contains(
-                                "SearchTerm=A%26B"
-                            ), "paging/escaped search"
-                        )
-                        """{"Items":[$media],"TotalRecordCount":100}"""
+                        path.contains("System/Info/Public") ->
+                            """{"Version":"test","ProductName":"$provider"}"""
+                        path.contains("PlaybackInfo") ->
+                            """{"PlaySessionId":"session1","MediaSources":[{"Id":"source","Protocol":"File","Size":100,"SupportsDirectPlay":true}]}"""
+                        path.contains("/Items/ab12-cd34") -> media
+                        else -> {
+                            if (path.contains("StartIndex"))
+                                verify(
+                                    path.contains("StartIndex=48") &&
+                                        path.contains("SearchTerm=A%26B"),
+                                    "paging/escaped search",
+                                )
+                            """{"Items":[$media],"TotalRecordCount":100}"""
+                        }
                     }
-                }
                 Reply(body = response.toByteArray())
-            }.use { fixture ->
-                val anonymous =
-                    MediaServerAccount("device", "Test", fixture.url + "/proxy", "", provider)
-                val account = MediaServerHttp(anonymous).use {
-                    EmbyClient(anonymous, it).login(
-                        "user",
-                        "password"
-                    )
-                }
-                assertFalse(account.json().toString().contains("private-token"))
-                assertFalse(account.json(true).toString().contains("password"))
-                MediaServerHttp(account).use { http ->
-                    val client = mediaClient(account, http)
-                    assertEquals("test", client.probe())
-                    val result = client.browse(JSONObject("""{"page":2,"q":"A&B"}"""))
-                    assertEquals(100, result.getInt("total"))
-                    val detail = client.detail("ab12-cd34")
-                    assertEquals(
-                        30000,
-                        detail.getJSONArray("markers").getJSONObject(0).getInt("position_ms")
-                    )
-                    assertEquals("Film_180_SBS.mkv", detail.getString("basename"))
-                    assertFalse(detail.toString().contains("/private/"))
-                    val stream = client.stream("ab12-cd34")
-                    assertTrue(stream.url.toString().contains("Static=true"))
-                    assertFalse(stream.url.toString().contains("private-token"))
-                    assertTrue(client.cover("ab12-cd34").path.startsWith("/proxy/Items/"))
-                    assertTrue(http.bytes(client.cover("ab12-cd34"), 1024 * 1024).isNotEmpty())
-                    val ranged = http.open(stream.url, range = "bytes=0-0")
-                    http.release(ranged)
-                }
-                assertTrue(failures.toString(), failures.isEmpty())
             }
+                .use { fixture ->
+                    val anonymous =
+                        MediaServerAccount("device", "Test", fixture.url + "/proxy", "", provider)
+                    val account =
+                        MediaServerHttp(anonymous).use {
+                            EmbyClient(anonymous, it)
+                                .login(
+                                    "user",
+                                    "password",
+                                )
+                        }
+                    assertFalse(account.json().toString().contains("private-token"))
+                    assertFalse(account.json(true).toString().contains("password"))
+                    MediaServerHttp(account).use { http ->
+                        val client = mediaClient(account, http)
+                        assertEquals("test", client.probe())
+                        val result = client.browse(JSONObject("""{"page":2,"q":"A&B"}"""))
+                        assertEquals(100, result.getInt("total"))
+                        val detail = client.detail("ab12-cd34")
+                        assertEquals(
+                            30000,
+                            detail.getJSONArray("markers").getJSONObject(0).getInt("position_ms"),
+                        )
+                        assertEquals("Film_180_SBS.mkv", detail.getString("basename"))
+                        assertFalse(detail.toString().contains("/private/"))
+                        val stream = client.stream("ab12-cd34")
+                        assertTrue(stream.url.toString().contains("Static=true"))
+                        assertFalse(stream.url.toString().contains("private-token"))
+                        assertTrue(client.cover("ab12-cd34").path.startsWith("/proxy/Items/"))
+                        assertTrue(http.bytes(client.cover("ab12-cd34"), 1024 * 1024).isNotEmpty())
+                        val ranged = http.open(stream.url, range = "bytes=0-0")
+                        http.release(ranged)
+                    }
+                    assertTrue(failures.toString(), failures.isEmpty())
+                }
         }
     }
 
@@ -374,72 +442,96 @@ class MediaServerClientTest {
         val scene =
             """{"id":7,"title":"Scene","cover_url":"https://images.invalid/cover.jpg","file":[{"id":12,"type":"video","filename":"film_180_SBS.mp4","video_width":4096,"duration":60,"size":100}],"tags":[{"name":"Tag A"}],"cast":[],"cuepoints":[{"name":"Part","time_start":12}]}"""
         Fixture { request, _, body ->
-            val response = when {
-                request.contains("/list") -> {
-                    val data = JSONObject(body)
-                    if (data.getInt("offset") == 48 && data.getJSONArray("tags")
-                            .toString() != "[\"&Tag A\",\"!Tag B\"]"
-                    ) failures.add("filter semantics")
-                    """{"results":49,"scenes":[$scene]}"""
-                }
+            val response =
+                when {
+                    request.contains("/list") -> {
+                        val data = JSONObject(body)
+                        if (
+                            data.getInt("offset") == 48 &&
+                                data.getJSONArray("tags").toString() != "[\"&Tag A\",\"!Tag B\"]"
+                        )
+                            failures.add("filter semantics")
+                        """{"results":49,"scenes":[$scene]}"""
+                    }
 
-                request.contains("/filters") -> """{"tags":["Tag A","Tag B"],"cast":[],"sites":[]}"""
-                else -> scene
-            }
+                    request.contains("/filters") ->
+                        """{"tags":["Tag A","Tag B"],"cast":[],"sites":[]}"""
+                    else -> scene
+                }
             Reply(body = response.toByteArray())
-        }.use { fixture ->
-            val a = MediaServerAccount("xbvr-test", "XBVR", fixture.url, "", "xbvr")
-            MediaServerHttp(a).use { http ->
-                val client = mediaClient(a, http)
-                client.probe()
-                val result =
-                    client.browse(JSONObject("""{"page":2,"tags":["Tag A"],"exclude_tags":["Tag B"]}"""))
-                assertEquals("7", result.getJSONArray("entries").getJSONObject(0).getString("id"))
-                assertEquals(
-                    "Tag A",
-                    client.candidates(JSONObject("""{"kind":"tags","q":"Tag A"}"""))
-                        .getJSONArray("entries").getJSONObject(0).getString("id")
-                )
-                assertEquals(
-                    12000,
-                    client.detail("7").getJSONArray("markers").getJSONObject(0)
-                        .getInt("position_ms")
-                )
-                assertEquals("/api/dms/file/12", client.stream("7").url.path)
-                assertEquals("dnt=1", client.stream("7").url.query)
-                assertTrue(a.accepts(client.cover("7")))
-                assertThrows(MediaServerFailure::class.java) { client.browse(JSONObject("""{"q":"unsupported"}""")) }
-                assertTrue(failures.toString(), failures.isEmpty())
-            }
         }
+            .use { fixture ->
+                val a = MediaServerAccount("xbvr-test", "XBVR", fixture.url, "", "xbvr")
+                MediaServerHttp(a).use { http ->
+                    val client = mediaClient(a, http)
+                    client.probe()
+                    val result =
+                        client.browse(
+                            JSONObject("""{"page":2,"tags":["Tag A"],"exclude_tags":["Tag B"]}""")
+                        )
+                    assertEquals(
+                        "7",
+                        result.getJSONArray("entries").getJSONObject(0).getString("id"),
+                    )
+                    assertEquals(
+                        "Tag A",
+                        client
+                            .candidates(JSONObject("""{"kind":"tags","q":"Tag A"}"""))
+                            .getJSONArray("entries")
+                            .getJSONObject(0)
+                            .getString("id"),
+                    )
+                    assertEquals(
+                        12000,
+                        client
+                            .detail("7")
+                            .getJSONArray("markers")
+                            .getJSONObject(0)
+                            .getInt("position_ms"),
+                    )
+                    assertEquals("/api/dms/file/12", client.stream("7").url.path)
+                    assertEquals("dnt=1", client.stream("7").url.query)
+                    assertTrue(a.accepts(client.cover("7")))
+                    assertThrows(MediaServerFailure::class.java) {
+                        client.browse(JSONObject("""{"q":"unsupported"}"""))
+                    }
+                    assertTrue(failures.toString(), failures.isEmpty())
+                }
+            }
     }
 
     @Test
     fun liveEmbyPublicPasswordlessUser() {
         val url = System.getenv("VRPP_EMBY_TEST_URL").orEmpty()
         assumeTrue("Optional local Emby integration", url.isNotEmpty())
-        val anonymous = MediaServerAccount(
-            java.util.UUID.randomUUID().toString(),
-            "Emby test",
-            MediaServerAccount.address(url),
-            "",
-            "emby"
-        )
-        val account = MediaServerHttp(anonymous).use { http ->
-            val users = org.json.JSONArray(
-                String(
-                    http.bytes(
-                        anonymous.endpoint("Users/Public"),
-                        1024 * 1024
-                    ), Charsets.UTF_8
-                )
-            ).objects()
-            assumeTrue(
-                "Only an unambiguous public passwordless account is used",
-                users.size == 1 && !users[0].optBoolean("HasPassword", true)
+        val anonymous =
+            MediaServerAccount(
+                java.util.UUID.randomUUID().toString(),
+                "Emby test",
+                MediaServerAccount.address(url),
+                "",
+                "emby",
             )
-            EmbyClient(anonymous, http).login(users[0].getString("Name"), "")
-        }
+        val account =
+            MediaServerHttp(anonymous).use { http ->
+                val users =
+                    org.json
+                        .JSONArray(
+                            String(
+                                http.bytes(
+                                    anonymous.endpoint("Users/Public"),
+                                    1024 * 1024,
+                                ),
+                                Charsets.UTF_8,
+                            )
+                        )
+                        .objects()
+                assumeTrue(
+                    "Only an unambiguous public passwordless account is used",
+                    users.size == 1 && !users[0].optBoolean("HasPassword", true),
+                )
+                EmbyClient(anonymous, http).login(users[0].getString("Name"), "")
+            }
         MediaServerHttp(account).use { http ->
             try {
                 val client = EmbyClient(account, http)
@@ -452,19 +544,23 @@ class MediaServerClientTest {
                     val id = items.getJSONObject(0).getString("id")
                     assertEquals(id, client.detail(id).getString("id"))
                     HttpRangeStreamSource(account) {
-                        EmbyClient(
-                            account,
-                            it
-                        ).stream(id)
-                    }.use { source ->
-                        source.open().use { reader ->
-                            val sample = ByteArray(64)
-                            assertTrue(reader.read(0, sample, sample.size) > 0)
-                            assertTrue(reader.read(source.size / 2, sample, sample.size) > 0)
+                            EmbyClient(
+                                    account,
+                                    it,
+                                )
+                                .stream(id)
                         }
-                    }
+                        .use { source ->
+                            source.open().use { reader ->
+                                val sample = ByteArray(64)
+                                assertTrue(reader.read(0, sample, sample.size) > 0)
+                                assertTrue(reader.read(source.size / 2, sample, sample.size) > 0)
+                            }
+                        }
                 }
-                println("Live Emby: library count=$count; original stream tested=${items.length() > 0}")
+                println(
+                    "Live Emby: library count=$count; original stream tested=${items.length() > 0}"
+                )
             } finally {
                 http.bytes(account.endpoint("Sessions/Logout"), 1024, JSONObject())
             }
@@ -478,12 +574,16 @@ class MediaServerClientTest {
         val password = System.getenv("VRPP_JELLYFIN_TEST_PASSWORD")
         assumeTrue(
             "Optional local Jellyfin integration",
-            url.isNotEmpty() && username.isNotEmpty() && password != null
+            url.isNotEmpty() && username.isNotEmpty() && password != null,
         )
-        val anonymous = MediaServerAccount(
-            java.util.UUID.randomUUID().toString(), "Jellyfin test",
-            MediaServerAccount.address(url), "", "jellyfin"
-        )
+        val anonymous =
+            MediaServerAccount(
+                java.util.UUID.randomUUID().toString(),
+                "Jellyfin test",
+                MediaServerAccount.address(url),
+                "",
+                "jellyfin",
+            )
         val account =
             MediaServerHttp(anonymous).use { EmbyClient(anonymous, it).login(username, password!!) }
         MediaServerHttp(account).use { http ->
@@ -498,19 +598,23 @@ class MediaServerClientTest {
                     val id = items.getJSONObject(0).getString("id")
                     assertEquals(id, client.detail(id).getString("id"))
                     HttpRangeStreamSource(account) {
-                        EmbyClient(
-                            account,
-                            it
-                        ).stream(id)
-                    }.use { source ->
-                        source.open().use { reader ->
-                            val sample = ByteArray(64)
-                            assertTrue(reader.read(0, sample, sample.size) > 0)
-                            assertTrue(reader.read(source.size / 2, sample, sample.size) > 0)
+                            EmbyClient(
+                                    account,
+                                    it,
+                                )
+                                .stream(id)
                         }
-                    }
+                        .use { source ->
+                            source.open().use { reader ->
+                                val sample = ByteArray(64)
+                                assertTrue(reader.read(0, sample, sample.size) > 0)
+                                assertTrue(reader.read(source.size / 2, sample, sample.size) > 0)
+                            }
+                        }
                 }
-                println("Live Jellyfin: library count=$count; original stream tested=${items.length() > 0}")
+                println(
+                    "Live Jellyfin: library count=$count; original stream tested=${items.length() > 0}"
+                )
             } finally {
                 http.bytes(account.endpoint("Sessions/Logout"), 1024, JSONObject())
             }
@@ -521,19 +625,21 @@ class MediaServerClientTest {
     fun readOnlyLiveStash() {
         val url = System.getenv("VRPP_STASH_TEST_URL").orEmpty()
         assumeTrue("Optional local Stash integration", url.isNotEmpty())
-        val a = MediaServerAccount(
-            "live-test",
-            "Stash",
-            MediaServerAccount.address(url),
-            System.getenv("VRPP_STASH_TEST_KEY").orEmpty()
-        )
+        val a =
+            MediaServerAccount(
+                "live-test",
+                "Stash",
+                MediaServerAccount.address(url),
+                System.getenv("VRPP_STASH_TEST_KEY").orEmpty(),
+            )
         MediaServerHttp(a).use { http ->
             val client = StashClient(a, http)
             assertTrue(client.probe().isNotEmpty())
             val spriteId = System.getenv("VRPP_STASH_SPRITE_TEST_ID").orEmpty()
             if (spriteId.isNotBlank()) {
                 val fallback = client.coverFallback(spriteId)!!
-                assertTrue(a.accepts(fallback.uri)); assertTrue(fallback.width > 0 && fallback.height > 0)
+                assertTrue(a.accepts(fallback.uri))
+                assertTrue(fallback.width > 0 && fallback.height > 0)
                 assertTrue(http.bytes(fallback.uri, 16 * 1024 * 1024).size > 1024)
             }
             val result = client.browse(JSONObject().put("page", 1))
@@ -541,25 +647,25 @@ class MediaServerClientTest {
             val item = result.getJSONArray("entries").getJSONObject(0)
             val detail = client.detail(item.getString("id"))
             assertEquals(item.getString("uri"), detail.getString("uri"))
-            assertFalse(detail.toString().contains("apikey=")); assertFalse(detail.has("paths"))
+            assertFalse(detail.toString().contains("apikey="))
+            assertFalse(detail.has("paths"))
             for (kind in listOf("tags", "performers", "studios")) assertTrue(
-                client.candidates(
-                    JSONObject().put("kind", kind)
-                ).getInt("total") >= 0
+                client.candidates(JSONObject().put("kind", kind)).getInt("total") >= 0
             )
             HttpRangeStreamSource(a) { transport ->
-                val scene = StashClient(a, transport).rawScene(item.getString("id"))
-                MediaStreamLink(
-                    URI(scene.getJSONObject("paths").getString("stream")),
-                    scene.getJSONArray("files").toString()
-                )
-            }.use { source ->
-                source.open().use { reader ->
-                    val sample = ByteArray(256)
-                    assertTrue(reader.read(0, sample, sample.size) > 0)
-                    assertTrue(reader.read(source.size / 2, sample, sample.size) > 0)
+                    val scene = StashClient(a, transport).rawScene(item.getString("id"))
+                    MediaStreamLink(
+                        URI(scene.getJSONObject("paths").getString("stream")),
+                        scene.getJSONArray("files").toString(),
+                    )
                 }
-            }
+                .use { source ->
+                    source.open().use { reader ->
+                        val sample = ByteArray(256)
+                        assertTrue(reader.read(0, sample, sample.size) > 0)
+                        assertTrue(reader.read(source.size / 2, sample, sample.size) > 0)
+                    }
+                }
         }
     }
 
@@ -568,8 +674,7 @@ class MediaServerClientTest {
         val video = ByteArray(64) { it.toByte() }
         val mix = ByteArray(32) { (it + 80).toByte() }
         val srt = "1\n00:00:01,000 --> 00:00:02,000\n服务器字幕\n".toByteArray(Charsets.UTF_8)
-        val vtt =
-            "WEBVTT\n\n00:00:01.000 --> 00:00:02.000\n服务器字幕\n".toByteArray(Charsets.UTF_8)
+        val vtt = "WEBVTT\n\n00:00:01.000 --> 00:00:02.000\n服务器字幕\n".toByteArray(Charsets.UTF_8)
         for (provider in listOf("emby", "jellyfin", "stash", "xbvr")) {
             val failures = java.util.concurrent.ConcurrentLinkedQueue<String>()
             val subtitleRequests = AtomicInteger()
@@ -582,34 +687,44 @@ class MediaServerClientTest {
                 val path = uri.path
                 when (provider) {
                     "emby" -> verify(headers["x-emby-token"] == "fixture-key", "Emby auth")
-                    "jellyfin" -> verify(
-                        headers["authorization"].orEmpty().contains("Token=\"fixture-key\""),
-                        "Jellyfin auth"
-                    )
+                    "jellyfin" ->
+                        verify(
+                            headers["authorization"].orEmpty().contains("Token=\"fixture-key\""),
+                            "Jellyfin auth",
+                        )
 
                     "stash" -> verify(headers["apikey"] == "fixture-key", "Stash auth")
-                    "xbvr" -> verify(
-                        headers["authorization"] == "Basic " + java.util.Base64.getEncoder()
-                            .encodeToString("user:fixture-key".toByteArray()), "XBVR auth"
-                    )
+                    "xbvr" ->
+                        verify(
+                            headers["authorization"] ==
+                                "Basic " +
+                                    java.util.Base64.getEncoder()
+                                        .encodeToString("user:fixture-key".toByteArray()),
+                            "XBVR auth",
+                        )
                 }
                 when {
                     path.endsWith("/graphql") -> {
                         val query = JSONObject(body).getString("query")
-                        val data = if (query.contains("CompanionAudio")) {
-                            """{"sceneStreams":[{"url":"/proxy/Audio/mix.m4a","label":"film.si.mix.m4a","mime_type":"audio/mp4"},{"url":"/proxy/Audio/wrong.m4a","label":"film0.si.mix.m4a","mime_type":"audio/mp4"}]}"""
-                        } else if (query.contains("Captions")) {
-                            verify(
-                                JSONObject(body).getJSONObject("variables").getString("id") == "1",
-                                "Stash scene binding"
-                            )
-                            """{"captions":[{"language_code":"zh","caption_type":"srt"}],"paths":{"caption":"/proxy/scene/1/caption?cid=test&expires=7&signature=signed"}}"""
-                        } else """{"id":"1","updated_at":"stamp","files":[{"id":"11","basename":"film.mp4","size":"64"}],"paths":{"stream":"/proxy/scene/1/stream"}}"""
+                        val data =
+                            if (query.contains("CompanionAudio")) {
+                                """{"sceneStreams":[{"url":"/proxy/Audio/mix.m4a","label":"film.si.mix.m4a","mime_type":"audio/mp4"},{"url":"/proxy/Audio/wrong.m4a","label":"film0.si.mix.m4a","mime_type":"audio/mp4"}]}"""
+                            } else if (query.contains("Captions")) {
+                                verify(
+                                    JSONObject(body).getJSONObject("variables").getString("id") ==
+                                        "1",
+                                    "Stash scene binding",
+                                )
+                                """{"captions":[{"language_code":"zh","caption_type":"srt"}],"paths":{"caption":"/proxy/scene/1/caption?cid=test&expires=7&signature=signed"}}"""
+                            } else
+                                """{"id":"1","updated_at":"stamp","files":[{"id":"11","basename":"film.mp4","size":"64"}],"paths":{"stream":"/proxy/scene/1/stream"}}"""
                         Reply(body = "{\"data\":{\"findScene\":$data}}".toByteArray())
                     }
 
-                    path.endsWith("/PlaybackInfo") -> Reply(
-                        body = """{"MediaSources":[
+                    path.endsWith("/PlaybackInfo") ->
+                        Reply(
+                            body =
+                                """{"MediaSources":[
                         {"Id":"wrong-source","SupportsDirectPlay":false,"MediaStreams":[{"Type":"Subtitle","Index":8,"IsExternal":true,"IsTextSubtitleStream":true}]},
                         {"Id":"selected-source","Protocol":"File","Size":64,"Path":"/private/film.mp4","MediaStreams":[
                             {"Type":"Subtitle","Index":2,"IsExternal":true,"Codec":"subrip","DisplayTitle":"中文"},
@@ -617,138 +732,166 @@ class MediaServerClientTest {
                             {"Type":"Subtitle","Index":3,"IsExternal":false,"Codec":"subrip"},
                             {"Type":"Subtitle","Index":4,"IsExternal":true,"Codec":"pgs"},
                             {"Type":"Audio","Index":5,"IsExternal":true,"Path":"/private/film.si.mix.m4a","DeliveryUrl":"/proxy/Audio/mix.m4a"},
-                            {"Type":"Audio","Index":6,"IsExternal":true,"Path":"/private/film0.si.mix.m4a","DeliveryUrl":"/proxy/Audio/wrong.m4a"}]}]}""".toByteArray()
-                    )
+                            {"Type":"Audio","Index":6,"IsExternal":true,"Path":"/private/film0.si.mix.m4a","DeliveryUrl":"/proxy/Audio/wrong.m4a"}]}]}"""
+                                    .toByteArray()
+                        )
 
-                    path.endsWith("/api/scene/7") -> Reply(
-                        body = """{"id":7,"file":[
+                    path.endsWith("/api/scene/7") ->
+                        Reply(
+                            body =
+                                """{"id":7,"file":[
                         {"id":11,"type":"video","filename":"film.mp4","size":64,"video_width":4096},
                         {"id":12,"type":"video","filename":"low.mp4","size":64,"video_width":1024},
                         {"id":22,"type":"subtitles","filename":"film.zh.srt","size":80},
                         {"id":23,"type":"subtitles","filename":"film.sup","size":80},
                         {"id":24,"type":"audio","filename":"film.si.mix.m4a","size":32},
-                        {"id":25,"type":"audio","filename":"film0.si.mix.m4a","size":32}]}""".toByteArray()
-                    )
+                        {"id":25,"type":"audio","filename":"film0.si.mix.m4a","size":32}]}"""
+                                    .toByteArray()
+                        )
 
-                    path.endsWith("/Stream.srt") || path.endsWith("/caption") || path.endsWith("/api/dms/file/22") -> {
+                    path.endsWith("/Stream.srt") ||
+                        path.endsWith("/caption") ||
+                        path.endsWith("/api/dms/file/22") -> {
                         subtitleRequests.incrementAndGet()
                         verify(
                             headers["range"] == null,
-                            "Subtitle endpoint must not require Range support"
+                            "Subtitle endpoint must not require Range support",
                         )
-                        if (provider in listOf(
-                                "emby",
-                                "jellyfin"
-                            )
-                        ) verify(
-                            path == "/proxy/Videos/1/selected-source/Subtitles/2/Stream.srt",
-                            "Wrong video version"
+                        if (
+                            provider in
+                                listOf(
+                                    "emby",
+                                    "jellyfin",
+                                )
                         )
-                        if (provider == "stash") {
-                            val args = uri.rawQuery.split('&')
-                                .associate { it.substringBefore('=') to it.substringAfter('=') }
                             verify(
-                                args == mapOf(
-                                    "cid" to "test",
-                                    "expires" to "7",
-                                    "signature" to "signed",
-                                    "lang" to "zh",
-                                    "type" to "srt"
-                                ), "Signed caption query changed"
+                                path == "/proxy/Videos/1/selected-source/Subtitles/2/Stream.srt",
+                                "Wrong video version",
+                            )
+                        if (provider == "stash") {
+                            val args =
+                                uri.rawQuery.split('&').associate {
+                                    it.substringBefore('=') to it.substringAfter('=')
+                                }
+                            verify(
+                                args ==
+                                    mapOf(
+                                        "cid" to "test",
+                                        "expires" to "7",
+                                        "signature" to "signed",
+                                        "lang" to "zh",
+                                        "type" to "srt",
+                                    ),
+                                "Signed caption query changed",
                             )
                         }
                         Reply(
                             headers = "Content-Type: text/plain; charset=utf-8\r\n",
-                            body = if (provider == "stash") vtt else srt
+                            body = if (provider == "stash") vtt else srt,
                         )
                     }
 
                     path.endsWith("/Audio/mix.m4a") || path.endsWith("/api/dms/file/24") -> {
                         val range = headers.getValue("range").removePrefix("bytes=").split('-')
-                        val start = range[0].toInt();
+                        val start = range[0].toInt()
                         val end = range[1].toIntOrNull() ?: mix.lastIndex
                         Reply(
                             206,
                             "Content-Type: audio/mp4\r\nContent-Range: bytes $start-$end/${mix.size}\r\n",
-                            mix.copyOfRange(start, end + 1)
+                            mix.copyOfRange(start, end + 1),
                         )
                     }
 
                     path.endsWith("/stream") || path.endsWith("/api/dms/file/11") -> {
                         val range = headers.getValue("range").removePrefix("bytes=").split('-')
-                        val start = range[0].toInt();
+                        val start = range[0].toInt()
                         val end = range[1].toIntOrNull() ?: video.lastIndex
                         Reply(
                             206,
                             "Content-Type: video/mp4\r\nContent-Range: bytes $start-$end/${video.size}\r\n",
-                            video.copyOfRange(start, end + 1)
+                            video.copyOfRange(start, end + 1),
                         )
                     }
 
                     else -> Reply(404, body = byteArrayOf())
                 }
-            }.use { fixture ->
-                LocalStreamServer().use { local ->
-                    var account = MediaServerAccount(
-                        "fixture",
-                        "Test",
-                        fixture.url + "/proxy",
-                        "fixture-key",
-                        provider,
-                        "user1",
-                        "user"
-                    )
-                    val library = MediaServerLibrary(
-                        { null },
-                        { local },
-                        { 1 },
-                        emit = { _, _ -> },
-                        getAccount = { account })
-                    try {
-                        val uri =
-                            MediaLibraryUri.scene(account.id, if (provider == "xbvr") "7" else "1")
-                        val movie = library.playable(uri)
-                        assertArrayEquals(video, URI(movie).toURL().readBytes())
-                        val audio = library.sidecarAudio(uri)
-                        assertEquals(provider, 1, audio.size)
-                        if (audio.isNotEmpty()) {
-                            assertEquals(SidecarAudio.CLONE_TITLE, audio.single().title)
-                            assertArrayEquals(mix, URI(audio.single().location).toURL().readBytes())
-                        }
-                        val tracks = library.sidecarSubtitles(uri)
-                        assertEquals(provider, 1, tracks.size)
-                        assertEquals(1, subtitleRequests.get())
-                        assertArrayEquals(
-                            if (provider == "stash") vtt else srt,
-                            URI(tracks.single().location).toURL().readBytes()
-                        )
-                        assertTrue(tracks.single().location.startsWith("http://127.0.0.1:"))
-                        assertFalse(tracks.single().location.contains("fixture-key"))
-                        assertArrayEquals(video, URI(movie).toURL().readBytes())
-                        // Account replacement must reject stale caption metadata before issuing new reads.
-                        account = account.copy(key = "replacement")
-                        assertThrows(MediaServerFailure::class.java) { library.sidecarSubtitles(uri) }
-                        assertEquals(1, subtitleRequests.get())
-                        MediaServerLibrary.invalidate(account.id)
-                        for (location in listOf(
-                            movie,
-                            tracks.single().location
-                        ) + audio.map { it.location }) {
-                            val c =
-                                URI(location).toURL().openConnection() as java.net.HttpURLConnection
-                            try {
-                                assertEquals(404, c.responseCode)
-                            } finally {
-                                c.disconnect()
+            }
+                .use { fixture ->
+                    LocalStreamServer().use { local ->
+                        var account =
+                            MediaServerAccount(
+                                "fixture",
+                                "Test",
+                                fixture.url + "/proxy",
+                                "fixture-key",
+                                provider,
+                                "user1",
+                                "user",
+                            )
+                        val library =
+                            MediaServerLibrary(
+                                { null },
+                                { local },
+                                { 1 },
+                                emit = { _, _ -> },
+                                getAccount = { account },
+                            )
+                        try {
+                            val uri =
+                                MediaLibraryUri.scene(
+                                    account.id,
+                                    if (provider == "xbvr") "7" else "1",
+                                )
+                            val movie = library.playable(uri)
+                            assertArrayEquals(video, URI(movie).toURL().readBytes())
+                            val audio = library.sidecarAudio(uri)
+                            assertEquals(provider, 1, audio.size)
+                            if (audio.isNotEmpty()) {
+                                assertEquals(SidecarAudio.CLONE_TITLE, audio.single().title)
+                                assertArrayEquals(
+                                    mix,
+                                    URI(audio.single().location).toURL().readBytes(),
+                                )
                             }
+                            val tracks = library.sidecarSubtitles(uri)
+                            assertEquals(provider, 1, tracks.size)
+                            assertEquals(1, subtitleRequests.get())
+                            assertArrayEquals(
+                                if (provider == "stash") vtt else srt,
+                                URI(tracks.single().location).toURL().readBytes(),
+                            )
+                            assertTrue(tracks.single().location.startsWith("http://127.0.0.1:"))
+                            assertFalse(tracks.single().location.contains("fixture-key"))
+                            assertArrayEquals(video, URI(movie).toURL().readBytes())
+                            // Account replacement must reject stale caption metadata before issuing
+                            // new reads.
+                            account = account.copy(key = "replacement")
+                            assertThrows(MediaServerFailure::class.java) {
+                                library.sidecarSubtitles(uri)
+                            }
+                            assertEquals(1, subtitleRequests.get())
+                            MediaServerLibrary.invalidate(account.id)
+                            for (location in
+                                listOf(
+                                    movie,
+                                    tracks.single().location,
+                                ) + audio.map { it.location }) {
+                                val c =
+                                    URI(location).toURL().openConnection()
+                                        as java.net.HttpURLConnection
+                                try {
+                                    assertEquals(404, c.responseCode)
+                                } finally {
+                                    c.disconnect()
+                                }
+                            }
+                            assertTrue(library.sidecarSubtitles(uri).isEmpty())
+                            assertTrue(failures.toString(), failures.isEmpty())
+                        } finally {
+                            library.close()
                         }
-                        assertTrue(library.sidecarSubtitles(uri).isEmpty())
-                        assertTrue(failures.toString(), failures.isEmpty())
-                    } finally {
-                        library.close()
                     }
                 }
-            }
         }
     }
 
@@ -757,49 +900,60 @@ class MediaServerClientTest {
         val caption = "1\n00:00:01,000 --> 00:00:02,000\nCaption\n".toByteArray()
         Fixture { request, _, _ ->
             when (URI(request.split(' ')[1]).path) {
-                "/html" -> Reply(
-                    headers = "Content-Type: text/html\r\n",
-                    body = "<html>Login</html>".toByteArray()
-                )
+                "/html" ->
+                    Reply(
+                        headers = "Content-Type: text/html\r\n",
+                        body = "<html>Login</html>".toByteArray(),
+                    )
 
-                "/json" -> Reply(
-                    headers = "Content-Type: application/json\r\n",
-                    body = "{}".toByteArray()
-                )
+                "/json" ->
+                    Reply(
+                        headers = "Content-Type: application/json\r\n",
+                        body = "{}".toByteArray(),
+                    )
 
                 "/empty" -> Reply(body = byteArrayOf())
                 "/large" -> Reply(body = ByteArray(4 * 1024 * 1024 + 1))
                 "/denied" -> Reply(403, body = byteArrayOf())
                 else -> Reply(headers = "Content-Type: text/plain\r\n", body = caption)
             }
-        }.use { fixture ->
-            LocalStreamServer().use { local ->
-                val account = MediaServerAccount("fixture", "Test", fixture.url, "key")
-                val links = listOf("html", "json", "empty", "large", "denied").map {
-                    MediaSubtitleLink(account.endpoint(it), it)
-                } + MediaSubtitleLink(
-                    URI("http://foreign.invalid/subtitle.srt"),
-                    "foreign"
-                ) + MediaSubtitleLink(account.endpoint("valid"), "valid")
-                MediaServerHttp(account).use { http ->
-                    val tracks = SidecarSubtitles.forServer(http, links) { source, name ->
-                        local.publish(
-                            source,
-                            name
+        }
+            .use { fixture ->
+                LocalStreamServer().use { local ->
+                    val account = MediaServerAccount("fixture", "Test", fixture.url, "key")
+                    val links =
+                        listOf("html", "json", "empty", "large", "denied").map {
+                            MediaSubtitleLink(account.endpoint(it), it)
+                        } +
+                            MediaSubtitleLink(
+                                URI("http://foreign.invalid/subtitle.srt"),
+                                "foreign",
+                            ) +
+                            MediaSubtitleLink(account.endpoint("valid"), "valid")
+                    MediaServerHttp(account).use { http ->
+                        val tracks =
+                            SidecarSubtitles.forServer(http, links) { source, name ->
+                                local.publish(
+                                    source,
+                                    name,
+                                )
+                            }
+                        assertEquals(listOf("valid"), tracks.map { it.title })
+                        assertArrayEquals(
+                            caption,
+                            URI(tracks.single().location).toURL().readBytes(),
                         )
-                    }
-                    assertEquals(listOf("valid"), tracks.map { it.title })
-                    assertArrayEquals(caption, URI(tracks.single().location).toURL().readBytes())
-                    local.revoke(tracks.single().location)
-                    val c = URI(tracks.single().location).toURL()
-                        .openConnection() as java.net.HttpURLConnection
-                    try {
-                        assertEquals(404, c.responseCode)
-                    } finally {
-                        c.disconnect()
+                        local.revoke(tracks.single().location)
+                        val c =
+                            URI(tracks.single().location).toURL().openConnection()
+                                as java.net.HttpURLConnection
+                        try {
+                            assertEquals(404, c.responseCode)
+                        } finally {
+                            c.disconnect()
+                        }
                     }
                 }
             }
-        }
     }
 }

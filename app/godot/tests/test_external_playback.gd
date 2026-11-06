@@ -1,14 +1,36 @@
 extends SceneTree
 const Export := preload("res://addons/quest_player/export_plugin.gd")
+
+
 func _initialize() -> void:
 	preload("res://tests/support/test_result.gd").prepare(self)
 	var common: String = Export.QuestPlayerExport.application_entries(false)
 	var pico: String = Export.QuestPlayerExport.application_entries(true)
-	assert(common.contains("ExternalPlaybackActivity") and common.contains("android.intent.action.VIEW") and common.contains("android.intent.action.SEND"))
+	assert(
+		(
+			common.contains("ExternalPlaybackActivity")
+			and common.contains("android.intent.action.VIEW")
+			and common.contains("android.intent.action.SEND")
+		)
+	)
 	assert(not common.contains("ImmivioLauncherActivity"))
 	assert(pico.contains("ImmivioLauncherActivity"))
 	var xml := XMLParser.new()
-	assert(xml.open_buffer(("<application xmlns:android='http://schemas.android.com/apk/res/android'>" + pico + "</application>").to_utf8_buffer()) == OK)
+	assert(
+		(
+			xml.open_buffer(
+				(
+					(
+						"<application xmlns:android='http://schemas.android.com/apk/res/android'>"
+						+ pico
+						+ "</application>"
+					)
+					. to_utf8_buffer()
+				)
+			)
+			== OK
+		)
+	)
 	var activities := 0
 	while xml.read() == OK:
 		if xml.get_node_type() == XMLParser.NODE_ELEMENT and xml.get_node_name() == "activity":

@@ -36,7 +36,8 @@ func _run() -> void:
 		"Plex appears alongside existing server providers"
 	)
 	var choices: Array = menu._buttons.filter(
-		func(button): return button.target >= Menu.ROW_BASE + 1 and button.target <= Menu.ROW_BASE + 5
+		func(button):
+			return button.target >= Menu.ROW_BASE + 1 and button.target <= Menu.ROW_BASE + 5
 	)
 	check(
 		choices.size() == 5 and choices.all(func(button): return button.rect.position.y > -0.3),

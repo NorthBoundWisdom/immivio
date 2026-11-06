@@ -26,7 +26,9 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var main := InputMain.new()
-	var directory := ProjectSettings.globalize_path("res://../../build/tests/godot/library-window-test")
+	var directory := ProjectSettings.globalize_path(
+		"res://../../build/tests/godot/library-window-test"
+	)
 	DirAccess.make_dir_recursive_absolute(directory)
 	main.settings_path = directory.path_join("settings.cfg")
 	var settings := ConfigFile.new()
@@ -83,8 +85,13 @@ func _run() -> void:
 		main._place_menu(library)
 		main.menu_compositor._process(0)
 		var centre: Vector2 = library.capture_envelope().get_center()
-		var viewing_distance := library.to_global(Vector3(centre.x, centre.y, 0)).distance_to(main._eye())
-		check(is_equal_approx(library.curve_radius, viewing_distance), "Menu curvature follows the viewing ring at " + str(distance) + "m")
+		var viewing_distance := library.to_global(Vector3(centre.x, centre.y, 0)).distance_to(
+			main._eye()
+		)
+		check(
+			is_equal_approx(library.curve_radius, viewing_distance),
+			"Menu curvature follows the viewing ring at " + str(distance) + "m"
+		)
 	main.library_distance = 1.4
 	main._place_menu(library)
 	main.menu_compositor._process(0)
@@ -93,15 +100,23 @@ func _run() -> void:
 	main.library_distance = 2.5
 	main._place_menu(library)
 	main.menu_compositor._process(0)
-	check(is_equal_approx(library.curve_radius, held_radius), "Pointer capture freezes menu curvature")
+	check(
+		is_equal_approx(library.curve_radius, held_radius), "Pointer capture freezes menu curvature"
+	)
 	library.choices.capture.clear()
 	main.menu_compositor._process(0)
 	var lowered_distance := Vector2(2.5, main._presentation.window_height).length()
-	check(is_equal_approx(library.curve_radius, lowered_distance), "Release applies the new viewing distance")
+	check(
+		is_equal_approx(library.curve_radius, lowered_distance),
+		"Release applies the new viewing distance"
+	)
 	var eye_before: Vector3 = main.xr_camera.global_position
 	main.xr_camera.global_position += Vector3(0.3, 0, 0.2)
 	main.menu_compositor._process(0)
-	check(is_equal_approx(library.curve_radius, lowered_distance), "Head motion alone does not deform a placed menu")
+	check(
+		is_equal_approx(library.curve_radius, lowered_distance),
+		"Head motion alone does not deform a placed menu"
+	)
 	main.xr_camera.global_position = eye_before
 	main.library_distance = 1.4
 	main._place_menu(library)
@@ -208,7 +223,13 @@ func _run() -> void:
 	main._show_player_menu()
 	main.menu_compositor._process(0)
 	check(
-		main.menu_compositor.active_menu != library and (main.menu_compositor.curved_mesh == null or not main.menu_compositor.curved_mesh.visible),
+		(
+			main.menu_compositor.active_menu != library
+			and (
+				main.menu_compositor.curved_mesh == null
+				or not main.menu_compositor.curved_mesh.visible
+			)
+		),
 		"Opening video hides the library capture while controls await the first media frame"
 	)
 	main.queue_free()

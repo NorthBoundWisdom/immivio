@@ -48,8 +48,8 @@ function Provider([string]$operation) {
     if (-not $r -or $r.state -ne 'applied') { throw 'Provider receipt absent/rejected' }
     $r | ConvertTo-Json -Depth 10 | Set-Content "$directory/provider-$operation.json"
 }
-$result = @{state='failed'; apk_sha256=$build.apk_sha256; installed_sha256=$installedHash; activity_launched=$false;
-    scope ='Actual production selection worker/metadata/cancellation/deadline and main heartbeat; private slow provider + real external granted document; system picker UI, Godot/XR/playback unverified'
+$result = @{state = 'failed'; apk_sha256 = $build.apk_sha256; installed_sha256 = $installedHash; activity_launched = $false;
+    scope = 'Actual production selection worker/metadata/cancellation/deadline and main heartbeat; private slow provider + real external granted document; system picker UI, Godot/XR/playback unverified'
 }
 try {
     & $adb -s $Serial shell am force-stop $package
@@ -80,8 +80,7 @@ try {
         Write-Output "Collected $case : events=$($r.events.Count), start=$($r.start_return_ms)ms, main gap=$($r.main_max_gap_ms)ms"
     }
     $result.state = 'collected_scoped_selection_trace'
-}
-catch { $result.error = $_.Exception.Message }
+} catch { $result.error = $_.Exception.Message }
 finally {
     $appPid = (& $adb -s $Serial shell pidof $package | Out-String).Trim()
     if ($appPid -match '^\d+$') { & $adb -s $Serial logcat -d --pid=$appPid -v threadtime | Set-Content "$directory/logcat.txt" }

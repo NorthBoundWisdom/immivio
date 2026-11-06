@@ -176,7 +176,9 @@ func _run() -> void:
 	check(
 		(
 			menu.choices.sliders.size() == 2
-			and menu.text_snapshot().contains("Matching subtitles load automatically; choose other files manually.")
+			and menu.text_snapshot().contains(
+				"Matching subtitles load automatically; choose other files manually."
+			)
 		),
 		"CC retains size, position and external-file guidance"
 	)

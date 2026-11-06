@@ -3,8 +3,6 @@ package org.vrpassthroughplayer.plugin
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import org.json.JSONArray
-import org.json.JSONObject
 import java.io.File
 import java.net.URI
 import java.util.UUID
@@ -13,6 +11,8 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.FutureTask
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
+import org.json.JSONArray
+import org.json.JSONObject
 
 /** App-private server profiles. UI requests never return the key. */
 internal object MediaServerStore {
@@ -31,7 +31,7 @@ internal object MediaServerStore {
                     a.getString("key"),
                     a.optString("provider", "stash"),
                     a.optString("user_id"),
-                    a.optString("username")
+                    a.optString("username"),
                 )
             }
         }
@@ -52,70 +52,94 @@ internal object MediaServerStore {
     fun remove(context: Context, id: String) {
         mediaRequire(id.matches(Regex("[A-Za-z0-9-]{1,64}")))
         get(context, id)
-        store(context).save(JSONArray().apply {
-            accounts(context).filterNot { it.id == id }.forEach { put(it.json(true)) }
-        })
+        store(context)
+            .save(
+                JSONArray().apply {
+                    accounts(context).filterNot { it.id == id }.forEach { put(it.json(true)) }
+                }
+            )
         MediaServerLibrary.invalidate(id)
         File(context.cacheDir, "media-servers/$id").deleteRecursively()
     }
 }
 
 internal class MediaServerLibrary(
-    private val context: () -> Context?, private val streams: () -> LocalStreamServer,
+    private val context: () -> Context?,
+    private val streams: () -> LocalStreamServer,
     private val nextId: () -> Int,
     private val accounts: () -> List<MediaServerAccount> = {
         MediaServerStore.accounts(context() ?: throw MediaServerFailure("Server unavailable"))
-    }, private val getAccount: (String) -> MediaServerAccount = { id ->
+    },
+    private val getAccount: (String) -> MediaServerAccount = { id ->
         MediaServerStore.get(context() ?: throw MediaServerFailure("Server unavailable"), id)
-    }, private val reporterFactory: (() -> Boolean) -> MediaServerPlaybackReporter = { MediaServerPlaybackReporter(it) },
-    private val emit: (Int, String) -> Unit
+    },
+    private val reporterFactory: (() -> Boolean) -> MediaServerPlaybackReporter = {
+        MediaServerPlaybackReporter(it)
+    },
+    private val emit: (Int, String) -> Unit,
 ) {
-    private val pool = ThreadPoolExecutor(
-        3,
-        3,
-        0,
-        TimeUnit.MILLISECONDS,
-        ArrayBlockingQueue(24),
-        { Thread(it, "QuestMediaServer") })
+    private val pool =
+        ThreadPoolExecutor(
+            3,
+            3,
+            0,
+            TimeUnit.MILLISECONDS,
+            ArrayBlockingQueue(24),
+            { Thread(it, "QuestMediaServer") },
+        )
 
     private class Job(val server: String) {
-        @Volatile
-        var http: MediaServerHttp? = null;
-        @Volatile
-        var future: FutureTask<Unit>? = null
+        @Volatile var http: MediaServerHttp? = null
+
+        @Volatile var future: FutureTask<Unit>? = null
     }
 
     private val jobs = ConcurrentHashMap<Int, Job>()
     private val leases = ConcurrentHashMap<String, Pair<String, LocalStreamServer>>()
 
     private data class Playback(
-        val account: MediaServerAccount, val scene: String,
-        val stream: MediaStreamLink, val videoUrl: String
+        val account: MediaServerAccount,
+        val scene: String,
+        val stream: MediaStreamLink,
+        val videoUrl: String,
     )
 
     private val playback = ConcurrentHashMap<String, Playback>()
     @Volatile private var historyAllowed = false
     private val reporter = reporterFactory { historyAllowed }
+
     fun reportPlayback(raw: String): Boolean = runCatching {
         require(raw.length <= 8192 && !closed)
         val data = JSONObject(raw)
         when (data.getString("action")) {
-            "privacy" -> { historyAllowed = data.getBoolean("enabled"); reporter.privacyChanged() }
+            "privacy" -> {
+                historyAllowed = data.getBoolean("enabled")
+                reporter.privacyChanged()
+            }
             "stop" -> reporter.stop(data.getString("token"))
             "state" -> {
                 val uri = data.getString("uri")
                 val selected = playback[uri] ?: return false
                 val context = selected.stream.playback ?: return false
                 if (getAccount(selected.account.id) != selected.account) return false
-                reporter.observe(data.getString("token"), selected.account, context,
-                    MediaServerPlaybackState(data.getLong("position_ms"), data.getBoolean("paused"), data.optBoolean("can_seek")))
+                reporter.observe(
+                    data.getString("token"),
+                    selected.account,
+                    context,
+                    MediaServerPlaybackState(
+                        data.getLong("position_ms"),
+                        data.getBoolean("paused"),
+                        data.optBoolean("can_seek"),
+                    ),
+                )
             }
             else -> return false
         }
         true
-    }.getOrDefault(false)
-    @Volatile
-    private var closed = false
+    }
+        .getOrDefault(false)
+
+    @Volatile private var closed = false
 
     init {
         instances.add(this)
@@ -124,77 +148,108 @@ internal class MediaServerLibrary(
     fun request(raw: String): Int {
         if (closed || raw.length > 32768) return -1
         val req = runCatching { JSONObject(raw) }.getOrNull() ?: return -1
-        val id = nextId();
-        val job =
-            Job(if (req.optString("action") == "remove") "" else req.optString("server_id")); jobs[id] =
-            job
-        val task = FutureTask<Unit> {
-            val result = try {
-                val payload = if (req.optString("action") == "servers") JSONObject().put(
-                    "servers",
-                    JSONArray().apply {
-                        accounts().forEach { account ->
-                            val capabilities = MediaServerHttp(account).use { http ->
-                                mediaClient(
-                                    account,
-                                    http
-                                ).capabilities()
-                            }
-                            put(account.json().put("capabilities", capabilities))
-                        }
-                    })
-                else if (req.optString("action") == "remove") {
-                    val app = context() ?: throw MediaServerFailure("Server unavailable")
-                    MediaServerStore.remove(app, req.getString("server_id"))
-                    JSONObject()
-                } else {
-                    val app = context() ?: throw MediaServerFailure("Server unavailable")
-                    val account = MediaServerStore.get(app, job.server)
-                    MediaServerHttp(account).use { http ->
-                        job.http = http
-                        mediaRequire(jobs[id] === job && !closed, "Request cancelled")
-                        val client = mediaClient(account, http)
-                        when (req.optString("action")) {
-                            "home" -> client.home(req)
-                            "favorite" -> client.favorite(req)
-                            "browse" -> client.browse(req)
-                            "candidates" -> client.candidates(req)
-                            "detail" -> JSONObject().put(
-                                "detail",
-                                client.detail(req.getString("scene_id"))
-                            )
+        val id = nextId()
+        val job = Job(if (req.optString("action") == "remove") "" else req.optString("server_id"))
+        jobs[id] = job
+        val task =
+            FutureTask<Unit> {
+                val result =
+                    try {
+                        val payload =
+                            if (req.optString("action") == "servers")
+                                JSONObject()
+                                    .put(
+                                        "servers",
+                                        JSONArray().apply {
+                                            accounts().forEach { account ->
+                                                val capabilities =
+                                                    MediaServerHttp(account).use { http ->
+                                                        mediaClient(
+                                                                account,
+                                                                http,
+                                                            )
+                                                            .capabilities()
+                                                    }
+                                                put(
+                                                    account.json().put("capabilities", capabilities)
+                                                )
+                                            }
+                                        },
+                                    )
+                            else if (req.optString("action") == "remove") {
+                                val app =
+                                    context() ?: throw MediaServerFailure("Server unavailable")
+                                MediaServerStore.remove(app, req.getString("server_id"))
+                                JSONObject()
+                            } else {
+                                val app =
+                                    context() ?: throw MediaServerFailure("Server unavailable")
+                                val account = MediaServerStore.get(app, job.server)
+                                MediaServerHttp(account).use { http ->
+                                    job.http = http
+                                    mediaRequire(jobs[id] === job && !closed, "Request cancelled")
+                                    val client = mediaClient(account, http)
+                                    when (req.optString("action")) {
+                                        "home" -> client.home(req)
+                                        "favorite" -> client.favorite(req)
+                                        "browse" -> client.browse(req)
+                                        "candidates" -> client.candidates(req)
+                                        "detail" ->
+                                            JSONObject()
+                                                .put(
+                                                    "detail",
+                                                    client.detail(req.getString("scene_id")),
+                                                )
 
-                            "cover" -> cover(app, account, client, http, req.getString("scene_id"))
-                            else -> throw MediaServerFailure("Invalid server request")
-                        }
+                                        "cover" ->
+                                            cover(
+                                                app,
+                                                account,
+                                                client,
+                                                http,
+                                                req.getString("scene_id"),
+                                            )
+                                        else -> throw MediaServerFailure("Invalid server request")
+                                    }
+                                }
+                            }
+                        // Mark every successful branch, including the local account list.
+                        payload.put("state", "ready")
+                    } catch (e: Exception) {
+                        JSONObject()
+                            .put("state", "error")
+                            .put(
+                                "error",
+                                if (e is MediaServerFailure) e.code else "Server unavailable",
+                            )
                     }
-                }
-                // Mark every successful branch, including the local account list.
-                payload.put("state", "ready")
-            } catch (e: Exception) {
-                JSONObject().put("state", "error")
-                    .put("error", if (e is MediaServerFailure) e.code else "Server unavailable")
+                if (jobs.remove(id, job) && !closed && !Thread.currentThread().isInterrupted)
+                    emit(
+                        id,
+                        result
+                            .put("source", "medialib")
+                            .put("server_id", req.optString("server_id"))
+                            .put("action", req.optString("action"))
+                            .put("generation", req.optInt("generation"))
+                            .toString(),
+                    )
             }
-            if (jobs.remove(id, job) && !closed && !Thread.currentThread().isInterrupted)
-                emit(
-                    id,
-                    result.put("source", "medialib").put("server_id", req.optString("server_id"))
-                        .put("action", req.optString("action"))
-                        .put("generation", req.optInt("generation")).toString()
-                )
-        }
         job.future = task
         try {
             pool.execute(task)
         } catch (_: Exception) {
-            jobs.remove(id); return -1
+            jobs.remove(id)
+            return -1
         }
         return id
     }
 
     fun cancel(id: Int) {
-        jobs.remove(id)
-            ?.let { it.http?.close(); it.future?.cancel(true); it.future?.let(pool::remove) }
+        jobs.remove(id)?.let {
+            it.http?.close()
+            it.future?.cancel(true)
+            it.future?.let(pool::remove)
+        }
     }
 
     private fun cover(
@@ -202,7 +257,7 @@ internal class MediaServerLibrary(
         account: MediaServerAccount,
         client: MediaLibraryClient,
         http: MediaServerHttp,
-        id: String
+        id: String,
     ): JSONObject {
         mediaRequire(id.matches(Regex("[A-Za-z0-9-]{1,64}")))
         val directory = File(app.cacheDir, "media-servers/${account.id}").apply { mkdirs() }
@@ -212,40 +267,53 @@ internal class MediaServerLibrary(
                 decodeCover(
                     http.bytes(
                         client.cover(id),
-                        8 * 1024 * 1024
+                        8 * 1024 * 1024,
                     )
                 )
-            }.getOrElse { original ->
-                if (original is MediaServerFailure && original.code in setOf(
-                        "Request cancelled",
-                        "Server authentication required"
-                    )
-                ) throw original
-                val fallback =
-                    client.coverFallback(id) ?: throw MediaServerFailure("Cover unavailable")
-                decodeCover(http.bytes(fallback.uri, 16 * 1024 * 1024), fallback)
             }
+                .getOrElse { original ->
+                    if (
+                        original is MediaServerFailure &&
+                            original.code in
+                                setOf(
+                                    "Request cancelled",
+                                    "Server authentication required",
+                                )
+                    )
+                        throw original
+                    val fallback =
+                        client.coverFallback(id) ?: throw MediaServerFailure("Cover unavailable")
+                    decodeCover(http.bytes(fallback.uri, 16 * 1024 * 1024), fallback)
+                }
             val temporary = File(directory, "$id.${UUID.randomUUID()}.tmp")
             try {
                 temporary.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 85, it) }
                 synchronized(MediaServerStore) {
                     mediaRequire(
-                        !Thread.currentThread().isInterrupted && MediaServerStore.get(
-                            app,
-                            account.id
-                        ) == account, "Request cancelled"
+                        !Thread.currentThread().isInterrupted &&
+                            MediaServerStore.get(
+                                app,
+                                account.id,
+                            ) == account,
+                        "Request cancelled",
                     )
                     mediaRequire(temporary.renameTo(file), "Cover unavailable")
                 }
             } finally {
-                bitmap.recycle(); temporary.delete()
+                bitmap.recycle()
+                temporary.delete()
             }
-            val cached = File(app.cacheDir, "media-servers").walkTopDown()
-                .filter { it.isFile && it.extension == "jpg" }.toList()
+            val cached =
+                File(app.cacheDir, "media-servers")
+                    .walkTopDown()
+                    .filter { it.isFile && it.extension == "jpg" }
+                    .toList()
             var total = cached.sumOf { it.length() }
             for (old in cached.sortedBy { it.lastModified() }) {
-                if (total <= 128L * 1024 * 1024) break; if (old != file) {
-                    val size = old.length(); if (old.delete()) total -= size
+                if (total <= 128L * 1024 * 1024) break
+                if (old != file) {
+                    val size = old.length()
+                    if (old.delete()) total -= size
                 }
             }
         }
@@ -257,32 +325,35 @@ internal class MediaServerLibrary(
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
         mediaRequire(
             bounds.outWidth in 1..32768 && bounds.outHeight in 1..32768,
-            "Cover unavailable"
+            "Cover unavailable",
         )
-        val width = region?.width ?: bounds.outWidth;
+        val width = region?.width ?: bounds.outWidth
         val height = region?.height ?: bounds.outHeight
         mediaRequire(width.toLong() * height <= 64000000, "Cover too large")
         var sample = 1
         while (maxOf(width, height) / sample > 512) sample *= 2
         val options = BitmapFactory.Options().apply { inSampleSize = sample }
-        if (region == null) return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
-            ?: throw MediaServerFailure("Cover unavailable")
+        if (region == null)
+            return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+                ?: throw MediaServerFailure("Cover unavailable")
         mediaRequire(
-            region.x.toLong() + width <= bounds.outWidth && region.y.toLong() + height <= bounds.outHeight,
-            "Invalid server response"
+            region.x.toLong() + width <= bounds.outWidth &&
+                region.y.toLong() + height <= bounds.outHeight,
+            "Invalid server response",
         )
-        val decoder = android.graphics.BitmapRegionDecoder.newInstance(bytes, 0, bytes.size, false)
-            ?: throw MediaServerFailure("Cover unavailable")
+        val decoder =
+            android.graphics.BitmapRegionDecoder.newInstance(bytes, 0, bytes.size, false)
+                ?: throw MediaServerFailure("Cover unavailable")
         try {
             return decoder.decodeRegion(
                 android.graphics.Rect(
                     region.x,
                     region.y,
                     region.x + width,
-                    region.y + height
-                ), options
-            )
-                ?: throw MediaServerFailure("Cover unavailable")
+                    region.y + height,
+                ),
+                options,
+            ) ?: throw MediaServerFailure("Cover unavailable")
         } finally {
             decoder.recycle()
         }
@@ -291,9 +362,10 @@ internal class MediaServerLibrary(
     fun playable(uri: String): String {
         val (server, scene) = MediaLibraryUri.parse(uri)
         val account = getAccount(server)
-        val source = HttpRangeStreamSource(account) { http ->
-            mediaClient(account, http).stream(scene, MediaLibraryUri.sourceId(uri))
-        }
+        val source =
+            HttpRangeStreamSource(account) { http ->
+                mediaClient(account, http).stream(scene, MediaLibraryUri.sourceId(uri))
+            }
         try {
             synchronized(MediaServerStore) {
                 mediaRequire(!closed && getAccount(server) == account, "Server changed")
@@ -304,34 +376,44 @@ internal class MediaServerLibrary(
                 return url
             }
         } catch (e: Exception) {
-            source.close(); throw e
+            source.close()
+            throw e
         }
     }
 
     fun sidecarAudio(uri: String): List<SidecarAudio.Track> {
         val selected = playback[uri] ?: return emptyList()
-        fun current() = mediaRequire(
-            !closed && playback[uri] === selected &&
-                    getAccount(selected.account.id) == selected.account, "Server changed"
-        )
+        fun current() =
+            mediaRequire(
+                !closed &&
+                    playback[uri] === selected &&
+                    getAccount(selected.account.id) == selected.account,
+                "Server changed",
+            )
         synchronized(MediaServerStore) { current() }
         return MediaServerHttp(selected.account).use { http ->
-            mediaClient(selected.account, http).audio(selected.scene, selected.stream).take(4)
+            mediaClient(selected.account, http)
+                .audio(selected.scene, selected.stream)
+                .take(4)
                 .mapNotNull { audio ->
                     runCatching {
                         var initial = true
-                        val source = HttpRangeStreamSource(selected.account) { refresh ->
-                            val fresh = if (initial) {
-                                initial = false; audio
-                            } else
-                                mediaClient(selected.account, refresh).audio(
-                                    selected.scene,
-                                    selected.stream
-                                )
-                                    .firstOrNull { it.identity == audio.identity }
-                                    ?: throw MediaServerFailure("Audio changed; reopen it")
-                            MediaStreamLink(fresh.url, fresh.identity)
-                        }
+                        val source =
+                            HttpRangeStreamSource(selected.account) { refresh ->
+                                val fresh =
+                                    if (initial) {
+                                        initial = false
+                                        audio
+                                    } else
+                                        mediaClient(selected.account, refresh)
+                                            .audio(
+                                                selected.scene,
+                                                selected.stream,
+                                            )
+                                            .firstOrNull { it.identity == audio.identity }
+                                            ?: throw MediaServerFailure("Audio changed; reopen it")
+                                MediaStreamLink(fresh.url, fresh.identity)
+                            }
                         try {
                             synchronized(MediaServerStore) {
                                 current()
@@ -341,19 +423,24 @@ internal class MediaServerLibrary(
                                 SidecarAudio.Track(url, audio.title)
                             }
                         } catch (error: Exception) {
-                            source.close(); throw error
+                            source.close()
+                            throw error
                         }
-                    }.getOrNull()
+                    }
+                        .getOrNull()
                 }
         }
     }
 
     fun sidecarSubtitles(uri: String): List<SidecarSubtitles.Track> {
         val selected = playback[uri] ?: return emptyList()
-        fun current() = mediaRequire(
-            !closed && playback[uri] === selected &&
-                    getAccount(selected.account.id) == selected.account, "Server changed"
-        )
+        fun current() =
+            mediaRequire(
+                !closed &&
+                    playback[uri] === selected &&
+                    getAccount(selected.account.id) == selected.account,
+                "Server changed",
+            )
         synchronized(MediaServerStore) { current() }
         return MediaServerHttp(selected.account).use { http ->
             val captions =
@@ -372,33 +459,46 @@ internal class MediaServerLibrary(
 
     fun release(uri: String) {
         leases.remove(uri)?.second?.revoke(uri)
-        playback.entries.filter { it.value.videoUrl == uri }
+        playback.entries
+            .filter { it.value.videoUrl == uri }
             .forEach { playback.remove(it.key, it.value) }
     }
 
     fun close() {
         reporter.close()
-        closed = true; jobs.keys.toList().forEach(::cancel); pool.shutdownNow(); instances.remove(
-            this
-        )
+        closed = true
+        jobs.keys.toList().forEach(::cancel)
+        pool.shutdownNow()
+        instances.remove(this)
         leases.keys.toList().forEach(::release)
     }
 
     companion object {
         private val instances = ConcurrentHashMap.newKeySet<MediaServerLibrary>()
+
         fun invalidate(server: String) {
             instances.forEach { instance ->
                 instance.reporter.invalidate(server)
-                instance.jobs.filterValues { it.server == server }.keys.toList()
+                instance.jobs
+                    .filterValues { it.server == server }
+                    .keys
+                    .toList()
                     .forEach(instance::cancel)
-                instance.leases.filterValues { it.first == server }.keys.toList()
+                instance.leases
+                    .filterValues { it.first == server }
+                    .keys
+                    .toList()
                     .forEach(instance::release)
                 // Quest can keep the player resumed behind the native account window.
                 // Notify after persistence instead of relying on another onMainResume.
-                if (!instance.closed) instance.emit(
-                    0, JSONObject().put("source", "medialib")
-                        .put("state", "accounts_changed").toString()
-                )
+                if (!instance.closed)
+                    instance.emit(
+                        0,
+                        JSONObject()
+                            .put("source", "medialib")
+                            .put("state", "accounts_changed")
+                            .toString(),
+                    )
             }
         }
     }

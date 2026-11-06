@@ -48,7 +48,11 @@ static func resolve(preference: Dictionary, tracks: Array) -> Variant:
 		if not track is Dictionary or int(track.get("id", 0)) <= 0:
 			continue
 		if not FIELDS.all(
-			func(field): return ( not preference.has(field) or str(track.get(field, "")).strip_edges().left(256) == preference[field] )
+			func(field):
+				return (
+					not preference.has(field)
+					or str(track.get(field, "")).strip_edges().left(256) == preference[field]
+				)
 		):
 			continue
 		var id := int(track.id)

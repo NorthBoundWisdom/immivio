@@ -18,8 +18,7 @@
 namespace {
 void checked(int result, const char *operation) {
   if (result < 0)
-    throw std::runtime_error(std::string(operation) + ": " +
-                             mpv_error_string(result));
+    throw std::runtime_error(std::string(operation) + ": " + mpv_error_string(result));
 }
 void require(bool condition, const char *operation) {
   if (!condition)
@@ -58,8 +57,7 @@ struct Target {
   explicit Target(int w, int h) : width(w), height(h) {}
   void initialize() {
     display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-    require(display != EGL_NO_DISPLAY &&
-                eglInitialize(display, nullptr, nullptr),
+    require(display != EGL_NO_DISPLAY && eglInitialize(display, nullptr, nullptr),
             "EGL display initialization");
     require(eglBindAPI(EGL_OPENGL_ES_API), "EGL GLES binding");
     const EGLint config_attributes[] = {EGL_RENDERABLE_TYPE,
@@ -77,18 +75,14 @@ struct Target {
                                         EGL_NONE};
     EGLConfig config = nullptr;
     EGLint count = 0;
-    require(eglChooseConfig(display, config_attributes, &config, 1, &count) &&
-                count == 1,
+    require(eglChooseConfig(display, config_attributes, &config, 1, &count) && count == 1,
             "EGL GLES3 config");
-    const EGLint context_attributes[] = {EGL_CONTEXT_CLIENT_VERSION, 3,
-                                         EGL_NONE};
-    context =
-        eglCreateContext(display, config, EGL_NO_CONTEXT, context_attributes);
+    const EGLint context_attributes[] = {EGL_CONTEXT_CLIENT_VERSION, 3, EGL_NONE};
+    context = eglCreateContext(display, config, EGL_NO_CONTEXT, context_attributes);
     require(context != EGL_NO_CONTEXT, "EGL isolated context");
     const EGLint surface_attributes[] = {EGL_WIDTH, 1, EGL_HEIGHT, 1, EGL_NONE};
     surface = eglCreatePbufferSurface(display, config, surface_attributes);
-    require(surface != EGL_NO_SURFACE &&
-                eglMakeCurrent(display, surface, surface, context),
+    require(surface != EGL_NO_SURFACE && eglMakeCurrent(display, surface, surface, context),
             "EGL probe current");
     library = dlopen("libGLESv3.so", RTLD_NOW | RTLD_LOCAL);
     require(library != nullptr, "GLES symbol library");
@@ -99,8 +93,7 @@ struct Target {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glGenFramebuffers(1, &framebuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-                           texture, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
     require(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE,
             "MPV probe RGBA8 FBO");
     require(glGetError() == GL_NO_ERROR, "MPV probe GL allocation");
@@ -117,9 +110,7 @@ struct Target {
       success = glGetError() == GL_NO_ERROR;
       framebuffer = 0;
       texture = 0;
-      success = eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE,
-                               EGL_NO_CONTEXT) &&
-                success;
+      success = eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT) && success;
     }
     if (surface != EGL_NO_SURFACE) {
       success = eglDestroySurface(display, surface) && success;
@@ -161,8 +152,7 @@ struct Target {
         if (!first)
           out += ',';
         first = false;
-        out += "{\"x\":" + std::to_string(x) +
-               ",\"y\":" + std::to_string(top_y) + ",\"rgba\":[";
+        out += "{\"x\":" + std::to_string(x) + ",\"y\":" + std::to_string(top_y) + ",\"rgba\":[";
         for (int channel = 0; channel < 4; ++channel) {
           if (channel)
             out += ',';
@@ -179,8 +169,7 @@ struct Target {
 struct RenderWorker {
   mpv_handle *core;
   const int width, height;
-  std::atomic<bool> stop{false}, pending{true}, ready{false},
-      first_frame{false}, failed{false};
+  std::atomic<bool> stop{false}, pending{true}, ready{false}, first_frame{false}, failed{false};
   std::atomic<int> renders{0}, video_frames{0}, redraws{0};
   bool context_disposed = false;
   std::mutex wait_mutex;
@@ -207,8 +196,7 @@ struct RenderWorker {
       mpv_opengl_init_params initialization{Target::resolve, &target};
       int advanced = 1;
       mpv_render_param initialization_params[] = {
-          {MPV_RENDER_PARAM_API_TYPE,
-           const_cast<char *>(MPV_RENDER_API_TYPE_OPENGL)},
+          {MPV_RENDER_PARAM_API_TYPE, const_cast<char *>(MPV_RENDER_API_TYPE_OPENGL)},
           {MPV_RENDER_PARAM_OPENGL_INIT_PARAMS, &initialization},
           {MPV_RENDER_PARAM_ADVANCED_CONTROL, &advanced},
           {MPV_RENDER_PARAM_INVALID, nullptr}};
@@ -227,11 +215,9 @@ struct RenderWorker {
         if (!(update & MPV_RENDER_UPDATE_FRAME))
           continue;
         mpv_render_frame_info info{};
-        checked(mpv_render_context_get_info(
-                    renderer, {MPV_RENDER_PARAM_NEXT_FRAME_INFO, &info}),
+        checked(mpv_render_context_get_info(renderer, {MPV_RENDER_PARAM_NEXT_FRAME_INFO, &info}),
                 "next display frame info");
-        mpv_opengl_fbo fbo{static_cast<int>(target.framebuffer), width, height,
-                           GL_RGBA8};
+        mpv_opengl_fbo fbo{static_cast<int>(target.framebuffer), width, height, GL_RGBA8};
         int flip = 0;
         mpv_render_param params[] = {{MPV_RENDER_PARAM_OPENGL_FBO, &fbo},
                                      {MPV_RENDER_PARAM_FLIP_Y, &flip},
@@ -254,8 +240,7 @@ struct RenderWorker {
       }
     } catch (const std::exception &exception) {
       error = exception.what();
-      __android_log_print(ANDROID_LOG_ERROR, "QuestMpv",
-                          "Isolated GLES worker: %s", error.c_str());
+      __android_log_print(ANDROID_LOG_ERROR, "QuestMpv", "Isolated GLES worker: %s", error.c_str());
       failed.store(true);
       ready.store(true);
     }
@@ -279,12 +264,11 @@ struct RenderWorker {
 };
 } // namespace
 
-std::string quest_mpv_gpu_probe(const std::string &path, bool hardware,
-                                int width, int height) {
+std::string quest_mpv_gpu_probe(const std::string &path, bool hardware, int width, int height) {
   require((width == 1920 && height == 1080) || (width == 1280 && height == 640),
           "GPU diagnostic fixture dimensions");
-  std::unique_ptr<mpv_handle, decltype(&mpv_terminate_destroy)> core(
-      mpv_create(), mpv_terminate_destroy);
+  std::unique_ptr<mpv_handle, decltype(&mpv_terminate_destroy)> core(mpv_create(),
+                                                                     mpv_terminate_destroy);
   require(core != nullptr, "GPU mpv_create");
   const auto option = [&](const char *key, const char *value) {
     checked(mpv_set_option_string(core.get(), key, value), key);
@@ -310,8 +294,7 @@ std::string quest_mpv_gpu_probe(const std::string &path, bool hardware,
   checked(mpv_initialize(core.get()), "GPU mpv_initialize");
   const std::string version = property(core.get(), "mpv-version");
   RenderWorker worker(core.get(), width, height);
-  const auto deadline =
-      std::chrono::steady_clock::now() + std::chrono::seconds(25);
+  const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(25);
   while (!worker.ready.load() && std::chrono::steady_clock::now() < deadline)
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
   require(worker.ready.load() && !worker.failed.load(),
@@ -320,16 +303,13 @@ std::string quest_mpv_gpu_probe(const std::string &path, bool hardware,
   checked(mpv_command(core.get(), command), "GPU loadfile");
   bool loaded = false, resumed = false, ended = false;
   int end_reason = -1, playback_error = 0;
-  std::string hwdec, codec, source_width, source_height, matrix, levels,
-      chroma_location;
-  while (std::chrono::steady_clock::now() < deadline && !ended &&
-         !worker.failed.load()) {
+  std::string hwdec, codec, source_width, source_height, matrix, levels, chroma_location;
+  while (std::chrono::steady_clock::now() < deadline && !ended && !worker.failed.load()) {
     const auto *event = mpv_wait_event(core.get(), 0.01);
     require(event != nullptr, "GPU mpv_wait_event");
     if (event->event_id == MPV_EVENT_LOG_MESSAGE) {
       const auto *log = static_cast<const mpv_event_log_message *>(event->data);
-      __android_log_print(ANDROID_LOG_INFO, "QuestMpv", "[GPU %s] %s",
-                          log->prefix, log->text);
+      __android_log_print(ANDROID_LOG_INFO, "QuestMpv", "[GPU %s] %s", log->prefix, log->text);
     } else if (event->event_id == MPV_EVENT_FILE_LOADED)
       loaded = true;
     else if (event->event_id == MPV_EVENT_END_FILE) {
@@ -347,34 +327,27 @@ std::string quest_mpv_gpu_probe(const std::string &path, bool hardware,
       levels = property(core.get(), "video-params/colorlevels");
       chroma_location = property(core.get(), "video-params/chroma-location");
 
-      checked(mpv_set_property_string(core.get(), "pause", "no"),
-              "GPU resume after first FBO");
+      checked(mpv_set_property_string(core.get(), "pause", "no"), "GPU resume after first FBO");
       resumed = true;
     }
   }
   if (!ended) {
     const char *stop[] = {"stop", nullptr};
-    checked(mpv_command(core.get(), stop),
-            "GPU stop before renderer destruction");
+    checked(mpv_command(core.get(), stop), "GPU stop before renderer destruction");
   }
   worker.finish();
   const bool backend_matches = hardware ? hwdec == "mediacodec" : hwdec == "no";
-  const bool passed =
-      loaded && resumed && ended && end_reason == MPV_END_FILE_REASON_EOF &&
-      playback_error == 0 && backend_matches && !worker.failed.load() &&
-      worker.video_frames.load() >= 10 &&
-      source_width == std::to_string(width) &&
-      source_height == std::to_string(height);
+  const bool passed = loaded && resumed && ended && end_reason == MPV_END_FILE_REASON_EOF &&
+                      playback_error == 0 && backend_matches && !worker.failed.load() &&
+                      worker.video_frames.load() >= 10 && source_width == std::to_string(width) &&
+                      source_height == std::to_string(height);
   return "{\"state\":" + quoted(passed ? "passed" : "failed") +
-         ",\"detail\":" + quoted(worker.error) +
-         ",\"mpv_version\":" + quoted(version) +
+         ",\"detail\":" + quoted(worker.error) + ",\"mpv_version\":" + quoted(version) +
          ",\"requested_hardware\":" + (hardware ? "true" : "false") +
          ",\"hwdec_current\":" + quoted(hwdec) + ",\"codec\":" + quoted(codec) +
          ",\"source_width\":" + quoted(source_width) +
-         ",\"source_height\":" + quoted(source_height) +
-         ",\"fbo_width\":" + std::to_string(width) +
-         ",\"fbo_height\":" + std::to_string(height) +
-         ",\"source_colormatrix\":" + quoted(matrix) +
+         ",\"source_height\":" + quoted(source_height) + ",\"fbo_width\":" + std::to_string(width) +
+         ",\"fbo_height\":" + std::to_string(height) + ",\"source_colormatrix\":" + quoted(matrix) +
          ",\"source_colorlevels\":" + quoted(levels) +
          ",\"source_chroma_location\":" + quoted(chroma_location) +
          ",\"file_loaded\":" + (loaded ? "true" : "false") +
@@ -382,18 +355,15 @@ std::string quest_mpv_gpu_probe(const std::string &path, bool hardware,
          ",\"end_reason\":" + std::to_string(end_reason) +
          ",\"playback_error\":" + std::to_string(playback_error) +
          ",\"renders\":" + std::to_string(worker.renders.load()) +
-         ",\"video_render_events\":" +
-         std::to_string(worker.video_frames.load()) +
+         ",\"video_render_events\":" + std::to_string(worker.video_frames.load()) +
          ",\"redraw_events\":" + std::to_string(worker.redraws.load()) +
          ",\"gl_vendor\":" + quoted(worker.gl_vendor) +
          ",\"gl_renderer\":" + quoted(worker.gl_renderer) +
-         ",\"gl_version\":" + quoted(worker.gl_version) +
-         ",\"first_paused_samples\":" +
+         ",\"gl_version\":" + quoted(worker.gl_version) + ",\"first_paused_samples\":" +
          (worker.first_samples.empty() ? "[]" : worker.first_samples) +
          ",\"source_pts_verified\":false,\"godot_context_shared\":false,"
          "\"audio_enabled\":false,\"vo\":\"libmpv\"" +
-         ",\"context_disposed\":" +
-         (worker.context_disposed ? "true" : "false") +
+         ",\"context_disposed\":" + (worker.context_disposed ? "true" : "false") +
          std::string(",\"flip_y\":0,\"sample_coordinate\":\"source top-left; "
                      "raw GL y=y for MPV FLIP_Y=0\",\"cscale\":\"bilinear\"") +
          ",\"scope\":\"Isolated GLES FBO render/actual hwdec/EOS diagnostic; "

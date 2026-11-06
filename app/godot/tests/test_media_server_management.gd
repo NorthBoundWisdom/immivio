@@ -42,7 +42,8 @@ func _run() -> void:
 		"account views use account list geometry, not home-grid spacing"
 	)
 	var choices: Array = menu._buttons.filter(
-		func(button): return button.target >= Menu.ROW_BASE + 1 and button.target <= Menu.ROW_BASE + 5
+		func(button):
+			return button.target >= Menu.ROW_BASE + 1 and button.target <= Menu.ROW_BASE + 5
 	)
 	check(
 		(
@@ -64,7 +65,10 @@ func _run() -> void:
 	)
 	check(
 		not menu._buttons.any(
-			func(button): return ( button.target >= Browser.ACTION + 100 and button.target < Browser.ACTION + 110 )
+			func(button):
+				return (
+					button.target >= Browser.ACTION + 100 and button.target < Browser.ACTION + 110
+				),
 		),
 		"chooser has no media navigation"
 	)
@@ -86,7 +90,10 @@ func _run() -> void:
 	)
 	check(
 		not menu._buttons.any(
-			func(button): return ( button.target >= Browser.ACTION + 100 and button.target < Browser.ACTION + 110 )
+			func(button):
+				return (
+					button.target >= Browser.ACTION + 100 and button.target < Browser.ACTION + 110
+				),
 		),
 		"deletion has no irrelevant media tabs"
 	)
@@ -97,7 +104,10 @@ func _run() -> void:
 	)
 	check(
 		not menu._buttons.any(
-			func(button): return ( button.target >= Browser.ACTION + 100 and button.target < Browser.ACTION + 110 )
+			func(button):
+				return (
+					button.target >= Browser.ACTION + 100 and button.target < Browser.ACTION + 110
+				),
 		),
 		"confirmation has no irrelevant media tabs"
 	)

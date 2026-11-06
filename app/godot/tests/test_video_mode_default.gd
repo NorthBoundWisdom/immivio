@@ -1,15 +1,35 @@
 extends SceneTree
 const Policy := preload("res://scripts/video_mode_default.gd")
+
+
 func _initialize() -> void:
 	preload("res://tests/support/test_result.gd").prepare(self)
 	call_deferred("_run")
+
+
 func _run() -> void:
 	var last := {"geometry": 1, "layout": 1, "fisheye_fov": 180, "swap_eyes": true, "depth": true}
 	assert(not Policy.clean(last).has("depth"))
 	assert(Policy.resolve({}, 1920, 1080, {}, "film.mp4", last, false).geometry == 0)
 	assert(Policy.resolve({}, 1920, 1080, {}, "film.mp4", last, true).geometry == 1)
-	assert(Policy.resolve({"geometry": 2, "stereo": false}, 1920, 1080, {}, "film_360.mp4", last, true).geometry == 2)
-	assert(Policy.resolve({}, 1920, 1080, {"stereo_mode": "sbsl"}, "film.mp4", last, true).geometry == 0)
+	assert(
+		(
+			(
+				Policy
+				. resolve(
+					{"geometry": 2, "stereo": false}, 1920, 1080, {}, "film_360.mp4", last, true
+				)
+				. geometry
+			)
+			== 2
+		)
+	)
+	assert(
+		(
+			Policy.resolve({}, 1920, 1080, {"stereo_mode": "sbsl"}, "film.mp4", last, true).geometry
+			== 0
+		)
+	)
 	assert(Policy.resolve({}, 3840, 1080, {}, "film.mp4", last, true).geometry == 0)
 	var video := preload("res://scripts/mpv_video_display.gd").new()
 	root.add_child(video)

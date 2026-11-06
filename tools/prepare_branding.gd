@@ -60,9 +60,14 @@ func store_poster(source: Image, size: Vector2i, path: String) -> void:
 		return
 	var encoded := FileAccess.get_file_as_bytes(destination)
 	var decoded := Image.load_from_file(destination)
-	if (encoded.size() < 2 or encoded.size() > 5_000_000
-		or encoded[0] != 0xff or encoded[1] != 0xd8
-		or decoded == null or decoded.get_size() != size):
+	if (
+		encoded.size() < 2
+		or encoded.size() > 5_000_000
+		or encoded[0] != 0xff
+		or encoded[1] != 0xd8
+		or decoded == null
+		or decoded.get_size() != size
+	):
 		push_error("PICO poster must be JPEG, match its required dimensions and be <=5 MB: " + path)
 		failed = true
 
@@ -77,8 +82,12 @@ func _run() -> void:
 	if failed:
 		quit(1)
 		return
-	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://../../website/assets/branding"))
-	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://../../branding/pico"))
+	DirAccess.make_dir_recursive_absolute(
+		ProjectSettings.globalize_path("res://../../website/assets/branding")
+	)
+	DirAccess.make_dir_recursive_absolute(
+		ProjectSettings.globalize_path("res://../../branding/pico")
+	)
 	var mark := scaled(surround, 288)
 	var triangle := play_layer(play, 288)
 	mark.blend_rect(triangle, Rect2i(0, 0, 288, 288), Vector2i.ZERO)
@@ -104,15 +113,39 @@ func _run() -> void:
 	png(web, "res://../../website/assets/icon.png")
 	var wide := wide_source.duplicate() as Image
 	wide.resize(1600, 900, Image.INTERPOLATE_LANCZOS)
-	if wide.save_webp(ProjectSettings.globalize_path("res://../../website/assets/branding/immivio-wide.webp"), true, .88) != OK:
+	if (
+		wide.save_webp(
+			ProjectSettings.globalize_path("res://../../website/assets/branding/immivio-wide.webp"),
+			true,
+			.88
+		)
+		!= OK
+	):
 		failed = true
 	var social := wide.duplicate() as Image
 	social.resize(1200, 675, Image.INTERPOLATE_LANCZOS)
-	if social.save_jpg(ProjectSettings.globalize_path("res://../../website/assets/branding/immivio-social.jpg"), .9) != OK:
+	if (
+		social.save_jpg(
+			ProjectSettings.globalize_path(
+				"res://../../website/assets/branding/immivio-social.jpg"
+			),
+			.9
+		)
+		!= OK
+	):
 		failed = true
 	var square := square_source.duplicate() as Image
 	square.resize(1024, 1024, Image.INTERPOLATE_LANCZOS)
-	if square.save_webp(ProjectSettings.globalize_path("res://../../website/assets/branding/immivio-square.webp"), true, .88) != OK:
+	if (
+		square.save_webp(
+			ProjectSettings.globalize_path(
+				"res://../../website/assets/branding/immivio-square.webp"
+			),
+			true,
+			.88
+		)
+		!= OK
+	):
 		failed = true
 	# Ready-sized source artwork for the PICO portal, kept outside the APK project.
 	png(scaled(original, 1024), "res://../../branding/pico/icon-1024.png")
@@ -120,7 +153,13 @@ func _run() -> void:
 	png(scaled(surround, 1024), "res://../../branding/pico/surround-1024.png")
 	png(play_layer(play, 1024), "res://../../branding/pico/play-1024.png")
 	# Resize each upload poster directly from its original, not a smaller website derivative.
-	store_poster(wide_source, Vector2i(2560, 1440), "res://../../branding/pico/poster-wide-2560x1440.jpg")
-	store_poster(square_source, Vector2i(1024, 1024), "res://../../branding/pico/poster-square-1024.jpg")
-	print("Prepared application/adaptive/themed icons, responsive website posters, social preview and PICO artwork")
+	store_poster(
+		wide_source, Vector2i(2560, 1440), "res://../../branding/pico/poster-wide-2560x1440.jpg"
+	)
+	store_poster(
+		square_source, Vector2i(1024, 1024), "res://../../branding/pico/poster-square-1024.jpg"
+	)
+	print(
+		"Prepared application/adaptive/themed icons, responsive website posters, social preview and PICO artwork"
+	)
 	quit(1 if failed else 0)

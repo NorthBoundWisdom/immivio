@@ -1,6 +1,8 @@
 extends SceneTree
 var failures: Array[String] = []
-var output := ProjectSettings.globalize_path("res://../../artifacts/captures/ui/compat-quality-20261007")
+var output := ProjectSettings.globalize_path(
+	"res://../../artifacts/captures/ui/compat-quality-20261007"
+)
 
 
 func _initialize() -> void:
@@ -42,10 +44,7 @@ func _run() -> void:
 		var material := ShaderMaterial.new()
 		material.shader = load("res://shaders/%s.gdshader" % name)
 		material.set_shader_parameter("source_size", Vector2(32, 32))
-		material.set_shader_parameter(
-			"color_texture",
-			ImageTexture.create_from_image(picture)
-		)
+		material.set_shader_parameter("color_texture", ImageTexture.create_from_image(picture))
 		if name == "video_pair":
 			material.set_shader_parameter("alpha_texture", ImageTexture.create_from_image(mask))
 			material.set_shader_parameter("model_size", Vector2(32, 32))
@@ -77,10 +76,7 @@ func _run() -> void:
 		for y in 32:
 			for x in 32:
 				picture.set_pixel(x, y, Color(.8, .1, .1) if x < 16 else Color(.1, .1, .8))
-		material.set_shader_parameter(
-			"color_texture",
-			ImageTexture.create_from_image(picture)
-		)
+		material.set_shader_parameter("color_texture", ImageTexture.create_from_image(picture))
 		var seam_before := await frame(viewport)
 		material.set_shader_parameter("sharpness", 0.6)
 		var seam_after := await frame(viewport)

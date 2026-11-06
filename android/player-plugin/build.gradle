@@ -34,11 +34,23 @@ android {
             }
         }
     }
-    externalNativeBuild { cmake { path '../../native/CMakeLists.txt'; version androidCmakeVersion } }
+    externalNativeBuild {
+        cmake {
+            path '../../native/CMakeLists.txt'; version androidCmakeVersion
+        }
+    }
     // The Godot APK provides the matching NDK C++ shared runtime.
     packagingOptions { jniLibs { excludes += ['**/libc++_shared.so'] } }
     // A stale prior build must not reintroduce removed runtime libraries.
-    packagingOptions { jniLibs { excludes += ['**/libquest_rvm.so', '**/libMNN*.so', '**/libncnn.so'] } }
+    packagingOptions {
+        jniLibs {
+            excludes += [
+                '**/libquest_rvm.so',
+                '**/libMNN*.so',
+                '**/libncnn.so'
+            ]
+        }
+    }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -106,4 +118,3 @@ dependencies {
     // supplies Fragment 1.8.6; compile only, never package another host framework.
     debugCompileOnly libs.fragment
 }
-

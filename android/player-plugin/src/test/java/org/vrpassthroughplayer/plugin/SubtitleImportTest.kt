@@ -1,10 +1,10 @@
 package org.vrpassthroughplayer.plugin
 
-import org.junit.Assert.*
-import org.junit.Test
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
+import org.junit.Assert.*
+import org.junit.Test
 
 class SubtitleImportTest {
     @Test
@@ -30,23 +30,26 @@ class SubtitleImportTest {
         assertThrows(IllegalArgumentException::class.java) {
             SubtitleImport.copy(
                 ByteArrayInputStream(byteArrayOf()),
-                ByteArrayOutputStream()
+                ByteArrayOutputStream(),
             )
         }
-        val endless = object : InputStream() {
-            override fun read(): Int = 0
-            override fun read(bytes: ByteArray, offset: Int, length: Int): Int = length
-        }
-        var copied = 0
-        val sink = object : java.io.OutputStream() {
-            override fun write(value: Int) {
-                copied++
-            }
+        val endless =
+            object : InputStream() {
+                override fun read(): Int = 0
 
-            override fun write(bytes: ByteArray, offset: Int, length: Int) {
-                copied += length
+                override fun read(bytes: ByteArray, offset: Int, length: Int): Int = length
             }
-        }
+        var copied = 0
+        val sink =
+            object : java.io.OutputStream() {
+                override fun write(value: Int) {
+                    copied++
+                }
+
+                override fun write(bytes: ByteArray, offset: Int, length: Int) {
+                    copied += length
+                }
+            }
         assertThrows(IllegalArgumentException::class.java) { SubtitleImport.copy(endless, sink) }
         assertEquals(SubtitleImport.MAX_BYTES, copied)
     }

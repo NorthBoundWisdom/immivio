@@ -63,7 +63,12 @@ func _run() -> void:
 	if not output.is_empty():
 		DirAccess.make_dir_recursive_absolute(output)
 		initial.save_png(output.path_join("settings.png"))
-	for destination in [Library.Section.NETWORK, Library.Section.SETTINGS, Library.Section.NETWORK, Library.Section.SETTINGS]:
+	for destination in [
+		Library.Section.NETWORK,
+		Library.Section.SETTINGS,
+		Library.Section.NETWORK,
+		Library.Section.SETTINGS
+	]:
 		library._activate(Library.NAV_BASE + destination)
 		surface._process(0)
 		if surface.surface_rect != rect:
@@ -81,9 +86,21 @@ func _run() -> void:
 			if not output.is_empty():
 				picture.save_png(output.path_join("switch-%02d.png" % coverage.size()))
 			surface._process(0)
-	print(JSON.stringify({"state": "passed" if failures.is_empty() else "failed", "failures": failures,
-		"baseline_window_pixels": baseline, "frame_window_pixels": coverage,
-		"scope": "Real GPU production library settings/network switching; native XR acknowledgement covered separately"}))
+	print(
+		(
+			JSON
+			. stringify(
+				{
+					"state": "passed" if failures.is_empty() else "failed",
+					"failures": failures,
+					"baseline_window_pixels": baseline,
+					"frame_window_pixels": coverage,
+					"scope":
+					"Real GPU production library settings/network switching; native XR acknowledgement covered separately"
+				}
+			)
+		)
+	)
 	target.queue_free()
 	await process_frame
 	quit(0 if failures.is_empty() else 1)

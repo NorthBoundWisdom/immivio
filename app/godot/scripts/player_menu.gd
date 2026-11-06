@@ -191,8 +191,17 @@ func capture_envelope() -> Rect2:
 	# The unused space below the timeline is kept small to preserve texture detail.
 	var tracks := _subtitle_tracks().size()
 	var rows := 7 if _immersive_subtitles() else 5
-	var top := maxf(1.20, 0.285 + 0.26 + (1 + mini(tracks, SUBTITLE_ROWS)) * 0.075
-		+ rows * 0.10 + 0.18 + (0.06 if tracks > SUBTITLE_ROWS else 0.0))
+	var top := maxf(
+		1.20,
+		(
+			0.285
+			+ 0.26
+			+ (1 + mini(tracks, SUBTITLE_ROWS)) * 0.075
+			+ rows * 0.10
+			+ 0.18
+			+ (0.06 if tracks > SUBTITLE_ROWS else 0.0)
+		)
+	)
 	return Rect2(-.82, -.24, 1.64, top + .24)
 
 
@@ -201,8 +210,18 @@ func has_persistent_toolbar() -> bool:
 
 
 func presentation_page() -> Variant:
-	return [section, _quick_open, _mode_open, _subtitle_open, _depth_open,
-		_adjustment, _grade_page, bookmarks.opened, choices.opened, I18n.language]
+	return [
+		section,
+		_quick_open,
+		_mode_open,
+		_subtitle_open,
+		_depth_open,
+		_adjustment,
+		_grade_page,
+		bookmarks.opened,
+		choices.opened,
+		I18n.language
+	]
 
 
 ## Playback has its own top action row; session toggles belong to the library.
@@ -491,7 +510,13 @@ func _trim_settings_cache() -> void:
 
 
 func _draw() -> void:
-	if section == 0 and _adjustment.is_empty() and _drawn_settings_key.is_empty() and not _transport.is_empty() and _transport.key == _transport_key():
+	if (
+		section == 0
+		and _adjustment.is_empty()
+		and _drawn_settings_key.is_empty()
+		and not _transport.is_empty()
+		and _transport.key == _transport_key()
+	):
 		_clear_popups()
 		_begin_choices()
 		_draw_bar_popups()
@@ -646,7 +671,17 @@ func _draw_bar() -> void:
 			"tip": "Synchronization",
 			"enabled": has_video
 		},
-		{"target": PLAYBACK_ORDER, "icon": "shuffle" if _state.get("queue_shuffle", false) else "sequence", "tip": "Playback order: Shuffle" if _state.get("queue_shuffle", false) else "Playback order: Sequence", "enabled": has_video},
+		{
+			"target": PLAYBACK_ORDER,
+			"icon": "shuffle" if _state.get("queue_shuffle", false) else "sequence",
+			"tip":
+			(
+				"Playback order: Shuffle"
+				if _state.get("queue_shuffle", false)
+				else "Playback order: Sequence"
+			),
+			"enabled": has_video
+		},
 		{"target": QUEUE_SETTINGS, "icon": "list", "tip": "Queue", "enabled": has_video},
 		{
 			"target": BookmarkMenu.LIST,
@@ -709,8 +744,13 @@ func _draw_bar() -> void:
 	_seek_bar(BAR_SEEK_Y)
 	_place_device_status(Vector2(0, HEADER_Y))
 	bookmarks.draw(false, false)
-	_transport = {"key": _transport_key(), "buttons": _buttons.size(), "labels": _labels.size(),
-		"decorations": _decorations.size(), "tips": _tips.duplicate()}
+	_transport = {
+		"key": _transport_key(),
+		"buttons": _buttons.size(),
+		"labels": _labels.size(),
+		"decorations": _decorations.size(),
+		"tips": _tips.duplicate()
+	}
 	_draw_bar_popups()
 
 
@@ -791,12 +831,19 @@ func _subtitle_label(track: Dictionary) -> String:
 	var codec := str(track.get("codec", "")).to_upper().replace("SUBRIP", "SRT").replace(
 		"WEBVTT", "VTT"
 	)
-	return _fit_title(title.replace("\n", " "), " · " + (I18n.t("Encoding invalid") if track.get("encoding_invalid", false) else codec), 0.76, 20)
+	return _fit_title(
+		title.replace("\n", " "),
+		" · " + (I18n.t("Encoding invalid") if track.get("encoding_invalid", false) else codec),
+		0.76,
+		20
+	)
 
 
 func _subtitle_controls() -> Array:
 	var rows: Array = []
-	var encoding: Dictionary = _state.get("secondary_subtitle_encoding_row" if _subtitle_secondary else "subtitle_encoding_row", {})
+	var encoding: Dictionary = _state.get(
+		"secondary_subtitle_encoding_row" if _subtitle_secondary else "subtitle_encoding_row", {}
+	)
 	if not encoding.is_empty():
 		rows.append({"title": "Encoding (reopen video)", "field": encoding})
 	if _immersive_subtitles():
@@ -869,11 +916,19 @@ func _subtitle_controls() -> Array:
 			)
 		}
 	)
-	rows.append({"title": "Subtitles below screen", "field": {
-		"key": "subtitle_below_screen", "value": _state.get("subtitle_below_screen", false),
-		"enabled": _state.get("has_video", false) and not _immersive_subtitles(),
-		"hint": "Available for flat video only" if _immersive_subtitles() else "",
-		"choices": [{"value": false, "label": "Off"}, {"value": true, "label": "On"}]}})
+	rows.append(
+		{
+			"title": "Subtitles below screen",
+			"field":
+			{
+				"key": "subtitle_below_screen",
+				"value": _state.get("subtitle_below_screen", false),
+				"enabled": _state.get("has_video", false) and not _immersive_subtitles(),
+				"hint": "Available for flat video only" if _immersive_subtitles() else "",
+				"choices": [{"value": false, "label": "Off"}, {"value": true, "label": "On"}]
+			}
+		}
+	)
 	return rows
 
 
@@ -899,15 +954,35 @@ func _draw_subtitles() -> void:
 	var heading := _label(I18n.t("Subtitles"), Vector3(-0.48, top - 0.05, 0.004), 18)
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	var y := top - 0.125
-	choices.field(null, {"key": "dual_subtitles", "value": _state.get("dual_subtitles", false),
-		"enabled": _state.get("dual_subtitles_available", false),
-		"choices": [{"value": false, "label": "Off"}, {"value": true, "label": "On"}]}, Vector2(0.14, y), 0.64)
+	choices.field(
+		null,
+		{
+			"key": "dual_subtitles",
+			"value": _state.get("dual_subtitles", false),
+			"enabled": _state.get("dual_subtitles_available", false),
+			"choices": [{"value": false, "label": "Off"}, {"value": true, "label": "On"}]
+		},
+		Vector2(0.14, y),
+		0.64
+	)
 	var dual_title := _label(I18n.t("Dual subtitles"), Vector3(-0.48, y, 0.004), 17)
 	dual_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	y -= 0.09
-	choices.field(null, {"key": "subtitle_target", "value": _subtitle_secondary,
-		"enabled": _state.get("dual_subtitles_available", false),
-		"choices": [{"value": false, "label": "Primary subtitle"}, {"value": true, "label": "Secondary subtitle"}]}, Vector2(0, y), 0.96)
+	choices.field(
+		null,
+		{
+			"key": "subtitle_target",
+			"value": _subtitle_secondary,
+			"enabled": _state.get("dual_subtitles_available", false),
+			"choices":
+			[
+				{"value": false, "label": "Primary subtitle"},
+				{"value": true, "label": "Secondary subtitle"}
+			]
+		},
+		Vector2(0, y),
+		0.96
+	)
 	y -= 0.09
 	_subtitle_row(SUBTITLE_ROW, 0, I18n.t("Off"), y)
 	y -= 0.075
@@ -931,7 +1006,9 @@ func _draw_subtitles() -> void:
 	for row in rows:
 		var title := _label(I18n.t(row.title), Vector3(-0.48, y, 0.004), 17)
 		if row.field.get("key", "") == "subtitle_below_screen" and _immersive_subtitles():
-			var unavailable := _label(I18n.t("Available for flat video only"), Vector3(0.14, y - 0.032, 0.004), 12)
+			var unavailable := _label(
+				I18n.t("Available for flat video only"), Vector3(0.14, y - 0.032, 0.004), 12
+			)
 			unavailable.modulate = MUTED
 		title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		choices.field(null, row.field, Vector2(0.14, y), 0.64, 0.075)
@@ -945,7 +1022,9 @@ func _draw_subtitles() -> void:
 	)
 	_button(SYNC_SETTINGS, I18n.t("Synchronization"), Vector2(0.25, 0.365), Vector2(0.47, 0.065))
 	var hint := _label(
-		I18n.t("Matching subtitles load automatically; choose other files manually."), Vector3(0, 0.31, 0.004), 13
+		I18n.t("Matching subtitles load automatically; choose other files manually."),
+		Vector3(0, 0.31, 0.004),
+		13
 	)
 	hint.modulate = MUTED
 	var example := _label(I18n.t("movie.mp4 → movie.srt"), Vector3(0, 0.28, 0.004), 12)
@@ -960,15 +1039,25 @@ func _immersive_subtitles() -> bool:
 
 func _subtitle_row(target: int, id: int, text: String, y: float) -> void:
 	_subtitle_ids[target] = id
-	var enabled: bool = not _subtitle_secondary or (
-		_state.get("dual_subtitles", false) and (id == 0 or id != int(_state.get("primary_subtitle_id", 0))))
+	var enabled: bool = (
+		not _subtitle_secondary
+		or (
+			_state.get("dual_subtitles", false)
+			and (id == 0 or id != int(_state.get("primary_subtitle_id", 0)))
+		)
+	)
 	_button(target, text, Vector2(0, y), Vector2(0.92, 0.065), enabled)
 	var button: Dictionary = _buttons.back()
 	var label: Label3D = button.node.get_child(0)
 	label.font_size = 20
 	label.position.x = -0.42
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	if id == int(_state.get("secondary_subtitle_track" if _subtitle_secondary else "subtitle_track", 0)):
+	if (
+		id
+		== int(
+			_state.get("secondary_subtitle_track" if _subtitle_secondary else "subtitle_track", 0)
+		)
+	):
 		button.base_color = SELECTED
 		_icon("check", Vector3(0.414, 0, 0.004), 0.029, ACCENT, button.node)
 
@@ -1205,10 +1294,23 @@ func release_pointer(hand: String, _origin: Vector3, _direction: Vector3, _track
 
 ## Only changes that alter the transport structure require replacing its nodes.
 func _transport_key() -> String:
-	return str([I18n.language, _state.get("source_uri", ""), _state.get("has_video", false),
-		int(_state.get("geometry", 0)) == 0, _enabled("subtitles"), _enabled("stereo_view"),
-		_enabled("previous_video"), _enabled("next_video"), space_locked, controls_opacity,
-		_state.get("queue_shuffle", false), bookmarks.key(), _state.get("bookmarks", [])])
+	return str(
+		[
+			I18n.language,
+			_state.get("source_uri", ""),
+			_state.get("has_video", false),
+			int(_state.get("geometry", 0)) == 0,
+			_enabled("subtitles"),
+			_enabled("stereo_view"),
+			_enabled("previous_video"),
+			_enabled("next_video"),
+			space_locked,
+			controls_opacity,
+			_state.get("queue_shuffle", false),
+			bookmarks.key(),
+			_state.get("bookmarks", [])
+		]
+	)
 
 
 func _clear_layout() -> void:
@@ -1722,9 +1824,7 @@ func _update_highlights() -> void:
 			and button.target == 104
 			and _state.get("alpha_requested", false)
 		):
-			button.node.material_override.set_shader_parameter(
-				"surface_color", SELECTED
-			)
+			button.node.material_override.set_shader_parameter("surface_color", SELECTED)
 		if (
 			section == 0
 			and button.enabled
@@ -1732,9 +1832,7 @@ func _update_highlights() -> void:
 			and button.target == 112
 			and _state.get("depth_requested", false)
 		):
-			button.node.material_override.set_shader_parameter(
-				"surface_color", SELECTED
-			)
+			button.node.material_override.set_shader_parameter("surface_color", SELECTED)
 		if section == 0 and button.target == 111:
 			button.node.get_child(1).material_override.albedo_color = (
 				ACCENT

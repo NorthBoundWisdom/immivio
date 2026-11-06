@@ -173,9 +173,9 @@ def main():
             if not urlsplit(link).scheme and not urlsplit(link).netloc
         }
         for legal in ("privacy", "terms"):
-            assert (locale_root / legal).resolve() in local_targets, (
-                f"{path}: missing localized {legal} link"
-            )
+            assert (
+                locale_root / legal
+            ).resolve() in local_targets, f"{path}: missing localized {legal} link"
     release = json.loads((SITE / "assets/releases.json").read_text())
     assert release["html_url"].startswith(
         "https://github.com/NorthBoundWisdom/immivio/releases"

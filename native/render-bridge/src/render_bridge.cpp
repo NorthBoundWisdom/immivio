@@ -26,18 +26,14 @@ void error(JNIEnv *env, const char *message) {
   }
 }
 void *direct_buffer(JNIEnv *env, jobject buffer, size_t bytes, bool writable) {
-  if (!buffer ||
-      env->GetDirectBufferCapacity(buffer) != static_cast<jlong>(bytes))
-    throw std::runtime_error(
-        "Render bridge exact-size direct mask buffer required");
+  if (!buffer || env->GetDirectBufferCapacity(buffer) != static_cast<jlong>(bytes))
+    throw std::runtime_error("Render bridge exact-size direct mask buffer required");
   auto *address = env->GetDirectBufferAddress(buffer);
   if (!address)
     throw std::runtime_error("Render bridge direct buffer address invalid");
   const auto type = env->GetObjectClass(buffer);
-  const auto method =
-      type ? env->GetMethodID(type, "isReadOnly", "()Z") : nullptr;
-  const bool readonly =
-      method && env->CallBooleanMethod(buffer, method) == JNI_TRUE;
+  const auto method = type ? env->GetMethodID(type, "isReadOnly", "()Z") : nullptr;
+  const bool readonly = method && env->CallBooleanMethod(buffer, method) == JNI_TRUE;
   if (type)
     env->DeleteLocalRef(type);
   if (!method || env->ExceptionCheck() || (writable && readonly))
@@ -47,16 +43,13 @@ void *direct_buffer(JNIEnv *env, jobject buffer, size_t bytes, bool writable) {
 } // namespace
 
 extern "C" JNIEXPORT jlongArray JNICALL
-Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_freezePair(JNIEnv *env,
-                                                                  jclass,
-                                                                  jlong id,
+Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_freezePair(JNIEnv *env, jclass, jlong id,
                                                                   jlong token) {
   try {
     std::lock_guard<std::mutex> guard(registry_mutex);
     auto &b = find(id);
     auto &slot = b.find(token);
-    if (slot.phase != Phase::held || !slot.alpha_valid ||
-        !frozen_frames.empty())
+    if (slot.phase != Phase::held || !slot.alpha_valid || !frozen_frames.empty())
       throw std::runtime_error("Freeze requires one complete held display pair "
                                "and no previous snapshot");
     const int width = b.width;
@@ -68,10 +61,8 @@ Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_freezePair(JNIEnv *env,
     glBindFramebuffer(GL_FRAMEBUFFER, b.fbo);
     glBindVertexArray(b.vao);
     glActiveTexture(GL_TEXTURE0);
-    auto copy = [&](GLuint source, GLenum target, GLuint destination, int w,
-                    int h, GLuint prog) {
-      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                             GL_TEXTURE_2D, destination, 0);
+    auto copy = [&](GLuint source, GLenum target, GLuint destination, int w, int h, GLuint prog) {
+      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, destination, 0);
       if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
         throw std::runtime_error("Freeze framebuffer incomplete");
       glViewport(0, 0, w, h);
@@ -81,10 +72,8 @@ Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_freezePair(JNIEnv *env,
       glDrawArrays(GL_TRIANGLES, 0, 3);
       check_gl("Freeze frame GPU copy");
     };
-    copy(slot.source(), GL_TEXTURE_2D, frozen->color, width, b.height,
-         b.copy_2d);
-    copy(slot.alpha, GL_TEXTURE_2D, frozen->alpha, b.mask_width * 2,
-         b.mask_height, b.copy_2d);
+    copy(slot.source(), GL_TEXTURE_2D, frozen->color, width, b.height, b.copy_2d);
+    copy(slot.alpha, GL_TEXTURE_2D, frozen->alpha, b.mask_width * 2, b.mask_height, b.copy_2d);
     // A seek may flush MediaCodec on a different context/thread as soon as
     // this callback returns. Complete this one transition copy before it.
     glFinish();
@@ -92,15 +81,14 @@ Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_freezePair(JNIEnv *env,
     if (sequence == std::numeric_limits<jlong>::max())
       throw std::runtime_error("Frozen handle space exhausted");
     const jlong handle = ++sequence;
-    const jlong values[] = {
-        handle,
-        frozen->color,
-        frozen->alpha,
-        width,
-        b.height,
-        std::chrono::duration_cast<std::chrono::microseconds>(
-            std::chrono::steady_clock::now() - started)
-            .count()};
+    const jlong values[] = {handle,
+                            frozen->color,
+                            frozen->alpha,
+                            width,
+                            b.height,
+                            std::chrono::duration_cast<std::chrono::microseconds>(
+                                std::chrono::steady_clock::now() - started)
+                                .count()};
     auto result = env->NewLongArray(6);
     if (!result)
       return nullptr;
@@ -115,9 +103,7 @@ Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_freezePair(JNIEnv *env,
   }
 }
 extern "C" JNIEXPORT void JNICALL
-Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_releaseFrozen(JNIEnv *,
-                                                                     jclass,
-                                                                     jlong id) {
+Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_releaseFrozen(JNIEnv *, jclass, jlong id) {
   std::lock_guard<std::mutex> guard(registry_mutex);
   // After the caller detached its wrappers/last draw, GL deletion preserves
   // in-flight GPU uses. A lost context's names must never be deleted in a new
@@ -126,12 +112,12 @@ Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_releaseFrozen(JNIEnv *,
 }
 
 extern "C" JNIEXPORT jlong JNICALL
-Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_createLayout(
-    JNIEnv *env, jclass, jint w, jint h, jint iw, jint ih, jint layout) {
+Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_createLayout(JNIEnv *env, jclass, jint w,
+                                                                    jint h, jint iw, jint ih,
+                                                                    jint layout) {
   try {
-    if (w < 1 || h < 1 || w > 8192 || h > 8192 ||
-        static_cast<int64_t>(w) * h > 8192LL * 4320 || iw < 1 || ih < 1 ||
-        iw > 512 || ih > 512 || layout < 0 || layout > 2 ||
+    if (w < 1 || h < 1 || w > 8192 || h > 8192 || static_cast<int64_t>(w) * h > 8192LL * 4320 ||
+        iw < 1 || ih < 1 || iw > 512 || ih > 512 || layout < 0 || layout > 2 ||
         (layout == 1 && w % 2 != 0) || (layout == 2 && h % 2 != 0))
       throw std::runtime_error("Render bridge dimensions unsupported");
     std::lock_guard<std::mutex> guard(registry_mutex);
@@ -147,10 +133,8 @@ Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_createLayout(
     return 0;
   }
 }
-extern "C" JNIEXPORT jboolean JNICALL
-Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_ready(JNIEnv *env,
-                                                             jclass, jlong id,
-                                                             jlong token) {
+extern "C" JNIEXPORT jboolean JNICALL Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_ready(
+    JNIEnv *env, jclass, jlong id, jlong token) {
   try {
     std::lock_guard<std::mutex> guard(registry_mutex);
     auto &bridge = find(id);
@@ -161,16 +145,15 @@ Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_ready(JNIEnv *env,
   }
 }
 extern "C" JNIEXPORT jlong JNICALL
-Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_captureTexture(
-    JNIEnv *env, jclass, jlong id, jint texture) {
+Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_captureTexture(JNIEnv *env, jclass, jlong id,
+                                                                      jint texture) {
   try {
     if (texture <= 0)
       throw std::runtime_error("Shared MPV texture name invalid");
     std::lock_guard<std::mutex> guard(registry_mutex);
     if (token_sequence == std::numeric_limits<jlong>::max())
       throw std::runtime_error("Render bridge lease space exhausted");
-    return find(id).capture_texture(static_cast<GLuint>(texture),
-                                    ++token_sequence, false);
+    return find(id).capture_texture(static_cast<GLuint>(texture), ++token_sequence, false);
   } catch (const std::exception &e) {
     error(env, e.what());
     return 0;
@@ -181,8 +164,8 @@ Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_captureTexture(
 // The caller must hold the producer lease until retired() reports the slot
 // free.
 extern "C" JNIEXPORT jboolean JNICALL
-Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_enableBorrowedColor(
-    JNIEnv *env, jclass, jlong id) {
+Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_enableBorrowedColor(JNIEnv *env, jclass,
+                                                                           jlong id) {
   try {
     std::lock_guard<std::mutex> guard(registry_mutex);
     find(id).borrow = true;
@@ -192,10 +175,8 @@ Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_enableBorrowedColor(
     return JNI_FALSE;
   }
 }
-extern "C" JNIEXPORT jint JNICALL
-Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_texture(JNIEnv *env,
-                                                               jclass, jlong id,
-                                                               jlong token) {
+extern "C" JNIEXPORT jint JNICALL Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_texture(
+    JNIEnv *env, jclass, jlong id, jlong token) {
   try {
     std::lock_guard<std::mutex> guard(registry_mutex);
     auto &slot = find(id).find(token);
@@ -208,24 +189,23 @@ Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_texture(JNIEnv *env,
   }
 }
 extern "C" JNIEXPORT jlong JNICALL
-Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_captureOpaqueTexture(
-    JNIEnv *env, jclass, jlong id, jint texture) {
+Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_captureOpaqueTexture(JNIEnv *env, jclass,
+                                                                            jlong id,
+                                                                            jint texture) {
   try {
     if (texture <= 0)
       throw std::runtime_error("Shared MPV texture name invalid");
     std::lock_guard<std::mutex> guard(registry_mutex);
     if (token_sequence == std::numeric_limits<jlong>::max())
       throw std::runtime_error("Render bridge lease space exhausted");
-    return find(id).capture_texture(static_cast<GLuint>(texture),
-                                    ++token_sequence, true);
+    return find(id).capture_texture(static_cast<GLuint>(texture), ++token_sequence, true);
   } catch (const std::exception &e) {
     error(env, e.what());
     return 0;
   }
 }
 extern "C" JNIEXPORT jstring JNICALL
-Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_stats(JNIEnv *env,
-                                                             jclass, jlong id) {
+Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_stats(JNIEnv *env, jclass, jlong id) {
   try {
     std::lock_guard<std::mutex> guard(registry_mutex);
     auto &b = find(id);
@@ -238,8 +218,7 @@ Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_stats(JNIEnv *env,
     auto json =
         "{\"copies\":" + std::to_string(b.copies) +
         ",\"opaque_copies\":" + std::to_string(b.opaque_copies) +
-        ",\"opaque_state_bypasses\":" +
-        std::to_string(b.opaque_state_bypasses) +
+        ",\"opaque_state_bypasses\":" + std::to_string(b.opaque_state_bypasses) +
         ",\"opaque_state_fast\":" + (b.opaque_state_fast ? "true" : "false") +
         ",\"capture_state_saves\":" + std::to_string(b.capture_state_saves) +
         ",\"capture_calls\":" + std::to_string(b.capture_calls) +
@@ -249,8 +228,7 @@ Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_stats(JNIEnv *env,
         ",\"owner_gl_last_error\":" + std::to_string(owner_gl_last_error) +
         ",\"borrow_color\":" + (b.borrow ? "true" : "false") +
         ",\"color_texture_count\":" + std::to_string(color_textures) +
-        ",\"color_texture_bytes\":" +
-        std::to_string(color_textures * b.width * b.height * 4) +
+        ",\"color_texture_bytes\":" + std::to_string(color_textures * b.width * b.height * 4) +
         ",\"opaque_initial_uploads\":" + std::to_string(b.opaque_uploads) +
         ",\"regular_alpha_uploads\":" + std::to_string(b.mask_refreshes) +
         ",\"input_stages\":0,\"zero_copy\":false,\"zero_copy_commits\":0,"
@@ -269,10 +247,8 @@ Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_stats(JNIEnv *env,
     return nullptr;
   }
 }
-extern "C" JNIEXPORT void JNICALL
-Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_retire(JNIEnv *env,
-                                                              jclass, jlong id,
-                                                              jlong token) {
+extern "C" JNIEXPORT void JNICALL Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_retire(
+    JNIEnv *env, jclass, jlong id, jlong token) {
   try {
     std::lock_guard<std::mutex> guard(registry_mutex);
     find(id).retire(token);
@@ -281,8 +257,7 @@ Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_retire(JNIEnv *env,
   }
 }
 extern "C" JNIEXPORT jboolean JNICALL
-Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_retired(JNIEnv *env,
-                                                               jclass, jlong id,
+Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_retired(JNIEnv *env, jclass, jlong id,
                                                                jlong token) {
   try {
     std::lock_guard<std::mutex> guard(registry_mutex);
@@ -300,9 +275,7 @@ Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_retired(JNIEnv *env,
   }
 }
 extern "C" JNIEXPORT jboolean JNICALL
-Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_alphaReady(JNIEnv *env,
-                                                                  jclass,
-                                                                  jlong id,
+Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_alphaReady(JNIEnv *env, jclass, jlong id,
                                                                   jlong token) {
   try {
     std::lock_guard<std::mutex> guard(registry_mutex);
@@ -314,8 +287,8 @@ Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_alphaReady(JNIEnv *env,
   }
 }
 extern "C" JNIEXPORT jint JNICALL
-Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_alphaTexture(
-    JNIEnv *env, jclass, jlong id, jlong token) {
+Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_alphaTexture(JNIEnv *env, jclass, jlong id,
+                                                                    jlong token) {
   try {
     std::lock_guard<std::mutex> guard(registry_mutex);
     auto &slot = find(id).find(token);
@@ -328,25 +301,23 @@ Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_alphaTexture(
   }
 }
 extern "C" JNIEXPORT jboolean JNICALL
-Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_readAlpha(
-    JNIEnv *env, jclass, jlong id, jlong token, jobject output) {
+Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_readAlpha(JNIEnv *env, jclass, jlong id,
+                                                                 jlong token, jobject output) {
   try {
     std::lock_guard<std::mutex> guard(registry_mutex);
     auto &bridge = find(id);
     auto &slot = bridge.find(token);
     if (slot.phase != Phase::held || !slot.alpha_valid)
       return JNI_FALSE;
-    const size_t pixels =
-        static_cast<size_t>(bridge.mask_width) * bridge.mask_height * 2;
-    auto *destination =
-        static_cast<unsigned char *>(direct_buffer(env, output, pixels, true));
+    const size_t pixels = static_cast<size_t>(bridge.mask_width) * bridge.mask_height * 2;
+    auto *destination = static_cast<unsigned char *>(direct_buffer(env, output, pixels, true));
     State state;
     bridge.target(slot.alpha, bridge.mask_width * 2, bridge.mask_height);
     glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
     // ES3 guarantees RGBA/UNSIGNED_BYTE readback for normalized attachments.
     std::vector<unsigned char> rgba(pixels * 4);
-    glReadPixels(0, 0, bridge.mask_width * 2, bridge.mask_height, GL_RGBA,
-                 GL_UNSIGNED_BYTE, rgba.data());
+    glReadPixels(0, 0, bridge.mask_width * 2, bridge.mask_height, GL_RGBA, GL_UNSIGNED_BYTE,
+                 rgba.data());
     if (glGetError() != GL_NO_ERROR)
       throw std::runtime_error("Alpha readback GL error");
     for (size_t i = 0; i < pixels; ++i)
@@ -358,14 +329,12 @@ Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_readAlpha(
   }
 }
 extern "C" JNIEXPORT void JNICALL
-Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_close(JNIEnv *, jclass,
-                                                             jlong id) {
+Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_close(JNIEnv *, jclass, jlong id) {
   std::lock_guard<std::mutex> guard(registry_mutex);
   registry.erase(id);
 }
 extern "C" JNIEXPORT void JNICALL
-Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_abandon(JNIEnv *, jclass,
-                                                               jlong id) {
+Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_abandon(JNIEnv *, jclass, jlong id) {
   std::lock_guard<std::mutex> guard(registry_mutex);
   const auto it = registry.find(id);
   if (it != registry.end()) {

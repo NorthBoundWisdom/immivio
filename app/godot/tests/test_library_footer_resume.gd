@@ -27,7 +27,9 @@ func _initialize() -> void:
 
 
 func _run() -> void:
-	var directory := ProjectSettings.globalize_path("res://../../build/tests/godot/footer-resume-test")
+	var directory := ProjectSettings.globalize_path(
+		"res://../../build/tests/godot/footer-resume-test"
+	)
 	DirAccess.make_dir_recursive_absolute(directory)
 	var settings := ConfigFile.new()
 	settings.set_value("appearance", "background", "dark")

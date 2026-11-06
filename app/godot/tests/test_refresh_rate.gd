@@ -1,10 +1,16 @@
 extends SceneTree
 const Display := preload("res://scripts/xr_display.gd")
-class Target extends RefCounted:
+
+
+class Target:
+	extends RefCounted
 	var display_refresh_rate := 0.0
 	var rates: Array = [120.0, 90.0, 72.0, NAN, -1.0, 72.0]
+
 	func get_available_display_refresh_rates() -> Array:
 		return rates
+
+
 func _initialize() -> void:
 	preload("res://tests/support/test_result.gd").prepare(self)
 	var target := Target.new()

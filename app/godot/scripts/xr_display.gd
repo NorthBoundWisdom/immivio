@@ -196,7 +196,12 @@ static func refresh_rates_from(target: Object) -> Array[float]:
 	if target == null or not target.has_method("get_available_display_refresh_rates"):
 		return result
 	for item in target.get_available_display_refresh_rates():
-		if (item is int or item is float) and is_finite(float(item)) and float(item) > 0.0 and float(item) not in result:
+		if (
+			(item is int or item is float)
+			and is_finite(float(item))
+			and float(item) > 0.0
+			and float(item) not in result
+		):
 			result.append(float(item))
 	result.sort()
 	return result

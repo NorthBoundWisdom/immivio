@@ -7,15 +7,23 @@ class UiLanguageTest {
     @Test
     fun systemLocalesRespectScriptBeforeRegion() {
         mapOf(
-            "en-US" to "en", "ja-JP" to "ja", "zh-CN" to "zh", "zh-SG" to "zh",
-            "zh-TW" to "zh_Hant", "zh-HK" to "zh_Hant", "zh-MO" to "zh_Hant",
-            "zh-Hant-CN" to "zh_Hant", "zh-Hans-TW" to "zh", "fr-FR" to "en", "" to "en"
-        )
+                "en-US" to "en",
+                "ja-JP" to "ja",
+                "zh-CN" to "zh",
+                "zh-SG" to "zh",
+                "zh-TW" to "zh_Hant",
+                "zh-HK" to "zh_Hant",
+                "zh-MO" to "zh_Hant",
+                "zh-Hant-CN" to "zh_Hant",
+                "zh-Hans-TW" to "zh",
+                "fr-FR" to "en",
+                "" to "en",
+            )
             .forEach { (locale, expected) ->
                 assertEquals(
                     locale,
                     expected,
-                    UiLanguage.resolve("auto", locale)
+                    UiLanguage.resolve("auto", locale),
                 )
             }
     }

@@ -3,7 +3,9 @@ package org.vrpassthroughplayer.plugin
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** Saved endpoints and bounded playback references. HTTP video URIs stay compatible with history. */
+/**
+ * Saved endpoints and bounded playback references. HTTP video URIs stay compatible with history.
+ */
 internal class DlnaLibrary(
     load: () -> String,
     private val persist: (String) -> Unit,
@@ -14,24 +16,24 @@ internal class DlnaLibrary(
     private val references = LinkedHashMap<String, JSONObject>()
 
     init {
-        runCatching { JSONObject(load()) }.getOrNull()?.let { data ->
-            data.optJSONArray("servers")?.let { list ->
-                for (i in 0 until minOf(list.length(), 64)) {
-                    val row = list.optJSONObject(i) ?: continue
-                    if (server(row) != null) saved[row.getString("id")] = row
+        runCatching { JSONObject(load()) }
+            .getOrNull()
+            ?.let { data ->
+                data.optJSONArray("servers")?.let { list ->
+                    for (i in 0 until minOf(list.length(), 64)) {
+                        val row = list.optJSONObject(i) ?: continue
+                        if (server(row) != null) saved[row.getString("id")] = row
+                    }
+                }
+                data.optJSONArray("references")?.let { list ->
+                    for (i in 0 until minOf(list.length(), 256)) {
+                        val row = list.optJSONObject(i) ?: continue
+                        val uri = DlnaClient.httpUri(row.optString("uri")) ?: continue
+                        if (server(row.optJSONObject("server") ?: continue) != null)
+                            references[uri.toString()] = row
+                    }
                 }
             }
-            data.optJSONArray("references")?.let { list ->
-                for (i in 0 until minOf(list.length(), 256)) {
-                    val row = list.optJSONObject(i) ?: continue
-                    val uri = DlnaClient.httpUri(row.optString("uri")) ?: continue
-                    if (server(
-                            row.optJSONObject("server") ?: continue
-                        ) != null
-                    ) references[uri.toString()] = row
-                }
-            }
-        }
     }
 
     @Synchronized
@@ -45,20 +47,26 @@ internal class DlnaLibrary(
     fun refresh(): JSONArray {
         // Saved routes remain usable when multicast is blocked or unavailable.
         val discovered = runCatching { discover() }.getOrDefault(emptyList())
-        synchronized(this) { found.clear(); discovered.forEach { found[it.id] = it } }
+        synchronized(this) {
+            found.clear()
+            discovered.forEach { found[it.id] = it }
+        }
         return servers()
     }
 
     fun save(request: JSONObject): String {
-        val location = request.optString("location").takeIf { it.isNotBlank() }
-            ?: DlnaClient.address(
-                request.optString("host"),
-                request.optString("port"),
-                request.optString("scheme", "http")
-            )
+        val location =
+            request.optString("location").takeIf { it.isNotBlank() }
+                ?: DlnaClient.address(
+                    request.optString("host"),
+                    request.optString("port"),
+                    request.optString("scheme", "http"),
+                )
         val connected = DlnaClient.connect(location)
-        val row = connected.json()
-            .put("name", request.optString("name").trim().take(150).ifEmpty { connected.name })
+        val row =
+            connected
+                .json()
+                .put("name", request.optString("name").trim().take(150).ifEmpty { connected.name })
         synchronized(this) {
             val previous = LinkedHashMap(saved)
             val oldId = request.optString("id")
@@ -68,7 +76,9 @@ internal class DlnaLibrary(
             try {
                 store()
             } catch (error: Exception) {
-                saved.clear(); saved.putAll(previous); throw error
+                saved.clear()
+                saved.putAll(previous)
+                throw error
             }
         }
         return connected.id
@@ -80,15 +90,17 @@ internal class DlnaLibrary(
         try {
             store()
         } catch (error: Exception) {
-            saved[id] = previous; throw error
+            saved[id] = previous
+            throw error
         }
         // A saved server may also have been discovered; refresh can find it again.
         found.remove(id)
     }
 
     fun browse(id: String, objectId: String): JSONArray {
-        val selected = synchronized(this) { saved[id]?.let(::server) ?: found[id] }
-            ?: error("DLNA server unavailable")
+        val selected =
+            synchronized(this) { saved[id]?.let(::server) ?: found[id] }
+                ?: error("DLNA server unavailable")
         val entries = DlnaClient.browse(selected, objectId)
         synchronized(this) {
             for (i in 0 until entries.length()) {
@@ -97,12 +109,18 @@ internal class DlnaLibrary(
                 val uri = entry.getString("uri")
                 references.remove(uri)
                 references[uri] =
-                    JSONObject().put("uri", uri).put("object_id", entry.getString("id"))
-                        .put("parent_id", objectId).put("server", selected.json())
+                    JSONObject()
+                        .put("uri", uri)
+                        .put("object_id", entry.getString("id"))
+                        .put("parent_id", objectId)
+                        .put("server", selected.json())
                         .put("subtitles", entry.optJSONArray("subtitles") ?: JSONArray())
             }
-            // Keep every video in the complete displayed directory available for subtitle selection.
-            while (references.size > DlnaClient.MAX_BROWSE_ITEMS) references.remove(references.keys.first())
+            // Keep every video in the complete displayed directory available for subtitle
+            // selection.
+            while (references.size > DlnaClient.MAX_BROWSE_ITEMS) references.remove(
+                references.keys.first()
+            )
             // Reference caching must never turn a successful browse into an error.
             runCatching { store() }
         }
@@ -115,13 +133,16 @@ internal class DlnaLibrary(
         var captions = reference.optJSONArray("subtitles") ?: JSONArray()
         // Object IDs identify a media item; expiring resource URLs do not.
         val stored = reference.optJSONObject("server")?.let(::server)
-        val endpoint =
-            stored?.let { synchronized(this) { saved[it.id]?.let(::server) ?: found[it.id] ?: it } }
+        val endpoint = stored?.let {
+            synchronized(this) { saved[it.id]?.let(::server) ?: found[it.id] ?: it }
+        }
         val objectId = reference.optString("object_id")
         var headerUri = uri
         fun matching(rows: JSONArray): JSONObject? {
-            val hits = (0 until rows.length()).mapNotNull { rows.optJSONObject(it) }
-                .filter { it.optString("kind") == "video" && it.optString("id") == objectId }
+            val hits =
+                (0 until rows.length())
+                    .mapNotNull { rows.optJSONObject(it) }
+                    .filter { it.optString("kind") == "video" && it.optString("id") == objectId }
             return hits.singleOrNull()
         }
 
@@ -135,10 +156,11 @@ internal class DlnaLibrary(
                     DlnaClient.browse(
                         endpoint,
                         objectId,
-                        metadata = true
+                        metadata = true,
                     )
                 )
-            }.getOrNull()
+            }
+                .getOrNull()
             val refreshed = metadata?.let(::accept)
             if (refreshed != null && refreshed.length() > 0) {
                 captions = refreshed
@@ -148,13 +170,13 @@ internal class DlnaLibrary(
                 val parent = reference.optString("parent_id")
                 if (parent.isNotBlank() && parent != "-1" && parent != objectId) {
                     val directory = runCatching { DlnaClient.browse(endpoint, parent) }.getOrNull()
-                    if (directory != null) captions =
-                        matching(directory)?.let(::accept) ?: JSONArray()
+                    if (directory != null)
+                        captions = matching(directory)?.let(::accept) ?: JSONArray()
                 }
             }
         }
-        if (captions.length() == 0) captions =
-            runCatching { DlnaClient.captionHeader(headerUri) }.getOrDefault(JSONArray())
+        if (captions.length() == 0)
+            captions = runCatching { DlnaClient.captionHeader(headerUri) }.getOrDefault(JSONArray())
         synchronized(this) {
             if (references[uri] === original) {
                 references.remove(uri)
@@ -163,31 +185,37 @@ internal class DlnaLibrary(
                 runCatching { store() }
             }
         }
-        return (0 until captions.length()).mapNotNull {
-            val track = captions.optJSONObject(it) ?: return@mapNotNull null
-            val url = DlnaClient.httpUri(track.optString("url")) ?: return@mapNotNull null
-            val type = DlnaClient.subtitleType(track.optString("extension"))
-            if (type.isEmpty()) null else MediaSubtitleLink(url, track.optString("title"), type)
-        }.take(8)
+        return (0 until captions.length())
+            .mapNotNull {
+                val track = captions.optJSONObject(it) ?: return@mapNotNull null
+                val url = DlnaClient.httpUri(track.optString("url")) ?: return@mapNotNull null
+                val type = DlnaClient.subtitleType(track.optString("extension"))
+                if (type.isEmpty()) null else MediaSubtitleLink(url, track.optString("title"), type)
+            }
+            .take(8)
     }
 
-    private fun store() = persist(
-        JSONObject().put("servers", JSONArray(saved.values.toList()))
-            .put("references", JSONArray(references.values.toList().takeLast(256))).toString()
-    )
+    private fun store() =
+        persist(
+            JSONObject()
+                .put("servers", JSONArray(saved.values.toList()))
+                .put("references", JSONArray(references.values.toList().takeLast(256)))
+                .toString()
+        )
 
     private fun server(row: JSONObject): DlnaClient.Server? {
         val location = DlnaClient.httpUri(row.optString("location")) ?: return null
         val control = DlnaClient.httpUri(row.optString("control_url")) ?: return null
         val id = row.optString("id").takeIf { it.isNotBlank() } ?: return null
         val type = row.optString("service_type", "urn:schemas-upnp-org:service:ContentDirectory:1")
-        if (!type.matches(Regex("urn:schemas-upnp-org:service:ContentDirectory:[1-9][0-9]*"))) return null
+        if (!type.matches(Regex("urn:schemas-upnp-org:service:ContentDirectory:[1-9][0-9]*")))
+            return null
         return DlnaClient.Server(
             id,
             row.optString("name"),
             location.toString(),
             control.toString(),
-            type
+            type,
         )
     }
 }

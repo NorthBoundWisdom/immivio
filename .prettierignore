@@ -1,0 +1,6 @@
+third_party/
+app/godot/models/
+build/
+artifacts/
+.cache/
+FreeCM/

@@ -45,7 +45,8 @@ func save(force: bool = false) -> void:
 func adjust(key: String, value: Variant) -> bool:
 	var host: Node3D = host_ref.get_ref()
 	if key == "screen_fixed":
-		if fixed() == bool(value): return true
+		if fixed() == bool(value):
+			return true
 		host.settings.set_value("screen", "fixed", bool(value))
 		save(true)
 		return true

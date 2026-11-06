@@ -159,6 +159,8 @@ func _push_screen(amount: float) -> void:
 	host._viewer().flat_pose = host._viewer().global_transform.affine_inverse() * pose
 	host._viewer()._apply_geometry()
 	host._capture_follow_screen(host._viewer(), host._head_pose())
+
+
 func _save_screen() -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
@@ -173,9 +175,7 @@ func _reset_picture() -> void:
 	host._viewer().reset_view()
 	host._viewer().set_screen_scale(1.0)
 	var offset: Vector3 = host._viewer().panel.global_position - host._eye()
-	var distance: float = (
-		host.video.SCREEN_DISTANCE
-	)
+	var distance: float = host.video.SCREEN_DISTANCE
 	if host._viewer().geometry == Geometry.Geometry.FLAT and offset.length() >= 0.1:
 		host._push_screen(distance - offset.length())
 	host._viewer().set_screen_distance(distance)
@@ -309,10 +309,7 @@ func _flat_followable(surface: Node3D) -> bool:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return false
-	return (
-		surface != null
-		and surface.geometry == Geometry.Geometry.FLAT
-	)
+	return surface != null and surface.geometry == Geometry.Geometry.FLAT
 
 
 func _surface_key(surface: Node3D) -> StringName:
@@ -466,7 +463,9 @@ func _place_menu(menu: Node3D) -> void:
 		var bar_offset: float = (
 			-host.player_menu.panel_lift if host.player_menu.section == 0 else 0.0
 		)
-		menu.global_transform = _window_pose(pose * Transform3D(Basis.IDENTITY, Vector3(0, bar_offset, 0)))
+		menu.global_transform = _window_pose(
+			pose * Transform3D(Basis.IDENTITY, Vector3(0, bar_offset, 0))
+		)
 		host._player_menu_anchor_key = host._canvas_menu_anchor_key()
 		host._player_menu_anchor_eye = eye
 		if head != null:
@@ -493,7 +492,9 @@ func _place_menu(menu: Node3D) -> void:
 		pose = Transform3D(host._menu_head_pose(head).basis, head.origin - horizontal.z * distance)
 		pose.origin -= pose.basis * Vector3(centre.x, centre.y, 0)
 	if pose == null:
-		menu.transform = _window_pose(Transform3D(Basis.from_scale(ui_scale), Vector3(0, 1.6 - drop, -1.55)))
+		menu.transform = _window_pose(
+			Transform3D(Basis.from_scale(ui_scale), Vector3(0, 1.6 - drop, -1.55))
+		)
 	else:
 		pose.basis *= Basis.from_scale(ui_scale)
 		pose = _window_pose(pose)
@@ -535,14 +536,22 @@ func _update_player_menu_anchor() -> void:
 	if not is_instance_valid(host):
 		return
 	if _pending_video_controls_session > 0:
-		if host.video.media.session_id != _pending_video_controls_session or host.video.local_uri.is_empty() or host.recent_menu.visible:
+		if (
+			host.video.media.session_id != _pending_video_controls_session
+			or host.video.local_uri.is_empty()
+			or host.recent_menu.visible
+		):
 			_pending_video_controls_session = 0
 		elif (
 			host._system_recenter_pending
 			or (not host.display.preview and host._head_pose() == null)
 			or (
 				host.video.media.accepts(_pending_video_controls_session)
-				and (host.video.media.frame_counter == 0 or host.video._waiting_first or not host.video.panel.visible)
+				and (
+					host.video.media.frame_counter == 0
+					or host.video._waiting_first
+					or not host.video.panel.visible
+				)
 			)
 		):
 			return

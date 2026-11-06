@@ -300,7 +300,13 @@ func draw_header() -> void:
 func draw_footer() -> void:
 	var row := selected_row()
 	var text: String = (
-		menu.I18n.t(menu.status) if not menu.status.is_empty() else (str(row.get("title", "")) if not row.is_empty() else menu.I18n.t("Select a file or folder"))
+		menu.I18n.t(menu.status)
+		if not menu.status.is_empty()
+		else (
+			str(row.get("title", ""))
+			if not row.is_empty()
+			else menu.I18n.t("Select a file or folder")
+		)
 	)
 	var label: Label3D = menu._label(
 		menu._fit_title(text, "", 0.65, 18), Vector3(menu.CONTENT_LEFT, menu.FOOTER_Y, .004), 18
@@ -362,7 +368,10 @@ func draw_modal() -> void:
 			var enabled: bool = (
 				field in ["name", "source"]
 				or menu.rows.any(
-					func(row): return ( (field == "modified" or row.has("uri")) and int(row.get(field, -1)) >= 0 )
+					func(row):
+						return (
+							(field == "modified" or row.has("uri")) and int(row.get(field, -1)) >= 0
+						),
 				)
 			)
 			menu._button(

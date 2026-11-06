@@ -6,8 +6,7 @@ render_mode unshaded, cull_disabled, depth_draw_never;
 uniform sampler2D color_texture : filter_linear, repeat_disable;
 uniform vec2 color_uv_scale = vec2(1.0);
 uniform bool stereo_sbs = false;
-uniform bool top_bottom =
-    false; // stereo views above each other: the top one is the left eye
+uniform bool top_bottom = false; // stereo views above each other: the top one is the left eye
 uniform vec4 crop = vec4(0.0, 0.0, 1.0, 1.0); // eye UV, row 0 on top
 
 void fragment() {

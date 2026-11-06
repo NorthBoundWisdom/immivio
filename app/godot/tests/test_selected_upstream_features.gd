@@ -171,19 +171,34 @@ func _run() -> void:
 		"Screen layout exposes distance control"
 	)
 	for target in main.video_menu.choices.sliders:
-		if main.video_menu.choices.targets[target].key != "screen_distance": continue
+		if main.video_menu.choices.targets[target].key != "screen_distance":
+			continue
 		var slider: Dictionary = main.video_menu.choices.sliders[target]
-		var point: Vector3 = slider.node.to_global(Vector3(slider.left + slider.width * 0.5, slider.knob.position.y, 0.01))
+		var point: Vector3 = slider.node.to_global(
+			Vector3(slider.left + slider.width * 0.5, slider.knob.position.y, 0.01)
+		)
 		var direction: Vector3 = -slider.node.global_basis.z.normalized()
 		main.video_menu.press_pointer("left_hand", point - direction * 0.2, direction, true)
 		main.video_menu.release_pointer("left_hand", point - direction * 0.2, direction, true)
-		check(absf(main.video.screen_distance - 2.25) < 0.1, "Pointer midpoint matches the logarithmic distance rail")
+		check(
+			absf(main.video.screen_distance - 2.25) < 0.1,
+			"Pointer midpoint matches the logarithmic distance rail"
+		)
 		break
 	var probe := preload("res://scripts/selected_features_device_probe.gd").new()
 	main._on_playback_adjustment("screen_fixed", false)
-	check(await probe.choose(main.video_menu, "screen_preset", "home150"), "Ray selects the cinema preset dropdown")
-	check(is_equal_approx(main.video.screen_distance, 4.6), "Preset choice routes into the screen adjustment handler")
-	check(await probe.choose(main.video_menu, "screen_fixed", true), "Ray selects fixed viewing defaults")
+	check(
+		await probe.choose(main.video_menu, "screen_preset", "home150"),
+		"Ray selects the cinema preset dropdown"
+	)
+	check(
+		is_equal_approx(main.video.screen_distance, 4.6),
+		"Preset choice routes into the screen adjustment handler"
+	)
+	check(
+		await probe.choose(main.video_menu, "screen_fixed", true),
+		"Ray selects fixed viewing defaults"
+	)
 	check(main.screen_layout.fixed(), "Fixed-default choice routes into persistent preferences")
 	main.video.media.playback = {
 		"details": {"paused_for_cache": "yes", "read_bytes_per_second": "2097152"}

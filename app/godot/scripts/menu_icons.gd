@@ -2,11 +2,16 @@ extends RefCounted
 
 # Original vector glyphs, generated once and shared by both ray menus.
 const PATHS := {
-	"provider_emby": '<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M16 7H8V17H16M8 12H14"/>',
-	"provider_jellyfin": '<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M9 7H17M14 7V15C14 20 7 20 7 14"/>',
-	"provider_plex": '<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 18V7H13C19 7 19 13 13 13H8"/>',
-	"provider_xbvr": '<rect x="2" y="3" width="20" height="18" rx="4"/><path d="M5 8L10 16M10 8L5 16M14 8V16H17C21 16 21 12 17 12H14M14 8H17C21 8 21 12 17 12"/>',
-	"shuffle": '<path d="M3 5H6L18 19H22M18 15L22 19 18 23M3 19H6L11 13M14 10L18 5H22M18 1L22 5 18 9"/>',
+	"provider_emby":
+	'<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M16 7H8V17H16M8 12H14"/>',
+	"provider_jellyfin":
+	'<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M9 7H17M14 7V15C14 20 7 20 7 14"/>',
+	"provider_plex":
+	'<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 18V7H13C19 7 19 13 13 13H8"/>',
+	"provider_xbvr":
+	'<rect x="2" y="3" width="20" height="18" rx="4"/><path d="M5 8L10 16M10 8L5 16M14 8V16H17C21 16 21 12 17 12H14M14 8H17C21 8 21 12 17 12"/>',
+	"shuffle":
+	'<path d="M3 5H6L18 19H22M18 15L22 19 18 23M3 19H6L11 13M14 10L18 5H22M18 1L22 5 18 9"/>',
 	"sequence": '<path d="M3 5H18M3 12H18M3 19H14M18 15L22 19 18 23"/>',
 	"head_follow":
 	'<path d="M4 5H17A2 2 0 0 1 19 7V13A2 2 0 0 1 17 15H14L12 12H9L7 15H4A2 2 0 0 1 2 13V7A2 2 0 0 1 4 5Z"/><path d="M16 18H20M15 16H14A3 3 0 0 0 14 22H16M19 16H20A3 3 0 0 1 20 22H18"/>',

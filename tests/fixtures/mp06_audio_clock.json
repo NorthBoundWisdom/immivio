@@ -21,14 +21,7 @@
   "audio_samplerate": 48000,
   "audio_channels": 2,
   "duration_seconds": 6,
-  "pulse_seconds": [
-    0,
-    1,
-    2,
-    3,
-    4,
-    5
-  ],
+  "pulse_seconds": [0, 1, 2, 3, 4, 5],
   "pulse_duration_seconds": 0.1,
   "rights": "Project-generated numbered graphics and synthesized tones; no external media",
   "scope": "MPV output/clock/control calibration; audible output and Godot/XR AV sync require separate evidence"

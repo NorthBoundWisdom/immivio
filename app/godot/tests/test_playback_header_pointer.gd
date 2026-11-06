@@ -4,21 +4,26 @@ const Surface := preload("res://scripts/xr_menu_compositor.gd")
 var checks := 0
 var failures: Array[String] = []
 
+
 class InputMain:
 	extends Main
 	var test_ray: Variant
+
 	func _ray(_hand: String) -> Variant:
 		return test_ray
+
 
 func check(ok: bool, message: String) -> void:
 	checks += 1
 	if not ok:
 		failures.append(message)
 
+
 func _initialize() -> void:
 	if not preload("res://tests/support/test_result.gd").prepare(self):
 		return
 	_run.call_deferred()
+
 
 func ray_to(host: Node3D, point: Vector3, curved: bool) -> Array:
 	var origin: Vector3 = host._eye() + Vector3(.10, .04, .20)
@@ -30,8 +35,11 @@ func ray_to(host: Node3D, point: Vector3, curved: bool) -> Array:
 		var centre: Vector2 = surface.surface_rect.get_center()
 		var radius: float = surface.active_menu.curve_radius
 		var angle: float = (local.x - centre.x) / radius
-		physical = pose * Vector3(centre.x + sin(angle) * radius, local.y, (1 - cos(angle)) * radius)
+		physical = (
+			pose * Vector3(centre.x + sin(angle) * radius, local.y, (1 - cos(angle)) * radius)
+		)
 	return [origin, (physical - origin).normalized(), physical]
+
 
 func _run() -> void:
 	var host := InputMain.new()
@@ -58,29 +66,51 @@ func _run() -> void:
 			host._show_player_menu()
 			if curved:
 				host.menu_compositor._process(0)
-			var panel: MeshInstance3D = menu._title_pill if name == "title" else menu.device_status._pill
+			var panel: MeshInstance3D = (
+				menu._title_pill if name == "title" else menu.device_status._pill
+			)
 			var ray := ray_to(host, panel.global_position, curved)
-			check(menu.ray_hit(ray[0], ray[1]).is_empty(), "Information stays non-actionable: " + name)
+			check(
+				menu.ray_hit(ray[0], ray[1]).is_empty(), "Information stays non-actionable: " + name
+			)
 			var hit: Dictionary = menu.ray_panel_hit(ray[0], ray[1])
-			check(not hit.is_empty(), "Visible header accepts surface feedback: " + name + str(curved))
+			check(
+				not hit.is_empty(), "Visible header accepts surface feedback: " + name + str(curved)
+			)
 			menu.update_pointer("right_hand", ray[0], ray[1], true)
-			check(menu._pointers.right_hand.dot.visible and menu._hover.right_hand == menu.NONE, "Header shows a neutral reticle: " + name)
+			check(
+				menu._pointers.right_hand.dot.visible and menu._hover.right_hand == menu.NONE,
+				"Header shows a neutral reticle: " + name
+			)
 			if curved and not hit.is_empty():
-				check(hit.world_point.distance_to(ray[2]) < .0001, "Curved header laser ends on the visible cylinder")
+				check(
+					hit.world_point.distance_to(ray[2]) < .0001,
+					"Curved header laser ends on the visible cylinder"
+				)
 			host.test_ray = ray
 			host._on_pointer_button("trigger_click", "right_hand")
 			host._on_pointer_release("trigger_click", "right_hand")
-			check(menu.visible and host._trigger_taps.is_empty() and host._grab.is_empty(), "Header press does not click through or dismiss controls: " + name)
+			check(
+				menu.visible and host._trigger_taps.is_empty() and host._grab.is_empty(),
+				"Header press does not click through or dismiss controls: " + name
+			)
 	# Rounded transparent corners and gaps outside the header remain non-surfaces.
 	host._show_player_menu()
 	host.menu_compositor._process(0)
 	var title: MeshInstance3D = menu._title_pill
-	var corner := title.to_global(Vector3(title.mesh.size.x / 2 - .0005, title.mesh.size.y / 2 - .0005, 0))
+	var corner := title.to_global(
+		Vector3(title.mesh.size.x / 2 - .0005, title.mesh.size.y / 2 - .0005, 0)
+	)
 	var ray := ray_to(host, corner, true)
-	check(menu.ray_panel_hit(ray[0], ray[1]).is_empty(), "Transparent pill corner does not stop the ray")
+	check(
+		menu.ray_panel_hit(ray[0], ray[1]).is_empty(),
+		"Transparent pill corner does not stop the ray"
+	)
 	menu.device_status.visible = false
 	ray = ray_to(host, menu.device_status._pill.global_position, true)
-	check(menu.ray_panel_hit(ray[0], ray[1]).is_empty(), "Hidden status panel cannot intercept rays")
+	check(
+		menu.ray_panel_hit(ray[0], ray[1]).is_empty(), "Hidden status panel cannot intercept rays"
+	)
 	menu.device_status.visible = true
 	# A compact browser must not steal feedback from the visible playback header.
 	host.recent_menu.compact = true
@@ -89,11 +119,20 @@ func _run() -> void:
 	ray = ray_to(host, menu._title_pill.global_position, true)
 	host.test_ray = ray
 	host._update_menu_pointer("right_hand")
-	check(menu._pointers.right_hand.dot.visible and not host.recent_menu._pointers.right_hand.dot.visible, "Controller routes informational header feedback beside the browser")
+	check(
+		(
+			menu._pointers.right_hand.dot.visible
+			and not host.recent_menu._pointers.right_hand.dot.visible
+		),
+		"Controller routes informational header feedback beside the browser"
+	)
 	var event := InputEventMouseMotion.new()
 	event.position = host.xr_camera.unproject_position(ray[2])
 	host._unhandled_input(event)
-	check(menu._pointers.get("desktop", {}).get("dot") != null and menu._pointers.desktop.dot.visible, "Preview pointer also reaches the informational header")
+	check(
+		menu._pointers.get("desktop", {}).get("dot") != null and menu._pointers.desktop.dot.visible,
+		"Preview pointer also reaches the informational header"
+	)
 	# Outside taps retain their existing dismissal behavior.
 	host._show_player_menu()
 	host.menu_compositor._process(0)

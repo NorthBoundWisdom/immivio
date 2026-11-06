@@ -18,7 +18,10 @@ static func apply(settings: ConfigFile, existing_file: bool = false) -> bool:
 		if not (rate is int or rate is float) or not is_finite(float(rate)) or float(rate) <= 0.0:
 			settings.set_value("display", "refresh_rate", 72.0)
 			changed = true
-	if settings.has_section_key("video", "reuse_last_mode") and not settings.get_value("video", "reuse_last_mode") is bool:
+	if (
+		settings.has_section_key("video", "reuse_last_mode")
+		and not settings.get_value("video", "reuse_last_mode") is bool
+	):
 		settings.set_value("video", "reuse_last_mode", false)
 		changed = true
 	if settings.has_section_key("video", "last_mode"):
@@ -27,7 +30,10 @@ static func apply(settings: ConfigFile, existing_file: bool = false) -> bool:
 		if previous != mode:
 			settings.set_value("video", "last_mode", mode)
 			changed = true
-	if settings.has_section_key("playback", "queue_shuffle") and not settings.get_value("playback", "queue_shuffle") is bool:
+	if (
+		settings.has_section_key("playback", "queue_shuffle")
+		and not settings.get_value("playback", "queue_shuffle") is bool
+	):
 		settings.set_value("playback", "queue_shuffle", false)
 		changed = true
 	if settings.has_section_key("ui", "library_distance"):

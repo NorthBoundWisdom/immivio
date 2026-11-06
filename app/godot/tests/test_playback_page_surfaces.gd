@@ -5,21 +5,25 @@ const Surface := preload("res://scripts/xr_menu_compositor.gd")
 var checks := 0
 var failures: Array[String] = []
 
+
 func check(ok: bool, message: String) -> void:
 	checks += 1
 	if not ok:
 		failures.append(message)
+
 
 func _initialize() -> void:
 	if not preload("res://tests/support/test_result.gd").prepare(self):
 		return
 	_run.call_deferred()
 
+
 func button_point(menu: Node3D, target: int) -> Vector3:
 	for button in menu._buttons:
 		if button.target == target:
 			return button.node.global_position
 	return Vector3(INF, INF, INF)
+
 
 func bent_ray(host: Node3D, flat: Vector3) -> Array:
 	var surface: Node3D = host.menu_compositor
@@ -30,9 +34,12 @@ func bent_ray(host: Node3D, flat: Vector3) -> Array:
 	if radius <= 0:
 		return [host._eye(), (flat - host._eye()).normalized()]
 	var angle: float = (local.x - centre.x) / radius
-	var point: Vector3 = pose * Vector3(centre.x + sin(angle) * radius, local.y, (1 - cos(angle)) * radius)
+	var point: Vector3 = (
+		pose * Vector3(centre.x + sin(angle) * radius, local.y, (1 - cos(angle)) * radius)
+	)
 	var origin: Vector3 = host._eye() + Vector3(.18, -.06, .08)
 	return [origin, (point - origin).normalized()]
+
 
 func tap(host: Node3D, target: int) -> bool:
 	host.menu_compositor._process(0)
@@ -45,6 +52,7 @@ func tap(host: Node3D, target: int) -> bool:
 	menu.release_pointer("right_hand", ray[0], ray[1], true)
 	host.menu_compositor._process(0)
 	return handled
+
 
 func _run() -> void:
 	var host := Main.new()
@@ -69,30 +77,83 @@ func _run() -> void:
 	var menu: Node3D = host.player_menu
 	menu.state_provider = func():
 		var state: Dictionary = host._menu_state()
-		state.merge({"bookmarks": [{"id": "sample", "position_ms": 12000}], "bookmark_scope": "synthetic", "bookmark_ready": true, "bookmark_seekable": true}, true)
+		state.merge(
+			{
+				"bookmarks": [{"id": "sample", "position_ms": 12000}],
+				"bookmark_scope": "synthetic",
+				"bookmark_ready": true,
+				"bookmark_seekable": true
+			},
+			true
+		)
 		return state
-	for target in [Menu.QUICK_SCREEN, Menu.MODE, 110, Menu.QUICK_SPEED, Menu.QUICK_COLOR, Menu.IPD_SETTINGS, Menu.SYNC_SETTINGS, Menu.QUEUE_SETTINGS, 12]:
+	for target in [
+		Menu.QUICK_SCREEN,
+		Menu.MODE,
+		110,
+		Menu.QUICK_SPEED,
+		Menu.QUICK_COLOR,
+		Menu.IPD_SETTINGS,
+		Menu.SYNC_SETTINGS,
+		Menu.QUEUE_SETTINGS,
+		12
+	]:
 		host._show_recent_menu()
 		host.recent_menu.compact = true
 		host._place_menu(host.recent_menu)
-		check(host.recent_menu.visible and menu._quick_open.is_empty() and not menu._mode_open and not menu._subtitle_open, "Browsing replaces the previous playback page")
+		check(
+			(
+				host.recent_menu.visible
+				and menu._quick_open.is_empty()
+				and not menu._mode_open
+				and not menu._subtitle_open
+			),
+			"Browsing replaces the previous playback page"
+		)
 		host.menu_compositor._process(0)
 		var original_pose: Transform3D = menu.global_transform
 		var original_rect: Rect2 = host.menu_compositor.surface_rect
 		var original_title: int = menu._title.get_instance_id()
-		check(host.menu_compositor.active_menu == menu, "Compact browser retains playback capture anchor")
-		check(tap(host, target), "Toolbar page remains ray-selectable beside the compact browser: %d" % target)
-		check(menu._popup_is_open(Menu.POPUP_TARGETS[target]) and not host.recent_menu.visible, "Browser and playback page are mutually exclusive: %d" % target)
-		check(menu.global_transform.is_equal_approx(original_pose), "Opening a popup beside the browser preserves toolbar placement")
-		check(host.menu_compositor.surface_rect == original_rect, "Replacing compact browser retains capture bounds")
-		check(menu._title.get_instance_id() == original_title, "Replacing compact browser retains transport nodes")
-		check(menu.curve_radius > 0 and host.menu_compositor.scene_curved, "Playback page uses the same curved renderer: %d" % target)
+		check(
+			host.menu_compositor.active_menu == menu,
+			"Compact browser retains playback capture anchor"
+		)
+		check(
+			tap(host, target),
+			"Toolbar page remains ray-selectable beside the compact browser: %d" % target
+		)
+		check(
+			menu._popup_is_open(Menu.POPUP_TARGETS[target]) and not host.recent_menu.visible,
+			"Browser and playback page are mutually exclusive: %d" % target
+		)
+		check(
+			menu.global_transform.is_equal_approx(original_pose),
+			"Opening a popup beside the browser preserves toolbar placement"
+		)
+		check(
+			host.menu_compositor.surface_rect == original_rect,
+			"Replacing compact browser retains capture bounds"
+		)
+		check(
+			menu._title.get_instance_id() == original_title,
+			"Replacing compact browser retains transport nodes"
+		)
+		check(
+			menu.curve_radius > 0 and host.menu_compositor.scene_curved,
+			"Playback page uses the same curved renderer: %d" % target
+		)
 		var centre: Vector2 = menu.capture_envelope().get_center()
 		var distance := menu.to_global(Vector3(centre.x, centre.y, 0)).distance_to(host._eye())
-		check(is_equal_approx(menu.curve_radius, distance), "Playback curvature matches its placed viewing distance")
+		check(
+			is_equal_approx(menu.curve_radius, distance),
+			"Playback curvature matches its placed viewing distance"
+		)
 	host._show_recent_menu()
 	check(tap(host, Menu.BookmarkMenu.LIST), "Bookmark list remains selectable beside the browser")
-	check(menu.bookmarks.opened and not host.recent_menu.visible, "Bookmark list also replaces the browser")
+	check(
+		menu.bookmarks.opened and not host.recent_menu.visible,
+		"Bookmark list also replaces the browser"
+	)
 	host._show_recent_menu()
 	check(not menu.bookmarks.opened, "Browsing closes bookmark pages")
 	# Bending the timeline must not move a stationary drag's preview.
@@ -109,10 +170,16 @@ func _run() -> void:
 	var eye_before: Vector3 = host.xr_camera.global_position
 	host.xr_camera.global_position += Vector3(.12, .02, .1)
 	host.menu_compositor._process(0)
-	check(is_equal_approx(menu.curve_radius, held_radius), "Pointer capture freezes the playback curve")
+	check(
+		is_equal_approx(menu.curve_radius, held_radius),
+		"Pointer capture freezes the playback curve"
+	)
 	host.xr_camera.global_position = eye_before
 	menu.update_pointer("left_hand", ray[0], ray[1], true)
-	check(absi(menu._seek_preview - at_press) <= 1, "Stationary curved timeline drag cannot shift the seek position")
+	check(
+		absi(menu._seek_preview - at_press) <= 1,
+		"Stationary curved timeline drag cannot shift the seek position"
+	)
 	menu.release_pointer("left_hand", ray[0], ray[1], false)
 	host.queue_free()
 	await process_frame

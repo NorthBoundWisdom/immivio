@@ -3,6 +3,7 @@ extends RefCounted
 const SHADER := preload("res://shaders/pointer_ray.gdshader")
 static var _overlay_shader: Shader
 
+
 static func create(color: Color, priority: int, overlay: bool = true) -> MeshInstance3D:
 	var line := MeshInstance3D.new()
 	line.mesh = ImmediateMesh.new()
@@ -11,13 +12,16 @@ static func create(color: Color, priority: int, overlay: bool = true) -> MeshIns
 	var material := ShaderMaterial.new()
 	if overlay and not _overlay_shader:
 		_overlay_shader = Shader.new()
-		_overlay_shader.code = SHADER.code.replace("render_mode ", "render_mode depth_test_disabled, ")
+		_overlay_shader.code = SHADER.code.replace(
+			"render_mode ", "render_mode depth_test_disabled, "
+		)
 	material.shader = _overlay_shader if overlay else SHADER
 	material.render_priority = priority
 	material.set_shader_parameter("ray_color", color)
 	line.material_override = material
 	line.visible = false
 	return line
+
 
 static func draw(line: MeshInstance3D, origin: Vector3, endpoint: Vector3) -> void:
 	# Keep the controller-to-target connection at every distance.

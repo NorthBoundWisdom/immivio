@@ -10,9 +10,12 @@ var selections := 0
 
 class Catalog:
 	extends RefCounted
+
 	func list_recent() -> Array:
-		return [{"uri": "file:///clip.mp4", "title": "Clip.mp4", "position_ms": 1000},
-			{"uri": "file:///old.jpg", "title": "Old.jpg", "kind": "image", "position_ms": 0}]
+		return [
+			{"uri": "file:///clip.mp4", "title": "Clip.mp4", "position_ms": 1000},
+			{"uri": "file:///old.jpg", "title": "Old.jpg", "kind": "image", "position_ms": 0}
+		]
 
 
 func check(ok: bool, message: String) -> void:
@@ -39,7 +42,8 @@ func _run() -> void:
 		{"uri": "file:///clip.mp4", "title": "Clip.mp4", "kind": "video"},
 		{"uri": "file:///old.jpg", "title": "Old.jpg", "kind": "image"},
 		{"uri": "file:///old.heic", "title": "Old.heic", "kind": "image"},
-		{"uri": "file:///wrong.png", "title": "Wrong.png", "kind": "video"}]
+		{"uri": "file:///wrong.png", "title": "Wrong.png", "kind": "video"}
+	]
 	for section in [Library.Section.LOCAL, Library.Section.SMB, Library.Section.DLNA]:
 		menu.section = section
 		menu._local_entries = mixed
@@ -48,12 +52,21 @@ func _run() -> void:
 		menu._dlna_server = "saved"
 		menu._dlna_entries = mixed
 		menu.refresh()
-		check(menu.rows.map(func(row): return row.title) == ["Folder", "Clip.mp4"], "Every file source retains folders and videos while excluding still images")
-		check(not menu._buttons.any(func(button): return button.target in [70, 71, 72]), "The retired All/Video/Images filter has no visible or clickable targets")
+		check(
+			menu.rows.map(func(row): return row.title) == ["Folder", "Clip.mp4"],
+			"Every file source retains folders and videos while excluding still images"
+		)
+		check(
+			not menu._buttons.any(func(button): return button.target in [70, 71, 72]),
+			"The retired All/Video/Images filter has no visible or clickable targets"
+		)
 		check(menu.video_queue().size() == 1, "File-source playback queues contain videos only")
 	menu.section = Library.Section.RECENT
 	menu.refresh()
-	check(menu.rows.size() == 1 and menu.rows[0].title == "Clip.mp4", "Legacy still-image history is excluded from Recent")
+	check(
+		menu.rows.size() == 1 and menu.rows[0].title == "Clip.mp4",
+		"Legacy still-image history is excluded from Recent"
+	)
 	menu._choose(mixed[2])
 	check(selections == 0, "A stale image selection cannot emit a playback request")
 	menu._choose(mixed[1])
@@ -61,15 +74,29 @@ func _run() -> void:
 	menu.free()
 	var history := Recent.new("user://video-only-history")
 	check(history.opened("file:///clip.mp4", "Clip.mp4", false), "Video history can be recorded")
-	check(not history.opened("file:///still.heif", "Still.heif", false), "New still-image history cannot be recorded")
-	history.entries[history.key_for("file:///old.jpg")] = {"uri": "file:///old.jpg", "title": "Old.jpg", "kind": "image", "persisted": false, "opened": 1, "position_ms": 0, "duration_ms": -1}
+	check(
+		not history.opened("file:///still.heif", "Still.heif", false),
+		"New still-image history cannot be recorded"
+	)
+	history.entries[history.key_for("file:///old.jpg")] = {
+		"uri": "file:///old.jpg",
+		"title": "Old.jpg",
+		"kind": "image",
+		"persisted": false,
+		"opened": 1,
+		"position_ms": 0,
+		"duration_ms": -1
+	}
 	check(history.save(), "A signed legacy mixed-history fixture can be saved")
 	var restored := Recent.new("user://video-only-history")
 	restored.load_saved()
 	check(restored.list_recent().size() == 1, "Reloading a legacy catalog retains its videos only")
 	var queue := Queue.new()
 	queue.append(mixed.slice(1))
-	check(queue.items.size() == 1 and queue.items[0].uri == "file:///clip.mp4", "Restoring an old mixed queue cannot reopen still images")
+	check(
+		queue.items.size() == 1 and queue.items[0].uri == "file:///clip.mp4",
+		"Restoring an old mixed queue cannot reopen still images"
+	)
 	var original := "user://original.jpg"
 	FileAccess.open(original, FileAccess.WRITE).store_string("original media bytes")
 	var settings := ConfigFile.new()
@@ -85,12 +112,30 @@ func _run() -> void:
 	main.set_process(false)
 	main.video.set_process(false)
 	main.report_timer.stop()
-	check(not main.settings.has_section("photo") and not main.settings.has_section("photo_screen") and not main.settings.has_section("photo_gallery"), "Upgrade retires all still-image preferences")
-	check(main.settings.get_value("video", "sharpness") == .4, "Upgrade preserves video preferences")
-	check(main.get_node_or_null("PhotoDisplay") == null and main.menu_compositor.menus.size() == 2, "The application creates only the library and video controls")
+	check(
+		(
+			not main.settings.has_section("photo")
+			and not main.settings.has_section("photo_screen")
+			and not main.settings.has_section("photo_gallery")
+		),
+		"Upgrade retires all still-image preferences"
+	)
+	check(
+		main.settings.get_value("video", "sharpness") == .4, "Upgrade preserves video preferences"
+	)
+	check(
+		main.get_node_or_null("PhotoDisplay") == null and main.menu_compositor.menus.size() == 2,
+		"The application creates only the library and video controls"
+	)
 	main._on_library_chosen("file://" + ProjectSettings.globalize_path(original), "Original.jpg")
-	check(main.video.local_uri.is_empty(), "Direct stale selection cannot route a still image into playback")
-	check(FileAccess.get_file_as_string(original) == "original media bytes", "Retiring the feature does not modify or delete original media")
+	check(
+		main.video.local_uri.is_empty(),
+		"Direct stale selection cannot route a still image into playback"
+	)
+	check(
+		FileAccess.get_file_as_string(original) == "original media bytes",
+		"Retiring the feature does not modify or delete original media"
+	)
 	main.queue_free()
 	await process_frame
 	for failure in failures:

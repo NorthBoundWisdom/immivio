@@ -6,15 +6,18 @@ const Geometry := preload("res://scripts/video_geometry.gd")
 var checks := 0
 var failures: Array[String] = []
 
+
 func check(ok: bool, message: String) -> void:
 	checks += 1
 	if not ok:
 		failures.append(message)
 
+
 func _initialize() -> void:
 	if not preload("res://tests/support/test_result.gd").prepare(self):
 		return
 	_run.call_deferred()
+
 
 func opening(host: Node3D, id: int) -> void:
 	host.recent_menu.dismiss()
@@ -24,6 +27,7 @@ func opening(host: Node3D, id: int) -> void:
 	host.video._waiting_first = true
 	host.video.panel.visible = false
 	host.video.geometry = Geometry.Geometry.FLAT
+
 
 func ready(host: Node3D, projection: int) -> void:
 	host.video.geometry = projection
@@ -37,6 +41,7 @@ func ready(host: Node3D, projection: int) -> void:
 	host.video.panel.visible = true
 	host._place_screen()
 	host._update_player_menu_anchor()
+
 
 func _run() -> void:
 	var host := Main.new()
@@ -53,17 +58,35 @@ func _run() -> void:
 		host._show_player_menu()
 		var initial_visible: bool = host.player_menu.visible
 		var initial_timeline: Vector3 = host.player_menu.to_global(Vector3(0, Menu.BAR_SEEK_Y, 0))
-		check(not initial_visible, "Unresolved layout must not expose a provisional timeline: %d" % projection)
+		check(
+			not initial_visible,
+			"Unresolved layout must not expose a provisional timeline: %d" % projection
+		)
 		host.playback_feedback.tick()
-		check(host.playback_feedback.visible and not host.playback_feedback.message.is_empty(), "Loading keeps status feedback without a provisional control bar")
+		check(
+			host.playback_feedback.visible and not host.playback_feedback.message.is_empty(),
+			"Loading keeps status feedback without a provisional control bar"
+		)
 		host._menu_touched_ms = Time.get_ticks_msec() - host.CONTROLS_HIDE_MS - 100
 		ready(host, projection)
 		host._update_controls_visibility(host.player_menu)
-		check(host.player_menu.visible, "First frame reveals the requested controls: %d" % projection)
+		check(
+			host.player_menu.visible, "First frame reveals the requested controls: %d" % projection
+		)
 		var final_pose: Transform3D = host.player_menu.global_transform
 		host._place_menu(host.player_menu)
-		check(host.player_menu.global_transform.is_equal_approx(final_pose), "First visible pose already equals the resolved content anchor")
-		print("startup projection=", projection, " provisional_visible=", initial_visible, " timeline_shift_metres=", initial_timeline.distance_to(host.player_menu.to_global(Vector3(0, Menu.BAR_SEEK_Y, 0))))
+		check(
+			host.player_menu.global_transform.is_equal_approx(final_pose),
+			"First visible pose already equals the resolved content anchor"
+		)
+		print(
+			"startup projection=",
+			projection,
+			" provisional_visible=",
+			initial_visible,
+			" timeline_shift_metres=",
+			initial_timeline.distance_to(host.player_menu.to_global(Vector3(0, Menu.BAR_SEEK_Y, 0)))
+		)
 		# A seek after presentation keeps useful controls visible.
 		host.video._waiting_first = true
 		host._show_player_menu()
@@ -81,7 +104,10 @@ func _run() -> void:
 	host._show_player_menu()
 	host._show_recent_menu()
 	ready(host, Geometry.Geometry.FISHEYE)
-	check(host.recent_menu.visible and not host.player_menu.visible, "Returning to the library cancels the pending control reveal")
+	check(
+		host.recent_menu.visible and not host.player_menu.visible,
+		"Returning to the library cancels the pending control reveal"
+	)
 	opening(host, 21)
 	host._show_player_menu()
 	host._toggle_player_menu()
@@ -92,7 +118,10 @@ func _run() -> void:
 	host.video.media.begin(23)
 	host.video.local_uri = "file:///replacement.mp4"
 	ready(host, Geometry.Geometry.FISHEYE)
-	check(not host.player_menu.visible, "A late first frame cannot reveal controls for a different session")
+	check(
+		not host.player_menu.visible,
+		"A late first frame cannot reveal controls for a different session"
+	)
 	opening(host, 25)
 	host._show_player_menu()
 	host.video.close_video()
@@ -102,7 +131,9 @@ func _run() -> void:
 	host._show_player_menu()
 	host.display.preview = false
 	ready(host, Geometry.Geometry.FISHEYE)
-	check(not host.player_menu.visible, "First frame waits for tracking before exposing a menu pose")
+	check(
+		not host.player_menu.visible, "First frame waits for tracking before exposing a menu pose"
+	)
 	host.display.preview = true
 	host._update_player_menu_anchor()
 	check(host.player_menu.visible, "Tracking recovery reveals the controls at the resolved pose")
@@ -111,7 +142,10 @@ func _run() -> void:
 	host.video.media.state = "failed"
 	host.video.media.error = "MPV_TEST_LOAD_FAILED"
 	host.playback_feedback.tick()
-	check(host.player_menu.visible and host.player_menu._quick_open == "info", "Failed loading still opens the actionable error panel")
+	check(
+		host.player_menu.visible and host.player_menu._quick_open == "info",
+		"Failed loading still opens the actionable error panel"
+	)
 	host.queue_free()
 	await process_frame
 	for failure in failures:

@@ -139,9 +139,12 @@ def configure(args, env, sdk):
     # Stage the OpenXR vendor addon before configuring the Android project.
     stage_vendors()
     from configs.output_paths import guides
+
     guides(ROOT)
     player.configure_project(args, env, sdk)
-    marker = configuration_path(args.vendor, args.build_type, player.distribution_channel(args))
+    marker = configuration_path(
+        args.vendor, args.build_type, player.distribution_channel(args)
+    )
     marker.parent.mkdir(parents=True, exist_ok=True)
     marker.write_text(
         json.dumps(
@@ -155,7 +158,9 @@ def configure(args, env, sdk):
                 },
                 "sdk": str(sdk),
                 "java_home": env["JAVA_HOME"],
-                "generated_properties": digest(ROOT / "build/android/android.properties"),
+                "generated_properties": digest(
+                    ROOT / "build/android/android.properties"
+                ),
                 "staged_mpv": {
                     p.name: digest(p)
                     for p in (
@@ -170,7 +175,9 @@ def configure(args, env, sdk):
 
 
 def require_configuration(args, env, sdk):
-    marker = configuration_path(args.vendor, args.build_type, player.distribution_channel(args))
+    marker = configuration_path(
+        args.vendor, args.build_type, player.distribution_channel(args)
+    )
     if not marker.is_file():
         raise RuntimeError("Configure this target and build type first")
     data = json.loads(marker.read_text())
@@ -219,7 +226,9 @@ def prepare_packages(args, env):
 
 def build(args, env, sdk):
     player.build_plugin(args, env, sdk)
-    path = configuration_path(args.vendor, args.build_type, player.distribution_channel(args)).with_suffix(".built.json")
+    path = configuration_path(
+        args.vendor, args.build_type, player.distribution_channel(args)
+    ).with_suffix(".built.json")
     path.write_text(
         json.dumps(
             {
@@ -235,7 +244,9 @@ def build(args, env, sdk):
 
 
 def require_build(args):
-    path = configuration_path(args.vendor, args.build_type, player.distribution_channel(args)).with_suffix(".built.json")
+    path = configuration_path(
+        args.vendor, args.build_type, player.distribution_channel(args)
+    ).with_suffix(".built.json")
     if not path.exists():
         raise RuntimeError("Run build before package or run")
     data = json.loads(path.read_text())
@@ -273,13 +284,16 @@ def test(args, env, sdk, level):
             log=ROOT / "artifacts/tests/workflow/unittest.log",
         )
         player.run(
-            [sys.executable, ROOT / "tools/test_prepare_android_release.py"], env=env, log=ROOT / "artifacts/tests/workflow/release-publisher.log"
+            [sys.executable, ROOT / "tools/test_prepare_android_release.py"],
+            env=env,
+            log=ROOT / "artifacts/tests/workflow/release-publisher.log",
         )
         from configs.ci_support import check_export_path
 
         check_export_path(args.templates, args.gradle, env)
     if level in ("l1", "all"):
         import shutil
+
         try:
             player.run(
                 [
@@ -295,7 +309,9 @@ def test(args, env, sdk, level):
         finally:
             source = ROOT / "android/player-plugin/build/test-results/testDebugUnitTest"
             if source.is_dir():
-                shutil.copytree(source, ROOT / "artifacts/tests/jvm", dirs_exist_ok=True)
+                shutil.copytree(
+                    source, ROOT / "artifacts/tests/jvm", dirs_exist_ok=True
+                )
 
     if level in ("l2", "all"):
         from configs.ci_support import host_tests
@@ -323,7 +339,8 @@ def main(argv=None):
     )
     parser.add_argument("--vendor", choices=VENDORS, default="Quest")
     parser.add_argument(
-        "--channel", choices=player.CHANNELS,
+        "--channel",
+        choices=player.CHANNELS,
         help="Distribution channel (default: appstore; GitHub tags always use web)",
     )
     parser.add_argument(
@@ -333,9 +350,15 @@ def main(argv=None):
     )
     parser.add_argument("--level", choices=("l0", "l1", "l2", "all"), default="all")
     parser.add_argument(
-        "--dry-run", action="store_true", help="Preview clean or organize without changing files"
+        "--dry-run",
+        action="store_true",
+        help="Preview clean or organize without changing files",
     )
-    parser.add_argument("--scope", choices=("build", "intermediates", "logs", "tests", "captures", "archive"), help="Cleanup category; default build; packages and signing are never included")
+    parser.add_argument(
+        "--scope",
+        choices=("build", "intermediates", "logs", "tests", "captures", "archive"),
+        help="Cleanup category; default build; packages and signing are never included",
+    )
     opts = parser.parse_args(argv)
     if opts.dry_run and opts.command not in ("clean", "organize"):
         parser.error("--dry-run requires clean or organize")
@@ -343,6 +366,7 @@ def main(argv=None):
         parser.error("--scope requires clean")
     if opts.command in ("clean", "organize", "outputs"):
         from configs import output_paths
+
         if opts.command == "clean":
             output_paths.clean(ROOT, opts.scope or "build", opts.dry_run)
         elif opts.command == "organize":
@@ -357,6 +381,7 @@ def main(argv=None):
     if opts.command == "locate":
         from configs.ci_support import latest_receipt_file
         from configs.output_paths import apk_for_receipt
+
         path = latest_receipt_file(opts.vendor, opts.build_type, opts.channel)
         record = json.loads(path.read_text())
         apk = apk_for_receipt(path, record)
@@ -379,6 +404,7 @@ def main(argv=None):
         opts.channel,
     )
     from configs.output_paths import build_logs
+
     player.LOGS = build_logs(ROOT, args.vendor, args.channel, args.build_type)
     env, sdk = player.environment(args)
     with player.build_lock():
@@ -411,7 +437,9 @@ def main(argv=None):
             from configs.ci_support import latest_receipt_file
             from configs.output_paths import apk_for_receipt
 
-            receipt_file = latest_receipt_file(args.vendor, args.build_type, args.channel)
+            receipt_file = latest_receipt_file(
+                args.vendor, args.build_type, args.channel
+            )
             receipt = json.loads(receipt_file.read_text())
             apk = apk_for_receipt(receipt_file, receipt)
             if digest(apk) != receipt["sha256"]:

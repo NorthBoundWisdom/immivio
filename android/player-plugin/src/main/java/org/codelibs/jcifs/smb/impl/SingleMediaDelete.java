@@ -11,8 +11,7 @@ import org.codelibs.jcifs.smb.internal.smb2.create.Smb2CloseRequest;
  * FILE_OPEN cannot create a missing object. Read-only attributes are never cleared.
  */
 public final class SingleMediaDelete {
-    private SingleMediaDelete() {
-    }
+    private SingleMediaDelete() {}
 
     public static void delete(SmbFile file) throws CIFSException {
         delete(file, false);
@@ -29,8 +28,12 @@ public final class SingleMediaDelete {
             request.setDesiredAccess(SmbConstants.DELETE);
             request.setShareAccess(SmbConstants.FILE_NO_SHARE);
             request.setCreateDisposition(Smb2CreateRequest.FILE_OPEN);
-            request.setCreateOptions((directory ? Smb2CreateRequest.FILE_DIRECTORY_FILE : Smb2CreateRequest.FILE_NON_DIRECTORY_FILE) |
-                    Smb2CreateRequest.FILE_DELETE_ON_CLOSE | Smb2CreateRequest.FILE_OPEN_REPARSE_POINT);
+            request.setCreateOptions(
+                    (directory
+                                    ? Smb2CreateRequest.FILE_DIRECTORY_FILE
+                                    : Smb2CreateRequest.FILE_NON_DIRECTORY_FILE)
+                            | Smb2CreateRequest.FILE_DELETE_ON_CLOSE
+                            | Smb2CreateRequest.FILE_OPEN_REPARSE_POINT);
             request.chain(new Smb2CloseRequest(tree.getConfig(), path));
             tree.send(request);
         }

@@ -231,7 +231,8 @@ func relocate(old_uri: String, new_uri: String, basename: String, size: int = -1
 func list_markers(id: String) -> Array:
 	var markers: Array = records.get(id, {}).get("markers", []).duplicate(true)
 	markers.sort_custom(
-		func(a, b): return a.position_ms < b.position_ms if a.position_ms != b.position_ms else a.id < b.id
+		func(a, b):
+			return a.position_ms < b.position_ms if a.position_ms != b.position_ms else a.id < b.id
 	)
 	return markers
 

@@ -180,10 +180,7 @@ func _run() -> void:
 	menu._activate(Menu.NAV_BASE + Menu.Section.RECENT)
 	check(b.pending.is_empty(), "leaving server cancels requests")
 	check(
-		(
-			Menu.NAV_ORDER.find(Menu.Section.NETWORK) + 1
-			== Menu.NAV_ORDER.find(Menu.Section.SETTINGS)
-		),
+		Menu.NAV_ORDER.find(Menu.Section.NETWORK) + 1 == Menu.NAV_ORDER.find(Menu.Section.SETTINGS),
 		"Unified network media is immediately above settings"
 	)
 	for provider in ["emby", "jellyfin"]:

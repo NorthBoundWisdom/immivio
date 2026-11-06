@@ -439,7 +439,10 @@ func _run() -> void:
 				menu
 				. _buttons
 				. filter(
-					func(b): return ( b.target >= Menu.MODE_PROJECTION and b.target < Menu.MODE_PROJECTION + 4 )
+					func(b):
+						return (
+							b.target >= Menu.MODE_PROJECTION and b.target < Menu.MODE_PROJECTION + 4
+						),
 				)
 				. map(func(b): return b.target)
 			)

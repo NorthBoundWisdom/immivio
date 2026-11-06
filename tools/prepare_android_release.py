@@ -30,7 +30,9 @@ def prepare(packages, output, tag, commit):
     if len(receipts) != len(PLATFORMS):
         raise ValueError("Expected three Immivio build receipts")
     for receipt in receipts:
-        if receipt.is_symlink() or not receipt.resolve().is_relative_to(directory.resolve()):
+        if receipt.is_symlink() or not receipt.resolve().is_relative_to(
+            directory.resolve()
+        ):
             raise ValueError("Release receipt escapes its input directory")
         record = json.loads(receipt.read_text(encoding="utf-8"))
         vendor = record.get("vendor")
@@ -40,7 +42,9 @@ def prepare(packages, output, tag, commit):
         if record.get("product") != "Immivio" or record.get("build_type") != "Release":
             raise ValueError("Only Immivio Release packages can be published")
         if record.get("channel") != "web":
-            raise ValueError("Only web-channel packages can be published on GitHub Releases")
+            raise ValueError(
+                "Only web-channel packages can be published on GitHub Releases"
+            )
         if (
             record.get("source_commit") != commit
             or record.get("ci_ref") != "refs/tags/" + tag
@@ -85,7 +89,9 @@ def prepare(packages, output, tag, commit):
         if not required_manifests <= record.get("dependency_manifests", {}).keys():
             raise ValueError("Release receipt is missing dependency manifest digests")
         name = record.get("apk", "")
-        pattern = rf"Immivio-{PLATFORMS[vendor]}-[A-Za-z0-9._-]+-web-release-\d{{8}}\.apk"
+        pattern = (
+            rf"Immivio-{PLATFORMS[vendor]}-[A-Za-z0-9._-]+-web-release-\d{{8}}\.apk"
+        )
         if (
             not re.fullmatch(pattern, name)
             or receipt.name != Path(name).with_suffix(".build.json").name
@@ -103,7 +109,9 @@ def prepare(packages, output, tag, commit):
             raise ValueError("Release receipt has an invalid signing certificate")
         records.append(record)
         assets.extend([apk, receipt])
-    if set(directory.rglob("*.apk")) != {asset for asset in assets if asset.suffix == ".apk"}:
+    if set(directory.rglob("*.apk")) != {
+        asset for asset in assets if asset.suffix == ".apk"
+    }:
         raise ValueError("Unexpected APKs in the release input directory")
     # Validate the entire set before copying any publishable package.
     output = Path(output)

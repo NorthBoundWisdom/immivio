@@ -1,13 +1,22 @@
 package org.vrpassthroughplayer.plugin
 
-import android.opengl.GLES30
-import android.opengl.EGL14
 import android.content.Intent
 import android.content.IntentFilter
+import android.opengl.EGL14
+import android.opengl.GLES30
 import android.os.BatteryManager
 import android.text.format.DateFormat
-import androidx.media3.common.util.UnstableApi
 import android.util.Log
+import androidx.media3.common.util.UnstableApi
+import java.io.File
+import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
+import javax.microedition.khronos.egl.EGLConfig
+import javax.microedition.khronos.opengles.GL10
 import org.godotengine.godot.Godot
 import org.godotengine.godot.GodotHost
 import org.godotengine.godot.plugin.GodotPlugin
@@ -15,15 +24,6 @@ import org.godotengine.godot.plugin.SignalInfo
 import org.godotengine.godot.plugin.UsedByGodot
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.File
-import java.util.concurrent.ArrayBlockingQueue
-import java.util.concurrent.ThreadPoolExecutor
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.RejectedExecutionException
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicInteger
-import javax.microedition.khronos.egl.EGLConfig
-import javax.microedition.khronos.opengles.GL10
 
 @UnstableApi
 class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
@@ -33,73 +33,86 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     }
 
     @UsedByGodot
-    fun request_update_check(version: String): Int = if (closed.get()) -1 else updateChecks.request(version)
+    fun request_update_check(version: String): Int =
+        if (closed.get()) -1 else updateChecks.request(version)
 
-    private val releasePageOpener = ReleasePageOpener(
-        active = { !closed.get() },
-        post = { operation ->
-            check(activity != null) { "Activity unavailable" }
-            runOnHostThread { operation() }
-        },
-        launch = { url ->
-            val host = activity ?: error("Activity unavailable")
-            host.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)))
-        },
-        report = { id, tag, opened -> emitSignal("update_release_opened", id, tag, opened) }
-    )
+    private val releasePageOpener =
+        ReleasePageOpener(
+            active = { !closed.get() },
+            post = { operation ->
+                check(activity != null) { "Activity unavailable" }
+                runOnHostThread { operation() }
+            },
+            launch = { url ->
+                val host = activity ?: error("Activity unavailable")
+                host.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+            },
+            report = { id, tag, opened -> emitSignal("update_release_opened", id, tag, opened) },
+        )
 
-    @UsedByGodot
-    fun open_update_release(tag: String): Int = releasePageOpener.open(tag)
+    @UsedByGodot fun open_update_release(tag: String): Int = releasePageOpener.open(tag)
 
-    @Volatile
-    private var signalsReady = false
+    @Volatile private var signalsReady = false
     private val requestId = AtomicInteger(0)
-    private val probe = ThreadPoolExecutor(
-        1, 1, 0, TimeUnit.MILLISECONDS,
-        ArrayBlockingQueue(1), { task -> Thread(task, "QuestCapabilityProbe") },
-        ThreadPoolExecutor.DiscardOldestPolicy()
-    )
+    private val probe =
+        ThreadPoolExecutor(
+            1,
+            1,
+            0,
+            TimeUnit.MILLISECONDS,
+            ArrayBlockingQueue(1),
+            { task -> Thread(task, "QuestCapabilityProbe") },
+            ThreadPoolExecutor.DiscardOldestPolicy(),
+        )
 
-    @Volatile
-    private var graphicsSnapshot = "{\"observed\":false}"
-    private val media = LocalVideoBridge(
-        { activity?.applicationContext },
-        { runOnRenderThread(it) }) { name, id, json ->
-        if (!closed.get()) emitSignal(name, id, json)
-    }
-    private val picker = LocalVideoPicker({ activity }) { json ->
-        if (!closed.get()) emitSignal("local_video_selected", json)
-    }
-    private val subtitlePicker = LocalVideoPicker({ activity }, "*/*", 0x6650) { json ->
-        if (!closed.get()) emitSignal("local_subtitle_selected", json)
-    }
-    private val localAccess = LocalVideoAccess({ activity?.applicationContext }) { id, json ->
-        if (!closed.get()) emitSignal("local_video_access", id, json)
-    }
+    @Volatile private var graphicsSnapshot = "{\"observed\":false}"
+    private val media =
+        LocalVideoBridge(
+            { activity?.applicationContext },
+            { runOnRenderThread(it) },
+        ) { name, id, json ->
+            if (!closed.get()) emitSignal(name, id, json)
+        }
+    private val picker =
+        LocalVideoPicker({ activity }) { json ->
+            if (!closed.get()) emitSignal("local_video_selected", json)
+        }
+    private val subtitlePicker =
+        LocalVideoPicker({ activity }, "*/*", 0x6650) { json ->
+            if (!closed.get()) emitSignal("local_subtitle_selected", json)
+        }
+    private val localAccess =
+        LocalVideoAccess({ activity?.applicationContext }) { id, json ->
+            if (!closed.get()) emitSignal("local_video_access", id, json)
+        }
 
     // queueEvent runs on the GL thread, but Godot can have released its EGL context
     // there. Native GL work must wait for an actual draw callback with a current context.
     private val controlledRenderTasks = ArrayBlockingQueue<Runnable>(16)
-    private val sources = MediaSources({ activity }) { id, json ->
-        if (!closed.get()) emitSignal(
-            "media_list",
-            id,
-            json
-        )
-    }
+    private val sources =
+        MediaSources({ activity }) { id, json ->
+            if (!closed.get())
+                emitSignal(
+                    "media_list",
+                    id,
+                    json,
+                )
+        }
     private val accounts = AccountManager { activity }
-    private val mpv = MpvVideoBridge(
-        { activity?.applicationContext },
-        {
-            check(controlledRenderTasks.offer(it)) { "Player render task capacity exhausted" }
-        },
-        { name, id, json -> if (!closed.get()) emitSignal(name, id, json) },
-        sources::playable,
-        sources::sidecarAudio,
-        sources::releaseMediaStream,
-        sources::sidecarSubtitles,
-        sources::resolveShortcut
-    )
+    private val mpv =
+        MpvVideoBridge(
+            { activity?.applicationContext },
+            {
+                check(controlledRenderTasks.offer(it)) { "Player render task capacity exhausted" }
+            },
+            { name, id, json -> if (!closed.get()) emitSignal(name, id, json) },
+            sources::playable,
+            sources::sidecarAudio,
+            sources::releaseMediaStream,
+            sources::sidecarSubtitles,
+            sources::resolveShortcut,
+        )
+
     init {
         DiagnosticRequests.attach(this)
     }
@@ -109,10 +122,11 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     /** Use the engine host's process restart/termination path so XR is created afresh. */
     @UsedByGodot
     fun finish_app(restart: Boolean) {
-        if (!closed.get()) runOnHostThread {
-            val host = activity as? GodotHost ?: return@runOnHostThread
-            if (restart) host.onGodotRestartRequested(godot) else host.onGodotForceQuit(godot)
-        }
+        if (!closed.get())
+            runOnHostThread {
+                val host = activity as? GodotHost ?: return@runOnHostThread
+                if (restart) host.onGodotRestartRequested(godot) else host.onGodotForceQuit(godot)
+            }
     }
 
     @UsedByGodot
@@ -120,32 +134,38 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         activity?.applicationContext?.let { UiLanguage.setChoice(it, choice) }
     }
 
-    override fun getPluginSignals() = setOf(
-        SignalInfo("update_release_opened", Int::class.javaObjectType, String::class.java, Boolean::class.javaObjectType),
-        SignalInfo("update_check_ready", Int::class.javaObjectType, String::class.java),
-        SignalInfo("diagnostic_log_saved", Int::class.javaObjectType, String::class.java),
-        SignalInfo("capabilities_ready", Int::class.javaObjectType, String::class.java),
-        SignalInfo("android_lifecycle", String::class.java),
-        SignalInfo("media_list", Int::class.javaObjectType, String::class.java),
-        SignalInfo("local_video_selected", String::class.java),
-        SignalInfo("local_subtitle_selected", String::class.java),
-        SignalInfo("mpv_subtitle_import", Int::class.javaObjectType, String::class.java),
-        SignalInfo("local_video_access", Int::class.javaObjectType, String::class.java),
-        SignalInfo("media_state", Int::class.javaObjectType, String::class.java),
-        SignalInfo("media_format", Int::class.javaObjectType, String::class.java),
-        SignalInfo("media_frame", Int::class.javaObjectType, String::class.java),
-        SignalInfo("media_codec", Int::class.javaObjectType, String::class.java),
-        SignalInfo("media_error", Int::class.javaObjectType, String::class.java),
-        SignalInfo("media_released", Int::class.javaObjectType, String::class.java),
-        SignalInfo("mpv_state", Int::class.javaObjectType, String::class.java),
-        SignalInfo("mpv_pair_available", Int::class.javaObjectType, String::class.java),
-        SignalInfo("mpv_error", Int::class.javaObjectType, String::class.java),
-        SignalInfo("mpv_detach", Int::class.javaObjectType, String::class.java),
-        SignalInfo("mpv_released", Int::class.javaObjectType, String::class.java),
-        SignalInfo("mpv_debug_command", Int::class.javaObjectType, String::class.java),
-        SignalInfo("mpv_pixel_mask", Int::class.javaObjectType, String::class.java),
-        SignalInfo("mpv_frozen_pair", Int::class.javaObjectType, String::class.java),
-    )
+    override fun getPluginSignals() =
+        setOf(
+            SignalInfo(
+                "update_release_opened",
+                Int::class.javaObjectType,
+                String::class.java,
+                Boolean::class.javaObjectType,
+            ),
+            SignalInfo("update_check_ready", Int::class.javaObjectType, String::class.java),
+            SignalInfo("diagnostic_log_saved", Int::class.javaObjectType, String::class.java),
+            SignalInfo("capabilities_ready", Int::class.javaObjectType, String::class.java),
+            SignalInfo("android_lifecycle", String::class.java),
+            SignalInfo("media_list", Int::class.javaObjectType, String::class.java),
+            SignalInfo("local_video_selected", String::class.java),
+            SignalInfo("local_subtitle_selected", String::class.java),
+            SignalInfo("mpv_subtitle_import", Int::class.javaObjectType, String::class.java),
+            SignalInfo("local_video_access", Int::class.javaObjectType, String::class.java),
+            SignalInfo("media_state", Int::class.javaObjectType, String::class.java),
+            SignalInfo("media_format", Int::class.javaObjectType, String::class.java),
+            SignalInfo("media_frame", Int::class.javaObjectType, String::class.java),
+            SignalInfo("media_codec", Int::class.javaObjectType, String::class.java),
+            SignalInfo("media_error", Int::class.javaObjectType, String::class.java),
+            SignalInfo("media_released", Int::class.javaObjectType, String::class.java),
+            SignalInfo("mpv_state", Int::class.javaObjectType, String::class.java),
+            SignalInfo("mpv_pair_available", Int::class.javaObjectType, String::class.java),
+            SignalInfo("mpv_error", Int::class.javaObjectType, String::class.java),
+            SignalInfo("mpv_detach", Int::class.javaObjectType, String::class.java),
+            SignalInfo("mpv_released", Int::class.javaObjectType, String::class.java),
+            SignalInfo("mpv_debug_command", Int::class.javaObjectType, String::class.java),
+            SignalInfo("mpv_pixel_mask", Int::class.javaObjectType, String::class.java),
+            SignalInfo("mpv_frozen_pair", Int::class.javaObjectType, String::class.java),
+        )
 
     @UsedByGodot
     fun pick_local_video(): Int {
@@ -178,36 +198,55 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         val app = activity?.applicationContext ?: return false
         DiagnosticLogs.record(File(app.filesDir, "diagnostics"), event, json)
         true
-    }.getOrDefault(false)
+    }
+        .getOrDefault(false)
 
     @UsedByGodot
-    fun diagnostic_previous_available(): Boolean = activity?.applicationContext?.let { File(it.filesDir, "diagnostics/crash/last-report.txt").isFile } ?: false
+    fun diagnostic_previous_available(): Boolean =
+        activity?.applicationContext?.let {
+            File(it.filesDir, "diagnostics/crash/last-report.txt").isFile
+        } ?: false
 
     @UsedByGodot
     fun save_diagnostic_log(): Int {
         val app = activity?.applicationContext ?: return -1
         val id = requestId.incrementAndGet()
-        return if (!closed.get() && DiagnosticLogs.request(app) { result -> if (!closed.get()) emitSignal("diagnostic_log_saved", id, result.toString()) }) id else -1
+        return if (
+            !closed.get() &&
+                DiagnosticLogs.request(app) { result ->
+                    if (!closed.get()) emitSignal("diagnostic_log_saved", id, result.toString())
+                }
+        )
+            id
+        else -1
     }
 
     @UsedByGodot
     fun external_playback_belongs_to(uri: String, root: String, uuid: String): Boolean =
-        uri.length <= 8192 && root.length <= 8192 && uuid.length <= 64 && ExternalPlaybackPending.leases.belongsTo(uri, root, uuid)
+        uri.length <= 8192 &&
+            root.length <= 8192 &&
+            uuid.length <= 64 &&
+            ExternalPlaybackPending.leases.belongsTo(uri, root, uuid)
 
     @UsedByGodot
-    fun external_playback_release(uri: String) { if (uri.startsWith("externalvideo://")) ExternalPlaybackPending.leases.release(uri) }
+    fun external_playback_release(uri: String) {
+        if (uri.startsWith("externalvideo://")) ExternalPlaybackPending.leases.release(uri)
+    }
 
     @UsedByGodot
-    fun external_playback_poll(): String = if (!closed.get() && signalsReady) ExternalPlaybackPending.poll() else "{}"
+    fun external_playback_poll(): String =
+        if (!closed.get() && signalsReady) ExternalPlaybackPending.poll() else "{}"
 
     @UsedByGodot
-    fun subtitle_candidates(uri: String): Int = if (closed.get() || uri.length > 8192) -1 else sources.subtitleCandidates(uri)
+    fun subtitle_candidates(uri: String): Int =
+        if (closed.get() || uri.length > 8192) -1 else sources.subtitleCandidates(uri)
 
     @UsedByGodot
     fun media_server_playback(json: String): Boolean = !closed.get() && sources.reportPlayback(json)
 
     @UsedByGodot
-    fun configure_subtitle_encodings(uri: String, json: String): Boolean = !closed.get() && mpv.subtitleEncodings(uri, json)
+    fun configure_subtitle_encodings(uri: String, json: String): Boolean =
+        !closed.get() && mpv.subtitleEncodings(uri, json)
 
     @UsedByGodot
     fun add_mpv_subtitle(id: Int, uri: String): Boolean = !closed.get() && mpv.addSubtitle(id, uri)
@@ -252,7 +291,9 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         media.close(id)
     }
 
-    /** Headset battery and clock style: {"level": 0..100 or -1, "charging", "plugged", "clock24"}. */
+    /**
+     * Headset battery and clock style: {"level": 0..100 or -1, "charging", "plugged", "clock24"}.
+     */
     @UsedByGodot
     fun device_status(): String {
         val host = activity ?: return "{}"
@@ -261,34 +302,40 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         val snapshot = runCatching {
             host.registerReceiver(
                 null,
-                IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+                IntentFilter(Intent.ACTION_BATTERY_CHANGED),
             )
-        }.getOrNull()
-        val state = DeviceBatteryStatus.resolve(
-            snapshot?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1,
-            snapshot?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1,
-            snapshot?.getIntExtra(
-                BatteryManager.EXTRA_STATUS,
-                BatteryManager.BATTERY_STATUS_UNKNOWN
-            ) ?: BatteryManager.BATTERY_STATUS_UNKNOWN,
-            snapshot?.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1) ?: -1,
-            runCatching {
-                battery?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
-            }.getOrDefault(-1),
-            runCatching { battery?.isCharging ?: false }.getOrDefault(false)
-        )
-        return JSONObject().put("level", state.level)
-            .put("charging", state.charging).put("plugged", state.plugged)
-            .put("clock24", DateFormat.is24HourFormat(host)).toString()
+        }
+            .getOrNull()
+        val state =
+            DeviceBatteryStatus.resolve(
+                snapshot?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1,
+                snapshot?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1,
+                snapshot?.getIntExtra(
+                    BatteryManager.EXTRA_STATUS,
+                    BatteryManager.BATTERY_STATUS_UNKNOWN,
+                ) ?: BatteryManager.BATTERY_STATUS_UNKNOWN,
+                snapshot?.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1) ?: -1,
+                runCatching {
+                        battery?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
+                    }
+                    .getOrDefault(-1),
+                runCatching { battery?.isCharging ?: false }.getOrDefault(false),
+            )
+        return JSONObject()
+            .put("level", state.level)
+            .put("charging", state.charging)
+            .put("plugged", state.plugged)
+            .put("clock24", DateFormat.is24HourFormat(host))
+            .toString()
     }
 
-    @UsedByGodot
-    fun mpv_supported(): Boolean = !closed.get() && mpv.supported()
+    @UsedByGodot fun mpv_supported(): Boolean = !closed.get() && mpv.supported()
 
     @UsedByGodot
     fun set_mpv_output_width(width: Int) {
         if (width in 0..8192) mpv.outputWidthCap = width
     }
+
     // Library sources: each returns a request id; the result arrives as media_list(id, json).
     /** Headset storage: path "" lists the volumes, otherwise one folder's subfolders and videos. */
     @UsedByGodot
@@ -299,8 +346,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         return id
     }
 
-    @UsedByGodot
-    fun media_list_local(): Int = media_local_browse("")
+    @UsedByGodot fun media_list_local(): Int = media_local_browse("")
 
     @UsedByGodot
     fun media_local_storage_settings(path: String): Int {
@@ -372,17 +418,17 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         sources.serverCancel(id)
     }
 
-    /** Opens the system "All files access" page (folders beyond media ones, files beside videos). */
+    /**
+     * Opens the system "All files access" page (folders beyond media ones, files beside videos).
+     */
     @UsedByGodot
     fun media_local_grant_all_files() {
         if (!closed.get()) runOnHostThread { sources.grantAllFiles() }
     }
 
-    @UsedByGodot
-    fun media_dlna_discover(): Int = if (closed.get()) -1 else sources.dlnaDiscover()
+    @UsedByGodot fun media_dlna_discover(): Int = if (closed.get()) -1 else sources.dlnaDiscover()
 
-    @UsedByGodot
-    fun media_dlna_servers(): Int = if (closed.get()) -1 else sources.dlnaServers()
+    @UsedByGodot fun media_dlna_servers(): Int = if (closed.get()) -1 else sources.dlnaServers()
 
     @UsedByGodot
     fun media_dlna_save(json: String): Int = if (closed.get()) -1 else sources.dlnaSave(json)
@@ -394,11 +440,9 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     fun media_dlna_browse(server: String, objectId: String): Int =
         if (closed.get()) -1 else sources.dlnaBrowse(server, objectId)
 
-    @UsedByGodot
-    fun media_smb_servers(): Int = if (closed.get()) -1 else sources.smbServers()
+    @UsedByGodot fun media_smb_servers(): Int = if (closed.get()) -1 else sources.smbServers()
 
-    @UsedByGodot
-    fun media_smb_discover(): Int = if (closed.get()) -1 else sources.smbDiscover()
+    @UsedByGodot fun media_smb_discover(): Int = if (closed.get()) -1 else sources.smbDiscover()
 
     /** {id?, name, host, domain, user, password}; an empty password keeps the saved one. */
     @UsedByGodot
@@ -410,8 +454,12 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     @UsedByGodot
     fun media_smb_browse(server: String, path: String): Int =
         if (closed.get()) -1 else sources.smbBrowse(server, path)
+
     /** Legacy alpha/depth arguments must be false; generated effects are retired. */
-    /** topBottom: a stereo source with the views above each other (top = left eye) instead of side by side. */
+    /**
+     * topBottom: a stereo source with the views above each other (top = left eye) instead of side
+     * by side.
+     */
     @UsedByGodot
     fun open_mpv_video(
         uri: String,
@@ -422,28 +470,45 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         vulkan: Boolean,
         depth: Boolean,
         topBottom: Boolean,
-        exactSeek: Boolean
+        exactSeek: Boolean,
     ): Int =
-        if (closed.get()) -1 else mpv.open(
-            uri, startMs, stereo, profile, alpha, vulkan, depth = depth, topBottom = topBottom,
-            exactSeek = exactSeek
-        )
+        if (closed.get()) -1
+        else
+            mpv.open(
+                uri,
+                startMs,
+                stereo,
+                profile,
+                alpha,
+                vulkan,
+                depth = depth,
+                topBottom = topBottom,
+                exactSeek = exactSeek,
+            )
 
     @UsedByGodot
     fun revise_mpv_video(
-        id: Int, stereo: Boolean, alpha: Boolean, profile: String, positionMs: Int, depth: Boolean,
-        topBottom: Boolean, exactSeek: Boolean
+        id: Int,
+        stereo: Boolean,
+        alpha: Boolean,
+        profile: String,
+        positionMs: Int,
+        depth: Boolean,
+        topBottom: Boolean,
+        exactSeek: Boolean,
     ): Int =
-        if (closed.get()) -1 else mpv.revise(
-            id,
-            stereo,
-            alpha,
-            profile,
-            positionMs,
-            depth,
-            topBottom,
-            exactSeek
-        )
+        if (closed.get()) -1
+        else
+            mpv.revise(
+                id,
+                stereo,
+                alpha,
+                profile,
+                positionMs,
+                depth,
+                topBottom,
+                exactSeek,
+            )
 
     @UsedByGodot
     fun set_mpv_playing(id: Int, playing: Boolean) {
@@ -477,8 +542,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     fun acknowledge_mpv_pair(id: Int, token: Long): Boolean =
         !closed.get() && mpv.acknowledge(id, token)
 
-    @UsedByGodot
-    fun detach_mpv_pair(id: Int, token: Long): Boolean = mpv.detach(id, token)
+    @UsedByGodot fun detach_mpv_pair(id: Int, token: Long): Boolean = mpv.detach(id, token)
 
     @UsedByGodot
     fun freeze_mpv_pair(id: Int, token: Long, request: Int): Boolean =
@@ -495,8 +559,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     @UsedByGodot
     fun pin_mpv_pair(id: Int, token: Long): Boolean = !closed.get() && mpv.pinPair(id, token)
 
-    @UsedByGodot
-    fun release_mpv_pair_pin(id: Int, token: Long): Boolean = mpv.unpinPair(id, token)
+    @UsedByGodot fun release_mpv_pair_pin(id: Int, token: Long): Boolean = mpv.unpinPair(id, token)
 
     @UsedByGodot
     fun close_mpv_video(id: Int) {
@@ -509,6 +572,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
 
     @UsedByGodot
     fun release_mpv_pixel_pin(id: Int, token: Long): Boolean = mpv.unpinPixelPair(id, token)
+
     internal fun requestMpvPlayerCommand(json: String): Int {
         if (closed.get()) return -1
         if (BuildConfig.DEBUG) {
@@ -547,19 +611,24 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     override fun onMainRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<String?>?,
-        grantResults: IntArray?
+        grantResults: IntArray?,
     ) {
-        if (!closed.get()) sources.onPermissionResult(
-            requestCode,
-            grantResults != null && grantResults.isNotEmpty() && grantResults.all { it == android.content.pm.PackageManager.PERMISSION_GRANTED })
+        if (!closed.get())
+            sources.onPermissionResult(
+                requestCode,
+                grantResults != null &&
+                    grantResults.isNotEmpty() &&
+                    grantResults.all { it == android.content.pm.PackageManager.PERMISSION_GRANTED },
+            )
     }
 
     override fun onMainActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (!closed.get()) {
-            picker.result(requestCode, resultCode, data); subtitlePicker.result(
+            picker.result(requestCode, resultCode, data)
+            subtitlePicker.result(
                 requestCode,
                 resultCode,
-                data
+                data,
             )
         }
     }
@@ -568,7 +637,9 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         if (EGL14.eglGetCurrentContext() == EGL14.EGL_NO_CONTEXT) return
         repeat(16) { controlledRenderTasks.poll()?.run() ?: return@repeat }
         if (!closed.get()) {
-            media.draw(); mpv.draw(); XrUiSurfaceBridge.draw()
+            media.draw()
+            mpv.draw()
+            XrUiSurfaceBridge.draw()
         }
     }
 
@@ -579,14 +650,16 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         try {
             probe.execute {
                 if (closed.get() || id != requestId.get()) return@execute
-                val result = try {
-                    DeviceCapabilities.collect(graphicsSnapshot)
-                } catch (error: Exception) {
-                    JSONObject().put(
-                        "probe_error",
-                        error.javaClass.simpleName + ": " + (error.message ?: "")
-                    )
-                }
+                val result =
+                    try {
+                        DeviceCapabilities.collect(graphicsSnapshot)
+                    } catch (error: Exception) {
+                        JSONObject()
+                            .put(
+                                "probe_error",
+                                error.javaClass.simpleName + ": " + (error.message ?: ""),
+                            )
+                    }
                 if (!closed.get() && id == requestId.get()) {
                     emitSignal("capabilities_ready", id, result.toString())
                 }
@@ -623,17 +696,19 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         XrUiSurfaceBridge.contextCreated()
         media.contextCreated()
         mpv.contextCreated()
-        val report = JSONObject().put("observed", true)
-            .put("vendor", GLES30.glGetString(GLES30.GL_VENDOR))
-            .put("renderer", GLES30.glGetString(GLES30.GL_RENDERER))
-            .put("version", GLES30.glGetString(GLES30.GL_VERSION))
+        val report =
+            JSONObject()
+                .put("observed", true)
+                .put("vendor", GLES30.glGetString(GLES30.GL_VENDOR))
+                .put("renderer", GLES30.glGetString(GLES30.GL_RENDERER))
+                .put("version", GLES30.glGetString(GLES30.GL_VERSION))
         val count = IntArray(1)
         GLES30.glGetIntegerv(GLES30.GL_NUM_EXTENSIONS, count, 0)
         val extensions = JSONArray()
         for (index in 0 until count[0]) extensions.put(
             GLES30.glGetStringi(
                 GLES30.GL_EXTENSIONS,
-                index
+                index,
             )
         )
         graphicsSnapshot = report.put("extensions", extensions).toString()
@@ -649,18 +724,24 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     override fun onMainPause() {
         if (!closed.get()) {
             CrashRecords.foreground(false)
-            media.pause(); mpv.pause(); if (signalsReady) emitSignal(
-                "android_lifecycle",
-                "pause"
-            )
+            media.pause()
+            mpv.pause()
+            if (signalsReady)
+                emitSignal(
+                    "android_lifecycle",
+                    "pause",
+                )
         }
     }
 
     override fun onMainResume() {
         if (!closed.get()) {
             CrashRecords.foreground(true)
-            media.resume(); mpv.resume(); if (signalsReady) {
-                sources.refreshLocalStorage(); emitSignal("android_lifecycle", "resume")
+            media.resume()
+            mpv.resume()
+            if (signalsReady) {
+                sources.refreshLocalStorage()
+                emitSignal("android_lifecycle", "resume")
             }
         }
     }
@@ -677,7 +758,14 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         if (closed.compareAndSet(false, true)) {
             updateChecks.close()
             CrashRecords.cleanExit()
-            accounts.close(); picker.close(); subtitlePicker.close(); localAccess.close(); probe.shutdownNow(); media.shutdown(); mpv.shutdown(); sources.close()
+            accounts.close()
+            picker.close()
+            subtitlePicker.close()
+            localAccess.close()
+            probe.shutdownNow()
+            media.shutdown()
+            mpv.shutdown()
+            sources.close()
         }
     }
 }

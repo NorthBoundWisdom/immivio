@@ -13,10 +13,13 @@ internal class AccountInput(private val limit: Int = 2048) {
         while (at < text.length) {
             val c = text[at]
             val count =
-                if (Character.isHighSurrogate(c) && at + 1 < text.length && Character.isLowSurrogate(
-                        text[at + 1]
-                    )
-                ) 2 else 1
+                if (
+                    Character.isHighSurrogate(c) &&
+                        at + 1 < text.length &&
+                        Character.isLowSurrogate(text[at + 1])
+                )
+                    2
+                else 1
             if (length + count > limit) break
             repeat(count) { chars[length++] = text[at++] }
         }
@@ -25,19 +28,24 @@ internal class AccountInput(private val limit: Int = 2048) {
     @Synchronized
     fun backspace() {
         if (length > 0) {
-            val last = chars[--length]; chars[length] = '\u0000'
-            if (Character.isLowSurrogate(last) && length > 0 && Character.isHighSurrogate(chars[length - 1])) chars[--length] =
-                '\u0000'
+            val last = chars[--length]
+            chars[length] = '\u0000'
+            if (
+                Character.isLowSurrogate(last) &&
+                    length > 0 &&
+                    Character.isHighSurrogate(chars[length - 1])
+            )
+                chars[--length] = '\u0000'
         }
     }
 
     @Synchronized
     fun clear() {
-        chars.fill('\u0000'); length = 0
+        chars.fill('\u0000')
+        length = 0
     }
 
-    @Synchronized
-    fun copy() = chars.copyOf(length)
-    @Synchronized
-    fun text() = String(chars, 0, length)
+    @Synchronized fun copy() = chars.copyOf(length)
+
+    @Synchronized fun text() = String(chars, 0, length)
 }

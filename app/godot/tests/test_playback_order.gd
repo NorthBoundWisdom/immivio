@@ -1,14 +1,20 @@
 extends SceneTree
+
+
 func _initialize() -> void:
 	preload("res://tests/support/test_result.gd").prepare(self)
 	call_deferred("_run")
+
+
 func _run() -> void:
 	var menu := preload("res://scripts/player_menu.gd").new()
 	root.add_child(menu)
 	var host := preload("res://scripts/main.gd").new()
 	host.video = preload("res://scripts/mpv_video_display.gd").new()
 	host.playback_queue = preload("res://scripts/playback_queue.gd").new()
-	host.playback_queue.replace([{"uri": "file:///a.mp4", "title": "A"}, {"uri": "file:///b.mp4", "title": "B"}])
+	host.playback_queue.replace(
+		[{"uri": "file:///a.mp4", "title": "A"}, {"uri": "file:///b.mp4", "title": "B"}]
+	)
 	host.video.local_uri = "file:///a.mp4"
 	menu.setting_requested.connect(host._on_player_setting)
 	menu._state = {"has_video": true, "queue_shuffle": false}

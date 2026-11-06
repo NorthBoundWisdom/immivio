@@ -81,7 +81,10 @@ func _run() -> void:
 	menu.refresh()
 	await get_tree().process_frame
 	var profiles: Array = b.servers.map(
-		func(item): return { "provider": item.get("provider", ""), "has_capabilities": item.has("capabilities") }
+		func(item):
+			return {
+				"provider": item.get("provider", ""), "has_capabilities": item.has("capabilities")
+			}
 	)
 	var ids := {}
 	for entry in b.entries:

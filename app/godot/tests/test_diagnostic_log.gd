@@ -1,19 +1,32 @@
 extends SceneTree
 const Log := preload("res://scripts/diagnostic_log.gd")
+
+
 func _initialize() -> void:
 	preload("res://tests/support/test_result.gd").prepare(self)
 	call_deferred("_run")
+
+
 func _run() -> void:
-	var cleaned: Dictionary = Log.clean({"username": "person", "nested": {"token": "secret", "url": "https://user:pass@host/video?signature=bad"}})
+	var cleaned: Dictionary = Log.clean(
+		{
+			"username": "person",
+			"nested": {"token": "secret", "url": "https://user:pass@host/video?signature=bad"}
+		}
+	)
 	var encoded := JSON.stringify(cleaned)
 	for secret in ["person", "secret", "signature=bad", "user:pass"]:
 		assert(not encoded.contains(secret))
 	DirAccess.make_dir_recursive_absolute("user://diagnostics")
 	var seeded := FileAccess.open(Log.EVENT_PATH, FileAccess.WRITE)
-	seeded.store_line(JSON.stringify({"event": "legacy", "details": "x".repeat(Log.MAX_BYTES - 100)}))
+	seeded.store_line(
+		JSON.stringify({"event": "legacy", "details": "x".repeat(Log.MAX_BYTES - 100)})
+	)
 	seeded.close()
 	Log.record("synthetic", {"text": "x".repeat(2048)})
-	assert(not Log.safe_text('{"Cookie":"session=hidden","password":"hello world"}').contains("hidden"))
+	assert(
+		not Log.safe_text('{"Cookie":"session=hidden","password":"hello world"}').contains("hidden")
+	)
 	assert(FileAccess.file_exists("user://diagnostics/events.1.jsonl"))
 	var file := FileAccess.open(Log.EVENT_PATH, FileAccess.READ)
 	assert(file.get_length() <= Log.MAX_BYTES)

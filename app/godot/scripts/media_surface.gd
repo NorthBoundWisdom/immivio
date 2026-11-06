@@ -168,7 +168,9 @@ func _center_on_view() -> void:
 		panel.global_position = view_camera.global_position
 	else:
 		panel.position = Vector3(0, 1.6, 0)
-	panel.global_position += panel.global_basis * Vector3(view_horizontal, view_vertical, -view_zoom) * SPHERE_RADIUS
+	panel.global_position += (
+		panel.global_basis * Vector3(view_horizontal, view_vertical, -view_zoom) * SPHERE_RADIUS
+	)
 
 
 ## Drag: the picture follows the controller (radians; positive yaw turns it left, pitch up).

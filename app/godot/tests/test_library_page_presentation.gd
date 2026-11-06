@@ -42,33 +42,72 @@ func _run() -> void:
 		surface._update_bounds()
 		var rect: Rect2 = surface.surface_rect
 		surface.presented = surface._capture_metadata(Surface.capture_pose(library))
-		for destination in [Library.Section.NETWORK, Library.Section.SETTINGS, Library.Section.NETWORK, Library.Section.SETTINGS]:
+		for destination in [
+			Library.Section.NETWORK,
+			Library.Section.SETTINGS,
+			Library.Section.NETWORK,
+			Library.Section.SETTINGS
+		]:
 			library._activate(Library.NAV_BASE + destination)
 			surface._update_bounds()
-			check(surface.surface_rect == rect, "Settings and network sources share their physical projection")
-			check(not surface._matches_capture(surface.presented), "New page awaits its own capture acknowledgement")
-			check(surface._can_display_capture(surface.presented), "An unchanged window retains its preceding image during the redraw")
-			check(not surface.is_layout_presented(library), "Retaining the window cannot activate unacknowledged controls")
+			check(
+				surface.surface_rect == rect,
+				"Settings and network sources share their physical projection"
+			)
+			check(
+				not surface._matches_capture(surface.presented),
+				"New page awaits its own capture acknowledgement"
+			)
+			check(
+				surface._can_display_capture(surface.presented),
+				"An unchanged window retains its preceding image during the redraw"
+			)
+			check(
+				not surface.is_layout_presented(library),
+				"Retaining the window cannot activate unacknowledged controls"
+			)
 			surface._apply_presented_layer()
-			check(surface.layer.quad_size == rect.size if radius == 0 else surface.cylinder_layer.central_angle > .001, "Native quad and cylinder remain visible across page navigation")
+			check(
+				(
+					surface.layer.quad_size == rect.size
+					if radius == 0
+					else surface.cylinder_layer.central_angle > .001
+				),
+				"Native quad and cylinder remain visible across page navigation"
+			)
 			surface.presented = surface._capture_metadata(Surface.capture_pose(library))
-			check(surface.is_layout_presented(library), "Acknowledging the new capture enables its own controls")
+			check(
+				surface.is_layout_presented(library),
+				"Acknowledging the new capture enables its own controls"
+			)
 		library._activate(Library.NAV_BASE + Library.Section.NETWORK)
 		var pose: Transform3D = library.global_transform
 		library.position.y += .1
-		check(not surface._can_display_capture(surface.presented), "A new page cannot retain pixels at a different placement")
+		check(
+			not surface._can_display_capture(surface.presented),
+			"A new page cannot retain pixels at a different placement"
+		)
 		library.global_transform = pose
 		surface.surface_rect = rect.grow(.1)
-		check(not surface._can_display_capture(surface.presented), "A different capture projection must await matching pixels")
+		check(
+			not surface._can_display_capture(surface.presented),
+			"A different capture projection must await matching pixels"
+		)
 		surface.surface_rect = rect
 		library.curve_radius += .2
-		check(not surface._can_display_capture(surface.presented), "A different curve cannot reuse the previous page image")
+		check(
+			not surface._can_display_capture(surface.presented),
+			"A different curve cannot reuse the previous page image"
+		)
 		library.curve_radius = radius
 		var extra := Library.new()
 		root.add_child(extra)
 		extra.visible = true
 		surface.menus.append(extra)
-		check(not surface._can_display_capture(surface.presented), "A different set of visible menus still requires a fresh capture")
+		check(
+			not surface._can_display_capture(surface.presented),
+			"A different set of visible menus still requires a fresh capture"
+		)
 		surface.menus.erase(extra)
 		extra.free()
 	surface.free()

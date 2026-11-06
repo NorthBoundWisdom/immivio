@@ -106,7 +106,8 @@ static func prune(
 				{"name": name, "bytes": size, "time": FileAccess.get_modified_time(path)}
 			)
 	records.sort_custom(
-		func(a: Dictionary, b: Dictionary): return a.time < b.time if a.time != b.time else str(a.name) < str(b.name)
+		func(a: Dictionary, b: Dictionary):
+			return a.time < b.time if a.time != b.time else str(a.name) < str(b.name)
 	)
 	for record in records:
 		if count <= max_images and bytes <= max_bytes:

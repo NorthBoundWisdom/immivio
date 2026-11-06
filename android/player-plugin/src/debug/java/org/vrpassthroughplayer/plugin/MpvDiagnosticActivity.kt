@@ -3,8 +3,9 @@ package org.vrpassthroughplayer.plugin
 import org.godotengine.godot.GodotActivity
 import org.godotengine.godot.xr.XRMode
 
-/** Debug-only two-dimensional entry point. Same Godot/plugin/GPU/RVM player,
- * with OpenXR explicitly disabled. It proves no XR projection or passthrough.
+/**
+ * Debug-only two-dimensional entry point. Same Godot/plugin/GPU/RVM player, with OpenXR explicitly
+ * disabled. It proves no XR projection or passthrough.
  */
 class MpvDiagnosticActivity : GodotActivity() {
     override fun getCommandLine(): MutableList<String> {
@@ -16,7 +17,7 @@ class MpvDiagnosticActivity : GodotActivity() {
                 "--xr-mode",
                 "off",
                 "--",
-                "--mpv-diagnostic-2d"
+                "--mpv-diagnostic-2d",
             )
         )
         return args

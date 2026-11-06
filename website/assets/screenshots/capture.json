@@ -13,128 +13,64 @@
       "file": "playback.webp",
       "language": "en",
       "source": "branding/pico/details/source/en/01-playback.png",
-      "crop_xywh": [
-        43,
-        0,
-        2474,
-        1392
-      ],
-      "dimensions": [
-        1920,
-        1080
-      ],
+      "crop_xywh": [43, 0, 2474, 1392],
+      "dimensions": [1920, 1080],
       "sha256": "3d56f91a10c0b9711239f18a24d16d2c84b40d0dfba4fe5de9d2e1b2223e2962"
     },
     {
       "file": "sources.webp",
       "language": "en",
       "source": "branding/pico/details/source/en/02-media-sources.png",
-      "crop_xywh": [
-        464,
-        220,
-        1632,
-        1020
-      ],
-      "dimensions": [
-        1632,
-        1020
-      ],
+      "crop_xywh": [464, 220, 1632, 1020],
+      "dimensions": [1632, 1020],
       "sha256": "5163dc967b107bf1928e01c4f902a883560dfaf5ba99011cde4b4df28fc23693"
     },
     {
       "file": "subtitles.webp",
       "language": "en",
       "source": "branding/pico/details/source/en/03-subtitles.png",
-      "crop_xywh": [
-        464,
-        220,
-        1632,
-        1020
-      ],
-      "dimensions": [
-        1632,
-        1020
-      ],
+      "crop_xywh": [464, 220, 1632, 1020],
+      "dimensions": [1632, 1020],
       "sha256": "90dd77135dfca6dc04c10e2ab1383e36f2dc62e8dce2c20f88981cb2d58e684a"
     },
     {
       "file": "display.webp",
       "language": "en",
       "source": "branding/pico/details/source/en/04-display.png",
-      "crop_xywh": [
-        464,
-        220,
-        1632,
-        1020
-      ],
-      "dimensions": [
-        1632,
-        1020
-      ],
+      "crop_xywh": [464, 220, 1632, 1020],
+      "dimensions": [1632, 1020],
       "sha256": "bf77776d82ca1b2ffe1af927aafc1d9803388b55156285ef68451bc4f27556c5"
     },
     {
       "file": "zh-playback.webp",
       "language": "zh-CN",
       "source": "branding/pico/details/source/zh-CN/01-playback.png",
-      "crop_xywh": [
-        43,
-        0,
-        2474,
-        1392
-      ],
-      "dimensions": [
-        1920,
-        1080
-      ],
+      "crop_xywh": [43, 0, 2474, 1392],
+      "dimensions": [1920, 1080],
       "sha256": "5be06725cc7c6d56a50d0ed587330469cc9583adc11d0596f3e64f68050cdc2b"
     },
     {
       "file": "zh-sources.webp",
       "language": "zh-CN",
       "source": "branding/pico/details/source/zh-CN/02-media-sources.png",
-      "crop_xywh": [
-        464,
-        220,
-        1632,
-        1020
-      ],
-      "dimensions": [
-        1632,
-        1020
-      ],
+      "crop_xywh": [464, 220, 1632, 1020],
+      "dimensions": [1632, 1020],
       "sha256": "873f316ab0671191a088996e433996db137625fa0993a866126f1430988dcd0f"
     },
     {
       "file": "zh-subtitles.webp",
       "language": "zh-CN",
       "source": "branding/pico/details/source/zh-CN/03-subtitles.png",
-      "crop_xywh": [
-        464,
-        220,
-        1632,
-        1020
-      ],
-      "dimensions": [
-        1632,
-        1020
-      ],
+      "crop_xywh": [464, 220, 1632, 1020],
+      "dimensions": [1632, 1020],
       "sha256": "633d8171c9cf2ac5581ed7302f8747dbe25adbbb27ac4be02135bf6df42eb989"
     },
     {
       "file": "zh-display.webp",
       "language": "zh-CN",
       "source": "branding/pico/details/source/zh-CN/04-display.png",
-      "crop_xywh": [
-        464,
-        220,
-        1632,
-        1020
-      ],
-      "dimensions": [
-        1632,
-        1020
-      ],
+      "crop_xywh": [464, 220, 1632, 1020],
+      "dimensions": [1632, 1020],
       "sha256": "79050ec28af6637993155dd36826b6f8e387a6641a5cdc9724177198e1074ae4"
     }
   ]

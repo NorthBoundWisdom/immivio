@@ -31,12 +31,16 @@ func append(entries: Array) -> void:
 		if not entry is Dictionary:
 			continue
 		var uri := str(entry.get("uri", ""))
-		if uri.is_empty() or uri.length() > 8192 or known.has(uri) or not MediaFiles.is_video(uri, str(entry.get("title", "")), str(entry.get("kind", "video"))):
-			continue
-		if not (
-			uri.get_slice(":", 0)
-			in ["file", "content", "smb", "medialib", "http", "https"]
+		if (
+			uri.is_empty()
+			or uri.length() > 8192
+			or known.has(uri)
+			or not MediaFiles.is_video(
+				uri, str(entry.get("title", "")), str(entry.get("kind", "video"))
+			)
 		):
+			continue
+		if not (uri.get_slice(":", 0) in ["file", "content", "smb", "medialib", "http", "https"]):
 			continue
 		if not entry.get("metadata", {}) is Dictionary:
 			continue

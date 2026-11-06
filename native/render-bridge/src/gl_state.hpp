@@ -15,8 +15,7 @@ inline void check_gl(const char *operation) {
   if (error == GL_NO_ERROR)
     return;
   char message[160];
-  std::snprintf(message, sizeof(message), "%s: GL error 0x%04x", operation,
-                error);
+  std::snprintf(message, sizeof(message), "%s: GL error 0x%04x", operation, error);
   throw std::runtime_error(message);
 }
 // Godot and this bridge share a context, hence also a GL error queue. Attribute
@@ -45,17 +44,16 @@ inline void isolate_owner_errors() {
 }
 // Touch only private objects and unit zero; restore Godot's actual GL state.
 struct State final {
-  GLint program, vao, draw_fbo, read_fbo, active, tex2d, oes, sampler, pack,
-      unpack;
+  GLint program, vao, draw_fbo, read_fbo, active, tex2d, oes, sampler, pack, unpack;
   GLint viewport[4];
   GLint pack_alignment, pack_row_length, pack_skip_rows, pack_skip_pixels;
-  GLint unpack_alignment, unpack_row_length, unpack_skip_rows,
-      unpack_skip_pixels, unpack_image_height, unpack_skip_images;
+  GLint unpack_alignment, unpack_row_length, unpack_skip_rows, unpack_skip_pixels,
+      unpack_image_height, unpack_skip_images;
   GLboolean mask[4];
   static constexpr std::array<GLenum, 10> toggles{
-      {GL_BLEND, GL_DEPTH_TEST, GL_CULL_FACE, GL_SCISSOR_TEST, GL_STENCIL_TEST,
-       GL_DITHER, GL_RASTERIZER_DISCARD, GL_SAMPLE_ALPHA_TO_COVERAGE,
-       GL_SAMPLE_COVERAGE, GL_POLYGON_OFFSET_FILL}};
+      {GL_BLEND, GL_DEPTH_TEST, GL_CULL_FACE, GL_SCISSOR_TEST, GL_STENCIL_TEST, GL_DITHER,
+       GL_RASTERIZER_DISCARD, GL_SAMPLE_ALPHA_TO_COVERAGE, GL_SAMPLE_COVERAGE,
+       GL_POLYGON_OFFSET_FILL}};
   std::array<GLboolean, toggles.size()> enabled;
   State() {
     isolate_owner_errors();
@@ -134,15 +132,13 @@ struct State final {
 };
 struct CaptureTiming final {
   uint64_t &calls, &total_us, &max_us;
-  const std::chrono::steady_clock::time_point start =
-      std::chrono::steady_clock::now();
+  const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
   CaptureTiming(uint64_t &count, uint64_t &total, uint64_t &maximum)
       : calls(count), total_us(total), max_us(maximum) {}
   ~CaptureTiming() {
-    const auto us = static_cast<uint64_t>(
-        std::chrono::duration_cast<std::chrono::microseconds>(
-            std::chrono::steady_clock::now() - start)
-            .count());
+    const auto us = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(
+                                              std::chrono::steady_clock::now() - start)
+                                              .count());
     ++calls;
     total_us += us;
     max_us = std::max(max_us, us);

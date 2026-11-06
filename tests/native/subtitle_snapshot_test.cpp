@@ -3,8 +3,10 @@
 #include <iostream>
 int main() {
   using quest::subtitle_cue_json;
-  for (const auto *codec : {"subrip", "ass", "webvtt", "mov_text"}) assert(quest::text_subtitle_codec(codec));
-  for (const auto *codec : {"hdmv_pgs_subtitle", "dvd_subtitle", ""}) assert(!quest::text_subtitle_codec(codec));
+  for (const auto *codec : {"subrip", "ass", "webvtt", "mov_text"})
+    assert(quest::text_subtitle_codec(codec));
+  for (const auto *codec : {"hdmv_pgs_subtitle", "dvd_subtitle", ""})
+    assert(!quest::text_subtitle_codec(codec));
   const auto first = subtitle_cue_json(8, 3, "2", "0.500", "Primary", "1", "2", true);
   const auto second = subtitle_cue_json(8, 7, "4", "0.500", "第二字幕\nEnglish", "1", "3", true);
   assert(first.find("\"command_id\":3") != std::string::npos);

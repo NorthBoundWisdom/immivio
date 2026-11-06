@@ -63,10 +63,7 @@ func _initialize() -> void:
 		"Only generated depth changes in a video mode lock"
 	)
 	check(source_lock.depth, "Migration does not mutate another owner's dictionary")
-	check(
-		not settings.has_section("photo"),
-		"Retired still-image settings are removed"
-	)
+	check(not settings.has_section("photo"), "Retired still-image settings are removed")
 	check(not Migration.apply(settings), "Running migration again does not request another write")
 	var malformed := ConfigFile.new()
 	malformed.set_value("video", "mode_lock", "invalid legacy data")

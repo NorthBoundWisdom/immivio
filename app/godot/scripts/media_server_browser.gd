@@ -70,7 +70,13 @@ func _init(owner: Node) -> void:
 				favorites[id] = (
 					value
 					. filter(
-						func(item): return ( item is Dictionary and str(item.get("uri", "")).begins_with( "medialib://" + str(id) + "/scene/" ) )
+						func(item):
+							return (
+								item is Dictionary
+								and str(item.get("uri", "")).begins_with(
+									"medialib://" + str(id) + "/scene/"
+								)
+							),
 					)
 					. slice(0, 1000)
 				)
@@ -114,7 +120,9 @@ func request(action_name: String, extra: Dictionary = {}) -> void:
 
 
 func open_home() -> void:
-	var library_chooser: bool = view == "libraries" and capabilities.get("home_layout", "") == "libraries"
+	var library_chooser: bool = (
+		view == "libraries" and capabilities.get("home_layout", "") == "libraries"
+	)
 	cancel()
 	view = "home"
 	entries = []
@@ -199,7 +207,13 @@ func receive(id: int, payload: String) -> bool:
 			home_data = data
 			capabilities = data.get("capabilities", capabilities)
 			library_id = str(data.get("library_id", ""))
-			if capabilities.get("home_layout", "") == "libraries" and (str(expected.get("library_id", "")).is_empty() or expected.get("library_chooser", false)):
+			if (
+				capabilities.get("home_layout", "") == "libraries"
+				and (
+					str(expected.get("library_id", "")).is_empty()
+					or expected.get("library_chooser", false)
+				)
+			):
 				view = "libraries"
 			total = int(data.get("total", 0))
 			entries = []
@@ -234,14 +248,16 @@ func receive(id: int, payload: String) -> bool:
 			view = "detail"
 			var source_id := str(expected.get("source_id", ""))
 			if not source_id.is_empty():
-				var versions: Array = detail.get("versions", []).filter(func(version): return str(version.get("source_id", "")) == source_id)
+				var versions: Array = detail.get("versions", []).filter(
+					func(version): return str(version.get("source_id", "")) == source_id
+				)
 				if versions.is_empty():
 					detail.clear()
 					menu.status = "Original stream unavailable"
 				else:
 					detail.merge(versions[0], true)
 			for local in _local_resume():
-				if local.uri == detail.get("uri") :
+				if local.uri == detail.get("uri"):
 					detail.position_ms = local.position_ms
 		"favorite":
 			if str(detail.get("id", "")) == str(data.get("scene_id", "")):
@@ -420,7 +436,10 @@ func rows() -> Array[Dictionary]:
 					{
 						"title": str(item.name),
 						"detail": str(item.get("provider", "")).capitalize(),
-						"icon": preload("res://scripts/provider_icons.gd").key(str(item.get("provider", ""))),
+						"icon":
+						preload("res://scripts/provider_icons.gd").key(
+							str(item.get("provider", ""))
+						),
 						"server_account": item
 					}
 				)
@@ -455,7 +474,23 @@ func rows() -> Array[Dictionary]:
 		"libraries":
 			for item in home_data.get("libraries", []):
 				result.append(
-					{"title": str(item.title), "detail": I18n.t("TV library" if item.get("collection_type", "") == "tvshows" else "Movie library") if item.has("collection_type") else "", "icon": "library", "library": item}
+					{
+						"title": str(item.title),
+						"detail":
+						(
+							I18n.t(
+								(
+									"TV library"
+									if item.get("collection_type", "") == "tvshows"
+									else "Movie library"
+								)
+							)
+							if item.has("collection_type")
+							else ""
+						),
+						"icon": "library",
+						"library": item
+					}
 				)
 		"facets":
 			if kind in capabilities.get("unclassified", []):
@@ -577,7 +612,14 @@ func rows() -> Array[Dictionary]:
 					}
 				)
 				for version in detail.get("versions", []):
-					result.append({"title": I18n.t("Version") + " · " + str(version.get("version_name", "")), "icon": "play", "play_scene": version})
+					result.append(
+						{
+							"title":
+							I18n.t("Version") + " · " + str(version.get("version_name", "")),
+							"icon": "play",
+							"play_scene": version
+						}
+					)
 				result.append(
 					{
 						"title": I18n.t("Favorited" if _is_favorite(detail) else "Favorite"),
@@ -695,7 +737,13 @@ func choose(row: Dictionary) -> void:
 			library_id = str(row.library.id)
 			folder_path.clear()
 			labels.clear()
-			query = {"page": 1, "q": "", "all_tags": true, "mode": "library", "collection_type": row.library.get("collection_type", "movies")}
+			query = {
+				"page": 1,
+				"q": "",
+				"all_tags": true,
+				"mode": "library",
+				"collection_type": row.library.get("collection_type", "movies")
+			}
 			browse()
 		else:
 			library_id = str(row.library.id)
@@ -721,7 +769,10 @@ func choose(row: Dictionary) -> void:
 		detail = {}
 		view = "detail"
 		menu._reset_navigation()
-		request("detail", {"scene_id": str(row.scene.id), "source_id": str(row.scene.get("source_id", ""))})
+		request(
+			"detail",
+			{"scene_id": str(row.scene.id), "source_id": str(row.scene.get("source_id", ""))}
+		)
 	elif row.has("category"):
 		_remember()
 		cancel()
@@ -739,7 +790,11 @@ func choose(row: Dictionary) -> void:
 			(
 				int(row.marker.position_ms)
 				if row.has("marker")
-				else (-1 if row.get("play_scene", {}).has("source_id") else (int(detail.position_ms) if int(detail.get("position_ms", 0)) > 0 else -1))
+				else (
+					-1
+					if row.get("play_scene", {}).has("source_id")
+					else (int(detail.position_ms) if int(detail.get("position_ms", 0)) > 0 else -1)
+				)
 			)
 		)
 	elif row.has("favorite"):
@@ -1156,7 +1211,12 @@ func _keyboard_action(target: int) -> bool:
 				if purpose == "save":
 					if not text.strip_edges().is_empty():
 						saved = saved.filter(
-							func(item): return not ( item is Dictionary and item.get("server_id") == server.get("id") and item.get("name") == text.strip_edges() )
+							func(item):
+								return not (
+									item is Dictionary
+									and item.get("server_id") == server.get("id")
+									and item.get("name") == text.strip_edges()
+								)
 						)
 						saved.append(
 							{
@@ -1242,7 +1302,10 @@ func tile(target: int, row: Dictionary, center: Vector2) -> void:
 	menu._button(target, "", center, menu.TILE_SIZE, true, "", false, menu._list)
 	var node: MeshInstance3D = menu._buttons.back().node
 	var picture: MeshInstance3D = menu._quad(
-		Vector2(menu.TILE_SIZE.x - .022, menu.TILE_SIZE.y - .078), Vector3(0, 0.026, 0.003), menu.TILE, 12
+		Vector2(menu.TILE_SIZE.x - .022, menu.TILE_SIZE.y - .078),
+		Vector3(0, 0.026, 0.003),
+		menu.TILE,
+		12
 	)
 	node.add_child(picture)
 	var texture := cover(row)
@@ -1267,7 +1330,14 @@ func draw() -> void:
 		_draw_keyboard()
 		return
 	prioritize_covers()
-	menu._button(ACTION, "", Vector2(menu.CONTENT_LEFT + .045, menu.HEADER_Y), Vector2(0.09, 0.07), true, "up")
+	menu._button(
+		ACTION,
+		"",
+		Vector2(menu.CONTENT_LEFT + .045, menu.HEADER_Y),
+		Vector2(0.09, 0.07),
+		true,
+		"up"
+	)
 	var management := view in ["servers", "remove_servers", "confirm_remove"]
 	var caption := (
 		I18n.t("Remove server")
@@ -1275,7 +1345,9 @@ func draw() -> void:
 		else str(server.get("name", I18n.t("Media servers")))
 	)
 	var heading: Label3D = menu._label(
-		menu._fit_title(caption, "", 0.77, 22), Vector3(menu.CONTENT_LEFT + .12, menu.HEADER_Y, .004), 22
+		menu._fit_title(caption, "", 0.77, 22),
+		Vector3(menu.CONTENT_LEFT + .12, menu.HEADER_Y, .004),
+		22
 	)
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	if view == "servers":
@@ -1283,7 +1355,9 @@ func draw() -> void:
 			menu._button(
 				ACTION + item[0],
 				"",
-				Vector2(menu.CONTENT_RIGHT - .405 + .12 * [1, 14, 12, 13].find(item[0]), menu.HEADER_Y),
+				Vector2(
+					menu.CONTENT_RIGHT - .405 + .12 * [1, 14, 12, 13].find(item[0]), menu.HEADER_Y
+				),
 				Vector2(0.09, 0.07),
 				not busy or int(item[0]) in [1, 14],
 				item[1]
@@ -1318,7 +1392,12 @@ func draw() -> void:
 			)
 		)
 		menu._button(
-			ACTION + 15, "", Vector2(menu.CONTENT_RIGHT - .045, menu.HEADER_Y), Vector2(0.09, 0.07), view != "filters", "settings"
+			ACTION + 15,
+			"",
+			Vector2(menu.CONTENT_RIGHT - .045, menu.HEADER_Y),
+			Vector2(0.09, 0.07),
+			view != "filters",
+			"settings"
 		)
 		var tabs := _navigation()
 		for i in tabs.size():
@@ -1359,9 +1438,21 @@ func draw() -> void:
 		chips.append({"key": "unclassified", "id": "", "label": I18n.t("Uncategorized")})
 	if view == "scenes":
 		menu._button(
-			ACTION + 3, "", Vector2(menu.CONTENT_RIGHT - .04, .245), Vector2(0.08, 0.06), not busy, "settings"
+			ACTION + 3,
+			"",
+			Vector2(menu.CONTENT_RIGHT - .04, .245),
+			Vector2(0.08, 0.06),
+			not busy,
+			"settings"
 		)
-		menu._button(ACTION + 4, "", Vector2(menu.CONTENT_RIGHT - .15, .245), Vector2(0.08, 0.06), not busy, "list")
+		menu._button(
+			ACTION + 4,
+			"",
+			Vector2(menu.CONTENT_RIGHT - .15, .245),
+			Vector2(0.08, 0.06),
+			not busy,
+			"list"
+		)
 		menu._tips[ACTION + 4] = I18n.t(
 			SORT_NAMES[maxi(0, SORTS.find(str(query.get("sort", "created_at"))))]
 		)
@@ -1390,11 +1481,17 @@ func draw() -> void:
 	if view in ["scenes", "facets", "candidates"] and menu.status.is_empty():
 		var count := candidate_total if view in ["facets", "candidates"] else total
 		var loaded := candidates.size() if view in ["facets", "candidates"] else entries.size()
-		menu._label("%d / %d" % [loaded, count], Vector3(menu.CONTENT_LEFT + .12, menu.FOOTER_Y, .004), 15)
+		menu._label(
+			"%d / %d" % [loaded, count], Vector3(menu.CONTENT_LEFT + .12, menu.FOOTER_Y, .004), 15
+		)
 		var has_more := not candidate_end if view in ["facets", "candidates"] else not end_reached
 		if loaded < count and has_more:
 			menu._button(
-				ACTION + 6, I18n.t("More"), Vector2(menu.CONTENT_RIGHT - .09, menu.FOOTER_Y), Vector2(0.18, 0.065), not busy
+				ACTION + 6,
+				I18n.t("More"),
+				Vector2(menu.CONTENT_RIGHT - .09, menu.FOOTER_Y),
+				Vector2(0.18, 0.065),
+				not busy
 			)
 		if view == "scenes":
 			menu._button(
@@ -1409,11 +1506,22 @@ func draw() -> void:
 	elif view == "filters":
 		menu._button(ACTION + 11, I18n.t("Apply"), Vector2(0.55, -0.345), Vector2(0.30, 0.065))
 	if not menu.status.is_empty() and menu.status != "Server authentication required":
-		var status_label: Label3D = menu._label(menu._fit_title(I18n.t(menu.status), "", menu.CONTENT_RIGHT - menu.CONTENT_LEFT - .12, 15), Vector3(menu.CONTENT_LEFT, menu.FOOTER_Y, .004), 15)
+		var status_label: Label3D = menu._label(
+			menu._fit_title(
+				I18n.t(menu.status), "", menu.CONTENT_RIGHT - menu.CONTENT_LEFT - .12, 15
+			),
+			Vector3(menu.CONTENT_LEFT, menu.FOOTER_Y, .004),
+			15
+		)
 		status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		if not busy:
 			menu._button(
-				ACTION + 12, "", Vector2(menu.CONTENT_RIGHT - .04, menu.FOOTER_Y), Vector2(0.08, 0.06), true, "refresh"
+				ACTION + 12,
+				"",
+				Vector2(menu.CONTENT_RIGHT - .04, menu.FOOTER_Y),
+				Vector2(0.08, 0.06),
+				true,
+				"refresh"
 			)
 	if menu.status == "Server authentication required" and not management:
 		_draw_sign_in_required()

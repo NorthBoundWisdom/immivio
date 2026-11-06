@@ -25,19 +25,32 @@ func _preview_menu_input(event: InputEvent) -> bool:
 		return false
 	var menu: Node3D = host._active_menu()
 	for candidate in [host.recent_menu, host.player_menu]:
-		if is_instance_valid(candidate) and candidate.visible and candidate.has_method("has_pointer_capture") and candidate.has_pointer_capture():
+		if (
+			is_instance_valid(candidate)
+			and candidate.visible
+			and candidate.has_method("has_pointer_capture")
+			and candidate.has_pointer_capture()
+		):
 			menu = candidate
 			break
 	if not menu or not is_instance_valid(host.xr_camera):
 		return false
 	var origin: Vector3 = host.xr_camera.project_ray_origin(event.position)
 	var direction: Vector3 = host.xr_camera.project_ray_normal(event.position)
-	if menu == host.recent_menu and host.player_menu and host.player_menu.visible and not menu.has_pointer_capture():
+	if (
+		menu == host.recent_menu
+		and host.player_menu
+		and host.player_menu.visible
+		and not menu.has_pointer_capture()
+	):
 		var controls: Dictionary = host.player_menu.ray_hit(origin, direction)
 		if controls.is_empty():
 			controls = host.player_menu.ray_panel_hit(origin, direction)
 		var library: Dictionary = menu.ray_panel_hit(origin, direction)
-		if not controls.is_empty() and (library.is_empty() or float(controls.distance) < float(library.distance)):
+		if (
+			not controls.is_empty()
+			and (library.is_empty() or float(controls.distance) < float(library.distance))
+		):
 			menu = host.player_menu
 	for other in [host.recent_menu, host.player_menu]:
 		if is_instance_valid(other) and other != menu:
@@ -50,7 +63,12 @@ func _preview_menu_input(event: InputEvent) -> bool:
 			menu.press_pointer("desktop", origin, direction, true)
 		else:
 			menu.release_pointer("desktop", origin, direction, true)
-	elif event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN] and menu.has_method("stick_scroll"):
+	elif (
+		event is InputEventMouseButton
+		and event.pressed
+		and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]
+		and menu.has_method("stick_scroll")
+	):
 		menu.stick_scroll(1.0 if event.button_index == MOUSE_BUTTON_WHEEL_UP else -1.0, 0.12)
 	else:
 		return false
@@ -140,7 +158,11 @@ func _on_controller_release(action: String, hand: String = "") -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
-	if action == "grip_click" and host.video and host.video.has_method("commit_immersive_adjustments"):
+	if (
+		action == "grip_click"
+		and host.video
+		and host.video.has_method("commit_immersive_adjustments")
+	):
 		host.video.commit_immersive_adjustments()
 	if not host._controller_allowed(hand):
 		return
@@ -179,10 +201,7 @@ func _on_pointer_release(action: String, hand: String) -> void:
 			host.picture_center_guide.release(hand)
 		host._grab = {}
 		host._viewer().set_corner_hover(-1)
-		if (
-			grab.moved
-			and host._viewer().geometry == Geometry.Geometry.FLAT
-		):
+		if grab.moved and host._viewer().geometry == Geometry.Geometry.FLAT:
 			host._save_screen()
 		if action == "trigger_click" and not grab.moved:
 			if host.player_menu.visible:
@@ -221,7 +240,11 @@ func _on_pointer_button(action: String, hand: String) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
-	if action == "trigger_click" and not host._picture_pinch_allowed(hand) and not host._active_menu():
+	if (
+		action == "trigger_click"
+		and not host._picture_pinch_allowed(hand)
+		and not host._active_menu()
+	):
 		return
 	if action == "menu_button":
 		host._toggle_player_menu()
@@ -231,7 +254,21 @@ func _on_pointer_button(action: String, hand: String) -> void:
 		if menu == host.recent_menu and menu is LibraryMenu:
 			host._begin_library_grab(hand)
 			return
-		if not host._viewer().local_uri.is_empty() and host._ray(hand) != null and (menu == null or (menu == host.player_menu and (not menu.has_pointer_capture()) and (host._viewer().geometry == Geometry.Geometry.FLAT or menu.allows_playback_sticks()))):
+		if (
+			not host._viewer().local_uri.is_empty()
+			and host._ray(hand) != null
+			and (
+				menu == null
+				or (
+					menu == host.player_menu
+					and (not menu.has_pointer_capture())
+					and (
+						host._viewer().geometry == Geometry.Geometry.FLAT
+						or menu.allows_playback_sticks()
+					)
+				)
+			)
+		):
 			host._trigger_taps.clear()
 			if menu == host.player_menu:
 				menu.dismiss()
@@ -312,12 +349,7 @@ func _process_sticks(left: Vector2, right: Vector2, delta: float) -> void:
 		host._update_controls_visibility(menu)
 		return
 	var actions = host.stick_controls.poll(
-		left,
-		right,
-		(
-			host.video != null
-			and (host._viewer().geometry != Geometry.Geometry.FLAT)
-		)
+		left, right, host.video != null and (host._viewer().geometry != Geometry.Geometry.FLAT)
 	)
 	if not host._grab.is_empty():
 		# Holding the picture: only zoom; other stick shortcuts wait for the stick to recenter.
@@ -332,12 +364,22 @@ func _process_sticks(left: Vector2, right: Vector2, delta: float) -> void:
 
 func _process_immersive(left: Vector2, right: Vector2, delta: float) -> bool:
 	var host := _host_ref.get_ref() as Node3D
-	if not is_instance_valid(host) or not host.video or host.video.geometry == Geometry.Geometry.FLAT or host.video.local_uri.is_empty():
+	if (
+		not is_instance_valid(host)
+		or not host.video
+		or host.video.geometry == Geometry.Geometry.FLAT
+		or host.video.local_uri.is_empty()
+	):
 		immersive.suspend()
 		immersive.clear_feedback()
 		return false
 	var menu: Node3D = host._active_menu()
-	if not host._input_focused() or not host._library_grab.is_empty() or (menu and (menu != host.player_menu or not menu.allows_playback_sticks())) or (not host._grab.is_empty() and host._grab.get("action") != "grip_click"):
+	if (
+		not host._input_focused()
+		or not host._library_grab.is_empty()
+		or (menu and (menu != host.player_menu or not menu.allows_playback_sticks()))
+		or (not host._grab.is_empty() and host._grab.get("action") != "grip_click")
+	):
 		immersive.suspend()
 		immersive.clear_feedback()
 		if not host._input_focused():
@@ -346,7 +388,11 @@ func _process_immersive(left: Vector2, right: Vector2, delta: float) -> bool:
 	var held := false
 	var changed := false
 	for hand in ["left_hand", "right_hand"]:
-		var pressed: bool = immersive_grips.get(hand, false) and host._controller_allowed(hand) and host._ray(hand) != null
+		var pressed: bool = (
+			immersive_grips.get(hand, false)
+			and host._controller_allowed(hand)
+			and host._ray(hand) != null
+		)
 		held = held or pressed
 		var axis: Vector2 = left if hand == "left_hand" else right
 		var action: Dictionary = immersive.poll(hand, axis, pressed)
@@ -356,10 +402,26 @@ func _process_immersive(left: Vector2, right: Vector2, delta: float) -> bool:
 		if key == "stereo_horizontal":
 			if is_nan(immersive.alignment_value):
 				immersive.alignment_value = host.video.stereo_horizontal
-			immersive.alignment_value = clampf(immersive.alignment_value + float(action.amount) * immersive.ALIGNMENT_SPEED * minf(delta, 0.1), -10, 10)
+			immersive.alignment_value = clampf(
+				(
+					immersive.alignment_value
+					+ float(action.amount) * immersive.ALIGNMENT_SPEED * minf(delta, 0.1)
+				),
+				-10,
+				10
+			)
 			changed = host.video.set_stereo_alignment(key, immersive.alignment_value) or changed
 		else:
-			changed = host.video.set_immersive_adjustment(key, float(host.video.get(key)) + float(action.amount) * immersive.MOVE_SPEED * minf(delta, 0.1)) or changed
+			changed = (
+				host.video.set_immersive_adjustment(
+					key,
+					(
+						float(host.video.get(key))
+						+ float(action.amount) * immersive.MOVE_SPEED * minf(delta, 0.1)
+					)
+				)
+				or changed
+			)
 		if changed:
 			immersive.show_feedback(key, float(host.video.get(key)), host.video.local_uri)
 	if left.length() < 0.3 and right.length() < 0.3:
@@ -538,18 +600,12 @@ func _update_hand_input(delta: float) -> void:
 			host._on_pointer_button("menu_button", hand)
 		var pointer: RefCounted = host.hand_pointers[hand]
 		inputs[hand] = event.merged(
-			{
-				"source": pointer.source,
-				"tracked": pointer.ray != null,
-				"down": pointer.down
-			}
+			{"source": pointer.source, "tracked": pointer.ray != null, "down": pointer.down}
 		)
 		if host.hand_marks.has(hand):
 			var mark: MeshInstance3D = host.hand_marks[hand]
 			mark.visible = (
-				pointer.source == "hand"
-				and pointer.ray != null
-				and not host._active_menu()
+				pointer.source == "hand" and pointer.ray != null and not host._active_menu()
 			)
 			if mark.visible:
 				mark.global_position = pointer.ray[0]
@@ -765,7 +821,12 @@ func _update_flat_grab_stick(left: Vector2, right: Vector2, delta: float) -> voi
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
-	if host._active_menu() or host._grab.is_empty() or host._grab.has('resize') or host._grab.get('tap_only', false):
+	if (
+		host._active_menu()
+		or host._grab.is_empty()
+		or host._grab.has("resize")
+		or host._grab.get("tap_only", false)
+	):
 		return
 	var held = left if host._grab.hand == "left_hand" else right
 	if not is_finite(held.y) or absf(held.y) <= host.STICK_DEADZONE:
@@ -776,7 +837,7 @@ func _update_flat_grab_stick(left: Vector2, right: Vector2, delta: float) -> voi
 	host._grab.moved = true
 	if host._viewer().geometry != Geometry.Geometry.FLAT:
 		host._viewer().zoom_view(-amount * host.ZOOM_SPEED)
-	elif host._grab.get('action', '') == 'grip_click':
+	elif host._grab.get("action", "") == "grip_click":
 		host._push_screen(amount * host.PUSH_SPEED)
 	else:
 		host.video.set_screen_scale(host.video.screen_scale * exp(amount * 0.8))
@@ -804,7 +865,11 @@ func _update_corner_hover() -> void:
 	var corner = -1
 	if host._grab.has("resize"):
 		corner = int(host._grab.resize.corner)
-	elif host._grab.is_empty() and (not host.recent_menu.visible) and (not host._viewer().local_uri.is_empty()):
+	elif (
+		host._grab.is_empty()
+		and (not host.recent_menu.visible)
+		and (not host._viewer().local_uri.is_empty())
+	):
 		for hand in ["right_hand", "left_hand"]:
 			var ray: Variant = host._ray(hand)
 			if (
@@ -865,7 +930,11 @@ func _begin_grab(hand: String, action: String = "grip_click") -> void:
 		}
 	# A deliberate screen press leaves the controls before sticks may affect playback.
 	# Remember this on release so a tap does not immediately reopen the controls.
-	if host._viewer().geometry == Geometry.Geometry.FLAT and host._viewer().panel.visible and host.player_menu.visible:
+	if (
+		host._viewer().geometry == Geometry.Geometry.FLAT
+		and host._viewer().panel.visible
+		and host.player_menu.visible
+	):
 		if point == null:
 			point = host._viewer().screen_point(ray[0], ray[1])
 		if (

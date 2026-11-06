@@ -30,8 +30,10 @@ class Reader:
 		return false
 
 
-class ExternalHost extends RefCounted:
+class ExternalHost:
+	extends RefCounted
 	var related := true
+
 	func external_playback_belongs_to(_uri: String, root_path: String, uuid: String) -> bool:
 		return related and root_path == "/storage/1234-5678" and uuid == "1234-5678"
 
@@ -115,10 +117,7 @@ func _run() -> void:
 	app.video.local_uri = "file:///storage/1234-5678/movie.mp4"
 	app.video_queue.assign([{"uri": app.video.local_uri}, {"uri": "smb://server/movie.mp4"}])
 	app._on_storage_eject_requested(external)
-	check(
-		app.video.closes == 1,
-		"Release closes target video"
-	)
+	check(app.video.closes == 1, "Release closes target video")
 	check(
 		app.recent_menu.finished == external.id and app.video_queue.size() == 1,
 		"Release completes after pruning playback references"
@@ -134,7 +133,10 @@ func _run() -> void:
 	check(app.video.closes == 1, "Unrelated opaque external playback is preserved")
 	external_host.related = true
 	app._release_storage_readers(external)
-	check(app.video.closes == 2, "Related opaque descriptor lease closes through the production release route")
+	check(
+		app.video.closes == 2,
+		"Related opaque descriptor lease closes through the production release route"
+	)
 	app.video.free()
 	app.recent_menu.free()
 	app.free()

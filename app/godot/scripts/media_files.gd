@@ -1,7 +1,31 @@
 extends RefCounted
 ## Source adapters enumerate videos. Also reject unsupported legacy/history rows
 ## and stale selections before they can reach the video decoder.
-const UNSUPPORTED := ["jpg", "jpeg", "png", "webp", "heic", "heif", "gif", "bmp", "tif", "tiff", "avif", "jxl", "mp3", "m4a", "wav", "flac", "ogg", "txt", "pdf", "srt", "ass", "ssa", "vtt"]
+const UNSUPPORTED := [
+	"jpg",
+	"jpeg",
+	"png",
+	"webp",
+	"heic",
+	"heif",
+	"gif",
+	"bmp",
+	"tif",
+	"tiff",
+	"avif",
+	"jxl",
+	"mp3",
+	"m4a",
+	"wav",
+	"flac",
+	"ogg",
+	"txt",
+	"pdf",
+	"srt",
+	"ass",
+	"ssa",
+	"vtt"
+]
 
 
 static func is_video(uri: String, title: String = "", kind: String = "video") -> bool:

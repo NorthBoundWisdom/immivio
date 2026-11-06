@@ -15,7 +15,11 @@ func pixels(image: Image, channel: int) -> int:
 	for y in range(0, image.get_height(), 2):
 		for x in range(0, image.get_width(), 2):
 			var colour := image.get_pixel(x, y)
-			if colour[channel] > .5 and colour[(channel + 1) % 3] < .2 and colour[(channel + 2) % 3] < .2:
+			if (
+				colour[channel] > .5
+				and colour[(channel + 1) % 3] < .2
+				and colour[(channel + 2) % 3] < .2
+			):
 				count += 1
 	return count
 
@@ -92,7 +96,16 @@ func _run() -> void:
 		switched.save_png(output.path_join("first-library-frame.png"))
 		expanded.save_png(output.path_join("first-subtitle-frame.png"))
 		target.get_texture().get_image().save_png(output.path_join("subtitles.png"))
-	print(JSON.stringify({"state": "passed" if failures.is_empty() else "failed", "failures": failures, "scope": "GPU curved UI capture transitions; synthetic pixels; no native headset layer"}))
+	print(
+		JSON.stringify(
+			{
+				"state": "passed" if failures.is_empty() else "failed",
+				"failures": failures,
+				"scope":
+				"GPU curved UI capture transitions; synthetic pixels; no native headset layer"
+			}
+		)
+	)
 	target.queue_free()
 	await process_frame
 	quit(0 if failures.is_empty() else 1)

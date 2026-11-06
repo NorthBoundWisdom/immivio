@@ -14,19 +14,15 @@ struct Bridge final {
   GLuint copy_2d = 0, vao = 0, fbo = 0;
   // Keep the existing capacity until device measurements establish a new limit.
   std::array<Slot, 7> slots;
-  uint64_t copies = 0, opaque_copies = 0, opaque_uploads = 0,
-           mask_refreshes = 0;
-  uint64_t copy_pending_polls = 0, retire_pending_polls = 0,
-           slot_exhaustions = 0, borrows = 0;
+  uint64_t copies = 0, opaque_copies = 0, opaque_uploads = 0, mask_refreshes = 0;
+  uint64_t copy_pending_polls = 0, retire_pending_polls = 0, slot_exhaustions = 0, borrows = 0;
   uint64_t opaque_state_bypasses = 0, capture_state_saves = 0;
   uint64_t capture_calls = 0, capture_cpu_us = 0, capture_cpu_max_us = 0;
-  Bridge(int w, int h, int mw, int mh)
-      : width(w), height(h), mask_width(mw), mask_height(mh) {}
+  Bridge(int w, int h, int mw, int mh) : width(w), height(h), mask_width(mw), mask_height(mh) {}
   void current() const {
     if (context == EGL_NO_CONTEXT || context != eglGetCurrentContext() ||
         thread != std::this_thread::get_id())
-      throw std::runtime_error(
-          "Render bridge requires its owner GL thread/context");
+      throw std::runtime_error("Render bridge requires its owner GL thread/context");
   }
   void allocate() {
     current();
@@ -46,8 +42,7 @@ struct Bridge final {
     check_gl("Render bridge allocation");
   }
   ~Bridge() {
-    if (abandoned || context != eglGetCurrentContext() ||
-        thread != std::this_thread::get_id())
+    if (abandoned || context != eglGetCurrentContext() || thread != std::this_thread::get_id())
       return;
     for (auto &slot : slots) {
       if (slot.fence)
@@ -62,8 +57,7 @@ struct Bridge final {
   }
   void target(GLuint texture, int w, int h) {
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-                           texture, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
       throw std::runtime_error("Render bridge framebuffer incomplete");
     glViewport(0, 0, w, h);
@@ -155,11 +149,10 @@ struct Bridge final {
       if (!cache_mask || !free->opaque_cached) {
         if (!free->alpha)
           image(free->alpha, mask_width * 2, mask_height, GL_R8);
-        std::vector<unsigned char> mask(
-            static_cast<size_t>(mask_width) * mask_height * 2, 255);
+        std::vector<unsigned char> mask(static_cast<size_t>(mask_width) * mask_height * 2, 255);
         glBindTexture(GL_TEXTURE_2D, free->alpha);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mask_width * 2, mask_height,
-                        GL_RED, GL_UNSIGNED_BYTE, mask.data());
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mask_width * 2, mask_height, GL_RED,
+                        GL_UNSIGNED_BYTE, mask.data());
         free->opaque_cached = true;
         if (cache_mask)
           opaque_uploads++;
@@ -177,9 +170,7 @@ struct Bridge final {
     glFlush();
     return token;
   }
-  bool alpha_ready(const Slot &slot) const {
-    return slot.phase == Phase::held && slot.alpha_valid;
-  }
+  bool alpha_ready(const Slot &slot) const { return slot.phase == Phase::held && slot.alpha_valid; }
   void retire(jlong token) {
     current();
     auto &slot = find(token);

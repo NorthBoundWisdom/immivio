@@ -16,7 +16,9 @@ class BuildSourceChanges(unittest.TestCase):
         with self.workspace() as (root, args, marker):
             self.mark_built(args, marker)
             args.channel = "web"
-            web_marker = android.configuration_path("Quest", "Debug", "web").with_suffix(".built.json")
+            web_marker = android.configuration_path(
+                "Quest", "Debug", "web"
+            ).with_suffix(".built.json")
             web_marker.write_bytes(marker.read_bytes())
             with self.assertRaisesRegex(RuntimeError, "Build inputs changed"):
                 android.require_build(args)

@@ -64,7 +64,9 @@ func open(source: String, manage: bool = false, selected_provider: String = "") 
 		return
 	view = "accounts" if manage else "choose"
 	provider_filter = selected_provider if manage else ""
-	title = provider_name(selected_provider) if not selected_provider.is_empty() else "Media servers"
+	title = (
+		provider_name(selected_provider) if not selected_provider.is_empty() else "Media servers"
+	)
 	if manage:
 		load_accounts()
 	menu.status = ""
@@ -111,13 +113,7 @@ func start(
 
 func provider_name(value: String) -> String:
 	return (
-		{
-			"emby": "Emby",
-			"jellyfin": "Jellyfin",
-			"stash": "Stash",
-			"xbvr": "XBVR",
-			"plex": "Plex"
-		}
+		{"emby": "Emby", "jellyfin": "Jellyfin", "stash": "Stash", "xbvr": "XBVR", "plex": "Plex"}
 		. get(value, value)
 	)
 
@@ -179,14 +175,16 @@ func rows() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	if view == "choose":
 		result.append(
-			{
-				"title": I18n.t("Search local network"),
-				"icon": "refresh",
-				"account_discover": true
-			}
+			{"title": I18n.t("Search local network"), "icon": "refresh", "account_discover": true}
 		)
 		for p in PROVIDERS:
-			result.append({"title": provider_name(p), "icon": preload("res://scripts/provider_icons.gd").key(p), "account_provider": p})
+			result.append(
+				{
+					"title": provider_name(p),
+					"icon": preload("res://scripts/provider_icons.gd").key(p),
+					"account_provider": p
+				}
+			)
 	elif view == "accounts":
 		for item in items:
 			result.append(
@@ -368,13 +366,23 @@ func draw() -> void:
 		draw_keyboard(enabled)
 		if provider == "plex":
 			menu._button(
-				BASE + 27, I18n.t("Authorize"), Vector2(0.17, 0.012),
-				Vector2(0.7, 0.077), enabled, "", true
+				BASE + 27,
+				I18n.t("Authorize"),
+				Vector2(0.17, 0.012),
+				Vector2(0.7, 0.077),
+				enabled,
+				"",
+				true
 			)
 		if provider != "plex" or _editing_id():
 			menu._button(
-				BASE + 6, I18n.t("Test and save"), Vector2(0.3, -0.51),
-				Vector2(0.4, 0.07), enabled, "", true
+				BASE + 6,
+				I18n.t("Test and save"),
+				Vector2(0.3, -0.51),
+				Vector2(0.4, 0.07),
+				enabled,
+				"",
+				true
 			)
 	elif view == "plex_link":
 		menu._label("plex.tv/link", Vector3(0.15, 0.22, 0.008), 30)
@@ -409,10 +417,7 @@ func _editing_id() -> bool:
 
 func draw_fields(enabled: bool) -> void:
 	var names := {
-		"name": "Name",
-		"base": "Server address",
-		"username": "Username",
-		"password": "Password"
+		"name": "Name", "base": "Server address", "username": "Username", "password": "Password"
 	}
 	if provider == "stash":
 		names.password = "API Key"

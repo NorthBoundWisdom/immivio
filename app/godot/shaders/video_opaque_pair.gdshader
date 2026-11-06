@@ -33,8 +33,7 @@ void fragment() {
   vec2 local_uv = raw_eye_uv(shown_uv);
   int eye = source_eye();
   vec2 eye_size = view_size();
-  vec2 p =
-      clamp(local_uv, vec2(0.5) / eye_size, vec2(1.0) - vec2(0.5) / eye_size);
+  vec2 p = clamp(local_uv, vec2(0.5) / eye_size, vec2(1.0) - vec2(0.5) / eye_size);
   if (stereo_sbs && top_bottom) {
     p.y = (p.y + float(eye)) * 0.5;
   } else if (stereo_sbs) {
@@ -52,21 +51,17 @@ void fragment() {
       hi.x -= float(1 - eye) * 0.5;
     }
     vec2 step_uv = max(vec2(1.0) / source_size, fwidth(p));
-    rgb = sharpen_rgb(
-        rgb,
-        texture(color_texture, clamp(p + vec2(0.0, step_uv.y), lo, hi)).rgb,
-        texture(color_texture, clamp(p - vec2(0.0, step_uv.y), lo, hi)).rgb,
-        texture(color_texture, clamp(p + vec2(step_uv.x, 0.0), lo, hi)).rgb,
-        texture(color_texture, clamp(p - vec2(step_uv.x, 0.0), lo, hi)).rgb);
+    rgb = sharpen_rgb(rgb, texture(color_texture, clamp(p + vec2(0.0, step_uv.y), lo, hi)).rgb,
+                      texture(color_texture, clamp(p - vec2(0.0, step_uv.y), lo, hi)).rgb,
+                      texture(color_texture, clamp(p + vec2(step_uv.x, 0.0), lo, hi)).rgb,
+                      texture(color_texture, clamp(p - vec2(step_uv.x, 0.0), lo, hi)).rgb);
   }
-  ALBEDO = (outside_lens(media_direction) || outside_alignment(shown_uv))
-               ? vec3(0.0)
-               : color_grade(rgb);
+  ALBEDO =
+      (outside_lens(media_direction) || outside_alignment(shown_uv)) ? vec3(0.0) : color_grade(rgb);
   if (!separate_subtitles) {
     if (subtitle_enabled) {
       vec4 caption = projected_caption(media_direction, eye_index);
       ALBEDO = caption.rgb + ALBEDO * (1.0 - caption.a);
     }
-
   }
 }
