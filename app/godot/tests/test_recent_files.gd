@@ -3,7 +3,7 @@ extends SceneTree
 const Catalog := preload("res://scripts/recent_files.gd")
 const Memory := preload("res://scripts/file_mode_memory.gd")
 const Video := preload("res://scripts/mpv_video_display.gd")
-const Menu := preload("res://scripts/recent_menu.gd")
+const Menu := preload("res://scripts/library_menu.gd")
 var checks := 0
 var failures: Array[String] = []
 var directory := ""
@@ -318,22 +318,25 @@ func _run() -> void:
 	)
 	var menu := Menu.new()
 	menu.catalog = video.recent_files
-	menu.chosen.connect(func(uri: String): selections.append(uri))
+	menu.chosen.connect(func(uri: String, _title: String): selections.append(uri))
 	root.add_child(menu)
 	menu.toggle()
 	check(
 		menu.visible and menu.text_snapshot().contains("Saved A"),
 		"Actual menu lists private recent title"
 	)
-	var ray_origin := menu.to_global(Vector3(0, 0.163, 1))
+	var row: Dictionary = menu._buttons.filter(func(button): return button.target == Menu.ROW_BASE)[0]
+	var centre: Vector2 = row.rect.get_center()
+	var ray_origin := menu.to_global(Vector3(centre.x, centre.y, 1))
 	var ray_direction := -menu.global_basis.z
 	menu.update_pointer("right_hand", ray_origin, ray_direction, true)
 	check(
-		menu._hover.right_hand == 1 and selections.is_empty(),
+		menu._hover.right_hand == Menu.ROW_BASE and selections.is_empty(),
 		"Ray hover targets saved row without opening it"
 	)
 	check(not menu.has_method("poll_axis"), "Menu has no thumbstick selection entry")
 	menu.press_pointer("right_hand", ray_origin, ray_direction, true)
+	menu.release_pointer("right_hand", ray_origin, ray_direction, true)
 	check(not menu.visible and selections == [a], "Menu activation emits exact selected URI once")
 	video.open_local(b, "Current", 0, false)
 	video.pick_file()

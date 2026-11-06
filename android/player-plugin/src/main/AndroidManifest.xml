@@ -31,8 +31,5 @@
             android:name="org.godotengine.plugin.v2.QuestPlayer"
             android:value="org.vrpassthroughplayer.plugin.QuestPlayerPlugin"
         />
-        <!-- MNN dlopens the vendor OpenCL driver for RVM; the app linker namespace
-             only exposes public vendor libraries that the manifest declares. -->
-        <uses-native-library android:name="libOpenCL.so" android:required="false" />
     </application>
 </manifest>

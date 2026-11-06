@@ -1,15 +1,15 @@
 # Gradle dependency versions.
 [versions]
-agp = "9.2.0"
-aapt2 = "9.2.0-15009934"
-kotlin = "2.3.21"
-media3 = "1.10.1"
+agp = "9.5.1"
+aapt2 = "9.5.1-16666295"
+kotlin = "2.4.21"
+media3 = "1.11.1"
 jcifs = "3.0.4"
-icu-charset = "78.1"
+icu-charset = "79.1"
 slf4j = "1.7.36"
 bouncycastle = "1.85"
 junit = "4.13.2"
-json = "20240303"
+json = "20260814"
 fragment = "1.8.6"
 openxr-loader = "1.1.54"
 

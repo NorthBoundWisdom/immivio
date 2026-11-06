@@ -10,6 +10,8 @@ import unittest
 from unittest.mock import patch
 import xml.etree.ElementTree as ET
 import zipfile
+from contextlib import nullcontext
+from types import SimpleNamespace
 
 from configs import pico_store, player_build as builder
 from configs.android_manifest import ANDROID as A
@@ -17,6 +19,98 @@ from configs.android_manifest import ANDROID as A
 
 class PicoStore(unittest.TestCase):
     certificate = "a" * 64
+
+    def package_signer(self, prefix, *, mismatch=False):
+        root = Path(self.directory.name) / "package-test"
+        project = root / "project"
+        logs = root / "logs"
+        project.mkdir(parents=True, exist_ok=True)
+        logs.mkdir(exist_ok=True)
+        (project / "project.godot").write_text('config/version="0.9.6"\n')
+        (project / "export_presets.cfg").write_text("version/code=20\n" * 3)
+        key_bytes = b"synthetic configured certificate"
+        expected = hashlib.sha256(key_bytes).hexdigest()
+        actual = "b" * 64 if mismatch else expected
+        outputs = []
+
+        def export(command, *, log, **kwargs):
+            output = Path(command[-1])
+            shutil.copy2(self.apk, output)
+            outputs.append(output)
+            (logs / log).write_text("Export completed\n")
+
+        def inspect(output, env, sdk):
+            (logs / "base-apk-signature.log").write_text(
+                f"Verifies\n{prefix} certificate SHA-256 digest: {actual}\n"
+            )
+            (logs / "base-apk-xmltree.log").write_text("synthetic compiled manifest")
+            return builder.digest(output)
+
+        def command_output(command, **kwargs):
+            if "-exportcert" in command:
+                return key_bytes
+            return "f" * 40 if command[1] == "rev-parse" else ""
+
+        env = {
+            "JAVA_HOME": str(root / "jdk"),
+            "GODOT_ANDROID_KEYSTORE_RELEASE_PATH": str(root / "unused.keystore"),
+            "GODOT_ANDROID_KEYSTORE_RELEASE_USER": "fixture",
+            "GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD": "fixture",
+        }
+        args = SimpleNamespace(
+            vendor="Pico",
+            build_type="Release",
+            channel="appstore",
+            godot="godot",
+            ndk="fixture",
+            cmake="fixture",
+        )
+        with (
+            patch.object(builder, "ROOT", root),
+            patch.object(builder, "PROJECT", project),
+            patch.object(builder, "LOGS", logs),
+            patch.object(
+                builder, "template_directory", return_value=(root, "4.7.2.stable")
+            ),
+            patch.object(
+                builder, "signing_environment", side_effect=lambda env, **kw: env.copy()
+            ),
+            patch.object(builder, "variant_export_presets", return_value=nullcontext()),
+            patch.object(builder, "export_executable", return_value="godot"),
+            patch.object(builder, "run", side_effect=export),
+            patch.object(builder, "inspect_package", side_effect=inspect),
+            patch.object(
+                builder, "verify_xmltree", return_value=copy.deepcopy(self.manifest)
+            ),
+            patch.object(
+                builder.subprocess, "check_output", side_effect=command_output
+            ),
+            patch.object(pico_store, "CERTIFICATE_SHA256", expected),
+            patch(
+                "configs.android_workflow.dependency_receipt",
+                return_value={"schema_version": 5},
+            ),
+            patch.dict("os.environ", {"IMMIVIO_DEVELOPMENT_PACKAGE": "0"}),
+        ):
+            if mismatch:
+                with self.assertRaisesRegex(RuntimeError, "APK signer differs"):
+                    builder.package(args, env, root / "sdk")
+                self.assertFalse(outputs[0].exists())
+                self.assertFalse(outputs[0].with_suffix(".build.json").exists())
+            else:
+                builder.package(args, env, root / "sdk")
+                receipt = json.loads(outputs[0].with_suffix(".build.json").read_text())
+                self.assertEqual(receipt["signing_certificate_sha256"], expected)
+
+    def test_package_reads_legacy_and_v2_signer_output(self):
+        for prefix in ("Signer #1", "V2 Signer:"):
+            with self.subTest(prefix=prefix):
+                self.package_signer(prefix)
+
+    def test_package_rejects_wrong_certificate_in_both_signer_formats(self):
+        for prefix in ("Signer #1", "V2 Signer:"):
+            with self.subTest(prefix=prefix):
+                self.package_signer(prefix, mismatch=True)
 
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
