@@ -1146,10 +1146,6 @@ func _rebuild_rows() -> void:
 						],
 						["Godot", "MIT"],
 						["Godot OpenXR Vendors", "Vendor license notices"],
-						["RVM MobileNetV3", "GPL-3.0"],
-						["MNN", "Apache-2.0"],
-						["ncnn", "BSD-3-Clause"],
-						["Depth Anything V2 Small", "Apache-2.0"],
 						["MPV / FFmpeg", "Bundled license notices"],
 						["AndroidX Media3", "Apache-2.0"],
 						["CodeLibs JCIFS", "LGPL-2.1"]

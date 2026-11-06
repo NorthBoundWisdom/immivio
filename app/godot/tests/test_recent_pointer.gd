@@ -1,11 +1,11 @@
 extends SceneTree
 
-const Menu := preload("res://scripts/recent_menu.gd")
+const Menu := preload("res://scripts/library_menu.gd")
 const Main := preload("res://scripts/main.gd")
 var checks := 0
 var failures: Array[String] = []
 var selected: Array[String] = []
-var opened := 0
+var player_returns := 0
 
 
 class Catalog:
@@ -16,7 +16,7 @@ class Catalog:
 		for index in 32:
 			entries.append(
 				{
-					"uri": "content://pointer/%d" % index,
+					"uri": "content://pointer/%d.mp4" % index,
 					"title": "File %d" % index,
 					"position_ms": 1000
 				}
@@ -34,6 +34,50 @@ func target_origin(menu: Node3D, x: float, y: float, z: float = 1.0) -> Vector3:
 	return menu.to_global(Vector3(x, y, z))
 
 
+func button_origin(menu: Node3D, target: int) -> Vector3:
+	var button: Dictionary = menu._buttons.filter(func(item): return item.target == target)[0]
+	var centre: Vector2 = button.rect.get_center()
+	return target_origin(menu, centre.x, centre.y)
+
+
+func check_row_geometry(menu: Node3D) -> void:
+	for list_mode in [false, true]:
+		menu.list_view = list_mode
+		menu.refresh()
+		var first: Dictionary = menu._buttons.filter(func(b): return b.target == Menu.ROW_BASE)[0]
+		var second: Dictionary = menu._buttons.filter(func(b): return b.target == Menu.ROW_BASE + 1)[0]
+		var a: Rect2 = first.rect
+		var b: Rect2 = second.rect
+		var gap: Variant = null
+		if a.end.x < b.position.x:
+			gap = Vector2((a.end.x + b.position.x) * .5, a.get_center().y)
+		elif b.end.y < a.position.y:
+			gap = Vector2(a.get_center().x, (b.end.y + a.position.y) * .5)
+		print("Library row geometry: list=", list_mode, " first=", a, " second=", b, " gap=", gap)
+		if gap != null:
+			var origin := menu.to_global(Vector3(gap.x, gap.y, 1))
+			check(
+				menu.ray_hit(origin, -menu.global_basis.z).is_empty(),
+				"Adjacent production rows reject gap rays"
+			)
+		var half: Vector2 = a.size * .5
+		var corner: Vector3 = first.node.to_global(Vector3(half.x - .001, half.y - .001, 1))
+		var direction: Vector3 = -first.node.global_basis.z
+		check(
+			menu.ray_hit(corner, direction).is_empty(),
+			"Transparent production row corner rejects the ray"
+		)
+		var selections := selected.size()
+		menu.press_pointer("right_hand", corner, direction, true)
+		menu.release_pointer("right_hand", corner, direction, true)
+		check(
+			menu.visible and selected.size() == selections,
+			"Transparent rounded corner cannot activate a file"
+		)
+	menu.list_view = false
+	menu.refresh()
+
+
 func _initialize() -> void:
 	if not preload("res://tests/support/test_result.gd").prepare(self):
 		return
@@ -44,28 +88,29 @@ func _run() -> void:
 	preload("res://scripts/i18n.gd").use("en")  # text checks are written in English
 	var menu := Menu.new()
 	menu.catalog = Catalog.new()
-	menu.chosen.connect(func(uri: String): selected.append(uri))
-	menu.choose_file.connect(func(): opened += 1)
+	menu.chosen.connect(func(uri: String, _title: String): selected.append(uri))
+	menu.player_requested.connect(func(): player_returns += 1)
 	root.add_child(menu)
 	menu.toggle()
+	check_row_geometry(menu)
 	var direction := -menu.global_basis.z
-	var row := target_origin(menu, 0, 0.163)
-	check(menu.ray_hit(row, direction).target == 1, "Ray selects actual row geometry")
-	check(
-		menu.ray_hit(target_origin(menu, 0.699, 0.2865), direction).is_empty(),
-		"Transparent rounded row corner cannot activate its rectangular bounds"
-	)
+	var row := button_origin(menu, Menu.ROW_BASE)
+	check(menu.ray_hit(row, direction).target == Menu.ROW_BASE, "Ray selects actual row geometry")
 	menu.update_pointer("left_hand", row, direction, true)
 	check(
-		selected.is_empty() and menu._hover.left_hand == 1 and menu._pointers.left_hand.dot.visible,
+		(
+			selected.is_empty()
+			and menu._hover.left_hand == Menu.ROW_BASE
+			and menu._pointers.left_hand.dot.visible
+		),
 		"Hover displays dot without activating"
 	)
 	check(
-		not menu.press_pointer("right_hand", target_origin(menu, 1, 0.163), direction, true),
+		not menu.press_pointer("right_hand", target_origin(menu, 10, 0), direction, true),
 		"Other hand miss cannot activate left hover"
 	)
 	check(
-		not menu.press_pointer("left_hand", target_origin(menu, 1, 0.163), direction, true),
+		not menu.press_pointer("left_hand", target_origin(menu, 10, 0), direction, true),
 		"Trigger recomputes moved ray instead of stale hover"
 	)
 	menu.update_pointer("left_hand", row, direction, false)
@@ -87,78 +132,76 @@ func _run() -> void:
 		[Vector3(NAN, 0, 0), direction],
 		[row, menu.global_basis.x],
 		[row, -direction],
-		[target_origin(menu, 0, 0.163, -1), -direction],
-		[target_origin(menu, 0, 0.163, 6), direction],
-		[target_origin(menu, 0, 0.206), direction],
-		[target_origin(menu, -0.5, -0.415), direction]
+		[menu.to_global(menu.to_local(row) * Vector3(1, 1, -1)), -direction],
+		[row + menu.global_basis.z * 5, direction],
+		[button_origin(menu, Menu.RECENT_PREVIOUS), direction]
 	]:
 		check(
 			menu.ray_hit(sample[0], sample[1]).is_empty(),
-			"Invalid/parallel/rear/far/gap/disabled button rejects ray"
+			"Invalid/parallel/rear/far/disabled button rejects ray"
 		)
 	menu.rotation = Vector3(0.2, 0.7, -0.1)
 	menu.position = Vector3(2, 3, -4)
 	direction = -menu.global_basis.z
-	row = target_origin(menu, 0, 0.163)
-	check(menu.ray_hit(row, direction).target == 1, "World transformed menu keeps correct hit")
+	row = button_origin(menu, Menu.ROW_BASE)
 	check(
-		(
-			menu.press_pointer("left_hand", row, direction, true)
-			and selected == ["content://pointer/0"]
-			and not menu.visible
-		),
-		"Correct hand emits exact URI and closes once"
+		menu.ray_hit(row, direction).target == Menu.ROW_BASE,
+		"World transformed menu keeps correct hit"
 	)
+	menu.press_pointer("left_hand", row, direction, true)
+	menu.release_pointer("left_hand", row, direction, true)
 	check(
-		not menu.press_pointer("left_hand", row, direction, true) and selected.size() == 1,
-		"Closed menu rejects repeated activation"
+		selected == ["content://pointer/0.mp4"] and not menu.visible,
+		"Correct hand emits exact URI on release and closes once"
 	)
+	menu.press_pointer("left_hand", row, direction, true)
+	menu.release_pointer("left_hand", row, direction, true)
+	check(selected.size() == 1, "Closed menu rejects repeated activation")
 	menu.toggle()
-	for expected in range(1, 5):
+	for expected in range(1, menu._recent_page_count()):
 		check(
 			(
-				menu.press_pointer("right_hand", target_origin(menu, 0, -0.415), direction, true)
-				and menu.page == expected
+				menu.press_pointer(
+					"right_hand", button_origin(menu, Menu.RECENT_NEXT), direction, true
+				)
+				and menu._recent_page == expected
 			),
 			"Point-and-trigger next reaches page %d" % expected
 		)
 	check(
-		menu.ray_hit(target_origin(menu, 0, -0.415), direction).is_empty(),
+		menu.ray_hit(button_origin(menu, Menu.RECENT_NEXT), direction).is_empty(),
 		"Last page disables next"
 	)
 	check(
 		(
-			menu.press_pointer("left_hand", target_origin(menu, -0.5, -0.415), direction, true)
-			and menu.page == 3
+			menu.press_pointer(
+				"left_hand", button_origin(menu, Menu.RECENT_PREVIOUS), direction, true
+			)
+			and menu._recent_page == 1
 		),
 		"Previous is selected by pointer"
 	)
-	menu.page = 4
+	menu._recent_page = 2
 	menu.refresh()
+	var last_row := button_origin(menu, Menu.ROW_BASE + 6)
+	menu.press_pointer("right_hand", last_row, direction, true)
+	menu.release_pointer("right_hand", last_row, direction, true)
 	check(
-		(
-			menu.press_pointer("right_hand", target_origin(menu, 0, -0.011), direction, true)
-			and selected.back() == "content://pointer/30"
-		),
-		"Last page row maps to exact catalog entry"
+		selected.back() == "content://pointer/30.mp4", "Last page row maps to exact catalog entry"
 	)
+	menu.playback_browser = true
 	menu.toggle()
+	var close_origin := button_origin(menu, Menu.PLAYER)
+	var selections_before_close := selected.size()
 	check(
-		(
-			menu.press_pointer("left_hand", target_origin(menu, 0.5, -0.415), direction, true)
-			and not menu.visible
-			and opened == 0
-		),
-		"Pointer close does not open a file"
+		menu.press_pointer("right_hand", close_origin, direction, true),
+		"Playback library has a pointer close button"
 	)
-	menu.toggle()
 	check(
-		(
-			menu.press_pointer("left_hand", target_origin(menu, 0, 0.25), direction, true)
-			and opened == 1
-		),
-		"Pointer open-file emits once"
+		not menu.visible and player_returns == 1 and selected.size() == selections_before_close,
+		"Closing the library returns to playback without opening a file"
 	)
+	menu.playback_browser = false
 	# Use real XRController3D and registered Godot trackers with synthetic poses.
 	# This validates engine/Main dispatch, not physical Quest tracking.
 	menu.rotation = Vector3.ZERO
@@ -175,7 +218,7 @@ func _run() -> void:
 		tracker.name = hand
 		tracker.set_pose(
 			"aim",
-			Transform3D(Basis.IDENTITY, target_origin(menu, 0, 0.163)),
+			Transform3D(Basis.IDENTITY, button_origin(menu, Menu.ROW_BASE)),
 			Vector3.ZERO,
 			Vector3.ZERO,
 			XRPose.XR_TRACKING_CONFIDENCE_HIGH
@@ -187,6 +230,7 @@ func _run() -> void:
 		controller.tracker = hand
 		controller.pose = "aim"
 		controller.button_pressed.connect(main._on_controller_button.bind(hand))
+		controller.button_released.connect(main._on_controller_release.bind(hand))
 		origin.add_child(controller)
 		if hand == "left_hand":
 			main.left_controller = controller
@@ -205,10 +249,10 @@ func _run() -> void:
 		main._process(1.0 / 72.0)
 	check(
 		(
-			menu.page == 0
-			and menu.focus_index == 0
-			and menu._hover.left_hand == 1
-			and menu._hover.right_hand == 1
+			menu._recent_page == 0
+			and menu.scroll == 0
+			and menu._hover.left_hand == Menu.ROW_BASE
+			and menu._hover.right_hand == Menu.ROW_BASE
 		),
 		"Held real tracker axes never navigate menu; both rays hover independently"
 	)
@@ -220,8 +264,9 @@ func _run() -> void:
 		menu.visible and selected.size() == 2, "Actual tracking loss blocks Main trigger dispatch"
 	)
 	trackers[1].set_input("trigger_click", true)
+	trackers[1].set_input("trigger_click", false)
 	check(
-		not menu.visible and selected.size() == 3 and selected.back() == "content://pointer/0",
+		not menu.visible and selected.size() == 3 and selected.back() == "content://pointer/0.mp4",
 		"Tracked other controller button signal selects its ray"
 	)
 	for tracker in trackers:

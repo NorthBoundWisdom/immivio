@@ -1,7 +1,6 @@
 extends SceneTree
 
 const Menu := preload("res://scripts/player_menu.gd")
-const Recent := preload("res://scripts/recent_menu.gd")
 const Main := preload("res://scripts/main.gd")
 const Video := preload("res://scripts/mpv_video_display.gd")
 const Memory := preload("res://scripts/file_mode_memory.gd")
@@ -313,7 +312,9 @@ func _run() -> void:
 	root.add_child(menu)
 	menu.set_process(false)
 	main.player_menu = menu
-	var recent := Recent.new()
+	var previous_video_menu: Node3D = main.video_menu
+	main.video_menu = menu
+	var recent := Library.new()
 	recent.catalog = video.recent_files
 	recent.player_requested.connect(main._show_player_menu)
 	root.add_child(recent)
@@ -332,16 +333,20 @@ func _run() -> void:
 		click(menu, 100) and recent.visible and not menu.visible,
 		"Pointer recent button opens one menu"
 	)
+	video.open_local("file:///menu.mp4", "测试电影 😀", 0, false)
+	video._waiting_first = false
+	recent.dismiss()
+	main._show_recent_menu(true)
 	check(
-		click(recent, Recent.PLAYER) and menu.visible and not recent.visible,
-		"Legacy recent fixture returns to controls; production library has no player shortcut"
+		click(recent, Library.PLAYER) and menu.visible and not recent.visible,
+		"Production library back-to-video button returns to controls"
 	)
 	check(
-		click(menu, 100) and not menu.visible and recent.visible,
+		click(menu, Menu.BROWSE) and menu.visible and recent.visible,
 		"Pointer open video shows the in-headset library"
 	)
 	recent.dismiss()
-	video.open_local("file:///menu.mp4", "测试电影 😀", 0, false)
+	main.video_menu = previous_video_menu
 	video._waiting_first = false
 	video.media.state = "playing"
 	video.media.format = {"width": 3840, "height": 1920}

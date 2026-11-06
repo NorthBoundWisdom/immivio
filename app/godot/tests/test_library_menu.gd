@@ -645,12 +645,21 @@ func _run() -> void:
 		true
 	)
 	menu.release_pointer("right_hand", Vector3.ZERO, Vector3.ZERO, true)
-	check(menu.scroll > 0, "Ray dragging still scrolls informational credits")
+	check(
+		menu.scroll == 0 and menu._max_scroll() == 0,
+		"Current credits fit without phantom scrolling"
+	)
 	menu.scroll = menu._max_scroll()
 	menu._draw()
 	check(
-		menu.text_snapshot().contains("CodeLibs JCIFS") and menu._max_scroll() > 0,
-		"Copyright list scrolls to its final component"
+		(
+			menu.text_snapshot().contains("CodeLibs JCIFS")
+			and not menu.text_snapshot().contains("RVM")
+			and not menu.text_snapshot().contains("MNN")
+			and not menu.text_snapshot().contains("ncnn")
+			and not menu.text_snapshot().contains("Depth Anything")
+		),
+		"Credits retain JCIFS and omit retired inference components"
 	)
 	menu._activate(Menu.ABOUT_HOME)
 	check(

@@ -3,10 +3,6 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
-// Immivio ships a single playback edition. Reject obsolete inference requests.
-if (providers.gradleProperty('enableAi').orNull == 'true') {
-    throw new GradleException('Immivio no longer supports inference builds.')
-}
 def playerAssets = layout.buildDirectory.dir('playerAssets')
 def stagePlayerAssets = tasks.register('stagePlayerAssets', Sync) {
     from('src/main/assets')

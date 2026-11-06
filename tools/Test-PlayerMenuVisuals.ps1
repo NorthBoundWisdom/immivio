@@ -9,7 +9,6 @@ foreach ($file in Get-ChildItem "$workspace/app/godot/scripts", "$workspace/app/
     $sourceHashes[$relative] = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
 }
 foreach ($case in @(
-        @{name = 'library'; script = 'render_recent_menu.gd'; variable = 'QUEST_RECENT_PREVIEW_DIR' },
         @{name = 'entry'; script = 'render_main_ui.gd'; variable = 'QUEST_MAIN_UI_PREVIEW_DIR' })) {
     $destination = Join-Path $output $case.name
     [Environment]::SetEnvironmentVariable($case.variable, $destination, 'Process')

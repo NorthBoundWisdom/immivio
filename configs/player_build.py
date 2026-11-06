@@ -717,7 +717,12 @@ def _inspect_package(path, env, sdk, native):
             raise RuntimeError(f"Unresolved ELF symbols: {library.name}: {missing}")
         closure.append({"library": library.name, "needed": needed})
     (native / "elf-closure.json").write_text(json.dumps(closure, indent=2) + "\n")
-    tools = sdk / "build-tools/36.1.0"
+    tools = sdk / "build-tools" / installed_sdk_component(
+        sdk,
+        "build-tools",
+        "source.properties",
+        preferred=env.get("IMMIVIO_BUILD_TOOLS_VERSION", ""),
+    )
     run(
         [
             tools / ("apksigner.bat" if os.name == "nt" else "apksigner"),
@@ -837,6 +842,7 @@ def configure_project(args, env, sdk):
         ("androidGradlePlugin", LOCK["android_gradle_plugin"]),
         ("kotlinVersion", LOCK["kotlin"]),
         ("ndkVersion", args.ndk),
+        ("buildTools", args.build_tools),
     ]:
         text, count = re.subn(
             r"(\b" + name + r"\s*:\s*)'[^']+'",
@@ -1027,7 +1033,7 @@ def package(args, env, sdk):
         ).strip()
     )
     certificate = re.search(
-        r"Signer #1 certificate SHA-256 digest: ([0-9a-f]{64})",
+        r"(?m)^(?:Signer #1|V\d+(?:\.\d+)? Signer:) certificate SHA-256 digest: ([0-9a-f]{64})$",
         (LOGS / "base-apk-signature.log").read_text(),
     )
     if not certificate:

@@ -28,7 +28,7 @@ func _run() -> void:
 	var menu := Library.new()
 	menu.section = Library.Section.SETTINGS
 	menu.tab = Library.ABOUT_TAB
-	menu._about_page = 2
+	menu._about_page = 3
 	root.add_child(menu)
 	menu.set_process(false)
 	menu.toggle()
@@ -37,9 +37,9 @@ func _run() -> void:
 	menu.stick_scroll(-1, 0.5)
 	check(
 		menu.scroll > 0 and menu.rows[menu._first_line()].title != first_title,
-		"Credits content actually scrolls"
+		"License content actually scrolls"
 	)
-	check(navigation_ids(menu) == original, "Credits scrolling retains all left navigation nodes")
+	check(navigation_ids(menu) == original, "License scrolling retains all left navigation nodes")
 	menu.stick_scroll(1, 0.5)
 	check(
 		menu.scroll == 0 and navigation_ids(menu) == original,

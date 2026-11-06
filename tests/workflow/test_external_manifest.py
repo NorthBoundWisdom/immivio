@@ -1,6 +1,7 @@
 """Verify the APK inspection gate and external playback rules using compiled-manifest fixtures."""
 
 import importlib.util
+from contextlib import contextmanager
 from pathlib import Path
 import tempfile
 import unittest
@@ -81,6 +82,86 @@ class ExternalManifest(unittest.TestCase):
 
 
 class ExportManifestGate(unittest.TestCase):
+    @contextmanager
+    def inspection_tools(self, preferred=None):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            logs = root / "logs"
+            logs.mkdir()
+            sdk = root / "sdk"
+            for version in ("36.1.0", "37.0.0", "38.0.0-rc1"):
+                directory = sdk / "build-tools" / version
+                directory.mkdir(parents=True)
+                (directory / "source.properties").touch()
+            (sdk / "build-tools/39.0.0").mkdir()
+            apk = root / "fixture.apk"
+            with zipfile.ZipFile(apk, "w") as archive:
+                for name in (
+                    "libquest_media.so",
+                    "libquest_mpv.so",
+                    "libquest_render_bridge.so",
+                    "libgodot_android.so",
+                    "libmpv.so",
+                ):
+                    archive.writestr("lib/arm64-v8a/" + name, b"fixture")
+            calls = []
+
+            def run(command, *, log, **kwargs):
+                calls.append(command)
+                if log == "base-apk-manifest.log":
+                    (logs / log).write_text(
+                        "package: name='com.northboundwisdom.immivio'\n"
+                        "application-label:'Immivio'\n"
+                    )
+                elif log == "base-apk-xmltree.log":
+                    (logs / log).write_text(self.xmltree())
+
+            env = {"ANDROID_NDK_HOME": str(root / "ndk")}
+            if preferred is not None:
+                env["IMMIVIO_BUILD_TOOLS_VERSION"] = preferred
+            with (
+                patch.object(builder, "ROOT", root),
+                patch.object(builder, "LOGS", logs),
+                patch.object(builder, "run", side_effect=run),
+                patch.object(
+                    builder.subprocess,
+                    "check_output",
+                    return_value="AArch64\n LOAD fixture 0x4000\n",
+                ),
+                patch.dict("os.environ", {"IMMIVIO_DEVELOPMENT_PACKAGE": "0"}),
+            ):
+                yield apk, env, sdk, calls
+
+    def test_apk_inspection_uses_explicit_build_tools(self):
+        with self.inspection_tools("36.1.0") as (apk, env, sdk, calls):
+            self.assertEqual(
+                builder.inspect_package(apk, env, sdk), builder.digest(apk)
+            )
+            self.assertEqual(len(calls), 4)
+            self.assertEqual(
+                {Path(call[0]).parent for call in calls},
+                {sdk / "build-tools/36.1.0"},
+            )
+
+    def test_apk_inspection_rejects_missing_explicit_build_tools(self):
+        with self.inspection_tools("40.0.0") as (apk, env, sdk, calls):
+            with self.assertRaisesRegex(
+                RuntimeError, "Configured Android component is missing"
+            ):
+                builder.inspect_package(apk, env, sdk)
+            self.assertEqual(calls, [])
+
+    def test_apk_inspection_defaults_to_latest_complete_stable_build_tools(self):
+        with self.inspection_tools() as (apk, env, sdk, calls):
+            self.assertEqual(
+                builder.inspect_package(apk, env, sdk), builder.digest(apk)
+            )
+            self.assertEqual(len(calls), 4)
+            self.assertEqual(
+                {Path(call[0]).parent for call in calls},
+                {sdk / "build-tools/37.0.0"},
+            )
+
     # Representative aapt2 xmltree output, including namespace/resource IDs and typed booleans.
     @staticmethod
     def xmltree(binary_network=False, browsable=False):
@@ -142,6 +223,9 @@ class ExportManifestGate(unittest.TestCase):
                 root = Path(directory)
                 logs = root / "logs"
                 logs.mkdir()
+                build_tools = root / "sdk/build-tools/37.0.0"
+                build_tools.mkdir(parents=True)
+                (build_tools / "source.properties").touch()
                 apk = root / "fixture.apk"
                 with zipfile.ZipFile(apk, "w") as archive:
                     for lib in [
