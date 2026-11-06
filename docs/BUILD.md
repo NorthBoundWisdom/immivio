@@ -164,3 +164,32 @@ It produces the Android 432px adaptive foreground/background and white-alpha mon
 The Android foreground keeps the complete surround/play mark inside the adaptive safe area; the background fills the system mask without a second opaque icon tile. Source layers and posters stay outside the Godot resource tree so the application does not bundle unused marketing originals.
 
 The homepage and social preview use promotional illustrations, labelled as artwork. Actual application screenshots remain under `website/assets/screenshots/` with their original capture manifest and captions.
+
+### PICO 宣传海报 / PICO promotional posters
+
+Upload the JPEG files below from `branding/pico/`, rather than the original PNGs in `branding/source/` or the website WebP images. The preparation script resizes directly from each original and checks the encoded format, dimensions and 5,000,000-byte limit.
+
+| 用途 / Use | 上传文件 / Upload file | 尺寸 / Dimensions | 格式及大小 / Format and limit |
+| --- | --- | --- | --- |
+| 宽幅海报 / Wide poster | `branding/pico/poster-wide-2560x1440.jpg` | 2560 × 1440 | JPG/JPEG, ≤5 MB |
+| 方形海报 / Square poster | `branding/pico/poster-square-1024.jpg` | 1024 × 1024 | JPG/JPEG, ≤5 MB |
+
+上传时请使用上表中的 JPG 文件；原始 PNG 和官网 WebP 用途不同。运行素材准备命令会直接从原图生成海报，并检查格式、尺寸和大小，避免反复缩放降低清晰度。
+
+### PICO 详情页图片 / PICO detail-page images
+
+Upload the four numbered JPEGs in `branding/pico/details/zh-CN/` for Simplified Chinese, or the four in `branding/pico/details/en/` for English. Each is 2560 × 1440, below 5 MB. The order is playback, network media, VR subtitles and display settings. Keep languages separate in the store’s localized image fields.
+
+中文请上传 `branding/pico/details/zh-CN/` 中的 4 张编号 JPG；英文请使用 `branding/pico/details/en/`，依次展示播放、网络媒体、字幕设置和显示设置。每张均为 2560 × 1440、小于 5 MB。`source/` 是原始截图，不是待上传成品。
+
+The images use actual Android ARM64 emulator captures of the current 0.9.6 production interface in an isolated development application. Cropping and uniform scaling make the menus readable; separate headings and feature copy are added around them. Controls are not redrawn. The playback cards show the maintainer-provided `blandscape` VR180 side-by-side video actually playing in Immivio (a 16-second excerpt from 01:28). The other cards use the bundled CC0 Belfast Sunset sky sample. The example video is not included in the branding assets; no account or private library appears. `branding/pico/details/capture.json` records application/APK identity, source checksums, capture method and crop rectangles. These images do not certify headset stereoscopy or performance.
+
+中英文图均基于隔离开发包的真实虚拟机截图。播放图展示用户提供的 `blandscape` VR180 左右立体示例视频在 Immivio 中实际播放的画面（从 01:28 起截取 16 秒），其他三类图使用项目自带的 CC0 天空素材演示。素材目录不包含示例视频。原截图保存在 `source/`，校验值与来源记录在 `capture.json`。排版仅裁切缩放截图并添加独立文案，没有重绘控件，也不用于证明头显立体或性能表现。
+
+Regenerate the editable layouts with Godot and a real renderer (the command verifies source hashes and output format, dimensions and size):
+
+```sh
+godot --xr-mode off --rendering-method gl_compatibility --rendering-driver opengl3 --path app/godot --script ../../tools/prepare_store_details.gd
+```
+
+Edit the bilingual text and layout in `tools/prepare_store_details.gd`. Local review contact sheets are written under `artifacts/captures/branding/store-details/`, separate from upload files. 修改中英文文案和位置可直接编辑该脚本，重新运行后会生成全部 8 张；预览拼图放在截图输出目录，不会混入上传文件夹。

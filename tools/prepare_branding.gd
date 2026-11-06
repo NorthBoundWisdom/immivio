@@ -48,13 +48,32 @@ func play_layer(source: Image, side: int) -> Image:
 	return canvas
 
 
+## PICO poster upload contract: JPEG, exact dimensions and no more than 5 MB.
+func store_poster(source: Image, size: Vector2i, path: String) -> void:
+	var picture := source.duplicate() as Image
+	picture.resize(size.x, size.y, Image.INTERPOLATE_LANCZOS)
+	picture.convert(Image.FORMAT_RGB8)
+	var destination := ProjectSettings.globalize_path(path)
+	if picture.save_jpg(destination, .92) != OK:
+		push_error("Unable to save PICO poster: " + path)
+		failed = true
+		return
+	var encoded := FileAccess.get_file_as_bytes(destination)
+	var decoded := Image.load_from_file(destination)
+	if (encoded.size() < 2 or encoded.size() > 5_000_000
+		or encoded[0] != 0xff or encoded[1] != 0xd8
+		or decoded == null or decoded.get_size() != size):
+		push_error("PICO poster must be JPEG, match its required dimensions and be <=5 MB: " + path)
+		failed = true
+
+
 func _run() -> void:
 	var original := load_art("res://branding/immivio-icon.png")
 	var backdrop := load_art("res://../../branding/source/background.png")
 	var surround := load_art("res://../../branding/source/surround.png")
 	var play := load_art("res://../../branding/source/play.png")
-	var wide := load_art("res://../../branding/source/poster-wide.png")
-	var square := load_art("res://../../branding/source/poster-square.png")
+	var wide_source := load_art("res://../../branding/source/poster-wide.png")
+	var square_source := load_art("res://../../branding/source/poster-square.png")
 	if failed:
 		quit(1)
 		return
@@ -83,6 +102,7 @@ func _run() -> void:
 			color.a *= clampf(0.5 - distance, 0.0, 1.0)
 			web.set_pixel(x, y, color)
 	png(web, "res://../../website/assets/icon.png")
+	var wide := wide_source.duplicate() as Image
 	wide.resize(1600, 900, Image.INTERPOLATE_LANCZOS)
 	if wide.save_webp(ProjectSettings.globalize_path("res://../../website/assets/branding/immivio-wide.webp"), true, .88) != OK:
 		failed = true
@@ -90,6 +110,7 @@ func _run() -> void:
 	social.resize(1200, 675, Image.INTERPOLATE_LANCZOS)
 	if social.save_jpg(ProjectSettings.globalize_path("res://../../website/assets/branding/immivio-social.jpg"), .9) != OK:
 		failed = true
+	var square := square_source.duplicate() as Image
 	square.resize(1024, 1024, Image.INTERPOLATE_LANCZOS)
 	if square.save_webp(ProjectSettings.globalize_path("res://../../website/assets/branding/immivio-square.webp"), true, .88) != OK:
 		failed = true
@@ -98,11 +119,8 @@ func _run() -> void:
 	png(background(backdrop, 1024), "res://../../branding/pico/background-1024.png")
 	png(scaled(surround, 1024), "res://../../branding/pico/surround-1024.png")
 	png(play_layer(play, 1024), "res://../../branding/pico/play-1024.png")
-	var store_wide := wide.duplicate() as Image
-	store_wide.resize(2560, 1440, Image.INTERPOLATE_LANCZOS)
-	if store_wide.save_jpg(ProjectSettings.globalize_path("res://../../branding/pico/poster-wide-2560x1440.jpg"), .92) != OK:
-		failed = true
-	if square.save_jpg(ProjectSettings.globalize_path("res://../../branding/pico/poster-square-1024.jpg"), .92) != OK:
-		failed = true
+	# Resize each upload poster directly from its original, not a smaller website derivative.
+	store_poster(wide_source, Vector2i(2560, 1440), "res://../../branding/pico/poster-wide-2560x1440.jpg")
+	store_poster(square_source, Vector2i(1024, 1024), "res://../../branding/pico/poster-square-1024.jpg")
 	print("Prepared application/adaptive/themed icons, responsive website posters, social preview and PICO artwork")
 	quit(1 if failed else 0)
