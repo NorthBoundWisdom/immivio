@@ -16,21 +16,26 @@ internal class LocalVideoPicker(
     private var pending = false
     private var code = initialCode
     private var request = 0
-    private val selection = LocalVideoSelection({ host()?.applicationContext }) { payload ->
-        event(JSONObject(payload).put("picker_request", request).toString())
-    }
+    private val selection =
+        LocalVideoSelection({ host()?.applicationContext }) { payload ->
+            event(JSONObject(payload).put("picker_request", request).toString())
+        }
 
     fun open(id: Int) {
         if (pending) return
         selection.cancel(false)
         request = id
         val activity = host() ?: return report("error", "ACTIVITY_UNAVAILABLE")
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-            addCategory(Intent.CATEGORY_OPENABLE)
-            type = if (mimeType == "video/*") "*/*" else mimeType
-            putExtra(Intent.EXTRA_LOCAL_ONLY, true)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
-        }
+        val intent =
+            Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE)
+                type = if (mimeType == "video/*") "*/*" else mimeType
+                putExtra(Intent.EXTRA_LOCAL_ONLY, true)
+                addFlags(
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                        Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+                )
+            }
         try {
             pending = true
             code = if (code >= initialCode + 0xff) initialCode else code + 1
@@ -56,7 +61,10 @@ internal class LocalVideoPicker(
 
     private fun report(state: String, error: String = "") {
         event(
-            JSONObject().put("state", state).put("error", error).put("picker_request", request)
+            JSONObject()
+                .put("state", state)
+                .put("error", error)
+                .put("picker_request", request)
                 .toString()
         )
     }

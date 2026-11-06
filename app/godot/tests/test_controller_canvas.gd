@@ -127,8 +127,10 @@ func _run() -> void:
 	menu.section = 1
 	main._update_player_menu_anchor()
 	check(
-		(menu.global_position - Vector3.UP * height - camera.global_position).normalized().is_equal_approx(
-			(centre.origin - camera.global_position).normalized()
+		(
+			(menu.global_position - Vector3.UP * height - camera.global_position)
+			. normalized()
+			. is_equal_approx((centre.origin - camera.global_position).normalized())
 		),
 		"Expanded settings remain visually centred on canvas"
 	)
@@ -234,7 +236,9 @@ func _run() -> void:
 		* (menu.to_global(Vector3(0, Menu.BAR_SEEK_Y, 0)) - camera.global_position)
 	)
 	check(
-		in_content.is_equal_approx(Vector3(0, -Menu.IMMERSIVE_DROP + height, -Menu.IMMERSIVE_DISTANCE)),
+		in_content.is_equal_approx(
+			Vector3(0, -Menu.IMMERSIVE_DROP + height, -Menu.IMMERSIVE_DISTANCE)
+		),
 		"Immersive timeline sits below the content/reset gaze centre"
 	)
 	check(

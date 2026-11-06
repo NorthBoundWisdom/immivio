@@ -57,9 +57,7 @@ func tick() -> void:
 	var previous := message
 	var seconds := maxi(0, (Time.get_ticks_msec() - since) / 1000)
 	message = I18n.t(stage) + " · %d s" % seconds
-	var speed := (
-		maxf(0, float(details.get("read_bytes_per_second", 0)))
-	)
+	var speed := maxf(0, float(details.get("read_bytes_per_second", 0)))
 	if speed > 0:
 		message += (
 			" · %.1f MB/s" % (speed / 1048576.0)

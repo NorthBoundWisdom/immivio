@@ -9,39 +9,16 @@
   "fps": 30,
   "frames": 180,
   "duration_seconds": 6,
-  "packed_dimensions": [
-    512,
-    256
-  ],
+  "packed_dimensions": [512, 256],
   "pack_scale": 0.4,
   "radius_scale": 1.0,
   "lens_fov": 180,
   "rgb_per_eye": [
-    [
-      224,
-      48,
-      32
-    ],
-    [
-      32,
-      80,
-      224
-    ]
+    [224, 48, 32],
+    [32, 80, 224]
   ],
-  "alpha_values_left": [
-    0,
-    64,
-    128,
-    192,
-    255
-  ],
-  "alpha_values_right": [
-    255,
-    192,
-    128,
-    64,
-    0
-  ],
+  "alpha_values_left": [0, 64, 128, 192, 255],
+  "alpha_values_right": [255, 192, 128, 64, 0],
   "top_alpha_scale": 0.5,
   "bottom_alpha_scale": 1.0,
   "codec": "H264 high yuv420p BT709 SDR; AAC mono 48k",

@@ -52,7 +52,14 @@ func _run() -> void:
 	queue.replace(entries)
 	entries[0].metadata.basename = "changed"
 	check(queue.items[0].metadata.basename == "a.mp4", "Queue owns a copy of source metadata")
-	queue.append([entries[0], {"uri": "bad://a"}, {"uri": "cloud://retired-account/video.mp4"}, {"uri": "file:///invalid.mp4", "metadata": 7}])
+	queue.append(
+		[
+			entries[0],
+			{"uri": "bad://a"},
+			{"uri": "cloud://retired-account/video.mp4"},
+			{"uri": "file:///invalid.mp4", "metadata": 7}
+		]
+	)
 	check(queue.items.size() == 3, "Queue deduplicates and rejects invalid entries")
 	check(
 		(

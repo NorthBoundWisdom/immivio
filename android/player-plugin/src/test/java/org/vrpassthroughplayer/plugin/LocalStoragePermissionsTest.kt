@@ -24,23 +24,27 @@ class LocalStoragePermissionsTest {
     fun oldPicoOsDoesNotLaunchNonexistentAllFilesSettings() {
         assertEquals(
             listOf(Settings.ACTION_APPLICATION_DETAILS_SETTINGS),
-            LocalStoragePermissions.settingsActions(29)
+            LocalStoragePermissions.settingsActions(29),
         )
     }
 
     @Test
     fun appSpecificSettingsFallBackToGlobalThenApplicationDetails() {
         val attempts = mutableListOf<String>()
-        assertTrue(LocalStoragePermissions.openSettings(32) {
-            attempts += it
-            if (it != Settings.ACTION_APPLICATION_DETAILS_SETTINGS) throw IllegalStateException("Unavailable activity")
-        })
+        assertTrue(
+            LocalStoragePermissions.openSettings(32) {
+                attempts += it
+                if (it != Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                    throw IllegalStateException("Unavailable activity")
+            }
+        )
         assertEquals(
             listOf(
                 Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
                 Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION,
-                Settings.ACTION_APPLICATION_DETAILS_SETTINGS
-            ), attempts
+                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+            ),
+            attempts,
         )
     }
 
@@ -50,7 +54,12 @@ class LocalStoragePermissionsTest {
         assertTrue(LocalStoragePermissions.openSettings(36) { attempts++ })
         assertEquals(1, attempts)
         attempts = 0
-        assertFalse(LocalStoragePermissions.openSettings(29) { attempts++; throw SecurityException("Denied") })
+        assertFalse(
+            LocalStoragePermissions.openSettings(29) {
+                attempts++
+                throw SecurityException("Denied")
+            }
+        )
         assertEquals(1, attempts)
     }
 }

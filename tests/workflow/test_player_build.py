@@ -205,12 +205,17 @@ class DependencyBoundaries(unittest.TestCase):
 class VariantIdentityBoundaries(unittest.TestCase):
     def test_development_identity_is_separate_and_rejects_release(self):
         with patch.dict(os.environ, {"IMMIVIO_DEVELOPMENT_PACKAGE": "1"}):
-            self.assertEqual(builder.android_identity("Debug")["application_id"],
-                             "com.northboundwisdom.immivio.dev")
+            self.assertEqual(
+                builder.android_identity("Debug")["application_id"],
+                "com.northboundwisdom.immivio.dev",
+            )
             with self.assertRaisesRegex(RuntimeError, "requires Debug"):
                 builder.android_identity("Release")
         with patch.dict(os.environ, {"IMMIVIO_DEVELOPMENT_PACKAGE": "0"}):
-            self.assertEqual(builder.android_identity()["application_id"], "com.northboundwisdom.immivio")
+            self.assertEqual(
+                builder.android_identity()["application_id"],
+                "com.northboundwisdom.immivio",
+            )
 
     def test_package_and_label_are_separate_and_presets_restore_after_failure(self):
         with (
@@ -225,7 +230,9 @@ class VariantIdentityBoundaries(unittest.TestCase):
             path.write_bytes(original)
             with self.assertRaisesRegex(RuntimeError, "simulated"):
                 with builder.variant_export_presets() as identity:
-                    self.assertEqual(identity["application_id"], "com.northboundwisdom.immivio")
+                    self.assertEqual(
+                        identity["application_id"], "com.northboundwisdom.immivio"
+                    )
                     self.assertEqual(
                         path.read_text().count('package/name="Immivio"'), 3
                     )
@@ -233,7 +240,10 @@ class VariantIdentityBoundaries(unittest.TestCase):
             self.assertEqual(path.read_bytes(), original)
 
     def test_distribution_feature_is_exclusive_and_preserves_vendor_features(self):
-        with tempfile.TemporaryDirectory() as directory, patch.object(builder, "PROJECT", Path(directory)):
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch.object(builder, "PROJECT", Path(directory)),
+        ):
             path = Path(directory) / "export_presets.cfg"
             original = "\n".join(
                 f'[preset.{index}]\nplatform="Android"\ncustom_features="pico,immivio_appstore"\n[preset.{index}.options]\npackage/unique_name="original"\npackage/name="Original"'
@@ -243,7 +253,9 @@ class VariantIdentityBoundaries(unittest.TestCase):
             for channel, excluded in [("appstore", "web"), ("web", "appstore")]:
                 with builder.variant_export_presets(channel):
                     exported = path.read_text()
-                    self.assertEqual(exported.count(f'custom_features="pico,immivio_{channel}"'), 3)
+                    self.assertEqual(
+                        exported.count(f'custom_features="pico,immivio_{channel}"'), 3
+                    )
                     self.assertNotIn("immivio_" + excluded, exported)
                 self.assertEqual(path.read_bytes(), original)
             with self.assertRaisesRegex(ValueError, "appstore or web"):
@@ -251,7 +263,9 @@ class VariantIdentityBoundaries(unittest.TestCase):
                     self.fail("Invalid distribution channel was accepted")
             self.assertEqual(path.read_bytes(), original)
             with builder.variant_export_presets() as identity:
-                self.assertEqual(identity["application_id"], "com.northboundwisdom.immivio")
+                self.assertEqual(
+                    identity["application_id"], "com.northboundwisdom.immivio"
+                )
                 self.assertEqual(identity, builder.android_identity())
             self.assertEqual(path.read_bytes(), original)
 
@@ -288,9 +302,17 @@ class VariantIdentityBoundaries(unittest.TestCase):
                 "password": "fixture",
             }
             (signing / "thru3d-signing.json").write_text(json.dumps(record))
-            env = builder.signing_environment({"IMMIVIO_SIGNING_DIR": str(root / "persistent")})
-            self.assertEqual(env["GODOT_ANDROID_KEYSTORE_RELEASE_PATH"], str(root / "persistent/thru3d-release.keystore"))
-            self.assertEqual((root / "persistent/thru3d-release.keystore").read_bytes(), key.read_bytes())
+            env = builder.signing_environment(
+                {"IMMIVIO_SIGNING_DIR": str(root / "persistent")}
+            )
+            self.assertEqual(
+                env["GODOT_ANDROID_KEYSTORE_RELEASE_PATH"],
+                str(root / "persistent/thru3d-release.keystore"),
+            )
+            self.assertEqual(
+                (root / "persistent/thru3d-release.keystore").read_bytes(),
+                key.read_bytes(),
+            )
             self.assertEqual(
                 json.loads((signing / "thru3d-signing.json").read_text()), record
             )
@@ -314,7 +336,9 @@ class VariantIdentityBoundaries(unittest.TestCase):
                 )
             )
             with self.assertRaisesRegex(RuntimeError, "Saved signing key is missing"):
-                builder.signing_environment({"IMMIVIO_SIGNING_DIR": str(Path(directory) / "persistent")})
+                builder.signing_environment(
+                    {"IMMIVIO_SIGNING_DIR": str(Path(directory) / "persistent")}
+                )
             run.assert_not_called()
 
 

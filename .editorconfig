@@ -1,0 +1,28 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.gd]
+indent_style = tab
+indent_size = 4
+
+[*.{cpp,h,hpp,gdshader,gdshaderinc,html,css,js,json,jsonc,yml,yaml,xml,toml}]
+indent_size = 2
+
+[CMakeLists.txt]
+indent_size = 2
+
+[**/AndroidManifest.xml]
+indent_size = 4
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.bat]
+end_of_line = crlf

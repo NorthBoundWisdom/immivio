@@ -72,8 +72,8 @@ function Seek([string]$label, [int]$position) {
     $receipt = Request $label 'seek' @('--ei', 'position_ms', "$position")
     return Wait-Report $receipt $label { param($r) $r.native_status.details.paused -eq 'yes' -and $r.media.presentation_identity.pts_us -ge ($position * 1000) -and $r.media.presentation_identity.pts_us -lt (($position + 34) * 1000) }
 }
-$result = @{state='failed'; apk_sha256=$build.apk_sha256; installed_sha256=$installedHash;
-    scope ='SMB sidecar cue selection and sustained Alpha/normal frame delivery; no compositor pixel or long-session stability claim'
+$result = @{state = 'failed'; apk_sha256 = $build.apk_sha256; installed_sha256 = $installedHash;
+    scope = 'SMB sidecar cue selection and sustained Alpha/normal frame delivery; no compositor pixel or long-session stability claim'
 }
 try {
     & $adb -s $Serial shell am force-stop $package
@@ -113,8 +113,7 @@ try {
     $result.tracks = $tracks
     $result.completed_round_trips = $Switches + 1
     $result.process = $script:process
-}
-catch { $result.error = $_.Exception.Message; throw }
+} catch { $result.error = $_.Exception.Message; throw }
 finally {
     $appPid = (& $adb -s $Serial shell pidof $package | Out-String).Trim()
     if ($appPid -match '^\d+$') { & $adb -s $Serial logcat -d --pid=$appPid -v threadtime | Set-Content "$directory/logcat.txt" }
@@ -131,5 +130,3 @@ finally {
     Write-Output "Evidence: $directory"
 }
 if ($result.state -ne 'passed_scoped_smb_subtitle_alpha_trace') { throw $result.error }
-
-

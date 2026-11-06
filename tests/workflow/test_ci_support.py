@@ -15,10 +15,20 @@ from configs import ci_support as ci
 class CiBoundaries(unittest.TestCase):
     def test_channels_default_to_appstore_and_tags_force_web(self):
         for ref in ("", "refs/heads/main", "refs/pull/1/merge"):
-            self.assertEqual(ci.build_channel_for_ref(environment={"GITHUB_REF": ref}), "appstore")
+            self.assertEqual(
+                ci.build_channel_for_ref(environment={"GITHUB_REF": ref}), "appstore"
+            )
         self.assertEqual(ci.build_channel_for_ref("web", {}), "web")
-        self.assertEqual(ci.build_channel_for_ref(environment={"CI_BUILD_CHANNEL": "web"}), "web")
-        self.assertEqual(ci.build_channel_for_ref("appstore", {"GITHUB_REF": "refs/tags/v1", "CI_BUILD_CHANNEL": "appstore"}), "web")
+        self.assertEqual(
+            ci.build_channel_for_ref(environment={"CI_BUILD_CHANNEL": "web"}), "web"
+        )
+        self.assertEqual(
+            ci.build_channel_for_ref(
+                "appstore",
+                {"GITHUB_REF": "refs/tags/v1", "CI_BUILD_CHANNEL": "appstore"},
+            ),
+            "web",
+        )
         with self.assertRaisesRegex(ValueError, "appstore or web"):
             ci.build_channel_for_ref("other", {})
 
@@ -34,9 +44,13 @@ class CiBoundaries(unittest.TestCase):
             )
 
     def test_web_default_and_debug_override_are_independent_of_store(self):
-        self.assertEqual(ci.build_type_for_ref(environment={},channel="web"),"Debug")
-        self.assertEqual(ci.build_type_for_ref("Debug",{},channel="appstore"),"Debug")
-        self.assertEqual(ci.build_type_for_ref(environment={"CI_BUILD_TYPE":"Debug"}),"Debug")
+        self.assertEqual(ci.build_type_for_ref(environment={}, channel="web"), "Debug")
+        self.assertEqual(
+            ci.build_type_for_ref("Debug", {}, channel="appstore"), "Debug"
+        )
+        self.assertEqual(
+            ci.build_type_for_ref(environment={"CI_BUILD_TYPE": "Debug"}), "Debug"
+        )
 
     def test_manual_release_and_invalid_build_type(self):
         self.assertEqual(ci.build_type_for_ref("Release", {}), "Release")
@@ -89,8 +103,9 @@ class HostTestReports(unittest.TestCase):
 
     def test_zero_exit_without_completion_is_not_success(self):
         for output in ("", "Test started\n", "checks passed\n"):
-            with self.subTest(output=output), self.assertRaisesRegex(
-                RuntimeError, "completion"
+            with (
+                self.subTest(output=output),
+                self.assertRaisesRegex(RuntimeError, "completion"),
             ):
                 ci.validate_host_test_result(self.script, 0, output)
 
@@ -113,8 +128,9 @@ class HostTestReports(unittest.TestCase):
             (0, "SHADER ERROR: failed"),
             (0, "ERROR: failed"),
         ):
-            with self.subTest(code=code, message=message), self.assertRaises(
-                RuntimeError
+            with (
+                self.subTest(code=code, message=message),
+                self.assertRaises(RuntimeError),
             ):
                 ci.validate_host_test_result(self.script, code, self.report() + message)
 

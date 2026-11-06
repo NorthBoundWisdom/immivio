@@ -3,13 +3,15 @@ package org.vrpassthroughplayer.plugin
 import android.app.Activity
 import android.content.Context
 import android.net.wifi.WifiManager
-import org.json.JSONObject
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
+import org.json.JSONObject
 
-/** Library sources for the in-headset menu: local MediaStore, DLNA servers and SMB shares.
- * Every request returns an id at once; the result arrives as media_list(id, json) with
- * {source, state: ready|error|denied, entries|servers, error}. */
+/**
+ * Library sources for the in-headset menu: local MediaStore, DLNA servers and SMB shares. Every
+ * request returns an id at once; the result arrives as media_list(id, json) with {source, state:
+ * ready|error|denied, entries|servers, error}.
+ */
 internal class MediaSources(
     private val host: () -> Activity?,
     private val emit: (Int, String) -> Unit,
@@ -17,33 +19,38 @@ internal class MediaSources(
     private val ids = AtomicInteger()
     private val network = Executors.newSingleThreadExecutor { Thread(it, "QuestMediaNetwork") }
     private val local = LocalVideoLibrary(host, emit)
-    @Volatile
-    private var fileManagementEnabled = false
+    @Volatile private var fileManagementEnabled = false
+
     fun setFileManagement(enabled: Boolean) {
         fileManagementEnabled = enabled
         local.setFileManagement(enabled)
     }
 
     private val dlna by lazy {
-        val prefs = (context() ?: error("Activity unavailable")).getSharedPreferences(
-            "dlna_sources",
-            Context.MODE_PRIVATE
-        )
+        val prefs =
+            (context() ?: error("Activity unavailable")).getSharedPreferences(
+                "dlna_sources",
+                Context.MODE_PRIVATE,
+            )
         DlnaLibrary(
             { prefs.getString("catalog", "").orEmpty() },
             {
-                check(
-                    prefs.edit().putString("catalog", it).commit()
-                ) { "Could not save DLNA server" }
-            })
+                check(prefs.edit().putString("catalog", it).commit()) {
+                    "Could not save DLNA server"
+                }
+            },
+        )
     }
-    @Volatile
-    private var server: LocalStreamServer? = null
+    @Volatile private var server: LocalStreamServer? = null
     private val smb by lazy { SmbLibrary(context() ?: error("Activity unavailable")) { streams() } }
     private val mediaServers = MediaServerLibrary(::context, ::streams, ::nextId, emit = emit)
+
     fun reportPlayback(json: String): Boolean = mediaServers.reportPlayback(json)
+
     fun serverRequest(json: String): Int = mediaServers.request(json)
+
     fun serverCancel(id: Int) = mediaServers.cancel(id)
+
     fun releaseMediaStream(uri: String) {
         ExternalPlaybackPending.leases.release(uri)
         mediaServers.release(uri)
@@ -51,6 +58,7 @@ internal class MediaSources(
     }
 
     private fun context(): Context? = host()?.applicationContext
+
     @Synchronized
     fun streams(): LocalStreamServer = server ?: LocalStreamServer().also { server = it }
 
@@ -61,95 +69,124 @@ internal class MediaSources(
 
     /** Main thread: requests legacy read access or opens settings, emitting local_access events. */
     fun grantAllFiles() = local.grantAllFiles()
+
     fun refreshLocalStorage() = local.refreshStorage()
+
     fun openLocalEjectSettings(id: Int, path: String) = local.openEjectSettings(id, path)
+
     fun onPermissionResult(requestCode: Int, granted: Boolean) =
         local.onPermissionResult(requestCode, granted)
 
-    @Volatile
-    private var stopped = false
+    @Volatile private var stopped = false
+
     init {
         DlnaClient.log = { android.util.Log.i("QuestDlna", it) }
     }
 
-    fun dlnaDiscover(): Int = run("dlna") {
-        val lock =
-            (context()?.getSystemService(Context.WIFI_SERVICE) as? WifiManager)?.createMulticastLock(
-                "QuestDlna"
-            )
-        lock?.setReferenceCounted(false)
-        runCatching { lock?.acquire() }
-        try {
-            JSONObject().put("servers", dlna.refresh())
-        } finally {
-            if (lock?.isHeld == true) lock.release()
+    fun dlnaDiscover(): Int =
+        run("dlna") {
+            val lock =
+                (context()?.getSystemService(Context.WIFI_SERVICE) as? WifiManager)
+                    ?.createMulticastLock("QuestDlna")
+            lock?.setReferenceCounted(false)
+            runCatching { lock?.acquire() }
+            try {
+                JSONObject().put("servers", dlna.refresh())
+            } finally {
+                if (lock?.isHeld == true) lock.release()
+            }
         }
-    }
 
     fun dlnaServers(): Int = run("dlna") { JSONObject().put("servers", dlna.servers()) }
-    fun dlnaSave(json: String): Int = run("dlna") {
-        JSONObject().put("saved_id", dlna.save(JSONObject(json))).put("servers", dlna.servers())
-    }
+
+    fun dlnaSave(json: String): Int =
+        run("dlna") {
+            JSONObject().put("saved_id", dlna.save(JSONObject(json))).put("servers", dlna.servers())
+        }
 
     fun dlnaRemove(id: String): Int =
-        run("dlna") { dlna.remove(id); JSONObject().put("servers", dlna.servers()) }
+        run("dlna") {
+            dlna.remove(id)
+            JSONObject().put("servers", dlna.servers())
+        }
 
-    fun dlnaBrowse(serverId: String, objectId: String): Int = run("dlna") {
-        JSONObject().put("server_id", serverId).put("object_id", objectId)
-            .put("entries", dlna.browse(serverId, objectId.ifEmpty { "0" }))
-    }
+    fun dlnaBrowse(serverId: String, objectId: String): Int =
+        run("dlna") {
+            JSONObject()
+                .put("server_id", serverId)
+                .put("object_id", objectId)
+                .put("entries", dlna.browse(serverId, objectId.ifEmpty { "0" }))
+        }
 
     fun smbServers(): Int = run("smb") { JSONObject().put("servers", smb.serversJson()) }
-    fun smbDiscover(): Int = run("smb") {
-        // WS-Discovery answers arrive as multicast-addressed traffic too; Wi-Fi drops it without the lock.
-        val lock =
-            (context()?.getSystemService(Context.WIFI_SERVICE) as? WifiManager)?.createMulticastLock(
-                "QuestSmb"
-            )
-        lock?.setReferenceCounted(false); lock?.acquire()
-        try {
-            JSONObject().put("discovered", smb.discover())
-        } finally {
-            lock?.release()
-        }
-    }
 
-    fun smbSave(request: String): Int = run("smb") {
-        JSONObject().put("saved_id", smb.save(JSONObject(request)))
-            .put("servers", smb.serversJson())
-    }
+    fun smbDiscover(): Int =
+        run("smb") {
+            // WS-Discovery answers arrive as multicast-addressed traffic too; Wi-Fi drops it
+            // without the lock.
+            val lock =
+                (context()?.getSystemService(Context.WIFI_SERVICE) as? WifiManager)
+                    ?.createMulticastLock("QuestSmb")
+            lock?.setReferenceCounted(false)
+            lock?.acquire()
+            try {
+                JSONObject().put("discovered", smb.discover())
+            } finally {
+                lock?.release()
+            }
+        }
+
+    fun smbSave(request: String): Int =
+        run("smb") {
+            JSONObject()
+                .put("saved_id", smb.save(JSONObject(request)))
+                .put("servers", smb.serversJson())
+        }
 
     fun smbRemove(id: String): Int =
-        run("smb") { smb.remove(id); JSONObject().put("servers", smb.serversJson()) }
+        run("smb") {
+            smb.remove(id)
+            JSONObject().put("servers", smb.serversJson())
+        }
 
-    fun smbBrowse(serverId: String, path: String): Int = run("smb") {
-        JSONObject().put("server_id", serverId).put("path", path)
-            .put("entries", smb.browse(serverId, path))
-    }
+    fun smbBrowse(serverId: String, path: String): Int =
+        run("smb") {
+            JSONObject()
+                .put("server_id", serverId)
+                .put("path", path)
+                .put("entries", smb.browse(serverId, path))
+        }
 
     fun renameFile(json: String, prepare: Boolean): Int {
         val id = nextId()
         network.execute {
             var request = JSONObject()
-            val result = try {
-                request = JSONObject(json)
-                val uri = request.getString("uri")
-                check(fileManagementEnabled) { "File management is off" }
-                val result = when {
-                    uri.startsWith("file://") -> local.renameFile(request, prepare)
-                    uri.startsWith("smb://") -> smb.renameFile(request, prepare)
-                    else -> error("File deletion unavailable for this source")
+            val result =
+                try {
+                    request = JSONObject(json)
+                    val uri = request.getString("uri")
+                    check(fileManagementEnabled) { "File management is off" }
+                    val result =
+                        when {
+                            uri.startsWith("file://") -> local.renameFile(request, prepare)
+                            uri.startsWith("smb://") -> smb.renameFile(request, prepare)
+                            else -> error("File deletion unavailable for this source")
+                        }
+                    if (!result.has("state")) result.put("state", "ready") else result
+                } catch (error: Exception) {
+                    JSONObject()
+                        .put("state", "error")
+                        .put("error", error.message ?: "Rename failed; check the folder")
                 }
-                if (!result.has("state")) result.put("state", "ready") else result
-            } catch (error: Exception) {
-                JSONObject().put("state", "error")
-                    .put("error", error.message ?: "Rename failed; check the folder")
-            }
-            if (!stopped) emit(
-                id,
-                result.put("source", "file_rename").put("uri", request.optString("uri"))
-                    .put("prepare", prepare).toString()
-            )
+            if (!stopped)
+                emit(
+                    id,
+                    result
+                        .put("source", "file_rename")
+                        .put("uri", request.optString("uri"))
+                        .put("prepare", prepare)
+                        .toString(),
+                )
         }
         return id
     }
@@ -159,46 +196,61 @@ internal class MediaSources(
         network.execute {
             var request = JSONObject()
             var sent = false
-            val result = try {
-                request = JSONObject(json)
-                val uri = request.getString("uri")
-                require(uri.startsWith("file://") || uri.startsWith("smb://"))
-                if (!inspect) check(fileManagementEnabled) { "File management is off" }
-                sent = !inspect && !prepare
-                val result = when {
-                    uri.startsWith("file://") -> local.deleteFile(request, inspect, prepare)
-                    uri.startsWith("smb://") -> smb.deleteFile(request, inspect, prepare)
-                    else -> error("File deletion unavailable for this source")
+            val result =
+                try {
+                    request = JSONObject(json)
+                    val uri = request.getString("uri")
+                    require(uri.startsWith("file://") || uri.startsWith("smb://"))
+                    if (!inspect) check(fileManagementEnabled) { "File management is off" }
+                    sent = !inspect && !prepare
+                    val result =
+                        when {
+                            uri.startsWith("file://") -> local.deleteFile(request, inspect, prepare)
+                            uri.startsWith("smb://") -> smb.deleteFile(request, inspect, prepare)
+                            else -> error("File deletion unavailable for this source")
+                        }
+                    if (!result.has("state")) result.put("state", "ready") else result
+                } catch (error: Exception) {
+                    // A transport error after dispatch is ambiguous. Never silently resend a
+                    // delete.
+                    val smbError = error as? org.codelibs.jcifs.smb.impl.SmbException
+                    val definite =
+                        error.message != "Delete result needs checking" &&
+                            (error is IllegalArgumentException ||
+                                error is IllegalStateException ||
+                                error is android.system.ErrnoException ||
+                                smbError?.ntStatus in
+                                    setOf(
+                                        0xC0000022.toInt(),
+                                        0xC0000043.toInt(),
+                                        0xC0000121.toInt(),
+                                        0xC00000BA.toInt(),
+                                    ))
+                    JSONObject()
+                        .put("state", if (sent && !definite) "uncertain" else "error")
+                        .put(
+                            "error",
+                            if (smbError != null && definite) "File deletion permission denied"
+                            else if (definite) error.message ?: "File deletion failed"
+                            else "Delete result needs checking",
+                        )
                 }
-                if (!result.has("state")) result.put("state", "ready") else result
-            } catch (error: Exception) {
-                // A transport error after dispatch is ambiguous. Never silently resend a delete.
-                val smbError = error as? org.codelibs.jcifs.smb.impl.SmbException
-                val definite =
-                    error.message != "Delete result needs checking" && (error is IllegalArgumentException || error is IllegalStateException || error is android.system.ErrnoException ||
-                            smbError?.ntStatus in setOf(
-                        0xC0000022.toInt(),
-                        0xC0000043.toInt(),
-                        0xC0000121.toInt(),
-                        0xC00000BA.toInt()
-                    ))
-                JSONObject().put("state", if (sent && !definite) "uncertain" else "error")
-                    .put(
-                        "error",
-                        if (smbError != null && definite) "File deletion permission denied" else if (definite) error.message
-                            ?: "File deletion failed" else "Delete result needs checking"
-                    )
-            }
-            if (!stopped) emit(
-                id,
-                result.put("source", "file_delete").put("uri", request.optString("uri"))
-                    .put("inspect", inspect).toString()
-            )
+            if (!stopped)
+                emit(
+                    id,
+                    result
+                        .put("source", "file_delete")
+                        .put("uri", request.optString("uri"))
+                        .put("inspect", inspect)
+                        .toString(),
+                )
         }
         return id
     }
 
-    /** Resolve shortcuts on the playback worker, retaining the original URI for sidecars/history. */
+    /**
+     * Resolve shortcuts on the playback worker, retaining the original URI for sidecars/history.
+     */
     fun resolveShortcut(uri: String, external: Boolean = false): String {
         if (uri.startsWith("externalvideo://")) {
             val target = ExternalPlaybackPending.leases.target(uri)
@@ -209,113 +261,192 @@ internal class MediaSources(
             if (StrmFile.location(value)) return true
             val parsed = android.net.Uri.parse(value)
             if (parsed.scheme != "content") return false
-            return app.contentResolver.query(parsed, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
-                it.moveToFirst() && StrmFile.named(it.getString(0).orEmpty())
-            } ?: false
+            return app.contentResolver
+                .query(
+                    parsed,
+                    arrayOf(android.provider.OpenableColumns.DISPLAY_NAME),
+                    null,
+                    null,
+                    null,
+                )
+                ?.use {
+                    it.moveToFirst() && StrmFile.named(it.getString(0).orEmpty())
+                } ?: false
         }
-        return StrmResolver(read = { value ->
-            val parsed = android.net.Uri.parse(value)
-            when (parsed.scheme) {
-                "http", "https" -> StrmHttp.read(value)
-                "smb" -> {
-                    val location = smb.stream(value)
-                    try { StrmDocument(StrmHttp.read(location).bytes, value) }
-                    finally { releaseMediaStream(location) }
-                }
-                "file" -> StrmDocument(java.io.File(parsed.path ?: "").inputStream().use(StrmFile::read), value)
-                "content" -> StrmDocument((app.contentResolver.openInputStream(parsed)
-                    ?: throw StrmFailure("STRM_READ_FAILED")).use(StrmFile::read), value)
-                else -> throw StrmFailure("STRM_UNSUPPORTED_ADDRESS")
-            }
-        }, isStrm = ::named, mapTarget = { origin, target ->
-            if (external) require(java.net.URI(target).scheme in setOf("http", "https", "smb")) { "External STRM target unavailable" }
-            if (!target.startsWith("smb://")) target else {
-                val servers = smb.serversJson()
-                StrmFile.smbTarget(target, (0 until servers.length()).map {
-                    servers.getJSONObject(it).let { item -> item.getString("id") to item.getString("host") }
-                }, android.net.Uri.parse(origin).takeIf { it.scheme == "smb" }?.host.orEmpty())
-            }
-        }).resolve(uri)
+        return StrmResolver(
+                read = { value ->
+                    val parsed = android.net.Uri.parse(value)
+                    when (parsed.scheme) {
+                        "http",
+                        "https" -> StrmHttp.read(value)
+                        "smb" -> {
+                            val location = smb.stream(value)
+                            try {
+                                StrmDocument(StrmHttp.read(location).bytes, value)
+                            } finally {
+                                releaseMediaStream(location)
+                            }
+                        }
+                        "file" ->
+                            StrmDocument(
+                                java.io.File(parsed.path ?: "").inputStream().use(StrmFile::read),
+                                value,
+                            )
+                        "content" ->
+                            StrmDocument(
+                                (app.contentResolver.openInputStream(parsed)
+                                        ?: throw StrmFailure("STRM_READ_FAILED"))
+                                    .use(StrmFile::read),
+                                value,
+                            )
+                        else -> throw StrmFailure("STRM_UNSUPPORTED_ADDRESS")
+                    }
+                },
+                isStrm = ::named,
+                mapTarget = { origin, target ->
+                    if (external)
+                        require(java.net.URI(target).scheme in setOf("http", "https", "smb")) {
+                            "External STRM target unavailable"
+                        }
+                    if (!target.startsWith("smb://")) target
+                    else {
+                        val servers = smb.serversJson()
+                        StrmFile.smbTarget(
+                            target,
+                            (0 until servers.length()).map {
+                                servers.getJSONObject(it).let { item ->
+                                    item.getString("id") to item.getString("host")
+                                }
+                            },
+                            android.net.Uri.parse(origin)
+                                .takeIf { it.scheme == "smb" }
+                                ?.host
+                                .orEmpty(),
+                        )
+                    }
+                },
+            )
+            .resolve(uri)
     }
 
     /** MPV-playable location for a library URI; blocks (SMB connects). Worker threads only. */
-    fun playable(uri: String): String = when {
-        uri.startsWith("externalvideo://") -> ExternalPlaybackPending.leases.target(uri).let {
-            if (it.startsWith("file:")) java.io.File(java.net.URI(it)).path else it
-        }
-        uri.startsWith("medialib://") -> mediaServers.playable(uri)
-        uri.startsWith("smb://") -> smb.stream(uri)
-        else -> uri
-    }
-
-    /** Extra M4A tracks beside a video (clone voice first). Local files, the MediaStore library and
-     * SMB; DLNA servers expose no sibling files. Blocks; worker threads only. Never throws. */
-    fun sidecarAudio(uri: String): List<SidecarAudio.Track> = try {
-        val source = android.net.Uri.parse(uri)
-        when (source.scheme) {
-            "file" -> source.path?.let { SidecarAudio.forFile(it) } ?: emptyList()
-            "content" -> context()?.let { SidecarAudio.forMediaStore(it, source) } ?: emptyList()
-            "smb" -> smb.sidecarAudio(uri)
-            "medialib" -> mediaServers.sidecarAudio(uri)
-            else -> emptyList()
-        }
-    } catch (error: Throwable) {
-        android.util.Log.w(
-            "QuestSidecarAudio",
-            "Sidecar audio lookup failed: ${error.javaClass.simpleName}"
-        )
-        emptyList()
-    }
-
-    fun subtitleCandidates(uri: String): Int = run("subtitle_candidates") {
-        val entries = when {
-            uri.startsWith("smb://") -> smb.subtitleCandidates(uri)
-            uri.startsWith("file://") -> {
-                val file = java.io.File(android.net.Uri.parse(uri).path ?: error("File path unavailable"))
-                org.json.JSONArray(SidecarSubtitles.candidates(file.parentFile?.listFiles().orEmpty().filter { it.isFile }.map { it.name }).map { name ->
-                        JSONObject().put("title", name).put("subtitle_uri", android.net.Uri.fromFile(java.io.File(file.parentFile, name)).toString())
-                    })
-            }
-            else -> org.json.JSONArray()
-        }
-        JSONObject().put("entries", entries)
-    }
-
-    fun sidecarSubtitles(uri: String): List<SidecarSubtitles.Track> = try {
+    fun playable(uri: String): String =
         when {
-            uri.startsWith("file://") -> {
-                val video = java.io.File(android.net.Uri.parse(uri).path ?: error("File path unavailable"))
-                SidecarSubtitles.select(video.name, video.parentFile?.list()?.toList().orEmpty()).map {
-                    SidecarSubtitles.Track(java.io.File(video.parentFile, it).toURI().toString(), it)
+            uri.startsWith("externalvideo://") ->
+                ExternalPlaybackPending.leases.target(uri).let {
+                    if (it.startsWith("file:")) java.io.File(java.net.URI(it)).path else it
                 }
-            }
-            uri.startsWith("smb://") -> smb.sidecarSubtitles(uri)
-            uri.startsWith("medialib://") -> mediaServers.sidecarSubtitles(uri)
-            uri.startsWith("http://") || uri.startsWith("https://") -> SidecarSubtitles.forDlna(
-                dlna.subtitles(
-                    uri
-                )
-            ) { source, name -> streams().publish(source, name) }
-
-            else -> emptyList()
+            uri.startsWith("medialib://") -> mediaServers.playable(uri)
+            uri.startsWith("smb://") -> smb.stream(uri)
+            else -> uri
         }
-    } catch (error: Exception) {
-        android.util.Log.w(
-            "QuestSubtitles",
-            "Network subtitle lookup failed: ${error.javaClass.simpleName}"
-        )
-        emptyList()
-    }
+
+    /**
+     * Extra M4A tracks beside a video (clone voice first). Local files, the MediaStore library and
+     * SMB; DLNA servers expose no sibling files. Blocks; worker threads only. Never throws.
+     */
+    fun sidecarAudio(uri: String): List<SidecarAudio.Track> =
+        try {
+            val source = android.net.Uri.parse(uri)
+            when (source.scheme) {
+                "file" -> source.path?.let { SidecarAudio.forFile(it) } ?: emptyList()
+                "content" ->
+                    context()?.let { SidecarAudio.forMediaStore(it, source) } ?: emptyList()
+                "smb" -> smb.sidecarAudio(uri)
+                "medialib" -> mediaServers.sidecarAudio(uri)
+                else -> emptyList()
+            }
+        } catch (error: Throwable) {
+            android.util.Log.w(
+                "QuestSidecarAudio",
+                "Sidecar audio lookup failed: ${error.javaClass.simpleName}",
+            )
+            emptyList()
+        }
+
+    fun subtitleCandidates(uri: String): Int =
+        run("subtitle_candidates") {
+            val entries =
+                when {
+                    uri.startsWith("smb://") -> smb.subtitleCandidates(uri)
+                    uri.startsWith("file://") -> {
+                        val file =
+                            java.io.File(
+                                android.net.Uri.parse(uri).path ?: error("File path unavailable")
+                            )
+                        org.json.JSONArray(
+                            SidecarSubtitles.candidates(
+                                    file.parentFile
+                                        ?.listFiles()
+                                        .orEmpty()
+                                        .filter { it.isFile }
+                                        .map { it.name }
+                                )
+                                .map { name ->
+                                    JSONObject()
+                                        .put("title", name)
+                                        .put(
+                                            "subtitle_uri",
+                                            android.net.Uri.fromFile(
+                                                    java.io.File(file.parentFile, name)
+                                                )
+                                                .toString(),
+                                        )
+                                }
+                        )
+                    }
+                    else -> org.json.JSONArray()
+                }
+            JSONObject().put("entries", entries)
+        }
+
+    fun sidecarSubtitles(uri: String): List<SidecarSubtitles.Track> =
+        try {
+            when {
+                uri.startsWith("file://") -> {
+                    val video =
+                        java.io.File(
+                            android.net.Uri.parse(uri).path ?: error("File path unavailable")
+                        )
+                    SidecarSubtitles.select(
+                            video.name,
+                            video.parentFile?.list()?.toList().orEmpty(),
+                        )
+                        .map {
+                            SidecarSubtitles.Track(
+                                java.io.File(video.parentFile, it).toURI().toString(),
+                                it,
+                            )
+                        }
+                }
+                uri.startsWith("smb://") -> smb.sidecarSubtitles(uri)
+                uri.startsWith("medialib://") -> mediaServers.sidecarSubtitles(uri)
+                uri.startsWith("http://") || uri.startsWith("https://") ->
+                    SidecarSubtitles.forDlna(dlna.subtitles(uri)) { source, name ->
+                        streams().publish(source, name)
+                    }
+
+                else -> emptyList()
+            }
+        } catch (error: Exception) {
+            android.util.Log.w(
+                "QuestSubtitles",
+                "Network subtitle lookup failed: ${error.javaClass.simpleName}",
+            )
+            emptyList()
+        }
 
     private fun run(source: String, block: () -> JSONObject): Int {
         val id = ids.incrementAndGet()
         network.execute {
-            val result = try {
-                block().put("state", "ready")
-            } catch (error: Throwable) {
-                JSONObject().put("state", "error")
-                    .put("error", error.message ?: error.javaClass.simpleName)
-            }
+            val result =
+                try {
+                    block().put("state", "ready")
+                } catch (error: Throwable) {
+                    JSONObject()
+                        .put("state", "error")
+                        .put("error", error.message ?: error.javaClass.simpleName)
+                }
             emit(id, result.put("source", source).toString())
         }
         return id
@@ -325,7 +456,9 @@ internal class MediaSources(
         stopped = true
         ExternalPlaybackPending.leases.close()
         mediaServers.close()
-        network.shutdownNow(); local.close()
-        server?.close(); server = null
+        network.shutdownNow()
+        local.close()
+        server?.close()
+        server = null
     }
 }

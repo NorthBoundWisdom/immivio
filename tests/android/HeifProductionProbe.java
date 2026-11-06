@@ -12,9 +12,7 @@ import org.json.JSONObject;
 import org.vrpassthroughplayer.plugin.HeifPhotoDecoder;
 import org.vrpassthroughplayer.plugin.HeifPhotoInfo;
 
-/**
- * Calls the actual production parser and bitmap/raw handoff on a device, without an APK or XR.
- */
+/** Calls the actual production parser and bitmap/raw handoff on a device, without an APK or XR. */
 public final class HeifProductionProbe {
     private static String hash(File file) throws Exception {
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -42,7 +40,13 @@ public final class HeifProductionProbe {
                 if (info == null) throw new IllegalStateException("Not a supported HEIF");
                 File directory = new File(output, "sample-" + index);
                 directory.mkdirs();
-                JSONObject ready = HeifPhotoDecoder.INSTANCE.prepare(source, directory, info, () -> Unit.INSTANCE, metadata -> Unit.INSTANCE);
+                JSONObject ready =
+                        HeifPhotoDecoder.INSTANCE.prepare(
+                                source,
+                                directory,
+                                info,
+                                () -> Unit.INSTANCE,
+                                metadata -> Unit.INSTANCE);
                 int width = ready.getInt("decoded_width"), height = ready.getInt("decoded_height");
                 File pixels = new File(ready.getString("path"));
                 if (pixels.length() != (long) width * height * 4)
@@ -65,11 +69,20 @@ public final class HeifProductionProbe {
                 boolean unchanged = original.equals(hash(source));
                 if (!unchanged || (info.getStereo() && left.getValue() == right.getValue()))
                     throw new IllegalStateException("Source mutated or identical eyes");
-                result.put("state", "ready").put("native_stereo", info.getStereo()).put("width", width).put("height", height)
-                        .put("left_crc32", left.getValue()).put("right_crc32", right.getValue()).put("source_unchanged", unchanged)
-                        .put("thumbnail_present", new File(ready.getString("thumbnail_path")).isFile());
+                result.put("state", "ready")
+                        .put("native_stereo", info.getStereo())
+                        .put("width", width)
+                        .put("height", height)
+                        .put("left_crc32", left.getValue())
+                        .put("right_crc32", right.getValue())
+                        .put("source_unchanged", unchanged)
+                        .put(
+                                "thumbnail_present",
+                                new File(ready.getString("thumbnail_path")).isFile());
             } catch (Throwable error) {
-                result.put("state", "error").put("error_type", error.getClass().getName()).put("message", String.valueOf(error.getMessage()));
+                result.put("state", "error")
+                        .put("error_type", error.getClass().getName())
+                        .put("message", String.valueOf(error.getMessage()));
                 JSONArray stack = new JSONArray();
                 for (int i = 0; i < Math.min(8, error.getStackTrace().length); i++)
                     stack.put(error.getStackTrace()[i].toString());
@@ -78,6 +91,12 @@ public final class HeifProductionProbe {
             result.put("elapsed_ms", (System.nanoTime() - started) / 1_000_000.0);
             results.put(result);
         }
-        System.out.println(new JSONObject().put("scope", "Production HEIF parser and raw/thumbnail output; no Godot/XR/depth model").put("results", results));
+        System.out.println(
+                new JSONObject()
+                        .put(
+                                "scope",
+                                "Production HEIF parser and raw/thumbnail output; no Godot/XR/depth"
+                                        + " model")
+                        .put("results", results));
     }
 }

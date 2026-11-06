@@ -22,4 +22,13 @@ static func contains_uri(volume: Dictionary, uri: String) -> bool:
 
 
 static func contains_external(volume: Dictionary, uri: String, platform: Object) -> bool:
-	return bool(volume.get("removable", false)) and uri.begins_with("externalvideo://") and preload("res://scripts/platform_methods.gd").supports(platform, "external_playback_belongs_to") and platform.external_playback_belongs_to(uri, str(volume.get("id", "")), str(volume.get("uuid", "")))
+	return (
+		bool(volume.get("removable", false))
+		and uri.begins_with("externalvideo://")
+		and preload("res://scripts/platform_methods.gd").supports(
+			platform, "external_playback_belongs_to"
+		)
+		and platform.external_playback_belongs_to(
+			uri, str(volume.get("id", "")), str(volume.get("uuid", ""))
+		)
+	)

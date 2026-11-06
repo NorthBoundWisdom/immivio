@@ -184,11 +184,19 @@ func _ready() -> void:
 		settings.get_value("ui", "window_height", XrPresentationCoordinator.WINDOW_HEIGHT_DEFAULT)
 	)
 	_presentation.window_height = (
-		clampf(saved_window_height, XrPresentationCoordinator.WINDOW_HEIGHT_LIMITS.x,
-			XrPresentationCoordinator.WINDOW_HEIGHT_LIMITS.y)
-		if is_finite(saved_window_height) else XrPresentationCoordinator.WINDOW_HEIGHT_DEFAULT
+		clampf(
+			saved_window_height,
+			XrPresentationCoordinator.WINDOW_HEIGHT_LIMITS.x,
+			XrPresentationCoordinator.WINDOW_HEIGHT_LIMITS.y
+		)
+		if is_finite(saved_window_height)
+		else XrPresentationCoordinator.WINDOW_HEIGHT_DEFAULT
 	)
-	pinch_hand = preload("res://scripts/hand_preferences.gd").normalize(settings.get_value("controls", "pinch_hand", preload("res://scripts/hand_preferences.gd").DEFAULT))
+	pinch_hand = preload("res://scripts/hand_preferences.gd").normalize(
+		settings.get_value(
+			"controls", "pinch_hand", preload("res://scripts/hand_preferences.gd").DEFAULT
+		)
+	)
 	var saved_library_distance := float(settings.get_value("ui", "library_distance", 1.4))
 	library_distance = (
 		clampf(saved_library_distance, LIBRARY_DISTANCE_LIMITS.x, LIBRARY_DISTANCE_LIMITS.y)
@@ -219,7 +227,8 @@ func _ready() -> void:
 	display.preferred_refresh_rate = float(settings.get_value("display", "refresh_rate", 72.0))
 	display.configure(get_viewport(), world.environment, XRServer.find_interface("OpenXR"), desktop)
 	immersive_overlay = preload("res://scripts/immersive_adjustment_overlay.gd").new()
-	immersive_overlay.source = func(): return _input.immersive.feedback_snapshot(video.local_uri) if video else []
+	immersive_overlay.source = func():
+		return _input.immersive.feedback_snapshot(video.local_uri) if video else []
 	camera.add_child(immersive_overlay)
 	picture_center_guide = preload("res://scripts/picture_center_guide.gd").new()
 	picture_center_guide.source = _picture_center_sample
@@ -243,7 +252,9 @@ func _ready() -> void:
 	_restore_seek_settings()
 	video.auto_depth = false
 	video.reuse_last_mode = bool(settings.get_value("video", "reuse_last_mode", false))
-	video.last_video_mode = preload("res://scripts/video_mode_default.gd").clean(settings.get_value("video", "last_mode", {}))
+	video.last_video_mode = preload("res://scripts/video_mode_default.gd").clean(
+		settings.get_value("video", "last_mode", {})
+	)
 	video.load_mode_lock(settings.get_value("video", "mode_lock", {}))
 	video.subtitle_distance = float(settings.get_value("subtitles", "distance", 5.0))
 	video.subtitle_position = video.SubtitleDepth.restore_position(settings)
@@ -289,21 +300,31 @@ func _ready() -> void:
 	recent_menu.file_deleted.connect(_forget_deleted_file)
 	recent_menu.settings_provider = _library_settings
 	if video.platform and video.platform.has_signal("diagnostic_log_saved"):
-		video.platform.connect("diagnostic_log_saved", func(_id, raw):
-			var result: Variant = JSON.parse_string(raw)
-			if result is Dictionary:
-				recent_menu.status = "Log saved to Downloads" if result.get("ok", false) else "Diagnostic log could not be saved"
-				recent_menu.refresh()
+		video.platform.connect(
+			"diagnostic_log_saved",
+			func(_id, raw):
+				var result: Variant = JSON.parse_string(raw)
+				if result is Dictionary:
+					recent_menu.status = (
+						"Log saved to Downloads"
+						if result.get("ok", false)
+						else "Diagnostic log could not be saved"
+					)
+					recent_menu.refresh()
 		)
 	recent_menu.chosen.connect(_on_library_chosen)
 	recent_menu.subtitle_system_requested.connect(video.pick_external_subtitle)
-	recent_menu.subtitle_chosen.connect(func(selection):
-		if selection.source_uri != video.local_uri or int(selection.session_id) != video.media.session_id:
-			return
-		if selection.has("track_id"):
-			video.set_subtitle_track(int(selection.track_id))
-		else:
-			video._pending_external_uri = str(selection.get("subtitle_uri", ""))
+	recent_menu.subtitle_chosen.connect(
+		func(selection):
+			if (
+				selection.source_uri != video.local_uri
+				or int(selection.session_id) != video.media.session_id
+			):
+				return
+			if selection.has("track_id"):
+				video.set_subtitle_track(int(selection.track_id))
+			else:
+				video._pending_external_uri = str(selection.get("subtitle_uri", ""))
 	)
 	recent_menu.storage_eject_requested.connect(_on_storage_eject_requested)
 	recent_menu.storage_removed.connect(_release_storage_readers)
@@ -472,8 +493,15 @@ var picture_center_guide: Node3D
 var immersive_overlay: Node3D
 var _external_poll_ms := 0
 
+
 func _process(delta: float) -> void:
-	if video and Time.get_ticks_msec() >= _external_poll_ms and preload("res://scripts/platform_methods.gd").supports(video.platform, "external_playback_poll"):
+	if (
+		video
+		and Time.get_ticks_msec() >= _external_poll_ms
+		and preload("res://scripts/platform_methods.gd").supports(
+			video.platform, "external_playback_poll"
+		)
+	):
 		_external_poll_ms = Time.get_ticks_msec() + 250
 		var external: Variant = JSON.parse_string(video.platform.external_playback_poll())
 		if external is Dictionary and str(external.get("uri", "")).begins_with("externalvideo://"):
@@ -510,12 +538,34 @@ func _process(delta: float) -> void:
 
 
 func _picture_center_sample() -> Dictionary:
-	if not video or video.geometry == 0 or (not video.panel) or (not video.panel.visible) or (not _input_focused()) or (_active_menu() and (_active_menu() != player_menu or not player_menu.allows_playback_sticks())):
+	if (
+		not video
+		or video.geometry == 0
+		or (not video.panel)
+		or (not video.panel.visible)
+		or (not _input_focused())
+		or (
+			_active_menu()
+			and (_active_menu() != player_menu or not player_menu.allows_playback_sticks())
+		)
+	):
 		return {}
 	var head: Variant = _head_pose()
-	if not head is Transform3D or (_grab.is_empty() and (not picture_center_guide or picture_center_guide.identity.is_empty())):
+	if (
+		not head is Transform3D
+		or (
+			_grab.is_empty()
+			and (not picture_center_guide or picture_center_guide.identity.is_empty())
+		)
+	):
 		return {}
-	return {"identity": video.local_uri, "hand": str(_grab.get("hand", "")), "held": not _grab.is_empty(), "head": head, "centre": video.panel.to_global(Vector3(0, 0, -video.SPHERE_RADIUS))}
+	return {
+		"identity": video.local_uri,
+		"hand": str(_grab.get("hand", "")),
+		"held": not _grab.is_empty(),
+		"head": head,
+		"centre": video.panel.to_global(Vector3(0, 0, -video.SPHERE_RADIUS))
+	}
 
 
 func _process_sticks(left: Vector2, right: Vector2, delta: float) -> void:
@@ -559,7 +609,10 @@ func _update_hand_input(delta: float) -> void:
 
 
 func _picture_pinch_allowed(hand: String) -> bool:
-	return not (hand_pointers.has(hand) and hand_pointers[hand].source == "hand") or preload("res://scripts/hand_preferences.gd").allows(hand, pinch_hand)
+	return (
+		not (hand_pointers.has(hand) and hand_pointers[hand].source == "hand")
+		or preload("res://scripts/hand_preferences.gd").allows(hand, pinch_hand)
+	)
 
 
 func _dispatch_hand_input(inputs: Dictionary, _delta: float = 1.0 / 72.0) -> void:
@@ -714,7 +767,11 @@ func _prepare_file_delete(uri: String) -> void:
 
 func _forget_deleted_file(uri: String) -> void:
 	video_queue = video_queue.filter(
-		func(item): return ( str(item.get("uri", "")) != uri and not str(item.get("uri", "")).begins_with(uri.trim_suffix("/") + "/") )
+		func(item):
+			return (
+				str(item.get("uri", "")) != uri
+				and not str(item.get("uri", "")).begins_with(uri.trim_suffix("/") + "/")
+			)
 	)
 	_save_queue()
 	for entry in video.recent_files.list_recent():
@@ -730,7 +787,13 @@ func _on_storage_eject_requested(volume: Dictionary) -> void:
 
 
 func _release_storage_readers(volume: Dictionary) -> void:
-	if video and (StorageVolume.contains_uri(volume, video.local_uri) or StorageVolume.contains_external(volume, video.local_uri, video.get("platform"))):
+	if (
+		video
+		and (
+			StorageVolume.contains_uri(volume, video.local_uri)
+			or StorageVolume.contains_external(volume, video.local_uri, video.get("platform"))
+		)
+	):
 		video.close_video()
 	video_queue = video_queue.filter(
 		func(item): return not StorageVolume.contains_uri(volume, str(item.get("uri", "")))
@@ -921,9 +984,19 @@ func _toggle_display() -> void:
 
 
 func _capture_last_video_mode() -> void:
-	if not video or not video.reuse_last_mode or video.local_uri.is_empty() or not video._remember_file or video._layout_pending != null or video._waiting_first or not video.media.accepts(video.media.session_id):
+	if (
+		not video
+		or not video.reuse_last_mode
+		or video.local_uri.is_empty()
+		or not video._remember_file
+		or video._layout_pending != null
+		or video._waiting_first
+		or not video.media.accepts(video.media.session_id)
+	):
 		return
-	var mode := preload("res://scripts/video_mode_default.gd").clean(video.current_lock().merged({"swap_eyes": video.swap_eyes}, true))
+	var mode := preload("res://scripts/video_mode_default.gd").clean(
+		video.current_lock().merged({"swap_eyes": video.swap_eyes}, true)
+	)
 	if mode.is_empty() or mode == video.last_video_mode:
 		return
 	video.last_video_mode = mode
@@ -1139,7 +1212,9 @@ func _on_display_debug_command(_id: int, payload: String) -> void:
 	var operation := str(command.get("operation", ""))
 	if operation == "selected_features_ui" and OS.is_debug_build():
 		var probe := preload("res://scripts/selected_features_device_probe.gd").new()
-		selected_features_probe_result = await probe.run(self, str(command.step), str(command.request_key))
+		selected_features_probe_result = await probe.run(
+			self, str(command.step), str(command.request_key)
+		)
 		video._write_debug_report()
 	elif operation == "seek_policy_ui" and OS.is_debug_build():
 		var probe := preload("res://scripts/seek_policy_device_probe.gd").new()

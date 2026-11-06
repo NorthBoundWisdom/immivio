@@ -218,7 +218,17 @@ func draw(key: String) -> void:
 						"IPD compensation",
 						"stereo_horizontal",
 						Vector3(
-							-10.0 if int(menu._state.get("geometry", 0)) != 0 else -menu.StereoView.LIMIT, 10.0 if int(menu._state.get("geometry", 0)) != 0 else menu.StereoView.LIMIT, menu.StereoView.STEP
+							(
+								-10.0
+								if int(menu._state.get("geometry", 0)) != 0
+								else -menu.StereoView.LIMIT
+							),
+							(
+								10.0
+								if int(menu._state.get("geometry", 0)) != 0
+								else menu.StereoView.LIMIT
+							),
+							menu.StereoView.STEP
 						),
 						0,
 						"%",
@@ -360,7 +370,10 @@ func _grade_page_needs_reset() -> bool:
 	return (
 		menu._state.get("has_video", false)
 		and GRADE_PAGES[page].any(
-			func(key): return not is_equal_approx( float(values.get(key, menu.Grade.DEFAULTS[key])), menu.Grade.DEFAULTS[key] )
+			func(key):
+				return not is_equal_approx(
+					float(values.get(key, menu.Grade.DEFAULTS[key])), menu.Grade.DEFAULTS[key]
+				),
 		)
 	)
 

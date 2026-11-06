@@ -9,7 +9,9 @@ func _initialize() -> void:
 
 
 func _run() -> void:
-	var output := ProjectSettings.globalize_path("res://../../artifacts/captures/ui/audio-popup-visuals")
+	var output := ProjectSettings.globalize_path(
+		"res://../../artifacts/captures/ui/audio-popup-visuals"
+	)
 	DirAccess.make_dir_recursive_absolute(output)
 	var viewport := SubViewport.new()
 	viewport.size = Vector2i(1280, 1100)

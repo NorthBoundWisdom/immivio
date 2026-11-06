@@ -56,7 +56,8 @@ func _on_media_list(id: int, payload: String) -> void:
 			if volumes == host._local_volumes:
 				return
 			var removed = host._external_volumes().filter(
-				func(volume): return not volumes.any(func(current): return str(current.id) == str(volume.id))
+				func(volume):
+					return not volumes.any(func(current): return str(current.id) == str(volume.id))
 			)
 			host._local_volumes = volumes
 			for volume in removed:
@@ -212,7 +213,13 @@ func _on_media_list(id: int, payload: String) -> void:
 					and str(result.get("object_id", current_object)) == current_object
 				):
 					host._dlna_entries = result.get("entries", [])
-	if state == "ready" and host.network.mode == "add" and id == host.network.save_request and host._editor.is_empty() and kind in ["smb_servers", "dlna_save"]:
+	if (
+		state == "ready"
+		and host.network.mode == "add"
+		and id == host.network.save_request
+		and host._editor.is_empty()
+		and kind in ["smb_servers", "dlna_save"]
+	):
 		host.network.open()
 		return
 	if host.visible:

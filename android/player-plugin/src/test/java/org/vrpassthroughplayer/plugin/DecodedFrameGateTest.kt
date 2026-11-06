@@ -5,6 +5,7 @@ import org.junit.Test
 
 class DecodedFrameGateTest {
     private fun gate() = DecodedFrameGate(MediaSessionGate.Scope(1, 1, 1))
+
     @Test
     fun oneReleaseUntilCopyFenceAndExactPts() {
         val gate = gate()
@@ -30,7 +31,7 @@ class DecodedFrameGateTest {
         assertThrows(IllegalStateException::class.java) {
             gate.verify(
                 frame,
-                frame.timestampNs + 1
+                frame.timestampNs + 1,
             )
         }
         gate.close()

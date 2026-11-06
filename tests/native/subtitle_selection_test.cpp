@@ -18,13 +18,15 @@ struct Slots {
           if (reject_clear && id == 0)
             throw std::runtime_error("clear failed");
           // Model mpv's selected-track guard, including success without a change.
-          if (id == 0 || id != primary) secondary = id;
+          if (id == 0 || id != primary)
+            secondary = id;
         },
         [&] { imported = true; },
         [&](int id) {
           assert(imported);
           calls.push_back("primary=" + std::to_string(id));
-          if (id <= 0 || id != secondary) primary = id;
+          if (id <= 0 || id != secondary)
+            primary = id;
         });
   }
 };
@@ -48,7 +50,8 @@ int main() {
   Slots conflicting_requests;
   conflicting_requests.secondary = 0;
   conflicting_requests.apply(true, 8, true, 8);
-  assert((conflicting_requests.calls == std::vector<std::string>{"secondary=8", "secondary=0", "primary=8"}));
+  assert((conflicting_requests.calls ==
+          std::vector<std::string>{"secondary=8", "secondary=0", "primary=8"}));
   assert(conflicting_requests.primary == 8 && conflicting_requests.secondary == 0);
 
   for (const int id : {0, -1}) {
@@ -72,5 +75,6 @@ int main() {
     assert((rejected.calls == std::vector<std::string>{"secondary=0"}));
     assert(!rejected.imported && rejected.primary == 2 && rejected.secondary == 8);
   }
-  std::cout << "Subtitle selection: same-drain/cross-drain order, live-slot guard, off/auto and failure checks passed\n";
+  std::cout << "Subtitle selection: same-drain/cross-drain order, live-slot guard, off/auto and "
+               "failure checks passed\n";
 }

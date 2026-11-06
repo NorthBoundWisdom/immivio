@@ -12,8 +12,7 @@ vec2 packed_texel(vec2 mask_pixel) {
   float half_w = packed_size.x * 0.5;
   float quarter_w = packed_size.x * 0.25;
   float half_h = packed_size.y * 0.5;
-  float y = mask_pixel.y < half_h ? source_size.y - half_h + mask_pixel.y
-                                  : mask_pixel.y - half_h;
+  float y = mask_pixel.y < half_h ? source_size.y - half_h + mask_pixel.y : mask_pixel.y - half_h;
   float x;
   if (mask_pixel.x < half_w) {
     x = source_size.x * 0.5 - half_w * 0.5 + mask_pixel.x;
@@ -31,8 +30,7 @@ float packed_sample(vec2 mask_pixel) {
 
 float legacy_alpha(vec2 full_uv) {
   // Four taps stay inside their own tiles, including the six-block seams.
-  vec2 p = clamp(full_uv * packed_size - vec2(0.5), vec2(0.0),
-                 packed_size - vec2(1.0));
+  vec2 p = clamp(full_uv * packed_size - vec2(0.5), vec2(0.0), packed_size - vec2(1.0));
   if (stereo_sbs) {
     int eye = swap_eyes ? 1 - eye_index : eye_index;
     float eye_start = float(eye) * packed_size.x * 0.5;
@@ -54,8 +52,7 @@ void fragment() {
   vec2 local_uv = eye_uv(UV, media_direction);
   vec2 source_uv = color_uv(local_uv);
   vec3 rgb = texture(video_texture, oes_uv(source_uv)).rgb;
-  float alpha = alpha_encoding == 2 ? legacy_alpha(source_uv)
-                                    : texture(alpha_texture, source_uv).r;
+  float alpha = alpha_encoding == 2 ? legacy_alpha(source_uv) : texture(alpha_texture, source_uv).r;
   // These pixels carry metadata; their original RGB has been overwritten by the
   // packer.
   if (alpha_encoding == 2 && reserved_color(source_uv)) {

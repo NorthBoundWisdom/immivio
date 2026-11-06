@@ -6,21 +6,22 @@ import org.junit.Test
 class RenameBundleTest {
     @Test
     fun includesAllMatchingCompanionsAndPreservesSuffixes() {
-        val bundle = RenameBundle(
-            "Episode1.mp4",
-            "旅行",
-            listOf(
+        val bundle =
+            RenameBundle(
                 "Episode1.mp4",
-                "Episode1.zh.srt",
-                "Episode1.si.mix.m4a",
-                "Episode1.idx",
-                "Episode10.srt",
-                "Episode1.jpg"
+                "旅行",
+                listOf(
+                    "Episode1.mp4",
+                    "Episode1.zh.srt",
+                    "Episode1.si.mix.m4a",
+                    "Episode1.idx",
+                    "Episode10.srt",
+                    "Episode1.jpg",
+                ),
             )
-        )
         assertEquals(
             setOf("旅行.mp4", "旅行.zh.srt", "旅行.si.mix.m4a", "旅行.idx"),
-            bundle.moves.map { it.to }.toSet()
+            bundle.moves.map { it.to }.toSet(),
         )
         assertFalse(bundle.moves.any { it.from == "Episode10.srt" || it.from.endsWith(".jpg") })
     }
@@ -31,17 +32,19 @@ class RenameBundleTest {
             RenameBundle(
                 "old.mp4",
                 "new",
-                listOf("old.mp4", "NEW.mp4")
+                listOf("old.mp4", "NEW.mp4"),
             )
         }
-        for (name in listOf("../new", "CON", "new/part", ".", "new.", " name", "na?me"))
-            assertThrows(IllegalArgumentException::class.java) {
-                RenameBundle(
-                    "old.mp4",
-                    name,
-                    listOf("old.mp4")
-                )
-            }
+        for (name in
+            listOf("../new", "CON", "new/part", ".", "new.", " name", "na?me")) assertThrows(
+            IllegalArgumentException::class.java
+        ) {
+            RenameBundle(
+                "old.mp4",
+                name,
+                listOf("old.mp4"),
+            )
+        }
     }
 
     @Test

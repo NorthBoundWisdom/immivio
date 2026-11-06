@@ -67,7 +67,17 @@ func _run() -> void:
 		["local_usb_eject", [Menu.EJECT_STORAGE]],
 		["smb", [Menu.NAV_BASE + Menu.Section.SMB, Menu.REFRESH]],
 		["smb_share", [Menu.ROW_BASE, Menu.ROW_BASE]],
-		["smb_editor", [Menu.BACK, Menu.BACK, menu.network.ADD, Menu.ROW_BASE, Menu.KEY_BASE + 1, Menu.KEY_BASE + 9]],
+		[
+			"smb_editor",
+			[
+				Menu.BACK,
+				Menu.BACK,
+				menu.network.ADD,
+				Menu.ROW_BASE,
+				Menu.KEY_BASE + 1,
+				Menu.KEY_BASE + 9
+			]
+		],
 		["dlna", [Menu.CANCEL, Menu.NAV_BASE + Menu.Section.DLNA]],
 		["settings", [Menu.NAV_BASE + Menu.Section.SETTINGS]],
 		["video", [Menu.TAB_BASE + Menu.VIDEO_TAB]],
@@ -105,7 +115,9 @@ func _run() -> void:
 			["local_usb_eject", [Menu.EJECT_STORAGE]]
 		]
 	if OS.get_environment("QUEST_NETWORK_PREVIEW_ONLY") == "1":
-		menu.server_browser.servers = [{"id": "warmup-jellyfin", "name": "家庭影院", "provider": "jellyfin"}]
+		menu.server_browser.servers = [
+			{"id": "warmup-jellyfin", "name": "家庭影院", "provider": "jellyfin"}
+		]
 		steps = [
 			["network", [Menu.NAV_BASE + Menu.Section.NETWORK]],
 			["network-add", [menu.network.ADD]],
@@ -113,7 +125,10 @@ func _run() -> void:
 			["smb-sources", [Menu.ROW_BASE]],
 			["smb-shares", [Menu.ROW_BASE]],
 			["smb-files", [Menu.ROW_BASE]],
-			["network-plex", [Menu.NAV_BASE + Menu.Section.NETWORK, menu.network.ADD, Menu.ROW_BASE + 4]],
+			[
+				"network-plex",
+				[Menu.NAV_BASE + Menu.Section.NETWORK, menu.network.ADD, Menu.ROW_BASE + 4]
+			],
 			["network-return", [menu.account_panel.BASE]]
 		]
 	for step in steps:

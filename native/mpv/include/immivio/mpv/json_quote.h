@@ -26,13 +26,11 @@ inline std::string json_quote(const std::string &value) {
         out += static_cast<char>(first);
       continue;
     }
-    const int bytes = first >= 0xc2 && first <= 0xdf
-                          ? 2
-                          : (first >= 0xe0 && first <= 0xef
-                                 ? 3
-                                 : (first >= 0xf0 && first <= 0xf4 ? 4 : 0));
-    uint32_t cp =
-        bytes == 2 ? first & 31 : (bytes == 3 ? first & 15 : first & 7);
+    const int bytes =
+        first >= 0xc2 && first <= 0xdf
+            ? 2
+            : (first >= 0xe0 && first <= 0xef ? 3 : (first >= 0xf0 && first <= 0xf4 ? 4 : 0));
+    uint32_t cp = bytes == 2 ? first & 31 : (bytes == 3 ? first & 15 : first & 7);
     bool valid = bytes > 0 && i + bytes <= value.size();
     for (int j = 1; valid && j < bytes; ++j) {
       const auto next = static_cast<unsigned char>(value[i + j]);
@@ -42,8 +40,7 @@ inline std::string json_quote(const std::string &value) {
         cp = (cp << 6) | (next & 63);
     }
     if (!valid || (bytes == 2 && cp < 0x80) || (bytes == 3 && cp < 0x800) ||
-        (bytes == 4 && cp < 0x10000) || cp > 0x10ffff ||
-        (cp >= 0xd800 && cp <= 0xdfff)) {
+        (bytes == 4 && cp < 0x10000) || cp > 0x10ffff || (cp >= 0xd800 && cp <= 0xdfff)) {
       unit(0xfffd);
       ++i;
       continue;

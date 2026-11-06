@@ -285,7 +285,8 @@ func _run() -> void:
 	menu.refresh()
 	check(
 		menu.rows.any(
-			func(row): return row.get("key", "") == "file_editing" and row.title == "Allow file management"
+			func(row):
+				return row.get("key", "") == "file_editing" and row.title == "Allow file management",
 		),
 		"Global setting uses the requested file management label"
 	)

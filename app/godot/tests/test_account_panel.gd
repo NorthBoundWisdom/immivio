@@ -1,10 +1,13 @@
 extends SceneTree
 const Menu := preload("res://scripts/library_menu.gd")
 const Accounts := preload("res://scripts/account_panel.gd")
+
+
 class Platform:
 	extends "res://tests/account_platform_fixture.gd"
 	signal media_list(id: int, payload: String)
 	signal android_lifecycle(state: String)
+
 
 var checks := 0
 var failures: Array[String] = []
@@ -56,7 +59,10 @@ func _run() -> void:
 	menu.refresh()
 	menu._open_licenses()
 	check(
-		not menu.rows.any(func(row): return row.license_id in ["115", "openlist", "openlist-dependencies"]), "Removed cloud components are absent from About"
+		not menu.rows.any(
+			func(row): return row.license_id in ["115", "openlist", "openlist-dependencies"]
+		),
+		"Removed cloud components are absent from About"
 	)
 	check(
 		menu._engine_notices().contains("Permission is hereby granted"),
@@ -90,12 +96,26 @@ func _run() -> void:
 	var id: int = panel.session
 	platform.android_lifecycle.emit("pause")
 	platform.android_lifecycle.emit("resume")
-	check(panel.session == id and panel.view == "form" and not id in platform.account_cancels, "Pause retains the media server form")
+	check(
+		panel.session == id and panel.view == "form" and not id in platform.account_cancels,
+		"Pause retains the media server form"
+	)
 	panel.field = "password"
 	panel.input("append", "private-secret")
-	check(not JSON.stringify(panel.data).contains("private-secret") and panel.data.password_length == 14, "Secret input returns only its mask length")
-	var labels := "\n".join(menu.find_children("*", "Label3D", true, false).map(func(label): return label.text))
-	check(not labels.contains("private-secret") and labels.contains("••••"), "Secret does not appear in VR labels")
+	check(
+		(
+			not JSON.stringify(panel.data).contains("private-secret")
+			and panel.data.password_length == 14
+		),
+		"Secret input returns only its mask length"
+	)
+	var labels := "\n".join(
+		menu.find_children("*", "Label3D", true, false).map(func(label): return label.text)
+	)
+	check(
+		not labels.contains("private-secret") and labels.contains("••••"),
+		"Secret does not appear in VR labels"
+	)
 	panel.action(Accounts.BASE + 6)
 	check(platform.account_calls.back()[1] == "save_server", "server test and save uses backend")
 	menu.dismiss()

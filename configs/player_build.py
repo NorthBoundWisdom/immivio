@@ -64,7 +64,14 @@ def stop_process(process):
 
 
 def run(
-    args, *, cwd=ROOT, env=None, log=None, timeout=1800, fail_on_engine_error=False, stderr_log=None
+    args,
+    *,
+    cwd=ROOT,
+    env=None,
+    log=None,
+    timeout=1800,
+    fail_on_engine_error=False,
+    stderr_log=None,
 ):
     if log:
         LOGS.mkdir(parents=True, exist_ok=True)
@@ -73,12 +80,25 @@ def run(
         stderr_path = LOGS / stderr_log if stderr_log else None
         if stderr_path:
             stderr_path.parent.mkdir(parents=True, exist_ok=True)
+
         def failure(message):
-            detail = stderr_path.read_text(encoding="utf-8", errors="replace") if stderr_path else ""
-            return RuntimeError(message + (f"; stderr ({stderr_log}):\n{detail}" if stderr_path else ""))
-        with path.open("w", encoding="utf-8") as stream, (
-            stderr_path.open("w", encoding="utf-8") if stderr_path else nullcontext(subprocess.STDOUT)
-        ) as errors:
+            detail = (
+                stderr_path.read_text(encoding="utf-8", errors="replace")
+                if stderr_path
+                else ""
+            )
+            return RuntimeError(
+                message + (f"; stderr ({stderr_log}):\n{detail}" if stderr_path else "")
+            )
+
+        with (
+            path.open("w", encoding="utf-8") as stream,
+            (
+                stderr_path.open("w", encoding="utf-8")
+                if stderr_path
+                else nullcontext(subprocess.STDOUT)
+            ) as errors,
+        ):
             process = subprocess.Popen(
                 [str(x) for x in args],
                 cwd=cwd,
@@ -95,9 +115,7 @@ def run(
                         if re.search(
                             r"(?m)^(SCRIPT ERROR:|SHADER ERROR:|ERROR:)", text
                         ):
-                            raise RuntimeError(
-                                f"Godot reported an error; see {path}"
-                            )
+                            raise RuntimeError(f"Godot reported an error; see {path}")
                     if time.monotonic() >= deadline:
                         raise RuntimeError(
                             f"Command timed out after {timeout}s; see {path}"
@@ -368,13 +386,19 @@ def signing_directory(env):
     if selected := env.get("IMMIVIO_SIGNING_DIR"):
         return Path(selected).expanduser().absolute()
     if os.name == "nt":
-        return Path(env.get("APPDATA", Path.home() / "AppData/Roaming")) / "Immivio/signing"
+        return (
+            Path(env.get("APPDATA", Path.home() / "AppData/Roaming"))
+            / "Immivio/signing"
+        )
     return Path(env.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "immivio/signing"
 
 
 def migrate_legacy_signing(directory):
     """Copy an existing project identity out of artifacts without replacing a key."""
-    if any((directory / (stem + "-signing.json")).exists() for stem in ("thru3d", "immivio")):
+    if any(
+        (directory / (stem + "-signing.json")).exists()
+        for stem in ("thru3d", "immivio")
+    ):
         return
     legacy = ROOT / "artifacts/signing"
     for stem in ("thru3d", "immivio"):
@@ -389,7 +413,9 @@ def migrate_legacy_signing(directory):
             raise RuntimeError("Saved signing key is missing")
         destination = directory / (stem + "-release.keystore")
         if destination.exists() and digest(destination) != digest(source):
-            raise RuntimeError("Persistent signing key differs from the legacy identity; refusing to overwrite it")
+            raise RuntimeError(
+                "Persistent signing key differs from the legacy identity; refusing to overwrite it"
+            )
         if not destination.exists():
             shutil.copyfile(source, destination)
         if os.name != "nt":
@@ -428,7 +454,9 @@ def signing_environment(env, *, build_type="Release", require_existing=False):
     alias = "immivio"
     if not credentials.exists():
         if require_existing:
-            raise RuntimeError("Store Release builds require an existing project release key or complete GODOT_ANDROID_KEYSTORE_RELEASE_* overrides; no temporary key will be generated")
+            raise RuntimeError(
+                "Store Release builds require an existing project release key or complete GODOT_ANDROID_KEYSTORE_RELEASE_* overrides; no temporary key will be generated"
+            )
         if keystore.exists():
             raise RuntimeError(
                 "Signing key exists without credentials; restore its credentials"
@@ -503,7 +531,10 @@ def android_identity(build_type=None):
             "application_id": "com.northboundwisdom.immivio.dev",
             "application_label": "Immivio Dev",
         }
-    return {"application_id": "com.northboundwisdom.immivio", "application_label": "Immivio"}
+    return {
+        "application_id": "com.northboundwisdom.immivio",
+        "application_label": "Immivio",
+    }
 
 
 @contextmanager
@@ -530,20 +561,26 @@ def variant_export_presets(channel="appstore"):
         block = match[0]
         features = re.search(r'(?m)^custom_features="([^"]*)"\r?$', block)
         retained = (
-            [value for value in features[1].split(",")
-             if value and value not in ("immivio_appstore", "immivio_web")]
-            if features else []
+            [
+                value
+                for value in features[1].split(",")
+                if value and value not in ("immivio_appstore", "immivio_web")
+            ]
+            if features
+            else []
         )
         retained.append("immivio_" + channel)
         line = "custom_features=" + json.dumps(",".join(retained))
         if features:
-            return block[:features.start()] + line + block[features.end():]
+            return block[: features.start()] + line + block[features.end() :]
         header, body = block.split("\n", 1)
         return header + "\n" + line + "\n" + body
 
-    text, count = re.subn(r'(?ms)^\[preset\.\d+\]\r?\n.*?(?=^\[|\Z)', set_channel, text)
+    text, count = re.subn(r"(?ms)^\[preset\.\d+\]\r?\n.*?(?=^\[|\Z)", set_channel, text)
     if count != 3:
-        raise RuntimeError("Expected three Android export presets for distribution channels")
+        raise RuntimeError(
+            "Expected three Android export presets for distribution channels"
+        )
     try:
         path.write_text(text, encoding="utf-8")
         yield identity
@@ -554,7 +591,9 @@ def variant_export_presets(channel="appstore"):
 def inspect_package(path, env, sdk):
     directory = ROOT / "build/intermediates/apk-inspection"
     directory.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix=path.stem + "-", dir=directory) as temporary:
+    with tempfile.TemporaryDirectory(
+        prefix=path.stem + "-", dir=directory
+    ) as temporary:
         return _inspect_package(path, env, sdk, Path(temporary))
 
 
@@ -714,16 +753,34 @@ def _inspect_package(path, env, sdk, native):
         log="base-apk-manifest.log",
     )
     badging = (LOGS / "base-apk-manifest.log").read_text()
-    run([tools / ("aapt2.exe" if os.name == "nt" else "aapt2"), "dump", "xmltree", path, "--file", "AndroidManifest.xml"], env=env,
-        log="base-apk-xmltree.log", stderr_log="base-apk-xmltree-stderr.log")
+    run(
+        [
+            tools / ("aapt2.exe" if os.name == "nt" else "aapt2"),
+            "dump",
+            "xmltree",
+            path,
+            "--file",
+            "AndroidManifest.xml",
+        ],
+        env=env,
+        log="base-apk-xmltree.log",
+        stderr_log="base-apk-xmltree-stderr.log",
+    )
     manifest_dump = (LOGS / "base-apk-xmltree.log").read_text(encoding="utf-8")
     try:
         manifest = verify_xmltree(manifest_dump)
     except (ValueError, TypeError) as error:
-        stderr = (LOGS / "base-apk-xmltree-stderr.log").read_text(encoding="utf-8", errors="replace")
-        raise RuntimeError(f"APK manifest validation failed: {error}; stderr:\n{stderr}") from error
+        stderr = (LOGS / "base-apk-xmltree-stderr.log").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        raise RuntimeError(
+            f"APK manifest validation failed: {error}; stderr:\n{stderr}"
+        ) from error
     application = manifest.find("application")
-    if application.get(ANDROID + "appCategory") != "2" or application.get(ANDROID + "isGame") == "true":
+    if (
+        application.get(ANDROID + "appCategory") != "2"
+        or application.get(ANDROID + "isGame") == "true"
+    ):
         raise RuntimeError("APK must be classified as a video application, not a game")
     identity = android_identity()
     if not re.search(
@@ -765,7 +822,9 @@ def configure_project(args, env, sdk):
     android.mkdir(parents=True, exist_ok=True)
     extract(source_zip, android)
     # Discard stale generated launcher sources when refreshing the engine template.
-    (android / "src/main/java/com/godot/game/GodotAppLauncher.java").unlink(missing_ok=True)
+    (android / "src/main/java/com/godot/game/GodotAppLauncher.java").unlink(
+        missing_ok=True
+    )
     (android.parent / ".gdignore").touch()
     (android.parent / ".build_version").write_text(
         (templates / "version.txt").read_text()
@@ -866,27 +925,46 @@ def package(args, env, sdk):
     variant = args.build_type.lower()
     templates, engine = template_directory(args, env)
     store_release = channel == "appstore" and args.build_type == "Release"
-    env = signing_environment(env, build_type=args.build_type, require_existing=store_release)
+    env = signing_environment(
+        env, build_type=args.build_type, require_existing=store_release
+    )
     store_certificate = None
     if store_release and args.vendor == "Pico":
         prefix = "GODOT_ANDROID_KEYSTORE_RELEASE_"
-        certificate_bytes = subprocess.check_output([
-            Path(env["JAVA_HOME"]) / "bin" / ("keytool.exe" if os.name == "nt" else "keytool"),
-            "-exportcert", "-keystore", env[prefix + "PATH"], "-alias", env[prefix + "USER"],
-            "-storepass:env", prefix + "PASSWORD",
-        ], env=env)
+        certificate_bytes = subprocess.check_output(
+            [
+                Path(env["JAVA_HOME"])
+                / "bin"
+                / ("keytool.exe" if os.name == "nt" else "keytool"),
+                "-exportcert",
+                "-keystore",
+                env[prefix + "PATH"],
+                "-alias",
+                env[prefix + "USER"],
+                "-storepass:env",
+                prefix + "PASSWORD",
+            ],
+            env=env,
+        )
         store_certificate = hashlib.sha256(certificate_bytes).hexdigest()
         from configs.pico_store import CERTIFICATE_SHA256
+
         if store_certificate != CERTIFICATE_SHA256:
-            raise RuntimeError("PICO store signing key differs from the fixed project store certificate; restore the existing key instead of generating a replacement")
+            raise RuntimeError(
+                "PICO store signing key differs from the fixed project store certificate; restore the existing key instead of generating a replacement"
+            )
     version = re.search(
         r'(?m)^config/version="([^"]+)"', (PROJECT / "project.godot").read_text()
     )[1]
     platform_name = {"Quest": "QUEST", "Pico": "PICO", "OpenXR": "OpenXR"}[args.vendor]
     from configs.output_paths import packages
+
     output_directory = packages(ROOT, args.vendor, channel, args.build_type)
     output_directory.mkdir(parents=True, exist_ok=True)
-    output = output_directory / f"Immivio{development_suffix}-{platform_name}-{version}-{channel}-{variant}-{datetime.now():%Y%m%d}.apk"
+    output = (
+        output_directory
+        / f"Immivio{development_suffix}-{platform_name}-{version}-{channel}-{variant}-{datetime.now():%Y%m%d}.apk"
+    )
     preset = {"Quest": "Quest 3", "Pico": "PICO 4", "OpenXR": "OpenXR (Experimental)"}[
         args.vendor
     ]
@@ -933,9 +1011,13 @@ def package(args, env, sdk):
     with zipfile.ZipFile(output) as archive:
         config = archive.read("assets/project.binary")
     if ("immivio_" + channel).encode() not in config or any(
-        ("immivio_" + other).encode() in config for other in CHANNELS if other != channel
+        ("immivio_" + other).encode() in config
+        for other in CHANNELS
+        if other != channel
     ):
-        raise RuntimeError("Packaged Godot feature does not match the requested distribution channel")
+        raise RuntimeError(
+            "Packaged Godot feature does not match the requested distribution channel"
+        )
     revision = subprocess.check_output(
         ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
     ).strip()
@@ -955,17 +1037,26 @@ def package(args, env, sdk):
     store_report = None
     if store_release and args.vendor == "Pico":
         from configs.pico_store import validate
+
         presets = (PROJECT / "export_presets.cfg").read_text()
         codes = re.findall(r"(?m)^version/code=(\d+)\r?$", presets)
         if len(codes) != 3 or len(set(codes)) != 1:
             raise RuntimeError("Android export versions must agree")
         baseline_path = env.get("IMMIVIO_PICO_STORE_BASELINE")
-        baseline = json.loads(Path(baseline_path).read_text()) if baseline_path else None
+        baseline = (
+            json.loads(Path(baseline_path).read_text()) if baseline_path else None
+        )
         try:
-            report = validate(output, verify_xmltree((LOGS / "base-apk-xmltree.log").read_text()),
-                certificate=certificate[1], expected_certificate=store_certificate,
-                version=version, version_code=int(codes[0]),
-                expected_app_id=env.get("IMMIVIO_PICO_APP_ID"), baseline=baseline)
+            report = validate(
+                output,
+                verify_xmltree((LOGS / "base-apk-xmltree.log").read_text()),
+                certificate=certificate[1],
+                expected_certificate=store_certificate,
+                version=version,
+                version_code=int(codes[0]),
+                expected_app_id=env.get("IMMIVIO_PICO_APP_ID"),
+                baseline=baseline,
+            )
         except ValueError as error:
             output.unlink(missing_ok=True)
             raise RuntimeError(str(error)) from error

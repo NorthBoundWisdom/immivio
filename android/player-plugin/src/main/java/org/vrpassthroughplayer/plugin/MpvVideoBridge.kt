@@ -5,17 +5,19 @@ import android.net.Uri
 import android.opengl.EGL14
 import android.opengl.EGLContext
 import android.os.Handler
-import org.json.JSONArray
-import org.json.JSONObject
-import java.io.File
 import android.provider.OpenableColumns
+import java.io.File
 import java.nio.ByteBuffer
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import org.json.JSONArray
+import org.json.JSONObject
 
-/** Production MPV -> immutable shared GPU color -> complete display pairs. Native MPV survives mode/layout/seek generations; old display claims
- * survive invalidation only until Godot detaches them after its last draw.
+/**
+ * Production MPV -> immutable shared GPU color -> complete display pairs. Native MPV survives
+ * mode/layout/seek generations; old display claims survive invalidation only until Godot detaches
+ * them after its last draw.
  */
 internal class MpvVideoBridge(
     private val context: () -> Context?,
@@ -23,7 +25,9 @@ internal class MpvVideoBridge(
     private val emit: (String, Int, String) -> Unit,
     /** Library URI (smb://, http(s)://) -> MPV location; blocks, called on the worker. */
     private val resolveNetwork: (String) -> String = { it },
-    /** Library URI -> extra M4A tracks beside the video (clone voice); blocks, called on the worker. */
+    /**
+     * Library URI -> extra M4A tracks beside the video (clone voice); blocks, called on the worker.
+     */
     private val sidecarAudio: (String) -> List<SidecarAudio.Track> = { emptyList() },
     private val releaseNetwork: (String) -> Unit = {},
     private val sidecarSubtitles: (String) -> List<SidecarSubtitles.Track> = { emptyList() },
@@ -34,30 +38,26 @@ internal class MpvVideoBridge(
     private val sessions = ConcurrentHashMap<Int, Session>()
     private val hosts = ConcurrentHashMap.newKeySet<PlaybackHost>()
 
-    @Volatile
-    private var foreground = true
+    @Volatile private var foreground = true
 
-    @Volatile
-    private var stopped = false
+    @Volatile private var stopped = false
     private val freezePending = AtomicBoolean(false)
     private val frozenFrames = ConcurrentHashMap<Long, AtomicInteger>()
 
-    @Volatile
-    private var debugNormalFastPath = true
+    @Volatile private var debugNormalFastPath = true
+
     internal fun debugNormalFramePath(enabled: Boolean) {
         if (BuildConfig.DEBUG) debugNormalFastPath = enabled
     }
 
-    @Volatile
-    private var debugFrameCapOverride = -1
+    @Volatile private var debugFrameCapOverride = -1
 
     /** Debug cadence verification only: -1 keeps the mode default. */
     internal fun debugFrameCap(fps: Int) {
         if (BuildConfig.DEBUG) debugFrameCapOverride = fps
     }
 
-    @Volatile
-    private var debugBorrowDisabled = false
+    @Volatile private var debugBorrowDisabled = false
 
     /** Debug A/B only: copy every captured 8K color instead of holding the MPV slot. */
     internal fun debugBorrowColor(enabled: Boolean) {
@@ -67,12 +67,14 @@ internal class MpvVideoBridge(
     /** Debug A/B only: MPV renders an 8K RGBA copy instead of handing over the decoder's image. */
     private var audioFocus: MpvAudioFocus? = null // worker only
 
-    @Volatile
-    private var audioFocusState = "none"
+    @Volatile private var audioFocusState = "none"
     private val lifecyclePauses = AtomicInteger(0)
     private val audioFocusInterruptions = AtomicInteger(0)
 
-    /** Current sessions display source media; legacy effect fields stay false until contract migration. */
+    /**
+     * Current sessions display source media; legacy effect fields stay false until contract
+     * migration.
+     */
     private class Session(
         val scope: MediaSessionGate.Scope,
         val host: PlaybackHost,
@@ -82,12 +84,20 @@ internal class MpvVideoBridge(
         val vulkan: Boolean,
         val normalFastPath: Boolean,
         private val requestedDepth: Boolean = false,
-        private val requestedTopBottom: Boolean = false
+        private val requestedTopBottom: Boolean = false,
     ) {
-        val stereo get() = requestedStereo
-        val depth get() = false
-        val topBottom get() = requestedTopBottom
-        val id get() = scope.decoderId
+        val stereo
+            get() = requestedStereo
+
+        val depth
+            get() = false
+
+        val topBottom
+            get() = requestedTopBottom
+
+        val id
+            get() = scope.decoderId
+
         val lock = Any()
         val disposed = AtomicBoolean(false)
         val display = PairDisplayGate(scope, depth = 2)
@@ -111,14 +121,13 @@ internal class MpvVideoBridge(
         var lastPostDrawEpoch = -1L
         var drawnToken = 0L
         val dims = profile.split('x').map { it.toInt() }
-
     }
 
     fun supported() = !stopped && MpvSourceNative.supported()
 
     /** User setting: decoded color width cap for sources opened from now on (0 = source size). */
-    @Volatile
-    var outputWidthCap = 0
+    @Volatile var outputWidthCap = 0
+
     private fun frameCap(session: Session) =
         if (BuildConfig.DEBUG && debugFrameCapOverride >= 0) debugFrameCapOverride else 0
 
@@ -126,55 +135,86 @@ internal class MpvVideoBridge(
         !stopped && !session.disposed.get() && gate.accepts(session.id)
 
     private fun event(name: String, session: Session, json: JSONObject) {
-        json.put("session_id", session.id).put("logical_session_id", session.scope.logicalSessionId)
-            .put("generation", session.scope.generation).put("backend", "Android_libmpv")
+        json
+            .put("session_id", session.id)
+            .put("logical_session_id", session.scope.logicalSessionId)
+            .put("generation", session.scope.generation)
+            .put("backend", "Android_libmpv")
         emit(name, session.id, json.toString())
     }
 
     @Synchronized
     fun open(
-        uri: String, startMs: Int, stereo: Boolean, profile: String,
-        alpha: Boolean, vulkan: Boolean, hardware: Boolean = true, audio: Boolean = true,
-        depth: Boolean = false, topBottom: Boolean = false, exactSeek: Boolean = false
+        uri: String,
+        startMs: Int,
+        stereo: Boolean,
+        profile: String,
+        alpha: Boolean,
+        vulkan: Boolean,
+        hardware: Boolean = true,
+        audio: Boolean = true,
+        depth: Boolean = false,
+        topBottom: Boolean = false,
+        exactSeek: Boolean = false,
     ): Int {
         if (alpha || depth) return -1
-        if (!supported() || sessions.size >= 2 || startMs < 0 || profile !in BUFFER_SHAPES || (depth && (alpha || stereo)) ||
-            Uri.parse(uri).scheme !in setOf(
-                "content",
-                "file",
-                "smb",
-                "medialib",
-                "externalvideo",
-                "http",
-                "https"
-            )
-        ) return -1
-        val id = gate.begin(); if (id <= 0) return -1
-        val host = PlaybackHost(uri, startMs, hardware, audio, exactSeek, releaseNetwork)
-        val session = Session(
-            gate.current(id) ?: return -1,
-            host,
-            stereo,
-            profile,
-            alpha,
-            vulkan,
-            debugNormalFastPath,
-            depth,
-            stereo && topBottom
+        if (
+            !supported() ||
+                sessions.size >= 2 ||
+                startMs < 0 ||
+                profile !in BUFFER_SHAPES ||
+                (depth && (alpha || stereo)) ||
+                Uri.parse(uri).scheme !in
+                    setOf(
+                        "content",
+                        "file",
+                        "smb",
+                        "medialib",
+                        "externalvideo",
+                        "http",
+                        "https",
+                    )
         )
-        sessions[id] = session; hosts.add(host)
+            return -1
+        val id = gate.begin()
+        if (id <= 0) return -1
+        val host = PlaybackHost(uri, startMs, hardware, audio, exactSeek, releaseNetwork)
+        val session =
+            Session(
+                gate.current(id) ?: return -1,
+                host,
+                stereo,
+                profile,
+                alpha,
+                vulkan,
+                debugNormalFastPath,
+                depth,
+                stereo && topBottom,
+            )
+        sessions[id] = session
+        hosts.add(host)
         sessions.values.filter { it.id != id }.forEach { dispose(it, true) }
         worker.post {
             try {
                 host.markStartup("worker_started_ms")
                 if (host.closing || stopped) return@post
                 val app = context() ?: error("Activity unavailable")
-                event("mpv_state", session, JSONObject().put("state", "opening").put("loading_stage", "Resolving source"))
+                event(
+                    "mpv_state",
+                    session,
+                    JSONObject().put("state", "opening").put("loading_stage", "Resolving source"),
+                )
                 host.resources.adoptExternal(uri)
                 val resolved = resolveShortcut(uri)
                 if (host.closing || stopped) return@post
                 val path = host.resources.resolve(app, resolved, resolveNetwork)
-                event("mpv_state", session, JSONObject().put("state", "opening").put("loading_stage", "Loading subtitles and audio"))
+                event(
+                    "mpv_state",
+                    session,
+                    JSONObject()
+                        .put("state", "opening")
+                        .put("loading_stage", "Loading subtitles and audio"),
+                )
                 host.markStartup("source_resolved_ms")
                 // Extra audio is optional: a failed lookup plays the video without it.
                 val extra = if (audio) sidecarAudio(uri) else emptyList()
@@ -186,104 +226,157 @@ internal class MpvVideoBridge(
                 val captions = discovered.map { caption ->
                     var staged: SubtitleCopies.Prepared? = null
                     try {
-                        val prepared = SubtitleCopies.prepare(caption, app.cacheDir, choices) { location ->
-                            val connection = java.net.URL(location).openConnection().apply {
-                                connectTimeout = 3000; readTimeout = 5000
-                            }
-                            try {
-                                object : java.io.FilterInputStream(connection.getInputStream()) {
-                                    override fun close() {
-                                        try { super.close() } finally { (connection as? java.net.HttpURLConnection)?.disconnect() }
+                        val prepared =
+                            SubtitleCopies.prepare(caption, app.cacheDir, choices) { location ->
+                                val connection =
+                                    java.net.URL(location).openConnection().apply {
+                                        connectTimeout = 3000
+                                        readTimeout = 5000
                                     }
+                                try {
+                                    object :
+                                        java.io.FilterInputStream(connection.getInputStream()) {
+                                        override fun close() {
+                                            try {
+                                                super.close()
+                                            } finally {
+                                                (connection as? java.net.HttpURLConnection)
+                                                    ?.disconnect()
+                                            }
+                                        }
+                                    }
+                                } catch (error: Exception) {
+                                    (connection as? java.net.HttpURLConnection)?.disconnect()
+                                    throw error
                                 }
-                            } catch (error: Exception) { (connection as? java.net.HttpURLConnection)?.disconnect(); throw error }
-                        }
+                            }
                         staged = prepared
                         synchronized(host) {
                             check(!host.closing)
                             prepared.file?.let { host.resources.importedSubtitles.add(it) }
                             host.subtitleKeys[prepared.track.location] = prepared.key
-                            if (prepared.encodingInvalid) host.subtitleEncodingErrors.add(prepared.key)
+                            if (prepared.encodingInvalid)
+                                host.subtitleEncodingErrors.add(prepared.key)
                         }
                         staged = null
                         prepared.track
-                    } finally { staged?.file?.delete() }
+                    } finally {
+                        staged?.file?.delete()
+                    }
                 }
                 host.markStartup("subtitle_sidecars_resolved_ms")
 
                 if (host.closing || stopped) {
-                    host.closeDescriptors(); return@post
+                    host.closeDescriptors()
+                    return@post
                 }
-                render(Runnable {
-                    if (host.closing || stopped) return@Runnable
-                    try {
-                        event("mpv_state", session, JSONObject().put("state", "opening").put("loading_stage", "Preparing playback"))
-                        host.owner = EGL14.eglGetCurrentContext()
-                        host.markStartup("native_create_started_ms")
-                        host.handle = MpvSourceNative.create(
-                            app,
-                            path,
-                            startMs,
-                            hardware,
-                            audio,
-                            outputWidthCap,
-                            extra.flatMap { listOf(it.location, it.title) }.toTypedArray(),
-                            captions.flatMap { listOf(it.location, it.title) }.toTypedArray(),
-                            host.exactStart
-                        )
-                        check(host.handle > 0)
-                        host.markStartup("native_created_ms")
-                        synchronized(host) {
-                            check(MpvSourceNative.setSpeed(host.handle, host.speed))
-                            host.subtitleCommand =
-                                MpvSourceNative.setSync(host.handle, host.subtitleMs, host.audioMs)
-                            check(host.subtitleCommand > 0)
-                            host.secondarySubtitleCommand = host.subtitleCommand
+                render(
+                    Runnable {
+                        if (host.closing || stopped) return@Runnable
+                        try {
+                            event(
+                                "mpv_state",
+                                session,
+                                JSONObject()
+                                    .put("state", "opening")
+                                    .put("loading_stage", "Preparing playback"),
+                            )
+                            host.owner = EGL14.eglGetCurrentContext()
+                            host.markStartup("native_create_started_ms")
+                            host.handle =
+                                MpvSourceNative.create(
+                                    app,
+                                    path,
+                                    startMs,
+                                    hardware,
+                                    audio,
+                                    outputWidthCap,
+                                    extra.flatMap { listOf(it.location, it.title) }.toTypedArray(),
+                                    captions
+                                        .flatMap { listOf(it.location, it.title) }
+                                        .toTypedArray(),
+                                    host.exactStart,
+                                )
+                            check(host.handle > 0)
+                            host.markStartup("native_created_ms")
+                            synchronized(host) {
+                                check(MpvSourceNative.setSpeed(host.handle, host.speed))
+                                host.subtitleCommand =
+                                    MpvSourceNative.setSync(
+                                        host.handle,
+                                        host.subtitleMs,
+                                        host.audioMs,
+                                    )
+                                check(host.subtitleCommand > 0)
+                                host.secondarySubtitleCommand = host.subtitleCommand
+                            }
+                            MpvSourceNative.setFrameCap(host.handle, frameCap(session))
+                            // Native creation stays paused until focus policy has
+                            // run off the Godot GL thread.
+                            refreshPlayback()
+                        } catch (failure: Throwable) {
+                            fail(session, "MPV_SOURCE_START_FAILED", failure)
                         }
-                        MpvSourceNative.setFrameCap(host.handle, frameCap(session))
-                        // Native creation stays paused until focus policy has
-                        // run off the Godot GL thread.
-                        refreshPlayback()
-                    } catch (failure: Throwable) {
-                        fail(session, "MPV_SOURCE_START_FAILED", failure)
                     }
-                })
+                )
             } catch (failure: Throwable) {
                 fail(session, "MPV_LOCAL_SOURCE_FAILED", failure)
             }
         }
         return id
     }
-    /** Model result -> GL upload into the pair's mask. True hands the color lease to the uploader. */
+
+    /**
+     * Model result -> GL upload into the pair's mask. True hands the color lease to the uploader.
+     */
     /** Returns a new processing generation without reopening the MPV media/audio core. */
     @Synchronized
     fun revise(
-        id: Int, stereo: Boolean, alpha: Boolean, profile: String, positionMs: Int = -1,
-        depth: Boolean = false, topBottom: Boolean = false, exactSeek: Boolean = false
+        id: Int,
+        stereo: Boolean,
+        alpha: Boolean,
+        profile: String,
+        positionMs: Int = -1,
+        depth: Boolean = false,
+        topBottom: Boolean = false,
+        exactSeek: Boolean = false,
     ): Int {
         if (alpha || depth) return -1
         val old = sessions[id] ?: return -1
-        if (!active(old) || sessions.size >= 2 || profile !in BUFFER_SHAPES || (depth && (alpha || stereo))) return -1
-        val host = old.host
-        if (positionMs >= 0 && (host.handle <= 0 || !MpvSourceNative.seek(
-                host.handle,
-                positionMs.toLong(),
-                exactSeek
-            ))
-        ) return -1
-        val next = gate.replace(id); if (next <= 0) return -1
-        val session = Session(
-            gate.current(next) ?: return -1,
-            host,
-            stereo,
-            profile,
-            alpha,
-            old.vulkan,
-            old.normalFastPath,
-            depth,
-            stereo && topBottom
+        if (
+            !active(old) ||
+                sessions.size >= 2 ||
+                profile !in BUFFER_SHAPES ||
+                (depth && (alpha || stereo))
         )
-        sessions[next] = session; dispose(old, false)
+            return -1
+        val host = old.host
+        if (
+            positionMs >= 0 &&
+                (host.handle <= 0 ||
+                    !MpvSourceNative.seek(
+                        host.handle,
+                        positionMs.toLong(),
+                        exactSeek,
+                    ))
+        )
+            return -1
+        val next = gate.replace(id)
+        if (next <= 0) return -1
+        val session =
+            Session(
+                gate.current(next) ?: return -1,
+                host,
+                stereo,
+                profile,
+                alpha,
+                old.vulkan,
+                old.normalFastPath,
+                depth,
+                stereo && topBottom,
+            )
+        sessions[next] = session
+        dispose(old, false)
         if (host.handle > 0) MpvSourceNative.setFrameCap(host.handle, frameCap(session))
         if (host.handle > 0 && positionMs < 0) MpvSourceNative.requestFrame(host.handle)
         return next
@@ -293,10 +386,11 @@ internal class MpvVideoBridge(
         val session = sessions[id] ?: return
         if (!active(session)) return
         session.host.playing = playing
-        if (!playing && session.host.handle > 0) MpvSourceNative.setPlaying(
-            session.host.handle,
-            false
-        )
+        if (!playing && session.host.handle > 0)
+            MpvSourceNative.setPlaying(
+                session.host.handle,
+                false,
+            )
         refreshPlayback(explicit = playing)
     }
 
@@ -305,11 +399,14 @@ internal class MpvVideoBridge(
         val session = sessions[id] ?: return false
         synchronized(session.host) {
             if (!active(session) || session.host.closing) return false
-            if (session.host.handle > 0 && !MpvSourceNative.setSpeed(
-                    session.host.handle,
-                    speed
-                )
-            ) return false
+            if (
+                session.host.handle > 0 &&
+                    !MpvSourceNative.setSpeed(
+                        session.host.handle,
+                        speed,
+                    )
+            )
+                return false
             session.host.speed = speed
             return true
         }
@@ -318,10 +415,11 @@ internal class MpvVideoBridge(
     fun setAudio(id: Int, trackId: Int, volume: Double, muted: Boolean): Boolean {
         val session = sessions[id] ?: return false
         if (!active(session) || session.host.handle <= 0) return false
-        if (trackId != 0 && !session.host.audioEnabled) MpvSourceNative.setPlaying(
-            session.host.handle,
-            false
-        )
+        if (trackId != 0 && !session.host.audioEnabled)
+            MpvSourceNative.setPlaying(
+                session.host.handle,
+                false,
+            )
         val accepted = MpvSourceNative.setAudio(session.host.handle, trackId, volume, muted)
         if (accepted) session.host.audioEnabled = trackId != 0
         refreshPlayback(explicit = accepted && trackId != 0)
@@ -337,108 +435,154 @@ internal class MpvVideoBridge(
                 val serial = MpvSourceNative.setSync(session.host.handle, subtitleMs, audioMs)
                 if (serial <= 0) return false
                 session.host.subtitleCommand = maxOf(session.host.subtitleCommand, serial)
-                session.host.secondarySubtitleCommand = maxOf(session.host.secondarySubtitleCommand, serial)
+                session.host.secondarySubtitleCommand =
+                    maxOf(session.host.secondarySubtitleCommand, serial)
             }
-            session.host.subtitleMs = subtitleMs; session.host.audioMs = audioMs
+            session.host.subtitleMs = subtitleMs
+            session.host.audioMs = audioMs
             return true
         }
     }
 
-    private val subtitleEncodingChoices = java.util.concurrent.ConcurrentHashMap<String, Map<String, String>>()
+    private val subtitleEncodingChoices =
+        java.util.concurrent.ConcurrentHashMap<String, Map<String, String>>()
+
     fun subtitleEncodings(uri: String, json: String): Boolean = runCatching {
         require(uri.length <= 8192 && json.length <= 8192)
         val values = JSONObject(json)
         require(values.length() <= 16)
-        val choices = values.keys().asSequence().associateWith { key ->
-            require(key.matches(Regex("[a-f0-9]{64}")))
-            SubtitleEncoding.canonical(values.getString(key)) ?: error("Unsupported encoding")
-        }
+        val choices =
+            values.keys().asSequence().associateWith { key ->
+                require(key.matches(Regex("[a-f0-9]{64}")))
+                SubtitleEncoding.canonical(values.getString(key)) ?: error("Unsupported encoding")
+            }
         subtitleEncodingChoices.clear()
         subtitleEncodingChoices[uri] = choices
         true
-    }.getOrDefault(false)
+    }
+        .getOrDefault(false)
 
     fun addSubtitle(id: Int, text: String): Boolean {
         val session = sessions[id] ?: return false
         val uri = Uri.parse(text)
-        if (!active(session) || session.host.handle <= 0 || text.length > 8192 || uri.scheme !in setOf(
-                "content",
-                "file",
-                "smb"
-            ) ||
-            !session.host.importingSubtitle.compareAndSet(false, true)
-        ) return false
-        val queued = PlaybackWorkers.subtitles.post {
-            var temporary: File? = null
-            try {
-                val app = context() ?: error("Activity unavailable")
-                var name = uri.lastPathSegment.orEmpty()
-                if (uri.scheme == "content") app.contentResolver.query(
-                    uri,
-                    arrayOf(OpenableColumns.DISPLAY_NAME),
-                    null,
-                    null,
-                    null
-                )?.use {
-                    if (it.moveToFirst()) name = it.getString(0).orEmpty()
-                }
-                val extension = SubtitleImport.extension(name)
-                val staged = File.createTempFile("subtitle-", ".$extension", app.cacheDir)
-                temporary = staged
-                val input = if (uri.scheme == "file") File(
-                    uri.path ?: error("Subtitle path missing")
-                ).inputStream()
-                else if (uri.scheme == "smb") {
-                    val lease = resolveNetwork(text)
-                    val connection = java.net.URL(lease).openConnection().apply { connectTimeout = 3000; readTimeout = 5000 }
-                    try {
-                        object : java.io.FilterInputStream(connection.getInputStream()) {
-                            override fun close() {
-                                try { super.close() } finally { (connection as? java.net.HttpURLConnection)?.disconnect(); releaseNetwork(lease) }
+        if (
+            !active(session) ||
+                session.host.handle <= 0 ||
+                text.length > 8192 ||
+                uri.scheme !in
+                    setOf(
+                        "content",
+                        "file",
+                        "smb",
+                    ) ||
+                !session.host.importingSubtitle.compareAndSet(false, true)
+        )
+            return false
+        val queued =
+            PlaybackWorkers.subtitles.post {
+                var temporary: File? = null
+                try {
+                    val app = context() ?: error("Activity unavailable")
+                    var name = uri.lastPathSegment.orEmpty()
+                    if (uri.scheme == "content")
+                        app.contentResolver
+                            .query(
+                                uri,
+                                arrayOf(OpenableColumns.DISPLAY_NAME),
+                                null,
+                                null,
+                                null,
+                            )
+                            ?.use {
+                                if (it.moveToFirst()) name = it.getString(0).orEmpty()
                             }
-                        }
-                    } catch (error: Exception) {
-                        (connection as? java.net.HttpURLConnection)?.disconnect(); releaseNetwork(lease); throw error
+                    val extension = SubtitleImport.extension(name)
+                    val staged = File.createTempFile("subtitle-", ".$extension", app.cacheDir)
+                    temporary = staged
+                    val input =
+                        if (uri.scheme == "file")
+                            File(uri.path ?: error("Subtitle path missing")).inputStream()
+                        else if (uri.scheme == "smb") {
+                            val lease = resolveNetwork(text)
+                            val connection =
+                                java.net.URL(lease).openConnection().apply {
+                                    connectTimeout = 3000
+                                    readTimeout = 5000
+                                }
+                            try {
+                                object : java.io.FilterInputStream(connection.getInputStream()) {
+                                    override fun close() {
+                                        try {
+                                            super.close()
+                                        } finally {
+                                            (connection as? java.net.HttpURLConnection)
+                                                ?.disconnect()
+                                            releaseNetwork(lease)
+                                        }
+                                    }
+                                }
+                            } catch (error: Exception) {
+                                (connection as? java.net.HttpURLConnection)?.disconnect()
+                                releaseNetwork(lease)
+                                throw error
+                            }
+                        } else
+                            app.contentResolver.openInputStream(uri)
+                                ?: error("Subtitle permission lost")
+                    input.use { source ->
+                        SubtitleCopies.write(
+                            source,
+                            staged,
+                            subtitleEncodingChoices[session.host.uri]
+                                .orEmpty()[SubtitleCopies.key(text)] ?: "auto",
+                        )
                     }
-                } else app.contentResolver.openInputStream(uri) ?: error("Subtitle permission lost")
-                input.use { source ->
-                    SubtitleCopies.write(source, staged, subtitleEncodingChoices[session.host.uri].orEmpty()[SubtitleCopies.key(text)] ?: "auto")
-                }
-                synchronized(session.host) {
-                    val current =
-                        sessions.values.firstOrNull { it.host === session.host && active(it) }
-                    check(current != null && !session.host.closing && session.host.handle > 0) { "Subtitle session changed" }
-                    check(session.host.resources.importedSubtitles.size < 16) { "Too many imported subtitles; reopen the video" }
-                    val serial = MpvSourceNative.addSubtitle(
-                        session.host.handle,
-                        staged.absolutePath,
-                        name.take(256)
-                    )
-                    check(serial > 0) { "Subtitle import busy" }
-                    session.host.resources.importedSubtitles.add(staged)
-                    session.host.subtitleKeys[staged.absolutePath] = SubtitleCopies.key(text)
-                    temporary = null // MPV may read it until the host fully closes.
-                    session.host.subtitleCommand = maxOf(session.host.subtitleCommand, serial)
-                    event(
-                        "mpv_subtitle_import",
-                        current,
-                        JSONObject().put("state", "queued").put("uri", text).put("command", serial)
-                    )
-                }
-            } catch (failure: Exception) {
-                sessions.values.firstOrNull { it.host === session.host && active(it) }
-                    ?.let { current ->
+                    synchronized(session.host) {
+                        val current =
+                            sessions.values.firstOrNull { it.host === session.host && active(it) }
+                        check(current != null && !session.host.closing && session.host.handle > 0) {
+                            "Subtitle session changed"
+                        }
+                        check(session.host.resources.importedSubtitles.size < 16) {
+                            "Too many imported subtitles; reopen the video"
+                        }
+                        val serial =
+                            MpvSourceNative.addSubtitle(
+                                session.host.handle,
+                                staged.absolutePath,
+                                name.take(256),
+                            )
+                        check(serial > 0) { "Subtitle import busy" }
+                        session.host.resources.importedSubtitles.add(staged)
+                        session.host.subtitleKeys[staged.absolutePath] = SubtitleCopies.key(text)
+                        temporary = null // MPV may read it until the host fully closes.
+                        session.host.subtitleCommand = maxOf(session.host.subtitleCommand, serial)
                         event(
                             "mpv_subtitle_import",
                             current,
-                            JSONObject().put("state", "error")
-                                .put("error", failure.message ?: "Subtitle import failed")
+                            JSONObject()
+                                .put("state", "queued")
+                                .put("uri", text)
+                                .put("command", serial),
                         )
                     }
-            } finally {
-                temporary?.delete(); session.host.importingSubtitle.set(false)
+                } catch (failure: Exception) {
+                    sessions.values
+                        .firstOrNull { it.host === session.host && active(it) }
+                        ?.let { current ->
+                            event(
+                                "mpv_subtitle_import",
+                                current,
+                                JSONObject()
+                                    .put("state", "error")
+                                    .put("error", failure.message ?: "Subtitle import failed"),
+                            )
+                        }
+                } finally {
+                    temporary?.delete()
+                    session.host.importingSubtitle.set(false)
+                }
             }
-        }
         if (!queued) session.host.importingSubtitle.set(false)
         return queued
     }
@@ -457,12 +601,14 @@ internal class MpvVideoBridge(
     fun setSecondarySubtitle(id: Int, trackId: Int): Boolean {
         val session = sessions[id] ?: return false
         if (!active(session) || session.host.handle <= 0) return false
-        val serial = SecondarySubtitleSelection.request(trackId, session.host.subtitleTracks) {
-            MpvSourceNative.setSecondarySubtitle(session.host.handle, it)
-        }
+        val serial =
+            SecondarySubtitleSelection.request(trackId, session.host.subtitleTracks) {
+                MpvSourceNative.setSecondarySubtitle(session.host.handle, it)
+            }
         if (serial <= 0) return false
         synchronized(session.host) {
-            session.host.secondarySubtitleCommand = maxOf(session.host.secondarySubtitleCommand, serial)
+            session.host.secondarySubtitleCommand =
+                maxOf(session.host.secondarySubtitleCommand, serial)
         }
         return true
     }
@@ -472,50 +618,80 @@ internal class MpvVideoBridge(
         if (!active(session) || session.host.handle <= 0 || afterSequence < 0) return ""
         val text = MpvSourceNative.subtitleStatus(session.host.handle, afterSequence)
         if (text.isEmpty() || !active(session)) return ""
-        return JSONObject(text).put("session_id", session.id)
+        return JSONObject(text)
+            .put("session_id", session.id)
             .put("generation", session.scope.generation)
             .put("mpv_source_handle", session.host.handle)
             .put("required_command_id", session.host.subtitleCommand)
-            .put("required_secondary_command_id", session.host.secondarySubtitleCommand).toString()
+            .put("required_secondary_command_id", session.host.secondarySubtitleCommand)
+            .toString()
     }
-
 
     private fun refreshPlayback(explicit: Boolean = false) {
         worker.post {
-            val needsAudio = !stopped && foreground && hosts.any {
-                !it.closing && it.handle > 0 && it.playing && it.audioEnabled && it.audioAvailable
-            }
-            if (needsAudio && audioFocus == null) context()?.let { app ->
-                audioFocus = MpvAudioFocus(app) { change ->
-                    if (change != MpvAudioFocusGate.Change.GAIN) audioFocusInterruptions.incrementAndGet()
-                    // Stop as soon as loss arrives; waiting for RVM work to
-                    // finish must not keep audio playing over another app.
-                    if (change != MpvAudioFocusGate.Change.GAIN) hosts.filter { !stopped && !it.closing && it.audioEnabled && it.audioAvailable }
-                        .forEach {
-                            if (change == MpvAudioFocusGate.Change.LOSS) it.playing = false
-                            if (it.handle > 0) MpvSourceNative.setPlaying(it.handle, false)
+            val needsAudio =
+                !stopped &&
+                    foreground &&
+                    hosts.any {
+                        !it.closing &&
+                            it.handle > 0 &&
+                            it.playing &&
+                            it.audioEnabled &&
+                            it.audioAvailable
+                    }
+            if (needsAudio && audioFocus == null)
+                context()?.let { app ->
+                    audioFocus =
+                        MpvAudioFocus(app) { change ->
+                            if (change != MpvAudioFocusGate.Change.GAIN)
+                                audioFocusInterruptions.incrementAndGet()
+                            // Stop as soon as loss arrives; waiting for RVM work to
+                            // finish must not keep audio playing over another app.
+                            if (change != MpvAudioFocusGate.Change.GAIN)
+                                hosts
+                                    .filter {
+                                        !stopped &&
+                                            !it.closing &&
+                                            it.audioEnabled &&
+                                            it.audioAvailable
+                                    }
+                                    .forEach {
+                                        if (change == MpvAudioFocusGate.Change.LOSS)
+                                            it.playing = false
+                                        if (it.handle > 0)
+                                            MpvSourceNative.setPlaying(it.handle, false)
+                                    }
+                            if (change == MpvAudioFocusGate.Change.LOSS)
+                                sessions.values
+                                    .filter {
+                                        active(it) && it.host.audioEnabled && it.host.audioAvailable
+                                    }
+                                    .forEach {
+                                        event(
+                                            "mpv_state",
+                                            it,
+                                            JSONObject()
+                                                .put("state", "paused")
+                                                .put("audio_focus_change", "loss"),
+                                        )
+                                    }
+                            refreshPlayback()
                         }
-                    if (change == MpvAudioFocusGate.Change.LOSS) sessions.values.filter { active(it) && it.host.audioEnabled && it.host.audioAvailable }
-                        .forEach {
-                            event(
-                                "mpv_state",
-                                it,
-                                JSONObject().put("state", "paused")
-                                    .put("audio_focus_change", "loss")
-                            )
-                        }
-                    refreshPlayback()
                 }
-            }
-            val granted = if (needsAudio) audioFocus?.acquire(explicit) == true else {
-                audioFocus?.release(); true
-            }
+            val granted =
+                if (needsAudio) audioFocus?.acquire(explicit) == true
+                else {
+                    audioFocus?.release()
+                    true
+                }
             audioFocusState = if (needsAudio) audioFocus?.state() ?: "unavailable" else "none"
             hosts.forEach { host ->
                 if (!stopped && !host.closing && host.handle > 0) {
                     MpvSourceNative.setPlaying(
-                        host.handle, foreground && host.playing &&
-                                (!(host.audioEnabled && host.audioAvailable) || granted)
+                        host.handle,
+                        foreground &&
+                            host.playing &&
+                            (!(host.audioEnabled && host.audioAvailable) || granted),
                     )
                 }
             }
@@ -526,24 +702,32 @@ internal class MpvVideoBridge(
         for (session in sessions.values) synchronized(session.lock) {
             try {
                 if (session.disposed.get()) {
-                    cleanup(session); return@synchronized
+                    cleanup(session)
+                    return@synchronized
                 }
                 if (!active(session) || session.host.handle == 0L) return@synchronized
-                check(session.host.owner == EGL14.eglGetCurrentContext()) { "MPV owner GL context changed" }
+                check(session.host.owner == EGL14.eglGetCurrentContext()) {
+                    "MPV owner GL context changed"
+                }
                 if (session.output.renderer > 0) {
-                    pollRetirements(session); finishUploads(session)
+                    pollRetirements(session)
+                    finishUploads(session)
                     if (session.display.drawn(session.drawnToken)) {
                         session.ownerDraws++
                         session.output.pairs[session.drawnToken]?.let { pair ->
                             val frame = pair.getLong("frame_id")
                             val epoch = pair.getLong("source_epoch")
-                            if (frame != session.lastPostDrawFrame || epoch != session.lastPostDrawEpoch) {
+                            if (
+                                frame != session.lastPostDrawFrame ||
+                                    epoch != session.lastPostDrawEpoch
+                            ) {
                                 val now = System.nanoTime()
                                 if (session.lastUniquePostDrawNs > 0L)
-                                    session.maxUniquePostDrawGapNs = maxOf(
-                                        session.maxUniquePostDrawGapNs,
-                                        now - session.lastUniquePostDrawNs
-                                    )
+                                    session.maxUniquePostDrawGapNs =
+                                        maxOf(
+                                            session.maxUniquePostDrawGapNs,
+                                            now - session.lastUniquePostDrawNs,
+                                        )
                                 session.lastUniquePostDrawNs = now
                                 session.uniquePostDrawFrames++
                                 session.lastPostDrawFrame = frame
@@ -561,8 +745,10 @@ internal class MpvVideoBridge(
                 // has no new frame to offer and the Alpha transition never completes.
                 run {
                     val source =
-                        session.output.pendingSource ?: MpvSourceNative.acquire(session.host.handle)
-                            .takeIf { it.isNotEmpty() }?.let { JSONObject(it) }
+                        session.output.pendingSource
+                            ?: MpvSourceNative.acquire(session.host.handle)
+                                .takeIf { it.isNotEmpty() }
+                                ?.let { JSONObject(it) }
                     session.output.pendingSource = null
                     if (source != null && !capture(session, source)) {
                         session.output.pendingSource = source
@@ -571,7 +757,8 @@ internal class MpvVideoBridge(
                     // Cached opaque borrowing can be ready immediately: no copy or upload was
                     // submitted. Offer that pair in this draw instead of waiting another tick.
                     if (session.normalFastPath) {
-                        finishCopy(session); finishUploads(session)
+                        finishCopy(session)
+                        finishUploads(session)
                     }
                 }
                 if (System.nanoTime() >= session.host.nextStatusNs) {
@@ -580,9 +767,10 @@ internal class MpvVideoBridge(
                     if (BuildConfig.DEBUG && session.output.renderer > 0)
                         status.put(
                             "bridge",
-                            JSONObject(RenderBridgeNative.stats(session.output.renderer))
+                            JSONObject(RenderBridgeNative.stats(session.output.renderer)),
                         )
-                    status.put("normal_fast_path", session.normalFastPath)
+                    status
+                        .put("normal_fast_path", session.normalFastPath)
                         .put("video_fps_cap", frameCap(session))
                     val details = status.optJSONObject("details")
                     details?.optJSONArray("subtitle_tracks")?.let { tracks ->
@@ -591,31 +779,43 @@ internal class MpvVideoBridge(
                             val track = tracks.getJSONObject(i)
                             val path = track.optString("external_path")
                             session.host.subtitleKeys[path]?.let { key ->
-                                track.put("encoding_key", key).put("encoding_invalid", key in session.host.subtitleEncodingErrors)
+                                track
+                                    .put("encoding_key", key)
+                                    .put(
+                                        "encoding_invalid",
+                                        key in session.host.subtitleEncodingErrors,
+                                    )
                             }
                             track.remove("external_path")
                         }
                     }
                     if (!details?.optString("codec").isNullOrEmpty()) {
-                        val available = (details?.optJSONArray("audio_tracks")?.length()
-                            ?: 0) > 0 && session.host.audio
+                        val available =
+                            (details?.optJSONArray("audio_tracks")?.length() ?: 0) > 0 &&
+                                session.host.audio
                         if (available != session.host.audioAvailable) {
-                            session.host.audioAvailable = available; refreshPlayback()
+                            session.host.audioAvailable = available
+                            refreshPlayback()
                         }
                     }
                     val terminal =
-                        if (status.optBoolean("eof_source_resolved")) status.optJSONObject("eof_source_ticket") else null
-                    session.end.observe(terminal?.let {
-                        MpvEndGate.Source(
-                            it.getLong("source_epoch"),
-                            it.getLong("frame_id"),
-                            it.getLong("pts_us")
-                        )
-                    })
+                        if (status.optBoolean("eof_source_resolved"))
+                            status.optJSONObject("eof_source_ticket")
+                        else null
+                    session.end.observe(
+                        terminal?.let {
+                            MpvEndGate.Source(
+                                it.getLong("source_epoch"),
+                                it.getLong("frame_id"),
+                                it.getLong("pts_us"),
+                            )
+                        }
+                    )
                     event(
                         "mpv_state",
                         session,
-                        status.put("alpha_requested", session.alpha)
+                        status
+                            .put("alpha_requested", session.alpha)
                             .put("depth_requested", session.depth)
                             .put("startup_bridge", JSONObject(session.host.startup as Map<*, *>))
                             .put("captured_frames", session.captured)
@@ -628,15 +828,15 @@ internal class MpvVideoBridge(
                             .put("display_rejected_pairs", session.display.rejectedCount)
                             .put("display_clock_corrections", session.display.clockCorrections)
                             .put("post_draw_gap_max_us", session.maxUniquePostDrawGapNs / 1000L)
-
                             .put("producer_copy_deferred", session.deferredCopies)
                             .put("producer_copy_pending", session.output.pendingSource != null)
                             .put("eof_pair_post_draw", session.end.complete())
                             .put("eof_presented_slot", session.end.completedSlot())
-                            .put("audio_focus", audioFocusState).put("foreground", foreground)
+                            .put("audio_focus", audioFocusState)
+                            .put("foreground", foreground)
                             .put("requested_play", session.host.playing)
                             .put("lifecycle_pauses", lifecyclePauses.get())
-                            .put("audio_focus_interruptions", audioFocusInterruptions.get())
+                            .put("audio_focus_interruptions", audioFocusInterruptions.get()),
                     )
                     if (status.optString("state") == "failed" || status.optBoolean("render_failed"))
                         error(status.optString("error") + " " + status.optString("render_error"))
@@ -647,14 +847,19 @@ internal class MpvVideoBridge(
         }
         for (host in hosts) if (host.closing && sessions.values.none { it.host === host }) {
             try {
-                if (host.handle == 0L || MpvSourceNative.close(
-                        host.handle,
-                        host.owner != EGL14.eglGetCurrentContext()
-                    )
+                if (
+                    host.handle == 0L ||
+                        MpvSourceNative.close(
+                            host.handle,
+                            host.owner != EGL14.eglGetCurrentContext(),
+                        )
                 ) {
-                    host.handle = 0; host.closeDescriptors(); hosts.remove(host)
+                    host.handle = 0
+                    host.closeDescriptors()
+                    hosts.remove(host)
                 }
-            } catch (_: Throwable) { /* Preserve ownership and retry; never close a descriptor still used by MPV. */
+            } catch (_: Throwable) {
+                /* Preserve ownership and retry; never close a descriptor still used by MPV. */
             }
         }
     }
@@ -665,26 +870,29 @@ internal class MpvVideoBridge(
         var releaseProducer = true
         try {
             check(
-                source.getBoolean("source_ticket_valid") && source.getBoolean("producer_fence_ready") && source.getBoolean(
-                    "owner_context_shared"
-                )
+                source.getBoolean("source_ticket_valid") &&
+                    source.getBoolean("producer_fence_ready") &&
+                    source.getBoolean("owner_context_shared")
             )
-            val width = source.getInt("width");
+            val width = source.getInt("width")
             val height = source.getInt("height")
             check(!session.stereo || (if (session.topBottom) height else width) % 2 == 0)
             val epoch = source.getLong("source_epoch")
             if (session.sourceEpoch == 0L) session.sourceEpoch = epoch
-            check(session.sourceEpoch == epoch) { "Source epoch changed without processing generation reset" }
+            check(session.sourceEpoch == epoch) {
+                "Source epoch changed without processing generation reset"
+            }
             if (session.output.renderer == 0L) {
                 session.output.owner = EGL14.eglGetCurrentContext()
-                session.output.renderer = RenderBridgeNative.create(
-                    width,
-                    height,
-                    session.dims[0],
-                    session.dims[1],
-                    session.stereo,
-                    session.topBottom
-                )
+                session.output.renderer =
+                    RenderBridgeNative.create(
+                        width,
+                        height,
+                        session.dims[0],
+                        session.dims[1],
+                        session.stereo,
+                        session.topBottom,
+                    )
                 // Ordinary playback also keeps the immutable MPV texture until Godot's last draw.
                 // Avoid a second full-resolution RGBA read/write (256 MiB per 8192x4096 frame).
                 // retire()/cleanup() release the producer through a consumer-context GPU fence;
@@ -693,15 +901,17 @@ internal class MpvVideoBridge(
                     session.output.borrow =
                         RenderBridgeNative.enableBorrowedColor(session.output.renderer)
             }
-            val token = if (session.normalFastPath)
-                RenderBridgeNative.captureOpaqueTexture(
-                    session.output.renderer,
-                    source.getInt("color_texture_id")
-                )
-            else RenderBridgeNative.captureTexture(
-                session.output.renderer,
-                source.getInt("color_texture_id")
-            )
+            val token =
+                if (session.normalFastPath)
+                    RenderBridgeNative.captureOpaqueTexture(
+                        session.output.renderer,
+                        source.getInt("color_texture_id"),
+                    )
+                else
+                    RenderBridgeNative.captureTexture(
+                        session.output.renderer,
+                        source.getInt("color_texture_id"),
+                    )
             if (token == 0L) {
                 // A full consumer ring must not consume the only remaining EOF
                 // frame. Keep the immutable producer lease and retry next draw.
@@ -709,24 +919,27 @@ internal class MpvVideoBridge(
                 return false
             }
             if (session.output.borrow) {
-                session.output.copyingProducer = producer; releaseProducer = false
+                session.output.copyingProducer = producer
+                releaseProducer = false
             }
-            val ticket = DecodedFrameGate.Ticket(
-                session.scope,
-                source.getLong("frame_id"),
-                source.getLong("pts_us"),
-                1,
-                1
-            )
+            val ticket =
+                DecodedFrameGate.Ticket(
+                    session.scope,
+                    source.getLong("frame_id"),
+                    source.getLong("pts_us"),
+                    1,
+                    1,
+                )
             PlaybackFrameContract.color(
                 source,
                 session.scope,
                 token,
                 session.host.handle,
                 session.stereo,
-                session.topBottom
+                session.topBottom,
             )
-            session.output.copying = ticket to token; session.output.copyingPair = source
+            session.output.copying = ticket to token
+            session.output.copyingPair = source
             return true
         } finally {
             // This consumer fence follows the full-resolution GPU copy and small
@@ -735,9 +948,11 @@ internal class MpvVideoBridge(
                 check(
                     MpvSourceNative.release(
                         session.host.handle,
-                        producer
+                        producer,
                     )
-                ) { "Producer lease release failed" }
+                ) {
+                    "Producer lease release failed"
+                }
         }
     }
 
@@ -755,13 +970,17 @@ internal class MpvVideoBridge(
         val lease = PlaybackDisplayLeases.Lease(copying.first, pair, session.output.copyingProducer)
         session.output.copyingProducer = 0L
         session.output.leases[copying.second] = lease
-        session.output.copying = null; session.output.copyingPair = null; session.captured++
+        session.output.copying = null
+        session.output.copyingPair = null
+        session.captured++
         check(
             RenderBridgeNative.alphaReady(
                 session.output.renderer,
-                copying.second
+                copying.second,
             )
-        ) { "Opaque mask must share the completed color fence" }
+        ) {
+            "Opaque mask must share the completed color fence"
+        }
         session.output.alphaUploads[copying.second] = PlaybackDisplayLeases.ReadyMask(pair)
     }
 
@@ -771,35 +990,42 @@ internal class MpvVideoBridge(
             val (token, upload) = iterator.next()
             if (!RenderBridgeNative.alphaReady(session.output.renderer, token)) continue
             iterator.remove()
-            val pair = PlaybackFrameContract.complete(
-                upload.pair,
-                upload.pair.getInt("color_texture_id"),
-                RenderBridgeNative.alphaTexture(session.output.renderer, token),
-                session.dims[0],
-                session.dims[1]
-            )
+            val pair =
+                PlaybackFrameContract.complete(
+                    upload.pair,
+                    upload.pair.getInt("color_texture_id"),
+                    RenderBridgeNative.alphaTexture(session.output.renderer, token),
+                    session.dims[0],
+                    session.dims[1],
+                )
             val obsolete = session.display.offer(identity(pair))
             if (obsolete == token) {
-                retire(session, token); continue
+                retire(session, token)
+                continue
             }
             obsolete?.let { retire(session, it) }
-            session.output.pairs[token] = pair; session.latestPair = pair.toString()
-            // Godot claims the oldest ready pair; a newer one is offered once that is claimed. When a full
-            // queue drops the oldest (the one Godot was told about), tell Godot the new oldest: otherwise its
-            // claim of the dropped pair fails and no notice ever comes again (frozen picture at high rates).
+            session.output.pairs[token] = pair
+            session.latestPair = pair.toString()
+            // Godot claims the oldest ready pair; a newer one is offered once that is claimed. When
+            // a full
+            // queue drops the oldest (the one Godot was told about), tell Godot the new oldest:
+            // otherwise its
+            // claim of the dropped pair fails and no notice ever comes again (frozen picture at
+            // high rates).
             val head = session.display.readyToken()
             if (head != null && (head == token || obsolete != null))
                 session.output.pairs[head]?.let {
                     emit(
                         "mpv_pair_available",
                         session.id,
-                        it.toString()
+                        it.toString(),
                     )
                 }
         }
     }
 
     private fun identity(pair: JSONObject) = PlaybackFrameContract.identity(pair)
+
     fun claim(id: Int, token: Long): String {
         val session = sessions[id] ?: return ""
         val next: String?
@@ -814,44 +1040,56 @@ internal class MpvVideoBridge(
         return claimed
     }
 
-    /** Capture on a real owner draw callback, while the original display claim is pinned.
-     * Its returned copy outlives the old processing session, without a decoder lease. */
+    /**
+     * Capture on a real owner draw callback, while the original display claim is pinned. Its
+     * returned copy outlives the old processing session, without a decoder lease.
+     */
     fun freeze(id: Int, token: Long, request: Int): Boolean {
         val session = sessions[id] ?: return false
         if (request <= 0 || !freezePending.compareAndSet(false, true)) return false
         synchronized(session.lock) {
             if (!active(session) || !session.display.pin(token)) {
-                freezePending.set(false); return false
+                freezePending.set(false)
+                return false
             }
         }
         try {
-            render(Runnable {
-                synchronized(session.lock) {
-                    val report = JSONObject().put("request_id", request).put("slot_token", token)
-                    try {
-                        check(active(session)) { "Freeze source no longer active" }
-                        val pair = JSONObject(session.output.pairs.getValue(token).toString())
-                        val copy = RenderBridgeNative.freezePair(session.output.renderer, token)
-                        frozenFrames[copy[0]] = AtomicInteger(1)
-                        pair.put("frozen_frame_id", copy[0]).put("freeze_copy_us", copy[5])
-                            .put("color_target", "texture").put("color_texture_id", copy[1])
-                            .put("alpha_texture_id", copy[2]).put("color_egl_image", "0")
+            render(
+                Runnable {
+                    synchronized(session.lock) {
+                        val report =
+                            JSONObject().put("request_id", request).put("slot_token", token)
+                        try {
+                            check(active(session)) { "Freeze source no longer active" }
+                            val pair = JSONObject(session.output.pairs.getValue(token).toString())
+                            val copy = RenderBridgeNative.freezePair(session.output.renderer, token)
+                            frozenFrames[copy[0]] = AtomicInteger(1)
+                            pair
+                                .put("frozen_frame_id", copy[0])
+                                .put("freeze_copy_us", copy[5])
+                                .put("color_target", "texture")
+                                .put("color_texture_id", copy[1])
+                                .put("alpha_texture_id", copy[2])
+                                .put("color_egl_image", "0")
 
-                        report.put("pair", pair).put("state", "ready")
-                    } catch (failure: Throwable) {
-                        report.put("state", "failed").put("error", failure.message)
-                        if (BuildConfig.DEBUG) android.util.Log.w(
-                            "QuestMpvFreeze",
-                            "Frame freeze failed",
-                            failure
-                        )
-                    } finally {
-                        session.display.unpin(token); freezePending.set(false)
-                        release(session, token)
+                            report.put("pair", pair).put("state", "ready")
+                        } catch (failure: Throwable) {
+                            report.put("state", "failed").put("error", failure.message)
+                            if (BuildConfig.DEBUG)
+                                android.util.Log.w(
+                                    "QuestMpvFreeze",
+                                    "Frame freeze failed",
+                                    failure,
+                                )
+                        } finally {
+                            session.display.unpin(token)
+                            freezePending.set(false)
+                            release(session, token)
+                        }
+                        emit("mpv_frozen_pair", session.id, report.toString())
                     }
-                    emit("mpv_frozen_pair", session.id, report.toString())
                 }
-            })
+            )
             return true
         } catch (_: Throwable) {
             synchronized(session.lock) { session.display.unpin(token) }
@@ -862,14 +1100,19 @@ internal class MpvVideoBridge(
 
     fun releaseFrozen(id: Long) {
         if (id <= 0) return
-        render(Runnable {
-            val refs = frozenFrames[id] ?: return@Runnable
-            if (refs.decrementAndGet() == 0 && frozenFrames.remove(
-                    id,
-                    refs
+        render(
+            Runnable {
+                val refs = frozenFrames[id] ?: return@Runnable
+                if (
+                    refs.decrementAndGet() == 0 &&
+                        frozenFrames.remove(
+                            id,
+                            refs,
+                        )
                 )
-            ) RenderBridgeNative.releaseFrozen(id)
-        })
+                    RenderBridgeNative.releaseFrozen(id)
+            }
+        )
     }
 
     fun retainFrozen(id: Long): Boolean {
@@ -886,7 +1129,9 @@ internal class MpvVideoBridge(
         synchronized(session.lock) {
             val pair = session.output.pairs[token] ?: return false
             if (!active(session) || !session.display.acknowledge(token)) return false
-            session.drawnToken = token; pair.put("pair_presented", true); session.firstPair = true
+            session.drawnToken = token
+            pair.put("pair_presented", true)
+            session.firstPair = true
             session.host.markStartup("first_pair_bound_ms")
             return true
         }
@@ -895,26 +1140,34 @@ internal class MpvVideoBridge(
     fun detach(id: Int, token: Long): Boolean {
         val session = sessions[id] ?: return false
         synchronized(session.lock) { if (!session.display.detach(token)) return false }
-        render(Runnable {
-            synchronized(session.lock) {
-                if (session.output.renderer > 0 && session.output.owner == EGL14.eglGetCurrentContext() && !session.display.owns(
-                        token
+        render(
+            Runnable {
+                synchronized(session.lock) {
+                    if (
+                        session.output.renderer > 0 &&
+                            session.output.owner == EGL14.eglGetCurrentContext() &&
+                            !session.display.owns(token)
                     )
-                ) retire(session, token)
+                        retire(session, token)
+                }
             }
-        })
+        )
         return true
     }
 
     private fun release(session: Session, token: Long) {
-        render(Runnable {
-            synchronized(session.lock) {
-                if (session.output.renderer > 0 && session.output.owner == EGL14.eglGetCurrentContext() && !session.display.owns(
-                        token
+        render(
+            Runnable {
+                synchronized(session.lock) {
+                    if (
+                        session.output.renderer > 0 &&
+                            session.output.owner == EGL14.eglGetCurrentContext() &&
+                            !session.display.owns(token)
                     )
-                ) retire(session, token)
+                        retire(session, token)
+                }
             }
-        })
+        )
     }
 
     private fun retire(session: Session, token: Long) {
@@ -923,63 +1176,84 @@ internal class MpvVideoBridge(
         session.output.pairs.remove(token)
         RenderBridgeNative.retire(
             session.output.renderer,
-            token
-        ); session.output.retiring.add(token)
-        // After the bridge fence: the MPV slot may be reused once every draw of this pair completes.
-        if (lease.producer > 0) check(
-            MpvSourceNative.release(
-                session.host.handle,
-                lease.producer
-            )
-        ) { "Borrowed producer release failed" }
+            token,
+        )
+        session.output.retiring.add(token)
+        // After the bridge fence: the MPV slot may be reused once every draw of this pair
+        // completes.
+        if (lease.producer > 0)
+            check(
+                MpvSourceNative.release(
+                    session.host.handle,
+                    lease.producer,
+                )
+            ) {
+                "Borrowed producer release failed"
+            }
     }
 
     fun requestPixelMask(request: Int, id: Int, token: Long): Boolean {
         if (!BuildConfig.DEBUG || request <= 0) return false
         val session = sessions[id] ?: return false
-        val pair = synchronized(session.lock) {
-            if (!active(session) || !session.output.pairs.containsKey(token) || !session.display.pin(
-                    token
+        val pair =
+            synchronized(session.lock) {
+                if (
+                    !active(session) ||
+                        !session.output.pairs.containsKey(token) ||
+                        !session.display.pin(token)
                 )
-            ) return false
-            JSONObject(session.output.pairs.getValue(token).toString())
-        }
+                    return false
+                JSONObject(session.output.pairs.getValue(token).toString())
+            }
         try {
-            render(Runnable {
-                synchronized(session.lock) {
-                    val report = JSONObject().put("request_id", request).put("pair", pair)
-                    try {
-                        check(session.output.renderer > 0 && session.output.owner == EGL14.eglGetCurrentContext())
-                        val pixels = pair.getInt("alpha_width") * pair.getInt("alpha_height")
-                        val buffer = ByteBuffer.allocateDirect(pixels)
-                        check(RenderBridgeNative.readAlpha(session.output.renderer, token, buffer))
-                        val bytes = ByteArray(pixels); buffer.position(0); buffer.get(bytes)
-                        val app = context() ?: error("Activity unavailable")
-                        val directory = java.io.File(app.filesDir, "diagnostics").apply { mkdirs() }
-                        val name = "mpv_pixel_mask_$request.r8"
-                        val temporary = java.io.File.createTempFile("mask-", ".tmp", directory)
+            render(
+                Runnable {
+                    synchronized(session.lock) {
+                        val report = JSONObject().put("request_id", request).put("pair", pair)
                         try {
-                            temporary.writeBytes(bytes); check(
-                                temporary.renameTo(
-                                    java.io.File(
-                                        directory,
-                                        name
+                            check(
+                                session.output.renderer > 0 &&
+                                    session.output.owner == EGL14.eglGetCurrentContext()
+                            )
+                            val pixels = pair.getInt("alpha_width") * pair.getInt("alpha_height")
+                            val buffer = ByteBuffer.allocateDirect(pixels)
+                            check(
+                                RenderBridgeNative.readAlpha(session.output.renderer, token, buffer)
+                            )
+                            val bytes = ByteArray(pixels)
+                            buffer.position(0)
+                            buffer.get(bytes)
+                            val app = context() ?: error("Activity unavailable")
+                            val directory =
+                                java.io.File(app.filesDir, "diagnostics").apply { mkdirs() }
+                            val name = "mpv_pixel_mask_$request.r8"
+                            val temporary = java.io.File.createTempFile("mask-", ".tmp", directory)
+                            try {
+                                temporary.writeBytes(bytes)
+                                check(
+                                    temporary.renameTo(
+                                        java.io.File(
+                                            directory,
+                                            name,
+                                        )
                                     )
                                 )
-                            )
-                        } finally {
-                            temporary.delete()
+                            } finally {
+                                temporary.delete()
+                            }
+                            report
+                                .put("state", "ready")
+                                .put("mask_file", name)
+                                .put("mask_bytes", pixels)
+                                .put("mask_origin", "same_pinned_pair_native_R8_readback")
+                        } catch (failure: Throwable) {
+                            report.put("state", "failed").put("error", failure.message)
+                            unpinPixelPair(id, token)
                         }
-                        report.put("state", "ready").put("mask_file", name)
-                            .put("mask_bytes", pixels)
-                            .put("mask_origin", "same_pinned_pair_native_R8_readback")
-                    } catch (failure: Throwable) {
-                        report.put("state", "failed").put("error", failure.message)
-                        unpinPixelPair(id, token)
+                        emit("mpv_pixel_mask", request, report.toString())
                     }
-                    emit("mpv_pixel_mask", request, report.toString())
                 }
-            })
+            )
             return true
         } catch (_: Throwable) {
             synchronized(session.lock) { session.display.unpin(token) }
@@ -994,7 +1268,9 @@ internal class MpvVideoBridge(
 
     fun pinPair(id: Int, token: Long): Boolean {
         val session = sessions[id] ?: return false
-        synchronized(session.lock) { return active(session) && session.display.pin(token) }
+        synchronized(session.lock) {
+            return active(session) && session.display.pin(token)
+        }
     }
 
     fun unpinPair(id: Int, token: Long): Boolean {
@@ -1006,11 +1282,13 @@ internal class MpvVideoBridge(
 
     private fun pollRetirements(session: Session) {
         val iterator = session.output.retiring.iterator()
-        while (iterator.hasNext()) if (RenderBridgeNative.retired(
+        while (iterator.hasNext()) if (
+            RenderBridgeNative.retired(
                 session.output.renderer,
-                iterator.next()
+                iterator.next(),
             )
-        ) iterator.remove()
+        )
+            iterator.remove()
     }
 
     private fun cleanup(session: Session) {
@@ -1019,7 +1297,7 @@ internal class MpvVideoBridge(
                 check(
                     MpvSourceNative.release(
                         session.host.handle,
-                        source.getLong("producer_token")
+                        source.getLong("producer_token"),
                     )
                 )
             } else {
@@ -1031,35 +1309,43 @@ internal class MpvVideoBridge(
         }
         if (session.output.renderer > 0) {
             if (session.output.owner != EGL14.eglGetCurrentContext()) {
-                RenderBridgeNative.abandon(session.output.renderer); session.output.renderer =
-                    0; session.output.retiring.clear()
+                RenderBridgeNative.abandon(session.output.renderer)
+                session.output.renderer = 0
+                session.output.retiring.clear()
             } else {
                 session.output.copying?.let {
                     RenderBridgeNative.retire(
                         session.output.renderer,
-                        it.second
-                    ); session.output.retiring.add(it.second)
+                        it.second,
+                    )
+                    session.output.retiring.add(it.second)
                 }
-                if (session.output.copyingProducer > 0) MpvSourceNative.release(
-                    session.host.handle,
-                    session.output.copyingProducer
-                )
+                if (session.output.copyingProducer > 0)
+                    MpvSourceNative.release(
+                        session.host.handle,
+                        session.output.copyingProducer,
+                    )
                 session.output.copyingProducer = 0L
-                session.output.copying = null; session.output.copyingPair =
-                    null; session.output.alphaUploads.clear()
-                session.output.leases.keys.toList().filter { !session.display.owns(it) }
+                session.output.copying = null
+                session.output.copyingPair = null
+                session.output.alphaUploads.clear()
+                session.output.leases.keys
+                    .toList()
+                    .filter { !session.display.owns(it) }
                     .forEach { retire(session, it) }
                 pollRetirements(session)
             }
         }
         if (session.display.heldClaims() > 0 || session.output.retiring.isNotEmpty()) return
         if (session.output.renderer > 0) RenderBridgeNative.close(session.output.renderer)
-        session.output.renderer = 0; session.output.leases.clear(); session.output.pairs.clear()
+        session.output.renderer = 0
+        session.output.leases.clear()
+        session.output.pairs.clear()
         sessions.remove(session.id)
         event(
             "mpv_released",
             session,
-            JSONObject().put("renderer_closed", true).put("held_slots", 0)
+            JSONObject().put("renderer_closed", true).put("held_slots", 0),
         )
     }
 
@@ -1077,39 +1363,54 @@ internal class MpvVideoBridge(
 
     private fun fail(session: Session, code: String, failure: Throwable) {
         if (session.disposed.get()) return
-        event("mpv_error", session, JSONObject().put("code", if (failure is StrmFailure) failure.code else code).put("message", PlaybackErrors.safe(failure.message)))
-        gate.invalidate(session.id); dispose(session, true)
+        event(
+            "mpv_error",
+            session,
+            JSONObject()
+                .put("code", if (failure is StrmFailure) failure.code else code)
+                .put("message", PlaybackErrors.safe(failure.message)),
+        )
+        gate.invalidate(session.id)
+        dispose(session, true)
     }
 
     fun close(id: Int) {
-        sessions[id]?.let { gate.invalidate(id); dispose(it, true) }
+        sessions[id]?.let {
+            gate.invalidate(id)
+            dispose(it, true)
+        }
     }
 
     fun pause() {
         lifecyclePauses.incrementAndGet()
-        foreground = false; hosts.forEach {
-            if (it.handle > 0) MpvSourceNative.setPlaying(
-                it.handle,
-                false
-            )
+        foreground = false
+        hosts.forEach {
+            if (it.handle > 0)
+                MpvSourceNative.setPlaying(
+                    it.handle,
+                    false,
+                )
         }
         refreshPlayback()
     }
 
     fun resume() {
-        foreground = true; refreshPlayback()
+        foreground = true
+        refreshPlayback()
     }
 
     fun contextCreated() {
-        frozenFrames.keys.toList()
-            .forEach { RenderBridgeNative.releaseFrozen(it); frozenFrames.remove(it) }
+        frozenFrames.keys.toList().forEach {
+            RenderBridgeNative.releaseFrozen(it)
+            frozenFrames.remove(it)
+        }
         // A real recreated context invalidates the complete pipeline. Initial
         // creation has no sessions; UI can reopen the same authorized URI.
         sessions.values.forEach {
             fail(
                 it,
                 "MPV_GL_CONTEXT_RECREATED",
-                IllegalStateException("Owner context recreated")
+                IllegalStateException("Owner context recreated"),
             )
         }
     }
@@ -1120,21 +1421,28 @@ internal class MpvVideoBridge(
     }
 
     fun shutdown() {
-        stopped = true; gate.shutdown(); sessions.values.forEach { dispose(it, true) }
+        stopped = true
+        gate.shutdown()
+        sessions.values.forEach { dispose(it, true) }
         // Android may never deliver another draw during termination. Forget old
         // owner references and let each shared native context release its objects.
         hosts.forEach { host -> if (host.handle > 0) MpvSourceNative.close(host.handle, true) }
-        Thread({
-            for (host in hosts.toList()) {
-                while (host.handle > 0) {
-                    if (MpvSourceNative.close(host.handle, true)) {
-                        host.handle = 0; break
+        Thread(
+                {
+                    for (host in hosts.toList()) {
+                        while (host.handle > 0) {
+                            if (MpvSourceNative.close(host.handle, true)) {
+                                host.handle = 0
+                                break
+                            }
+                            Thread.sleep(20)
+                        }
+                        host.closeDescriptors()
                     }
-                    Thread.sleep(20)
-                }
-                host.closeDescriptors()
-            }
-        }, "QuestMpvDispose").start()
+                },
+                "QuestMpvDispose",
+            )
+            .start()
         // Session resources close above; the shared playback worker survives
         // Activity recreation so playback callbacks retain one worker owner.
     }

@@ -1,28 +1,31 @@
 package org.vrpassthroughplayer.plugin
 
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
 
 class MediaServerListResponseTest {
     private fun response(accounts: () -> List<MediaServerAccount>): JSONObject {
         val done = CountDownLatch(1)
         var result: JSONObject? = null
         var responseId = 0
-        val library = MediaServerLibrary(
-            { null },
-            { error("No network required to list accounts") },
-            { 73 },
-            accounts
-        ) { id, json ->
-            responseId = id; result = JSONObject(json); done.countDown()
-        }
+        val library =
+            MediaServerLibrary(
+                { null },
+                { error("No network required to list accounts") },
+                { 73 },
+                accounts,
+            ) { id, json ->
+                responseId = id
+                result = JSONObject(json)
+                done.countDown()
+            }
         try {
             assertEquals(
                 73,
-                library.request("""{"action":"servers","server_id":"","generation":12}""")
+                library.request("""{"action":"servers","server_id":"","generation":12}"""),
             )
             assertTrue("Native worker must answer", done.await(5, TimeUnit.SECONDS))
             assertEquals(73, responseId)
@@ -45,7 +48,7 @@ class MediaServerListResponseTest {
                     "stash-local",
                     "Local Stash",
                     "http://nas:9999",
-                    "private-api-key"
+                    "private-api-key",
                 ),
                 MediaServerAccount(
                     "emby",
@@ -54,8 +57,8 @@ class MediaServerListResponseTest {
                     "private-token",
                     "emby",
                     "private-user-id",
-                    "private-username"
-                )
+                    "private-username",
+                ),
             )
         }
         assertEquals("ready", result.optString("state"))

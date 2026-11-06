@@ -23,7 +23,14 @@ static func valid(value: Dictionary) -> bool:
 		if (
 			not (offset is int or offset is float)
 			or not is_finite(float(offset))
-			or absf(float(offset)) > (10.0 if key == "stereo_horizontal" and int(value.get("geometry", 0)) != 0 else LIMIT)
+			or (
+				absf(float(offset))
+				> (
+					10.0
+					if key == "stereo_horizontal" and int(value.get("geometry", 0)) != 0
+					else LIMIT
+				)
+			)
 		):
 			return false
 	return true

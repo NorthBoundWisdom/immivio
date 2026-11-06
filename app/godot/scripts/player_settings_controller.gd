@@ -20,7 +20,9 @@ func load_preferences() -> void:
 	var loaded := settings.load(settings_path)
 	if loaded != OK:
 		# Seed the fresh default now so any later settings save preserves it.
-		settings.set_value("controls", "pinch_hand", preload("res://scripts/hand_preferences.gd").DEFAULT)
+		settings.set_value(
+			"controls", "pinch_hand", preload("res://scripts/hand_preferences.gd").DEFAULT
+		)
 	if preload("res://scripts/player_settings_migration.gd").apply(settings, loaded == OK):
 		settings.save(settings_path)
 
@@ -41,7 +43,10 @@ func _library_settings() -> Dictionary:
 		"output_width": Quality.load_output_choice(host.settings),
 		"show_fps": host.fps_overlay != null and host.fps_overlay.visible,
 		"display_quality": host.display_quality,
-		"refresh_rate": host.display.closest_refresh_rate(host.display.available_refresh_rates(), host.display.preferred_refresh_rate),
+		"refresh_rate":
+		host.display.closest_refresh_rate(
+			host.display.available_refresh_rates(), host.display.preferred_refresh_rate
+		),
 		"refresh_rates": host.display.available_refresh_rates(),
 		"display_quality_pending":
 		not is_equal_approx(
@@ -50,7 +55,11 @@ func _library_settings() -> Dictionary:
 		"sharpness": Quality.load_sharpness(host.settings, host.low_end_gpu),
 		"history": host.video.history_enabled,
 		"pinch_hand": host.pinch_hand,
-		"diagnostic_previous": PlatformMethods.supports(host.video.platform, "diagnostic_previous_available") and host.video.platform.diagnostic_previous_available(),
+		"diagnostic_previous":
+		(
+			PlatformMethods.supports(host.video.platform, "diagnostic_previous_available")
+			and host.video.platform.diagnostic_previous_available()
+		),
 		"reuse_last_mode": host.video.reuse_last_mode,
 		"browse_memory": bool(host.settings.get_value("library", "browse_memory", true)),
 		"controls_opacity": float(host.settings.get_value("ui", "controls_opacity", 0.86)),
@@ -80,12 +89,19 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 			host.settings.set_value("ui", "window_height", host._presentation.window_height)
 			host.settings.save(host.settings_path)
 		"save_diagnostic_log":
-			if value is bool and value and PlatformMethods.supports(host.video.platform, "save_diagnostic_log"):
+			if (
+				value is bool
+				and value
+				and PlatformMethods.supports(host.video.platform, "save_diagnostic_log")
+			):
 				host.video.platform.save_diagnostic_log()
 			else:
 				host.recent_menu.status = "Diagnostic log could not be saved"
 		"pinch_hand":
-			if not value is String or value not in preload("res://scripts/hand_preferences.gd").CHOICES:
+			if (
+				not value is String
+				or value not in preload("res://scripts/hand_preferences.gd").CHOICES
+			):
 				return
 			host.pinch_hand = value
 			for hand in host.hand_pointers:
@@ -115,7 +131,10 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 			host.settings.set_value("library", "orders", value)
 			host.settings.save(host.settings_path)
 		"refresh_rate":
-			if not (value is int or value is float) or not host.display.set_refresh_preference(float(value)):
+			if (
+				not (value is int or value is float)
+				or not host.display.set_refresh_preference(float(value))
+			):
 				return
 			host.settings.set_value("display", "refresh_rate", host.display.preferred_refresh_rate)
 			host.settings.save(host.settings_path)
@@ -225,7 +244,7 @@ func _on_playback_adjustment(key: String, value: Variant) -> void:
 	if not is_instance_valid(host):
 		return
 	if key == "window_height":
-		return # Keep the slider stationary during its preview; commit on release.
+		return  # Keep the slider stationary during its preview; commit on release.
 	if key == "controls_opacity":
 		host.video_menu.controls_opacity = clampf(float(value), 0, 1)
 		host.settings.set_value("ui", "controls_opacity", host.video_menu.controls_opacity)

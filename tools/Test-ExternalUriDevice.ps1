@@ -84,8 +84,8 @@ function Player([string]$label, [string]$case, [switch]$Decode) {
     $r | ConvertTo-Json -Depth 50 | Set-Content "$directory/$label-report.json"
     Write-Output "Collected $label : $($r.state) / $($r.error)"
 }
-$result = @{state='failed'; apk_sha256=$playerHash; provider_apk_sha256=$fixtureHash; activity_launched=$false;
-    scope ='Real cross-UID DocumentsProvider grants/revocation/process restarts and native MPV FD decode; picker UI, device reboot, Godot catalog/resume, RVM/XR and audio unverified'
+$result = @{state = 'failed'; apk_sha256 = $playerHash; provider_apk_sha256 = $fixtureHash; activity_launched = $false;
+    scope = 'Real cross-UID DocumentsProvider grants/revocation/process restarts and native MPV FD decode; picker UI, device reboot, Godot catalog/resume, RVM/XR and audio unverified'
 }
 try {
     & $adb -s $Serial shell am force-stop $player
@@ -118,8 +118,7 @@ try {
     Provider 'offer_reselected' 'offer_persistable'
     Player 'reselected' 'external_take'
     $result.state = 'collected_scoped_external_uri_trace'
-}
-catch { $result.error = $_.Exception.Message }
+} catch { $result.error = $_.Exception.Message }
 finally {
     $appPid = (& $adb -s $Serial shell pidof $player | Out-String).Trim()
     if ($appPid -match '^\d+$') { & $adb -s $Serial logcat -d --pid=$appPid -v threadtime | Set-Content "$directory/player-logcat.txt" }

@@ -5,6 +5,7 @@ import org.junit.Test
 
 class FramePairGateTest {
     private val scope = MediaSessionGate.Scope(7, 3, 2)
+
     private fun ticket(frame: Long = 10, pts: Long = 1000, revision: Int = 1) =
         DecodedFrameGate.Ticket(scope, frame, pts, revision, 1)
 
@@ -65,7 +66,8 @@ class FramePairGateTest {
     fun playbackClockEstimateCannotAuthorizeExactSourcePairs() {
         val gate = FramePairGate(scope)
         val id = gate.identify(ticket(), 42)!!.copy(playbackClockEstimate = true)
-        assertFalse(gate.accepts(id)); assertFalse(gate.presented(id))
+        assertFalse(gate.accepts(id))
+        assertFalse(gate.presented(id))
         assertFalse(gate.matchesRuntime(id, 3, 1, 10, 1000))
     }
 }

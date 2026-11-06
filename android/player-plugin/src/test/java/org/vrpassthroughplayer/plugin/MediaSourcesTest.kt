@@ -1,9 +1,9 @@
 package org.vrpassthroughplayer.plugin
 
-import org.junit.Assert.*
-import org.junit.Test
 import java.net.HttpURLConnection
 import java.net.URL
+import org.junit.Assert.*
+import org.junit.Test
 
 class MediaSourcesTest {
     @Test
@@ -22,17 +22,21 @@ class MediaSourcesTest {
     @Test
     fun loopbackServerServesRanges() {
         val data = ByteArray(1_000_000) { (it * 31 % 251).toByte() }
-        val source = object : StreamSource {
-            override val size = data.size.toLong()
-            override fun open() = object : StreamSource.Reader {
-                override fun read(offset: Long, buffer: ByteArray, length: Int): Int {
-                    val n = minOf(length.toLong(), size - offset).toInt()
-                    System.arraycopy(data, offset.toInt(), buffer, 0, n); return n
-                }
+        val source =
+            object : StreamSource {
+                override val size = data.size.toLong()
 
-                override fun close() {}
+                override fun open() =
+                    object : StreamSource.Reader {
+                        override fun read(offset: Long, buffer: ByteArray, length: Int): Int {
+                            val n = minOf(length.toLong(), size - offset).toInt()
+                            System.arraycopy(data, offset.toInt(), buffer, 0, n)
+                            return n
+                        }
+
+                        override fun close() {}
+                    }
             }
-        }
         LocalStreamServer().use { server ->
             val url = server.publish(source, "a b.mp4")
             assertTrue(url.startsWith("http://127.0.0.1:") && url.endsWith("/a%20b.mp4"))
@@ -54,7 +58,8 @@ class MediaSourcesTest {
 
     @Test
     fun dlnaDescriptionAndDidl() {
-        val description = """<?xml version="1.0"?><root xmlns="urn:schemas-upnp-org:device-1-0">
+        val description =
+            """<?xml version="1.0"?><root xmlns="urn:schemas-upnp-org:device-1-0">
             <device><friendlyName>NAS 媒体</friendlyName><UDN>uuid:1234</UDN><serviceList>
             <service><serviceType>urn:schemas-upnp-org:service:ConnectionManager:1</serviceType><controlURL>/cm</controlURL></service>
             <service><serviceType>urn:schemas-upnp-org:service:ContentDirectory:1</serviceType><controlURL>ctl/cd</controlURL></service>
@@ -65,7 +70,9 @@ class MediaSourcesTest {
         assertEquals("http://192.168.1.5:8200/ctl/cd", server.controlUrl)
         assertEquals(
             "http://192.168.1.5:8200/rootDesc.xml",
-            DlnaClient.ssdpLocation("HTTP/1.1 200 OK\r\nCACHE-CONTROL: max-age=1800\r\nLocation: http://192.168.1.5:8200/rootDesc.xml\r\n\r\n")
+            DlnaClient.ssdpLocation(
+                "HTTP/1.1 200 OK\r\nCACHE-CONTROL: max-age=1800\r\nLocation: http://192.168.1.5:8200/rootDesc.xml\r\n\r\n"
+            ),
         )
         val didl =
             """<DIDL-Lite xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/" xmlns:dc="http://purl.org/dc/elements/1.1/"

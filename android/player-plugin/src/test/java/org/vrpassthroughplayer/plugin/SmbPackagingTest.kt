@@ -12,7 +12,9 @@ class SmbPackagingTest {
     fun deprecatedHttpTlsAdaptersAreUnavailable() {
         for (prefix in listOf("org.codelibs.jcifs.smb", "org.codelibs.jcifs.smb1")) {
             for (adapter in listOf("http.NtlmHttpURLConnection", "http.Handler", "https.Handler")) {
-                assertThrows(ClassNotFoundException::class.java) { Class.forName("$prefix.$adapter") }
+                assertThrows(ClassNotFoundException::class.java) {
+                    Class.forName("$prefix.$adapter")
+                }
             }
         }
     }

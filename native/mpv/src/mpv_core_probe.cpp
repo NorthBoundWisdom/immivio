@@ -9,13 +9,11 @@
 
 extern "C" int av_jni_set_java_vm(void *, void *);
 extern "C" int av_jni_set_android_app_ctx(void *, void *);
-std::string quest_mpv_gpu_probe(const std::string &path, bool hardware,
-                                int width, int height);
+std::string quest_mpv_gpu_probe(const std::string &path, bool hardware, int width, int height);
 
 namespace {
 std::mutex probe_mutex;
-jobject application_context =
-    nullptr; // Process lifetime, matching FFmpeg's global context.
+jobject application_context = nullptr; // Process lifetime, matching FFmpeg's global context.
 std::string quote(const std::string &value) {
   std::string result = "\"";
   for (const unsigned char c : value) {
@@ -35,8 +33,7 @@ std::string quote(const std::string &value) {
 }
 void checked(int status, const char *action) {
   if (status < 0)
-    throw std::runtime_error(std::string(action) + ": " +
-                             mpv_error_string(status));
+    throw std::runtime_error(std::string(action) + ": " + mpv_error_string(status));
 }
 std::string property(mpv_handle *core, const char *name) {
   char *value = mpv_get_property_string(core, name);
@@ -54,8 +51,7 @@ void initialize_android(JNIEnv *env, jobject context) {
     application_context = env->NewGlobalRef(context);
     if (!application_context)
       throw std::runtime_error("MPV application context allocation failed");
-    checked(av_jni_set_android_app_ctx(application_context, nullptr),
-            "FFmpeg Android context");
+    checked(av_jni_set_android_app_ctx(application_context, nullptr), "FFmpeg Android context");
   }
 }
 std::string probe(JNIEnv *env, jobject context, jstring path) {
@@ -63,8 +59,8 @@ std::string probe(JNIEnv *env, jobject context, jstring path) {
   if (!path)
     throw std::runtime_error("MPV diagnostic path missing");
   initialize_android(env, context);
-  std::unique_ptr<mpv_handle, decltype(&mpv_terminate_destroy)> core(
-      mpv_create(), mpv_terminate_destroy);
+  std::unique_ptr<mpv_handle, decltype(&mpv_terminate_destroy)> core(mpv_create(),
+                                                                     mpv_terminate_destroy);
   if (!core)
     throw std::runtime_error("mpv_create failed");
   const auto option = [&](const char *name, const char *value) {
@@ -95,16 +91,14 @@ std::string probe(JNIEnv *env, jobject context, jstring path) {
   bool loaded = false, reconfigured = false, resumed = false, ended = false;
   int end_reason = -1, playback_error = 0;
   std::string codec, demuxer, width, height, duration;
-  const auto deadline =
-      std::chrono::steady_clock::now() + std::chrono::seconds(20);
+  const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
   while (std::chrono::steady_clock::now() < deadline && !ended) {
     const auto *event = mpv_wait_event(core.get(), 0.1);
     if (!event)
       throw std::runtime_error("mpv_wait_event failed");
     if (event->event_id == MPV_EVENT_LOG_MESSAGE) {
       const auto *log = static_cast<const mpv_event_log_message *>(event->data);
-      __android_log_print(ANDROID_LOG_INFO, "QuestMpv", "[%s] %s", log->prefix,
-                          log->text);
+      __android_log_print(ANDROID_LOG_INFO, "QuestMpv", "[%s] %s", log->prefix, log->text);
     } else if (event->event_id == MPV_EVENT_FILE_LOADED)
       loaded = true;
     else if (event->event_id == MPV_EVENT_VIDEO_RECONFIG) {
@@ -129,30 +123,26 @@ std::string probe(JNIEnv *env, jobject context, jstring path) {
     }
   }
   const bool passed = loaded && reconfigured && resumed && ended &&
-                      end_reason == MPV_END_FILE_REASON_EOF &&
-                      playback_error == 0 && !codec.empty() && !width.empty() &&
-                      !height.empty();
+                      end_reason == MPV_END_FILE_REASON_EOF && playback_error == 0 &&
+                      !codec.empty() && !width.empty() && !height.empty();
   return "{\"state\":" + quote(passed ? "passed" : "failed") +
-         ",\"mpv_version\":" + quote(version) +
-         ",\"ffmpeg_version\":" + quote(ffmpeg) +
+         ",\"mpv_version\":" + quote(version) + ",\"ffmpeg_version\":" + quote(ffmpeg) +
          ",\"client_api\":" + std::to_string(mpv_client_api_version()) +
          ",\"file_loaded\":" + (loaded ? "true" : "false") +
          ",\"video_reconfigured\":" + (reconfigured ? "true" : "false") +
          ",\"ended\":" + (ended ? "true" : "false") +
          ",\"end_reason\":" + std::to_string(end_reason) +
          ",\"resumed_after_format_snapshot\":" + (resumed ? "true" : "false") +
-         ",\"playback_error\":" + std::to_string(playback_error) +
-         ",\"codec\":" + quote(codec) + ",\"demuxer\":" + quote(demuxer) +
-         ",\"width\":" + quote(width) + ",\"height\":" + quote(height) +
-         ",\"duration\":" + quote(duration) +
+         ",\"playback_error\":" + std::to_string(playback_error) + ",\"codec\":" + quote(codec) +
+         ",\"demuxer\":" + quote(demuxer) + ",\"width\":" + quote(width) +
+         ",\"height\":" + quote(height) + ",\"duration\":" + quote(duration) +
          ",\"hardware_decode\":false,\"audio_enabled\":false,\"vo\":\"null\"," +
          "\"scope\":\"Android libmpv load/demux/software decode/EOS only; "
          "GPU/XR/RVM/audio/PTS unverified\"}";
 }
-extern "C" JNIEXPORT jstring JNICALL
-Java_org_vrpassthroughplayer_plugin_MpvNative_probeGpu(
-    JNIEnv *env, jclass, jobject context, jstring path, jboolean hardware,
-    jint width, jint height) {
+extern "C" JNIEXPORT jstring JNICALL Java_org_vrpassthroughplayer_plugin_MpvNative_probeGpu(
+    JNIEnv *env, jclass, jobject context, jstring path, jboolean hardware, jint width,
+    jint height) {
   try {
     std::lock_guard<std::mutex> lock(probe_mutex);
     initialize_android(env, context);
@@ -164,8 +154,7 @@ Java_org_vrpassthroughplayer_plugin_MpvNative_probeGpu(
     const std::string source = utf;
     env->ReleaseStringUTFChars(path, utf);
     return env->NewStringUTF(
-        quest_mpv_gpu_probe(source, hardware == JNI_TRUE, width, height)
-            .c_str());
+        quest_mpv_gpu_probe(source, hardware == JNI_TRUE, width, height).c_str());
   } catch (const std::exception &error) {
     const auto type = env->FindClass("java/lang/IllegalStateException");
     if (type && !env->ExceptionCheck())
@@ -178,10 +167,8 @@ void quest_mpv_initialize_android(JNIEnv *env, jobject context) {
   std::lock_guard<std::mutex> lock(probe_mutex);
   initialize_android(env, context);
 }
-extern "C" JNIEXPORT jstring JNICALL
-Java_org_vrpassthroughplayer_plugin_MpvNative_probe(JNIEnv *env, jclass,
-                                                    jobject context,
-                                                    jstring path) {
+extern "C" JNIEXPORT jstring JNICALL Java_org_vrpassthroughplayer_plugin_MpvNative_probe(
+    JNIEnv *env, jclass, jobject context, jstring path) {
   try {
     return env->NewStringUTF(probe(env, context, path).c_str());
   } catch (const std::exception &error) {

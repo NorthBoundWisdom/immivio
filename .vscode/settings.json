@@ -11,9 +11,7 @@
     "--header-insertion=iwyu",
     "--suggest-missing-includes"
   ],
-  "clangd.fallbackFlags": [
-    "-std=c++20"
-  ],
+  "clangd.fallbackFlags": ["-std=c++20"],
   "files.associations": {
     "*.jsonc.in": "jsonc",
     "*.plist.in": "xml",
@@ -21,5 +19,5 @@
     "*.qrc.in": "xml",
     "*.rc.in": "text",
     "*.wxs.in": "xml"
-  },
+  }
 }

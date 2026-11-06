@@ -163,10 +163,7 @@ func close_menu_check(main: Node3D, menu: Node3D, name: String) -> void:
 		name + " retains session choices and saved head offsets"
 	)
 	check(
-		(
-			main.video.media.state == video_state
-			and main.video.alpha_wanted() == alpha
-		),
+		main.video.media.state == video_state and main.video.alpha_wanted() == alpha,
 		name + " does not close or change media"
 	)
 	main.test_ray = null

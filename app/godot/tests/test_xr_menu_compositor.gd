@@ -85,7 +85,12 @@ func _run() -> void:
 	)
 	var font: Font = menu.ui_font()
 	check(
-		not font.multichannel_signed_distance_field and font.generate_mipmaps and font.oversampling >= 2.0 and font.antialiasing == TextServer.FONT_ANTIALIASING_GRAY,
+		(
+			not font.multichannel_signed_distance_field
+			and font.generate_mipmaps
+			and font.oversampling >= 2.0
+			and font.antialiasing == TextServer.FONT_ANTIALIASING_GRAY
+		),
 		"System-font UI uses antialiased oversampling and mipmaps for reliable CJK outlines"
 	)
 	check(
@@ -136,13 +141,27 @@ func _run() -> void:
 	compositor.menus = [menu, secondary]
 	compositor.content_bounds = Rect2()
 	compositor._update_bounds()
-	var secondary_point: Vector3 = Surface.capture_pose(menu).affine_inverse() * secondary.global_position
-	check(compositor.content_bounds.has_point(Vector2(secondary_point.x, secondary_point.y)), "Capture includes a second visible menu outside the primary envelope")
+	var secondary_point: Vector3 = (
+		Surface.capture_pose(menu).affine_inverse() * secondary.global_position
+	)
+	check(
+		compositor.content_bounds.has_point(Vector2(secondary_point.x, secondary_point.y)),
+		"Capture includes a second visible menu outside the primary envelope"
+	)
 	compositor.native_supported = true
-	compositor.presented = {"menu_id": menu.get_instance_id(), "layout_revision": menu.layout_revision, "menu_revisions": compositor._capture_revisions()}
-	check(compositor.is_layout_presented(secondary), "Secondary menu becomes interactive only after its layout is presented")
+	compositor.presented = {
+		"menu_id": menu.get_instance_id(),
+		"layout_revision": menu.layout_revision,
+		"menu_revisions": compositor._capture_revisions()
+	}
+	check(
+		compositor.is_layout_presented(secondary),
+		"Secondary menu becomes interactive only after its layout is presented"
+	)
 	secondary.layout_revision += 1
-	check(not compositor.is_layout_presented(secondary), "Stale secondary layout rejects ray mapping")
+	check(
+		not compositor.is_layout_presented(secondary), "Stale secondary layout rejects ray mapping"
+	)
 	compositor.menus = [menu]
 	secondary.free()
 	var pointer := menu._pointer("right_hand")

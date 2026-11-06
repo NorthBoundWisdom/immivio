@@ -111,11 +111,19 @@ const LibrarySourceController := preload("res://scripts/library_source_controlle
 var _sources := LibrarySourceController.new(self)
 
 const Section := LibrarySourceController.Section
-const NAV := ["Recent", "Local files", "Shared folders (SMB)", "Local media libraries (DLNA)", "Settings", "Media servers", "Network media"]
-const NAV_ICONS := ["history", "device", "server", "cast", "settings", "media_library", "media_library"]
-const NAV_ORDER := [
-	Section.RECENT, Section.LOCAL, Section.NETWORK, Section.SETTINGS
+const NAV := [
+	"Recent",
+	"Local files",
+	"Shared folders (SMB)",
+	"Local media libraries (DLNA)",
+	"Settings",
+	"Media servers",
+	"Network media"
 ]
+const NAV_ICONS := [
+	"history", "device", "server", "cast", "settings", "media_library", "media_library"
+]
+const NAV_ORDER := [Section.RECENT, Section.LOCAL, Section.NETWORK, Section.SETTINGS]
 var network := preload("res://scripts/network_sources.gd").new(self)
 const ServerBrowser := preload("res://scripts/media_server_browser.gd")
 const PlatformMethods := preload("res://scripts/platform_methods.gd")
@@ -209,7 +217,9 @@ const MediaFiles := preload("res://scripts/media_files.gd")
 const COLS := 4
 const GRID_LINES := 3
 const RECENT_PAGE_SIZE := COLS * GRID_LINES
-const TILE_SIZE := Vector2((BODY_WIDTH - (COLS - 1) * .03) / COLS, (BODY_HEIGHT - (GRID_LINES - 1) * .02) / GRID_LINES)
+const TILE_SIZE := Vector2(
+	(BODY_WIDTH - (COLS - 1) * .03) / COLS, (BODY_HEIGHT - (GRID_LINES - 1) * .02) / GRID_LINES
+)
 const GRID_PITCH := TILE_SIZE + Vector2(.03, .02)
 const GRID_LEFT := ROW_CENTRE_X - BODY_WIDTH * .5 + TILE_SIZE.x * .5
 const Thumbnails := preload("res://scripts/thumbnail_cache.gd")
@@ -351,8 +361,17 @@ func capture_envelope() -> Rect2:
 
 
 func presentation_page() -> Variant:
-	return [section, tab, compact, subtitle_picker.active, account_panel.active(),
-		_about_page, choices.opened, network.mode, I18n.language]
+	return [
+		section,
+		tab,
+		compact,
+		subtitle_picker.active,
+		account_panel.active(),
+		_about_page,
+		choices.opened,
+		network.mode,
+		I18n.language
+	]
 
 
 func _on_android_lifecycle(state: String) -> void:
@@ -390,7 +409,10 @@ func _plane_point(origin: Vector3, direction: Vector3) -> Variant:
 	if (
 		xr_surface
 		and (xr_surface.native_supported or xr_surface.get("scene_curved") == true)
-		and (xr_surface.active_menu == self or (xr_surface.has_method("captures_menu") and xr_surface.captures_menu(self)))
+		and (
+			xr_surface.active_menu == self
+			or (xr_surface.has_method("captures_menu") and xr_surface.captures_menu(self))
+		)
 	):
 		var mapped: Dictionary = xr_surface.map_ray(self, origin, direction)
 		return to_local(mapped.get("canvas_point", mapped.point)) if not mapped.is_empty() else null
@@ -776,7 +798,17 @@ func _load_section() -> void:
 func _rebuild_rows() -> void:
 	rows.clear()
 	if diagnostic_confirmation:
-		rows.assign([{"title": I18n.t("Save diagnostic log to Downloads?"), "detail": "", "about_info": true}, {"title": I18n.t("Save"), "confirm_diagnostic_save": true}, {"title": I18n.t("Cancel"), "cancel_diagnostic_save": true}])
+		rows.assign(
+			[
+				{
+					"title": I18n.t("Save diagnostic log to Downloads?"),
+					"detail": "",
+					"about_info": true
+				},
+				{"title": I18n.t("Save"), "confirm_diagnostic_save": true},
+				{"title": I18n.t("Cancel"), "cancel_diagnostic_save": true}
+			]
+		)
 		return
 	if subtitle_picker.active:
 		rows.assign(subtitle_picker.rows())
@@ -853,7 +885,14 @@ func _rebuild_rows() -> void:
 				settings_provider.call() if settings_provider.is_valid() else {}
 			)
 			if tab == VIDEO_TAB:
-				rows.append(_choice_row("Reuse last video mode", "reuse_last_mode", bool(settings.get("reuse_last_mode", false)), [{"value": false, "label": "Off"}, {"value": true, "label": "On"}]))
+				rows.append(
+					_choice_row(
+						"Reuse last video mode",
+						"reuse_last_mode",
+						bool(settings.get("reuse_last_mode", false)),
+						[{"value": false, "label": "Off"}, {"value": true, "label": "On"}]
+					)
+				)
 				rows.append(
 					_choice_row(
 						"Resolution",
@@ -927,17 +966,44 @@ func _rebuild_rows() -> void:
 						"empty": cache.x == 0
 					}
 				)
-				rows.append(_choice_row("Pinch/menu hand", "pinch_hand", str(settings.get("pinch_hand", "right_hand")), [{"value": "left_hand", "label": "Left hand"}, {"value": "right_hand", "label": "Right hand"}, {"value": "both", "label": "Both hands"}], false))
+				rows.append(
+					_choice_row(
+						"Pinch/menu hand",
+						"pinch_hand",
+						str(settings.get("pinch_hand", "right_hand")),
+						[
+							{"value": "left_hand", "label": "Left hand"},
+							{"value": "right_hand", "label": "Right hand"},
+							{"value": "both", "label": "Both hands"}
+						],
+						false
+					)
+				)
 			elif tab == DISPLAY_TAB:
-				rows.append({"title": I18n.t("Window height"), "key": "window_height",
-					"value": settings.get("window_height", -12.0), "slider": true,
-					"span": Vector3(-60, 30, 1), "unit": "cm", "signed": true,
-					"reset_value": -12.0})
+				rows.append(
+					{
+						"title": I18n.t("Window height"),
+						"key": "window_height",
+						"value": settings.get("window_height", -12.0),
+						"slider": true,
+						"span": Vector3(-60, 30, 1),
+						"unit": "cm",
+						"signed": true,
+						"reset_value": -12.0
+					}
+				)
 				var rate_choices: Array = []
 				for rate in settings.get("refresh_rates", []):
 					rate_choices.append({"value": rate, "label": str(rate) + " Hz"})
 				if not rate_choices.is_empty():
-					rows.append(_choice_row("Refresh rate", "refresh_rate", float(settings.get("refresh_rate", 72.0)), rate_choices))
+					rows.append(
+						_choice_row(
+							"Refresh rate",
+							"refresh_rate",
+							float(settings.get("refresh_rate", 72.0)),
+							rate_choices
+						)
+					)
 				var quality_choices: Array = [{"value": Quality.AUTO, "label": "Auto"}]
 				for i in Quality.SCALES.size():
 					quality_choices.append({"value": i, "label": Quality.NAMES[i]})
@@ -1111,10 +1177,32 @@ func _rebuild_rows() -> void:
 							"open_licenses": true
 						}
 					)
-					rows.append({"title": I18n.t("Save diagnostic log"), "icon": "info", "save_diagnostic_log": true, "detail": I18n.t("Previous session log available") if settings.get("diagnostic_previous", false) else ""})
+					rows.append(
+						{
+							"title": I18n.t("Save diagnostic log"),
+							"icon": "info",
+							"save_diagnostic_log": true,
+							"detail":
+							(
+								I18n.t("Previous session log available")
+								if settings.get("diagnostic_previous", false)
+								else ""
+							)
+						}
+					)
 	if section == Section.MEDIA_SERVER:
 		rows = server_browser.rows()
-	rows.assign(rows.filter(func(row): return not row.has("uri") or MediaFiles.is_video(str(row.uri), str(row.get("title", "")), str(row.get("kind", "video")))))
+	rows.assign(
+		rows.filter(
+			func(row):
+				return (
+					not row.has("uri")
+					or MediaFiles.is_video(
+						str(row.uri), str(row.get("title", "")), str(row.get("kind", "video"))
+					)
+				),
+		)
+	)
 	for row in rows:
 		if row.has("uri"):
 			var parts: Array[String] = []
@@ -1281,7 +1369,11 @@ func _exit_tree() -> void:
 ## Video state changes arrive several times a second: redraw only when the Alpha profiles
 ## (current, compiling, cold) shown on the Alpha tab change.
 func _activate(target: int) -> void:
-	if target == ABOUT_HOME or (target >= NAV_BASE and target < NAV_BASE + NAV.size()) or (target >= TAB_BASE and target < TAB_BASE + SETTING_TABS.size()):
+	if (
+		target == ABOUT_HOME
+		or (target >= NAV_BASE and target < NAV_BASE + NAV.size())
+		or (target >= TAB_BASE and target < TAB_BASE + SETTING_TABS.size())
+	):
 		diagnostic_confirmation = false
 	if subtitle_picker.active:
 		subtitle_picker.action(target)
@@ -1399,7 +1491,12 @@ func _activate(target: int) -> void:
 
 
 func _choose(row: Dictionary) -> void:
-	if row.has("uri") and not MediaFiles.is_video(str(row.uri), str(row.get("title", "")), str(row.get("kind", "video"))):
+	if (
+		row.has("uri")
+		and not MediaFiles.is_video(
+			str(row.uri), str(row.get("title", "")), str(row.get("kind", "video"))
+		)
+	):
 		return
 	if row.get("check_updates", false):
 		update_check.request()
@@ -1796,7 +1893,11 @@ func _clear_content_layout(keep_navigation: bool) -> void:
 
 func _draw() -> void:
 	var navigation_key := I18n.language
-	var keep_navigation := navigation_key == _drawn_navigation_key and is_instance_valid(_side) and _side.get_child_count() > 0
+	var keep_navigation := (
+		navigation_key == _drawn_navigation_key
+		and is_instance_valid(_side)
+		and _side.get_child_count() > 0
+	)
 	_clear_content_layout(keep_navigation)
 	_side.visible = false
 	if subtitle_picker.active:
@@ -1840,7 +1941,14 @@ func _draw() -> void:
 			I18n.t("List view" if not list_view else "Icon view")
 		)
 	if playback_browser and not file_actions.editing:
-		_glyph(PLAYER, "close", Vector2(CONTENT_LEFT + .2325, FOOTER_Y), 0.065, true, I18n.t("Back to video"))
+		_glyph(
+			PLAYER,
+			"close",
+			Vector2(CONTENT_LEFT + .2325, FOOTER_Y),
+			0.065,
+			true,
+			I18n.t("Back to video")
+		)
 		_glyph(
 			BROWSER_SIZE,
 			"view_mode",
@@ -1868,11 +1976,16 @@ func _draw() -> void:
 				Vector3(PANEL_CENTRE.x, HEADER_Y, .004),
 				24
 			)
-		var tab_width := (CONTENT_RIGHT - CONTENT_LEFT - maxf(0, tabs.size() - 1) * .015) / maxf(1, tabs.size())
+		var tab_width := (
+			(CONTENT_RIGHT - CONTENT_LEFT - maxf(0, tabs.size() - 1) * .015) / maxf(1, tabs.size())
+		)
 		for position in tabs.size():
 			var i: int = SETTING_ORDER[position]
 			_control_button(
-				TAB_BASE + i, I18n.t(tabs[i]), Vector2(CONTENT_LEFT + tab_width * .5 + position * (tab_width + .015), HEADER_Y), tab_width
+				TAB_BASE + i,
+				I18n.t(tabs[i]),
+				Vector2(CONTENT_LEFT + tab_width * .5 + position * (tab_width + .015), HEADER_Y),
+				tab_width
 			)
 			(_buttons.back().node.get_child(0) as Label3D).font_size = 18
 			_lit(i == tab)
@@ -1883,7 +1996,14 @@ func _draw() -> void:
 		_button(BACK, "", Vector2(CONTENT_LEFT + .045, HEADER_Y), Vector2(0.09, 0.07), true, "up")
 		_draw_crumbs(crumbs)
 	if section in [Section.LOCAL, Section.SMB, Section.DLNA]:
-		_button(REFRESH, "", Vector2(CONTENT_RIGHT - .045, HEADER_Y), Vector2(0.09, 0.07), platform != null, "refresh")
+		_button(
+			REFRESH,
+			"",
+			Vector2(CONTENT_RIGHT - .045, HEADER_Y),
+			Vector2(0.09, 0.07),
+			platform != null,
+			"refresh"
+		)
 	if section == Section.LOCAL and not _local_all_files and platform:
 		_button(
 			ALL_FILES,
@@ -1895,7 +2015,14 @@ func _draw() -> void:
 		)
 		_tips[ALL_FILES] = I18n.t("Allow access to all files")
 	if section == Section.LOCAL and not _external_volumes().is_empty():
-		_button(USB_STORAGE, "", Vector2(CONTENT_RIGHT - .265, HEADER_Y), Vector2(0.09, 0.07), true, "usb")
+		_button(
+			USB_STORAGE,
+			"",
+			Vector2(CONTENT_RIGHT - .265, HEADER_Y),
+			Vector2(0.09, 0.07),
+			true,
+			"usb"
+		)
 		_tips[USB_STORAGE] = I18n.t("USB storage")
 		if not _eject_volume().is_empty():
 			_button(
@@ -1931,15 +2058,31 @@ func _draw() -> void:
 			)
 			_tips[ADD] = I18n.t("Add server")
 		elif _dlna_servers.any(
-			func(server): return str(server.id) == _dlna_server and bool(server.get("manual", false))
+			func(server):
+				return str(server.id) == _dlna_server and bool(server.get("manual", false))
 		):
-			_button(EDIT, "", Vector2(CONTENT_RIGHT - .155, HEADER_Y), Vector2(0.09, 0.07), true, "edit")
+			_button(
+				EDIT, "", Vector2(CONTENT_RIGHT - .155, HEADER_Y), Vector2(0.09, 0.07), true, "edit"
+			)
 	if section == Section.SMB and _smb_server.is_empty():
-		_button(ADD, "", Vector2(CONTENT_RIGHT - .155, HEADER_Y), Vector2(0.09, 0.07), platform != null, "plus")
+		_button(
+			ADD,
+			"",
+			Vector2(CONTENT_RIGHT - .155, HEADER_Y),
+			Vector2(0.09, 0.07),
+			platform != null,
+			"plus"
+		)
 	if section == Section.SMB and not _smb_server.is_empty():
-		_button(EDIT, "", Vector2(CONTENT_RIGHT - .155, HEADER_Y), Vector2(0.09, 0.07), true, "edit")
+		_button(
+			EDIT, "", Vector2(CONTENT_RIGHT - .155, HEADER_Y), Vector2(0.09, 0.07), true, "edit"
+		)
 	file_actions.draw_header()
-	_decoration(Vector2(CONTENT_RIGHT - CONTENT_LEFT, .002), Vector2(PANEL_CENTRE.x, GRID_TOP + .03), Color(0.17, 0.2, 0.24))
+	_decoration(
+		Vector2(CONTENT_RIGHT - CONTENT_LEFT, .002),
+		Vector2(PANEL_CENTRE.x, GRID_TOP + .03),
+		Color(0.17, 0.2, 0.24)
+	)
 	_draw_rows()
 	if section == Section.SETTINGS and tab == ABOUT_TAB:
 		_draw_about()
@@ -1966,7 +2109,9 @@ func _draw() -> void:
 		file_actions.draw_footer()
 	if section == Section.RECENT:
 		_button(RECENT_PREVIOUS, "‹", Vector2(.15, HEADER_Y), Vector2(0.09, 0.07), _recent_page > 0)
-		_label("%d / %d" % [_recent_page + 1, _recent_page_count()], Vector3(.33, HEADER_Y, .004), 18)
+		_label(
+			"%d / %d" % [_recent_page + 1, _recent_page_count()], Vector3(.33, HEADER_Y, .004), 18
+		)
 		_button(
 			RECENT_NEXT,
 			"›",
@@ -1975,9 +2120,19 @@ func _draw() -> void:
 			_recent_page + 1 < _recent_page_count()
 		)
 	var status_left := CONTENT_LEFT + (.33 if playback_browser else .12)
-	var status_width := CONTENT_RIGHT - status_left - (.32 if file_actions.uncertain or file_actions.pending > 0 else 0.0)
-	var footer_status := "" if file_actions.editing and not file_actions.uncertain and file_actions.pending <= 0 else I18n.t(status)
-	var line := _label(_fit_title(footer_status, "", status_width, 17), Vector3(status_left, FOOTER_Y, .004), 17)
+	var status_width := (
+		CONTENT_RIGHT
+		- status_left
+		- (.32 if file_actions.uncertain or file_actions.pending > 0 else 0.0)
+	)
+	var footer_status := (
+		""
+		if file_actions.editing and not file_actions.uncertain and file_actions.pending <= 0
+		else I18n.t(status)
+	)
+	var line := _label(
+		_fit_title(footer_status, "", status_width, 17), Vector3(status_left, FOOTER_Y, .004), 17
+	)
 	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	line.modulate = MUTED
 	if file_actions.uncertain or file_actions.pending > 0:
@@ -2003,7 +2158,11 @@ func _draw_crumbs(crumbs: Array) -> void:
 		var width := FONT.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 19).x * 0.0012 + 0.05
 		var current := i == crumbs.size() - 1
 		_button(
-			CRUMB_BASE + i, text, Vector2(x + width * 0.5, HEADER_Y), Vector2(width, 0.065), not current
+			CRUMB_BASE + i,
+			text,
+			Vector2(x + width * 0.5, HEADER_Y),
+			Vector2(width, 0.065),
+			not current
 		)
 		var label: Label3D = _buttons.back().node.get_child(0)
 		label.font_size = 19
@@ -2135,9 +2294,13 @@ func _draw_rows() -> void:
 
 
 func _draw_scrollbar(span: Vector2) -> void:
-	_button(SCROLLBAR, "", Vector2(SCROLLBAR_X, span.x - span.y * .5), Vector2(SCROLLBAR_WIDTH, span.y))
+	_button(
+		SCROLLBAR, "", Vector2(SCROLLBAR_X, span.x - span.y * .5), Vector2(SCROLLBAR_WIDTH, span.y)
+	)
 	# Keep the generous ray target while giving the visible rail equal edge padding.
-	_buttons.back().rect = Rect2(SCROLLBAR_X - SCROLLBAR_HIT_WIDTH * .5, span.x - span.y, SCROLLBAR_HIT_WIDTH, span.y)
+	_buttons.back().rect = Rect2(
+		SCROLLBAR_X - SCROLLBAR_HIT_WIDTH * .5, span.x - span.y, SCROLLBAR_HIT_WIDTH, span.y
+	)
 	var thumb := span.y * float(_lines()) / _line_count()
 	_bar_thumb = _decoration(Vector2(.012, thumb), Vector2(SCROLLBAR_X, span.x - thumb * .5), MUTED)
 	_bar_thumb.material_override.render_priority = 13
@@ -2339,7 +2502,12 @@ func _turn_recent_page(step: int) -> void:
 
 
 func _row_button(
-	target: int, title: String, detail: String, icon: String, centre: Vector2, selected: bool,
+	target: int,
+	title: String,
+	detail: String,
+	icon: String,
+	centre: Vector2,
+	selected: bool,
 	stack_detail: bool = false
 ) -> void:
 	if section == Section.SETTINGS:
@@ -2362,7 +2530,9 @@ func _row_button(
 	var label: Label3D = node.get_child(0)
 	label.position.x = -0.48
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	label.font_size = CONTROL_FONT_SIZE if section == Section.SETTINGS else (20 if stack_detail else 22)
+	label.font_size = (
+		CONTROL_FONT_SIZE if section == Section.SETTINGS else (20 if stack_detail else 22)
+	)
 	if stack_detail:
 		label.position.y = .019
 	_icon(
@@ -2376,8 +2546,12 @@ func _row_button(
 		var info := _label(
 			_fit_title(detail, "", 1.08, 14) if stack_detail else detail,
 			Vector3(-.48, -.024, .004) if stack_detail else Vector3(.58, 0, .004),
-			14 if stack_detail else 17, node)
-		info.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT if stack_detail else HORIZONTAL_ALIGNMENT_RIGHT
+			14 if stack_detail else 17,
+			node
+		)
+		info.horizontal_alignment = (
+			HORIZONTAL_ALIGNMENT_LEFT if stack_detail else HORIZONTAL_ALIGNMENT_RIGHT
+		)
 		info.modulate = MUTED
 
 
@@ -2404,7 +2578,9 @@ func _update_navigation_selection() -> void:
 	for button in _buttons:
 		if button.target < NAV_BASE or button.target >= NAV_BASE + NAV.size():
 			continue
-		var selected: bool = button.target == NAV_BASE + (Section.NETWORK if network.contains(section) else section)
+		var selected: bool = (
+			button.target == NAV_BASE + (Section.NETWORK if network.contains(section) else section)
+		)
 		button.base_color = SELECTED if selected else TILE
 		var label: Label3D = button.node.get_child(0)
 		label.modulate = ACCENT if selected else button.foreground
@@ -2414,7 +2590,14 @@ func _update_navigation_selection() -> void:
 
 func _draw_about() -> void:
 	if _about_page != 0:
-		_control_button(ABOUT_HOME, "", Vector2(CONTENT_RIGHT - CONTROL_HEIGHT * .5, HEADER_Y), CONTROL_HEIGHT, true, "up")
+		_control_button(
+			ABOUT_HOME,
+			"",
+			Vector2(CONTENT_RIGHT - CONTROL_HEIGHT * .5, HEADER_Y),
+			CONTROL_HEIGHT,
+			true,
+			"up"
+		)
 
 
 func _about_info(title: String, detail: String) -> Dictionary:

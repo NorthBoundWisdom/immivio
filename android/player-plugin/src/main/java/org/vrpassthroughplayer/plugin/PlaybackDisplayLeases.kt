@@ -3,14 +3,16 @@ package org.vrpassthroughplayer.plugin
 import android.opengl.EGLContext
 import org.json.JSONObject
 
-/** Consumer GL state, distinct from source IO and logical display ordering.
- * Mutations run on the owner GL thread under the session lock. Native retirement
- * must finish before the associated producer lease can be released. */
+/**
+ * Consumer GL state, distinct from source IO and logical display ordering. Mutations run on the
+ * owner GL thread under the session lock. Native retirement must finish before the associated
+ * producer lease can be released.
+ */
 internal class PlaybackDisplayLeases {
     data class Lease(
         val ticket: DecodedFrameGate.Ticket,
         val pair: JSONObject,
-        val producer: Long = 0L
+        val producer: Long = 0L,
     )
 
     data class ReadyMask(val pair: JSONObject)

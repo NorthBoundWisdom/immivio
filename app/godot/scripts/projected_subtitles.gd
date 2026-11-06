@@ -88,12 +88,16 @@ func update_patch(
 				label.size = available
 				# Measure Label's real smart wrapping and theme line spacing. Font's
 				# default word-only breaks underestimate long unbroken translations.
-				var needed := label.get_minimum_size().y + 2 * label.get_theme_constant("outline_size")
+				var needed := (
+					label.get_minimum_size().y + 2 * label.get_theme_constant("outline_size")
+				)
 				if needed <= available.y or pixels <= 1:
 					break
 				pixels -= 1
 			label.size = Vector2(available.x, maxf(available.y, label.get_minimum_size().y))
-			var fit := minf(1.0, available.y / (label.size.y + 2 * label.get_theme_constant("outline_size")))
+			var fit := minf(
+				1.0, available.y / (label.size.y + 2 * label.get_theme_constant("outline_size"))
+			)
 			label.scale = Vector2.ONE * fit
 			label.position = (Vector2(PATCH_SIZE, PATCH_SIZE) - label.size * fit) / 2
 

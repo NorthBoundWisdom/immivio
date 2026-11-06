@@ -121,8 +121,12 @@ func _run() -> void:
 		(
 			main.centres == before + 1
 			and is_equal_approx(
-				(menu.to_global(Vector3(centre.x, centre.y, 0)) - menu.global_basis.y.normalized() * main._presentation.window_height).distance_to(
-					main.xr_camera.global_position
+				(
+					(
+						menu.to_global(Vector3(centre.x, centre.y, 0))
+						- menu.global_basis.y.normalized() * main._presentation.window_height
+					)
+					. distance_to(main.xr_camera.global_position)
 				),
 				1.9
 			)

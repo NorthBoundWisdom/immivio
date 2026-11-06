@@ -140,7 +140,11 @@ func _run() -> void:
 	)
 	menu._activate(Actions.SORT)
 	var options := menu._buttons.filter(
-		func(button): return ( button.target >= Actions.ORDER_BASE and button.target < Actions.ORDER_BASE + Order.ORDERS.size() )
+		func(button):
+			return (
+				button.target >= Actions.ORDER_BASE
+				and button.target < Actions.ORDER_BASE + Order.ORDERS.size()
+			)
 	)
 	check(
 		options.size() == 2 and options.all(func(button): return button.enabled),

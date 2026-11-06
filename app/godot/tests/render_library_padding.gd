@@ -6,10 +6,17 @@ const Fixture := preload("res://tests/test_library_padding.gd")
 
 class Catalog:
 	extends RefCounted
+
 	func list_recent() -> Array:
 		var result: Array = []
 		for i in 12:
-			result.append({"uri": "file:///padding/%02d.mp4" % i, "title": "[180 VR] 舞台演出 第%d场 — very long video title.mp4" % i, "position_ms": i * 61000})
+			result.append(
+				{
+					"uri": "file:///padding/%02d.mp4" % i,
+					"title": "[180 VR] 舞台演出 第%d场 — very long video title.mp4" % i,
+					"position_ms": i * 61000
+				}
+			)
 		return result
 
 
@@ -43,7 +50,13 @@ func _run() -> void:
 	menu._cache_usage = Vector2i.ZERO
 	menu.visible = true
 	for i in 40:
-		menu._local_entries.append({"uri": "file:///padding/%02d.mp4" % i, "title": "舞台演出 第%d场 — video.mp4" % i, "kind": "video"})
+		menu._local_entries.append(
+			{
+				"uri": "file:///padding/%02d.mp4" % i,
+				"title": "舞台演出 第%d场 — video.mp4" % i,
+				"kind": "video"
+			}
+		)
 	menu._local_stack = [{"id": "/padding", "title": "电影"}]
 	var pages := [
 		["recent", Library.Section.RECENT, false, "", -1],
@@ -68,5 +81,17 @@ func _run() -> void:
 	menu.platform = null
 	viewport.queue_free()
 	await process_frame
-	print(JSON.stringify({"state": "passed", "pages_rendered": pages.size(), "scope": "Production desktop GPU layout with synthetic video entries; see test_library_padding.gd for safe-inset and ray-target assertions"}))
+	print(
+		(
+			JSON
+			. stringify(
+				{
+					"state": "passed",
+					"pages_rendered": pages.size(),
+					"scope":
+					"Production desktop GPU layout with synthetic video entries; see test_library_padding.gd for safe-inset and ray-target assertions"
+				}
+			)
+		)
+	)
 	quit(0)

@@ -1,0 +1,14 @@
+{
+  "printWidth": 100,
+  "tabWidth": 2,
+  "htmlWhitespaceSensitivity": "css",
+  "overrides": [
+    {
+      "files": "**/AndroidManifest.xml",
+      "options": {
+        "tabWidth": 4,
+        "xmlWhitespaceSensitivity": "ignore"
+      }
+    }
+  ]
+}

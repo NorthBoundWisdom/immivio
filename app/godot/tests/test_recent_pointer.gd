@@ -229,7 +229,9 @@ func _run() -> void:
 	origin.free()
 	main.free()
 	menu.free()
-	var output := ProjectSettings.globalize_path("res://../../build/tests/godot/recent-pointer-host")
+	var output := ProjectSettings.globalize_path(
+		"res://../../build/tests/godot/recent-pointer-host"
+	)
 	DirAccess.make_dir_recursive_absolute(output)
 	(
 		FileAccess

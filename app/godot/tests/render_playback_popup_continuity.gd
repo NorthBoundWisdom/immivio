@@ -32,7 +32,9 @@ func tap(menu: Node3D, surface: Node3D, target: int) -> Dictionary:
 		var centre: Vector2 = surface.surface_rect.get_center()
 		var radius: float = menu.curve_radius
 		var angle := (local.x - centre.x) / radius
-		var point: Vector3 = pose * Vector3(centre.x + sin(angle) * radius, local.y, (1 - cos(angle)) * radius)
+		var point: Vector3 = (
+			pose * Vector3(centre.x + sin(angle) * radius, local.y, (1 - cos(angle)) * radius)
+		)
 		var normal: Vector3 = pose.basis * Vector3(-sin(angle), 0, cos(angle))
 		var origin := point + normal * .5
 		menu.update_pointer("right_hand", origin, -normal, true)
@@ -74,12 +76,30 @@ func _run() -> void:
 	head.environment.background_color = Color.BLACK
 	Menu.I18n.language = "zh"
 	var menu := Menu.new()
-	menu.state_provider = func(): return {
-		"has_video": true, "source_uri": "file:///synthetic-SBS.mp4", "title": "Playback controls",
-		"stereo": true, "duration_ms": 60000, "position_ms": 12000, "playback_state": "paused",
-		"subtitle_options": [{"id": 1, "title": "A very long external subtitle filename · 简体中文字幕 · 日本語字幕 · director commentary extended edition · translation credits · language metadata · UTF-8 · SRT"}, {"id": 2, "title": "中文"}, {"id": 3, "title": "日本語"}, {"id": 4, "title": "Commentary"}],
-		"bookmarks": [{"id": "sample", "position_ms": 10000}], "bookmark_scope": "synthetic", "bookmark_seekable": true
-	}
+	menu.state_provider = func():
+		return {
+			"has_video": true,
+			"source_uri": "file:///synthetic-SBS.mp4",
+			"title": "Playback controls",
+			"stereo": true,
+			"duration_ms": 60000,
+			"position_ms": 12000,
+			"playback_state": "paused",
+			"subtitle_options":
+			[
+				{
+					"id": 1,
+					"title":
+					"A very long external subtitle filename · 简体中文字幕 · 日本語字幕 · director commentary extended edition · translation credits · language metadata · UTF-8 · SRT"
+				},
+				{"id": 2, "title": "中文"},
+				{"id": 3, "title": "日本語"},
+				{"id": 4, "title": "Commentary"}
+			],
+			"bookmarks": [{"id": "sample", "position_ms": 10000}],
+			"bookmark_scope": "synthetic",
+			"bookmark_seekable": true
+		}
 	target.add_child(menu)
 	menu.position = Vector3(0, -.5, -1.6)
 	menu.scale = Menu.PANEL_SCALE
@@ -116,14 +136,31 @@ func _run() -> void:
 	if not output.is_empty():
 		DirAccess.make_dir_recursive_absolute(output)
 		initial.save_png(output.path_join("toolbar.png"))
-	for destination in [Menu.QUICK_SCREEN, Menu.MODE, 110, Menu.QUICK_SPEED, Menu.QUICK_COLOR, Menu.IPD_SETTINGS, Menu.SYNC_SETTINGS, Menu.QUEUE_SETTINGS, Menu.BookmarkMenu.LIST, 12]:
+	for destination in [
+		Menu.QUICK_SCREEN,
+		Menu.MODE,
+		110,
+		Menu.QUICK_SPEED,
+		Menu.QUICK_COLOR,
+		Menu.IPD_SETTINGS,
+		Menu.SYNC_SETTINGS,
+		Menu.QUEUE_SETTINGS,
+		Menu.BookmarkMenu.LIST,
+		12
+	]:
 		for opening in [true, false]:
 			var click := await tap(menu, surface, destination)
 			if not click.get("pressed", false):
 				failures.append("Ray click failed for popup %d" % destination)
-			var opened: bool = menu.bookmarks.opened if destination == Menu.BookmarkMenu.LIST else menu._popup_is_open(menu.POPUP_TARGETS[destination])
+			var opened: bool = (
+				menu.bookmarks.opened
+				if destination == Menu.BookmarkMenu.LIST
+				else menu._popup_is_open(menu.POPUP_TARGETS[destination])
+			)
 			if opened != opening:
-				failures.append("Popup %d did not reach its requested open/closed state" % destination)
+				failures.append(
+					"Popup %d did not reach its requested open/closed state" % destination
+				)
 			var before: Image = click.get("image", initial)
 			# Immersive/head-follow controls translate with the viewer while a click
 			# waits for GPU acknowledgement. Static-camera coverage misses this gap.
@@ -138,19 +175,45 @@ func _run() -> void:
 				var picture := target.get_texture().get_image()
 				var pixels := bar_pixels(picture, region)
 				coverage.append(pixels)
-				var changed := changed_pixels(before, picture, title_region) + changed_pixels(before, picture, time_region)
+				var changed := (
+					changed_pixels(before, picture, title_region)
+					+ changed_pixels(before, picture, time_region)
+				)
 				differences.append(changed)
 				if changed > 0:
-					failures.append("Popup %d changed %d title/timeline pixels in frame %d" % [destination, changed, frame])
+					failures.append(
+						(
+							"Popup %d changed %d title/timeline pixels in frame %d"
+							% [destination, changed, frame]
+						)
+					)
 				if pixels < baseline * .90:
-					failures.append("Popup %d blanked the transport in frame %d: %d/%d" % [destination, frame, pixels, baseline])
+					failures.append(
+						(
+							"Popup %d blanked the transport in frame %d: %d/%d"
+							% [destination, frame, pixels, baseline]
+						)
+					)
 				if not output.is_empty():
 					picture.save_png(output.path_join("frame-%02d.png" % coverage.size()))
 				surface._bounds_due = 0
 				surface._process(0)
-	print(JSON.stringify({"state": "passed" if failures.is_empty() else "failed", "failures": failures,
-		"baseline_transport_pixels": baseline, "transport_pixel_differences": differences, "frame_transport_pixels": coverage,
-		"scope": "Production curved playback UI, ten popups opened/closed, moving viewer, ray clicks, three GPU frames per transition"}))
+	print(
+		(
+			JSON
+			. stringify(
+				{
+					"state": "passed" if failures.is_empty() else "failed",
+					"failures": failures,
+					"baseline_transport_pixels": baseline,
+					"transport_pixel_differences": differences,
+					"frame_transport_pixels": coverage,
+					"scope":
+					"Production curved playback UI, ten popups opened/closed, moving viewer, ray clicks, three GPU frames per transition"
+				}
+			)
+		)
+	)
 	target.queue_free()
 	await process_frame
 	preload("res://tests/support/test_result.gd").finish(self, 0 if failures.is_empty() else 1)

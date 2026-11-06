@@ -134,7 +134,13 @@ func field(
 		text.font_size = OPTION_FONT_SIZE
 		text.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		text.position.x = -width / 2 + 0.024
-		var arrow: MeshInstance3D = menu._icon("arrow_up" if opened == key else "arrow_down", Vector3(width / 2 - 0.028, 0, 0.006), 0.026, menu.ACCENT if opened == key else menu.MUTED, button.node)
+		var arrow: MeshInstance3D = menu._icon(
+			"arrow_up" if opened == key else "arrow_down",
+			Vector3(width / 2 - 0.028, 0, 0.006),
+			0.026,
+			menu.ACCENT if opened == key else menu.MUTED,
+			button.node
+		)
 		arrow.material_override.render_priority = 14
 		menu._tips[target] = menu.I18n.t(str(row.get("hint", "")))
 		if opened == key:
@@ -150,7 +156,12 @@ func _slider(parent: Node3D, row: Dictionary, centre: Vector2, width: float, hei
 	var field_centre := centre - Vector2((width - field_width) / 2, 0)
 	var rail_width := field_width - 0.15
 	var target := _button(
-		{"kind": "slider", "key": row.key, "span": row.span, "logarithmic": row.get("logarithmic", false)},
+		{
+			"kind": "slider",
+			"key": row.key,
+			"span": row.span,
+			"logarithmic": row.get("logarithmic", false)
+		},
 		"",
 		field_centre,
 		Vector2(field_width, height),
@@ -366,9 +377,13 @@ func finish() -> void:
 		label.text = menu._fit_title(full_text, "", width - 0.10, OPTION_FONT_SIZE)
 		if same(popup.value, option.value):
 			label.modulate = menu.ACCENT
-			var mark: MeshInstance3D = menu._icon("check", Vector3(width / 2 - 0.045, 0, 0.006), 0.028, menu.ACCENT, node)
+			var mark: MeshInstance3D = menu._icon(
+				"check", Vector3(width / 2 - 0.045, 0, 0.006), 0.028, menu.ACCENT, node
+			)
 			mark.material_override.render_priority = 32
-		menu._tips[target] = full_text if label.text != full_text else menu.I18n.t(str(option.get("hint", "")))
+		menu._tips[target] = (
+			full_text if label.text != full_text else menu.I18n.t(str(option.get("hint", "")))
+		)
 	if not footer.is_empty():
 		var hint: Label3D = menu._label(
 			menu.I18n.t(footer),

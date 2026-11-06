@@ -706,7 +706,8 @@ func check_runtime_input() -> void:
 			)
 			check(
 				matches[0].bindings.any(
-					func(b): return b.action.resource_name == "trigger_click" and b.binding_path == path
+					func(b):
+						return b.action.resource_name == "trigger_click" and b.binding_path == path,
 				),
 				"Both runtime hand selects mapped: " + path
 			)

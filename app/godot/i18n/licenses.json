@@ -15,67 +15,48 @@
     "id": "project",
     "name": "Immivio / MPV / FFmpeg",
     "license": "GPL-3.0",
-    "assets": [
-      "mpv/LICENSE.GPL",
-      "mpv/LICENSE.LGPL"
-    ]
+    "assets": ["mpv/LICENSE.GPL", "mpv/LICENSE.LGPL"]
   },
   {
     "id": "vendors",
     "name": "Godot OpenXR Vendors 5.1.0",
     "license": "Vendor license notices",
-    "assets": [
-      "player-licenses/vendors.txt"
-    ]
+    "assets": ["player-licenses/vendors.txt"]
   },
   {
     "id": "media3",
     "name": "AndroidX Media3",
     "license": "Apache-2.0",
-    "assets": [
-      "player-licenses/media3.txt"
-    ]
+    "assets": ["player-licenses/media3.txt"]
   },
   {
     "id": "jcifs",
     "name": "CodeLibs JCIFS 3.0.4",
     "license": "LGPL-2.1",
-    "assets": [
-      "player-licenses/jcifs.txt"
-    ]
+    "assets": ["player-licenses/jcifs.txt"]
   },
   {
     "id": "hands",
     "name": "Godot OpenXR hand demo assets",
     "license": "MIT",
-    "assets": [
-      "player-licenses/hands.txt"
-    ]
+    "assets": ["player-licenses/hands.txt"]
   },
   {
     "id": "panorama",
     "name": "Belfast Sunset (Pure Sky)",
     "license": "CC0-1.0",
-    "assets": [
-      "player-licenses/panorama-notice.txt",
-      "polyhaven/CC0-1.0.txt"
-    ]
+    "assets": ["player-licenses/panorama-notice.txt", "polyhaven/CC0-1.0.txt"]
   },
   {
     "id": "gradle",
     "name": "Gradle wrapper 8.11.1",
     "license": "Apache-2.0",
-    "assets": [
-      "gradle/NOTICE.txt",
-      "gradle/LICENSE.txt"
-    ]
+    "assets": ["gradle/NOTICE.txt", "gradle/LICENSE.txt"]
   },
   {
     "id": "icu-charset",
     "name": "ICU4J charset detector 78.1",
     "license": "Unicode-3.0",
-    "assets": [
-      "icu-charset/LICENSE.txt"
-    ]
+    "assets": ["icu-charset/LICENSE.txt"]
   }
 ]

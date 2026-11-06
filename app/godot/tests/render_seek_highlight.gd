@@ -4,8 +4,10 @@ const Menu := preload("res://scripts/player_menu.gd")
 var failures: Array[String] = []
 var samples: Array = []
 
+
 func _initialize() -> void:
 	_run.call_deferred()
+
 
 func _run() -> void:
 	var viewport := SubViewport.new()
@@ -23,7 +25,8 @@ func _run() -> void:
 	camera.environment.background_color = Color(0, 0, 0, 0)
 	viewport.add_child(camera)
 	var menu := Menu.new()
-	menu.state_provider = func(): return {"has_video": true, "duration_ms": 60000, "position_ms": 30000}
+	menu.state_provider = func():
+		return {"has_video": true, "duration_ms": 60000, "position_ms": 30000}
 	viewport.add_child(menu)
 	menu.toggle()
 	menu._hover.render = Menu.SEEK
@@ -51,14 +54,38 @@ func _run() -> void:
 			var inside := image.get_pixel(x - 1, y).a
 			var outside := image.get_pixel(x, y).a
 			var clear := image.get_pixel(x + 2, y).a
-			samples.append({"view_height": size, "tilt": tilt, "inside": inside, "outside": outside, "clear": clear})
+			samples.append(
+				{
+					"view_height": size,
+					"tilt": tilt,
+					"inside": inside,
+					"outside": outside,
+					"clear": clear
+				}
+			)
 			if inside <= .5 or outside <= .03 or outside >= .6 or clear >= .02:
-				failures.append("Highlight edge must retain fractional coverage outside its logical boundary: " + str(samples.back()))
+				(
+					failures
+					. append(
+						(
+							"Highlight edge must retain fractional coverage outside its logical boundary: "
+							+ str(samples.back())
+						)
+					)
+				)
 			var output := OS.get_environment("IMMIVIO_HIGHLIGHT_DIR")
 			if not output.is_empty():
 				DirAccess.make_dir_recursive_absolute(output)
 				image.save_png(output.path_join("edge-%s-%s.png" % [size, tilt]))
-	print(JSON.stringify({"state": "passed" if failures.is_empty() else "failed", "msaa": "disabled", "samples": samples}))
+	print(
+		JSON.stringify(
+			{
+				"state": "passed" if failures.is_empty() else "failed",
+				"msaa": "disabled",
+				"samples": samples
+			}
+		)
+	)
 	for failure in failures:
 		push_error(failure)
 	viewport.queue_free()

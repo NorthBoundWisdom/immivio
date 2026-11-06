@@ -6,12 +6,9 @@
   // Theme: an explicit choice is kept in localStorage ("immivio-theme");
   // otherwise the page follows the system preference.
   const toggle = document.querySelector("[data-theme-toggle]");
-  const systemLight = () =>
-    window.matchMedia("(prefers-color-scheme: light)").matches;
-  const isLight = () =>
-    root.dataset.theme ? root.dataset.theme === "light" : systemLight();
-  const reflect = () =>
-    toggle?.setAttribute("aria-pressed", String(isLight()));
+  const systemLight = () => window.matchMedia("(prefers-color-scheme: light)").matches;
+  const isLight = () => (root.dataset.theme ? root.dataset.theme === "light" : systemLight());
+  const reflect = () => toggle?.setAttribute("aria-pressed", String(isLight()));
   reflect();
   toggle?.addEventListener("click", () => {
     root.dataset.theme = isLight() ? "dark" : "light";
@@ -23,8 +20,7 @@
 
   // Header border once the page scrolls.
   const header = document.querySelector(".site-header");
-  const onScroll = () =>
-    header?.classList.toggle("scrolled", window.scrollY > 8);
+  const onScroll = () => header?.classList.toggle("scrolled", window.scrollY > 8);
   onScroll();
   window.addEventListener("scroll", onScroll, { passive: true });
 
@@ -78,9 +74,7 @@
         dialog.showModal();
       }),
     );
-    dialog
-      .querySelector("button")
-      .addEventListener("click", () => dialog.close());
+    dialog.querySelector("button").addEventListener("click", () => dialog.close());
     dialog.addEventListener("click", (event) => {
       if (event.target === dialog) dialog.close();
     });
@@ -116,10 +110,7 @@
         ? "获取开发版构建"
         : "Get a development build";
     meta.textContent = asset
-      ? release.tag_name +
-        " · " +
-        Math.round(asset.size / 1048576) +
-        " MB · APK"
+      ? release.tag_name + " · " + Math.round(asset.size / 1048576) + " MB · APK"
       : zh
         ? "在成功运行的构建中打开 Artifacts，下载 Immivio-" +
           platform +

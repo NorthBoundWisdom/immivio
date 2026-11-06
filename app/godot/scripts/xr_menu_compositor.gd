@@ -40,8 +40,10 @@ class PaintSchedule:
 	var previous: Variant = null
 	var settle := 3
 	var deadline := 0
+
 	func invalidate() -> void:
 		settle = 3
+
 	func poll(key: int, interacting: bool, now: int) -> bool:
 		if previous != key:
 			previous = key
@@ -51,6 +53,7 @@ class PaintSchedule:
 			deadline = now + 250
 			return true
 		return false
+
 
 var paint := PaintSchedule.new()
 var warmup: Node
@@ -202,16 +205,34 @@ func _set_scene_curved(value: bool) -> void:
 ## Head motion alone does not deform a stationary/locked menu, and an active
 ## pointer capture freezes its geometry until release.
 func _update_view_curve() -> void:
-	if not is_instance_valid(active_menu) or active_menu.curve_radius <= 0 or not is_instance_valid(head):
+	if (
+		not is_instance_valid(active_menu)
+		or active_menu.curve_radius <= 0
+		or not is_instance_valid(head)
+	):
 		return
-	if menus.any(func(menu): return is_instance_valid(menu) and menu.is_visible_in_tree() and menu.has_method("has_pointer_capture") and menu.has_pointer_capture()):
+	if menus.any(
+		func(menu):
+			return (
+				is_instance_valid(menu)
+				and menu.is_visible_in_tree()
+				and menu.has_method("has_pointer_capture")
+				and menu.has_pointer_capture()
+			)
+	):
 		return
 	var pose: Transform3D = active_menu.global_transform
 	if _curve_menu_id == active_menu.get_instance_id() and _curve_placement.is_equal_approx(pose):
 		return
 	var centre: Vector2 = active_menu.capture_envelope().get_center()
-	var distance := active_menu.to_global(Vector3(centre.x, centre.y, 0)).distance_to(head.global_position)
-	if is_finite(distance) and distance >= 0.1 and not is_equal_approx(active_menu.curve_radius, distance):
+	var distance := active_menu.to_global(Vector3(centre.x, centre.y, 0)).distance_to(
+		head.global_position
+	)
+	if (
+		is_finite(distance)
+		and distance >= 0.1
+		and not is_equal_approx(active_menu.curve_radius, distance)
+	):
 		active_menu.curve_radius = distance
 		paint.invalidate()
 	_curve_menu_id = active_menu.get_instance_id()
@@ -246,10 +267,18 @@ func _process(_delta: float) -> void:
 	# camera and curvature when that companion window appears or disappears.
 	if shown and shown.get("compact") == true and shown.get("playback_browser") == true:
 		for menu in menus:
-			if is_instance_valid(menu) and menu.is_visible_in_tree() and menu.has_method("has_persistent_toolbar"):
+			if (
+				is_instance_valid(menu)
+				and menu.is_visible_in_tree()
+				and menu.has_method("has_persistent_toolbar")
+			):
 				shown = menu
 				break
-	var shown_ids := menus.filter(func(menu): return is_instance_valid(menu) and menu.is_visible_in_tree()).map(func(menu): return menu.get_instance_id())
+	var shown_ids := (
+		menus
+		. filter(func(menu): return is_instance_valid(menu) and menu.is_visible_in_tree())
+		. map(func(menu): return menu.get_instance_id())
+	)
 	if shown_ids != _shown_menu_ids:
 		_shown_menu_ids = shown_ids
 		if shown != active_menu or not shown or not shown.has_method("has_persistent_toolbar"):
@@ -330,9 +359,19 @@ func _process(_delta: float) -> void:
 	var centre := surface_rect.get_center()
 	camera.global_transform = capture * Transform3D(Basis.IDENTITY, Vector3(centre.x, centre.y, 1))
 	camera.size = surface_rect.size.y
-	var interacting := menus.any(func(menu): return is_instance_valid(menu) and menu.is_visible_in_tree() and menu.has_method("has_pointer_capture") and menu.has_pointer_capture())
+	var interacting := menus.any(
+		func(menu):
+			return (
+				is_instance_valid(menu)
+				and menu.is_visible_in_tree()
+				and menu.has_method("has_pointer_capture")
+				and menu.has_pointer_capture()
+			)
+	)
 	var repaint := paint.poll(_paint_state(capture), interacting, Time.get_ticks_msec())
-	viewport.render_target_update_mode = SubViewport.UPDATE_ONCE if repaint else SubViewport.UPDATE_DISABLED
+	viewport.render_target_update_mode = (
+		SubViewport.UPDATE_ONCE if repaint else SubViewport.UPDATE_DISABLED
+	)
 	if use_scene:
 		# A shared window can retain its last image while the content redraws.
 		# A different surface/projection must wait for its own completed capture.
@@ -353,22 +392,34 @@ func _process(_delta: float) -> void:
 
 
 func _capture_metadata(pose: Transform3D) -> Dictionary:
-	return {"visible": true, "menu_id": active_menu.get_instance_id(),
-		"layout_revision": active_menu.layout_revision, "menu_revisions": _capture_revisions(),
+	return {
+		"visible": true,
+		"menu_id": active_menu.get_instance_id(),
+		"layout_revision": active_menu.layout_revision,
+		"menu_revisions": _capture_revisions(),
 		"menu_pages": _capture_pages(),
-		"pose": pose, "rect": surface_rect, "curve_radius": active_menu.curve_radius}
+		"pose": pose,
+		"rect": surface_rect,
+		"curve_radius": active_menu.curve_radius
+	}
 
 
 func _matches_capture(metadata: Dictionary) -> bool:
-	return (is_instance_valid(active_menu) and metadata.get("visible", false)
+	return (
+		is_instance_valid(active_menu)
+		and metadata.get("visible", false)
 		and metadata.get("menu_id") == active_menu.get_instance_id()
-		and metadata.get("menu_pages", {}) == _capture_pages())
+		and metadata.get("menu_pages", {}) == _capture_pages()
+	)
 
 
 func _can_display_capture(metadata: Dictionary) -> bool:
-	if (not is_instance_valid(active_menu) or not metadata.get("visible", false)
+	if (
+		not is_instance_valid(active_menu)
+		or not metadata.get("visible", false)
 		or metadata.get("menu_id") != active_menu.get_instance_id()
-		or metadata.get("rect") != surface_rect):
+		or metadata.get("rect") != surface_rect
+	):
 		return false
 	if _matches_capture(metadata):
 		return true
@@ -377,9 +428,11 @@ func _can_display_capture(metadata: Dictionary) -> bool:
 	# Requiring the preceding pose here blanks one frame on ordinary head motion.
 	if active_menu.has_method("has_persistent_toolbar"):
 		return is_equal_approx(float(metadata.get("curve_radius", 0.0)), active_menu.curve_radius)
-	return (metadata.get("menu_pages", {}).keys() == _capture_pages().keys()
+	return (
+		metadata.get("menu_pages", {}).keys() == _capture_pages().keys()
 		and metadata.get("pose", Transform3D.IDENTITY).is_equal_approx(capture_pose(active_menu))
-		and is_equal_approx(float(metadata.get("curve_radius", 0.0)), active_menu.curve_radius))
+		and is_equal_approx(float(metadata.get("curve_radius", 0.0)), active_menu.curve_radius)
+	)
 
 
 func _finish_scene_capture(metadata: Dictionary) -> void:
@@ -391,11 +444,24 @@ func _finish_scene_capture(metadata: Dictionary) -> void:
 
 
 func _paint_state(capture: Transform3D) -> int:
-	var values: Array = [capture, surface_rect, _generation, active_menu.curve_radius if active_menu else 0.0]
+	var values: Array = [
+		capture, surface_rect, _generation, active_menu.curve_radius if active_menu else 0.0
+	]
 	for menu in menus:
 		if not is_instance_valid(menu) or not menu.is_visible_in_tree():
 			continue
-		values.append([menu.get_instance_id(), menu.layout_revision, menu.global_transform, menu.get("_state"), menu.get("status"), menu.get("scroll"), menu.get("_editor"), menu._hover])
+		values.append(
+			[
+				menu.get_instance_id(),
+				menu.layout_revision,
+				menu.global_transform,
+				menu.get("_state"),
+				menu.get("status"),
+				menu.get("scroll"),
+				menu.get("_editor"),
+				menu._hover
+			]
+		)
 		for pointer in menu._pointers.values():
 			if pointer.dot.visible:
 				values.append([pointer.dot.position, pointer.dot.scale])
@@ -438,15 +504,18 @@ func _submit_capture(metadata: Dictionary) -> void:
 
 
 static func presented_pose(metadata: Dictionary, menu: Node3D) -> Transform3D:
-	return capture_pose(menu) if (metadata.layout_revision == menu.layout_revision
-		or menu.has_method("has_persistent_toolbar")) else metadata.pose
+	return (
+		capture_pose(menu)
+		if (
+			metadata.layout_revision == menu.layout_revision
+			or menu.has_method("has_persistent_toolbar")
+		)
+		else metadata.pose
+	)
 
 
 func _apply_presented_layer() -> void:
-	if (
-		not native_supported
-		or not _can_display_capture(presented)
-	):
+	if not native_supported or not _can_display_capture(presented):
 		_hide_layers()
 		return
 	# Preserve a shared window through a page redraw; new projections still wait.
@@ -586,13 +655,19 @@ static func capture_pose(menu: Node3D) -> Transform3D:
 
 
 func captures_menu(menu: Node3D) -> bool:
-	return is_instance_valid(menu) and menu.is_visible_in_tree() and (menu == active_menu or menu in menus)
+	return (
+		is_instance_valid(menu)
+		and menu.is_visible_in_tree()
+		and (menu == active_menu or menu in menus)
+	)
+
 
 func _capture_menus() -> Array:
 	var result := menus.filter(func(menu): return captures_menu(menu))
 	if is_instance_valid(active_menu) and active_menu not in result:
 		result.append(active_menu)
 	return result
+
 
 func _capture_revisions() -> Dictionary:
 	var result := {}
@@ -607,6 +682,7 @@ func _capture_pages() -> Dictionary:
 		result[str(menu.get_instance_id())] = menu.presentation_page()
 	return result
 
+
 func _update_bounds() -> void:
 	var result: Array = []
 	var inverse := capture_pose(active_menu).affine_inverse()
@@ -618,9 +694,15 @@ func _update_bounds() -> void:
 		var tooltip_bounds: Rect2 = menu.tooltip_envelope()
 		if tooltip_bounds.has_area():
 			envelope = envelope.merge(tooltip_bounds) if envelope.has_area() else tooltip_bounds
-		if not envelope.has_area(): continue
+		if not envelope.has_area():
+			continue
 		var local_to_capture: Transform3D = inverse * menu.global_transform
-		for corner in [envelope.position, Vector2(envelope.end.x, envelope.position.y), envelope.end, Vector2(envelope.position.x, envelope.end.y)]:
+		for corner in [
+			envelope.position,
+			Vector2(envelope.end.x, envelope.position.y),
+			envelope.end,
+			Vector2(envelope.position.x, envelope.end.y)
+		]:
 			var point: Vector3 = local_to_capture * Vector3(corner.x, corner.y, 0)
 			bounds = bounds.expand(Vector2(point.x, point.y))
 	bounds = bounds.grow(.04)
@@ -664,20 +746,36 @@ static func project_ray(
 
 
 func is_layout_presented(menu: Node3D) -> bool:
-	if not captures_menu(menu): return false
-	if scene_curved: return true
-	if not native_supported or not is_instance_valid(active_menu) or presented.get("menu_id") != active_menu.get_instance_id(): return false
+	if not captures_menu(menu):
+		return false
+	if scene_curved:
+		return true
+	if (
+		not native_supported
+		or not is_instance_valid(active_menu)
+		or presented.get("menu_id") != active_menu.get_instance_id()
+	):
+		return false
 	var revisions: Dictionary = presented.get("menu_revisions", {})
-	var revision: int = int(revisions.get(str(menu.get_instance_id()), presented.get("layout_revision", -1) if menu == active_menu else -1))
+	var revision: int = int(
+		revisions.get(
+			str(menu.get_instance_id()),
+			presented.get("layout_revision", -1) if menu == active_menu else -1
+		)
+	)
 	return revision == menu.layout_revision
 
 
 ## Keep visual hover/reticle feedback on the retained transport while input is
 ## gated for a new popup. This never makes unacknowledged controls interactive.
 func retains_toolbar(menu: Node3D) -> bool:
-	return (native_supported and menu == active_menu
+	return (
+		native_supported
+		and menu == active_menu
 		and menu.has_method("has_persistent_toolbar")
-		and not is_layout_presented(menu) and _can_display_capture(presented))
+		and not is_layout_presented(menu)
+		and _can_display_capture(presented)
+	)
 
 
 func native_placement_available() -> bool:

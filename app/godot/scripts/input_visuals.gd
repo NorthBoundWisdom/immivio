@@ -144,12 +144,13 @@ static func _controller_moved(previous: Variant, current: Transform3D) -> bool:
 	# Compare against the last meaningful pose, not individual frames: small
 	# deliberate movements accumulate, while tracking jitter cannot keep models awake.
 	return (
-		previous.origin.distance_to(current.origin)
-		> CONTROLLER_MOVE_METERS * XRServer.world_scale
-		or previous.basis.orthonormalized().get_rotation_quaternion().angle_to(
-			current.basis.orthonormalized().get_rotation_quaternion()
+		previous.origin.distance_to(current.origin) > CONTROLLER_MOVE_METERS * XRServer.world_scale
+		or (
+			previous.basis.orthonormalized().get_rotation_quaternion().angle_to(
+				current.basis.orthonormalized().get_rotation_quaternion()
+			)
+			> CONTROLLER_TURN_RADIANS
 		)
-		> CONTROLLER_TURN_RADIANS
 	)
 
 

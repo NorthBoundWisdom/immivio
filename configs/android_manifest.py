@@ -1,4 +1,5 @@
 """Decode aapt2 xmltree manifests and enforce the external playback export policy."""
+
 import json
 import re
 import xml.etree.ElementTree as ET
@@ -15,24 +16,50 @@ def verify_tree(root):
     if len(entries) != 1 or entries[0].get(ANDROID + "exported") != "true":
         raise ValueError("Exactly one exported external playback entry is required")
     expected = {
-        ("android.intent.action.VIEW", frozenset({"http", "https"}), frozenset({"video/*"})),
-        ("android.intent.action.VIEW", frozenset({"content", "file"}), frozenset({"video/*", "application/octet-stream"})),
-        ("android.intent.action.SEND", frozenset(), frozenset({"video/*", "application/octet-stream"})),
+        (
+            "android.intent.action.VIEW",
+            frozenset({"http", "https"}),
+            frozenset({"video/*"}),
+        ),
+        (
+            "android.intent.action.VIEW",
+            frozenset({"content", "file"}),
+            frozenset({"video/*", "application/octet-stream"}),
+        ),
+        (
+            "android.intent.action.SEND",
+            frozenset(),
+            frozenset({"video/*", "application/octet-stream"}),
+        ),
     }
     actual = []
     for group in entries[0].findall("intent-filter"):
         actions = [node.get(ANDROID + "name") for node in group.findall("action")]
         categories = {node.get(ANDROID + "name") for node in group.findall("category")}
         if len(actions) != 1 or categories != {"android.intent.category.DEFAULT"}:
-            raise ValueError("External playback must have one action and DEFAULT only, without BROWSABLE")
-        schemes = frozenset(node.get(ANDROID + "scheme") for node in group.findall("data") if node.get(ANDROID + "scheme"))
-        mimes = frozenset(node.get(ANDROID + "mimeType") for node in group.findall("data") if node.get(ANDROID + "mimeType"))
+            raise ValueError(
+                "External playback must have one action and DEFAULT only, without BROWSABLE"
+            )
+        schemes = frozenset(
+            node.get(ANDROID + "scheme")
+            for node in group.findall("data")
+            if node.get(ANDROID + "scheme")
+        )
+        mimes = frozenset(
+            node.get(ANDROID + "mimeType")
+            for node in group.findall("data")
+            if node.get(ANDROID + "mimeType")
+        )
         actual.append((actions[0], schemes, mimes))
     if len(actual) != 3 or set(actual) != expected:
-        raise ValueError("External video filters differ from the narrow network/local/SEND contract")
-    if any(item.get(ANDROID + "name") == "android.permission.REQUEST_INSTALL_PACKAGES" for item in root.findall("uses-permission")):
+        raise ValueError(
+            "External video filters differ from the narrow network/local/SEND contract"
+        )
+    if any(
+        item.get(ANDROID + "name") == "android.permission.REQUEST_INSTALL_PACKAGES"
+        for item in root.findall("uses-permission")
+    ):
         raise ValueError("The player must not request APK installation permission")
-
 
 
 def verify(path):
@@ -85,12 +112,14 @@ def parse_xmltree(text):
     for number, line in enumerate(text.splitlines(), 1):
         if not line.strip():
             continue
-        if "\t" in line[:len(line) - len(line.lstrip())]:
+        if "\t" in line[: len(line) - len(line.lstrip())]:
             raise ValueError(f"Invalid manifest indentation at line {number}")
         indent = len(line) - len(line.lstrip(" "))
         record = line.strip()
         if record.startswith("N: "):
-            match = re.fullmatch(r"N: ([A-Za-z_][A-Za-z0-9_.-]*)=(\S+?)(?: \(line=\d+\))?", record)
+            match = re.fullmatch(
+                r"N: ([A-Za-z_][A-Za-z0-9_.-]*)=(\S+?)(?: \(line=\d+\))?", record
+            )
             if not match:
                 raise ValueError(f"Invalid manifest namespace at line {number}")
             if match[1] in namespaces and namespaces[match[1]] != match[2]:

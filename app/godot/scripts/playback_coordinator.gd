@@ -30,7 +30,9 @@ func open_external(value: Dictionary) -> void:
 	host.player_menu = host.video_menu
 	if host.video.open_library(uri, str(value.get("title", "Video"))):
 		host._show_player_menu()
-	elif preload("res://scripts/platform_methods.gd").supports(host.video.platform, "external_playback_release"):
+	elif preload("res://scripts/platform_methods.gd").supports(
+		host.video.platform, "external_playback_release"
+	):
 		host.video.platform.external_playback_release(uri)
 
 
@@ -177,7 +179,11 @@ func _advance_queue(session_id: int, uri: String) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
-	if host.video.media.session_id != session_id or host.video.local_uri != uri or (not host.video.completed_presentation()):
+	if (
+		host.video.media.session_id != session_id
+		or host.video.local_uri != uri
+		or (not host.video.completed_presentation())
+	):
 		return
 	if host.video.loop_enabled:
 		return
@@ -194,7 +200,12 @@ func _advance_queue(session_id: int, uri: String) -> void:
 
 func _on_video_changed() -> void:
 	var host := _host_ref.get_ref() as Node3D
-	if not is_instance_valid(host) or host.is_queued_for_deletion() or not host.is_inside_tree() or host.get("_finishing_app") == true:
+	if (
+		not is_instance_valid(host)
+		or host.is_queued_for_deletion()
+		or not host.is_inside_tree()
+		or host.get("_finishing_app") == true
+	):
 		return
 	if host.video.media.state != "ended":
 		host._queue_end_key = ""
@@ -248,7 +259,12 @@ func _on_menu_action(operation: String) -> void:
 		return
 	if operation == "load_subtitle":
 		host._show_recent_menu(true)
-		host.recent_menu.subtitle_picker.open(host.video.local_uri, host.video.display_name, host.video.subtitle_tracks(), host.video.media.session_id)
+		host.recent_menu.subtitle_picker.open(
+			host.video.local_uri,
+			host.video.display_name,
+			host.video.subtitle_tracks(),
+			host.video.media.session_id
+		)
 		return
 	if operation == "forget_subtitle":
 		host.video.forget_external_subtitle()
@@ -366,7 +382,7 @@ func _on_bookmark_request(operation: String, marker_id: String, scope: String) -
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
-	if operation not in ['seek', 'delete', 'undo']:
+	if operation not in ["seek", "delete", "undo"]:
 		return
 	host._menu_touched_ms = Time.get_ticks_msec()
 	var message: String = host.video.bookmark_action(operation, marker_id, scope)

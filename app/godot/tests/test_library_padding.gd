@@ -6,12 +6,16 @@ var checks := 0
 
 class Platform:
 	extends RefCounted
+
 	func account_open(_kind, _provider, _id, _defaults) -> int:
 		return 1
+
 	func media_file_delete(_raw: String) -> int:
 		return 1
+
 	func media_file_rename_prepare(_raw: String) -> int:
 		return 1
+
 	func media_file_rename(_raw: String) -> int:
 		return 1
 
@@ -31,7 +35,16 @@ func _initialize() -> void:
 func entries(count: int) -> Array:
 	var result: Array = []
 	for i in count:
-		result.append({"id": str(i), "uri": "file:///padding/%02d.mp4" % i, "title": "Video %02d.mp4" % i, "kind": "video", "can_delete": true, "has_cover": false})
+		result.append(
+			{
+				"id": str(i),
+				"uri": "file:///padding/%02d.mp4" % i,
+				"title": "Video %02d.mp4" % i,
+				"kind": "video",
+				"can_delete": true,
+				"has_cover": false
+			}
+		)
 	return result
 
 
@@ -50,23 +63,45 @@ func verify(menu: Node3D, label: String) -> void:
 			continue
 		var at: Vector3 = menu.to_local(button.node.global_position)
 		var half: Vector2 = button.node.mesh.size * .5
-		var gaps := [at.x - half.x - left, right - at.x - half.x, at.y - half.y - bottom, top - at.y - half.y]
+		var gaps := [
+			at.x - half.x - left, right - at.x - half.x, at.y - half.y - bottom, top - at.y - half.y
+		]
 		for edge in 4:
 			edge_gaps[edge] = minf(edge_gaps[edge], gaps[edge])
-		check(gaps.min() >= menu.PANEL_PADDING - .003, label + " keeps all four safe insets for control " + str(button.target))
+		check(
+			gaps.min() >= menu.PANEL_PADDING - .003,
+			label + " keeps all four safe insets for control " + str(button.target)
+		)
 	if label.begins_with("Files"):
-		check(edge_gaps.max() - edge_gaps.min() <= .003, label + " gives the complete file-browser controls equal padding on all four sides")
+		check(
+			edge_gaps.max() - edge_gaps.min() <= .003,
+			label + " gives the complete file-browser controls equal padding on all four sides"
+		)
 	if menu._grid():
-		var cards: Array = menu._buttons.filter(func(button): return menu._row_target(button.target) and button.node.is_visible_in_tree())
+		var cards: Array = menu._buttons.filter(
+			func(button):
+				return menu._row_target(button.target) and button.node.is_visible_in_tree()
+		)
 		if cards.size() >= menu.COLS:
 			var first: Vector3 = menu.to_local(cards[0].node.global_position)
 			var last: Vector3 = menu.to_local(cards[menu.COLS - 1].node.global_position)
-			check(is_equal_approx(first.x - menu.TILE_SIZE.x * .5 - left, right - last.x - menu.TILE_SIZE.x * .5), label + " centres the four-column grid with equal horizontal margins")
+			check(
+				is_equal_approx(
+					first.x - menu.TILE_SIZE.x * .5 - left, right - last.x - menu.TILE_SIZE.x * .5
+				),
+				label + " centres the four-column grid with equal horizontal margins"
+			)
 	if menu._max_scroll() > 0:
 		var track: Dictionary = menu._buttons.filter(func(button): return button.target == menu.SCROLLBAR)[0]
-		check(is_equal_approx(track.rect.size.x, .04), label + " preserves the scrollbar's generous ray hit area")
+		check(
+			is_equal_approx(track.rect.size.x, .04),
+			label + " preserves the scrollbar's generous ray hit area"
+		)
 		var at: Vector3 = menu.to_local(track.node.global_position)
-		check(is_equal_approx(right - at.x - track.node.mesh.size.x * .5, menu.PANEL_PADDING), label + " gives the visible scrollbar the same edge padding")
+		check(
+			is_equal_approx(right - at.x - track.node.mesh.size.x * .5, menu.PANEL_PADDING),
+			label + " gives the visible scrollbar the same edge padding"
+		)
 
 
 func _run() -> void:

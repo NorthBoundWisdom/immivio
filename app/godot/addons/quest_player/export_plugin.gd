@@ -54,7 +54,9 @@ class QuestPlayerExport:
 """
 		if not pico:
 			return external
-		return external + """
+		return (
+			external
+			+ """
         <activity android:name="org.vrpassthroughplayer.plugin.ImmivioLauncherActivity"
             android:exported="true" android:noHistory="true"
             android:theme="@android:style/Theme.NoDisplay">
@@ -65,7 +67,7 @@ class QuestPlayerExport:
             </intent-filter>
         </activity>
 """
-
+		)
 
 	func _get_android_libraries(_platform: EditorExportPlatform, debug: bool) -> PackedStringArray:
 		return PackedStringArray(

@@ -4,6 +4,8 @@ const I18n := preload("res://scripts/i18n.gd")
 const Policy := preload("res://scripts/immersive_adjustments.gd")
 var source: Callable
 var labels: Array[Label3D] = []
+
+
 func _ready() -> void:
 	position = Vector3(0, 0.25, -1.2)
 	for i in 2:
@@ -16,6 +18,8 @@ func _ready() -> void:
 		label.position.y = -i * 0.065
 		add_child(label)
 		labels.append(label)
+
+
 func _process(_delta: float) -> void:
 	var samples: Array = source.call() if source.is_valid() else []
 	visible = not samples.is_empty()
@@ -24,5 +28,10 @@ func _process(_delta: float) -> void:
 		if i >= samples.size():
 			continue
 		var sample: Dictionary = samples[i]
-		labels[i].text = I18n.t(sample.title) + "  " + Policy.value_text(sample.key, sample.value) + "  [%+.0f … %+.0f%%]" % [sample.span.x, sample.span.y]
+		labels[i].text = (
+			I18n.t(sample.title)
+			+ "  "
+			+ Policy.value_text(sample.key, sample.value)
+			+ "  [%+.0f … %+.0f%%]" % [sample.span.x, sample.span.y]
+		)
 		labels[i].modulate.a = sample.alpha

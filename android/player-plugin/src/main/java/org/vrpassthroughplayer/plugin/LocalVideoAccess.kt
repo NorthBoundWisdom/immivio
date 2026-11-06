@@ -10,7 +10,6 @@ import android.os.Looper
 import android.os.OperationCanceledException
 import android.os.Process
 import android.provider.OpenableColumns
-import org.json.JSONObject
 import java.io.File
 import java.io.FileNotFoundException
 import java.util.concurrent.ArrayBlockingQueue
@@ -19,11 +18,12 @@ import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import org.json.JSONObject
 
 /** Bounded, cancellable permission/readability preflight. Does not alter playback. */
 internal class LocalVideoAccess(
     private val context: () -> Context?,
-    private val emit: (Int, String) -> Unit
+    private val emit: (Int, String) -> Unit,
 ) {
     private class Request(val uri: String) {
         val cancellation = CancellationSignal()
@@ -34,10 +34,16 @@ internal class LocalVideoAccess(
     private val requests = ConcurrentHashMap<Int, Request>()
     private val closed = AtomicBoolean(false)
     private val main = Handler(Looper.getMainLooper())
-    private val worker = ThreadPoolExecutor(
-        1, 1, 0, TimeUnit.MILLISECONDS, ArrayBlockingQueue(1),
-        { task -> Thread(task, "QuestLocalAccess") }, ThreadPoolExecutor.AbortPolicy()
-    )
+    private val worker =
+        ThreadPoolExecutor(
+            1,
+            1,
+            0,
+            TimeUnit.MILLISECONDS,
+            ArrayBlockingQueue(1),
+            { task -> Thread(task, "QuestLocalAccess") },
+            ThreadPoolExecutor.AbortPolicy(),
+        )
 
     fun request(id: Int, text: String): Boolean = submit(id, text, null)
 
@@ -45,11 +51,17 @@ internal class LocalVideoAccess(
         Uri.parse(text).scheme == "content" && submit(id, text, grantFlags)
 
     private fun submit(id: Int, text: String, grantFlags: Int?): Boolean {
-        if (closed.get() || id <= 0 || text.length !in 1..8192 || Uri.parse(text).scheme !in setOf(
-                "content",
-                "file"
-            )
-        ) return false
+        if (
+            closed.get() ||
+                id <= 0 ||
+                text.length !in 1..8192 ||
+                Uri.parse(text).scheme !in
+                    setOf(
+                        "content",
+                        "file",
+                    )
+        )
+            return false
         val request = Request(text)
         request.timeout = Runnable {
             finish(id, request, "error", "LOCAL_DOCUMENT_TIMEOUT")
@@ -65,46 +77,55 @@ internal class LocalVideoAccess(
                     val host = context() ?: error("Activity unavailable")
                     val uri = Uri.parse(text)
                     if (grantFlags != null) LocalDocumentGrant.take(host, uri, grantFlags)
-                    val persisted = if (uri.scheme == "content") {
-                        host.contentResolver.openFileDescriptor(uri, "r", request.cancellation)
-                            ?.use { }
-                            ?: throw FileNotFoundException()
-                        host.contentResolver.persistedUriPermissions.any { it.uri == uri && it.isReadPermission }
-                    } else {
-                        val file = File(uri.path ?: throw FileNotFoundException())
-                        if (!file.isFile) throw FileNotFoundException()
-                        file.inputStream().use { }
-                        true
-                    }
+                    val persisted =
+                        if (uri.scheme == "content") {
+                            host.contentResolver
+                                .openFileDescriptor(uri, "r", request.cancellation)
+                                ?.use {} ?: throw FileNotFoundException()
+                            host.contentResolver.persistedUriPermissions.any {
+                                it.uri == uri && it.isReadPermission
+                            }
+                        } else {
+                            val file = File(uri.path ?: throw FileNotFoundException())
+                            if (!file.isFile) throw FileNotFoundException()
+                            file.inputStream().use {}
+                            true
+                        }
                     var name = "Local video"
                     if (grantFlags != null) {
                         try {
-                            host.contentResolver.query(
-                                uri,
-                                arrayOf(OpenableColumns.DISPLAY_NAME),
-                                null,
-                                null,
-                                null,
-                                request.cancellation
-                            )?.use { cursor ->
-                                if (cursor.moveToFirst()) {
-                                    val column = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                                    if (column >= 0) name = cursor.getString(column) ?: name
+                            host.contentResolver
+                                .query(
+                                    uri,
+                                    arrayOf(OpenableColumns.DISPLAY_NAME),
+                                    null,
+                                    null,
+                                    null,
+                                    request.cancellation,
+                                )
+                                ?.use { cursor ->
+                                    if (cursor.moveToFirst()) {
+                                        val column =
+                                            cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                                        if (column >= 0) name = cursor.getString(column) ?: name
+                                    }
                                 }
-                            }
                         } catch (cancelled: OperationCanceledException) {
                             throw cancelled
-                        } catch (_: SecurityException) { /* Readable FD can lack optional metadata access. */
-                        } catch (_: Exception) { /* Metadata is optional once the FD is readable. */
+                        } catch (_: SecurityException) {
+                            /* Readable FD can lack optional metadata access. */
+                        } catch (_: Exception) {
+                            /* Metadata is optional once the FD is readable. */
                         }
                         name = name.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
-                        name = name.substring(
-                            0,
-                            name.offsetByCodePoints(
+                        name =
+                            name.substring(
                                 0,
-                                minOf(256, name.codePointCount(0, name.length))
+                                name.offsetByCodePoints(
+                                    0,
+                                    minOf(256, name.codePointCount(0, name.length)),
+                                ),
                             )
-                        )
                         if (name.isBlank()) name = "Local video"
                     }
                     finish(id, request, "readable", persisted = persisted, displayName = name)
@@ -115,31 +136,43 @@ internal class LocalVideoAccess(
                     // FileNotFoundException before its read-permission check.
                     val host = context()
                     val uri = Uri.parse(text)
-                    val lost = host != null && uri.scheme == "content" && !runCatching {
-                        mayReadProvider(
-                            host,
-                            uri
-                        )
-                    }.getOrDefault(false)
+                    val lost =
+                        host != null &&
+                            uri.scheme == "content" &&
+                            !runCatching {
+                                    mayReadProvider(
+                                        host,
+                                        uri,
+                                    )
+                                }
+                                .getOrDefault(false)
                     // A provider can report FileNotFoundException when offline. Only an
                     // authorized, successful empty query confirms a deleted document.
-                    val missing = !lost && host != null && uri.scheme == "content" && runCatching {
-                        host.contentResolver.query(
-                            uri,
-                            arrayOf(OpenableColumns.DISPLAY_NAME),
-                            null,
-                            null,
-                            null,
-                            request.cancellation
-                        )
-                            ?.use { !it.moveToFirst() } == true
-                    }.getOrDefault(false)
+                    val missing =
+                        !lost &&
+                            host != null &&
+                            uri.scheme == "content" &&
+                            runCatching {
+                                    host.contentResolver
+                                        .query(
+                                            uri,
+                                            arrayOf(OpenableColumns.DISPLAY_NAME),
+                                            null,
+                                            null,
+                                            null,
+                                            request.cancellation,
+                                        )
+                                        ?.use { !it.moveToFirst() } == true
+                                }
+                                .getOrDefault(false)
                     finish(
                         id,
                         request,
                         "error",
-                        if (uri.scheme == "content") UsbAccessPolicy.documentFailure(!lost, missing).code else "LOCAL_DOCUMENT_MISSING",
-                        missingConfirmed = missing
+                        if (uri.scheme == "content")
+                            UsbAccessPolicy.documentFailure(!lost, missing).code
+                        else "LOCAL_DOCUMENT_MISSING",
+                        missingConfirmed = missing,
                     )
                 } catch (_: OperationCanceledException) {
                     finish(id, request, "error", "LOCAL_DOCUMENT_CANCELLED")
@@ -156,17 +189,22 @@ internal class LocalVideoAccess(
     }
 
     private fun mayReadProvider(host: Context, uri: Uri): Boolean {
-        if (host.checkUriPermission(
+        if (
+            host.checkUriPermission(
                 uri,
                 Process.myPid(),
                 Process.myUid(),
-                Intent.FLAG_GRANT_READ_URI_PERMISSION
+                Intent.FLAG_GRANT_READ_URI_PERMISSION,
             ) == PackageManager.PERMISSION_GRANTED
-        ) return true
-        val info = host.packageManager.resolveContentProvider(uri.authority ?: return false, 0)
-            ?: return false
+        )
+            return true
+        val info =
+            host.packageManager.resolveContentProvider(uri.authority ?: return false, 0)
+                ?: return false
         if (info.applicationInfo.uid == Process.myUid()) return true
-        return info.exported && (info.readPermission == null || host.checkSelfPermission(info.readPermission) == PackageManager.PERMISSION_GRANTED)
+        return info.exported &&
+            (info.readPermission == null ||
+                host.checkSelfPermission(info.readPermission) == PackageManager.PERMISSION_GRANTED)
     }
 
     private fun finish(
@@ -176,17 +214,23 @@ internal class LocalVideoAccess(
         error: String = "",
         persisted: Boolean = false,
         displayName: String = "Local video",
-        missingConfirmed: Boolean = false
+        missingConfirmed: Boolean = false,
     ) {
         if (!request.finished.compareAndSet(false, true)) return
         main.removeCallbacks(request.timeout)
         requests.remove(id)
-        if (!closed.get()) emit(
-            id, JSONObject().put("uri", request.uri).put("state", state)
-                .put("error", error).put("persisted_permission", persisted)
-                .put("display_name", displayName)
-                .put("missing_confirmed", missingConfirmed).toString()
-        )
+        if (!closed.get())
+            emit(
+                id,
+                JSONObject()
+                    .put("uri", request.uri)
+                    .put("state", state)
+                    .put("error", error)
+                    .put("persisted_permission", persisted)
+                    .put("display_name", displayName)
+                    .put("missing_confirmed", missingConfirmed)
+                    .toString(),
+            )
     }
 
     fun cancel(id: Int) {

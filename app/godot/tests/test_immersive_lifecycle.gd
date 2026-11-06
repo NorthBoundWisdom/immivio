@@ -81,19 +81,11 @@ func _run() -> void:
 	main.video.set_projection(3)
 	var saved := ConfigFile.new()
 	saved.load(main.settings_path)
-	check(
-		(
-			saved.get_value("video", "mode_lock").is_empty()
-		),
-		"Video manual unlock is saved"
-	)
+	check(saved.get_value("video", "mode_lock").is_empty(), "Video manual unlock is saved")
 	var restored := Main.new()
 	restored.settings_path = main.settings_path
 	root.add_child(restored)
-	check(
-		restored.video.mode_lock.is_empty(),
-		"Restart retains the video unlock"
-	)
+	check(restored.video.mode_lock.is_empty(), "Restart retains the video unlock")
 	restored.queue_free()
 	main.queue_free()
 	await process_frame

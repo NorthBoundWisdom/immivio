@@ -18,17 +18,9 @@
       "file": "source/zh-CN/01-playback.png",
       "language": "zh-CN",
       "page": "01-playback",
-      "dimensions": [
-        2560,
-        1440
-      ],
+      "dimensions": [2560, 1440],
       "sha256": "c6e3ca4f36cd9f9b6fa5f68b5712932d522228d5947c4c051aa6f90e5e7e97f5",
-      "crop_xywh": [
-        120,
-        0,
-        2320,
-        1392
-      ],
+      "crop_xywh": [120, 0, 2320, 1392],
       "media_source": "vr180_sample",
       "verification": "Visually inspected full capture: VR180-SBS-Demo.mp4, 00:16 duration, video scene and native playback controls visible."
     },
@@ -36,68 +28,36 @@
       "file": "source/zh-CN/02-media-sources.png",
       "language": "zh-CN",
       "page": "02-media-sources",
-      "dimensions": [
-        2560,
-        1440
-      ],
+      "dimensions": [2560, 1440],
       "sha256": "74155fc0ea9f86b024fee98feb6d0b156934f39f36368f8988e1a2284d08779c",
-      "crop_xywh": [
-        500,
-        235,
-        1585,
-        1000
-      ],
+      "crop_xywh": [500, 235, 1585, 1000],
       "media_source": "cc0_sky"
     },
     {
       "file": "source/zh-CN/03-subtitles.png",
       "language": "zh-CN",
       "page": "03-subtitles",
-      "dimensions": [
-        2560,
-        1440
-      ],
+      "dimensions": [2560, 1440],
       "sha256": "e756fbde0cecd15d4acf334346679cab8cbf46fd23cf3f287db85d5ca8970ee9",
-      "crop_xywh": [
-        500,
-        235,
-        1585,
-        1000
-      ],
+      "crop_xywh": [500, 235, 1585, 1000],
       "media_source": "cc0_sky"
     },
     {
       "file": "source/zh-CN/04-display.png",
       "language": "zh-CN",
       "page": "04-display",
-      "dimensions": [
-        2560,
-        1440
-      ],
+      "dimensions": [2560, 1440],
       "sha256": "a0c6ba8bfbb14ae1e873aa7dfc083d36ca69d1ca7e7bf93d04cf4b2f15708003",
-      "crop_xywh": [
-        500,
-        235,
-        1585,
-        1000
-      ],
+      "crop_xywh": [500, 235, 1585, 1000],
       "media_source": "cc0_sky"
     },
     {
       "file": "source/en/01-playback.png",
       "language": "en",
       "page": "01-playback",
-      "dimensions": [
-        2560,
-        1440
-      ],
+      "dimensions": [2560, 1440],
       "sha256": "958363c5b995dca634e5b213b6c0d801923a4448dc67ec0a0d791e399c785d2a",
-      "crop_xywh": [
-        120,
-        0,
-        2320,
-        1392
-      ],
+      "crop_xywh": [120, 0, 2320, 1392],
       "media_source": "vr180_sample",
       "verification": "Visually inspected full capture: VR180-SBS-Demo.mp4, 00:16 duration, video scene and native playback controls visible."
     },
@@ -105,51 +65,27 @@
       "file": "source/en/02-media-sources.png",
       "language": "en",
       "page": "02-media-sources",
-      "dimensions": [
-        2560,
-        1440
-      ],
+      "dimensions": [2560, 1440],
       "sha256": "047544b41ed713a2a05e422e23c75281edd73a30a7a29e4b493be4b3288d9337",
-      "crop_xywh": [
-        500,
-        235,
-        1585,
-        1000
-      ],
+      "crop_xywh": [500, 235, 1585, 1000],
       "media_source": "cc0_sky"
     },
     {
       "file": "source/en/03-subtitles.png",
       "language": "en",
       "page": "03-subtitles",
-      "dimensions": [
-        2560,
-        1440
-      ],
+      "dimensions": [2560, 1440],
       "sha256": "ce40fc5062666a86269d33421d4e64b9a52ba3ce926288bd07f2dd91da459dae",
-      "crop_xywh": [
-        500,
-        235,
-        1585,
-        1000
-      ],
+      "crop_xywh": [500, 235, 1585, 1000],
       "media_source": "cc0_sky"
     },
     {
       "file": "source/en/04-display.png",
       "language": "en",
       "page": "04-display",
-      "dimensions": [
-        2560,
-        1440
-      ],
+      "dimensions": [2560, 1440],
       "sha256": "2e7bc1ff82d508f1a4dd386c54a6054c516bc44d038ea1511d8db64044338c8d",
-      "crop_xywh": [
-        500,
-        235,
-        1585,
-        1000
-      ],
+      "crop_xywh": [500, 235, 1585, 1000],
       "media_source": "cc0_sky"
     }
   ],
@@ -159,10 +95,7 @@
       "source_filename": "blandscape-60mbps.mp4",
       "local_sample_filename": "VR180-SBS-Demo.mp4",
       "sample_sha256": "858dfa02cd795fbe1bc51043433c6436b49f7d1dab4b4fec8e63296024b157a9",
-      "sample_dimensions": [
-        4096,
-        2048
-      ],
+      "sample_dimensions": [4096, 2048],
       "sample_duration_seconds": 16,
       "included": false
     },

@@ -4,11 +4,11 @@ on:
   push:
     branches: [main]
     paths:
-      - 'website/**'
-      - 'tools/check_website.py'
-      - 'tools/refresh_website_release.py'
-      - 'tests/website/**'
-      - '.github/workflows/website-pages.yml'
+      - "website/**"
+      - "tools/check_website.py"
+      - "tools/refresh_website_release.py"
+      - "tests/website/**"
+      - ".github/workflows/website-pages.yml"
   release:
     types: [published]
   workflow_dispatch:

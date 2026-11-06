@@ -21,8 +21,7 @@ void vertex() {
 
 void fragment() {
   float radius = min(corner_radius, min(surface_size.x, surface_size.y) * 0.5);
-  vec2 q = abs(surface_position) -
-           (surface_size * 0.5 - vec2(radius));
+  vec2 q = abs(surface_position) - (surface_size * 0.5 - vec2(radius));
   float distance = length(max(q, vec2(0.0))) + min(max(q.x, q.y), 0.0) - radius;
   float edge = max(fwidth(distance), 0.0003);
   float rim = smoothstep(-border_width - edge, -border_width + edge, distance);

@@ -133,7 +133,9 @@ def signing_env(environ):
         raise RuntimeError("Configure all three Android signing secrets, or none")
     # Transported CI credentials belong in a private runner/OS temporary directory,
     # never in project outputs or in the permanent local store identity.
-    temporary = tempfile.mkdtemp(prefix="immivio-ci-signing-", dir=env.get("RUNNER_TEMP"))
+    temporary = tempfile.mkdtemp(
+        prefix="immivio-ci-signing-", dir=env.get("RUNNER_TEMP")
+    )
     key = Path(temporary) / "immivio-ci-release.keystore"
     key.write_bytes(base64.b64decode(values[0], validate=True))
     if os.name != "nt":
@@ -196,7 +198,11 @@ def build_type_for_ref(requested=None, environment=None, channel=None):
     if environment.get("GITHUB_REF", "").startswith("refs/tags/"):
         return "Release"
     channel = channel or build_channel_for_ref(environment=environment)
-    selected = requested or environment.get("CI_BUILD_TYPE") or ("Release" if channel == "appstore" else "Debug")
+    selected = (
+        requested
+        or environment.get("CI_BUILD_TYPE")
+        or ("Release" if channel == "appstore" else "Debug")
+    )
     if selected not in ("Debug", "Release"):
         raise ValueError("Build type must be Debug or Release")
     return selected
@@ -214,20 +220,32 @@ def build_channel_for_ref(requested=None, environment=None):
 
 def latest_receipt_file(vendor, build_type, channel="appstore"):
     from configs.output_paths import packages, apk_for_receipt
+
     directory = packages(player.ROOT, vendor, channel, build_type)
     platform = {"Pico": "PICO", "Quest": "QUEST", "OpenXR": "OpenXR"}[vendor]
     # Prefer the canonical profile; read flat legacy output only until migration.
-    pools = [list(directory.glob("*.build.json")), list((player.ROOT / "artifacts").glob(
-        f"Immivio-{platform}-*-{build_type.lower()}-*.build.json"))]
+    pools = [
+        list(directory.glob("*.build.json")),
+        list(
+            (player.ROOT / "artifacts").glob(
+                f"Immivio-{platform}-*-{build_type.lower()}-*.build.json"
+            )
+        ),
+    ]
     for paths in pools:
         valid = []
         for path in paths:
             try:
                 record = json.loads(path.read_text())
                 apk = apk_for_receipt(path, record)
-                if (record.get("channel", "appstore") == channel and record.get("vendor") == vendor
-                    and record.get("build_type") == build_type and apk.is_file()
-                    and not path.is_symlink() and not apk.is_symlink()):
+                if (
+                    record.get("channel", "appstore") == channel
+                    and record.get("vendor") == vendor
+                    and record.get("build_type") == build_type
+                    and apk.is_file()
+                    and not path.is_symlink()
+                    and not apk.is_symlink()
+                ):
                     valid.append(path)
             except (ValueError, OSError):
                 continue
@@ -242,12 +260,17 @@ def latest_receipt(vendor, build_type, channel="appstore"):
 
 def ci_package_metadata(vendor, build_type, channel="appstore"):
     from configs.output_paths import ci_reports, apk_for_receipt
+
     path = latest_receipt_file(vendor, build_type, channel)
     receipt = json.loads(path.read_text())
     receipt.update(
         ci_ref=os.environ.get("GITHUB_REF", ""),
         ci_host=os.environ.get("RUNNER_OS", sys.platform),
-        ci_signing=("repository-signing-key" if os.environ.get("CI_ANDROID_KEYSTORE_BASE64") else "ephemeral-ci-key"),
+        ci_signing=(
+            "repository-signing-key"
+            if os.environ.get("CI_ANDROID_KEYSTORE_BASE64")
+            else "ephemeral-ci-key"
+        ),
     )
     path.write_text(json.dumps(receipt, indent=2) + "\n")
     receipts, sums = [], []
@@ -256,7 +279,11 @@ def ci_package_metadata(vendor, build_type, channel="appstore"):
             current = latest_receipt_file(v, build_type, channel)
             record = json.loads(current.read_text())
             receipts.append(record)
-            relative = apk_for_receipt(current, record).relative_to(player.ROOT / "artifacts").as_posix()
+            relative = (
+                apk_for_receipt(current, record)
+                .relative_to(player.ROOT / "artifacts")
+                .as_posix()
+            )
             sums.append(f'{record["sha256"]}  {relative}\n')
         except RuntimeError:
             pass

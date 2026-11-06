@@ -158,7 +158,10 @@ func ray_hit(origin: Vector3, direction: Vector3) -> Dictionary:
 	if (
 		xr_surface
 		and (xr_surface.native_supported or xr_surface.get("scene_curved") == true)
-		and (xr_surface.active_menu == self or (xr_surface.has_method("captures_menu") and xr_surface.captures_menu(self)))
+		and (
+			xr_surface.active_menu == self
+			or (xr_surface.has_method("captures_menu") and xr_surface.captures_menu(self))
+		)
 	):
 		mapped = xr_surface.map_ray(self, origin, direction)
 		if mapped.is_empty() or float(mapped.distance) > max_ray_metres:
@@ -220,7 +223,10 @@ func ray_panel_hit(origin: Vector3, direction: Vector3) -> Dictionary:
 	if (
 		xr_surface
 		and (xr_surface.native_supported or xr_surface.get("scene_curved") == true)
-		and (xr_surface.active_menu == self or (xr_surface.has_method("captures_menu") and xr_surface.captures_menu(self)))
+		and (
+			xr_surface.active_menu == self
+			or (xr_surface.has_method("captures_menu") and xr_surface.captures_menu(self))
+		)
 	):
 		mapped = xr_surface.map_ray(self, origin, direction)
 		if mapped.is_empty() or float(mapped.distance) > max_ray_metres:
@@ -274,7 +280,10 @@ func pointer_plane_point(origin: Vector3, direction: Vector3, plane_z: float) ->
 	if (
 		xr_surface
 		and (xr_surface.native_supported or xr_surface.get("scene_curved") == true)
-		and (xr_surface.active_menu == self or (xr_surface.has_method("captures_menu") and xr_surface.captures_menu(self)))
+		and (
+			xr_surface.active_menu == self
+			or (xr_surface.has_method("captures_menu") and xr_surface.captures_menu(self))
+		)
 	):
 		var mapped: Dictionary = xr_surface.map_ray(self, origin, direction)
 		if mapped.is_empty() or float(mapped.distance) > max_ray_metres:
@@ -295,10 +304,15 @@ func update_pointer(hand: String, origin: Vector3, direction: Vector3, tracked: 
 	# A popup capture gates clicks for one or more frames. Its unchanged toolbar
 	# should not lose hover and its reticle in that interval. Popup rebuilds already
 	# remove hover targets whose nodes were retired; tracking loss still clears it.
-	if (tracked and origin.is_finite() and direction.is_finite()
+	if (
+		tracked
+		and origin.is_finite()
+		and direction.is_finite()
 		and direction.length_squared() > .000001
-		and xr_surface and xr_surface.has_method("retains_toolbar")
-		and xr_surface.retains_toolbar(self)):
+		and xr_surface
+		and xr_surface.has_method("retains_toolbar")
+		and xr_surface.retains_toolbar(self)
+	):
 		_update_highlights()
 		return
 	var hit := ray_hit(origin, direction) if tracked else {}
@@ -321,12 +335,20 @@ func update_pointer(hand: String, origin: Vector3, direction: Vector3, tracked: 
 			else origin + direction.normalized() * max_ray_metres
 		)
 		PointerRay.draw(pointer.line, origin, to_global(to_local(endpoint) + Vector3(0, 0, 0.006)))
-		var actionable := not hit.is_empty() and bool(hit.get("enabled", false)) and int(hit.get("target", NONE)) != NONE
-		pointer.line.material_override.set_shader_parameter("ray_color", Color(pointer.color, 0.8 if actionable else 0.5))
+		var actionable := (
+			not hit.is_empty()
+			and bool(hit.get("enabled", false))
+			and int(hit.get("target", NONE)) != NONE
+		)
+		pointer.line.material_override.set_shader_parameter(
+			"ray_color", Color(pointer.color, 0.8 if actionable else 0.5)
+		)
 		if not hit.is_empty():
 			pointer.dot.position = hit.point + Vector3(0, 0, 0.008)
 			pointer.dot.scale = Vector3.ONE * (1.25 if actionable else 1.0)
-			pointer.dot.material_override.albedo_color = pointer.color.lerp(Color.WHITE, 0.7) if actionable else pointer.color
+			pointer.dot.material_override.albedo_color = (
+				pointer.color.lerp(Color.WHITE, 0.7) if actionable else pointer.color
+			)
 	_update_highlights()
 
 
@@ -624,7 +646,9 @@ func _quad(size: Vector2, location: Vector3, color: Color, priority: int) -> Mes
 	surface.render_priority = priority
 	surface.set_shader_parameter("surface_color", color)
 	surface.set_shader_parameter("surface_size", size)
-	surface.set_shader_parameter("border_width", 0.002 if priority == 30 else (0.0012 if priority == 11 else 0.0))
+	surface.set_shader_parameter(
+		"border_width", 0.002 if priority == 30 else (0.0012 if priority == 11 else 0.0)
+	)
 	surface.set_shader_parameter("border_color", OUTLINE)
 	surface.set_shader_parameter("corner_radius", 0.028 if priority == 10 else 0.012)
 	node.material_override = surface
@@ -704,7 +728,11 @@ func _update_highlights() -> void:
 			color = (
 				Color(0.67, 1.0, 0.86) if button.base_color == ACCENT else Color(0.27, 0.40, 0.39)
 			)
-		var outline: Color = ACCENT if hovered or button.get("open_choice", false) or button.base_color == SELECTED else OUTLINE
+		var outline: Color = (
+			ACCENT
+			if hovered or button.get("open_choice", false) or button.base_color == SELECTED
+			else OUTLINE
+		)
 		if button.node.material_override.get_shader_parameter("border_color") != outline:
 			button.node.material_override.set_shader_parameter("border_color", outline)
 		if button.node.material_override.get_shader_parameter("surface_color") != color:

@@ -504,7 +504,12 @@ func _run() -> void:
 		"Save sends the server"
 	)
 	check(
-		menu._editor.is_empty() and menu.section == Menu.Section.NETWORK and titles(menu).has("NAS") and titles(menu).has("Other"),
+		(
+			menu._editor.is_empty()
+			and menu.section == Menu.Section.NETWORK
+			and titles(menu).has("NAS")
+			and titles(menu).has("Other")
+		),
 		"Saving a source returns to the unified saved/discovered list"
 	)
 	# DLNA: discovery on entry, containers, items.
@@ -757,7 +762,9 @@ func _run() -> void:
 	menu.stick_scroll(1.0, 5.0)
 	check(menu.scroll == 0.0, "Stick up scrolls back and clamps at the top")
 	# The navigation column is angled towards the viewer: a ray aimed at an entry from the front hits it.
-	var smb_entry: Vector3 = menu._side.to_global(Vector3(0, 0.39 - Menu.NAV_ORDER.find(Menu.Section.NETWORK) * 0.13, 0.002))
+	var smb_entry: Vector3 = menu._side.to_global(
+		Vector3(0, 0.39 - Menu.NAV_ORDER.find(Menu.Section.NETWORK) * 0.13, 0.002)
+	)
 	var eye := smb_entry + menu._side.global_basis.z * 1.2
 	check(
 		(

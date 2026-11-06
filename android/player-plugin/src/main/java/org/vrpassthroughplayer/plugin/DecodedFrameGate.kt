@@ -3,10 +3,14 @@ package org.vrpassthroughplayer.plugin
 /** One released Surface buffer at a time. Never relabel a coalesced/latest OES frame. */
 internal class DecodedFrameGate(val scope: MediaSessionGate.Scope) {
     data class Ticket(
-        val scope: MediaSessionGate.Scope, val frameId: Long, val ptsUs: Long,
-        val formatRevision: Int, val presentationRevision: Int
+        val scope: MediaSessionGate.Scope,
+        val frameId: Long,
+        val ptsUs: Long,
+        val formatRevision: Int,
+        val presentationRevision: Int,
     ) {
-        val timestampNs: Long get() = Math.multiplyExact(ptsUs, 1000L)
+        val timestampNs: Long
+            get() = Math.multiplyExact(ptsUs, 1000L)
     }
 
     private var pending: Ticket? = null
@@ -17,9 +21,16 @@ internal class DecodedFrameGate(val scope: MediaSessionGate.Scope) {
     @Synchronized
     fun begin(frameId: Long, ptsUs: Long, formatRevision: Int, presentationRevision: Int): Ticket? {
         if (closed || pending != null) return null
-        require(frameId > lastFrame && ptsUs in 0..Long.MAX_VALUE / 1000 && formatRevision > 0 && presentationRevision > 0)
+        require(
+            frameId > lastFrame &&
+                ptsUs in 0..Long.MAX_VALUE / 1000 &&
+                formatRevision > 0 &&
+                presentationRevision > 0
+        )
         return Ticket(scope, frameId, ptsUs, formatRevision, presentationRevision).also {
-            pending = it; notified = false; lastFrame = frameId
+            pending = it
+            notified = false
+            lastFrame = frameId
         }
     }
 
@@ -31,12 +42,14 @@ internal class DecodedFrameGate(val scope: MediaSessionGate.Scope) {
         return true
     }
 
-    @Synchronized
-    fun available(): Ticket? = if (!closed && notified) pending else null
+    @Synchronized fun available(): Ticket? = if (!closed && notified) pending else null
+
     @Synchronized
     fun verify(ticket: Ticket, timestampNs: Long): Boolean {
         if (closed || pending != ticket || !notified) return false
-        check(timestampNs == ticket.timestampNs) { "Surface timestamp differs from controlled output PTS" }
+        check(timestampNs == ticket.timestampNs) {
+            "Surface timestamp differs from controlled output PTS"
+        }
         return true
     }
 
@@ -44,14 +57,17 @@ internal class DecodedFrameGate(val scope: MediaSessionGate.Scope) {
     @Synchronized
     fun complete(ticket: Ticket): Boolean {
         if (closed || pending != ticket || !notified) return false
-        pending = null; notified = false
+        pending = null
+        notified = false
         return true
     }
 
-    @Synchronized
-    fun idle() = !closed && pending == null
+    @Synchronized fun idle() = !closed && pending == null
+
     @Synchronized
     fun close() {
-        closed = true; pending = null; notified = false
+        closed = true
+        pending = null
+        notified = false
     }
 }

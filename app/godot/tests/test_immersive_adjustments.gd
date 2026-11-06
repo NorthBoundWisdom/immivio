@@ -1,19 +1,30 @@
 extends SceneTree
 const Policy := preload("res://scripts/immersive_adjustments.gd")
 const Video := preload("res://scripts/mpv_video_display.gd")
-class Host extends "res://scripts/main.gd":
+
+
+class Host:
+	extends "res://scripts/main.gd"
 	var active: Node3D
+
 	func _active_menu() -> Node3D:
 		return active
+
 	func _input_focused() -> bool:
 		return true
+
 	func _controller_allowed(_hand: String) -> bool:
 		return true
+
 	func _ray(_hand: String) -> Variant:
 		return [Vector3.ZERO, Vector3.FORWARD]
+
+
 func _initialize() -> void:
 	preload("res://tests/support/test_result.gd").prepare(self)
 	call_deferred("_run")
+
+
 func _run() -> void:
 	var policy := Policy.new()
 	assert(policy.poll("left_hand", Vector2.RIGHT, true).is_empty())
@@ -52,15 +63,28 @@ func _run() -> void:
 	var saved := video.mode_memory.lookup(video.local_uri)
 	assert(is_equal_approx(saved.view_horizontal, before))
 	assert(video.open_local("file:///movie_180_LR.mp4", "movie_180_LR.mp4"))
-	assert(is_equal_approx(video.view_horizontal, before) and is_equal_approx(video.stereo_horizontal, 2.0))
-	assert(video.set_stereo_alignment("stereo_horizontal", 100.0) and video.stereo_horizontal == 10.0)
+	assert(
+		(
+			is_equal_approx(video.view_horizontal, before)
+			and is_equal_approx(video.stereo_horizontal, 2.0)
+		)
+	)
+	assert(
+		video.set_stereo_alignment("stereo_horizontal", 100.0) and video.stereo_horizontal == 10.0
+	)
 	video.geometry = 0
 	video._apply_geometry()
 	assert(video.stereo_horizontal == 5.0)
 	assert(not video.set_immersive_adjustment("view_horizontal", 0.5))
 	var guide := preload("res://scripts/picture_center_guide.gd").new()
 	root.add_child(guide)
-	var sample := {"identity": "movie", "hand": "left_hand", "held": true, "head": Transform3D.IDENTITY, "centre": Vector3(0, 0, -10)}
+	var sample := {
+		"identity": "movie",
+		"hand": "left_hand",
+		"held": true,
+		"head": Transform3D.IDENTITY,
+		"centre": Vector3(0, 0, -10)
+	}
 	guide.sync(sample, 0)
 	guide.sync(sample, 200)
 	assert(guide.joined)

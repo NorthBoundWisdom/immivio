@@ -1,15 +1,12 @@
 uniform mat4 surface_transform = mat4(1.0);
-uniform bool stereo_sbs =
-    false; // two views: side by side, or above each other with top_bottom
+uniform bool stereo_sbs = false; // two views: side by side, or above each other with top_bottom
 uniform bool top_bottom = false;
 uniform bool stereo_half = false;
 // Lens field of view of fisheye sources (180, 190, 200, 220...).
 uniform float fisheye_fov = 180.0;
 uniform bool swap_eyes = false;
-uniform int viewing_eye =
-    0; // 0 stereo, 1 logical left, 2 logical right (after swap)
-uniform vec2 stereo_offset =
-    vec2(0.0); // total displacement in displayed per-eye UV
+uniform int viewing_eye = 0;            // 0 stereo, 1 logical left, 2 logical right (after swap)
+uniform vec2 stereo_offset = vec2(0.0); // total displacement in displayed per-eye UV
 uniform int rotation_degrees = 0;
 // 0 flat, 1 half-equirect 180, 2 equidistant fisheye 180.
 uniform int video_geometry = 0;
@@ -41,8 +38,7 @@ vec2 aligned_eye_uv(vec2 uv) {
 }
 
 bool outside_alignment(vec2 p) {
-  return stereo_sbs && viewing_eye == 0 &&
-         any(notEqual(stereo_offset, vec2(0.0))) &&
+  return stereo_sbs && viewing_eye == 0 && any(notEqual(stereo_offset, vec2(0.0))) &&
          (any(lessThan(p, vec2(0.0))) || any(greaterThan(p, vec2(1.0))));
 }
 
@@ -54,8 +50,8 @@ vec2 view_size() {
 
 // Fisheye directions beyond the lens circle have no picture.
 bool outside_lens(vec3 direction) {
-  return video_geometry == 2 && acos(clamp(-normalize(direction).z, -1.0,
-                                           1.0)) > radians(fisheye_fov * 0.5);
+  return video_geometry == 2 &&
+         acos(clamp(-normalize(direction).z, -1.0, 1.0)) > radians(fisheye_fov * 0.5);
 }
 
 vec2 eye_uv(vec2 planar_uv, vec3 direction) {
@@ -66,12 +62,10 @@ vec2 eye_uv(vec2 planar_uv, vec3 direction) {
   if (video_geometry == 3) {
     // Full equirectangular 360: longitude 0 (looking along -Z) is the centre
     // column.
-    return vec2(atan(d.x, -d.z) / (2.0 * PI) + 0.5,
-                0.5 - asin(clamp(d.y, -1.0, 1.0)) / PI);
+    return vec2(atan(d.x, -d.z) / (2.0 * PI) + 0.5, 0.5 - asin(clamp(d.y, -1.0, 1.0)) / PI);
   }
   if (video_geometry == 1) {
-    return vec2(atan(d.x, -d.z) / PI + 0.5,
-                0.5 - asin(clamp(d.y, -1.0, 1.0)) / PI);
+    return vec2(atan(d.x, -d.z) / PI + 0.5, 0.5 - asin(clamp(d.y, -1.0, 1.0)) / PI);
   }
   float transverse = length(d.xy);
   float radial = acos(clamp(-d.z, -1.0, 1.0)) / radians(fisheye_fov * 0.5);
@@ -82,14 +76,12 @@ vec2 eye_uv(vec2 planar_uv, vec3 direction) {
   if (stereo_sbs && stereo_half) {
     return vec2(0.5) + 0.5 * radial * axis;
   }
-  return vec2(0.5) +
-         0.5 * radial * axis * min(eye_size.x, eye_size.y) / eye_size;
+  return vec2(0.5) + 0.5 * radial * axis * min(eye_size.x, eye_size.y) / eye_size;
 }
 
 vec2 color_uv(vec2 per_eye_uv) {
   vec2 eye_size = view_size();
-  vec2 uv =
-      clamp(per_eye_uv, vec2(0.5) / eye_size, vec2(1.0) - vec2(0.5) / eye_size);
+  vec2 uv = clamp(per_eye_uv, vec2(0.5) / eye_size, vec2(1.0) - vec2(0.5) / eye_size);
   if (stereo_sbs) {
     int eye = swap_eyes ? 1 - eye_index : eye_index;
     if (top_bottom) {
@@ -109,9 +101,7 @@ vec2 color_uv(vec2 per_eye_uv) {
 }
 
 vec2 oes_uv(vec2 top_left_uv) {
-  return (surface_transform *
-          vec4(top_left_uv.x, 1.0 - top_left_uv.y, 0.0, 1.0))
-      .xy;
+  return (surface_transform * vec4(top_left_uv.x, 1.0 - top_left_uv.y, 0.0, 1.0)).xy;
 }
 
 bool reserved_color(vec2 full_uv) {

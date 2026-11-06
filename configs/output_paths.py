@@ -1,4 +1,5 @@
 """One layout for disposable build state and human-facing generated outputs."""
+
 from datetime import datetime, timezone
 import json
 import os
@@ -14,7 +15,11 @@ MARKER = ".output-layout-v1"
 
 
 def profile(root, vendor, channel, build_type):
-    if vendor not in PLATFORMS or channel not in {"appstore", "web"} or build_type not in {"Debug", "Release"}:
+    if (
+        vendor not in PLATFORMS
+        or channel not in {"appstore", "web"}
+        or build_type not in {"Debug", "Release"}
+    ):
         raise ValueError("Invalid output profile")
     return Path(root), PLATFORMS[vendor], channel, build_type.lower()
 
@@ -38,7 +43,9 @@ def ci_reports(root, channel, build_type):
 
 def apk_for_receipt(receipt_file, record):
     name = record.get("apk", "")
-    if not isinstance(name, str) or not re.fullmatch(r"Immivio-[A-Za-z0-9._-]+\.apk", name):
+    if not isinstance(name, str) or not re.fullmatch(
+        r"Immivio-[A-Za-z0-9._-]+\.apk", name
+    ):
         raise ValueError("Invalid APK name in build receipt")
     return Path(receipt_file).parent / name
 
@@ -109,13 +116,22 @@ def _private_files(path):
     if path.is_file():
         files = [path]
     else:
-        files = (Path(base) / name for base, _, names in os.walk(path, followlinks=False) for name in names)
-    return [p for p in files if p.suffix.lower() in {".keystore", ".jks", ".p12", ".pfx"}
-            or p.name.endswith("-signing.json")]
+        files = (
+            Path(base) / name
+            for base, _, names in os.walk(path, followlinks=False)
+            for name in names
+        )
+    return [
+        p
+        for p in files
+        if p.suffix.lower() in {".keystore", ".jks", ".p12", ".pfx"}
+        or p.name.endswith("-signing.json")
+    ]
 
 
 def clean(root, scope="build", dry_run=False):
     from configs.workspace_lock import workspace_mutation_lock
+
     root = Path(root)
     targets = {
         "build": [root / "build"],
@@ -126,7 +142,9 @@ def clean(root, scope="build", dry_run=False):
         "archive": [root / "artifacts/archive"],
     }
     if scope not in targets:
-        raise ValueError("Cleanup scope must be build, intermediates, logs, tests, captures or archive")
+        raise ValueError(
+            "Cleanup scope must be build, intermediates, logs, tests, captures or archive"
+        )
     with workspace_mutation_lock(root):
         existing = []
         # Validate the entire scope before deleting any of its directories.
@@ -134,7 +152,9 @@ def clean(root, scope="build", dry_run=False):
             _inside(root, target)
             if target.exists():
                 if _private_files(target):
-                    raise RuntimeError(f"Signing material found in {target}; move it to persistent private storage before cleanup")
+                    raise RuntimeError(
+                        f"Signing material found in {target}; move it to persistent private storage before cleanup"
+                    )
                 existing.append(target)
         for target in existing:
             print(("Would remove " if dry_run else "Removing ") + str(target))
@@ -148,12 +168,20 @@ def _receipt_destinations(root):
         try:
             record = json.loads(receipt.read_text())
             apk = apk_for_receipt(receipt, record)
-            destination = packages(root, record["vendor"], record.get("channel", "appstore"), record["build_type"])
+            destination = packages(
+                root,
+                record["vendor"],
+                record.get("channel", "appstore"),
+                record["build_type"],
+            )
         except (ValueError, KeyError, OSError):
             continue
         if not apk.is_file():
             continue
-        if any((destination / item.name).exists() for item in (apk, receipt, apk.with_suffix(".store-report.json"))):
+        if any(
+            (destination / item.name).exists()
+            for item in (apk, receipt, apk.with_suffix(".store-report.json"))
+        ):
             destination = root / "artifacts/archive/legacy-packages" / apk.stem
             original = destination
             number = 1
@@ -177,7 +205,9 @@ def organization_plan(root):
                 continue
             if name == "signing":
                 if any(source.iterdir()):
-                    raise RuntimeError("Legacy artifacts/signing is not empty; migrate signing material first")
+                    raise RuntimeError(
+                        "Legacy artifacts/signing is not empty; migrate signing material first"
+                    )
                 continue
             if name == "native-inspection":
                 target = root / "build/intermediates/legacy-apk-inspection"
@@ -191,8 +221,19 @@ def organization_plan(root):
                 target = artifacts / "captures/device" / name
             elif "verification" in name:
                 target = artifacts / "reports/releases" / name
-            elif source.suffix.lower() in {".png", ".jpg", ".webp"} or source.is_dir() and any(word in name for word in ("frames", "padding", "subtitle", "popup", "brand")):
-                category = "branding" if any(word in name for word in ("brand", "immivio")) else "ui"
+            elif (
+                source.suffix.lower() in {".png", ".jpg", ".webp"}
+                or source.is_dir()
+                and any(
+                    word in name
+                    for word in ("frames", "padding", "subtitle", "popup", "brand")
+                )
+            ):
+                category = (
+                    "branding"
+                    if any(word in name for word in ("brand", "immivio"))
+                    else "ui"
+                )
                 target = artifacts / "captures" / category / name
             else:
                 target = artifacts / "archive/legacy-artifacts" / name
@@ -214,7 +255,9 @@ def organization_plan(root):
         _inside(root, source)
         _inside(root, target)
         if _private_files(source):
-            raise RuntimeError(f"Signing material found in {source}; refusing to archive private keys")
+            raise RuntimeError(
+                f"Signing material found in {source}; refusing to archive private keys"
+            )
         original = target
         suffix = 1
         while target.exists() or target in used:
@@ -228,6 +271,7 @@ def organization_plan(root):
 def organize(root, dry_run=False):
     """Reversible same-workspace moves; no file data is deleted or overwritten."""
     from configs.workspace_lock import workspace_mutation_lock
+
     root = Path(root)
     with workspace_mutation_lock(root):
         planned = organization_plan(root)
@@ -244,18 +288,38 @@ def organize(root, dry_run=False):
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S-%f")
         report = root / "artifacts/reports/organization" / (timestamp + ".json")
         report.parent.mkdir(parents=True, exist_ok=True)
-        journal = {"operation": "move only; no deletion", "planned": [
-            {"from": str(source.relative_to(root)), "to": str(target.relative_to(root))} for source, target in planned
-        ], "moves": []}
-        report.write_text(json.dumps(journal, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        journal = {
+            "operation": "move only; no deletion",
+            "planned": [
+                {
+                    "from": str(source.relative_to(root)),
+                    "to": str(target.relative_to(root)),
+                }
+                for source, target in planned
+            ],
+            "moves": [],
+        }
+        report.write_text(
+            json.dumps(journal, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
         for source, target in planned:
             target.parent.mkdir(parents=True, exist_ok=True)
             _inside(root, target)
             if target.exists():
-                raise RuntimeError(f"Destination appeared during organization; refusing to overwrite {target}")
+                raise RuntimeError(
+                    f"Destination appeared during organization; refusing to overwrite {target}"
+                )
             source.rename(target)
-            journal["moves"].append({"from": str(source.relative_to(root)), "to": str(target.relative_to(root))})
-            report.write_text(json.dumps(journal, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            journal["moves"].append(
+                {
+                    "from": str(source.relative_to(root)),
+                    "to": str(target.relative_to(root)),
+                }
+            )
+            report.write_text(
+                json.dumps(journal, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
         signing = root / "artifacts/signing"
         if signing.is_dir() and not any(signing.iterdir()):
             signing.rmdir()

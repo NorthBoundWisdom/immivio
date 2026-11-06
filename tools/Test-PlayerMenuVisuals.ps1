@@ -28,7 +28,7 @@ foreach ($case in @(
 foreach ($path in $sourceHashes.Keys) {
     if ((Get-FileHash "$workspace/$path" -Algorithm SHA256).Hash.ToLowerInvariant() -ne $sourceHashes[$path]) { throw "Source changed during render: $path" }
 }
-@{state='passed'; source_sha256=$sourceHashes; scope='Actual Godot entry scene and production menus with supplied stress states on desktop OpenGL; Quest binocular pixels/physical pointing not verified';
-    physical_quest_verified=$false; binocular_XR_verified=$false
+@{state = 'passed'; source_sha256 = $sourceHashes; scope = 'Actual Godot entry scene and production menus with supplied stress states on desktop OpenGL; Quest binocular pixels/physical pointing not verified';
+    physical_quest_verified = $false; binocular_XR_verified = $false
 } | ConvertTo-Json -Depth 6 | Set-Content "$output/verification.json" -Encoding utf8
 Write-Output 'Production menu visuals and entry scene: passed'

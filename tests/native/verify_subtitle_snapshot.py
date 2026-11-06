@@ -1,7 +1,11 @@
 import json
 import subprocess
 import sys
-first, second, invalid = [json.loads(line) for line in subprocess.check_output([sys.argv[1]], text=True).splitlines()]
+
+first, second, invalid = [
+    json.loads(line)
+    for line in subprocess.check_output([sys.argv[1]], text=True).splitlines()
+]
 assert first["text"] == "Primary"
 assert second["text"] == "第二字幕\nEnglish"
 assert first["command_id"] == 3 and second["command_id"] == 7

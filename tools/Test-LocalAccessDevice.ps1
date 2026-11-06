@@ -32,8 +32,8 @@ function Read-Json([string]$file) {
     if ($LASTEXITCODE -ne 0) { return $null }
     try { return $raw | ConvertFrom-Json } catch { return $null }
 }
-$result = @{state='failed'; apk_sha256=$build.apk_sha256; installed_sha256=$installedHash; activity_launched=$false;
-    scope ='Actual Quest private file/provider descriptor preflight, cancellation and timeout; external SAF grants, persistence/reboot, MPV decode and XR not tested'
+$result = @{state = 'failed'; apk_sha256 = $build.apk_sha256; installed_sha256 = $installedHash; activity_launched = $false;
+    scope = 'Actual Quest private file/provider descriptor preflight, cancellation and timeout; external SAF grants, persistence/reboot, MPV decode and XR not tested'
 }
 try {
     & $adb -s $Serial shell am force-stop $package
@@ -63,8 +63,7 @@ try {
         Write-Output "Collected $case : $($report.state) / $($report.error) / $($report.elapsed_ms)ms"
     }
     $result.state = 'collected_scoped_local_access_trace'
-}
-catch { $result.error = $_.Exception.Message }
+} catch { $result.error = $_.Exception.Message }
 finally {
     $appPid = (& $adb -s $Serial shell pidof $package | Out-String).Trim()
     if ($appPid -match '^\d+$') { & $adb -s $Serial logcat -d --pid=$appPid -v threadtime | Set-Content "$directory/logcat.txt" }

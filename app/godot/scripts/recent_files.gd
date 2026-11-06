@@ -19,7 +19,9 @@ static func valid_entry(entry: Variant, serial: int) -> bool:
 		or not entry.get("persisted") is bool
 	):
 		return false
-	if not MediaFiles.is_video(str(entry.uri), str(entry.get("title", "")), str(entry.get("kind", "video"))):
+	if not MediaFiles.is_video(
+		str(entry.uri), str(entry.get("title", "")), str(entry.get("kind", "video"))
+	):
 		return false
 	if entry.has("cover") and not valid_cover(entry.cover):
 		return false
@@ -96,7 +98,9 @@ func lookup(uri: String) -> Dictionary:
 func list_recent() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	for value in entries.values():
-		if MediaFiles.is_video(str(value.uri), str(value.get("title", "")), str(value.get("kind", "video"))):
+		if MediaFiles.is_video(
+			str(value.uri), str(value.get("title", "")), str(value.get("kind", "video"))
+		):
 			result.append(value.duplicate(true))
 	result.sort_custom(
 		func(a: Dictionary, b: Dictionary) -> bool:
