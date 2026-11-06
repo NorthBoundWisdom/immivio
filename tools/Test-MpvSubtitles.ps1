@@ -2,7 +2,8 @@ $ErrorActionPreference = 'Stop'
 $workspace = Split-Path -Parent $PSScriptRoot
 . "$PSScriptRoot\environment\Activate-QuestEnvironment.ps1"
 $output = Join-Path $workspace 'artifacts/captures/ui/mpv-subtitles-host'
-$build = Join-Path $workspace 'build\native-host'
+$build = Join-Path $workspace 'build/native/host'
+New-Item -ItemType Directory -Force -Path $output, (Join-Path $workspace 'artifacts/logs/tools') | Out-Null
 & cmake -S "$workspace\native" -B $build -G 'Visual Studio 17 2022' -A x64
 if ($LASTEXITCODE -ne 0) { throw 'Native host test configuration failed.' }
 & cmake --build $build --config Release
