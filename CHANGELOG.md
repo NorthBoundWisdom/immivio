@@ -6,17 +6,19 @@
 
 Newest first, with the main changes that affect everyday use. Unreleased items are not yet part of a public release. Versions 0.6.0 and earlier belong to the original project. Photo viewing, cloud drives and AI 3D conversion appear only as historical features and were removed later; see the [README](README.md) for current capabilities.
 
-## 待发布 / Unreleased
+## 0.9.7 — 2026-11-06
 
 **中文**
 
-- 更换应用图标，更新官网首页、宣传图和分享预览。
+- 更换应用图标，更新宣传图和分享预览。
+- 全新设计中英文官网，换上当前版本的实际界面截图，并重写使用指南、更新说明和 README。
 - 新增中英文 PICO 商店详情图，展示示例视频播放与主要功能，并统一上传海报的尺寸和格式。
 - 完善 PICO 商店安装包的发布前检查。
 
 **English**
 
-- Refresh the app icon, website artwork and sharing previews.
+- Refresh the app icon, artwork and sharing previews.
+- Redesign the English and Chinese website with current interface screenshots, and rewrite the user guide, release notes and README.
 - Add Chinese and English PICO Store detail images showing sample-video playback and key features, with consistent upload-poster dimensions and formats.
 - Improve pre-release checks for PICO Store packages.
 

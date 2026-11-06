@@ -1,70 +1,141 @@
 {
-  "captured_at": "2026-11-04T16:58:28+00:00",
-  "source_video": "blandscape-60mbps.mp4",
-  "source_dimensions": [
-    8192,
-    4096
-  ],
+  "captured_at": "2026-11-06",
+  "application": "Immivio 0.9.6 development capture; current production UI",
+  "application_commit": "1a32bbb0f107ba0a29de1b47978b5ed0d66bde4b",
+  "apk_sha256": "4a19ed8e40030dee1cd7d068b7492c7ef869d4e4e9e82281f9a0dd4fce73974a",
+  "environment": "Android 16 ARM64 emulator, 2560x1440 display, explicit 2D diagnostic entry, isolated development application ID",
+  "source_provenance": "branding/pico/details/capture.json",
   "source_included": false,
-  "capture_clip": {
-    "name": "Landscape-Demo.mp4",
-    "source_excerpt_seconds": [
-      4,
-      16
-    ],
-    "dimensions": [
-      4096,
-      2048
-    ],
-    "codec": "H.264",
-    "frame_rate": 24,
-    "audio": false,
-    "included": false
-  },
-  "application_commit": "097955d3fc0125685a49aa11e86ad7905a6b8391",
-  "application": "Immivio 0.9.4 development build (unreleased changes on main)",
-  "apk_sha256": "7464281a8f0bf6bff6f63de5161f55fec0ea6dccb748e67ac69b0e4c41897692",
-  "apk_platform": "PICO Debug",
-  "manifest_gate": "PASS",
-  "capture_environment": "Android 16 ARM64 emulator, cached Thru3D_Perf_API36 AVD with isolated user data; explicit 2D diagnostic entry and the real application renderer",
-  "decoder_override": "Debug-only hwdec=no on the owned emulator; no product decoder setting changed",
-  "projection": "Fisheye 180, SBS",
-  "frame_size": [
-    1920,
-    1080
-  ],
-  "image_transform": "None: raw adb screencap PNGs, without cropping, compositing or UI retouching",
-  "notes": "Actual application captures using the previously user-supplied and approved website video. No account or private library is shown. No headset stereo, passthrough or performance claim. Display screenshots show the real opened dropdown via mouse input projected into the production 3D menu.",
+  "transformation": "Raw PNG captures cropped (removing the Android navigation bar or surrounding sky), playback uniformly scaled to 1920x1080, then encoded as WebP. No controls are redrawn or retouched.",
+  "scope": "2D emulator capture illustrates application interface only; it does not certify headset stereo, passthrough, frame rate or store approval.",
   "screenshots": [
     {
-      "file": "playback.png",
+      "file": "playback.webp",
       "language": "en",
-      "sha256": "af0141ec0e787c72bd5dbc6faee00502bbd7171974b7f64359cd925aabbf329a"
+      "source": "branding/pico/details/source/en/01-playback.png",
+      "crop_xywh": [
+        43,
+        0,
+        2474,
+        1392
+      ],
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "sha256": "3d56f91a10c0b9711239f18a24d16d2c84b40d0dfba4fe5de9d2e1b2223e2962"
     },
     {
-      "file": "settings.png",
+      "file": "sources.webp",
       "language": "en",
-      "sha256": "20092e33902e6beb053df04411fdc58aa5f0ce353412f59327dedf4df58ed1fb"
+      "source": "branding/pico/details/source/en/02-media-sources.png",
+      "crop_xywh": [
+        464,
+        220,
+        1632,
+        1020
+      ],
+      "dimensions": [
+        1632,
+        1020
+      ],
+      "sha256": "5163dc967b107bf1928e01c4f902a883560dfaf5ba99011cde4b4df28fc23693"
     },
     {
-      "file": "display.png",
+      "file": "subtitles.webp",
       "language": "en",
-      "sha256": "b648b13612baff7dc4e4e566a2bb17e778673b70d93773b0cffabed584f7362c"
+      "source": "branding/pico/details/source/en/03-subtitles.png",
+      "crop_xywh": [
+        464,
+        220,
+        1632,
+        1020
+      ],
+      "dimensions": [
+        1632,
+        1020
+      ],
+      "sha256": "90dd77135dfca6dc04c10e2ab1383e36f2dc62e8dce2c20f88981cb2d58e684a"
     },
     {
-      "file": "zh-playback.png",
-      "language": "zh-CN",
-      "sha256": "8dc677eb5bcc741d86f27953cd2154c324554b3f1d75ed63ce5aaf3476d5e7f9"
+      "file": "display.webp",
+      "language": "en",
+      "source": "branding/pico/details/source/en/04-display.png",
+      "crop_xywh": [
+        464,
+        220,
+        1632,
+        1020
+      ],
+      "dimensions": [
+        1632,
+        1020
+      ],
+      "sha256": "bf77776d82ca1b2ffe1af927aafc1d9803388b55156285ef68451bc4f27556c5"
     },
     {
-      "file": "zh-settings.png",
+      "file": "zh-playback.webp",
       "language": "zh-CN",
-      "sha256": "f171ce9063469391f2d1c06e1c13819605df2b677fbec2581f628cda12d20817"
+      "source": "branding/pico/details/source/zh-CN/01-playback.png",
+      "crop_xywh": [
+        43,
+        0,
+        2474,
+        1392
+      ],
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "sha256": "5be06725cc7c6d56a50d0ed587330469cc9583adc11d0596f3e64f68050cdc2b"
     },
     {
-      "file": "zh-display.png",
+      "file": "zh-sources.webp",
       "language": "zh-CN",
-      "sha256": "f9a9247163bf95106addf74d77f8417d03024ac3341b3d208f145b71ff6a8c4e"
+      "source": "branding/pico/details/source/zh-CN/02-media-sources.png",
+      "crop_xywh": [
+        464,
+        220,
+        1632,
+        1020
+      ],
+      "dimensions": [
+        1632,
+        1020
+      ],
+      "sha256": "873f316ab0671191a088996e433996db137625fa0993a866126f1430988dcd0f"
+    },
+    {
+      "file": "zh-subtitles.webp",
+      "language": "zh-CN",
+      "source": "branding/pico/details/source/zh-CN/03-subtitles.png",
+      "crop_xywh": [
+        464,
+        220,
+        1632,
+        1020
+      ],
+      "dimensions": [
+        1632,
+        1020
+      ],
+      "sha256": "633d8171c9cf2ac5581ed7302f8747dbe25adbbb27ac4be02135bf6df42eb989"
+    },
+    {
+      "file": "zh-display.webp",
+      "language": "zh-CN",
+      "source": "branding/pico/details/source/zh-CN/04-display.png",
+      "crop_xywh": [
+        464,
+        220,
+        1632,
+        1020
+      ],
+      "dimensions": [
+        1632,
+        1020
+      ],
+      "sha256": "79050ec28af6637993155dd36826b6f8e387a6641a5cdc9724177198e1074ae4"
     }
   ]
 }

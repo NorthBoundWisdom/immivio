@@ -4,418 +4,153 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="color-scheme" content="dark light" />
-    <meta
-      name="application-name"
-      content="Immivio – VR Video Player"
-    />
-    <title>Immivio — 开发进展、更新说明与 APK 兼容性</title>
-    <meta
-      name="description"
-      content="免费开源 VR 播放器 Immivio 的开发进展与正式版本说明，了解 Meta Quest、PICO、OpenXR 安装包的功能、兼容性及历史版本。"
-    />
-    <link
-      rel="canonical"
-      href="https://northboundwisdom.github.io/immivio/zh/updates/"
-    />
-    <link
-      rel="alternate"
-      hreflang="zh-CN"
-      href="https://northboundwisdom.github.io/immivio/zh/updates/"
-    />
-    <link
-      rel="alternate"
-      hreflang="en"
-      href="https://northboundwisdom.github.io/immivio/updates/"
-    />
-    <link
-      rel="alternate"
-      hreflang="x-default"
-      href="https://northboundwisdom.github.io/immivio/updates/"
-    />
-    <meta
-      property="og:title"
-      content="Immivio — 开发进展、更新说明与 APK 兼容性"
-    />
-    <meta
-      property="og:description"
-      content="免费开源 VR 播放器 Immivio 的开发进展与正式版本说明，了解 Meta Quest、PICO、OpenXR 安装包的功能、兼容性及历史版本。"
-    />
+    <meta name="application-name" content="Immivio – VR Video Player" />
+    <title>Immivio 更新说明</title>
+    <meta name="description" content="Immivio 各版本中与日常使用相关的主要变化，按从新到旧排列，并说明安装包与发布渠道。" />
+    <meta name="robots" content="index,follow,max-image-preview:large" />
+    <link rel="canonical" href="https://northboundwisdom.github.io/immivio/zh/updates/" />
+    <link rel="alternate" hreflang="en" href="https://northboundwisdom.github.io/immivio/updates/" />
+    <link rel="alternate" hreflang="zh-CN" href="https://northboundwisdom.github.io/immivio/zh/updates/" />
+    <link rel="alternate" hreflang="x-default" href="https://northboundwisdom.github.io/immivio/updates/" />
     <meta property="og:type" content="website" />
-    <meta
-      property="og:url"
-      content="https://northboundwisdom.github.io/immivio/zh/updates/"
-    />
-    <meta
-      property="og:image"
-      content="https://northboundwisdom.github.io/immivio/assets/branding/immivio-social.jpg"
-    />
-    <meta name="twitter:card" content="summary_large_image" />
     <meta property="og:site_name" content="Immivio" />
     <meta property="og:locale" content="zh_CN" />
     <meta property="og:locale:alternate" content="en_US" />
+    <meta property="og:title" content="Immivio 更新说明" />
+    <meta property="og:description" content="Immivio 各版本中与日常使用相关的主要变化，按从新到旧排列，并说明安装包与发布渠道。" />
+    <meta property="og:url" content="https://northboundwisdom.github.io/immivio/zh/updates/" />
+    <meta property="og:image" content="https://northboundwisdom.github.io/immivio/assets/branding/immivio-social.jpg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="675" />
-    <meta property="og:image:alt" content="Immivio 环幕播放宣传插画" />
-    <meta
-      name="twitter:title"
-      content="Immivio — 开发进展、更新说明与 APK 兼容性"
-    />
-    <meta
-      name="twitter:description"
-      content="免费开源 VR 播放器 Immivio 的开发进展与正式版本说明，了解 Meta Quest、PICO、OpenXR 安装包的功能、兼容性及历史版本。"
-    />
-    <meta
-      name="twitter:image"
-      content="https://northboundwisdom.github.io/immivio/assets/branding/immivio-social.jpg"
-    />
-    <meta name="robots" content="index,follow,max-image-preview:large" />
+    <meta property="og:image:alt" content="Immivio" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Immivio 更新说明" />
+    <meta name="twitter:description" content="Immivio 各版本中与日常使用相关的主要变化，按从新到旧排列，并说明安装包与发布渠道。" />
+    <meta name="twitter:image" content="https://northboundwisdom.github.io/immivio/assets/branding/immivio-social.jpg" />
+    <meta name="theme-color" content="#07090d" />
     <link rel="icon" href="../../assets/icon.png?v=20261106" type="image/png" />
     <link rel="apple-touch-icon" href="../../assets/icon.png?v=20261106" />
-    <link rel="stylesheet" href="../../assets/site.css" />
+    <link rel="stylesheet" href="../../assets/site.css?v=20261106" />
+    <script>document.documentElement.classList.add("js");try{var t=localStorage.getItem("immivio-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
     <script defer data-site-script src="../../assets/site.js"></script>
     <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@graph": [
-          {
-            "@type": "WebPage",
-            "@id": "https://northboundwisdom.github.io/immivio/zh/updates/#webpage",
-            "url": "https://northboundwisdom.github.io/immivio/zh/updates/",
-            "name": "Immivio — 开发进展、更新说明与 APK 兼容性",
-            "description": "免费开源 VR 播放器 Immivio 的开发进展与正式版本说明，了解 Meta Quest、PICO、OpenXR 安装包的功能、兼容性及历史版本。",
-            "inLanguage": "zh-CN",
-            "about": {
-              "@id": "https://northboundwisdom.github.io/immivio/#software"
-            },
-            "breadcrumb": {
-              "@id": "https://northboundwisdom.github.io/immivio/zh/updates/#breadcrumb"
-            }
-          },
-          {
-            "@type": "BreadcrumbList",
-            "@id": "https://northboundwisdom.github.io/immivio/zh/updates/#breadcrumb",
-            "itemListElement": [
-              {
-                "@type": "ListItem",
-                "position": 1,
-                "name": "Immivio",
-                "item": "https://northboundwisdom.github.io/immivio/zh/"
-              },
-              {
-                "@type": "ListItem",
-                "position": 2,
-                "name": "更新说明",
-                "item": "https://northboundwisdom.github.io/immivio/zh/updates/"
-              }
-            ]
-          }
-        ]
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://northboundwisdom.github.io/immivio/zh/updates/#webpage",
+      "url": "https://northboundwisdom.github.io/immivio/zh/updates/",
+      "name": "Immivio 更新说明",
+      "description": "Immivio 各版本中与日常使用相关的主要变化，按从新到旧排列，并说明安装包与发布渠道。",
+      "inLanguage": "zh-CN",
+      "isPartOf": {
+        "@type": "WebSite",
+        "name": "Immivio",
+        "url": "https://northboundwisdom.github.io/immivio/"
       }
+    }
+  ]
+}
     </script>
   </head>
-  <body data-theme="dark">
+  <body>
     <a class="skip" href="#main">跳到正文</a>
     <header class="site-header">
       <div class="wrap header-inner">
-        <a class="brand" href="../../zh/">
-          <img
-            src="../../assets/icon.png?v=20261106"
-            alt=""
-            width="39"
-            height="39"
-          />Immivio</a
-        >
+        <a class="brand" href="../../zh/"><img src="../../assets/icon.png?v=20261106" alt="" width="32" height="32" />Immivio</a>
         <nav class="nav" aria-label="主导航">
-          <a class="optional" href="../../zh/#experience">体验</a>
-          <a href="../../zh/#download">下载</a>
-          <a class="optional" href="../../zh/guide/">使用指南</a>
-          <a class="optional" href="../../zh/updates/">更新说明</a>
-          <a class="locale" href="../../updates/" lang="en">English</a>
-          <button
-            class="theme"
-            type="button"
-            data-theme-toggle
-            aria-label="切换深浅主题"
-            aria-pressed="false"
-          >
-            ◐
-          </button>
+          <a class="optional" href="../../zh/#features">功能</a><a href="../../zh/#download">下载</a><a class="optional" href="../../zh/guide/">使用指南</a><a class="optional" href="../../zh/updates/" aria-current="page">更新说明</a>
+          <a class="locale" href="../../updates/" lang="en">EN</a>
+          <button class="theme" type="button" data-theme-toggle aria-label="切换浅色与深色主题" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="moon"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="sun"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4l1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
         </nav>
       </div>
     </header>
-    <main id="main" class="wrap guide-layout">
-      <nav class="guide-nav" aria-label="更新说明目录">
-        <p class="eyebrow">更新说明</p>
-        <a href="#current">v0.9.6</a>
-        <a href="#v0-9-5">v0.9.5</a>
-        <a href="#development">开发构建</a>
-        <a href="#v0-9-4">v0.9.4</a>
-        <a href="#v0-9-3">v0.9.3</a>
-        <a href="#v0-9-2">v0.9.2</a>
-        <a href="#v0-9-1">v0.9.1</a>
-        <a href="#v0-9-0">v0.9.0</a>
-        <a href="#compatibility">安装包兼容性</a>
-        <a href="#history">历史版本</a>
-      </nav>
-      <article class="guide-content">
-        <p class="eyebrow">IMMIVIO / 更新</p>
-        <h1>Immivio 的新变化。</h1>
-        <p>
-          这里按版本 tag 记录改动。Android APK 会在构建校验完成后附加到发布页；请核对下载选择器显示的版本及安装包对应的说明。
-        </p>
-        <section id="current">
-          <h2>v0.9.6 — 2026 年 11 月 6 日</h2>
-          <p>专注视频播放，统一网络入口，并优化播放小窗和文件管理布局。正式 APK 会在两个构建平台校验通过后附加到对应发布页。</p>
-          <ul>
-            <li>打开字幕、设置、队列、书签等小窗时，保留播放条、标题和时间轴；轻微头部跟随移动也不会误隐藏整层。等待新弹窗画面期间保留悬停反馈，控件显示后才接受点击。</li>
-            <li>文件管理内容使用统一四边内边距，网格／列表居中，滚动条内缩；设置与网络媒体切换时保持窗口连续显示。</li>
-            <li>SMB、DLNA、Emby、Jellyfin、Plex、Stash、XBVR 统一放入“网络媒体”，添加／管理来源直接进入对应表单。补齐来源标题，避免延迟返回的后台列表关闭添加页面。</li>
-            <li>移除照片播放、图库、空间／HEIF 解码和照片手势。本地始终显示视频与文件夹，迁移旧照片设置和历史记录时保留原始文件。</li>
-            <li>各菜单默认下移 12 厘米；“设置 → 显示 → 窗口高度”可保存 −60 至 +30 厘米的偏移。</li>
-            <li>默认使用 appstore 编译渠道，不展示“检查更新”；GitHub tag 构建使用 web／Release，保留手动检查更新。</li>
-            <li>官网新增中英文隐私政策和用户协议，说明维护者不收集用户数据，并区分本地存储、可选媒体服务、主动反馈和网站托管。</li>
-          </ul>
-          <p>播放界面改动通过主机回归与移动镜头 GPU 像素检查，PICO 开发包已安装供真机验收。头显舒适度和媒体兼容性仍以对应设备为准；位图字幕仍不支持。</p>
-          <p><a href="https://github.com/NorthBoundWisdom/immivio/releases/tag/v0.9.6">v0.9.6 发布与 APK →</a> · <a href="../guide/">安装与操作指南 →</a></p>
-        </section>
-        <section id="v0-9-5">
-          <h2>v0.9.5 — 2026 年 11 月 5 日</h2>
-          <p>新增双语文字字幕、媒体来源改进与更清晰的曲面界面。Quest、PICO 和实验性 OpenXR APK 会在两个构建平台校验通过后附加到对应发布页；仅有源码归档时还不能安装。</p>
-          <ul>
-            <li>双语文字字幕、主／第二轨选择、共享字幕延迟与逐视频记忆；平面视频字幕可放到画面下方，支持旋转与躺卧放置。</li>
-            <li>外挂字幕编码检测、按轨覆盖与文件名筛选。转换失败保留原字幕，原文件保持不变。</li>
-            <li>Emby／Jellyfin 多版本选择、文件夹兼容与受播放历史开关控制的播放回报。跨客户端非默认版本续播仍有已知限制。</li>
-            <li>符合条件的 Android 打开／分享视频入口、手动检查更新、设备支持的刷新率选择和默认优先 72 Hz。</li>
-            <li>更清晰的中文字形、下拉框和未选中控件，滚动时保留导航，并预热六类入口。播放与照片子页面统一使用随观看距离调整的曲面。</li>
-            <li>播放控件等首帧布局确定后一次显示；文件浏览与设置、字幕、队列、书签页面互斥。修复高亮框边缘抗锯齿，视频名称和电量／时间胶囊也能接住中性射线点，点击信息区不会误触发操作或关闭控件。</li>
-            <li>平面视频支持 0.1–50 米与 5%–3000% 大小，资料库／菜单距离上限为 4 米；照片保留独立范围。</li>
-            <li>沉浸式画面的抓握＋摇杆调整、逐文件偏好、左手手掌菜单与独立捏合手设置。列表和拖动期间保持输入互斥。</li>
-            <li>有界且隐藏敏感信息的本地诊断日志、手动导出和更明确的 USB 权限／回退提示。设备体验与媒体兼容仍以真机验收为准。</li>
-          </ul>
-          <p>字幕仅支持文字，位图字幕仍不支持；服务器非默认版本的跨客户端续播仍有限制。最新界面改动通过主机、GPU 像素和 Android 虚拟机检查，真机交互与舒适度仍需对应版本的设备验收。</p>
-          <p><a href="https://github.com/NorthBoundWisdom/immivio/releases/tag/v0.9.5">v0.9.5 发布与 APK →</a> · <a href="../guide/">安装与操作指南 →</a></p>
-        </section>
-        <section id="development">
-          <h2>开发构建</h2>
-          <p>主分支构建可能包含后续改动。<a href="https://github.com/NorthBoundWisdom/immivio/actions/workflows/android-release.yml">成功的工作流与 APK 制品 →</a>（需要登录 GitHub）。</p>
-          <p>本地 PICO appstore 出包默认使用 Release，按上传要求校验实际 APK 的固定商店签名、SDK、ARM64 等信息，并输出检查报告；显式 Debug 构建仍用于开发调试。</p>
-          <p>更新应用／官网图标、首页宣传图和分享预览，使用统一的环幕播放视觉；保留整套原始素材，并生成自适应／单色图标和 PICO 后台分层素材。</p>
-          <p>开发输出按安装包、测试、截图、日志等分类；旧文件保留归档，新增按分类清理和安装包查找，APK 检查后不再堆积展开的原生库。</p>
-        </section>
-        <section id="v0-9-4">
-          <h2>v0.9.4 — 2026 年 10 月 24 日</h2>
-          <ul>
-            <li>新增本地、SMB 与兼容 HTTP 来源的 STRM 索引播放，显示加载阶段、等待时间、视频读取速度和明确的播放错误。</li>
-            <li>新增目录位置记忆、逐目录排序、列表／图标切换，以及保留播放控制栏的紧凑／完整媒体库。</li>
-            <li>新增控制栏空间锁与底板透明度；提供平面影院银幕预设、距离、大小、曲率、视线高度和可固定的观看默认布局。</li>
-            <li>修复媒体库与控制栏同时显示时的原生合成和射线点击、影院预设选择与对数距离滑块。观影时自动隐藏闲置手柄。</li>
-            <li>采用独立包名 <code>com.northboundwisdom.immivio</code>，与旧版分别安装，数据不会自动迁移。签名保持项目独立，不使用公司产品的签名。</li>
-            <li>新增 PICO 启动入口，重复打开时复用正在运行的 VR 播放器。PICO 可通过「资源库 → 未知来源 → Immivio」进入侧载版本。</li>
-            <li>移除网盘与 WebDAV 集成，保留本地、SMB、DLNA 和支持的媒体服务器，并简化依赖准备。</li>
-          </ul>
-          <p>相关改动已在 PICO 4 上进行自动化真机检查；兼容性与交互表现仍取决于设备和媒体来源。</p>
-          <p>v0.9.4 的 Quest、PICO 和实验性 OpenXR 正式 APK 已在发布页提供；选择与你的头显对应的文件。</p>
-          <p><a href="https://github.com/NorthBoundWisdom/immivio/releases/tag/v0.9.4">v0.9.4 发布与 APK →</a> · <a href="../guide/">安装与操作指南 →</a></p>
-        </section>
-        <section id="v0-9-3">
-          <h2>v0.9.3 — 2026 年 10 月 14 日</h2>
-          <ul>
-            <li>
-              在现有弹窗中直接重置调色、字幕、校时、双眼校准与照片滑块。调色页重置只影响当前三个控件，“重置自定义”仍可恢复整套自定义参数。
-            </li>
-            <li>
-              调色预设保留原始、暖色、冷色与自定义。旧版 Daylight
-              选择恢复为原始，同时保留已保存的自定义调整。
-            </li>
-            <li>
-              改善 Windows 与 macOS
-              构建可靠性，精简播放依赖。所有头显安装包使用同一套经过校验的
-              Android mpv／FFmpeg 播放实现。
-            </li>
-            <li>
-              加强播放控制、视频几何、下载与缩略图捕获回归。无头测试必须明确完成，并使用独立的设置与缓存。
-            </li>
-          </ul>
-          <p>
-            两端正式构建与校验完成后，经过验证的 APK 会自动附加到本版本发布页。
-          </p>
-          <p>
-            <a
-              href="https://github.com/NorthBoundWisdom/immivio/releases/tag/v0.9.3"
-              >v0.9.3 发布与 APK →</a
-            >
-            · <a href="../guide/">安装与操作指南 →</a>
-          </p>
-        </section>
-        <section id="v0-9-2">
-          <h2>v0.9.2 — 2026 年 10 月 14 日</h2>
-          <ul>
-            <li>
-              播放页改为紧凑的单行工具栏，字幕、速度、调色、瞳距、校时、播放队列与来源信息各自打开小弹窗。
-            </li>
-            <li>
-              视频名称与电量、时钟并列，长名称省略中间内容；关闭按钮独立，上一条／播放／下一条居中。控制条靠近
-              20%，进度条略向下并缩减留白。
-            </li>
-            <li>
-              播放完最后一帧后自动切换下一条，队列结束返回文件页。移除循环、添加书签与跳转方式控制，保留已存书签。
-            </li>
-            <li>
-              音量跟随系统，移除播放工具栏上的音量、音轨、帧率、屏幕旋转与重新居中按钮。
-            </li>
-            <li>
-              长按 Home
-              后在同一帧取得更新的追踪位置，只定位一次；窗口保持记忆的水平距离，不再隐藏窗口。
-            </li>
-            <li>关于页更新为当前仓库地址，并移除联系邮箱。</li>
-          </ul>
-          <p>
-            本机主机、JVM、Go、工作流、发布与网站回归已通过，PICO
-            安装包已装到真机。推送标签会自动创建 Release；两端 Android
-            构建通过后自动附加校验过的 APK。
-          </p>
-          <p>
-            <a href="https://github.com/NorthBoundWisdom/immivio/releases"
-              >已发布 APK →</a
-            >
-            · <a href="../guide/">安装与操作指南 →</a>
-          </p>
-        </section>
-        <section id="v0-9-1">
-          <h2>v0.9.1 — 2026 年 10 月 13 日</h2>
-          <ul>
-            <li>
-              PICO
-              自动追踪空间重置通知不再让窗口跳位。需要把内容移回面前时，可使用应用内手动居中。
-            </li>
-            <li>
-              移除低帧率触发、持续关闭原生菜单合成层的回退逻辑，保留高分辨率原生界面与
-              MSDF 字体渲染。
-            </li>
-            <li>
-              打开或手动居中文件窗口时，将完整布局的视觉中心放到当前视线正前方，保留直立／躺卧偏好；除非开启“跟随”，定位后窗口保持固定。
-            </li>
-          </ul>
-          <p>
-            上述修复已在 PICO 4
-            真机确认：窗口稳定、文字清晰，文件窗口位置合适。其他构建主机交由 CI
-            校验，安装包会在标签构建成功后出现在正式发布列表中。
-          </p>
-          <p>
-            <a href="https://github.com/NorthBoundWisdom/immivio/releases"
-              >已发布 APK →</a
-            >
-            · <a href="../guide/">安装与操作指南 →</a>
-          </p>
-        </section>
-        <section id="v0-9-0">
-          <h2>v0.9.0 — 2026 年 10 月 13 日</h2>
-          <ul>
-            <li>
-              统一为播放已有立体与空间内容的媒体播放器。实时 AI
-              深度、人物抠像和基于模型的照片转换已下线。
-            </li>
-            <li>
-              按视频保存明确选择的音轨和字幕，跨启动记住音量与静音。双击音量图标可静音或恢复声音。
-            </li>
-            <li>
-              文字字幕提供五种配色，音频与字幕可分别校时。保存的播放队列支持循环、随机与自动连播。
-            </li>
-            <li>
-              照片墙可排列为 1～3
-              行，按视频记住双眼对齐；悬停提示可展开显示长文件名。
-            </li>
-            <li>
-              DLNA 元数据不完整时保留字幕，关闭视频后恢复之前的资料库浏览位置。
-            </li>
-            <li>
-              重构播放帧校验与资源所有权，移除已下线的推理缓冲区，并拆分应用控制器以便后续维护。
-            </li>
-            <li>
-              使用预先安装的开发工具、经过校验的 OpenXR 插件包和 Android
-              播放库，简化依赖管理。
-            </li>
-          </ul>
-          <p>
-            这一里程碑完成了播放架构重构和依赖管理简化，并通过本机回归及 Android
-            打包检查。后续 PICO 真机修复见上方 v0.9.1 说明。
-          </p>
-          <p>
-            <a href="https://github.com/NorthBoundWisdom/immivio/releases"
-              >已发布 APK →</a
-            >
-            · <a href="../guide/">安装与操作指南 →</a>
-          </p>
-        </section>
-        <section id="compatibility">
-          <h2>选择适合头显的安装包。</h2>
-          <p>
-            Quest 和 PICO 设备分别使用对应 APK。通用 OpenXR
-            属于实验支持，需要兼容的 Android 运行时。源码 ZIP／TAR
-            压缩包供开发者使用。
-          </p>
-          <p>
-            所有安装包使用同一播放路径，提供文本字幕与 SBS／TB
-            打包立体视频播放。 当前不提供位图字幕轨道；MV-HEVC
-            双视图视频与杜比视界色彩准确性尚未验证， 文件名本身不能证明兼容性。
-          </p>
-          <p>
-            覆盖更新需要匹配的 Android 应用身份与签名。由其他发布者或临时 CI
-            密钥签名的包，可能需要另行安装。
-          </p>
-          <p>
-            当前没有 2D 转 3D
-            或人物抠像版本。历史发布说明可能记录已经下线的功能。
-          </p>
-        </section>
-        <section id="history">
-          <h2>历史与源码变化</h2>
-          <p>
-            Immivio 从原项目 0.6.0 基线起独立开发。<a
-              href="https://github.com/NorthBoundWisdom/immivio/releases"
-              >正式发布版本</a
-            >附带各自的安装包说明；<a
-              href="https://github.com/NorthBoundWisdom/immivio/blob/main/CHANGELOG.md"
-              >源码更新日志（英文）</a
-            >保留早期里程碑。
-          </p>
-          <p>
-            开发环境现在预先安装基础工具和 Android 媒体库。Gradle
-            管理应用依赖，OpenXR 插件单独准备和校验。开发者可查看<a
-              href="https://github.com/NorthBoundWisdom/immivio/blob/main/docs/BUILD.md"
-              >源码构建说明（英文）</a
-            >。
-          </p>
-        </section>
-      </article>
-    </main>
-    <footer class="site-footer wrap">
-      <div class="footer-top">
-        <p>
-          基于
-          <a href="https://github.com/zerochocobo/Thru3D-Media-Player"
-            >zerochocobo/Thru3D-Media-Player</a
-          >
-          的 0.6.0 版本继续开发。从 0.6.0 起独立维护与发布，由 NorthBoundWisdom
-          维护，保留原项目署名、历史和 GPL-3.0 许可。
-        </p>
-        <div class="footer-links">
-          <a data-legal-link href="../privacy/">隐私政策</a>
-          <a data-legal-link href="../terms/">用户协议</a>
-          <a href="https://github.com/NorthBoundWisdom/immivio">GitHub ↗</a>
-          <a href="../../zh/updates/">更新说明 ↗</a>
-          <a href="https://github.com/NorthBoundWisdom/immivio/issues"
-            >反馈问题 ↗</a
-          >
-          <a
-            href="https://github.com/NorthBoundWisdom/immivio/blob/main/LICENSE"
-            >GPL-3.0 ↗</a
-          >
+    <main id="main">
+      <div class="doc-hero">
+        <div class="wrap">
+          <span class="eyebrow">更新说明</span>
+          <h1>Immivio 有哪些新变化</h1>
+          <p class="lede">按版本从新到旧，只记录影响日常使用的主要变化。完整记录见 <a href="https://github.com/NorthBoundWisdom/immivio/blob/main/CHANGELOG.md">CHANGELOG</a>。</p>
         </div>
       </div>
-      <div class="copyright">
-        <span>Immivio · NorthBoundWisdom</span>
-        <span>开源 · 独立维护 · GitHub Pages 托管</span>
+      <div class="wrap doc">
+        <nav class="toc" aria-label="本页目录"><p>本页目录</p><a href="#v0-9-7">v0.9.7</a><a href="#v0-9-6">v0.9.6</a><a href="#v0-9-5">v0.9.5</a><a href="#v0-9-4">v0.9.4</a><a href="#v0-9-3">v0.9.3</a><a href="#v0-9-2">v0.9.2</a><a href="#v0-9-1">v0.9.1</a><a href="#v0-9-0">v0.9.0</a><a href="#channels">安装包与渠道</a></nav>
+        <article class="prose">
+          <section id="v0-9-7" class="release">
+            <div class="release-head"><h2>v0.9.7</h2><time datetime="2026-11-06">2026 年 11 月 6 日</time> <span class="badge">最新</span></div>
+            <ul><li>更换应用图标，更新宣传图和分享预览。</li><li>全新设计中英文官网，换上当前版本的实际界面截图，并重写使用指南、更新说明和 README。</li><li>新增中英文 PICO 商店详情图，展示示例视频播放与主要功能，并统一上传海报的尺寸和格式。</li><li>完善 PICO 商店安装包的发布前检查。</li></ul>
+          </section>
+          <section id="v0-9-6" class="release">
+            <div class="release-head"><h2>v0.9.6</h2><time datetime="2026-11-06">2026 年 11 月 6 日</time></div>
+            <ul><li>将共享文件夹、家庭媒体库和媒体服务器合并到“网络媒体”，添加来源更直观，修复添加页面意外返回的问题。</li><li>修复播放小窗、设置与网络媒体切换时的闪烁，改善轻微头部移动时播放条的稳定性。</li><li>统一文件管理页四周的留白，让列表和网格更整齐。</li><li>窗口默认下移 12 厘米；可在“设置 → 显示 → 窗口高度”中调整到舒服的位置。</li><li>区分商店版和官网版：商店版不显示“检查更新”，官网版保留手动检查。</li><li>官网新增中英文隐私政策和用户协议。</li></ul>
+          </section>
+          <section id="v0-9-5" class="release">
+            <div class="release-head"><h2>v0.9.5</h2><time datetime="2026-11-05">2026 年 11 月 5 日</time></div>
+            <ul><li>新增双语字幕，可同时显示两条文字字幕，并按视频记住选择；平面视频的字幕也可放在画面下方。</li><li>自动识别常见外挂字幕的文字编码，减少乱码；可按文件名查找和选择字幕，不改动原字幕文件。</li><li>Emby、Jellyfin 支持选择可直接播放的影片版本，并分别记住进度和设置；改进媒体库文件夹与 Plex 分类浏览。</li><li>支持从系统文件管理器打开或分享兼容的视频，改进 U 盘访问和错误提示。</li><li>优化中文显示、下拉框、手柄射线和窗口切换；播放控件等画面准备好后再显示，减少位置跳动和误触。</li><li>扩大平面画面的尺寸与距离调整范围，新增更方便的沉浸式画面移动和缩放；可选择左手、右手或双手捏合操作。</li><li>默认优先使用 72 Hz，并只列出设备支持的刷新率；新增播放顺序／随机切换，以及未识别视频沿用上次观看模式的选项。</li><li>新增手动检查更新和本地问题记录导出；取消应用内的重启、退出按钮，改用头显系统管理。</li></ul>
+          </section>
+          <section id="v0-9-4" class="release">
+            <div class="release-head"><h2>v0.9.4</h2><time datetime="2026-10-24">2026 年 10 月 24 日</time></div>
+            <ul><li>支持 STRM 视频快捷方式，可从本地、共享文件夹或兼容的视频链接打开。</li><li>记住文件夹位置和排序，新增列表／图标浏览，以及紧凑／完整窗口切换。</li><li>新增电视与影院屏幕预设，更方便地调整距离、大小和弯曲程度；可锁定播放控件位置并调整底板透明度。</li><li>显示加载状态、等待时间和读取速度；闲置手柄会自动隐藏，减少观影干扰。</li><li>改善 PICO 启动稳定性，修复文件浏览与播放控件同时显示时的点击问题；新版与旧版分别安装，旧数据不会自动迁移。</li><li>移除网盘和 WebDAV 功能，保留本地文件、局域网共享和支持的媒体服务器。</li></ul>
+          </section>
+          <section id="v0-9-3" class="release">
+            <div class="release-head"><h2>v0.9.3</h2><time datetime="2026-10-14">2026 年 10 月 14 日</time></div>
+            <ul><li>为字幕、画面调色、声音同步和双眼对齐等调节项增加独立重置，方便只恢复当前设置。</li><li>调色预设简化为原始、暖色、冷色和自定义；旧的日光预设按原始显示，同时保留自定义参数。</li></ul>
+          </section>
+          <section id="v0-9-2" class="release">
+            <div class="release-head"><h2>v0.9.2</h2><time datetime="2026-10-14">2026 年 10 月 14 日</time></div>
+            <ul><li>将字幕、倍速、调色、同步和队列等操作收进一条紧凑播放栏，通过小窗调整。</li><li>重新整理文件名、电量、时间和播放按钮的位置，控件更靠近、更容易操作。</li><li>影片结束后自动播放队列下一条，全部播完后回到原文件夹；取消循环播放和新增书签入口，已有书签保留。</li><li>音量统一交给头显系统控制，改善重新居中后的画面与菜单位置。</li></ul>
+          </section>
+          <section id="v0-9-1" class="release">
+            <div class="release-head"><h2>v0.9.1</h2><time datetime="2026-10-13">2026 年 10 月 13 日</time></div>
+            <ul><li>优化 PICO 4 菜单显示与文件浏览窗口的位置。</li><li>修复系统自动重新定位时画面和窗口意外移动的问题，保留应用内手动重新居中。</li><li>改善播放帧率较低时的菜单显示稳定性。</li></ul>
+          </section>
+          <section id="v0-9-0" class="release">
+            <div class="release-head"><h2>v0.9.0</h2><time datetime="2026-10-13">2026 年 10 月 13 日</time></div>
+            <ul><li>项目更名为 Immivio，开始独立维护，继续保持免费开源。</li><li>新增播放队列与顺序／随机播放，支持逐视频记住音轨、字幕和时间微调。</li><li>新增躺卧模式、画面跟随和更方便移动的曲面菜单，改善窗口与提示文字的位置稳定性。</li><li>提供五种字幕配色、双眼画面对齐设置和更完整的文件名提示；改进局域网字幕匹配。</li></ul>
+          </section>
+          <section id="channels">
+            <h2>安装包与渠道</h2>
+            <p>正式版 APK 会在构建验证完成后出现在 <a href="https://github.com/NorthBoundWisdom/immivio/releases">GitHub Releases</a> 中，并提供手动检查更新。商店版通过应用商店分发，不提供检查更新。开发版构建位于成功运行的 <a href="https://github.com/NorthBoundWisdom/immivio/actions/workflows/android-release.yml">Android 工作流</a> → Artifacts 中，下载需要登录 GitHub。</p><div class="table-wrap"><table><thead><tr><th>头显</th><th>安装包</th></tr></thead><tbody><tr><td>Meta Quest</td><td><code>Immivio-QUEST-…apk</code></td></tr><tr><td>PICO</td><td><code>Immivio-PICO-…apk</code></td></tr><tr><td>其他 Android OpenXR 头显（实验性）</td><td><code>Immivio-OpenXR-…apk</code></td></tr></tbody></table></div><p>0.9.0 之前的版本属于原项目历史，请查看<a href="https://github.com/NorthBoundWisdom/immivio/blob/main/CHANGELOG.md">完整更新日志</a>。</p>
+          </section>
+        </article>
+      </div>
+    </main>
+    <footer class="site-footer">
+      <div class="wrap footer-grid">
+        <div>
+          <a class="brand" href="../../zh/"><img src="../../assets/icon.png?v=20261106" alt="" width="28" height="28" />Immivio</a>
+          <p>免费开源的 VR 视频播放器，专注 PICO 与 Meta Quest 上的 3D 和沉浸式视频。</p>
+        </div>
+        <nav aria-label="产品">
+          <h2>产品</h2>
+          <ul>
+            <li><a href="../../zh/#download">下载</a></li>
+            <li><a href="../../zh/guide/">使用指南</a></li>
+            <li><a href="../../zh/updates/">更新说明</a></li>
+          </ul>
+        </nav>
+        <nav aria-label="项目">
+          <h2>项目</h2>
+          <ul>
+            <li><a href="https://github.com/NorthBoundWisdom/immivio">GitHub 源代码 ↗</a></li>
+            <li><a href="https://github.com/NorthBoundWisdom/immivio/issues">反馈问题 ↗</a></li>
+            <li><a href="https://github.com/NorthBoundWisdom/immivio/blob/main/CHANGELOG.md">完整更新日志 ↗</a></li>
+            <li><a href="https://northboundwisdom.github.io/sonafolio/">SonaFolio — NorthBoundWisdom 的另一个项目 ↗</a></li>
+          </ul>
+        </nav>
+        <nav aria-label="法律">
+          <h2>法律</h2>
+          <ul>
+            <li><a href="../../zh/privacy/">隐私政策</a></li>
+            <li><a href="../../zh/terms/">用户协议</a></li>
+            <li><a href="https://github.com/NorthBoundWisdom/immivio/blob/main/LICENSE">GPL-3.0 许可证 ↗</a></li>
+          </ul>
+        </nav>
+      </div>
+      <div class="wrap footer-base">
+        <span>本项目延续自 <a href="https://github.com/zerochocobo/Thru3D-Media-Player">zerochocobo/Thru3D-Media-Player</a> 0.6.0 版本，保留原有署名、历史与许可证。</span>
+        <span>Immivio · 由 NorthBoundWisdom 独立维护 · 托管于 GitHub Pages</span>
       </div>
     </footer>
   </body>
