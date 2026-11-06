@@ -4,7 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.android) apply false
 }
 
-def prepared = file('../build/android.properties')
+def prepared = file('../build/android/android.properties')
 if (!prepared.isFile()) {
     throw new GradleException('Run python3 configs/android_workflow.py configure after preparing the OpenXR addon.')
 }

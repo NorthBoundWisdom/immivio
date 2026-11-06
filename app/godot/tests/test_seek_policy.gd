@@ -151,7 +151,7 @@ func _initialize() -> void:
 func _run() -> void:
 	preload("res://scripts/i18n.gd").use("zh")
 	var directory := ProjectSettings.globalize_path(
-		"res://../../build/output/seek-policy-host/" + str(Time.get_ticks_usec())
+		"res://../../build/tests/godot/seek-policy-host/" + str(Time.get_ticks_usec())
 	)
 	DirAccess.make_dir_recursive_absolute(directory)
 	var bridge := Host.new()

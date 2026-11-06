@@ -26,10 +26,12 @@ def prepare(packages, output, tag, commit):
     records = []
     directory = Path(packages)
     seen = set()
-    receipts = sorted(directory.glob("*.build.json"))
+    receipts = sorted(directory.rglob("*.build.json"))
     if len(receipts) != len(PLATFORMS):
         raise ValueError("Expected three Immivio build receipts")
     for receipt in receipts:
+        if receipt.is_symlink() or not receipt.resolve().is_relative_to(directory.resolve()):
+            raise ValueError("Release receipt escapes its input directory")
         record = json.loads(receipt.read_text(encoding="utf-8"))
         vendor = record.get("vendor")
         if vendor not in PLATFORMS or vendor in seen:
@@ -89,7 +91,7 @@ def prepare(packages, output, tag, commit):
             or receipt.name != Path(name).with_suffix(".build.json").name
         ):
             raise ValueError("Unsafe or mismatched release APK filename")
-        apk = directory / name
+        apk = receipt.parent / name
         if apk.is_symlink() or not apk.is_file() or sha256(apk) != record.get("sha256"):
             raise ValueError(
                 "Release APK is missing or differs from its verified receipt"
@@ -101,7 +103,7 @@ def prepare(packages, output, tag, commit):
             raise ValueError("Release receipt has an invalid signing certificate")
         records.append(record)
         assets.extend([apk, receipt])
-    if {p.name for p in directory.glob("*.apk")} != {r["apk"] for r in records}:
+    if set(directory.rglob("*.apk")) != {asset for asset in assets if asset.suffix == ".apk"}:
         raise ValueError("Unexpected APKs in the release input directory")
     # Validate the entire set before copying any publishable package.
     output = Path(output)

@@ -64,7 +64,7 @@ func add(catalog: RefCounted, uri: String) -> void:
 
 func _run() -> void:
 	var folder := ProjectSettings.globalize_path(
-		"res://../../build/output/recent-scan/" + str(Time.get_ticks_usec())
+		"res://../../build/tests/godot/recent-scan/" + str(Time.get_ticks_usec())
 	)
 	DirAccess.make_dir_recursive_absolute(folder)
 	var existing := folder.path_join("测试 + video.mp4")

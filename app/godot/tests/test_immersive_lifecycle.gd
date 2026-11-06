@@ -26,7 +26,7 @@ func aligned(viewer: Node3D) -> bool:
 func _run() -> void:
 	var main := Main.new()
 	var directory := ProjectSettings.globalize_path(
-		"res://../../build/output/vr-alignment-20261010/lifecycle"
+		"res://../../build/tests/godot/vr-alignment-20261010/lifecycle"
 	)
 	DirAccess.make_dir_recursive_absolute(directory)
 	main.settings_path = directory.path_join("settings.cfg")

@@ -62,7 +62,7 @@ func _initialize() -> void:
 func _run() -> void:
 	I18n.use("en")
 	var directory := ProjectSettings.globalize_path(
-		"res://../../build/output/audio-popup-host/" + str(Time.get_ticks_usec())
+		"res://../../build/tests/godot/audio-popup-host/" + str(Time.get_ticks_usec())
 	)
 	var video := Video.new()
 	video.bookmark_store = Store.new(directory.path_join("bookmarks"))

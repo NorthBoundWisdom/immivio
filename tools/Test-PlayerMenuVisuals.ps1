@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 $workspace = Split-Path -Parent $PSScriptRoot
 . "$PSScriptRoot/environment/Activate-QuestEnvironment.ps1"
-$output = Join-Path $workspace 'build/output/ui-polish'
+$output = Join-Path $workspace 'artifacts/captures/ui/ui-polish'
 New-Item -ItemType Directory -Force -Path $output | Out-Null
 $sourceHashes = @{}
 foreach ($file in Get-ChildItem "$workspace/app/godot/scripts", "$workspace/app/godot/shaders", "$workspace/app/godot/tests" -File) {

@@ -8,7 +8,7 @@ const Catalog := preload("res://scripts/recent_files.gd")
 const I18n := preload("res://scripts/i18n.gd")
 var checks := 0
 var failures: Array[String] = []
-var directory := ProjectSettings.globalize_path("res://../../build/output/view-follow")
+var directory := ProjectSettings.globalize_path("res://../../build/tests/godot/view-follow")
 
 
 class SupportedDisplay:

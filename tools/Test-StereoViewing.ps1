@@ -2,7 +2,7 @@ param([string]$Godot = $(if ($env:GODOT_EXE) { $env:GODOT_EXE } else { (Get-Comm
 $ErrorActionPreference = 'Stop'
 $workspace = Split-Path -Parent $PSScriptRoot
 $projectDirectory = Join-Path $workspace 'app/godot'
-$outputDirectory = Join-Path $workspace 'build/output/stereo-view'
+$outputDirectory = Join-Path $workspace 'artifacts/captures/ui/stereo-view'
 New-Item -ItemType Directory -Force $outputDirectory | Out-Null
 # Avoid probing unrelated desktop USB controllers during offscreen visual checks.
 $env:SDL_JOYSTICK_HIDAPI = '0'

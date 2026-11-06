@@ -84,7 +84,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	test_path = ProjectSettings.globalize_path(
-		"res://../../build/output/mode-memory-host/" + str(Time.get_ticks_usec())
+		"res://../../build/tests/godot/mode-memory-host/" + str(Time.get_ticks_usec())
 	)
 	DirAccess.make_dir_recursive_absolute(test_path)
 	var uri := "content://local.documents/document/字幕%20VideoA"

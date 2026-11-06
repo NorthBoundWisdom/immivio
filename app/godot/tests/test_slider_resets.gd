@@ -87,7 +87,7 @@ func _run() -> void:
 	)
 
 	var directory := ProjectSettings.globalize_path(
-		"res://../../build/output/slider-resets/%d" % Time.get_ticks_usec()
+		"res://../../build/tests/godot/slider-resets/%d" % Time.get_ticks_usec()
 	)
 	DirAccess.make_dir_recursive_absolute(directory)
 	var main := Main.new()

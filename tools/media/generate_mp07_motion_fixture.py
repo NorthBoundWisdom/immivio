@@ -48,7 +48,7 @@ def main():
     # Preserve its image aspect, pad to UHD, and keep the complete two eyes.
     assert (stream["width"], stream["height"]) == (7350, 3972)
     assert 0 <= args.start <= float(source_info["format"]["duration"]) - 6
-    output = ROOT / "build/output/fixtures/mp07_motion_4k.mp4"
+    output = ROOT / "build/tests/media/fixtures/mp07_motion_4k.mp4"
     output.parent.mkdir(parents=True, exist_ok=True)
     source_hash = sha(source)
     command = [

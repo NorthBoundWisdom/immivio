@@ -65,7 +65,7 @@ Channels use mutually exclusive Godot export features (`immivio_appstore` / `imm
 
 `prepare_assets.py --download` explicitly downloads the OpenXR archive if its cache is missing or invalid. Run it without `--download` to verify the cache offline. `prepare-packages` prepares ordinary Gradle application package caches using their native manifests; it does not install Gradle, Python or any other host tool. Configure/Build/Test/Package consume prepared inputs offline. Gradle respects the host's normal cache locations and environment overrides. Valid caches let subsequent builds skip these preparation commands.
 
-Configure is explicit. Build/Test/Package reject missing or stale configuration; Package requires a successful current Build. `run` installs an already packaged APK on the attached device. Generated projects and outputs stay under ignored build directories. `python3 configs/android_workflow.py clean --dry-run` previews cleanup; `clean` removes `build/` while preserving the addon cache and signing material. Configure again afterward.
+Configure is explicit. Build/Test/Package reject missing or stale configuration; Package requires a successful current Build. `run` installs an already packaged APK on the attached device. Generated projects and outputs stay under ignored build directories. `python3 configs/android_workflow.py clean --dry-run` previews cleanup; `clean` defaults to the build scope, removing `build/` while preserving final packages, archives, addon caches and persistent signing material. Configure again afterward.
 
 ## PICO store APKs
 
@@ -86,6 +86,42 @@ Manual CI defaults to Release/appstore and uploads the store report alongside it
 If an actual `pvr.app.id` is embedded, set `IMMIVIO_PICO_APP_ID` to the real platform-assigned ID so validation can compare it. An APK without this optional field does not receive a fabricated ID. For an **already uploaded version in the same PICO track/region**, set `IMMIVIO_PICO_STORE_BASELINE` to its store-report JSON: validation then requires the same package/certificate, a nondecreasing versionCode and a different APK MD5. Do not treat an unsubmitted local build as an uploaded baseline. Portal state cannot be inferred from local packages.
 
 The current Godot/OpenXR APK reports its actual SDK metadata. The linked Unity/Unreal SDK thresholds for Swan devices in the US are outside this package's device scope; do not relabel the SDK or claim Swan support. A successful local report does not constitute PICO store approval: platform application/package binding, correct feature declarations, store artwork, developer identity/contact, privacy policy, applicable regional filings and device/content review still belong to submission. Existing public policy pages are [Privacy](https://northboundwisdom.github.io/immivio/zh/privacy/) and [Terms](https://northboundwisdom.github.io/immivio/zh/terms/).
+
+## Generated files and cleanup
+
+Generated files use one layout, shared by local builds, device/render tools and CI:
+
+| Directory | Contents | Cleanup |
+| --- | --- | --- |
+| `artifacts/packages/<PICO\|QUEST\|OpenXR>/<appstore\|web>/<release\|debug>/` | Installable APKs and their build/store reports | Kept by every automatic cleanup command |
+| `artifacts/packages/releases/<tag>/` | Verified three-platform publication bundle | Kept by every automatic cleanup command |
+| `artifacts/reports/` | CI summaries, release checks and move journals | Kept by default |
+| `artifacts/tests/` | Godot, JVM, workflow and native test results | `clean --scope tests` |
+| `artifacts/captures/` | UI, headset and branding verification images/reports | `clean --scope captures` |
+| `artifacts/logs/` | Build logs by platform/channel/type, manual/tool logs | `clean --scope logs` |
+| `artifacts/archive/` | Preserved historical output and old build experiments/dependencies | `clean --scope archive` only when no longer needed |
+| `build/android/` | Configuration state, generated Gradle properties and Godot API | `clean --scope build` |
+| `build/staging/` | Verified addon expansion and CI download staging | `clean --scope build` |
+| `build/intermediates/` | Editor helper scripts and temporary APK inspection | `clean --scope intermediates` (preserves configuration) |
+| `build/tests/`, `build/native/` | Temporary test inputs and native host builds | `clean --scope build` |
+
+Each output root has a generated `00-目录说明.txt`. Signing identities remain outside the repository in the persistent private configuration directory. Neither cleanup nor organization follows output-root symlinks or moves/deletes detected signing material. Dependency acquisition caches under `.cache/` also remain separate.
+
+```sh
+# These commands do not require an installed Android/Godot toolchain.
+python3 configs/android_workflow.py outputs
+python3 configs/android_workflow.py locate --vendor Pico
+python3 configs/android_workflow.py organize --dry-run
+python3 configs/android_workflow.py organize
+python3 configs/android_workflow.py clean --scope build --dry-run
+python3 configs/android_workflow.py clean --scope build
+python3 configs/android_workflow.py clean --scope logs
+python3 configs/android_workflow.py clean --scope intermediates
+```
+
+`locate` prints the latest existing verified package path for the requested profile; add `--channel web --build-type Debug` as needed. Its APK, `.build.json` and optional `.store-report.json` stay together. Package filenames do not change. `organize` moves old loose outputs without overwriting or deleting file data, keeps original names in historical archives, and records source/destination pairs in `artifacts/reports/organization/`. Unrecognized old build trees are archived under `artifacts/archive/legacy-build/`; their embedded absolute-path configurations are historical, not active configurations. Run Configure after migrating the layout. New APK inspection uses a temporary directory removed on success or failure, so repeated packaging no longer retains expanded copies of every native library.
+
+CI uploads the nested `packages/` and `reports/ci/` trees. The tag publisher verifies all three nested package/receipt pairs, rejects duplicates or unrelated APKs, and flattens the verified set into the public release bundle. CI hash lists use paths relative to `artifacts/`; public release hash lists use APK basenames.
 
 ## Playback libraries and formats
 

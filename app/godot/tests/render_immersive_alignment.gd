@@ -62,7 +62,7 @@ func source(layout: int) -> ImageTexture:
 
 func _run() -> void:
 	if output.is_empty():
-		output = ProjectSettings.globalize_path("res://../../build/output/vr-alignment-20261010")
+		output = ProjectSettings.globalize_path("res://../../artifacts/captures/ui/vr-alignment-20261010")
 	DirAccess.make_dir_recursive_absolute(output)
 	viewport = SubViewport.new()
 	viewport.size = Vector2i(257, 257)

@@ -282,7 +282,7 @@ func _run() -> void:
 	preload("res://scripts/i18n.gd").use("en")  # text checks are written in English
 	_check_video_queue()
 	var directory := ProjectSettings.globalize_path(
-		"res://../../build/output/player-menu-host/" + str(Time.get_ticks_usec())
+		"res://../../build/tests/godot/player-menu-host/" + str(Time.get_ticks_usec())
 	)
 	DirAccess.make_dir_recursive_absolute(directory)
 	var host := Host.new()

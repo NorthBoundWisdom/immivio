@@ -453,11 +453,11 @@ func _run() -> void:
 	for failure in failures:
 		push_error(failure)
 	DirAccess.make_dir_recursive_absolute(
-		ProjectSettings.globalize_path("res://../../build/output/hand-input")
+		ProjectSettings.globalize_path("res://../../build/tests/godot/hand-input")
 	)
 	(
 		FileAccess
-		. open("res://../../build/output/hand-input/verification.json", FileAccess.WRITE)
+		. open("res://../../build/tests/godot/hand-input/verification.json", FileAccess.WRITE)
 		. store_string(
 			JSON.stringify(
 				{"checks": checks, "failures": failures, "physical_tracking": "not_verified"}, "\t"

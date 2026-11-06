@@ -76,16 +76,8 @@ def prepare_vendor_archive():
 
 
 def clean_build(root, *, dry_run=False):
-    from configs.workspace_lock import workspace_mutation_lock
-
-    with workspace_mutation_lock(root):
-        build = root / "build"
-        if build.is_symlink():
-            raise RuntimeError(f"Refusing to clean symlinked build directory: {build}")
-        if dry_run and build.exists():
-            print(f"Would remove {build}")
-        if build.exists() and not dry_run:
-            shutil.rmtree(build)
+    from configs.output_paths import clean
+    clean(root, "build", dry_run)
 
 
 def export_dependencies():
@@ -101,7 +93,7 @@ def export_dependencies():
 def stage_vendors():
     from configs import player_build as player
 
-    destination = ROOT / "build/vendors"
+    destination = ROOT / "build/staging/vendors"
     player.extract(vendors_archive(), destination)
     shutil.copytree(
         destination / "asset/addons/godotopenxrvendors",

@@ -14,7 +14,7 @@ class SupportedDisplay:
 var checks := 0
 var failures: Array[String] = []
 var folder := "user://background_test_%d" % Time.get_ticks_usec()
-var output := ProjectSettings.globalize_path("res://../../build/output/background-preview")
+var output := ProjectSettings.globalize_path("res://../../build/tests/godot/background-preview")
 
 
 func check(value: bool, message: String) -> void:

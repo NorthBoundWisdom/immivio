@@ -6,6 +6,8 @@ Newest first, following product release milestones. Entries under 0.6.0 and earl
 
 ## Unreleased
 
+- Organize generated packages by platform/channel/build type, separate logs, test results, captures and reports, and archive old outputs with a move journal. Add toolchain-free output discovery and scoped cleanup, update nested CI publication, and remove temporary expanded APK libraries after each inspection.
+
 - Keep signing identities in a persistent user configuration directory outside the repository/build artifacts. Preserve existing identities when migrating, refuse conflicting key replacement, and prepare the initial PICO store identity before any store version is on shelf.
 
 - Replace application/site icons and homepage/social artwork with the supplied immersive surround/play set. Preserve all six sources and hashes, generate adaptive/themed icons and PICO-ready layers, and distinguish promotional artwork from actual interface screenshots.
