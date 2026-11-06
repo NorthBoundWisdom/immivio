@@ -2,7 +2,7 @@ extends SceneTree
 const Main := preload("res://scripts/main.gd")
 const Tests := preload("res://tests/test_view_follow.gd")
 const Menu := preload("res://scripts/ray_menu.gd")
-var output := ProjectSettings.globalize_path("res://../../build/output/view-follow/render")
+var output := ProjectSettings.globalize_path("res://../../artifacts/captures/ui/view-follow/render")
 var failures: Array[String] = []
 var checks := 0
 

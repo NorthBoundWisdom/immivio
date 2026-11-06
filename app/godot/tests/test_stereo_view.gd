@@ -21,7 +21,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var path := ProjectSettings.globalize_path(
-		"res://../../build/output/stereo-view/memory-" + str(Time.get_ticks_usec())
+		"res://../../build/tests/godot/stereo-view/memory-" + str(Time.get_ticks_usec())
 	)
 	var memory := Memory.new(path)
 	var base := {

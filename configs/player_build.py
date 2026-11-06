@@ -18,6 +18,7 @@ import shutil
 import subprocess
 import sys
 import time
+import tempfile
 from urllib.parse import urlsplit
 import zipfile
 
@@ -25,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CACHE = ROOT / ".cache"
 PROJECT = ROOT / "app/godot"
 BIN = PROJECT / "addons/quest_player/bin"
-LOGS = ROOT / "artifacts/logs"
+LOGS = ROOT / "artifacts/logs/build/common"
 from configs.android_manifest import ANDROID, verify_xmltree
 from configs.dependencies import (
     TOOLCHAIN,
@@ -68,7 +69,10 @@ def run(
     if log:
         LOGS.mkdir(parents=True, exist_ok=True)
         path = LOGS / log
+        path.parent.mkdir(parents=True, exist_ok=True)
         stderr_path = LOGS / stderr_log if stderr_log else None
+        if stderr_path:
+            stderr_path.parent.mkdir(parents=True, exist_ok=True)
         def failure(message):
             detail = stderr_path.read_text(encoding="utf-8", errors="replace") if stderr_path else ""
             return RuntimeError(message + (f"; stderr ({stderr_log}):\n{detail}" if stderr_path else ""))
@@ -92,17 +96,17 @@ def run(
                             r"(?m)^(SCRIPT ERROR:|SHADER ERROR:|ERROR:)", text
                         ):
                             raise RuntimeError(
-                                f"Godot reported an error; see artifacts/logs/{log}"
+                                f"Godot reported an error; see {path}"
                             )
                     if time.monotonic() >= deadline:
                         raise RuntimeError(
-                            f"Command timed out after {timeout}s; see artifacts/logs/{log}"
+                            f"Command timed out after {timeout}s; see {path}"
                         )
                     time.sleep(0.2)
             finally:
                 stop_process(process)
         if process.returncode:
-            raise failure(f"Command failed; see artifacts/logs/{log}")
+            raise failure(f"Command failed; see {path}")
     else:
         subprocess.run(
             [str(x) for x in args], cwd=cwd, env=env, check=True, timeout=timeout
@@ -548,8 +552,13 @@ def variant_export_presets(channel="appstore"):
 
 
 def inspect_package(path, env, sdk):
-    native = ROOT / "artifacts/native-inspection" / path.stem
-    native.mkdir(parents=True, exist_ok=True)
+    directory = ROOT / "build/intermediates/apk-inspection"
+    directory.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=path.stem + "-", dir=directory) as temporary:
+        return _inspect_package(path, env, sdk, Path(temporary))
+
+
+def _inspect_package(path, env, sdk, native):
     with zipfile.ZipFile(path) as archive:
         if archive.testzip():
             raise RuntimeError("APK archive failed CRC validation")
@@ -733,7 +742,7 @@ def configure_project(args, env, sdk):
         raise RuntimeError(
             f"Install Android export templates matching {engine}, or pass --templates"
         )
-    api = ROOT / "build/godot-api/godot-lib.template_debug.aar"
+    api = ROOT / "build/android/godot-api/godot-lib.template_debug.aar"
     api.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(source_zip) as archive:
         api.write_bytes(archive.read("libs/debug/godot-lib.template_debug.aar"))
@@ -820,7 +829,7 @@ def configure_project(args, env, sdk):
     )
     configure_android_editor(args, env, sdk)
 
-    generated = ROOT / "build/android.properties"
+    generated = ROOT / "build/android/android.properties"
     generated.parent.mkdir(parents=True, exist_ok=True)
     generated.write_text(
         "\n".join(p[2:].replace("\\", "\\\\") for p in properties if p.startswith("-P"))
@@ -874,10 +883,10 @@ def package(args, env, sdk):
         r'(?m)^config/version="([^"]+)"', (PROJECT / "project.godot").read_text()
     )[1]
     platform_name = {"Quest": "QUEST", "Pico": "PICO", "OpenXR": "OpenXR"}[args.vendor]
-    output = (
-        ROOT
-        / f"artifacts/Immivio{development_suffix}-{platform_name}-{version}-{channel}-{variant}-{datetime.now():%Y%m%d}.apk"
-    )
+    from configs.output_paths import packages
+    output_directory = packages(ROOT, args.vendor, channel, args.build_type)
+    output_directory.mkdir(parents=True, exist_ok=True)
+    output = output_directory / f"Immivio{development_suffix}-{platform_name}-{version}-{channel}-{variant}-{datetime.now():%Y%m%d}.apk"
     preset = {"Quest": "Quest 3", "Pico": "PICO 4", "OpenXR": "OpenXR (Experimental)"}[
         args.vendor
     ]
@@ -918,7 +927,7 @@ def package(args, env, sdk):
         (LOGS / "base-godot-export.log").read_text(),
     ):
         raise RuntimeError(
-            "Godot export reported errors; see artifacts/logs/base-godot-export.log"
+            f"Godot export reported errors; see {LOGS / 'base-godot-export.log'}"
         )
     sha = inspect_package(output, env, sdk)
     with zipfile.ZipFile(output) as archive:
@@ -968,6 +977,7 @@ def package(args, env, sdk):
         **android_identity(),
         "signing_certificate_sha256": certificate[1],
         "apk": output.name,
+        "artifact_path": output.relative_to(ROOT / "artifacts").as_posix(),
         "sha256": sha,
         "product": "Immivio",
         "godot": engine,
@@ -987,7 +997,8 @@ def package(args, env, sdk):
 
 
 def configure_android_editor(args, env, sdk):
-    setup = ROOT / "build/configure_android_editor.gd"
+    setup = ROOT / "build/intermediates/scripts/configure_android_editor.gd"
+    setup.parent.mkdir(parents=True, exist_ok=True)
     setup.write_text(
         'extends SceneTree\nfunc _initialize():\n\tcall_deferred("_configure")\nfunc _configure():\n\tvar settings = EditorInterface.get_editor_settings()\n'
         + '\tsettings.set_setting("export/android/android_sdk_path", '
@@ -1029,7 +1040,7 @@ def configure_android_editor(args, env, sdk):
     ]
     if "ANDROID_EDITOR_CONFIGURED" not in setup_log or setup_errors:
         raise RuntimeError(
-            "Godot editor configuration failed; see artifacts/logs/base-editor-settings.log"
+            f"Godot editor configuration failed; see {LOGS / 'base-editor-settings.log'}"
         )
     run(
         [
@@ -1053,5 +1064,5 @@ def configure_android_editor(args, env, sdk):
         (LOGS / "base-godot-import.log").read_text(),
     ):
         raise RuntimeError(
-            "Godot import reported errors; see artifacts/logs/base-godot-import.log"
+            f"Godot import reported errors; see {LOGS / 'base-godot-import.log'}"
         )

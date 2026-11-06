@@ -9,6 +9,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from urllib.parse import quote
 import xml.etree.ElementTree as ET
 import zipfile
@@ -40,11 +41,11 @@ def validate_host_test_result(script, returncode, output):
 
 
 def host_tests(godot):
-    logs = player.ROOT / "artifacts/source-tests"
+    logs = player.ROOT / "artifacts/tests/godot"
     logs.mkdir(parents=True, exist_ok=True)
     env = os.environ.copy()
     # The test helper isolates user:// per case; Windows also redirects its base here.
-    userdata = player.ROOT / "artifacts/source-test-userdata"
+    userdata = player.ROOT / "build/tests/userdata"
     userdata.mkdir(parents=True, exist_ok=True)
     env.update(APPDATA=str(userdata), LOCALAPPDATA=str(userdata))
     player.run(
@@ -130,11 +131,10 @@ def signing_env(environ):
         return env, "ephemeral-ci-key"
     if not all(values):
         raise RuntimeError("Configure all three Android signing secrets, or none")
-    key = (
-        Path(env.get("RUNNER_TEMP", player.ROOT / "artifacts/signing"))
-        / "immivio-ci-release.keystore"
-    )
-    key.parent.mkdir(parents=True, exist_ok=True)
+    # Transported CI credentials belong in a private runner/OS temporary directory,
+    # never in project outputs or in the permanent local store identity.
+    temporary = tempfile.mkdtemp(prefix="immivio-ci-signing-", dir=env.get("RUNNER_TEMP"))
+    key = Path(temporary) / "immivio-ci-release.keystore"
     key.write_bytes(base64.b64decode(values[0], validate=True))
     if os.name != "nt":
         key.chmod(0o600)
@@ -151,7 +151,7 @@ def signing_env(environ):
 
 def check_export_path(templates, gradle, env):
     """Exercise the real template closure with Gradle, including Windows drive URIs."""
-    directory = player.ROOT / "build/ci-export-path"
+    directory = player.ROOT / "build/tests/export-path"
     directory.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(Path(templates) / "android_source.zip") as source:
         config = source.read("config.gradle").decode("utf-8")
@@ -212,43 +212,55 @@ def build_channel_for_ref(requested=None, environment=None):
     return selected
 
 
-def latest_receipt(vendor, build_type, channel="appstore"):
+def latest_receipt_file(vendor, build_type, channel="appstore"):
+    from configs.output_paths import packages, apk_for_receipt
+    directory = packages(player.ROOT, vendor, channel, build_type)
     platform = {"Pico": "PICO", "Quest": "QUEST", "OpenXR": "OpenXR"}[vendor]
-    paths = [
-        path for path in
-        (player.ROOT / "artifacts").glob(
-            f"Immivio-{platform}-*-{build_type.lower()}-*.build.json"
-        )
-        if json.loads(path.read_text()).get("channel") == channel
-    ]
-    if not paths:
-        raise RuntimeError("No packaged APK for this target")
-    path = max(paths, key=lambda p: p.stat().st_mtime)
-    return json.loads(path.read_text())
+    # Prefer the canonical profile; read flat legacy output only until migration.
+    pools = [list(directory.glob("*.build.json")), list((player.ROOT / "artifacts").glob(
+        f"Immivio-{platform}-*-{build_type.lower()}-*.build.json"))]
+    for paths in pools:
+        valid = []
+        for path in paths:
+            try:
+                record = json.loads(path.read_text())
+                apk = apk_for_receipt(path, record)
+                if (record.get("channel", "appstore") == channel and record.get("vendor") == vendor
+                    and record.get("build_type") == build_type and apk.is_file()
+                    and not path.is_symlink() and not apk.is_symlink()):
+                    valid.append(path)
+            except (ValueError, OSError):
+                continue
+        if valid:
+            return max(valid, key=lambda path: path.stat().st_mtime)
+    raise RuntimeError("No packaged APK for this target")
+
+
+def latest_receipt(vendor, build_type, channel="appstore"):
+    return json.loads(latest_receipt_file(vendor, build_type, channel).read_text())
 
 
 def ci_package_metadata(vendor, build_type, channel="appstore"):
-    receipt = latest_receipt(vendor, build_type, channel)
+    from configs.output_paths import ci_reports, apk_for_receipt
+    path = latest_receipt_file(vendor, build_type, channel)
+    receipt = json.loads(path.read_text())
     receipt.update(
         ci_ref=os.environ.get("GITHUB_REF", ""),
         ci_host=os.environ.get("RUNNER_OS", sys.platform),
-        ci_signing=(
-            "repository-signing-key"
-            if os.environ.get("CI_ANDROID_KEYSTORE_BASE64")
-            else "ephemeral-ci-key"
-        ),
+        ci_signing=("repository-signing-key" if os.environ.get("CI_ANDROID_KEYSTORE_BASE64") else "ephemeral-ci-key"),
     )
-    path = player.ROOT / "artifacts" / Path(receipt["apk"]).with_suffix(".build.json")
     path.write_text(json.dumps(receipt, indent=2) + "\n")
-    receipts = []
+    receipts, sums = [], []
     for v in ("Pico", "Quest", "OpenXR"):
         try:
-            receipts.append(latest_receipt(v, build_type, channel))
+            current = latest_receipt_file(v, build_type, channel)
+            record = json.loads(current.read_text())
+            receipts.append(record)
+            relative = apk_for_receipt(current, record).relative_to(player.ROOT / "artifacts").as_posix()
+            sums.append(f'{record["sha256"]}  {relative}\n')
         except RuntimeError:
             pass
-    (player.ROOT / "artifacts/SHA256SUMS.txt").write_text(
-        "".join(f'{r["sha256"]}  {r["apk"]}\n' for r in receipts)
-    )
-    (player.ROOT / "artifacts/ci-summary.json").write_text(
-        json.dumps(receipts, indent=2) + "\n"
-    )
+    directory = ci_reports(player.ROOT, channel, build_type)
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / "SHA256SUMS.txt").write_text("".join(sums))
+    (directory / "ci-summary.json").write_text(json.dumps(receipts, indent=2) + "\n")

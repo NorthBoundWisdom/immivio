@@ -1,15 +1,22 @@
-param([Parameter(Mandatory = $true)][string]$Serial, [switch]$Install)
+param([Parameter(Mandatory = $true)][string]$Serial, [switch]$Install, [string]$Apk)
 $ErrorActionPreference = 'Stop'
 $workspace = Split-Path -Parent $PSScriptRoot
 . "$PSScriptRoot/environment/Activate-QuestEnvironment.ps1"
 $adb = Join-Path $env:ANDROID_HOME 'platform-tools/adb.exe'
 $package = 'com.northboundwisdom.immivio'
-$directory = Join-Path $workspace ('build/output/device/' + (Get-Date -Format 'yyyyMMdd_HHmmss') + '_local_access_' + [guid]::NewGuid().ToString('N'))
+$directory = Join-Path $workspace ('artifacts/captures/device/' + (Get-Date -Format 'yyyyMMdd_HHmmss') + '_local_access_' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $directory -Force | Out-Null
-$build = Get-Content "$workspace/build/output/build_manifest.json" -Raw | ConvertFrom-Json
-$apk = "$workspace/build/output/quest3-player-debug.apk"
+if (-not $Apk) {
+    $located = & python "$workspace/configs/android_workflow.py" locate --vendor Quest --build-type Debug
+    if ($LASTEXITCODE -ne 0) { throw 'No verified Quest Debug package; specify -Apk explicitly.' }
+    $Apk = ([string]$located).Trim()
+}
+if (-not [IO.Path]::IsPathRooted($Apk)) { $Apk = Join-Path $workspace $Apk }
+$receipt = [IO.Path]::ChangeExtension($Apk, 'build.json')
+$build = Get-Content $receipt -Raw | ConvertFrom-Json
+if (-not $build.apk_sha256) { $build | Add-Member -NotePropertyName apk_sha256 -NotePropertyValue $build.sha256 }
 if ((Get-FileHash $apk -Algorithm SHA256).Hash.ToLowerInvariant() -ne $build.apk_sha256) { throw 'Candidate APK bytes differ from manifest' }
-Copy-Item "$workspace/build/output/build_manifest.json" $directory
+Copy-Item $receipt $directory
 & $adb -s $Serial shell dumpsys power | Set-Content "$directory/power-before.txt"
 & $adb -s $Serial shell dumpsys battery | Set-Content "$directory/battery-before.txt"
 if ($Install) {

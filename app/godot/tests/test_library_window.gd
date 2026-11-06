@@ -26,7 +26,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var main := InputMain.new()
-	var directory := ProjectSettings.globalize_path("res://../../build/output/library-window-test")
+	var directory := ProjectSettings.globalize_path("res://../../build/tests/godot/library-window-test")
 	DirAccess.make_dir_recursive_absolute(directory)
 	main.settings_path = directory.path_join("settings.cfg")
 	var settings := ConfigFile.new()

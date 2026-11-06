@@ -14,7 +14,7 @@ def main():
     source = ROOT / "app/godot/media/mp06_audio_clock.mp4"
     manifest = json.loads((ROOT / "tests/fixtures/mp06_audio_clock.json").read_text())
     assert hashlib.sha256(source.read_bytes()).hexdigest() == manifest["sha256"]
-    output_dir = ROOT / "build/output/fixtures/mp06_subtitles"
+    output_dir = ROOT / "build/tests/media/fixtures/mp06_subtitles"
     output_dir.mkdir(parents=True, exist_ok=True)
     texts = [
         (
@@ -68,7 +68,7 @@ def main():
             f"-disposition:s:{index}",
             "0",
         ]
-    output = ROOT / "build/output/fixtures/mp06_text_subtitles.mkv"
+    output = ROOT / "build/tests/media/fixtures/mp06_text_subtitles.mkv"
     # Matroska UIDs normally vary; bitexact fixes them for a locked local fixture.
     command += ["-fflags", "+bitexact"]
     subprocess.run(command + [str(output)], check=True)

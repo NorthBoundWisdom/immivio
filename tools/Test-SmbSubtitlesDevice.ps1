@@ -4,10 +4,17 @@ $workspace = Split-Path -Parent $PSScriptRoot
 . "$workspace\tools\environment\Activate-QuestEnvironment.ps1"
 $adb = Join-Path $env:ANDROID_HOME 'platform-tools\adb.exe'
 $package = 'com.northboundwisdom.immivio'
-$directory = Join-Path $workspace ('build\output\device\' + (Get-Date -Format 'yyyyMMdd_HHmmss') + '_smb_subtitles_' + [guid]::NewGuid().ToString('N'))
+$directory = Join-Path $workspace ('artifacts/captures/device/' + (Get-Date -Format 'yyyyMMdd_HHmmss') + '_smb_subtitles_' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $directory -Force | Out-Null
-$manifestPath = if ($BuildManifest) { $BuildManifest } else { "$workspace/build/output/build_manifest.json" }
+$manifestPath = $BuildManifest
+if (-not $manifestPath) {
+    $located = & python "$workspace/configs/android_workflow.py" locate --vendor Quest --build-type Debug
+    if ($LASTEXITCODE -ne 0) { throw 'No verified Quest Debug package; specify -BuildManifest explicitly.' }
+    $apk = ([string]$located).Trim()
+    $manifestPath = [IO.Path]::ChangeExtension($apk, 'build.json')
+}
 $build = Get-Content $manifestPath -Raw | ConvertFrom-Json
+if (-not $build.apk_sha256) { $build | Add-Member -NotePropertyName apk_sha256 -NotePropertyValue $build.sha256 }
 Copy-Item $manifestPath "$directory/build_manifest.json"
 $installed = ((& $adb -s $Serial shell pm path $package) | Where-Object { $_ -match '/base\.apk$' } | Select-Object -First 1) -replace '^package:', ''
 if ($installed -notmatch '^/data/app/[A-Za-z0-9_=/+.~\-]+/base\.apk$') { throw 'Installed APK path unavailable' }

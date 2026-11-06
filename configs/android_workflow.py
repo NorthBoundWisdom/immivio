@@ -61,7 +61,7 @@ def arguments_for(vendor, build_type, tools, channel="appstore"):
 
 def configuration_path(vendor, build_type, channel="appstore"):
     suffix = "" if channel == "appstore" else "-" + channel
-    return ROOT / f"build/configurations/{vendor}-{build_type}{suffix}.json"
+    return ROOT / f"build/android/state/{vendor}-{build_type}{suffix}.json"
 
 
 def input_signature(args):
@@ -138,6 +138,8 @@ def configure(args, env, sdk):
     player.prepare_mpv()
     # Stage the OpenXR vendor addon before configuring the Android project.
     stage_vendors()
+    from configs.output_paths import guides
+    guides(ROOT)
     player.configure_project(args, env, sdk)
     marker = configuration_path(args.vendor, args.build_type, player.distribution_channel(args))
     marker.parent.mkdir(parents=True, exist_ok=True)
@@ -153,7 +155,7 @@ def configure(args, env, sdk):
                 },
                 "sdk": str(sdk),
                 "java_home": env["JAVA_HOME"],
-                "generated_properties": digest(ROOT / "build/android.properties"),
+                "generated_properties": digest(ROOT / "build/android/android.properties"),
                 "staged_mpv": {
                     p.name: digest(p)
                     for p in (
@@ -187,11 +189,11 @@ def require_configuration(args, env, sdk):
         raise RuntimeError("Tool paths changed; run configure again")
     if (
         not (player.PROJECT / "android/build/build.gradle").is_file()
-        or not (ROOT / "build/godot-api/godot-lib.template_debug.aar").is_file()
+        or not (ROOT / "build/android/godot-api/godot-lib.template_debug.aar").is_file()
     ):
         raise RuntimeError("Generated configuration is missing; run configure again")
     if data.get("generated_properties") != digest(
-        ROOT / "build/android.properties"
+        ROOT / "build/android/android.properties"
     ) or data.get("staged_mpv") != {
         p.name: digest(p)
         for p in (ROOT / "android/player-plugin/src/main/jniLibs/arm64-v8a").glob(
@@ -268,25 +270,33 @@ def test(args, env, sdk, level):
                 "-v",
             ],
             env=env,
+            log=ROOT / "artifacts/tests/workflow/unittest.log",
         )
         player.run(
-            [sys.executable, ROOT / "tools/test_prepare_android_release.py"], env=env
+            [sys.executable, ROOT / "tools/test_prepare_android_release.py"], env=env, log=ROOT / "artifacts/tests/workflow/release-publisher.log"
         )
         from configs.ci_support import check_export_path
 
         check_export_path(args.templates, args.gradle, env)
     if level in ("l1", "all"):
-        player.run(
-            [
-                args.gradle,
-                "-p",
-                ROOT / "android",
-                "--offline",
-                ":player-plugin:testDebugUnitTest",
-            ],
-            env=env,
-            log="jvm-tests.log",
-        )
+        import shutil
+        try:
+            player.run(
+                [
+                    args.gradle,
+                    "-p",
+                    ROOT / "android",
+                    "--offline",
+                    ":player-plugin:testDebugUnitTest",
+                ],
+                env=env,
+                log="jvm-tests.log",
+            )
+        finally:
+            source = ROOT / "android/player-plugin/build/test-results/testDebugUnitTest"
+            if source.is_dir():
+                shutil.copytree(source, ROOT / "artifacts/tests/jvm", dirs_exist_ok=True)
+
     if level in ("l2", "all"):
         from configs.ci_support import host_tests
 
@@ -306,6 +316,9 @@ def main(argv=None):
             "run",
             "stop-gradle",
             "clean",
+            "organize",
+            "outputs",
+            "locate",
         ),
     )
     parser.add_argument("--vendor", choices=VENDORS, default="Quest")
@@ -320,18 +333,37 @@ def main(argv=None):
     )
     parser.add_argument("--level", choices=("l0", "l1", "l2", "all"), default="all")
     parser.add_argument(
-        "--dry-run", action="store_true", help="Preview clean without deleting files"
+        "--dry-run", action="store_true", help="Preview clean or organize without changing files"
     )
+    parser.add_argument("--scope", choices=("build", "intermediates", "logs", "tests", "captures", "archive"), help="Cleanup category; default build; packages and signing are never included")
     opts = parser.parse_args(argv)
-    if opts.dry_run and opts.command != "clean":
-        parser.error("--dry-run requires clean")
-    if opts.command == "clean":
-        clean_build(ROOT, dry_run=opts.dry_run)
+    if opts.dry_run and opts.command not in ("clean", "organize"):
+        parser.error("--dry-run requires clean or organize")
+    if opts.scope and opts.command != "clean":
+        parser.error("--scope requires clean")
+    if opts.command in ("clean", "organize", "outputs"):
+        from configs import output_paths
+        if opts.command == "clean":
+            output_paths.clean(ROOT, opts.scope or "build", opts.dry_run)
+        elif opts.command == "organize":
+            output_paths.organize(ROOT, opts.dry_run)
+        else:
+            print(json.dumps(output_paths.describe(ROOT), ensure_ascii=False, indent=2))
         return 0
     from configs.ci_support import build_type_for_ref, build_channel_for_ref
 
     opts.channel = build_channel_for_ref(opts.channel)
     opts.build_type = build_type_for_ref(opts.build_type, channel=opts.channel)
+    if opts.command == "locate":
+        from configs.ci_support import latest_receipt_file
+        from configs.output_paths import apk_for_receipt
+        path = latest_receipt_file(opts.vendor, opts.build_type, opts.channel)
+        record = json.loads(path.read_text())
+        apk = apk_for_receipt(path, record)
+        if digest(apk) != record.get("sha256"):
+            raise RuntimeError("APK differs from its receipt")
+        print(apk)
+        return 0
     if opts.command == "stop-gradle":
         import shutil
 
@@ -346,6 +378,8 @@ def main(argv=None):
         tools,
         opts.channel,
     )
+    from configs.output_paths import build_logs
+    player.LOGS = build_logs(ROOT, args.vendor, args.channel, args.build_type)
     env, sdk = player.environment(args)
     with player.build_lock():
         if opts.command == "configure":
@@ -374,10 +408,12 @@ def main(argv=None):
                 ci_package_metadata(args.vendor, args.build_type, args.channel)
         else:
             require_build(args)
-            from configs.ci_support import latest_receipt
+            from configs.ci_support import latest_receipt_file
+            from configs.output_paths import apk_for_receipt
 
-            receipt = latest_receipt(args.vendor, args.build_type, args.channel)
-            apk = ROOT / "artifacts" / receipt["apk"]
+            receipt_file = latest_receipt_file(args.vendor, args.build_type, args.channel)
+            receipt = json.loads(receipt_file.read_text())
+            apk = apk_for_receipt(receipt_file, receipt)
             if digest(apk) != receipt["sha256"]:
                 raise RuntimeError("APK differs from its receipt")
             adb = sdk / "platform-tools" / ("adb.exe" if os.name == "nt" else "adb")

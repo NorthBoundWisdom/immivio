@@ -1,6 +1,6 @@
 extends SceneTree
 var failures: Array[String] = []
-var output := ProjectSettings.globalize_path("res://../../build/output/compat-quality-20261007")
+var output := ProjectSettings.globalize_path("res://../../artifacts/captures/ui/compat-quality-20261007")
 
 
 func _initialize() -> void:

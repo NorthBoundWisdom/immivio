@@ -36,7 +36,7 @@ class BuildSourceChanges(unittest.TestCase):
                 (binaries / name).write_bytes(b"fixture-compiled-output")
             stack.enter_context(patch.object(android.player, "BIN", binaries))
             args = SimpleNamespace(vendor="Quest", build_type="Debug")
-            marker = root / "build/configurations/Quest-Debug.built.json"
+            marker = root / "build/android/state/Quest-Debug.built.json"
             marker.parent.mkdir(parents=True)
             yield root, args, marker
 
@@ -89,7 +89,7 @@ class BuildSourceChanges(unittest.TestCase):
                 "android/player-plugin/build/generated.kt",
                 "app/godot/android/build/generated.gd",
                 "app/godot/.godot/import.log",
-                "artifacts/source-tests/report.xml",
+                "artifacts/tests/godot/report.xml",
             ):
                 path = root / name
                 path.parent.mkdir(parents=True, exist_ok=True)

@@ -17,14 +17,14 @@ Settings migration tests preserve ordinary preferences, source masks and stereo 
 
 `test_library_padding.gd` checks production control geometry against the shared four-sided panel inset across grid/list file browsing, network source choices, settings, media-server pages and file selection. It verifies centred content, scrollbar edge spacing and the retained ray hit width. Run `render_library_padding.gd` with a real GPU and `IMMIVIO_PADDING_DIR` under `artifacts/` for deterministic synthetic screenshots without any network or personal-media access.
 
-The Android workflow offers `--level l0` (workflow and publication boundaries), `l1` (JVM integration), `l2` (Godot host behavior), and `all`. JVM tests use the configured dependencies offline. The Godot suite writes logs and JUnit results under `artifacts/source-tests/`. A passing process must also emit exactly one completion report for the script being run; reaching the frame limit without finishing is a failure.
+The Android workflow offers `--level l0` (workflow and publication boundaries), `l1` (JVM integration), `l2` (Godot host behavior), and `all`. JVM tests use the configured dependencies offline. The Godot suite writes logs and JUnit results under `artifacts/tests/godot/`. A passing process must also emit exactly one completion report for the script being run; reaching the frame limit without finishing is a failure.
 
 Native helper tests have one host entry point on macOS, Windows and Linux:
 
 ```sh
-cmake -S native -B build/native-host -DCMAKE_BUILD_TYPE=Release
-cmake --build build/native-host --config Release --parallel 2
-ctest --test-dir build/native-host -C Release --output-on-failure
+cmake -S native -B build/native/host -DCMAKE_BUILD_TYPE=Release
+cmake --build build/native/host --config Release --parallel 2
+ctest --test-dir build/native/host -C Release --output-on-failure
 ```
 
 These tests exercise the production JSON writer against an independent Python Unicode oracle, numeric seek tracing, and both production subtitle-channel snapshots (independent command IDs, shared delay metadata and invalid-timeline clearing), plus collision-safe subtitle-slot application order. They require CMake, a C++17 compiler and Python 3.11+, and keep assertions enabled in Release builds. GitHub CI runs them on both build hosts.
@@ -67,3 +67,5 @@ Keep the JSON file, credentials, server data, media and logs under ignored `arti
 Playback popup continuity: `test_playback_popup_continuity.gd` checks transport node retention, stable subtitle bounds, live timeline updates and capture-gated input. `test_playback_page_surfaces.gd` also covers compact-browser replacement without reanchoring. Run `render_playback_popup_continuity.gd` with the OpenGL compatibility renderer for three GPU frames at each open/close transition across ten production popups with ray clicks and a moving viewer. It compares the title/timeline pixels to the settled hover frame before each click; set `IMMIVIO_POPUP_FRAMES_DIR` to retain synthetic screenshots. This checks scene capture continuity; native headset comfort still requires wearer acceptance.
 
 `tests/workflow/test_pico_store.py` checks compiled store manifest/ZIP rules, real OpenXR metadata, package and version drift, ABI/channel/debug guards, signer mismatch, size, launcher duplication, optional app-ID validation and the same-track uploaded baseline. Store signing tests ensure a missing identity cannot silently generate a replacement key, artifact cleanup cannot remove a persistent identity, and legacy migration cannot overwrite a different key. A packaged PICO Release/appstore APK must also produce a passing `.store-report.json`; platform review remains separate.
+
+`test_output_paths.py` verifies move-only migration, package/receipt pairing, collision preservation, cleanup boundaries, private-key and symlink rejection, nested CI summaries and automatic removal of temporary native inspection files. Release tests exercise the nested CI download layout and flattened publication bundle. Host-test temporary inputs live under `build/tests/godot/`; saved render evidence lives under `artifacts/captures/ui/`.

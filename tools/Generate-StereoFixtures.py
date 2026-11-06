@@ -145,7 +145,7 @@ if __name__ == "__main__":
         "--output",
         type=Path,
         default=Path(__file__).resolve().parents[1]
-        / "build/output/stereo-view/fixtures",
+        / "build/tests/media/stereo-view/fixtures",
     )
     parser.add_argument("--seconds", type=float, default=6)
     parser.add_argument("--fps", type=int, default=24)

@@ -7,7 +7,7 @@ const HostTest := preload("res://tests/test_player_menu.gd")
 const SubtitleState := preload("res://scripts/mpv_subtitle_state.gd")
 var checks := 0
 var failures: Array[String] = []
-var directory := ProjectSettings.globalize_path("res://../../build/output/playback-tools")
+var directory := ProjectSettings.globalize_path("res://../../build/tests/godot/playback-tools")
 
 
 class Host:

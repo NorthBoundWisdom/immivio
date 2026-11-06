@@ -31,7 +31,7 @@
             "android/gradle/libs.versions.toml"
           ],
           "outputs": [
-            "build/configurations/Quest-Debug.json"
+            "build/android/state/Quest-Debug.json"
           ]
         },
         "default": true
@@ -65,7 +65,7 @@
             "android/gradle/libs.versions.toml"
           ],
           "outputs": [
-            "build/configurations/Quest-Release.json"
+            "build/android/state/Quest-Release.json"
           ]
         }
       },
@@ -98,7 +98,7 @@
             "android/gradle/libs.versions.toml"
           ],
           "outputs": [
-            "build/configurations/Pico-Debug.json"
+            "build/android/state/Pico-Debug.json"
           ]
         }
       },
@@ -131,7 +131,7 @@
             "android/gradle/libs.versions.toml"
           ],
           "outputs": [
-            "build/configurations/Pico-Release.json"
+            "build/android/state/Pico-Release.json"
           ]
         }
       },
@@ -164,7 +164,7 @@
             "android/gradle/libs.versions.toml"
           ],
           "outputs": [
-            "build/configurations/OpenXR-Debug.json"
+            "build/android/state/OpenXR-Debug.json"
           ]
         }
       },
@@ -197,7 +197,7 @@
             "android/gradle/libs.versions.toml"
           ],
           "outputs": [
-            "build/configurations/OpenXR-Release.json"
+            "build/android/state/OpenXR-Release.json"
           ]
         }
       },
@@ -229,7 +229,7 @@
             "android/gradle/libs.versions.toml"
           ],
           "outputs": [
-            "build/configurations/Quest-Debug.json"
+            "build/android/state/Quest-Debug.json"
           ]
         },
         "default": true
@@ -262,7 +262,7 @@
             "android/gradle/libs.versions.toml"
           ],
           "outputs": [
-            "build/configurations/Quest-Release.json"
+            "build/android/state/Quest-Release.json"
           ]
         }
       },
@@ -294,7 +294,7 @@
             "android/gradle/libs.versions.toml"
           ],
           "outputs": [
-            "build/configurations/Pico-Debug.json"
+            "build/android/state/Pico-Debug.json"
           ]
         }
       },
@@ -326,7 +326,7 @@
             "android/gradle/libs.versions.toml"
           ],
           "outputs": [
-            "build/configurations/Pico-Release.json"
+            "build/android/state/Pico-Release.json"
           ]
         }
       },
@@ -358,7 +358,7 @@
             "android/gradle/libs.versions.toml"
           ],
           "outputs": [
-            "build/configurations/OpenXR-Debug.json"
+            "build/android/state/OpenXR-Debug.json"
           ]
         }
       },
@@ -390,7 +390,7 @@
             "android/gradle/libs.versions.toml"
           ],
           "outputs": [
-            "build/configurations/OpenXR-Release.json"
+            "build/android/state/OpenXR-Release.json"
           ]
         }
       }

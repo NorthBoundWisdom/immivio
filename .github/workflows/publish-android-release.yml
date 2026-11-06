@@ -48,7 +48,7 @@ jobs:
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
         with:
           name: Immivio-Android-Release-macOS
-          path: artifacts/release-input/packages
+          path: build/staging/release-input
           run-id: ${{ inputs.run_id }}
           repository: ${{ github.repository }}
           github-token: ${{ github.token }}
@@ -57,15 +57,16 @@ jobs:
           SOURCE_COMMIT: ${{ steps.source.outputs.commit }}
         run: >-
           python3 tools/prepare_android_release.py
-          --packages artifacts/release-input/packages
-          --output artifacts/release --tag "$RELEASE_TAG" --commit "$SOURCE_COMMIT"
+          --packages build/staging/release-input
+          --output "artifacts/packages/releases/$RELEASE_TAG" --tag "$RELEASE_TAG" --commit "$SOURCE_COMMIT"
       - name: Publish APKs on the tag's GitHub Release
         run: |
-          assets=(artifacts/release/*.apk artifacts/release/*.build.json artifacts/release/SHA256SUMS.txt artifacts/release/release-manifest.json)
+          directory="artifacts/packages/releases/$RELEASE_TAG"
+          assets=("$directory"/*.apk "$directory"/*.build.json "$directory/SHA256SUMS.txt" "$directory/release-manifest.json")
           if gh release view "$RELEASE_TAG" --repo "$GH_REPO" >/dev/null 2>&1; then
             gh release upload "$RELEASE_TAG" "${assets[@]}" --repo "$GH_REPO" --clobber
-            gh release edit "$RELEASE_TAG" --repo "$GH_REPO" --notes-file artifacts/release/release-notes.md
+            gh release edit "$RELEASE_TAG" --repo "$GH_REPO" --notes-file "$directory/release-notes.md"
           else
             gh release create "$RELEASE_TAG" "${assets[@]}" --repo "$GH_REPO" --verify-tag \
-              --title "Immivio $RELEASE_TAG" --notes-file artifacts/release/release-notes.md
+              --title "Immivio $RELEASE_TAG" --notes-file "$directory/release-notes.md"
           fi

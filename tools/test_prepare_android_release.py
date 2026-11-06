@@ -58,6 +58,25 @@ class ReleaseAssets(unittest.TestCase):
             )
         return directory
 
+    def test_nested_ci_artifact_layout_is_verified_and_flattened_for_release(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary)
+            download=root/'downloaded';download.mkdir()
+            packages=self.fixture(download)
+            for receipt in list(packages.glob('*.build.json')):
+                record=json.loads(receipt.read_text())
+                folder=packages/release.PLATFORMS[record['vendor']]/'web/release'
+                folder.mkdir(parents=True)
+                (packages/record['apk']).rename(folder/record['apk'])
+                receipt.rename(folder/receipt.name)
+            output=root/'release'
+            reports=download/'reports/ci/web/release';reports.mkdir(parents=True)
+            (reports/'ci-summary.json').write_text('[]')
+            manifest=release.prepare(download,output,TAG,COMMIT)
+            self.assertEqual(len(manifest['packages']),3)
+            self.assertEqual(len(list(output.glob('*.apk'))),3)
+            self.assertFalse(any(p.is_dir() for p in output.iterdir()))
+
     def test_complete_tag_build_prepares_three_apks_receipts_hashes_and_notes(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

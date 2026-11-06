@@ -20,7 +20,7 @@ func _initialize() -> void:
 
 
 func _run() -> void:
-	output = ProjectSettings.globalize_path("res://../../build/output/stereo-view/render")
+	output = ProjectSettings.globalize_path("res://../../artifacts/captures/ui/stereo-view/render")
 	DirAccess.make_dir_recursive_absolute(output)
 	await _menus()
 	viewport = SubViewport.new()

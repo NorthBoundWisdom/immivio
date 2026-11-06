@@ -1,5 +1,5 @@
-param([Parameter(Mandatory = $true)][string]$Serial, [string]$Apk = 'build/output/quest3-player-seek-hold-signed-debug.apk',
-    [string]$Output = 'build/output/device/seek-hold/run', [string[]]$Modes = @('normal', 'alpha', 'depth'),
+param([Parameter(Mandatory = $true)][string]$Serial, [Parameter(Mandatory = $true)][string]$Apk,
+    [string]$Output = 'artifacts/captures/device/seek-hold/run', [string[]]$Modes = @('normal', 'alpha', 'depth'),
     [string]$FixtureOverride = '', [int]$Projection = -1)
 $ErrorActionPreference = 'Stop'
 $workspace = Split-Path -Parent $PSScriptRoot
@@ -7,7 +7,7 @@ $adb = (Get-Command adb -ErrorAction Stop).Source
 $package = 'com.northboundwisdom.immivio'
 $directory = Join-Path $workspace $Output
 New-Item -ItemType Directory -Path $directory -Force | Out-Null
-$apkPath = Join-Path $workspace $Apk
+$apkPath = if ([IO.Path]::IsPathRooted($Apk)) { $Apk } else { Join-Path $workspace $Apk }
 $installed = (( & $adb -s $Serial shell pm path $package) | Where-Object { $_ -match '/base\.apk$' } | Select-Object -First 1) -replace '^package:', ''
 if ($installed -notmatch '^/data/app/[A-Za-z0-9_=/+.~\-]+/base\.apk$') { throw 'Unexpected installed APK path' }
 $installedHash = (( & $adb -s $Serial shell sha256sum $installed) -split '\s+')[0]

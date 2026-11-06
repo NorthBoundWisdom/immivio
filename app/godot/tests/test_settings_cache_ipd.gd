@@ -22,7 +22,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var directory := ProjectSettings.globalize_path(
-		"res://../../build/output/settings-cache-ipd-test/%d" % Time.get_ticks_usec()
+		"res://../../build/tests/godot/settings-cache-ipd-test/%d" % Time.get_ticks_usec()
 	)
 	DirAccess.make_dir_recursive_absolute(directory)
 	var state: Dictionary = Warmup.STATE.duplicate(true)

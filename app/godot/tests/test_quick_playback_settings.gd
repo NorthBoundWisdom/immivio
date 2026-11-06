@@ -63,7 +63,7 @@ func _initialize() -> void:
 
 
 func _run() -> void:
-	var folder := ProjectSettings.globalize_path("res://../../build/output/quick-playback-settings")
+	var folder := ProjectSettings.globalize_path("res://../../build/tests/godot/quick-playback-settings")
 	DirAccess.make_dir_recursive_absolute(folder)
 	var main := Main.new()
 	main.settings_path = folder.path_join("settings-%d.cfg" % Time.get_ticks_usec())

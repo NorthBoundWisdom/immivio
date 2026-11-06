@@ -69,7 +69,7 @@ func _initialize() -> void:
 func _run() -> void:
 	preload("res://scripts/i18n.gd").use("en")
 	var path := ProjectSettings.globalize_path(
-		"res://../../build/output/bookmarks-host/" + str(Time.get_ticks_usec())
+		"res://../../build/tests/godot/bookmarks-host/" + str(Time.get_ticks_usec())
 	)
 	var store := Store.new(path)
 	var uri := "smb://server/old/movie.mp4"

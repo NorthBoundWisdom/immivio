@@ -86,7 +86,7 @@ func _run() -> void:
 	video.platform = host
 	video.history_enabled = false
 	var folder := ProjectSettings.globalize_path(
-		"res://../../build/output/independent-playback-%d" % Time.get_ticks_usec()
+		"res://../../build/tests/godot/independent-playback-%d" % Time.get_ticks_usec()
 	)
 	video.mode_memory = Memory.new(folder)
 	video.open_local("file:///track-a.mp4", "A")

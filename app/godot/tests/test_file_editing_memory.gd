@@ -29,7 +29,7 @@ func _initialize() -> void:
 	if not preload("res://tests/support/test_result.gd").prepare(self):
 		return
 	var directory := ProjectSettings.globalize_path(
-		"res://../../build/output/file-editing-memory/" + str(Time.get_ticks_usec())
+		"res://../../build/tests/godot/file-editing-memory/" + str(Time.get_ticks_usec())
 	)
 	var old := "file:///storage/test/old.mp4"
 	var new := "file:///storage/test/new.mp4"
