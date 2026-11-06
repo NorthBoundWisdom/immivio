@@ -4,356 +4,146 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="color-scheme" content="dark light" />
-    <meta
-      name="application-name"
-      content="Immivio – VR Video Player"
-    />
-    <title>Immivio — Quest 与 PICO 免费 VR 播放器安装及使用指南</title>
-    <meta
-      name="description"
-      content="免费 VR 视频播放器 Immivio 的 Quest 与 PICO APK 安装指南：VR180、360° 全景、3D 左右立体布局、NAS 媒体库、音轨、字幕与播放排查。"
-    />
-    <link
-      rel="canonical"
-      href="https://northboundwisdom.github.io/immivio/zh/guide/"
-    />
-    <link
-      rel="alternate"
-      hreflang="zh-CN"
-      href="https://northboundwisdom.github.io/immivio/zh/guide/"
-    />
-    <link
-      rel="alternate"
-      hreflang="en"
-      href="https://northboundwisdom.github.io/immivio/guide/"
-    />
-    <link
-      rel="alternate"
-      hreflang="x-default"
-      href="https://northboundwisdom.github.io/immivio/guide/"
-    />
-    <meta
-      property="og:title"
-      content="Immivio — Quest 与 PICO 免费 VR 播放器安装及使用指南"
-    />
-    <meta
-      property="og:description"
-      content="免费 VR 视频播放器 Immivio 的 Quest 与 PICO APK 安装指南：VR180、360° 全景、3D 左右立体布局、NAS 媒体库、音轨、字幕与播放排查。"
-    />
+    <meta name="application-name" content="Immivio – VR Video Player" />
+    <title>Immivio 使用指南 — 在 PICO 与 Quest 上安装并播放 3D 视频</title>
+    <meta name="description" content="如何在 PICO 或 Meta Quest 上安装 Immivio，播放 3D、VR180 和 360° 视频，连接 SMB、DLNA 与媒体服务器，以及解决常见播放问题。" />
+    <meta name="robots" content="index,follow,max-image-preview:large" />
+    <link rel="canonical" href="https://northboundwisdom.github.io/immivio/zh/guide/" />
+    <link rel="alternate" hreflang="en" href="https://northboundwisdom.github.io/immivio/guide/" />
+    <link rel="alternate" hreflang="zh-CN" href="https://northboundwisdom.github.io/immivio/zh/guide/" />
+    <link rel="alternate" hreflang="x-default" href="https://northboundwisdom.github.io/immivio/guide/" />
     <meta property="og:type" content="website" />
-    <meta
-      property="og:url"
-      content="https://northboundwisdom.github.io/immivio/zh/guide/"
-    />
-    <meta
-      property="og:image"
-      content="https://northboundwisdom.github.io/immivio/assets/branding/immivio-social.jpg"
-    />
-    <meta name="twitter:card" content="summary_large_image" />
     <meta property="og:site_name" content="Immivio" />
     <meta property="og:locale" content="zh_CN" />
     <meta property="og:locale:alternate" content="en_US" />
+    <meta property="og:title" content="Immivio 使用指南 — 在 PICO 与 Quest 上安装并播放 3D 视频" />
+    <meta property="og:description" content="如何在 PICO 或 Meta Quest 上安装 Immivio，播放 3D、VR180 和 360° 视频，连接 SMB、DLNA 与媒体服务器，以及解决常见播放问题。" />
+    <meta property="og:url" content="https://northboundwisdom.github.io/immivio/zh/guide/" />
+    <meta property="og:image" content="https://northboundwisdom.github.io/immivio/assets/branding/immivio-social.jpg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="675" />
-    <meta property="og:image:alt" content="Immivio 环幕播放宣传插画" />
-    <meta
-      name="twitter:title"
-      content="Immivio — Quest 与 PICO 免费 VR 播放器安装及使用指南"
-    />
-    <meta
-      name="twitter:description"
-      content="免费 VR 视频播放器 Immivio 的 Quest 与 PICO APK 安装指南：VR180、360° 全景、3D 左右立体布局、NAS 媒体库、音轨、字幕与播放排查。"
-    />
-    <meta
-      name="twitter:image"
-      content="https://northboundwisdom.github.io/immivio/assets/branding/immivio-social.jpg"
-    />
-    <meta name="robots" content="index,follow,max-image-preview:large" />
+    <meta property="og:image:alt" content="Immivio" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Immivio 使用指南 — 在 PICO 与 Quest 上安装并播放 3D 视频" />
+    <meta name="twitter:description" content="如何在 PICO 或 Meta Quest 上安装 Immivio，播放 3D、VR180 和 360° 视频，连接 SMB、DLNA 与媒体服务器，以及解决常见播放问题。" />
+    <meta name="twitter:image" content="https://northboundwisdom.github.io/immivio/assets/branding/immivio-social.jpg" />
+    <meta name="theme-color" content="#07090d" />
     <link rel="icon" href="../../assets/icon.png?v=20261106" type="image/png" />
     <link rel="apple-touch-icon" href="../../assets/icon.png?v=20261106" />
-    <link rel="stylesheet" href="../../assets/site.css" />
+    <link rel="stylesheet" href="../../assets/site.css?v=20261106" />
+    <script>document.documentElement.classList.add("js");try{var t=localStorage.getItem("immivio-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
     <script defer data-site-script src="../../assets/site.js"></script>
     <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@graph": [
-          {
-            "@type": "WebPage",
-            "@id": "https://northboundwisdom.github.io/immivio/zh/guide/#webpage",
-            "url": "https://northboundwisdom.github.io/immivio/zh/guide/",
-            "name": "Immivio — Quest 与 PICO 免费 VR 播放器安装及使用指南",
-            "description": "免费 VR 视频播放器 Immivio 的 Quest 与 PICO APK 安装指南：VR180、360° 全景、3D 左右立体布局、NAS 媒体库、音轨、字幕与播放排查。",
-            "inLanguage": "zh-CN",
-            "about": {
-              "@id": "https://northboundwisdom.github.io/immivio/#software"
-            },
-            "breadcrumb": {
-              "@id": "https://northboundwisdom.github.io/immivio/zh/guide/#breadcrumb"
-            }
-          },
-          {
-            "@type": "BreadcrumbList",
-            "@id": "https://northboundwisdom.github.io/immivio/zh/guide/#breadcrumb",
-            "itemListElement": [
-              {
-                "@type": "ListItem",
-                "position": 1,
-                "name": "Immivio",
-                "item": "https://northboundwisdom.github.io/immivio/zh/"
-              },
-              {
-                "@type": "ListItem",
-                "position": 2,
-                "name": "使用指南",
-                "item": "https://northboundwisdom.github.io/immivio/zh/guide/"
-              }
-            ]
-          }
-        ]
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://northboundwisdom.github.io/immivio/zh/guide/#webpage",
+      "url": "https://northboundwisdom.github.io/immivio/zh/guide/",
+      "name": "Immivio 使用指南 — 在 PICO 与 Quest 上安装并播放 3D 视频",
+      "description": "如何在 PICO 或 Meta Quest 上安装 Immivio，播放 3D、VR180 和 360° 视频，连接 SMB、DLNA 与媒体服务器，以及解决常见播放问题。",
+      "inLanguage": "zh-CN",
+      "isPartOf": {
+        "@type": "WebSite",
+        "name": "Immivio",
+        "url": "https://northboundwisdom.github.io/immivio/"
       }
+    }
+  ]
+}
     </script>
   </head>
-  <body data-theme="dark">
+  <body>
     <a class="skip" href="#main">跳到正文</a>
     <header class="site-header">
       <div class="wrap header-inner">
-        <a class="brand" href="../../zh/">
-          <img
-            src="../../assets/icon.png?v=20261106"
-            alt=""
-            width="39"
-            height="39"
-          />Immivio</a
-        >
+        <a class="brand" href="../../zh/"><img src="../../assets/icon.png?v=20261106" alt="" width="32" height="32" />Immivio</a>
         <nav class="nav" aria-label="主导航">
-          <a class="optional" href="../../zh/#experience">体验</a>
-          <a href="../../zh/#download">下载</a>
-          <a class="optional" href="../../zh/guide/">使用指南</a>
-          <a class="optional" href="../../zh/updates/">更新说明</a>
-          <a class="locale" href="../../guide/" lang="en">English</a>
-          <button
-            class="theme"
-            type="button"
-            data-theme-toggle
-            aria-label="切换深浅主题"
-            aria-pressed="false"
-          >
-            ◐
-          </button>
+          <a class="optional" href="../../zh/#features">功能</a><a href="../../zh/#download">下载</a><a class="optional" href="../../zh/guide/" aria-current="page">使用指南</a><a class="optional" href="../../zh/updates/">更新说明</a>
+          <a class="locale" href="../../guide/" lang="en">EN</a>
+          <button class="theme" type="button" data-theme-toggle aria-label="切换浅色与深色主题" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="moon"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="sun"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4l1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
         </nav>
       </div>
     </header>
-    <main id="main" class="wrap guide-layout">
-      <nav class="guide-nav" aria-label="指南目录">
-        <p class="eyebrow">使用指南</p>
-        <a href="#install">安装</a>
-        <a href="#first-video">第一次播放</a>
-        <a href="#controls">常用操作</a>
-        <a href="#library">视频来源</a>
-        <a href="#troubleshooting">问题排查</a>
-      </nav>
-      <article class="guide-content">
-        <p class="eyebrow">IMMIVIO / 开始使用</p>
-        <h1>从这里开始。</h1>
-        <p>选好安装包，打开自己的视频，再把画面调整到舒服的位置。</p>
-        <p class="note">本页说明 v0.9.6 的功能。对应 APK 会在构建校验完成后附加到发布页；较早安装包以自身发布说明为准。</p>
-        <section id="install">
-          <h2>01 / 安装到头显</h2>
-          <ol>
-            <li>
-              在 <a href="../../zh/#download">下载页</a>选择 Quest、PICO
-              或实验性 OpenXR 包。
-            </li>
-            <li>开启头显的开发者模式，通过 USB 连接电脑并允许调试。</li>
-            <li>
-              用你常用的侧载工具安装下载的 APK。下载文件应以
-              <code>.apk</code> 结尾，源码压缩包不能直接安装。
-            </li>
-            <li>从设备的侧载应用列表启动 Immivio。</li>
-          </ol>
-          <div class="note">
-            更新安装需要匹配的应用 ID 和签名。来自其他发布者或部分 CI
-            的包可能无法覆盖已有安装；请先查看发布说明，保留原应用和数据。
-          </div>
-        </section>
-        <p>web 版本在“设置 → 关于”提供“检查更新”，默认 appstore 版本不显示此按钮。web 版本仅在您点击后连接 GitHub；播放器只打开发布页面，不会自动下载 APK。</p>
-        <section id="first-video">
-          <h2>02 / 播放第一个视频</h2>
-          <ol>
-            <li>从资料库打开本地文件，按需允许访问所选文件或目录。v0.9.5 也支持从 Android 文件管理器打开或分享符合条件的视频，访问权限由来源应用提供。</li>
-            <li>选择片源对应的投影和立体布局，再检查左右眼顺序。</li>
-            <li>
-              播放控件的小按钮可调整字幕、速度、颜色和瞳距；长按 Home
-              居中，音量跟随头显系统设置。
-            </li>
-          </ol>
-          <table>
-            <thead>
-              <tr>
-                <th>内容</th>
-                <th>起步设置</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>普通视频</td>
-                <td>平面 + 单目</td>
-              </tr>
-              <tr>
-                <td>左右／上下立体视频</td>
-                <td>按片源选择 SBS／TB；投影另行设置</td>
-              </tr>
-              <tr>
-                <td>VR180 鱼眼 SBS</td>
-                <td>鱼眼 + SBS；视场角按片源设置</td>
-              </tr>
-              <tr>
-                <td>360° 等距柱状视频</td>
-                <td>360° + 与片源匹配的单目／立体布局</td>
-              </tr>
-            </tbody>
-          </table>
-          <p class="note">
-            这些是起步设置，并非自动识别保证。文件名、编码元数据和实际内容不一致时，需要手动调整。
-          </p>
-        </section>
-        <section id="controls">
-          <h2>03 / 常用操作</h2>
-          <table>
-            <tbody>
-              <tr>
-                <th>打开播放控件</th>
-                <td>左手 Menu 键，或用扳机点按画面。v0.9.5 的左手手掌菜单手势固定可用，捏合可另选左手、右手或双手。</td>
-              </tr>
-              <tr>
-                <th>选择与调整</th>
-                <td>手柄射线 + 扳机，抬起时确认下拉选项；滑块可按住拖动。摇杆用于滚动，不会替你选择选项。</td>
-              </tr>
-              <tr>
-                <th>移动界面</th>
-                <td>
-                  按住抓握键拖动画面或资料库窗口；支持的位置可用同手摇杆调距离。
-                </td>
-              </tr>
-              <tr>
-                <th>滚动</th>
-                <td>打开列表或设置时使用摇杆。列表优先于播放快捷操作。</td>
-              </tr>
-              <tr>
-                <th>躺卧观看</th>
-                <td>设置 → 常规 → 躺卧模式；跟随另行控制。</td>
-              </tr>
-              <tr>
-                <th>返回资料库</th>
-                <td>选择“关闭视频”，回到先前浏览的位置。</td>
-              </tr>
-            </tbody>
-          </table>
-          <h3>字幕、校时与队列</h3>
-          <p>从字幕面板选择文字轨道，或手动加载 SRT、ASS、SSA、VTT。同步弹窗可分别提前／延后字幕和音频最多 10 秒。播放队列支持顺序或随机，最后一项结束后返回资料库。</p>
-          <p>v0.9.5 可打开“双语字幕”，用“主字幕／第二字幕”切换选轨目标。主字幕在上，第二字幕在下，二者共用同一字幕延迟。主字幕关闭时两者隐藏，但保留第二轨选择；把主字幕切到第二字幕使用的同一轨道时，第二字幕会关闭。位图字幕不在支持范围。</p>
-          <p>外挂文字字幕支持自动检测编码，手动编码选择在重新打开视频后生效。“字幕放在画面下方”仅用于平面视频，包括 SBS／TB 和旋转、躺卧放置；沉浸式模式继续使用画面内的投影字幕。布局与第二轨按视频记忆，并受历史和逐文件记忆开关控制。</p>
-          <p>文字字幕有五种配色。播放音量跟随头显系统音量；应用的关闭与重开使用头显系统控制。</p>
-          <p>
-            点击滑块旁的重置图标，只恢复这一项的默认值。调色保留原色、暖色、冷色和自定义；“重置本页”只恢复当前弹窗的三个参数，“重置自定义”恢复全部自定义参数。字幕、校时、双眼校正滑块也可分别重置，关闭的效果保持关闭。旧日光设置会恢复为原色，并保留已记住的自定义参数。
-          </p>
-        </section>
-        <section id="development-controls">
-          <h2>媒体库、银幕与v0.9.5 功能</h2>
-          <p>在 PICO 上，可通过「资源库 → 未知来源 → Immivio」进入侧载的 VR 播放器。</p>
-          <p>点击视频工具栏的文件夹图标，可在播放时浏览选片。支持紧凑／完整媒体库与列表／图标切换。在通用设置中开启目录位置记忆；关闭播放历史后，新位置只保留在本次运行中。</p>
-          <p>点击锁图标可将控制栏固定在空间中，在显示设置中调整底板透明度。银幕布局提供电视与巨幕预设、距离、大小、曲率、视线高度和临时定位网格。开启“固定观看默认值”后，临时调整不会覆盖默认布局；“保存为默认”可主动更新它。</p>
-          <p>STRM 文件填写一个可访问的媒体地址，可从本地或 SMB 浏览打开。通过系统文件选择器打开时，请填写完整地址；SMB 目标需先添加匹配的连接。加载时显示阶段与等待时间，可测量时显示视频读取速度；播放失败后可查看原因并返回媒体库。</p>
-          <p>v0.9.5 平面视频支持 0.1–50 米距离和 5%–3000% 大小；固定预设与原有记忆仍保留。资料库窗口可用抓握键与同手摇杆调距离，曲面菜单半径随观看距离调整。显示设置只列出设备支持的刷新率，默认优先 72 Hz。</p>
-        </section>
-        <section id="library">
-          <h2>04 / 连接视频资料库</h2>
-          <p>
-            资料库支持本地文件、SMB、DLNA、Plex、Emby、Jellyfin、XBVR 等支持的媒体服务器。从“网络媒体”添加来源，SMB、DLNA 与各媒体服务器并列显示，再填写该来源要求的地址与授权信息。网络目录、收藏、外挂字幕和文件管理能力会因来源而异。
-          </p>
-          <p>文件列表仅显示视频与文件夹，本地、SMB 和 DLNA 来源统一按视频浏览。MV-HEVC 双视图视频播放尚未验证。</p>
-          <p>
-            Immivio 播放已有立体内容，不把 2D 生成为
-            3D。
-          </p>
-          <p>v0.9.5 可在 Emby／Jellyfin 详情页选择直接播放版本，各版本保留本机的续播、模式和轨道偏好。其他客户端观看非默认版本后的进度不一定会被这里采用，默认入口也可能使用较旧的群组进度。播放历史关闭时，不再发送新的服务器播放回报。</p>
-        </section>
-        <section id="troubleshooting">
-          <h2>05 / 遇到问题时</h2>
-          <h3>画面分裂、变形或立体反转</h3>
-          <p>
-            检查平面／180°／鱼眼／360° 投影，检查单目／SBS／TB
-            布局；必要时交换左右眼。软件双眼校准不改变头显镜片或硬件瞳距。
-          </p>
-          <h3>播放不流畅</h3>
-          <p>
-            尝试更低码率的内容，再核对设备、编码与构建能力。8K
-            文件在虚拟机中可解码，不代表头显达到特定帧率。
-          </p>
-          <h3>字幕没出现</h3>
-          <p>
-            检查字幕轨道是否关闭，外挂文件是否仍可访问。请使用 SRT、ASS、SSA、VTT
-            文本字幕；当前不提供位图字幕轨道。
-          </p>
-          <h3>报告问题</h3>
-          <p>
-            在
-            <a href="https://github.com/NorthBoundWisdom/immivio/issues"
-              >Issues</a
-            >
-            中提供设备型号、构建版本、格式和复现步骤。仅上传有权分发的样片，不公开账号凭据。
-          </p>
-          <p>
-            开发资料：<a
-              href="https://github.com/NorthBoundWisdom/immivio/blob/main/docs/BUILD.md"
-              >构建</a
-            >
-            · <a href="../updates/">更新说明</a>
-          </p>
-        </section>
-      </article>
-    </main>
-    <footer class="site-footer wrap">
-      <div class="footer-top">
-        <p>
-          基于
-          <a href="https://github.com/zerochocobo/Thru3D-Media-Player"
-            >zerochocobo/Thru3D-Media-Player</a
-          >
-          的 0.6.0 版本继续开发。从 0.6.0 起独立维护与发布，由 NorthBoundWisdom
-          维护，保留原项目署名、历史和 GPL-3.0 许可。
-        </p>
-        <div class="footer-links">
-          <a data-legal-link href="../privacy/">隐私政策</a>
-          <a data-legal-link href="../terms/">用户协议</a>
-          <a href="https://github.com/NorthBoundWisdom/immivio">GitHub ↗</a>
-          <a href="../../zh/updates/">更新说明 ↗</a>
-          <a href="https://github.com/NorthBoundWisdom/immivio/issues"
-            >反馈问题 ↗</a
-          >
-          <a
-            href="https://github.com/NorthBoundWisdom/immivio/blob/main/LICENSE"
-            >GPL-3.0 ↗</a
-          >
+    <main id="main">
+      <div class="doc-hero">
+        <div class="wrap">
+          <span class="eyebrow">使用指南</span>
+          <h1>Immivio 快速上手</h1>
+          <p class="lede">安装应用、播放第一个 3D 视频、连接你的片库。本指南适用于 0.9.7 版本。</p>
         </div>
       </div>
-      <div class="copyright">
-        <span>Immivio · NorthBoundWisdom</span>
-        <span>开源 · 独立维护 · GitHub Pages 托管</span>
+      <div class="wrap doc">
+        <nav class="toc" aria-label="本页目录"><p>本页目录</p><a href="#install">安装</a><a href="#first-video">播放第一个视频</a><a href="#controls">基本操作</a><a href="#library">连接片库</a><a href="#screen">画面与舒适度</a><a href="#subtitles">字幕与播放</a><a href="#troubleshooting">常见问题</a></nav>
+        <article class="prose">
+          <section id="install">
+            <h2><span class="num">01</span>安装到头显</h2>
+            <ol><li>在<a href="../../zh/#download">下载区</a>获取与头显对应的 APK：Meta Quest、PICO，或实验性的 OpenXR 版本。</li><li>在头显上开启开发者模式，用 USB 连接电脑并允许调试。</li><li>使用任意侧载工具安装 APK。安装包以 <code>.apk</code> 结尾；源代码压缩包仅供开发者使用。</li><li>在头显应用库的未知来源中打开 Immivio。PICO：<strong>资源库 → 未知来源 → Immivio</strong>。</li></ol><div class="note"><strong>关于更新。</strong>只有应用 ID 和签名密钥都一致时，新 APK 才能覆盖安装。从 0.9.4 起，应用 ID 为 <code>com.northboundwisdom.immivio</code>，与旧版 Thru3D 播放器并存安装，旧数据不会自动迁移。</div><h3>商店版与官网版</h3><p>商店版不提供检查更新。官网版在<strong>设置 → 关于 → 检查更新</strong>中提供手动检查：只有你点击时才会连接 GitHub，并在浏览器中打开发布页面。Immivio 不会自行下载或安装 APK。</p>
+          </section>
+          <section id="first-video">
+            <h2><span class="num">02</span>播放第一个视频</h2>
+            <ol><li>打开<strong>本地文件</strong>或<strong>网络媒体</strong>，只授权你想使用的文件夹或服务器。</li><li>选择一个视频。</li><li>按片源设置投影方式和立体格式：</li></ol><div class="table-wrap"><table><thead><tr><th>片源</th><th>投影方式</th><th>立体格式</th></tr></thead><tbody><tr><td>普通 2D 视频</td><td>平面</td><td>单眼</td></tr><tr><td>左右 3D</td><td>平面</td><td>左右（全宽或半宽）</td></tr><tr><td>上下 3D</td><td>平面</td><td>上下（全高或半高）</td></tr><tr><td>VR180</td><td>180°</td><td>与片源一致：单眼、左右或上下</td></tr><tr><td>VR180 鱼眼</td><td>鱼眼</td><td>左右</td></tr><tr><td>360° 等距柱状</td><td>360°</td><td>与片源一致：单眼、左右或上下</td></tr></tbody></table></div><div class="note">以上只是起点。文件名、元数据和实际画面不一致时，以画面为准：先检查投影方式，再检查立体格式，最后尝试交换左右眼。</div>
+          </section>
+          <section id="controls">
+            <h2><span class="num">03</span>基本操作</h2>
+            <div class="table-wrap"><table><thead><tr><th>操作</th><th>方法</th></tr></thead><tbody><tr><td>显示或隐藏控制栏</td><td>按左手柄菜单键，或用扳机点击画面。左手掌心手势也可以。</td></tr><tr><td>选择</td><td>用手柄射线指向目标并按扳机。也支持手势指向和捏合。</td></tr><tr><td>调节滑块</td><td>按住扳机拖动。滑块旁的重置图标只恢复这一项。</td></tr><tr><td>移动画面或窗口</td><td>按住握持键。支持时可用同一只手的摇杆调整距离。</td></tr><tr><td>滚动列表</td><td>列表打开时使用摇杆。列表优先于播放快捷操作。</td></tr><tr><td>快进快退</td><td>拖动进度条；没有打开列表或滑块时，也可左右推摇杆。</td></tr><tr><td>调整沉浸式画面</td><td>左手握持 + 摇杆移动画面；右手握持 + 摇杆缩放或调整水平双眼对齐。</td></tr><tr><td>重新居中</td><td>长按头显的 Home 键。</td></tr><tr><td>音量</td><td>使用头显系统音量控制。</td></tr><tr><td>返回片库</td><td>选择<strong>关闭视频</strong>，回到之前浏览的位置。</td></tr><tr><td>捏合手</td><td><strong>设置 → 通用 → 捏合／菜单手</strong>：左手、右手或双手。</td></tr></tbody></table></div>
+          </section>
+          <section id="library">
+            <h2><span class="num">04</span>连接你的片库</h2>
+            <h3>本地文件</h3><p>浏览头显中的视频，以及系统已挂载的 U 盘。Immivio 也可以打开从 Android“打开方式”或“分享”菜单发来的视频，以及指向视频地址的 STRM 文件。</p><h3>网络媒体</h3><p>选择<strong>网络媒体 → 添加来源</strong>，再选择 SMB、DLNA、Emby、Jellyfin、Plex、Stash 或 XBVR，填写地址和所需的登录信息。浏览、收藏、外挂字幕和文件操作是否可用，取决于来源和账号权限。</p><ul><li>文件列表只显示视频和文件夹，可切换列表／图标视图，以及紧凑／完整窗口。</li><li>Immivio 可以记住每个文件夹的浏览位置；关闭播放记录后，新位置只在本次使用中保留。</li><li>Emby 和 Jellyfin 可选择能直接播放的影片版本，每个版本分别记住进度和设置。</li><li>开启播放记录时，播放进度会同步到 Emby 和 Jellyfin 服务器；关闭后不再发送新的记录。</li></ul>
+          </section>
+          <section id="screen">
+            <h2><span class="num">05</span>画面与舒适度</h2>
+            <ul><li>平面画面距离可调 0.1–50 米、大小 5–3000%，弯曲程度可调，并有电视和影院预设；临时网格可辅助摆放。</li><li>开启<strong>固定观看默认值</strong>后，临时调整不会覆盖你的默认布局；<strong>保存为默认</strong>则会主动替换。</li><li><strong>设置 → 显示 → 窗口高度</strong>可上下移动菜单，窗口默认下移 12 厘米。</li><li>躺着看请开启<strong>设置 → 通用 → 躺姿模式</strong>；画面跟随是单独的设置。</li><li>锁定图标可把控制栏固定在空中；底板透明度在“显示”中调整。</li><li>显示设置只列出头显支持的刷新率，并优先使用 72 Hz。</li></ul>
+          </section>
+          <section id="subtitles">
+            <h2><span class="num">06</span>字幕与播放</h2>
+            <ul><li>选择内嵌文字字幕，或加载 SRT、ASS、SSA、VTT 文件。文字编码会自动识别；手动指定的编码在重新打开视频时生效。</li><li>开启<strong>双语字幕</strong>，在主字幕和副字幕之间切换来分别选择两条字幕。主字幕显示在上方，两者共用一个延迟。</li><li>字幕有五种配色。平面视频可把字幕放在画面下方，布局按视频记住。</li><li>同步小窗可分别调整音频和字幕时间，各自最多 10 秒。</li><li>调色提供原始、暖色、冷色和自定义；“重置本页”恢复当前小窗，“重置自定义”恢复全部自定义参数。</li><li>播放队列支持顺序或随机播放，最后一个视频结束后回到片库。</li><li>不支持图形字幕。</li></ul>
+          </section>
+          <section id="troubleshooting">
+            <h2><span class="num">07</span>常见问题</h2>
+            <h3>3D 画面分开、重影或变形</h3><p>先检查投影方式（平面、180°、鱼眼或 360°），再检查立体格式（单眼、左右或上下），必要时交换左右眼。软件中的双眼对齐不会改变头显镜片或物理瞳距。</p><h3>播放卡顿</h3><p>试试同一影片的较低码率版本，并确认头显解码器支持该编码。实际表现取决于编码、码率、分辨率和硬件。</p><h3>字幕不显示</h3><p>确认已选择字幕轨道，且外挂字幕文件仍可访问。请使用 SRT、ASS、SSA 或 VTT 文字字幕。</p><h3>U 盘没有出现</h3><p>Immivio 使用系统已挂载的存储卷。请检查存储权限和挂载状态，然后重新连接。部分 PICO 系统路径可能仍无法访问。</p><h3>反馈问题</h3><p>请在 <a href="https://github.com/NorthBoundWisdom/immivio/issues">GitHub Issues</a> 中提交，写明头显型号、Immivio 版本、视频格式和复现步骤。可以在应用中保存本地问题记录，自行决定是否附上。只分享你有权分发的示例，切勿公开密码或私人影片。</p>
+          </section>
+        </article>
+      </div>
+    </main>
+    <footer class="site-footer">
+      <div class="wrap footer-grid">
+        <div>
+          <a class="brand" href="../../zh/"><img src="../../assets/icon.png?v=20261106" alt="" width="28" height="28" />Immivio</a>
+          <p>免费开源的 VR 视频播放器，专注 PICO 与 Meta Quest 上的 3D 和沉浸式视频。</p>
+        </div>
+        <nav aria-label="产品">
+          <h2>产品</h2>
+          <ul>
+            <li><a href="../../zh/#download">下载</a></li>
+            <li><a href="../../zh/guide/">使用指南</a></li>
+            <li><a href="../../zh/updates/">更新说明</a></li>
+          </ul>
+        </nav>
+        <nav aria-label="项目">
+          <h2>项目</h2>
+          <ul>
+            <li><a href="https://github.com/NorthBoundWisdom/immivio">GitHub 源代码 ↗</a></li>
+            <li><a href="https://github.com/NorthBoundWisdom/immivio/issues">反馈问题 ↗</a></li>
+            <li><a href="https://github.com/NorthBoundWisdom/immivio/blob/main/CHANGELOG.md">完整更新日志 ↗</a></li>
+            <li><a href="https://northboundwisdom.github.io/sonafolio/">SonaFolio — NorthBoundWisdom 的另一个项目 ↗</a></li>
+          </ul>
+        </nav>
+        <nav aria-label="法律">
+          <h2>法律</h2>
+          <ul>
+            <li><a href="../../zh/privacy/">隐私政策</a></li>
+            <li><a href="../../zh/terms/">用户协议</a></li>
+            <li><a href="https://github.com/NorthBoundWisdom/immivio/blob/main/LICENSE">GPL-3.0 许可证 ↗</a></li>
+          </ul>
+        </nav>
+      </div>
+      <div class="wrap footer-base">
+        <span>本项目延续自 <a href="https://github.com/zerochocobo/Thru3D-Media-Player">zerochocobo/Thru3D-Media-Player</a> 0.6.0 版本，保留原有署名、历史与许可证。</span>
+        <span>Immivio · 由 NorthBoundWisdom 独立维护 · 托管于 GitHub Pages</span>
       </div>
     </footer>
-    <dialog class="lightbox" aria-label="软件运行截图">
-      <img alt="" />
-      <div class="lightbox-footer">
-        <p></p>
-        <a
-          href="../../assets/screenshots/zh-playback.png"
-          target="_blank"
-          rel="noopener"
-          >查看原图 ↗</a
-        >
-        <button type="button">关闭 ✕</button>
-      </div>
-    </dialog>
   </body>
 </html>

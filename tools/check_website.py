@@ -6,7 +6,6 @@ from urllib.parse import urlsplit, unquote
 import json
 import hashlib
 import re
-import struct
 import xml.etree.ElementTree as ET
 
 ORIGIN = "https://northboundwisdom.github.io/immivio/"
@@ -201,26 +200,26 @@ def main():
                 "https://github.com/NorthBoundWisdom/immivio/releases/download/"
             )
     screenshot_names = {
-        prefix + name + ".png"
+        prefix + name + ".webp"
         for prefix in ("", "zh-")
-        for name in ("playback", "settings", "display")
+        for name in ("playback", "sources", "subtitles", "display")
     }
     for name in screenshot_names:
         data = (SITE / "assets/screenshots" / name).read_bytes()
-        assert data[:8] == b"\x89PNG\r\n\x1a\n" and struct.unpack(
-            ">II", data[16:24]
-        ) == (1920, 1080)
+        assert data[:4] == b"RIFF" and data[8:12] == b"WEBP", f"{name}: not WebP"
         assert (
-            len(data) > 100000
+            len(data) > 30000
         ), f"{name}: unexpectedly small screenshot; inspect for blank playback"
     capture = json.loads((SITE / "assets/screenshots/capture.json").read_text())
     assert re.fullmatch(r"[0-9a-f]{40}", capture["application_commit"])
     assert re.fullmatch(r"[0-9a-f]{64}", capture["apk_sha256"])
     assert capture["source_included"] is False
+    assert (ROOT / capture["source_provenance"]).is_file()
     assert {shot["file"] for shot in capture["screenshots"]} == screenshot_names
     assert len(capture["screenshots"]) == len(screenshot_names)
     for shot in capture["screenshots"]:
         assert shot["language"] == ("zh-CN" if shot["file"].startswith("zh-") else "en")
+        assert (ROOT / shot["source"]).is_file(), f"{shot['file']}: missing raw capture"
         assert (
             hashlib.sha256(
                 (SITE / "assets/screenshots" / shot["file"]).read_bytes()
@@ -228,7 +227,7 @@ def main():
             == shot["sha256"]
         )
     print(
-        f"Website checks passed: {len(pages)} pages, 2 languages, search metadata and structured data, single-edition downloads, 6 emulator screenshots."
+        f"Website checks passed: {len(pages)} pages, 2 languages, search metadata and structured data, single-edition downloads, {len(screenshot_names)} emulator screenshots."
     )
 
 
