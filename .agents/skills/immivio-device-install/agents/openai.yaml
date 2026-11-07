@@ -1,0 +1,4 @@
+interface:
+  display_name: "Immivio 真機安裝"
+  short_description: "編譯目前工作目錄，安裝到 PICO 或 Quest 真機並驗證啟動"
+  default_prompt: "使用 $immivio-device-install，把目前工作目錄的最新版本編譯並安裝到已連線的真機。"
