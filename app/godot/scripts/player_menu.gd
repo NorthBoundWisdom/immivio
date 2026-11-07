@@ -12,9 +12,7 @@ signal adjustment_committed
 
 const SEEK := 200
 const QUICK_SCREEN := 223
-const SPACE_LOCK := 224
 const BROWSE := 225
-var space_locked := false
 var controls_opacity := 0.86
 const QUICK_SPEED := 211
 const QUICK_CLOSE := 213
@@ -36,6 +34,7 @@ const LENS_FOVS := [180, 190, 200, 220]
 const BAR_SEEK := 0.82
 const BAR_SEEK_Y := -0.08
 const HEADER_Y := 0.13
+const BAR_WIDTH := 1.16  # transport backdrop; the playback library aligns with it
 const HEADER_CLOSE_SIZE := 0.072
 const HEADER_GAP := 0.018
 const PANEL_SCALE := Vector3(0.75, 2.0 / 3.0, 1.0)
@@ -185,7 +184,38 @@ func capture_envelope() -> Rect2:
 			+ (0.06 if tracks > SUBTITLE_ROWS else 0.0)
 		)
 	)
-	return Rect2(-.82, -.24, 1.64, top + .24)
+	return Rect2(-.82, -.24, 1.64, top + .24).merge(_switcher_envelope())
+
+
+const LibraryMenu := preload("res://scripts/library_menu.gd")
+const SWITCHER_GAP := 0.03
+## The switcher's drawn extent in its own units: the angled navigation column to the panel edge.
+const SWITCHER_EXTENT := Rect2(-1.06, -0.58, 1.92, 1.16)
+
+
+## The video switcher (the library opened over playback) sits above this bar: uniformly
+## scaled so its content panel is exactly as wide as the bar, centred, above the title row.
+static func switcher_pose(bar: Node3D) -> Transform3D:
+	var width: float = BAR_WIDTH * bar.global_basis.x.length()
+	var basis := (
+		bar.global_basis.orthonormalized()
+		* Basis.from_scale(Vector3.ONE * width / LibraryMenu.PANEL_SIZE.x)
+	)
+	var bar_top := bar.to_global(Vector3(0, HEADER_Y + DeviceStatus.HEIGHT * .5, 0))
+	var anchor := bar_top + bar.global_basis.y.normalized() * SWITCHER_GAP
+	var bottom_centre := Vector3(LibraryMenu.PANEL_CENTRE.x, -LibraryMenu.PANEL_SIZE.y * .5, 0)
+	return Transform3D(basis, anchor - basis * bottom_centre)
+
+
+## Reserving the switcher's area from the first frame keeps the composited layer the same
+## size when the switcher opens; a resize would blank the layer for a frame.
+func _switcher_envelope() -> Rect2:
+	if not is_inside_tree() or global_basis.determinant() == 0.0:
+		return Rect2()
+	var local := global_transform.affine_inverse() * switcher_pose(self)
+	var low := local * Vector3(SWITCHER_EXTENT.position.x, SWITCHER_EXTENT.position.y, 0)
+	var high := local * Vector3(SWITCHER_EXTENT.end.x, SWITCHER_EXTENT.end.y, 0)
+	return Rect2(Vector2(low.x, low.y), Vector2.ZERO).expand(Vector2(high.x, high.y))
 
 
 func has_persistent_toolbar() -> bool:
@@ -594,7 +624,7 @@ func _draw_uncached() -> void:
 ## One compact row of available playback actions above the timeline.
 ## Settings open separate popups; audio gain belongs to the system.
 func _draw_bar() -> void:
-	_set_backdrop(Vector2(1.16, 0.20), Vector2(0, -0.02))
+	_set_backdrop(Vector2(BAR_WIDTH, 0.20), Vector2(0, -0.02))
 	_backdrop.material_override.set_shader_parameter(
 		"surface_color", Color(PANEL, controls_opacity)
 	)
@@ -612,12 +642,6 @@ func _draw_bar() -> void:
 			"icon": "screen",
 			"tip": "Screen layout",
 			"enabled": has_video and int(_state.get("geometry", 0)) == 0
-		},
-		{
-			"target": SPACE_LOCK,
-			"icon": "lock" if space_locked else "unlock",
-			"tip": "Unlock spatial position" if space_locked else "Lock spatial position",
-			"enabled": has_video
 		},
 		{"target": BROWSE, "icon": "folder", "tip": "Library", "enabled": has_video},
 		{"target": 110, "icon": "subtitle", "tip": "Subtitles", "enabled": _enabled("subtitles")},
@@ -1133,7 +1157,6 @@ func _transport_key() -> String:
 			_enabled("stereo_view"),
 			_enabled("previous_video"),
 			_enabled("next_video"),
-			space_locked,
 			controls_opacity,
 			_state.get("queue_shuffle", false),
 			bookmarks.key(),
@@ -1242,6 +1265,10 @@ func _draw_modes() -> void:
 	var centre_y := (
 		(0.44 if fisheye else 0.385) if half_choices else top - (0.07 if fisheye else 0.0)
 	)
+	if half_choices:
+		height += .1
+		centre_y += .05
+		top += .1
 	var panel := _quad(Vector2(1.06, height), Vector3(0, centre_y, 0.001), Color(PANEL, 0.94), 10)
 	panel.material_override.set_shader_parameter("corner_radius", 0.04)
 	add_child(panel)
@@ -1313,6 +1340,15 @@ func _draw_modes() -> void:
 			)
 			if int(_state.get("fisheye_fov", 180)) == LENS_FOVS[i]:
 				_buttons.back().base_color = SELECTED
+	if half_choices:
+		_control_button(
+			MODE_STEREO + 7,
+			I18n.t("Auto detect"),
+			Vector2(0, controls_y - (.09 if fisheye else 0.0)),
+			.96,
+			true,
+			"refresh"
+		)
 	for button in _buttons:
 		if locked.has(button.target):
 			var half: Vector2 = button.rect.size / 2
@@ -1487,10 +1523,6 @@ func _activate_hit(hit: Dictionary) -> void:
 
 
 func _activate(target: int) -> void:
-	if target == SPACE_LOCK:
-		space_locked = not space_locked
-		refresh()
-		return
 	if target == BROWSE:
 		recent_requested.emit()
 		return
@@ -1562,6 +1594,9 @@ func _activate(target: int) -> void:
 		refresh()
 	elif target == MODE_STEREO + 5 or target == MODE_STEREO + 6:
 		action_requested.emit("stereo_half_sbs" if target == MODE_STEREO + 5 else "stereo_half_tb")
+		refresh()
+	elif target == MODE_STEREO + 7:
+		action_requested.emit("stereo_auto")
 		refresh()
 	elif target >= MODE_LENS and target < MODE_LENS + LENS_FOVS.size():
 		action_requested.emit("fov_%d" % LENS_FOVS[target - MODE_LENS])

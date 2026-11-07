@@ -31,6 +31,14 @@ var _bookmark_scope_sequence := 0
 var _bookmark_cache_revision := -1
 var _bookmark_rows: Array = []
 const Naming := preload("res://scripts/media_naming.gd")
+const StereoDetection := preload("res://scripts/stereo_detection.gd")
+var _auto_stereo := true
+var _stereo_detection := StereoDetection.new()
+var _stereo_detection_busy := false
+var _stereo_capture_busy := false
+var _stereo_thread: Thread
+var _stereo_pin: Dictionary = {}
+var _stereo_capture_binding: RefCounted
 const AUTOMATIC_PROFILE := "320x320"
 const PROFILES := ["320x320", "384x216", "512x288", "384x384", "512x512", "256x144", "256x256"]
 
@@ -213,6 +221,7 @@ func _maybe_capture_thumbnail() -> void:
 		_debug_benchmark
 		or _thumb_after_ms < 0
 		or _thumbnail_busy
+		or _stereo_capture_busy
 		or _pixel_busy
 		or _waiting_first
 		or not _pending_revision.is_empty()
@@ -554,6 +563,12 @@ func open_local(
 	if not _debug_benchmark and _thumbnail_source(uri) and Thumbnails.texture(uri) == null:
 		_thumb_after_ms = 0
 	local_uri = uri
+	_auto_stereo = (
+		restore_mode
+		and (saved_sync.is_empty() or bool(saved_sync.get("layout_auto", false)))
+		and mode_lock.is_empty()
+	)
+	_stereo_detection.begin(_auto_stereo)
 	display_name = title
 	_bookmark_metadata = metadata.duplicate(true)
 	if not basename.is_empty():
@@ -625,6 +640,7 @@ func _unbind() -> void:
 
 
 func close_video() -> void:
+	_stereo_detection.cancel()
 	server_playback.poll(self, true)
 	server_playback.finish(platform)
 	if _subtitle_pick > 0 and PlatformMethods.supports(platform, "cancel_local_subtitle_pick"):
@@ -828,7 +844,13 @@ func _on_frozen_pair(id: int, payload: String) -> void:
 
 
 func _try_revision() -> void:
-	if _pending_revision.is_empty() or _freeze_request > 0 or _pixel_busy or _thumbnail_busy:
+	if (
+		_pending_revision.is_empty()
+		or _freeze_request > 0
+		or _pixel_busy
+		or _thumbnail_busy
+		or _stereo_capture_busy
+	):
 		return
 	if int(_pending_revision.position_ms) >= 0 and _start_seek_freeze():
 		return
@@ -1460,8 +1482,12 @@ func current_lock() -> Dictionary:
 
 ## Locks the current mode, or unlocks when it is the locked one.
 func toggle_mode_lock() -> void:
+	_auto_stereo = false
+	_stereo_detection.cancel()
+	_layout_pending = null
 	var current := current_lock()
 	mode_lock = {} if mode_lock == current else current
+	_remember_mode()
 	mode_lock_changed.emit(mode_lock.duplicate())
 	changed.emit()
 
@@ -1502,10 +1528,15 @@ func toggle_stereo() -> void:
 
 ## 0 mono, 1 full SBS, 2 full TB, 3 half SBS, 4 half TB.
 func set_stereo_layout(layout: int) -> void:
-	if layout < 0 or layout > 4 or layout == stereo_layout():
+	if layout < 0 or layout > 4:
+		return
+	_auto_stereo = false
+	_stereo_detection.cancel()
+	_layout_pending = null  # The same manual 2D value must also stop first-frame inference.
+	if layout == stereo_layout():
+		_remember_mode()
 		return
 	_unlock_mode()
-	_layout_pending = null  # A manual choice before the first frame survives detection.
 	var repack := (layout != 0) != stereo_sbs or (layout in [2, 4]) != top_bottom
 	stereo_sbs = layout != 0
 	top_bottom = layout in [2, 4]
@@ -1542,6 +1573,8 @@ func cycle_projection() -> void:
 func set_projection(value: int) -> void:
 	if value < 0 or value > 3:
 		return
+	_auto_stereo = false
+	_stereo_detection.cancel()
 	if value != geometry:
 		_unlock_mode()
 	geometry = value
@@ -1567,6 +1600,8 @@ func set_projection(value: int) -> void:
 func toggle_eye_order() -> bool:
 	if not stereo_sbs:
 		return false
+	_auto_stereo = false
+	_stereo_detection.cancel()
 	swap_eyes = not swap_eyes
 	_apply_geometry()
 	_remember_mode()
@@ -1663,7 +1698,151 @@ func _apply_stereo_view() -> void:
 	)
 
 
-## The file name left the projection or the layout open: the frame's shape decides (once).
+func enable_auto_stereo() -> void:
+	_unlock_mode()
+	_auto_stereo = true
+	var stated := Naming.from_name(_layout_basename)
+	if not stated.has("geometry"):
+		stated.geometry = geometry
+	_layout_pending = stated
+	if int(media.format.get("width", 0)) > 0:
+		_complete_layout()
+	_stereo_detection.begin(true)
+	_remember_mode()
+	changed.emit()
+
+
+func _apply_automatic_stereo(chosen: Dictionary, source: String) -> void:
+	if (
+		not _auto_stereo
+		or not media.accepts(media.session_id)
+		or not bool(chosen.get("stereo", false))
+	):
+		return
+	_stereo_detection.cancel()
+	var stacked := bool(chosen.get("top_bottom", false))
+	var half := bool(chosen.get("stereo_half", false))
+	# Image matching identifies the packing axis, not which view is the left eye.
+	var swapped := swap_eyes if source == "image" else bool(chosen.get("swap", false))
+	var repack := not stereo_sbs or top_bottom != stacked
+	var layout_changed := repack or stereo_half != half or swap_eyes != swapped
+	stereo_sbs = true
+	top_bottom = stacked
+	stereo_half = half
+	swap_eyes = swapped
+	_remember_mode()
+	if repack:
+		_request_revision()
+	_apply_geometry()
+	if layout_changed:
+		_thumb_after_ms = 0
+	Log.record(
+		"auto_stereo", {"source": source, "top_bottom": top_bottom, "stereo_half": stereo_half}
+	)
+	changed.emit()
+
+
+func _accept_stereo_detection(request: int, result: Dictionary) -> void:
+	if not _auto_stereo:
+		return
+	var axis := _stereo_detection.accept(request, result)
+	if axis.is_empty():
+		return
+	var chosen := Naming.complete(
+		{"geometry": geometry, "stereo": true, "top_bottom": axis == "tb"},
+		int(media.format.width),
+		int(media.format.height)
+	)
+	_apply_automatic_stereo(chosen, "image")
+
+
+## A tiny full-frame GPU sample; pin ownership and independent wrappers match thumbnail capture.
+## CPU matching runs off the render/main thread, and stale/manual requests cannot apply results.
+func _maybe_detect_stereo() -> void:
+	if not _auto_stereo or not _stereo_detection.pending or _debug_benchmark:
+		return
+	if Naming.has_layout_marker(_layout_basename):
+		_stereo_detection.cancel()
+		return
+	if (
+		_stereo_detection_busy
+		or _thumbnail_busy
+		or _pixel_busy
+		or _waiting_first
+		or not _pending_revision.is_empty()
+		or media.state not in ["playing", "paused", "ended"]
+		or media.last_pair.is_empty()
+		or not _binding.material
+	):
+		return
+	if Naming.has_stereo_metadata(media.format):
+		var stated := Naming.from_name(_layout_basename)
+		stated.geometry = geometry
+		var explicit := Naming.complete(
+			stated,
+			int(media.format.width),
+			int(media.format.height),
+			media.format,
+			_layout_basename
+		)
+		_apply_automatic_stereo(explicit, "metadata")
+		return
+	var pair := media.last_pair.duplicate(true)
+	if not _stereo_detection.wants(int(pair.frame_id), media.state in ["paused", "ended"]):
+		return
+	if not platform.pin_mpv_pair(int(pair.session_id), int(pair.slot_token)):
+		return
+	var request := _stereo_detection.started(int(pair.frame_id))
+	_stereo_detection_busy = true
+	_stereo_capture_busy = true
+	_stereo_pin = pair
+	var binding := Binding.new()
+	_stereo_capture_binding = binding
+	var target := ShaderMaterial.new()
+	if not binding.bind(target, pair):
+		platform.release_mpv_pair_pin(int(pair.session_id), int(pair.slot_token))
+		_stereo_pin = {}
+		_stereo_capture_binding = null
+		_stereo_capture_busy = false
+		_stereo_detection_busy = false
+		_stereo_detection.accept(request, {})
+		return
+	var scale: Array = pair.get("color_uv_scale", [1.0, 1.0])
+	var image: Image = await Thumbnails.capture(
+		self,
+		binding.color_texture(),
+		false,
+		false,
+		Vector4(0, 0, 1, 1),
+		Vector2(float(scale[0]), float(scale[1])),
+		false,
+		Vector2i(192, 108)
+	)
+	binding.unbind()
+	platform.release_mpv_pair_pin(int(pair.session_id), int(pair.slot_token))
+	_stereo_pin = {}
+	_stereo_capture_binding = null
+	_stereo_capture_busy = false
+	if request != _stereo_detection.token or not image or image.is_empty():
+		_stereo_detection_busy = false
+		_stereo_detection.accept(request, {})
+		return
+	var worker := Thread.new()
+	_stereo_thread = worker
+	if worker.start(StereoDetection.classify.bind(image), Thread.PRIORITY_LOW) != OK:
+		_stereo_thread = null
+		_stereo_detection_busy = false
+		_stereo_detection.accept(request, {})
+		return
+	while worker.is_alive():
+		await get_tree().process_frame
+	var result: Variant = worker.wait_to_finish()
+	_stereo_thread = null
+	_stereo_detection_busy = false
+	_accept_stereo_detection(request, result if result is Dictionary else {})
+
+
+## Names/metadata/shape resolve first; ambiguous packed stereo is checked from image samples.
 func _complete_layout() -> void:
 	if _layout_pending == null:
 		return
@@ -1725,6 +1904,7 @@ func _remember_mode() -> void:
 	if not _remember_file or not media.accepts(media.session_id):
 		return
 	var mode := {
+		"layout_auto": _auto_stereo,
 		"geometry": geometry,
 		"stereo_sbs": stereo_sbs,
 		"swap_eyes": swap_eyes,
@@ -1768,6 +1948,7 @@ func _present_pending() -> void:
 	if (
 		_pixel_busy
 		or _thumbnail_busy
+		or _stereo_capture_busy
 		or _pending_pair.is_empty()
 		or not _pending_revision.is_empty()
 	):
@@ -1978,9 +2159,14 @@ func _on_debug_command(id: int, payload: String) -> void:
 		_debug_commands = []
 		_debug_pairs = []
 		stereo_sbs = bool(command.get("stereo", true))
+		if bool(command.get("auto_stereo", false)):
+			geometry = Geometry.Geometry.FLAT
+			stereo_sbs = false
 		profile = str(command.profile)
 		requested_play = true
 		open_local(str(command.uri), str(command.title), maxi(int(command.position_ms), 0), false)
+		if bool(command.get("auto_stereo", false)):
+			enable_auto_stereo()
 	elif command.operation == "alpha":
 		set_alpha(bool(command.enabled))
 	elif command.operation == "audio":
@@ -2216,6 +2402,13 @@ func layout_snapshot() -> Dictionary:
 	playback["bookmark_seek_mode"] = SeekPolicy.bookmark_override(bookmark_seek_mode)
 	playback["source_frame_pts_verified"] = media.last_pair.get("source_pts_verified", false)
 	return {
+		"stereo_auto": _auto_stereo,
+		"stereo_detection":
+		{
+			"pending": _stereo_detection.pending,
+			"samples": _stereo_detection.samples,
+			"captures": _stereo_detection.captures
+		},
 		"geometry": ["flat", "half_equirect_180", "fisheye_180", "equirect_360"][geometry],
 		"stereo_sbs": stereo_sbs,
 		"viewing_eye": viewing_eye,
@@ -2342,6 +2535,7 @@ func _process(_delta: float) -> void:
 	if not _pending_revision.is_empty():
 		_try_revision()
 	_present_pending()
+	_maybe_detect_stereo()
 	_maybe_capture_thumbnail()
 	_poll_subtitles()
 	if _can_loop():
@@ -2349,6 +2543,13 @@ func _process(_delta: float) -> void:
 
 
 func _exit_tree() -> void:
+	if _stereo_thread:
+		_stereo_thread.wait_to_finish()
+		_stereo_thread = null
+	if _stereo_capture_binding:
+		_stereo_capture_binding.unbind()
+	if not _stereo_pin.is_empty() and platform:
+		platform.release_mpv_pair_pin(int(_stereo_pin.session_id), int(_stereo_pin.slot_token))
 	close_video()
 	if is_instance_valid(caption) and caption.get_parent() != self:
 		caption.queue_free()

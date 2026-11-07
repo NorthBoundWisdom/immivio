@@ -54,9 +54,8 @@ const SESSION_STATE := {
 const LIBRARY_TABS := [
 	Library.GENERAL_TAB,
 	Library.DISPLAY_TAB,
-	Library.VIDEO_TAB,
-	Library.SUBTITLES_TAB,
-	Library.BACKGROUND_TAB,
+	Library.PLAYBACK_TAB,
+	Library.APPEARANCE_TAB,
 	Library.ABOUT_TAB
 ]
 

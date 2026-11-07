@@ -15,7 +15,6 @@ var diagnostic_confirmation := false
 var update_check := preload("res://scripts/update_check_menu.gd").new(self)
 signal layout_changed
 const VIEW_MODE := 90
-const BROWSER_SIZE := 91
 var list_view := false
 var compact := false
 var playback_browser := false
@@ -134,18 +133,18 @@ var account_panel: RefCounted = AccountPanel.new(self)
 const Quality := preload("res://scripts/display_quality.gd")
 const ChoiceFields := preload("res://scripts/choice_fields.gd")
 var choices := ChoiceFields.new(self)
-const SETTING_TABS := ["Video", "VR subtitles", "Background", "About", "Display", "General"]
-const GENERAL_TAB := 5
-const SETTING_ORDER := [GENERAL_TAB, DISPLAY_TAB, 0, 1, 2, 3]
-const DISPLAY_TAB := 4
-const VIDEO_TAB := 0
-const SUBTITLES_TAB := 1
-const BACKGROUND_TAB := 2
-const ABOUT_TAB := 3
+## Settings pages in tab order; each page lists titled groups of related controls.
+const SETTING_TABS := ["General", "Display", "Playback", "Appearance", "About"]
+const GENERAL_TAB := 0  # language, hands, library data
+const DISPLAY_TAB := 1  # picture quality, window placement
+const PLAYBACK_TAB := 2  # video output, VR subtitles
+const APPEARANCE_TAB := 3  # background, interface overlays
+const ABOUT_TAB := 4
 const ABOUT_HOME := 36
 var _about_page := 0  # app, credits
 ## VR subtitle distances (metres); the text keeps its angular size at any distance.
 const SubtitleDepth := preload("res://scripts/subtitle_depth.gd")
+const AppBackground := preload("res://scripts/app_background.gd")
 ## Language rows in About: each language named in itself.
 const LANGUAGE_NAMES := I18n.NAMES
 const PANEL_SIZE := Vector2(1.46, 1.12)
@@ -172,6 +171,8 @@ const STICK_DEADZONE := 0.2
 const STICK_SPEED := 1.5  # visible pages per second at full deflection
 const LIST_TOP := GRID_TOP - ROW_HEIGHT * .5
 const ROW_PITCH := (BODY_HEIGHT - ROW_HEIGHT) / (VISIBLE_ROWS - 1)
+const SETTING_ROWS := 8  # settings controls are shorter than media rows, so a page holds one more
+const SETTING_PITCH := (BODY_HEIGHT - ROW_HEIGHT) / (SETTING_ROWS - 1)
 const FIELDS := ["name", "host", "user", "password"]
 const FIELD_NAMES := ["Name", "Address", "User", "Password"]
 const KEYS := [
@@ -300,24 +301,18 @@ func dismiss() -> void:
 	super()
 
 
-func _place_device_status(centre: Vector2) -> void:
-	if compact and playback_browser:
-		if is_instance_valid(device_status):
-			device_status.visible = false
-		return
-	super(centre)
-	if is_instance_valid(device_status):
-		device_status.visible = true
-
-
+## The quick video switcher leaves the clock to the control bar below it; its session
+## toggles sit at the right of the panel's own footer row so nothing overlaps the bar.
 func refresh_session_controls(force: bool = false) -> void:
-	if compact and playback_browser:
-		if is_instance_valid(device_status):
-			device_status.visible = false
-		return
+	var switcher := compact and playback_browser
+	if switcher:
+		var count := 2 if _session_controls().get("passthrough_visible", false) else 1
+		var span := count * FOOTER_DIAMETER + (count - 1) * FOOTER_GAP
+		var width := span + FOOTER_GAP + STATUS_WIDTH
+		_footer_centre = Vector2(CONTENT_RIGHT - 0.02 - span + width * 0.5, FOOTER_Y)
 	super(force)
 	if is_instance_valid(device_status):
-		device_status.visible = true
+		device_status.visible = not switcher
 
 
 func _ready() -> void:
@@ -602,7 +597,9 @@ func _set_scroll(value: float) -> void:
 		return
 	var redraw := floori(clamped + 0.001) != _first_line()
 	scroll = clamped
-	if redraw:
+	if redraw and _can_redraw_list():
+		_redraw_list()
+	elif redraw:
 		_draw()
 	else:
 		_place_list()
@@ -613,6 +610,38 @@ func _set_scroll(value: float) -> void:
 func _scroll_to_bar(y: float) -> void:
 	var span := _bar_span()
 	_set_scroll((span.x - y) / span.y * (_max_scroll() + 1.0) - 0.5)
+
+
+func _can_redraw_list() -> bool:
+	return (
+		is_instance_valid(_list)
+		and choices.opened.is_empty()
+		and not subtitle_picker.active
+		and file_actions.modal.is_empty()
+		and section != Section.MEDIA_SERVER
+	)
+
+
+## Crossing a line redraws only the rows and scrollbar. A full redraw would also rebuild the
+## tabs, header and footer, hide the pointer reticle and invalidate the XR layer every line,
+## which flashes long lists such as the credits while they scroll.
+func _redraw_list() -> void:
+	var stale: Array[Node] = [_list]
+	if is_instance_valid(_bar_thumb):
+		stale.append(_bar_thumb)
+	for index in range(_buttons.size() - 1, -1, -1):
+		var button: Dictionary = _buttons[index]
+		if button.target != SCROLLBAR and not _list.is_ancestor_of(button.node):
+			continue
+		if button.target == SCROLLBAR:
+			stale.append(button.node)
+		_tips.erase(button.target)
+		_buttons.remove_at(index)
+	_decorations = _decorations.filter(func(node): return node not in stale)
+	for node in stale:
+		node.free()
+	_draw_rows()
+	_update_highlights()
 
 
 ## First drawn line (float noise from dragging cannot drop a line).
@@ -671,6 +700,8 @@ func _lines() -> int:
 		return VISIBLE_ROWS
 	if section == Section.MEDIA_SERVER:
 		return server_browser.visible_lines()
+	if section == Section.SETTINGS:
+		return SETTING_ROWS
 	return GRID_LINES if _grid() else VISIBLE_ROWS
 
 
@@ -681,6 +712,8 @@ func _pitch() -> float:
 		return ROW_PITCH
 	if section == Section.MEDIA_SERVER:
 		return server_browser.pitch()
+	if section == Section.SETTINGS:
+		return SETTING_PITCH
 	return GRID_PITCH.y if _grid() else ROW_PITCH
 
 
@@ -881,311 +914,7 @@ func _rebuild_rows() -> void:
 				for entry in _dlna_entries:
 					rows.append(_entry_row(entry))
 		Section.SETTINGS:
-			var settings: Dictionary = (
-				settings_provider.call() if settings_provider.is_valid() else {}
-			)
-			if tab == VIDEO_TAB:
-				rows.append(
-					_choice_row(
-						"Reuse last video mode",
-						"reuse_last_mode",
-						bool(settings.get("reuse_last_mode", false)),
-						[{"value": false, "label": "Off"}, {"value": true, "label": "On"}]
-					)
-				)
-				rows.append(
-					_choice_row(
-						"Resolution",
-						"output_width",
-						int(settings.get("output_width", Quality.AUTO_OUTPUT)),
-						[
-							{"value": Quality.AUTO_OUTPUT, "label": "Auto"},
-							{"value": 0, "label": "Original size"},
-							{"value": 5760, "label": "6K"},
-							{"value": 4096, "label": "4K"}
-						],
-						true
-					)
-				)
-			elif tab == GENERAL_TAB:
-				var languages: Array = []
-				for value in I18n.CHOICES:
-					languages.append({"value": value, "label": LANGUAGE_NAMES[value]})
-				rows.append(_choice_row("Language", "language", I18n.choice, languages))
-				rows.append(
-					_choice_row(
-						"Reclining mode",
-						"reclining_mode",
-						settings.get("reclining_mode", false),
-						[{"value": false, "label": "Off"}, {"value": true, "label": "On"}],
-						false,
-						"Allow tilted screens and menus"
-					)
-				)
-				rows.append(
-					_choice_row(
-						"Allow file management",
-						"file_editing",
-						file_actions.enabled,
-						[{"value": false, "label": "Off"}, {"value": true, "label": "On"}]
-					)
-				)
-				rows.append(
-					_choice_row(
-						"Save play history",
-						"history",
-						settings.get("history", true),
-						[{"value": true, "label": "On"}, {"value": false, "label": "Off"}]
-					)
-				)
-				rows.append(
-					_choice_row(
-						"Remember folder position",
-						"browse_memory",
-						settings.get("browse_memory", true),
-						[{"value": true, "label": "On"}, {"value": false, "label": "Off"}]
-					)
-				)
-				# Video thumbnails and fetched film covers.
-				if _cache_usage == null:
-					_request_cache_usage()
-				var cache: Vector2i = _cache_usage if _cache_usage != null else Vector2i.ZERO
-				var armed := _confirm == "clear_cache"
-				rows.append(
-					{
-						"title": I18n.t("Clear cache"),
-						"detail":
-						(
-							I18n.t("Loading…")
-							if _cache_usage == null
-							else (_bytes(cache.y) if cache.x > 0 else "")
-						),
-						"icon": "check" if armed else "trash",
-						"selected": armed,
-						"clear_cache": true,
-						"empty": cache.x == 0
-					}
-				)
-				rows.append(
-					_choice_row(
-						"Pinch/menu hand",
-						"pinch_hand",
-						str(settings.get("pinch_hand", "right_hand")),
-						[
-							{"value": "left_hand", "label": "Left hand"},
-							{"value": "right_hand", "label": "Right hand"},
-							{"value": "both", "label": "Both hands"}
-						],
-						false
-					)
-				)
-			elif tab == DISPLAY_TAB:
-				rows.append(
-					{
-						"title": I18n.t("Window height"),
-						"key": "window_height",
-						"value": settings.get("window_height", -12.0),
-						"slider": true,
-						"span": Vector3(-60, 30, 1),
-						"unit": "cm",
-						"signed": true,
-						"reset_value": -12.0
-					}
-				)
-				var rate_choices: Array = []
-				for rate in settings.get("refresh_rates", []):
-					rate_choices.append({"value": rate, "label": str(rate) + " Hz"})
-				if not rate_choices.is_empty():
-					rows.append(
-						_choice_row(
-							"Refresh rate",
-							"refresh_rate",
-							float(settings.get("refresh_rate", 72.0)),
-							rate_choices
-						)
-					)
-				var quality_choices: Array = [{"value": Quality.AUTO, "label": "Auto"}]
-				for i in Quality.SCALES.size():
-					quality_choices.append({"value": i, "label": Quality.NAMES[i]})
-				rows.append(
-					_choice_row(
-						"Display quality",
-						"display_quality",
-						int(settings.get("display_quality", Quality.DEFAULT)),
-						quality_choices,
-						false,
-						"Restart to apply" if settings.get("display_quality_pending", false) else ""
-					)
-				)
-				var sharpness_choices: Array = []
-				for i in Quality.SHARPNESS.size():
-					sharpness_choices.append(
-						{"value": Quality.SHARPNESS[i], "label": Quality.SHARPNESS_NAMES[i]}
-					)
-				rows.append(
-					_choice_row(
-						"Sharpness",
-						"sharpness",
-						float(settings.get("sharpness", Quality.DEFAULT_SHARPNESS)),
-						sharpness_choices,
-						true
-					)
-				)
-				rows.append(
-					_choice_row(
-						"Show FPS",
-						"show_fps",
-						bool(settings.get("show_fps", false)),
-						[{"value": false, "label": "Off"}, {"value": true, "label": "On"}]
-					)
-				)
-				rows.append(
-					{
-						"title": I18n.t("Control bar opacity"),
-						"key": "controls_opacity",
-						"value": settings.get("controls_opacity", 0.86),
-						"slider": true,
-						"span": Vector3(0, 1, 0.05),
-						"unit": "",
-						"reset_value": 0.86
-					}
-				)
-			elif tab == SUBTITLES_TAB:
-				for key in ["subtitle_distance", "subtitle_direction", "subtitle_position"]:
-					if key == "subtitle_direction":
-						var direction_row := SubtitleDepth.direction_row(int(settings.get(key, 0)))
-						direction_row.title = I18n.t("Subtitle direction")
-						rows.append(direction_row)
-						continue
-					var row := SubtitleDepth.slider_row(
-						key,
-						float(
-							settings.get(
-								key,
-								(
-									SubtitleDepth.DEFAULT
-									if key == "subtitle_distance"
-									else SubtitleDepth.DEFAULT_POSITION
-								)
-							)
-						)
-					)
-					row.title = I18n.t(
-						(
-							"Subtitle distance"
-							if key == "subtitle_distance"
-							else (
-								"Horizontal position"
-								if int(settings.get("subtitle_direction", 0)) == 1
-								else "Subtitle position"
-							)
-						)
-					)
-					rows.append(row)
-			elif tab == BACKGROUND_TAB:
-				var selected := str(settings.get("background", "belfast"))
-				var backgrounds: Array = []
-				for option in [
-					["belfast", "Belfast sunset", "image"],
-					["dark", "Dark background", "circle"],
-					["passthrough", "Passthrough", "eyes"]
-				]:
-					backgrounds.append({"value": option[0], "label": option[1]})
-				rows.append(_choice_row("Background", "background", selected, backgrounds))
-				if selected == "belfast":
-					var directions: Array = []
-					for angle in range(0, 360, 45):
-						directions.append({"value": angle, "label": str(angle) + "°"})
-					rows.append(
-						_choice_row(
-							"Direction",
-							"background_yaw",
-							int(settings.get("background_yaw", 0)),
-							directions
-						)
-					)
-					rows.append(
-						_choice_row(
-							"Brightness",
-							"background_brightness",
-							float(settings.get("background_brightness", 1.0)),
-							[
-								{"value": 0.5, "label": "50%"},
-								{"value": 0.75, "label": "75%"},
-								{"value": 1.0, "label": "100%"},
-								{"value": 1.25, "label": "125%"}
-							],
-							true
-						)
-					)
-				status = (
-					"Loading…"
-					if settings.get("background_loading", false)
-					else str(settings.get("background_error", ""))
-				)
-			elif tab == ABOUT_TAB:
-				if _about_page == 3:
-					var licenses: Variant = JSON.parse_string(
-						FileAccess.get_file_as_string("res://i18n/licenses.json")
-					)
-					if licenses is Array:
-						for license in licenses:
-							rows.append(
-								{
-									"title": str(license.name),
-									"detail": str(license.license),
-									"icon": "info",
-									"license_id": str(license.id)
-								}
-							)
-				elif _about_page == 2:
-					for credit in [
-						[
-							"Belfast Sunset (Pure Sky)",
-							"Poly Haven · CC0 1.0 · Dimitrios Savva / Greg Zaal / Jarod Guest"
-						],
-						["Godot", "MIT"],
-						["Godot OpenXR Vendors", "Vendor license notices"],
-						["MPV / FFmpeg", "Bundled license notices"],
-						["AndroidX Media3", "Apache-2.0"],
-						["CodeLibs JCIFS", "LGPL-2.1"]
-					]:
-						rows.append(_about_info(I18n.t(credit[0]), I18n.t(credit[1])))
-				else:
-					rows.append(_about_info("Immivio", str(settings.get("version", ""))))
-					rows.append_array(update_check.rows())
-					rows.append(
-						_about_info(
-							I18n.t("Official website"),
-							"https://northboundwisdom.github.io/immivio/"
-						)
-					)
-					rows.append(
-						_about_info(
-							I18n.t("Source code"), "https://github.com/NorthBoundWisdom/immivio"
-						)
-					)
-					rows.append({"title": I18n.t("Credits"), "icon": "info", "about_page": 2})
-					rows.append(
-						{
-							"title": I18n.t("Open source licenses"),
-							"icon": "info",
-							"open_licenses": true
-						}
-					)
-					rows.append(
-						{
-							"title": I18n.t("Save diagnostic log"),
-							"icon": "info",
-							"save_diagnostic_log": true,
-							"detail":
-							(
-								I18n.t("Previous session log available")
-								if settings.get("diagnostic_previous", false)
-								else ""
-							)
-						}
-					)
+			rows.assign(_settings_rows())
 	if section == Section.MEDIA_SERVER:
 		rows = server_browser.rows()
 	rows.assign(
@@ -1226,6 +955,360 @@ func _rebuild_rows() -> void:
 		)
 	focus_index = clampi(focus_index, 0, maxi(0, rows.size() - 1))
 	scroll = clampf(scroll, 0.0, _max_scroll())
+
+
+## Rows of the open settings page: group headings followed by their controls.
+func _settings_rows() -> Array[Dictionary]:
+	var settings: Dictionary = settings_provider.call() if settings_provider.is_valid() else {}
+	var out: Array[Dictionary] = []
+	match tab:
+		GENERAL_TAB:
+			out.append(_group("Language & controls"))
+			var languages: Array = []
+			for value in I18n.CHOICES:
+				languages.append({"value": value, "label": LANGUAGE_NAMES[value]})
+			out.append(_choice_row("Language", "language", I18n.choice, languages))
+			out.append(
+				_choice_row(
+					"Pinch/menu hand",
+					"pinch_hand",
+					str(settings.get("pinch_hand", "right_hand")),
+					[
+						{"value": "left_hand", "label": "Left hand"},
+						{"value": "right_hand", "label": "Right hand"},
+						{"value": "both", "label": "Both hands"}
+					],
+					true
+				)
+			)
+			out.append(_group("Library"))
+			out.append(_switch_row("Allow file management", "file_editing", file_actions.enabled))
+			out.append(_switch_row("Save play history", "history", settings.get("history", true)))
+			out.append(
+				_switch_row(
+					"Remember folder position", "browse_memory", settings.get("browse_memory", true)
+				)
+			)
+			out.append(_cache_row())
+		DISPLAY_TAB:
+			out.append(_group("Picture"))
+			var quality_choices: Array = [{"value": Quality.AUTO, "label": "Auto"}]
+			for i in Quality.SCALES.size():
+				quality_choices.append({"value": i, "label": Quality.NAMES[i]})
+			out.append(
+				_choice_row(
+					"Display quality",
+					"display_quality",
+					int(settings.get("display_quality", Quality.DEFAULT)),
+					quality_choices,
+					false,
+					"Restart to apply" if settings.get("display_quality_pending", false) else ""
+				)
+			)
+			var rate_choices: Array = []
+			for rate in settings.get("refresh_rates", []):
+				rate_choices.append({"value": rate, "label": str(rate) + " Hz"})
+			if not rate_choices.is_empty():
+				out.append(
+					_choice_row(
+						"Refresh rate",
+						"refresh_rate",
+						float(settings.get("refresh_rate", 72.0)),
+						rate_choices,
+						rate_choices.size() <= 4
+					)
+				)
+			var sharpness_choices: Array = []
+			for i in Quality.SHARPNESS.size():
+				sharpness_choices.append(
+					{"value": Quality.SHARPNESS[i], "label": Quality.SHARPNESS_NAMES[i]}
+				)
+			out.append(
+				_choice_row(
+					"Sharpness",
+					"sharpness",
+					float(settings.get("sharpness", Quality.DEFAULT_SHARPNESS)),
+					sharpness_choices,
+					true
+				)
+			)
+			out.append(_group("Window"))
+			out.append(
+				{
+					"title": I18n.t("Window height"),
+					"key": "window_height",
+					"value": settings.get("window_height", -12.0),
+					"slider": true,
+					"span": Vector3(-60, 30, 1),
+					"unit": "cm",
+					"signed": true,
+					"reset_value": -12.0
+				}
+			)
+			out.append(
+				_switch_row(
+					"Reclining mode",
+					"reclining_mode",
+					settings.get("reclining_mode", false),
+					"Allow tilted screens and menus"
+				)
+			)
+		PLAYBACK_TAB:
+			out.append(_group("Video"))
+			out.append(
+				_choice_row(
+					"Resolution",
+					"output_width",
+					int(settings.get("output_width", Quality.AUTO_OUTPUT)),
+					[
+						{"value": Quality.AUTO_OUTPUT, "label": "Auto"},
+						{"value": 0, "label": "Original size"},
+						{"value": 5760, "label": "6K"},
+						{"value": 4096, "label": "4K"}
+					],
+					true
+				)
+			)
+			out.append(
+				_switch_row(
+					"Reuse last video mode",
+					"reuse_last_mode",
+					bool(settings.get("reuse_last_mode", false))
+				)
+			)
+			out.append(_group("VR subtitles"))
+			out.append_array(_subtitle_rows(settings))
+		APPEARANCE_TAB:
+			out.append(_group("Background"))
+			var selected := str(settings.get("background", "belfast"))
+			out.append(
+				_choice_row(
+					"Background",
+					"background",
+					selected,
+					[
+						{"value": "belfast", "label": "Belfast sunset"},
+						{"value": "starry_night", "label": "Starry night"},
+						{"value": "beach", "label": "Beach"},
+						{"value": "cloud_sea", "label": "Sea of clouds"},
+						{"value": "dark", "label": "Dark background"},
+						{"value": "passthrough", "label": "Passthrough"}
+					]
+				)
+			)
+			if AppBackground.is_scenery(selected):
+				var directions: Array = []
+				for angle in range(0, 360, 45):
+					directions.append({"value": angle, "label": str(angle) + "°"})
+				out.append(
+					_choice_row(
+						"Direction",
+						"background_yaw",
+						int(settings.get("background_yaw", 0)),
+						directions
+					)
+				)
+				out.append(
+					_choice_row(
+						"Brightness",
+						"background_brightness",
+						float(settings.get("background_brightness", 1.0)),
+						[
+							{"value": 0.5, "label": "50%"},
+							{"value": 0.75, "label": "75%"},
+							{"value": 1.0, "label": "100%"},
+							{"value": 1.25, "label": "125%"}
+						],
+						true
+					)
+				)
+			out.append(_group("Interface"))
+			out.append(
+				{
+					"title": I18n.t("Control bar opacity"),
+					"key": "controls_opacity",
+					"value": settings.get("controls_opacity", 0.86),
+					"slider": true,
+					"span": Vector3(0, 1, 0.05),
+					"unit": "",
+					"reset_value": 0.86
+				}
+			)
+			out.append(_switch_row("Show FPS", "show_fps", bool(settings.get("show_fps", false))))
+			status = (
+				"Loading…"
+				if settings.get("background_loading", false)
+				else str(settings.get("background_error", ""))
+			)
+		ABOUT_TAB:
+			out.append_array(_about_rows(settings))
+	return out
+
+
+## Subtitle placement shared by every VR video: distance, then direction, then position.
+func _subtitle_rows(settings: Dictionary) -> Array[Dictionary]:
+	var vertical := int(settings.get("subtitle_direction", 0)) == 1
+	var distance := SubtitleDepth.slider_row(
+		"subtitle_distance", float(settings.get("subtitle_distance", SubtitleDepth.DEFAULT))
+	)
+	distance.title = I18n.t("Subtitle distance")
+	var direction := SubtitleDepth.direction_row(int(settings.get("subtitle_direction", 0)))
+	direction.title = I18n.t("Subtitle direction")
+	var position := SubtitleDepth.slider_row(
+		"subtitle_position",
+		float(settings.get("subtitle_position", SubtitleDepth.DEFAULT_POSITION))
+	)
+	position.title = I18n.t("Horizontal position" if vertical else "Subtitle position")
+	return [distance, direction, position]
+
+
+## Everything the app ships, grouped by role: [heading, [[name, license · authors], ...]].
+## Native libraries are those statically linked into the bundled mpv-android build.
+const CREDITS := [
+	[
+		"Engine & XR",
+		[
+			["Godot Engine 4.7.2", "MIT"],
+			["Godot OpenXR Vendors 5.1.0", "MIT · vendor license notices"],
+			["Khronos OpenXR Loader 1.1.54", "Apache-2.0"],
+			["Godot OpenXR hand demo assets", "MIT"],
+		]
+	],
+	[
+		"Playback & decoding",
+		[
+			["mpv (mpv-android 2026-09-17)", "GPL-2.0-or-later"],
+			["FFmpeg", "GPL-3.0-or-later"],
+			["libplacebo", "LGPL-2.1-or-later"],
+			["shaderc · glslang · SPIRV-Tools", "Apache-2.0 · BSD-3-Clause"],
+			["dav1d", "BSD-2-Clause"],
+			["AndroidX Media3 1.11.1", "Apache-2.0"],
+		]
+	],
+	[
+		"Subtitles & text",
+		[
+			["libass", "ISC"],
+			["FreeType", "FreeType License"],
+			["HarfBuzz", "MIT"],
+			["GNU FriBidi", "LGPL-2.1-or-later"],
+			["libunibreak", "zlib"],
+			["ICU4J charset detector 79.1", "Unicode-3.0"],
+		]
+	],
+	[
+		"Network & storage",
+		[
+			["CodeLibs JCIFS 3.0.4", "LGPL-2.1"],
+			["Bouncy Castle 1.85", "MIT"],
+			["SLF4J API 1.7.36", "MIT"],
+			["Mbed TLS 3.6.7", "Apache-2.0"],
+			["libxml2", "MIT"],
+		]
+	],
+	[
+		"Runtime",
+		[
+			["Lua 5.2", "MIT"],
+			["Kotlin standard library 2.4.21", "Apache-2.0"],
+			["kotlinx.coroutines 1.6.4", "Apache-2.0"],
+			["AndroidX Activity · Core · Fragment · Lifecycle", "Apache-2.0"],
+			["Guava 33.3.1", "Apache-2.0"],
+			["JSpecify 1.0.0 · JetBrains annotations 13.0", "Apache-2.0"],
+		]
+	],
+	[
+		"Background panorama",
+		[
+			[
+				"Belfast Sunset (Pure Sky)",
+				"Poly Haven · CC0 1.0 · Dimitrios Savva / Greg Zaal / Jarod Guest"
+			],
+		]
+	],
+]
+
+
+func _about_rows(settings: Dictionary) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if _about_page == 3:
+		var licenses: Variant = JSON.parse_string(
+			FileAccess.get_file_as_string("res://i18n/licenses.json")
+		)
+		if licenses is Array:
+			for license in licenses:
+				out.append(
+					{
+						"title": str(license.name),
+						"detail": str(license.license),
+						"icon": "info",
+						"license_id": str(license.id)
+					}
+				)
+	elif _about_page == 2:
+		for group in CREDITS:
+			out.append(_group(group[0]))
+			for credit in group[1]:
+				out.append(_about_info(str(credit[0]), str(credit[1])))
+	else:
+		out.append(_about_info("Immivio", str(settings.get("version", ""))))
+		out.append_array(update_check.rows())
+		out.append(
+			_about_info(I18n.t("Official website"), "https://northboundwisdom.github.io/immivio/")
+		)
+		out.append(
+			_about_info(I18n.t("Source code"), "https://github.com/NorthBoundWisdom/immivio")
+		)
+		out.append({"title": I18n.t("Credits"), "icon": "info", "about_page": 2})
+		out.append({"title": I18n.t("Open source licenses"), "icon": "info", "open_licenses": true})
+		out.append(
+			{
+				"title": I18n.t("Save diagnostic log"),
+				"icon": "info",
+				"save_diagnostic_log": true,
+				"detail":
+				(
+					I18n.t("Previous session log available")
+					if settings.get("diagnostic_previous", false)
+					else ""
+				)
+			}
+		)
+	return out
+
+
+## Thumbnails and fetched film covers; the size shows under the title, the button arms then clears.
+func _cache_row() -> Dictionary:
+	if _cache_usage == null:
+		_request_cache_usage()
+	var cache: Vector2i = _cache_usage if _cache_usage != null else Vector2i.ZERO
+	var armed := _confirm == "clear_cache"
+	return {
+		"title": I18n.t("Clear cache"),
+		"detail":
+		I18n.t("Loading…") if _cache_usage == null else (_bytes(cache.y) if cache.x > 0 else ""),
+		"action": "Confirm clear" if armed else "Clear",
+		"icon": "check" if armed else "trash",
+		"selected": armed,
+		"clear_cache": true,
+		"empty": cache.x == 0
+	}
+
+
+## A titled divider that opens a group of settings; it takes one line and is never a target.
+func _group(title: String) -> Dictionary:
+	return {"title": I18n.t(title), "group": true}
+
+
+func _switch_row(title: String, key: String, value: Variant, hint: String = "") -> Dictionary:
+	return _choice_row(
+		title,
+		key,
+		bool(value),
+		[{"value": false, "label": "Off"}, {"value": true, "label": "On"}],
+		false,
+		hint
+	)
 
 
 ## The open local folder's path ("" lists the storage volumes).
@@ -1362,8 +1445,6 @@ func _exit_tree() -> void:
 		_cache_thread = null
 
 
-## Video state changes arrive several times a second: redraw only when the Alpha profiles
-## (current, compiling, cold) shown on the Alpha tab change.
 func _activate(target: int) -> void:
 	if (
 		target == ABOUT_HOME
@@ -1380,11 +1461,6 @@ func _activate(target: int) -> void:
 		list_view = not list_view
 		scroll = float(index / _cols())
 		setting_changed.emit("library_list_view", list_view)
-		refresh()
-		return
-	if target == BROWSER_SIZE:
-		compact = not compact
-		layout_changed.emit()
 		refresh()
 		return
 	if target in [CLOSE, PLAYER]:
@@ -1888,7 +1964,7 @@ func _clear_content_layout(keep_navigation: bool) -> void:
 
 
 func _draw() -> void:
-	var navigation_key := I18n.language
+	var navigation_key := I18n.language + str(playback_browser)
 	var keep_navigation := (
 		navigation_key == _drawn_navigation_key
 		and is_instance_valid(_side)
@@ -1910,8 +1986,9 @@ func _draw() -> void:
 		var column := _quad(Vector2(0.42, 1.12), Vector3.ZERO, PANEL, 10)
 		_side.add_child(column)
 		_decorations.append(column)
-		for position in NAV_ORDER.size():
-			var i: int = NAV_ORDER[position]
+		var order := nav_order()
+		for position in order.size():
+			var i: int = order[position]
 			_nav_button(
 				NAV_BASE + i,
 				I18n.t(NAV[i]),
@@ -1940,18 +2017,10 @@ func _draw() -> void:
 		_glyph(
 			PLAYER,
 			"close",
-			Vector2(CONTENT_LEFT + .2325, FOOTER_Y),
-			0.065,
-			true,
-			I18n.t("Back to video")
-		)
-		_glyph(
-			BROWSER_SIZE,
-			"view_mode",
 			Vector2(CONTENT_LEFT + .1325, FOOTER_Y),
 			0.065,
 			true,
-			I18n.t("Full library" if compact else "Compact library")
+			I18n.t("Back to video")
 		)
 	if section == Section.MEDIA_SERVER:
 		server_browser.draw()
@@ -1975,12 +2044,11 @@ func _draw() -> void:
 		var tab_width := (
 			(CONTENT_RIGHT - CONTENT_LEFT - maxf(0, tabs.size() - 1) * .015) / maxf(1, tabs.size())
 		)
-		for position in tabs.size():
-			var i: int = SETTING_ORDER[position]
+		for i in tabs.size():
 			_control_button(
 				TAB_BASE + i,
 				I18n.t(tabs[i]),
-				Vector2(CONTENT_LEFT + tab_width * .5 + position * (tab_width + .015), HEADER_Y),
+				Vector2(CONTENT_LEFT + tab_width * .5 + i * (tab_width + .015), HEADER_Y),
 				tab_width
 			)
 			(_buttons.back().node.get_child(0) as Label3D).font_size = 18
@@ -2115,10 +2183,11 @@ func _draw() -> void:
 			Vector2(0.09, 0.07),
 			_recent_page + 1 < _recent_page_count()
 		)
-	var status_left := CONTENT_LEFT + (.33 if playback_browser else .12)
+	var status_left := CONTENT_LEFT + (.23 if playback_browser else .12)
 	var status_width := (
 		CONTENT_RIGHT
 		- status_left
+		- (.26 if compact and playback_browser else 0.0)
 		- (.32 if file_actions.uncertain or file_actions.pending > 0 else 0.0)
 	)
 	var footer_status := (
@@ -2239,8 +2308,15 @@ func _draw_rows() -> void:
 					)
 				)
 		else:
+			var centre := Vector2(ROW_CENTRE_X, row_top - k * _pitch())
+			if row.get("group", false):
+				_setting_group(ROW_BASE + k, row, centre, k == 0)
+				continue
 			if row.has("choices") or row.get("slider", false):
-				_setting_field(row, Vector2(ROW_CENTRE_X, row_top - k * _pitch()))
+				_setting_field(ROW_BASE + k, row, centre)
+				continue
+			if row.has("action"):
+				_setting_action(ROW_BASE + k, row, centre)
 				continue
 			_row_button(
 				ROW_BASE + k,
@@ -2282,7 +2358,8 @@ func _draw_rows() -> void:
 					detail.text = str(row.detail)
 	if _max_scroll() > 0:
 		_draw_scrollbar(_bar_span())
-	elif rows.is_empty() and status.is_empty():
+	elif rows.is_empty() and status.is_empty() and section != Section.NETWORK:
+		# Network media draws its own empty state with guidance; a dash would sit under it.
 		var empty := _label("—", Vector3(0.19, 0.0, 0.004), 30)
 		empty.modulate = MUTED
 	_place_list()
@@ -2302,8 +2379,29 @@ func _draw_scrollbar(span: Vector2) -> void:
 	_bar_thumb.material_override.render_priority = 13
 
 
-func _setting_field(row: Dictionary, centre: Vector2) -> void:
-	_row_button(ROW_BASE, str(row.title), "", "", centre, false)
+## Settings rows share one grid: the title (and an optional muted hint) on the left, the
+## control in a fixed right column, so every page lines up the same way.
+const SETTING_TITLE_X := -0.55
+const SETTING_TITLE_WIDTH := 0.43
+const SETTING_FIELD_X := 0.225
+const SETTING_FIELD_WIDTH := 0.72
+const SETTING_ACTION_WIDTH := 0.26
+
+
+func _setting_field(target: int, row: Dictionary, centre: Vector2) -> void:
+	choices.field(
+		_setting_heading(target, row, centre, str(row.get("hint", ""))),
+		row,
+		Vector2(SETTING_FIELD_X, 0),
+		SETTING_FIELD_WIDTH
+	)
+
+
+## The row's title as an inert, transparent row; the controls are separate targets.
+func _setting_heading(
+	target: int, row: Dictionary, centre: Vector2, hint: String
+) -> MeshInstance3D:
+	_row_button(target, str(row.title), "", "", centre, false)
 	var button: Dictionary = _buttons.back()
 	button.enabled = false
 	button["keep_visible"] = true  # The row holds a heading and separate choice controls.
@@ -2312,16 +2410,60 @@ func _setting_field(row: Dictionary, centre: Vector2) -> void:
 	if node.get_child_count() > 1:
 		node.get_child(1).visible = false
 	var title: Label3D = node.get_child(0)
-	title.position = Vector3(-0.55, 0.014 if not str(row.get("hint", "")).is_empty() else 0, 0.004)
+	title.position = Vector3(SETTING_TITLE_X, 0.014 if not hint.is_empty() else 0, 0.004)
 	title.font_size = 18
-	title.text = _fit_title(str(row.title), "", 0.43, 18)
-	if not str(row.get("hint", "")).is_empty():
-		var hint := _label(
-			_fit_title(I18n.t(row.hint), "", 0.43, 13), Vector3(-0.55, -0.022, 0.004), 13, node
+	title.text = _fit_title(str(row.title), "", SETTING_TITLE_WIDTH, 18)
+	if not hint.is_empty():
+		var label := _label(
+			_fit_title(I18n.t(hint), "", SETTING_TITLE_WIDTH, 13),
+			Vector3(SETTING_TITLE_X, -0.022, 0.004),
+			13,
+			node
 		)
-		hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-		hint.modulate = MUTED
-	choices.field(node, row, Vector2(0.225, 0), 0.72)
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		label.modulate = MUTED
+	return node
+
+
+## One-button action (clear cache): right-aligned in the control column; pressing it chooses the row.
+func _setting_action(target: int, row: Dictionary, centre: Vector2) -> void:
+	_setting_heading(target, row, centre, str(row.get("detail", "")))
+	var right := centre.x + SETTING_FIELD_X + SETTING_FIELD_WIDTH * .5
+	_control_button(
+		target,
+		I18n.t(str(row.action)),
+		Vector2(right - SETTING_ACTION_WIDTH * .5, centre.y),
+		SETTING_ACTION_WIDTH,
+		not bool(row.get("empty", false)),
+		str(row.get("icon", "")),
+		false,
+		_list
+	)
+	_buttons.back()["keep_visible"] = true  # An empty cache shows a dimmed button, not a gap.
+	_buttons.back().node.visible = true
+	_lit(bool(row.get("selected", false)))
+
+
+## Group heading: accent caption over a hairline, set low in its line so it reads with its group.
+func _setting_group(target: int, row: Dictionary, centre: Vector2, first: bool) -> void:
+	_row_button(target, str(row.title), "", "", centre, false)
+	var button: Dictionary = _buttons.back()
+	button.enabled = false
+	button["keep_visible"] = true
+	button.base_color = Color(TILE, 0.0)
+	var node: MeshInstance3D = button.node
+	if node.get_child_count() > 1:
+		node.get_child(1).visible = false
+	var title: Label3D = node.get_child(0)
+	title.position = Vector3(SETTING_TITLE_X - 0.03, -0.012, 0.004)
+	title.font_size = 16
+	title.modulate = ACCENT
+	title.text = _fit_title(str(row.title), "", BODY_WIDTH - 0.1, 16)
+	if not first:
+		var rule := _quad(
+			Vector2(BODY_WIDTH - 0.04, 0.002), Vector3(0, 0.03, 0.003), Color(0.17, 0.2, 0.24), 12
+		)
+		node.add_child(rule)
 
 
 func _choice_row(
@@ -2568,6 +2710,31 @@ func _nav_button(target: int, text: String, icon: String, centre: Vector2, selec
 		ACCENT if selected else button.foreground,
 		node
 	)
+
+
+## Over a playing video the library only switches videos, so it hides Settings.
+func nav_order() -> Array:
+	return NAV_ORDER.filter(func(item): return not playback_browser or item != Section.SETTINGS)
+
+
+## Opened over a playing video the library is a quick video switcher: one size, anchored
+## above the control bar, without settings.
+func set_playback_browser(playing: bool) -> void:
+	var changed := playback_browser != playing
+	playback_browser = playing
+	compact = playing
+	allow_user_dismiss = playing
+	if playing and section == Section.SETTINGS:
+		file_actions.reset()
+		account_panel.close()
+		section = Section.RECENT
+		tab = 0
+		scroll = 0.0
+		status = ""
+		if visible:
+			_load_section()
+	if changed and visible:
+		refresh()
 
 
 func _update_navigation_selection() -> void:

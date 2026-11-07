@@ -50,6 +50,8 @@ static func clean_mode(value: Dictionary) -> Dictionary:
 static func valid_mode(value: Variant) -> bool:
 	if not value is Dictionary or not value.get("profile") in PROFILES:
 		return false
+	if value.has("layout_auto") and not value.layout_auto is bool:
+		return false
 	var geometry: Variant = value.get("geometry")
 	if (
 		not (geometry is int or geometry is float)

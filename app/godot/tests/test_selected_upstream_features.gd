@@ -106,20 +106,10 @@ func _run() -> void:
 	main.video._apply_geometry()
 	main.recent_menu.dismiss()
 	main._show_player_menu()
-	main.video_menu._activate(main.video_menu.SPACE_LOCK)
-	var pose: Transform3D = main.video_menu.global_transform
-	main.video.set_flat_world_pose(Transform3D(Basis.IDENTITY, Vector3(4, 2, -5)))
-	main._place_menu(main.video_menu)
 	check(
-		main.video_menu.global_transform.is_equal_approx(pose),
-		"Spatial lock survives independent video movement"
+		not main.video_menu._buttons.any(func(button): return button.target == 224),
+		"The control bar has no spatial lock; follow mode owns placement"
 	)
-	main.video_menu.dismiss()
-	main._show_player_menu()
-	check(
-		main.video_menu.global_transform.is_equal_approx(pose), "Spatial lock survives hide/reopen"
-	)
-	main.video_menu._activate(main.video_menu.SPACE_LOCK)
 	main._on_playback_adjustment("screen_preset", "giant22")
 	check(
 		is_equal_approx(main.video.screen_distance, 18) and main.video._flat.size.x <= 22.001,
@@ -146,23 +136,91 @@ func _run() -> void:
 		is_equal_approx(main.video_menu.controls_opacity, 0.25),
 		"Opacity updates the active control bar"
 	)
-	main.recent_menu.compact = true
+	main.recent_menu.section = main.recent_menu.Section.SETTINGS
 	main._show_recent_menu(true)
+	var browser: Node3D = main.recent_menu
+	var bar: Node3D = main.video_menu
+	check(main.video_menu.visible and browser.visible, "Browsing retains playback controls")
 	check(
-		main.video_menu.visible and main.recent_menu.visible, "Browsing retains playback controls"
+		(
+			browser.playback_browser
+			and browser.compact
+			and browser.section == browser.Section.RECENT
+			and not browser.nav_order().has(browser.Section.SETTINGS)
+			and not browser._buttons.any(
+				func(button): return button.target == browser.NAV_BASE + browser.Section.SETTINGS
+			)
+		),
+		"The playback browser is a video switcher without Settings"
 	)
-	var lock_button: Dictionary = main.video_menu._buttons.filter(func(button): return button.target == main.video_menu.SPACE_LOCK)[0]
-	var centre: Vector2 = lock_button.rect.get_center()
-	main.ray_override = [
-		main.video_menu.to_global(Vector3(centre.x, centre.y, 0.2)),
-		-main.video_menu.global_basis.z.normalized()
+	var scale := browser.global_basis.get_scale()
+	var panel_left := browser.to_global(
+		Vector3(browser.PANEL_CENTRE.x - browser.PANEL_SIZE.x * .5, 0, 0)
+	)
+	var panel_right := browser.to_global(
+		Vector3(browser.PANEL_CENTRE.x + browser.PANEL_SIZE.x * .5, 0, 0)
+	)
+	var bar_left := bar.to_global(Vector3(-bar.BAR_WIDTH * .5, 0, 0))
+	var bar_right := bar.to_global(Vector3(bar.BAR_WIDTH * .5, 0, 0))
+	var panel_bottom := browser.to_local(bar.to_global(Vector3(0, bar.HEADER_Y, 0))).y
+	check(
+		(
+			is_equal_approx(scale.x, scale.y)
+			and absf(panel_left.x - bar_left.x) < 0.005
+			and absf(panel_right.x - bar_right.x) < 0.005
+			and panel_bottom < -browser.PANEL_SIZE.y * .5
+		),
+		"The playback browser is uniformly scaled, as wide as the bar and above it"
+	)
+	var reserved: Rect2 = bar.capture_envelope()
+	var inverse: Transform3D = bar.global_transform.affine_inverse()
+	var corners := [
+		browser.to_global(Vector3(-1.0, -browser.PANEL_SIZE.y * .5, 0)),
+		browser.to_global(
+			Vector3(
+				browser.PANEL_CENTRE.x + browser.PANEL_SIZE.x * .5, browser.PANEL_SIZE.y * .5, 0
+			)
+		)
 	]
-	var was_locked: bool = main.video_menu.space_locked
-	main._update_menu_pointer("right_hand", true)
 	check(
-		main.video_menu.space_locked != was_locked,
-		"The control bar accepts ray input while the library is open"
+		corners.all(
+			func(point):
+				var local: Vector3 = inverse * point
+				return reserved.grow(0.001).has_point(Vector2(local.x, local.y)),
+		),
+		"The bar's capture already reserves the switcher, so opening it cannot resize the layer"
 	)
+	var speed: Dictionary = bar._buttons.filter(func(button): return button.target == bar.QUICK_SPEED)[0]
+	var centre: Vector2 = speed.rect.get_center()
+	main.ray_override = [
+		bar.to_global(Vector3(centre.x, centre.y, 0.2)), -bar.global_basis.z.normalized()
+	]
+	main._update_menu_pointer("right_hand", true)
+	check(bar._quick_open == "speed", "The control bar accepts ray input while the browser is open")
+	bar._toggle_popup("")
+	main._show_recent_menu(true)
+	main._on_menu_action("stop")
+	check(
+		(
+			browser.visible
+			and not bar.visible
+			and not browser.playback_browser
+			and not browser.compact
+			and is_equal_approx(browser.global_basis.get_scale().x, 1.0)
+			and browser.nav_order().has(browser.Section.SETTINGS)
+		),
+		"Closing the video from the switcher returns to the full library, not a small window"
+	)
+	# Resume the synthetic video for the remaining checks.
+	main.video.local_uri = "file:///synthetic.mp4"
+	main.video.media.begin(8)
+	main.video.media.state = "playing"
+	main.video.media.format = {"width": 1920, "height": 1080, "pixel_aspect": 1.0}
+	main.video._waiting_first = false
+	main.video.panel.visible = true
+	main.video._apply_geometry()
+	main.recent_menu.dismiss()
+	main._show_player_menu()
 	main.video_menu._toggle_popup("screen")
 	check(
 		main.video_menu.choices.targets.values().any(

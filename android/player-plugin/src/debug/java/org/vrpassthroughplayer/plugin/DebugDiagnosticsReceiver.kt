@@ -164,6 +164,10 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                     val command =
                                         JSONObject()
                                             .put("operation", operation)
+                                            .put(
+                                                "auto_stereo",
+                                                intent.getBooleanExtra("auto_stereo", false),
+                                            )
                                             .put("request_key", request)
                                             .put(
                                                 "value",

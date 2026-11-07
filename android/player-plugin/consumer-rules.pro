@@ -6,3 +6,10 @@
     public static void setEnabled(boolean);
     public static java.lang.String status();
 }
+-keep class org.vrpassthroughplayer.plugin.XrPointerSurfaceBridge {
+    public static int contextGeneration();
+    public static void attachSurface(int, android.view.Surface);
+    public static void submitTexture(int, int, int, int, int, long);
+    public static void setEnabled(boolean);
+    public static java.lang.String status();
+}

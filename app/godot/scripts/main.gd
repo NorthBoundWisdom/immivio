@@ -362,11 +362,7 @@ func _ready() -> void:
 			if recent_menu.visible and recent_menu.playback_browser:
 				_presentation._show_player_menu(false)
 	)
-	player_menu.recent_requested.connect(
-		func():
-			recent_menu.compact = true
-			_show_recent_menu()
-	)
+	player_menu.recent_requested.connect(func(): _show_recent_menu())
 	player_menu.seek_requested.connect(_on_menu_seek)
 	player_menu.bookmark_requested.connect(_on_bookmark_request)
 	player_menu.setting_requested.connect(_on_player_setting)

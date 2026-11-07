@@ -50,27 +50,10 @@ static func resolve(
 	var naming_policy := preload("res://scripts/media_naming.gd")
 	var last := clean(previous)
 	var aspect := float(width) / maxf(1.0, float(height))
-	var mode := str(format.get("stereo_mode", "")).to_lower()
 	var recognized := (
 		stated.has("geometry")
 		or stated.has("stereo")
-		or (
-			mode
-			in [
-				"sbsl",
-				"sbsr",
-				"sbs2l",
-				"sbs2r",
-				"side_by_side",
-				"right_left",
-				"abl",
-				"abr",
-				"ab2l",
-				"ab2r",
-				"top_bottom",
-				"bottom_top"
-			]
-		)
+		or naming_policy.has_stereo_metadata(format)
 		or aspect >= 3.2
 		or (width >= 2880 and absf(aspect - 1.0) <= 0.04)
 	)

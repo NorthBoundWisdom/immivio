@@ -137,7 +137,7 @@ func _run() -> void:
 		verify(menu, "Network " + mode)
 	menu.section = Library.Section.SETTINGS
 	menu.network.mode = ""
-	for tab in menu.SETTING_ORDER:
+	for tab in menu.SETTING_TABS.size():
 		menu.tab = tab
 		menu.refresh()
 		verify(menu, "Settings " + str(tab))

@@ -365,14 +365,7 @@ func _update_view_follow() -> void:
 		return
 	var menu_head = host._menu_head_pose(head)
 	for menu in [host.recent_menu, host.video_menu]:
-		if not menu or not menu.visible or (menu is PlayerMenu and menu.space_locked):
-			continue
-		if (
-			menu == host.recent_menu
-			and menu is LibraryMenu
-			and menu.playback_browser
-			and host.video_menu.space_locked
-		):
+		if not menu or not menu.visible:
 			continue
 		# Immersive controls belong to the reset/content sphere, even in follow mode.
 		if menu == host.player_menu and host._viewer().geometry != Geometry.Geometry.FLAT:
@@ -391,21 +384,18 @@ func _place_menu(menu: Node3D) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
-	if menu is PlayerMenu and menu.space_locked:
-		return
 	# A temporary tracking loss must not relocate menus to a world-origin fallback.
 	var head: Variant = host._head_pose()
 	if not host.display.preview and head == null:
 		return
+	# Without a visible control bar (e.g. before the first frame) the switcher opens ahead.
 	if (
 		menu == host.recent_menu
 		and menu is LibraryMenu
 		and menu.playback_browser
-		and (menu.compact or host.video_menu.space_locked)
+		and host.video_menu.visible
 	):
-		var pose: Transform3D = host.video_menu.global_transform
-		pose.origin = host.video_menu.to_global(Vector3(-0.08, 0.70 if menu.compact else 1.15, 0))
-		pose.basis *= Basis.from_scale(Vector3.ONE * (0.62 if menu.compact else 1.2))
+		var pose := PlayerMenu.switcher_pose(host.video_menu)
 		menu.global_transform = pose
 		if head != null:
 			host.view_follow.capture(host._menu_key(menu), host._menu_head_pose(head), pose)
@@ -501,24 +491,6 @@ func _place_menu(menu: Node3D) -> void:
 		menu.global_transform = pose
 		host.view_follow.capture(host._menu_key(menu), host._menu_head_pose(head), pose)
 
-	if (
-		menu == host.recent_menu
-		and menu is LibraryMenu
-		and menu.playback_browser
-		and host.video_menu.visible
-		and not host.video_menu.space_locked
-	):
-		host.video_menu.global_transform = Transform3D(
-			menu.global_basis * Basis.from_scale(PlayerMenu.PANEL_SCALE),
-			menu.to_global(Vector3(0.13, -1.0, 0.02))
-		)
-		if head != null:
-			host.view_follow.capture(
-				host._menu_key(host.video_menu),
-				host._menu_head_pose(head),
-				host.video_menu.global_transform
-			)
-
 
 func _active_menu() -> Node3D:
 	var host := _host_ref.get_ref() as Node3D
@@ -560,8 +532,6 @@ func _update_player_menu_anchor() -> void:
 			if host.video.panel.visible or host.video.media.state == "failed":
 				host._show_player_menu()
 	if host._system_recenter_pending:
-		return
-	if host.player_menu is PlayerMenu and host.player_menu.space_locked:
 		return
 	# Explicit head-follow owns menu placement, including captured interactions.
 	if host.view_follow.enabled and host._viewer().geometry == Geometry.Geometry.FLAT:
@@ -655,11 +625,15 @@ func _show_recent_menu(preserve_navigation: bool = false) -> void:
 	_pending_video_controls_session = 0
 	host._trigger_taps.clear()
 	var playing: bool = not host.video.local_uri.is_empty()
+	# Closing the video from the switcher turns it back into the full library in front.
+	var leaves_switcher: bool = (
+		host.recent_menu is LibraryMenu
+		and host.recent_menu.visible
+		and host.recent_menu.playback_browser
+		and not playing
+	)
 	if host.recent_menu is LibraryMenu:
-		host.recent_menu.playback_browser = playing
-		host.recent_menu.allow_user_dismiss = playing
-		if not playing:
-			host.recent_menu.compact = false
+		host.recent_menu.set_playback_browser(playing)
 	if host.player_menu:
 		if playing:
 			host.player_menu._reset_navigation()
@@ -679,6 +653,8 @@ func _show_recent_menu(preserve_navigation: bool = false) -> void:
 		if host.recent_menu is LibraryMenu:
 			host.recent_menu._load_section()
 		host.recent_menu.refresh()
+		host._place_menu(host.recent_menu)
+	elif leaves_switcher:
 		host._place_menu(host.recent_menu)
 
 
@@ -866,7 +842,7 @@ func _on_background_changed() -> void:
 		host.recent_menu
 		and host.recent_menu.visible
 		and host.recent_menu.section == host.recent_menu.Section.SETTINGS
-		and host.recent_menu.tab == host.recent_menu.BACKGROUND_TAB
+		and host.recent_menu.tab == host.recent_menu.APPEARANCE_TAB
 	):
 		host.recent_menu.refresh()
 
@@ -939,7 +915,8 @@ func _set_reclining_mode(enabled: bool) -> void:
 		else:
 			host.video._apply_flat_pose()
 		host._capture_follow_screen(host.video, head)
-	for menu in [host.recent_menu, host.video_menu]:
+	# The control bar first: the video switcher is anchored to it.
+	for menu in [host.video_menu, host.recent_menu]:
 		if menu and menu.visible:
 			host._place_menu(menu)
 
@@ -1045,12 +1022,7 @@ func _recenter() -> void:
 			host.video.reset_immersive_adjustments()
 	for menu in [host.player_menu, host.recent_menu]:
 		if menu and menu.visible:
-			var locked: bool = menu is PlayerMenu and menu.space_locked
-			if locked:
-				menu.space_locked = false
 			host._place_menu(menu)
-			if locked:
-				menu.space_locked = true
 	if is_instance_valid(host.menu_compositor):
 		host.menu_compositor.refresh_placement()
 	Log.record("recenter_requested")

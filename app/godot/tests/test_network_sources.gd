@@ -93,12 +93,14 @@ func _run() -> void:
 	)
 	check(
 		(
-			menu.rows.size() == 4
+			menu.rows.filter(func(row): return not row.get("group", false)).size() == 4
+			and menu.rows.filter(func(row): return row.get("group", false)).size() == 2
+			and menu.rows[0].get("group", false)
 			and not find(menu, "smb_server").is_empty()
 			and not find(menu, "dlna_server").is_empty()
 			and not find(menu, "server_account").is_empty()
 		),
-		"Saved, discovered and account sources share one list"
+		"Saved and discovered sources share one list under My sources / Found headings"
 	)
 	var smb := find(menu, "smb_server")
 	var dlna := find(menu, "dlna_server")
@@ -109,7 +111,10 @@ func _run() -> void:
 	)
 	menu._smb_found.append({"name": "Duplicate NAS", "host": "192.168.1.9"})
 	menu.refresh()
-	check(menu.rows.size() == 4, "Discovery does not duplicate a saved SMB host")
+	check(
+		menu.rows.filter(func(row): return not row.get("group", false)).size() == 4,
+		"Discovery does not duplicate a saved SMB host"
+	)
 	menu._choose(smb)
 	await settle()
 	check(

@@ -47,7 +47,7 @@
 **Your video library**
 - **Local files**, including USB drives mounted by the system. Supports STRM shortcuts and opening videos from Android's Open/Share menu.
 - **Network media**, a single place for SMB shared folders, DLNA libraries, and Plex, Emby, Jellyfin, Stash and XBVR servers. What you can do depends on the source and your account permissions.
-- File lists show only videos and folders. You can switch between list and icon views and between compact and full windows, and the app remembers each folder's position.
+- File lists show only videos and folders, with list/icon views and remembered folder positions. During playback, Browse opens a compact video switcher above the controls. Close the video to return to the full library and Settings.
 
 **Comfortable viewing**
 - Move the picture and windows anywhere. Flat screens range from 0.1–50 m and 5–3000% size, with adjustable curvature and TV/cinema presets.
@@ -55,6 +55,7 @@
 - Uses 72 Hz when the device supports it and lists only the refresh rates the device offers.
 
 **Playback and subtitles**
+- Automatically recognizes SBS/top-bottom video from naming, container metadata and matching eye images. Uncertain content stays in its current mode; saved manual choices take priority. Use **Video mode → Auto detect** to recheck a previously saved format. Image matching identifies stereo packing, while VR projection and lens angle still follow file markers or your settings.
 - One compact control bar with popups for subtitles, speed, color, audio/subtitle timing, stereo alignment and the queue.
 - Sequential or shuffled queues, which return to the library after the last video.
 - SRT, ASS, SSA and VTT text subtitles, with automatic encoding detection and bilingual primary/secondary tracks. Captions can sit below a flat screen. Bitmap subtitles are not supported.
@@ -115,7 +116,7 @@ If the picture looks split, distorted or inverted, check the projection first, t
 | Recenter | Long-press the headset's Home button |
 | Volume | The headset's system volume controls |
 | Return to the library | **Close video** |
-| Reclined viewing | **Settings → General → Reclining mode** (Follow is a separate setting) |
+| Reclined viewing | **Settings → Display → Reclining mode** (Follow is a separate setting) |
 | Pinch hand | **Settings → General → Pinch/menu hand** |
 
 For sources, subtitles, timing and queues, see the [user guide](https://northboundwisdom.github.io/immivio/guide/).

@@ -212,24 +212,9 @@ func run(host: Node, step: String, request: String) -> Dictionary:
 	elif step == "controls":
 		host._show_player_menu()
 		await settle(host)
-		check(await tap(bar, bar.SPACE_LOCK), "Ray toggles spatial lock")
-		var pose: Transform3D = bar.global_transform
-		var original: float = video.screen_distance
-		host._on_playback_adjustment("screen_distance", original + 1.0)
-		host._place_menu(bar)
-		check(
-			bar.space_locked and bar.global_transform.is_equal_approx(pose),
-			"Control bar stays fixed while screen moves"
-		)
-		bar.dismiss()
-		host._show_player_menu()
-		check(
-			bar.global_transform.is_equal_approx(pose), "Control bar stays fixed after hide/reopen"
-		)
-		check(await tap(bar, bar.SPACE_LOCK), "Ray unlocks controls")
 		host._show_recent_menu()
 		menu.section = menu.Section.SETTINGS
-		menu.tab = menu.DISPLAY_TAB
+		menu.tab = menu.APPEARANCE_TAB
 		menu.refresh()
 		check(await slide(menu, "controls_opacity", 0.25), "Ray adjusts opacity slider")
 		check(
@@ -281,18 +266,10 @@ func run(host: Node, step: String, request: String) -> Dictionary:
 			host.menu_compositor.viewport.get_texture().get_image().save_png(
 				"user://diagnostics/acceptance_" + request + "_compact.png"
 			)
-		check(
-			await tap(bar, bar.SPACE_LOCK), "Playback controls remain ray-selectable beside library"
-		)
-		check(await tap(menu, menu.BROWSER_SIZE), "Ray expands library")
-		await settle(host)
-		check(
-			not menu.compact and menu.visible and bar.visible, "Expanded library retains playback"
-		)
+		check(await tap(bar, bar.BROWSE), "Playback controls remain ray-selectable beside library")
 		check(await tap(menu, menu.PLAYER), "Ray returns from library to video")
 	elif step == "menus":
 		host._show_recent_menu(true)
-		menu.compact = false
 		menu.section = menu.Section.SETTINGS
 		menu.tab = menu.GENERAL_TAB
 		menu.scroll = 0
