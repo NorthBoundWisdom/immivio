@@ -3,6 +3,8 @@ extends Node3D
 ## No video geometry enters this viewport; no CPU image readback is performed.
 const UI_LAYER := 1 << 19
 const CAPTURE_SIZE := Vector2i(3072, 2048)
+const PointerCompositor := preload("res://scripts/xr_pointer_compositor.gd")
+const RAY_LAYER := PointerCompositor.RAY_LAYER
 
 
 ## Metadata follows the GPU copy acknowledgement, never a newly requested layout.
@@ -93,6 +95,7 @@ var _bounds_due := 0
 var _configured := false
 var _clear_frames := 0
 var _session_state := Callable()
+var pointer_compositor: Node3D
 
 
 func configure(
@@ -172,7 +175,7 @@ func _create_capture() -> void:
 	camera.environment.background_color = Color(0, 0, 0, 0)
 	viewport.add_child(camera)
 	camera.current = true
-	head.cull_mask = _original_mask & ~UI_LAYER
+	head.cull_mask = _original_mask & ~(UI_LAYER | RAY_LAYER)
 	for menu in menus:
 		menu.xr_surface = self
 		_tag_tree(menu)
@@ -183,6 +186,8 @@ func _display_layer() -> OpenXRCompositionLayer:
 
 
 func _hide_layers() -> void:
+	if is_instance_valid(pointer_compositor):
+		pointer_compositor.hide_beams()
 	if layer:
 		layer.quad_size = Vector2.ONE * .001
 	if cylinder_layer:
@@ -385,10 +390,37 @@ func _process(_delta: float) -> void:
 			_finish_scene_capture.call_deferred(metadata)
 	else:
 		_apply_presented_layer()
+		_update_pointer_compositor()
 		_bridge.setEnabled(true)
 		if not repaint:
 			return
 		_submit_capture(_capture_metadata(capture))
+
+
+func _update_pointer_compositor() -> void:
+	var xr := XRServer.primary_interface
+	var beams := false
+	for menu in _capture_menus():
+		for pointer in menu._pointers.values():
+			beams = beams or pointer.line.is_visible_in_tree()
+	if not native_supported or not beams or not xr or not xr.is_initialized():
+		if is_instance_valid(pointer_compositor):
+			pointer_compositor.hide_beams()
+		return
+	if not is_instance_valid(pointer_compositor):
+		pointer_compositor = PointerCompositor.new()
+		add_child(pointer_compositor)
+		pointer_compositor.configure(head)
+	var origin: Transform3D = head.get_parent().global_transform
+	var size := xr.get_render_target_size()
+	for eye in mini(2, xr.get_view_count()):
+		pointer_compositor.update_eye(
+			eye,
+			xr.get_transform_for_view(eye, origin),
+			xr.get_projection_for_view(
+				eye, size.x / size.y, PointerCompositor.NEAR, PointerCompositor.FAR
+			)
+		)
 
 
 func _capture_metadata(pose: Transform3D) -> Dictionary:
@@ -602,22 +634,18 @@ func _tag(node: GeometryInstance3D) -> void:
 	var id := node.get_instance_id()
 	if not _original_layers.has(id):
 		_original_layers[id] = {"node": weakref(node), "layers": node.layers}
-	# A 3D ray flattened by the orthographic camera becomes a projection stripe.
-	# Only its reticle belongs in the UI texture; keep the ray in the main scene.
+	# The orthographic UI image gets only the reticle. Native UI sits above the main
+	# projection, so the world-space beam gets its own pair of perspective eye images.
 	if node.get_meta("xr_ui_scene_ray", false):
-		node.layers = int(_original_layers[id].layers) & ~UI_LAYER
+		node.layers = (
+			RAY_LAYER if native_supported else int(_original_layers[id].layers) & ~UI_LAYER
+		)
 		return
 	node.layers = (
 		UI_LAYER
 		| (
 			int(_original_layers[id].layers)
-			if (
-				not (_native_capture or native_supported or scene_curved)
-				or (
-					node.get_meta("xr_ui_pointer", false)
-					and not (active_menu and active_menu.curve_radius > 0.0)
-				)
-			)
+			if not (_native_capture or native_supported or scene_curved)
 			else 0
 		)
 	)
@@ -882,6 +910,8 @@ func snapshot() -> Dictionary:
 		"session_ready": session_ready,
 		"presentation": _bridge_status,
 		"projected_ray_count": projected_rays,
+		"stereo_pointer":
+		pointer_compositor.snapshot() if is_instance_valid(pointer_compositor) else {},
 		"warmup": warmup.snapshot() if is_instance_valid(warmup) else {},
 		"capture_serial": presentations.serial,
 		"presented_serial": presentations.committed,

@@ -1,5 +1,7 @@
 extends RefCounted
-## with their owners; soft edges and a stable visual width keep the beam unobtrusive.
+## Thin world-space beams with pixel-aware edges and a fade toward the hit point.
+const IDLE_OPACITY := 0.32
+const HOVER_OPACITY := 0.42
 const SHADER := preload("res://shaders/pointer_ray.gdshader")
 static var _overlay_shader: Shader
 

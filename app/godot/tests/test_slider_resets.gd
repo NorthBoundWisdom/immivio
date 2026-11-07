@@ -219,7 +219,7 @@ func _run() -> void:
 	)
 	menu.dismiss()
 	main.recent_menu.section = main.recent_menu.Section.SETTINGS
-	main.recent_menu.tab = main.recent_menu.SUBTITLES_TAB
+	main.recent_menu.tab = main.recent_menu.PLAYBACK_TAB
 	main.recent_menu.toggle()
 	tap(main.recent_menu, reset_target(main.recent_menu, "subtitle_position"))
 	check(video.subtitle_position == 0, "Library subtitle settings use the same independent reset")

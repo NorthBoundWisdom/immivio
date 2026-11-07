@@ -85,8 +85,11 @@ func rows() -> Array[Dictionary]:
 				}
 			)
 		return result
+	# Saved sources first, then what the local network announces; each list under its own heading.
+	var saved: Array[Dictionary] = []
+	var found: Array[Dictionary] = []
 	for server in menu._smb_servers:
-		result.append(
+		saved.append(
 			{
 				"id": "smb:" + str(server.id),
 				"title": str(server.name),
@@ -96,31 +99,8 @@ func rows() -> Array[Dictionary]:
 				"smb_server": str(server.id)
 			}
 		)
-	for found in menu._smb_found:
-		if not menu._smb_servers.any(func(server): return str(server.host) == str(found.host)):
-			result.append(
-				{
-					"id": "smb-found:" + str(found.host),
-					"title": str(found.name),
-					"detail": I18n.t("Shared folders (SMB)") + " · " + I18n.t("Discovered"),
-					"icon": "server",
-					"network_section": menu.Section.SMB,
-					"smb_found": found
-				}
-			)
-	for server in menu._dlna_servers:
-		result.append(
-			{
-				"id": "dlna:" + str(server.id),
-				"title": str(server.name),
-				"detail": I18n.t("Local media libraries (DLNA)"),
-				"icon": "cast",
-				"network_section": menu.Section.DLNA,
-				"dlna_server": str(server.id)
-			}
-		)
 	for server in menu.server_browser.servers:
-		result.append(
+		saved.append(
 			{
 				"id": "server:" + str(server.id),
 				"title": str(server.name),
@@ -131,6 +111,35 @@ func rows() -> Array[Dictionary]:
 				"server_account": server
 			}
 		)
+	for server in menu._dlna_servers:
+		(saved if bool(server.get("manual", false)) else found).append(
+			{
+				"id": "dlna:" + str(server.id),
+				"title": str(server.name),
+				"detail": I18n.t("Local media libraries (DLNA)"),
+				"icon": "cast",
+				"network_section": menu.Section.DLNA,
+				"dlna_server": str(server.id)
+			}
+		)
+	for candidate in menu._smb_found:
+		if not menu._smb_servers.any(func(server): return str(server.host) == str(candidate.host)):
+			found.append(
+				{
+					"id": "smb-found:" + str(candidate.host),
+					"title": str(candidate.name),
+					"detail": str(candidate.host) + " · " + I18n.t("Shared folders (SMB)"),
+					"icon": "plus",
+					"network_section": menu.Section.SMB,
+					"smb_found": candidate
+				}
+			)
+	if not saved.is_empty():
+		result.append({"title": I18n.t("My sources"), "group": true})
+		result.append_array(saved)
+	if not found.is_empty():
+		result.append({"title": I18n.t("Found on this network"), "group": true})
+		result.append_array(found)
 	return result
 
 
@@ -264,8 +273,14 @@ func draw() -> void:
 	)
 	menu._draw_rows()
 	if menu.rows.is_empty():
-		menu._label(I18n.t("No network sources yet"), Vector3(.13, .12, .004), 22)
-		menu._label(I18n.t("Add a source or refresh to find devices"), Vector3(.13, .03, .004), 17)
+		menu._icon("media_library", Vector3(menu.PANEL_CENTRE.x, .2, .004), .09, menu.MUTED)
+		menu._label(I18n.t("No network sources yet"), Vector3(menu.PANEL_CENTRE.x, .09, .004), 22)
+		var hint: Label3D = menu._label(
+			I18n.t("Add a source or refresh to find devices"),
+			Vector3(menu.PANEL_CENTRE.x, .02, .004),
+			17
+		)
+		hint.modulate = menu.MUTED
 	var status: Label3D = menu._label(
 		menu._fit_title(I18n.t(menu.status), "", menu.CONTENT_RIGHT - menu.CONTENT_LEFT, 17),
 		Vector3(menu.CONTENT_LEFT, menu.FOOTER_Y, .004),

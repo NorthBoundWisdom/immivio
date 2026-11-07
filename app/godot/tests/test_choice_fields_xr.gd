@@ -142,7 +142,7 @@ func _run() -> void:
 			menu.release_pointer("left_hand", ray[0], ray[1], true)
 			check(events.size() == 1, "Dragging cannot choose an option")
 		menu.choices.reset()
-		menu.tab = menu.DISPLAY_TAB
+		menu.tab = menu.APPEARANCE_TAB
 		menu.refresh()
 		acknowledge(surface, menu)
 		var slider_target := -1

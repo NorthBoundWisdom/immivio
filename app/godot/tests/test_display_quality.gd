@@ -107,9 +107,9 @@ func _run() -> void:
 			and quality_rows[0].choices.size() == 4
 			and quality_rows[0].choices[0].value == Quality.AUTO
 			and sharpness_rows[0].choices.size() == 4
-			and main.recent_menu.rows.any(func(row): return row.get("key") == "show_fps")
+			and not main.recent_menu.rows.any(func(row): return row.get("key") == "show_fps")
 		),
-		"Quality and sharpness each occupy one field with all their choices, alongside the FPS display"
+		"Quality and sharpness each occupy one field; the FPS overlay lives under Appearance"
 	)
 	main._on_setting_changed("display_quality", 2)
 	main._on_setting_changed("sharpness", 0.4)
@@ -194,7 +194,7 @@ func _run() -> void:
 		"Menu shows auto output and sharpness off"
 	)
 	main.recent_menu.section = main.recent_menu.Section.SETTINGS
-	main.recent_menu.tab = main.recent_menu.VIDEO_TAB
+	main.recent_menu.tab = main.recent_menu.PLAYBACK_TAB
 	main.recent_menu.refresh()
 	var resolution: Array = main.recent_menu.rows.filter(
 		func(row): return row.get("key", "") == "output_width"

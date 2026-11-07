@@ -143,16 +143,49 @@ func _run() -> void:
 		"Belfast is opaque application sky"
 	)
 	check(
-		main.background._builtin.get_size() == Vector2(8192, 4096),
+		main.background._panorama.get_size() == Vector2(8192, 4096),
 		"Packaged sky retains full 8K dimensions"
 	)
+	for choice in main.background.PROCEDURAL:
+		main._on_setting_changed("background", choice)
+		check(main.background.loading, "Procedural %s scene bakes before it is shown" % choice)
+		await settle(main.background)
+		check(
+			(
+				not main.background.loading
+				and main.background._bake != null
+				and main.background._bake.size == main.background.BAKE_SIZE
+				and main.background.ready_sky() != null
+				and main.background.sky.sky_material is ShaderMaterial
+				and (
+					main.background.sky.sky_material.get_shader_parameter("scene")
+					== main.background.PROCEDURAL[choice]
+				)
+				and main.display.environment.background_mode == Environment.BG_SKY
+			),
+			"Baked procedural %s scene applies as an opaque sky" % choice
+		)
+	main._on_setting_changed("background_brightness", 0.75)
+	check(
+		is_equal_approx(main.background.sky.sky_material.get_shader_parameter("energy"), 0.75),
+		"Brightness scales procedural scenery"
+	)
+	main._on_setting_changed("background_brightness", 1.0)
+	main._on_setting_changed("background", "dark")
+	check(
+		main.background._bake == null and main.background.ready_sky() == null,
+		"Leaving procedural scenery releases its bake texture"
+	)
+	main._on_setting_changed("background", "belfast")
+	await settle(main.background)
 	main.recent_menu.section = main.recent_menu.Section.SETTINGS
-	main.recent_menu.tab = main.recent_menu.BACKGROUND_TAB
+	main.recent_menu.tab = main.recent_menu.APPEARANCE_TAB
 	main.recent_menu.refresh()
 	check(
 		(
-			main.recent_menu.rows[0].key == "background"
-			and main.recent_menu.rows[0].value == "belfast"
+			main.recent_menu.rows[0].get("group", false)
+			and main.recent_menu.rows[1].key == "background"
+			and main.recent_menu.rows[1].value == "belfast"
 		),
 		"Background selection is shown in one settings field"
 	)
@@ -222,7 +255,7 @@ func _run() -> void:
 	main.video.geometry = 1
 	main.video.packed_file = true
 	main.video.packed_alpha = true
-	for choice in ["belfast", "dark", "passthrough"]:
+	for choice in main.background.CHOICES:
 		main.background.select(choice)
 		main._update_background()
 		check(

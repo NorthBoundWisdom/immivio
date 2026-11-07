@@ -1,6 +1,10 @@
 uniform vec4 ray_color : source_color = vec4(1.0, 1.0, 1.0, 0.5);
 uniform vec3 ray_start;
 uniform vec3 ray_end;
+varying float ray_side_pixels;
+varying flat float ray_half_width_pixels;
+
+float ray_core_half_width(vec2 viewport_size) { return max(0.35, viewport_size.y * 0.0004); }
 
 // Expand in each eye's projected space, so distance never makes the line bulky
 // or subpixel-thin. Mono projection stays anchored to the hand and the reticle.
@@ -21,12 +25,16 @@ vec4 ray_position(vec3 vertex, vec2 uv, float weight, mat4 view_model, mat4 proj
   vec2 side = vec2(-along.y, along.x) / projected_length;
   vec3 point = (view_model * vec4(vertex, 1.0)).xyz + eye_offset * weight;
   vec4 clip = projection * vec4(point, 1.0);
-  float half_width = max(0.9, viewport_size.y * 0.0007);
+  // The extra pixel is transparent antialiasing coverage, not part of the stroke width.
+  float half_width = ray_core_half_width(viewport_size) + 1.0;
   clip.xy += side * (uv.x * 2.0 - 1.0) * half_width * 2.0 / viewport_size * clip.w;
   return clip;
 }
 
 float ray_opacity(vec2 uv) {
-  float edge = 1.0 - smoothstep(0.35, 1.0, abs(uv.x * 2.0 - 1.0));
-  return ray_color.a * edge;
+  float pixel = max(fwidth(ray_side_pixels), 0.0001);
+  float edge = 1.0 - smoothstep(ray_half_width_pixels - pixel * 0.5,
+                                ray_half_width_pixels + pixel * 0.5, abs(ray_side_pixels));
+  float fade = smoothstep(0.0, 0.03, uv.y) * (1.0 - smoothstep(0.05, 1.0, uv.y));
+  return ray_color.a * edge * fade;
 }

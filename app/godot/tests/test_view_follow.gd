@@ -650,23 +650,9 @@ func _run() -> void:
 	preload("res://tests/support/test_result.gd").finish(self, 0 if failures.is_empty() else 1)
 
 
+## Settings are not offered over playing video; apply the choice the Display page emits.
 func _choose_reclining(main: Node3D, enabled: bool) -> void:
-	var menu: Node3D = main.recent_menu
-	for target in menu.choices.targets:
-		var item: Dictionary = menu.choices.targets[target]
-		if item.get("kind") == "open" and item.get("key") == "reclining_mode":
-			menu.choices.action(target)
-			break
-	for target in menu.choices.targets:
-		var item: Dictionary = menu.choices.targets[target]
-		if (
-			item.get("kind") == "choose"
-			and item.get("key") == "reclining_mode"
-			and item.value == enabled
-		):
-			menu.choices.action(target)
-			return
-	check(false, "Reclining mode choice is reachable from General settings")
+	main._on_setting_changed("reclining_mode", enabled)
 
 
 func _check_reclining(main: Node3D) -> void:
@@ -681,12 +667,9 @@ func _check_reclining(main: Node3D) -> void:
 		Basis.from_euler(Vector3(1.45, .3, .2)), Vector3(0, 1.6, 0)
 	)
 	main._show_recent_menu()
-	main.recent_menu._activate(main.recent_menu.NAV_BASE + main.recent_menu.Section.SETTINGS)
 	check(
-		main.recent_menu.rows.any(
-			func(row): return row.get("key", "") == "reclining_mode" and row.value == false
-		),
-		"General settings expose the disabled reclining mode"
+		not main.recent_menu.nav_order().has(main.recent_menu.Section.SETTINGS),
+		"Settings stay out of the video switcher during playback"
 	)
 	_choose_reclining(main, true)
 	check(
@@ -699,8 +682,13 @@ func _check_reclining(main: Node3D) -> void:
 		"Enabling reclining faces the lying viewer immediately"
 	)
 	check(
-		main.recent_menu.global_basis.is_equal_approx(main.xr_camera.global_basis),
-		"Reclining settings menu faces the lying viewer"
+		(
+			not main.video_menu.visible
+			or main.recent_menu.global_basis.orthonormalized().is_equal_approx(
+				main.video_menu.global_basis.orthonormalized()
+			)
+		),
+		"The reclining video switcher shares the control bar's plane"
 	)
 	main._recenter()
 	check(
@@ -753,7 +741,7 @@ func _check_reclining(main: Node3D) -> void:
 	check(
 		(
 			absf(main.video.panel.global_basis.z.y) < .00001
-			and main.recent_menu.global_basis.y.is_equal_approx(Vector3.UP)
+			and main.recent_menu.global_basis.y.normalized().is_equal_approx(Vector3.UP)
 		),
 		"Disabling reclining restores upright video and menus immediately"
 	)

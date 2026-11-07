@@ -221,7 +221,7 @@ func _run() -> void:
 	var library := Library.new()
 	root.add_child(library)
 	library.section = Library.Section.SETTINGS
-	library.tab = Library.VIDEO_TAB
+	library.tab = Library.PLAYBACK_TAB
 	library.refresh()
 	check(
 		not library.rows.any(func(row): return row.get("key") == "seek_mode"),

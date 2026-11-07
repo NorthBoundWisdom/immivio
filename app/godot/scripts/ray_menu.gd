@@ -234,17 +234,7 @@ func ray_panel_hit(origin: Vector3, direction: Vector3) -> Dictionary:
 		origin = mapped.origin
 		direction = mapped.direction
 	var best := {}
-	var panels: Array[Node3D] = [_backdrop]
-	panels.append_array(_decorations)
-	if is_instance_valid(device_status):
-		panels.append(device_status.pointer_surface())
-	for panel in panels:
-		if (
-			not is_instance_valid(panel)
-			or not panel.is_visible_in_tree()
-			or not panel.get_meta("xr_ui_panel", false)
-		):
-			continue
+	for panel in _pointer_panels():
 		var inverse := panel.global_transform.affine_inverse()
 		var start := inverse * origin
 		var delta := inverse.basis * direction.normalized()
@@ -269,6 +259,23 @@ func ray_panel_hit(origin: Vector3, direction: Vector3) -> Dictionary:
 		best["world_point"] = mapped.point
 		best.distance = mapped.distance
 	return best
+
+
+func _pointer_panels() -> Array[MeshInstance3D]:
+	var candidates: Array[Node3D] = [_backdrop]
+	candidates.append_array(_decorations)
+	if is_instance_valid(device_status):
+		candidates.append(device_status.pointer_surface())
+	var panels: Array[MeshInstance3D] = []
+	for panel in candidates:
+		if (
+			is_instance_valid(panel)
+			and panel is MeshInstance3D
+			and panel.is_visible_in_tree()
+			and panel.get_meta("xr_ui_panel", false)
+		):
+			panels.append(panel)
+	return panels
 
 
 ## Captures measure travel on the same flattened canvas used by ray_hit().
@@ -341,7 +348,10 @@ func update_pointer(hand: String, origin: Vector3, direction: Vector3, tracked: 
 			and int(hit.get("target", NONE)) != NONE
 		)
 		pointer.line.material_override.set_shader_parameter(
-			"ray_color", Color(pointer.color, 0.8 if actionable else 0.5)
+			"ray_color",
+			Color(
+				pointer.color, PointerRay.HOVER_OPACITY if actionable else PointerRay.IDLE_OPACITY
+			)
 		)
 		if not hit.is_empty():
 			pointer.dot.position = hit.point + Vector3(0, 0, 0.008)
@@ -690,7 +700,7 @@ func _pointer(hand: String) -> Dictionary:
 	if _pointers.has(hand):
 		return _pointers[hand]
 	var color := Color(0.15, 0.9, 1.0) if hand == "left_hand" else Color(1.0, 0.65, 0.15)
-	var line := PointerRay.create(Color(color, 0.5), 14)
+	var line := PointerRay.create(Color(color, PointerRay.IDLE_OPACITY), 14)
 	line.set_meta("xr_ui_pointer", true)
 	line.set_meta("xr_ui_scene_ray", true)
 	add_child(line)

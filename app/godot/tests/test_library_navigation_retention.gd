@@ -45,7 +45,7 @@ func _run() -> void:
 		menu.scroll == 0 and navigation_ids(menu) == original,
 		"Scrolling back does not rebuild left navigation"
 	)
-	for tab in menu.SETTING_ORDER:
+	for tab in menu.SETTING_TABS.size():
 		menu._about_page = 0
 		menu.tab = tab
 		menu.refresh()

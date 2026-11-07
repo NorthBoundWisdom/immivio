@@ -25,6 +25,24 @@ const FOVS := [180, 190, 200, 220]
 const _ALPHA := "alpha|passthrough"
 const _FLAT := "flat|screen"
 static var _patterns := {}
+const SBS_METADATA := ["sbsl", "sbsr", "sbs2l", "sbs2r", "side_by_side", "right_left"]
+const TB_METADATA := ["abl", "abr", "ab2l", "ab2r", "top_bottom", "bottom_top"]
+
+
+static func has_stereo_metadata(format: Dictionary) -> bool:
+	var mode := str(format.get("stereo_mode", "")).to_lower()
+	return mode in SBS_METADATA or mode in TB_METADATA
+
+
+static func has_layout_marker(file_name: String) -> bool:
+	var name := file_name.get_file().get_basename()
+	return (
+		_has(name, _SBS.replace("|3d|", "|"))
+		or _has(name, _RL)
+		or _has(name, _TB)
+		or _has(name, _BT)
+		or _has(name, _MONO)
+	)
 
 
 static func _has(name: String, alternatives: String) -> bool:
@@ -112,17 +130,10 @@ static func complete(
 	stated = stated.duplicate()
 	# Generic "3D" says nothing about the packing axis. Container metadata fills that gap;
 	# an explicit filename convention (or a saved user choice, applied by the owner) wins.
-	var name := file_name.get_file().get_basename()
-	var explicit_axis := (
-		_has(name, _SBS.replace("|3d|", "|"))
-		or _has(name, _RL)
-		or _has(name, _TB)
-		or _has(name, _BT)
-		or _has(name, _MONO)
-	)
+	var explicit_axis := has_layout_marker(file_name)
 	var mode := str(format.get("stereo_mode", "")).to_lower()
-	var sbs := mode in ["sbsl", "sbsr", "sbs2l", "sbs2r", "side_by_side", "right_left"]
-	var tb := mode in ["abl", "abr", "ab2l", "ab2r", "top_bottom", "bottom_top"]
+	var sbs := mode in SBS_METADATA
+	var tb := mode in TB_METADATA
 	if (sbs or tb) and not explicit_axis and not stated.has("top_bottom"):
 		stated.stereo = true
 		stated.top_bottom = tb

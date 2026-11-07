@@ -540,7 +540,7 @@ func _run() -> void:
 		),
 		"Settings omit model and input-resolution decisions"
 	)
-	menu._activate(Menu.TAB_BASE + Menu.VIDEO_TAB)
+	menu._activate(Menu.TAB_BASE + Menu.PLAYBACK_TAB)
 	choose_setting(menu, "output_width", 4096)
 	check(settings_events.back() == ["output_width", 4096], "Output cap setting")
 	menu._activate(Menu.TAB_BASE + Menu.GENERAL_TAB)
@@ -552,28 +552,43 @@ func _run() -> void:
 	check(settings_events.back() == ["history", false], "History can be switched off")
 	menu._activate(Menu.TAB_BASE + Menu.DISPLAY_TAB)
 	check(
+		menu.rows.any(func(row): return row.get("key", "") == "reclining_mode"),
+		"Display settings expose reclining mode in the Window group"
+	)
+	menu._activate(Menu.TAB_BASE + Menu.APPEARANCE_TAB)
+	check(
 		menu.rows.any(func(row): return row.get("key", "") == "show_fps" and row.value == false),
-		"Display settings offer the FPS display, off by default"
+		"Appearance settings offer the FPS display, off by default"
 	)
 	choose_setting(menu, "show_fps", true)
 	check(
 		settings_events.back() == ["show_fps", true],
-		"FPS display can be switched on from Display settings"
+		"FPS display can be switched on from Appearance settings"
 	)
-	menu._activate(Menu.TAB_BASE + Menu.SUBTITLES_TAB)
+	menu._activate(Menu.TAB_BASE + Menu.PLAYBACK_TAB)
+	var subtitle_group := menu.rows.find_custom(
+		func(row): return row.get("group", false) and row.title == "VR subtitles"
+	)
+	var subtitles := menu.rows.slice(subtitle_group + 1)
 	check(
-		menu.rows.size() == 3 and menu.rows[0].slider and menu.rows[0].value == 5.0,
-		"Subtitle distance is a slider, 5 m by default"
+		(
+			subtitle_group > 0
+			and subtitles.size() == 3
+			and subtitles[0].key == "subtitle_distance"
+			and subtitles[0].slider
+			and subtitles[0].value == 5.0
+		),
+		"Subtitle distance opens the VR subtitles group as a slider, 5 m by default"
 	)
 	check(
-		menu.rows[2].key == "subtitle_position" and menu.rows[2].slider and menu.rows[2].value == 0,
+		subtitles[2].key == "subtitle_position" and subtitles[2].slider and subtitles[2].value == 0,
 		"Global subtitle angle defaults to the marked centre"
 	)
 	check(
 		(
-			menu.rows[1].key == "subtitle_direction"
-			and menu.rows[1].value == 0
-			and menu.rows[1].choices.size() == 2
+			subtitles[1].key == "subtitle_direction"
+			and subtitles[1].value == 0
+			and subtitles[1].choices.size() == 2
 		),
 		"Direction control is above position, horizontal by default"
 	)
@@ -612,27 +627,44 @@ func _run() -> void:
 		"About brand and support"
 	)
 	menu._choose(menu.rows.filter(func(row): return row.get("about_page", -1) == 2)[0])
+	var credit_titles: Array = menu.rows.map(func(row): return str(row.title))
+	var belfast: Array = menu.rows.filter(
+		func(row): return row.title == "Belfast Sunset (Pure Sky)"
+	)
 	check(
 		(
-			menu.rows[0].title == "Belfast Sunset (Pure Sky)"
-			and menu.rows[0].detail.contains("Poly Haven · CC0 1.0")
-			and menu.rows[0].detail.contains("Dimitrios Savva / Greg Zaal / Jarod Guest")
-			and menu.rows[1].title == "Godot"
+			menu.rows[0].get("group", false)
+			and menu.rows[1].title.begins_with("Godot Engine")
+			and belfast.size() == 1
+			and belfast[0].detail.contains("Poly Haven · CC0 1.0")
+			and belfast[0].detail.contains("Dimitrios Savva / Greg Zaal / Jarod Guest")
 		),
-		"One panorama entry contains its source, license and all authors"
+		"Credits open with the engine group; the panorama entry keeps source, license and authors"
+	)
+	check(
+		(
+			(
+				menu.rows.filter(func(row): return row.get("group", false)).size()
+				== Menu.CREDITS.size()
+			)
+			and ["mpv", "FFmpeg", "libass", "HarfBuzz", "Mbed TLS", "CodeLibs JCIFS", "Bouncy Castle", "Belfast Sunset"].all(
+				func(name): return credit_titles.any(func(title): return title.contains(name))
+			)
+		),
+		"Credits list every bundled component under its group"
 	)
 	var credit_detail: Label3D = (
 		menu
 		. _buttons
-		. filter(func(button): return button.target == Menu.ROW_BASE)[0]
+		. filter(func(button): return button.target == Menu.ROW_BASE + 1)[0]
 		. node
 		. get_child(2)
 	)
 	check(
-		credit_detail.text == menu.rows[0].detail,
-		"Combined panorama attribution remains visible without truncation"
+		credit_detail.text == menu.rows[1].detail,
+		"Credit attribution remains visible without truncation"
 	)
-	var credit_origin := menu.to_global(Vector3(0.1, Menu.LIST_TOP, 1))
+	var credit_origin := menu.to_global(Vector3(0.1, Menu.LIST_TOP - menu._pitch(), 1))
 	check(
 		menu.ray_hit(credit_origin, -menu.global_basis.z).is_empty(),
 		"Copyright information is not a fake clickable control"
@@ -640,26 +672,51 @@ func _run() -> void:
 	menu.press_pointer("right_hand", credit_origin, -menu.global_basis.z, true)
 	menu.update_pointer(
 		"right_hand",
-		menu.to_global(Vector3(0.1, Menu.LIST_TOP + 0.4, 1)),
+		menu.to_global(Vector3(0.1, Menu.LIST_TOP - menu._pitch() + 0.4, 1)),
 		-menu.global_basis.z,
 		true
 	)
 	menu.release_pointer("right_hand", Vector3.ZERO, Vector3.ZERO, true)
 	check(
-		menu.scroll == 0 and menu._max_scroll() == 0,
-		"Current credits fit without phantom scrolling"
+		menu._max_scroll() > 0 and menu.scroll > 0,
+		"The full credits list scrolls by dragging its rows"
+	)
+	menu.scroll = 0.0
+	menu._draw()
+	var revision: int = menu.layout_revision
+	var home: Node3D = (
+		menu._buttons.filter(func(button): return button.target == Menu.ABOUT_HOME)[0].node
+	)
+	var labels := menu._labels.size()
+	for step in 14:
+		menu._set_scroll(menu.scroll + 0.25)
+	var first_row: Array = menu._buttons.filter(
+		func(button): return button.target == Menu.ROW_BASE + 1
+	)
+	check(
+		(
+			menu.layout_revision == revision
+			and is_instance_valid(home)
+			and menu._labels.size() == labels
+			and menu._first_line() == 3
+			and (
+				menu._buttons.filter(func(button): return button.target == Menu.SCROLLBAR).size()
+				== 1
+			)
+			and first_row.size() == 1
+			and (first_row[0].node.get_child(0) as Label3D).text == str(menu.rows[4].title)
+		),
+		"Scrolling past lines redraws only the rows, never the page around them"
 	)
 	menu.scroll = menu._max_scroll()
 	menu._draw()
+	var retired := false
+	for title in credit_titles:
+		for name in ["RVM", "MNN", "ncnn", "Depth Anything"]:
+			retired = retired or title.contains(name)
 	check(
-		(
-			menu.text_snapshot().contains("CodeLibs JCIFS")
-			and not menu.text_snapshot().contains("RVM")
-			and not menu.text_snapshot().contains("MNN")
-			and not menu.text_snapshot().contains("ncnn")
-			and not menu.text_snapshot().contains("Depth Anything")
-		),
-		"Credits retain JCIFS and omit retired inference components"
+		menu.text_snapshot().contains("Belfast Sunset") and not retired,
+		"Credits end with the panorama and omit retired inference components"
 	)
 	menu._activate(Menu.ABOUT_HOME)
 	check(
@@ -840,13 +897,16 @@ func _run() -> void:
 	)
 	menu._activate(Menu.NAV_BASE + Menu.Section.SETTINGS)
 	menu._activate(Menu.TAB_BASE + Menu.GENERAL_TAB)
+	var language_index := menu.rows.find_custom(func(row): return row.get("key", "") == "language")
 	check(
 		(
 			menu.rows.filter(func(row): return row.get("key", "") == "language").size() == 1
-			and menu.rows[0].title == "语言"
-			and menu.rows[0].value == "zh"
+			and language_index == 1
+			and menu.rows[0].get("group", false)
+			and menu.rows[language_index].title == "语言"
+			and menu.rows[language_index].value == "zh"
 			and (
-				menu.rows[0].choices.map(func(option): return option.label)
+				menu.rows[language_index].choices.map(func(option): return option.label)
 				== ["System", "简体中文", "繁體中文", "日本語", "English"]
 			)
 		),

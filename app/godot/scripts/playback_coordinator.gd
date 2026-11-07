@@ -302,6 +302,8 @@ func _on_menu_action(operation: String) -> void:
 			host.video.set_projection(int(operation.right(1)))
 		"stereo_2d":
 			host.video.set_stereo_layout(0)
+		"stereo_auto":
+			host.video.enable_auto_stereo()
 		"lock_mode":
 			host.video.toggle_mode_lock()
 		"stereo_sbs":

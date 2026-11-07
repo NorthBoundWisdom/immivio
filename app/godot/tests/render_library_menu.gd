@@ -52,7 +52,8 @@ func _run() -> void:
 			"profiles": ["320x320", "384x216", "512x512"],
 			"output_width": -1,
 			"version": ProjectSettings.get_setting("application/config/version"),
-			"display_quality_pending": true
+			"display_quality_pending": true,
+			"refresh_rates": [72.0, 90.0, 120.0]
 		}
 	camera.add_child(menu)
 	menu.attach_platform(platform)
@@ -80,18 +81,17 @@ func _run() -> void:
 		],
 		["dlna", [Menu.CANCEL, Menu.NAV_BASE + Menu.Section.DLNA]],
 		["settings", [Menu.NAV_BASE + Menu.Section.SETTINGS]],
-		["video", [Menu.TAB_BASE + Menu.VIDEO_TAB]],
-		["subtitles", [Menu.TAB_BASE + Menu.SUBTITLES_TAB]],
-		["about", [Menu.TAB_BASE + Menu.ABOUT_TAB]],
-		["language", [Menu.TAB_BASE + Menu.GENERAL_TAB]],
 		["display", [Menu.TAB_BASE + Menu.DISPLAY_TAB]],
+		["playback", [Menu.TAB_BASE + Menu.PLAYBACK_TAB]],
+		["appearance", [Menu.TAB_BASE + Menu.APPEARANCE_TAB]],
+		["about", [Menu.TAB_BASE + Menu.ABOUT_TAB]],
 		["credits", [Menu.TAB_BASE + Menu.ABOUT_TAB, Menu.ABOUT_HOME, Menu.ROW_BASE + 3]],
 		["credits_end", []]
 	]
 	if OS.get_environment("QUEST_ABOUT_PREVIEW_ONLY") == "1":
 		steps = [
 			["about", [Menu.NAV_BASE + Menu.Section.SETTINGS, Menu.TAB_BASE + Menu.ABOUT_TAB]],
-			["language", [Menu.TAB_BASE + Menu.GENERAL_TAB]],
+			["general", [Menu.TAB_BASE + Menu.GENERAL_TAB]],
 			["display", [Menu.TAB_BASE + Menu.DISPLAY_TAB]],
 			["credits", [Menu.TAB_BASE + Menu.ABOUT_TAB, Menu.ABOUT_HOME, Menu.ROW_BASE + 3]],
 			["credits_end", []]
@@ -99,11 +99,10 @@ func _run() -> void:
 	if OS.get_environment("QUEST_MODELS_PREVIEW_ONLY") == "1":
 		steps = [
 			["settings", [Menu.NAV_BASE + Menu.Section.SETTINGS]],
-			["subtitles", [Menu.TAB_BASE + Menu.SUBTITLES_TAB]],
-			["background", [Menu.TAB_BASE + Menu.BACKGROUND_TAB]],
-			["about", [Menu.TAB_BASE + Menu.ABOUT_TAB]],
-			["language", [Menu.TAB_BASE + Menu.GENERAL_TAB]],
 			["display", [Menu.TAB_BASE + Menu.DISPLAY_TAB]],
+			["playback", [Menu.TAB_BASE + Menu.PLAYBACK_TAB]],
+			["appearance", [Menu.TAB_BASE + Menu.APPEARANCE_TAB]],
+			["about", [Menu.TAB_BASE + Menu.ABOUT_TAB]],
 			["credits", [Menu.TAB_BASE + Menu.ABOUT_TAB, Menu.ABOUT_HOME, Menu.ROW_BASE + 3]],
 			["credits_end", []]
 		]
