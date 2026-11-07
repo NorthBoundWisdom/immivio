@@ -6,6 +6,26 @@
 
 Newest first, with the main changes that affect everyday use. Unreleased items are not yet part of a public release. Versions 0.6.0 and earlier belong to the original project. Photo viewing, cloud drives and AI 3D conversion appear only as historical features and were removed later; see the [README](README.md) for current capabilities.
 
+## 0.9.8 — 2026-11-07
+
+**中文**
+
+- 自动识别没有格式标记的左右／上下立体视频；保留手动选择，并可在“视频模式 → 自动识别”中重新判断。VR 投影和镜头角度仍沿用文件标记或已有设置。
+- 重新整理通用、显示、播放、外观与关于设置，用分组和统一控件布局减少查找。
+- 播放时使用控制栏上方的紧凑换片窗口；关闭视频后回到完整媒体库与设置，移除独立的控制栏位置锁定。
+- 网络媒体分组显示已保存来源和局域网发现的设备，改善空列表提示与长列表滚动。
+- 新增程序生成的星空、海边和云海背景，可调整方向与亮度。
+- 优化立体手柄光束：线条更细、边缘抗锯齿并逐渐淡出；面板纹理只保留命中光点。
+
+**English**
+
+- Recognize unmarked side-by-side and top-bottom stereo video while preserving manual choices. Recheck a saved format under Video mode → Auto detect. VR projection and lens angle still follow file markers or existing settings.
+- Regroup General, Display, Playback, Appearance and About settings, with clearer headings and aligned controls.
+- Use a compact video switcher above the playback controls. Closing video returns to the full library and Settings; remove the separate control-bar position lock.
+- Group saved Network media sources and devices found on the local network, with clearer empty states and smoother long-list scrolling.
+- Add procedural starry-sky, beach and cloud scenery with direction and brightness controls.
+- Refine stereoscopic controller beams with thinner lines, antialiased edges and a transparent fade. Keep only the hit reticle in the panel texture.
+
 ## 0.9.7 — 2026-11-06
 
 **中文**
