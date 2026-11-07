@@ -50,6 +50,7 @@
 - File lists show only videos and folders, with list/icon views and remembered folder positions. During playback, Browse opens a compact video switcher above the controls. Close the video to return to the full library and Settings.
 
 **Comfortable viewing**
+- Choose a Belfast panorama, procedural starry-sky/beach/cloud scenery, a dark background or passthrough. Adjust scenery direction and brightness.
 - Move the picture and windows anywhere. Flat screens range from 0.1–50 m and 5–3000% size, with adjustable curvature and TV/cinema presets.
 - Reclining mode and head-follow are available as separate settings, and the window height can be adjusted.
 - Uses 72 Hz when the device supports it and lists only the refresh rates the device offers.
