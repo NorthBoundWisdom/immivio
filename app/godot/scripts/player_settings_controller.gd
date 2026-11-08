@@ -6,6 +6,7 @@ const Log := preload("res://scripts/diagnostic_log.gd")
 const Geometry := preload("res://scripts/video_geometry.gd")
 const Quality := preload("res://scripts/display_quality.gd")
 const I18n := preload("res://scripts/i18n.gd")
+const Background := preload("res://scripts/app_background.gd")
 const PlatformMethods := preload("res://scripts/platform_methods.gd")
 
 var settings := ConfigFile.new()
@@ -68,7 +69,7 @@ func _library_settings() -> Dictionary:
 		"subtitle_distance": host.video.subtitle_distance,
 		"subtitle_position": host.video.subtitle_position,
 		"subtitle_direction": host.video.subtitle_direction,
-		"background": host.background.choice if host.background else "belfast",
+		"background": host.background.choice if host.background else Background.DEFAULT_CHOICE,
 		"background_yaw": host.background.yaw if host.background else 0.0,
 		"background_brightness": host.background.brightness if host.background else 1.0,
 		"background_loading": host.background.loading if host.background else false,

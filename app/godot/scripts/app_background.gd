@@ -1,16 +1,20 @@
 extends Node
 ## Application scenery independent from video playback.
 signal changed
-## The bundled photographic panorama (Poly Haven, CC0), loaded only when selected.
-const PANORAMAS := {"belfast": "res://backgrounds/belfast_sunset_puresky.jpg"}
+## Bundled photographic panoramas (Poly Haven, CC0), loaded only when selected.
+const PANORAMAS := {
+	"belfast": "res://backgrounds/belfast_sunset_puresky.jpg",
+	"beach": "res://backgrounds/blouberg_sunrise_2.jpg",
+}
 ## Procedural scenes, no image assets: the smooth base is baked once on the GPU when a scene is
 ## chosen; stars, ridges and the sun stay per pixel, so they are sharp at any resolution.
-const PROCEDURAL := {"starry_night": 0, "beach": 1, "cloud_sea": 2}
+const PROCEDURAL := {"starry_night": 0, "cloud_sea": 2}
 const PROCEDURAL_SHADER := preload("res://shaders/procedural_sky.gdshader")
 const BAKE_SHADER := preload("res://shaders/procedural_bake.gdshader")
 const BAKE_SIZE := Vector2i(4096, 2048)
-const CHOICES := ["belfast", "starry_night", "beach", "cloud_sea", "dark", "passthrough"]
-var choice := "belfast"
+const DEFAULT_CHOICE := "starry_night"
+const CHOICES := ["starry_night", "belfast", "beach", "cloud_sea", "dark", "passthrough"]
+var choice := DEFAULT_CHOICE
 var yaw := 0.0
 var brightness := 1.0
 var loading := false
@@ -35,7 +39,7 @@ func _ready() -> void:
 	_procedural.shader = PROCEDURAL_SHADER
 	_bake_material.shader = BAKE_SHADER
 	if not select(choice):
-		select("belfast")
+		select(DEFAULT_CHOICE)
 
 
 ## Scenery the viewer can turn and dim: the panorama and every procedural scene.

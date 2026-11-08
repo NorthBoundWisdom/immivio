@@ -87,6 +87,24 @@ func _initialize() -> void:
 	)
 	var empty := ConfigFile.new()
 	check(not Migration.apply(empty), "Fresh installations require no migration write")
+	var retired_background := ConfigFile.new()
+	retired_background.set_value("appearance", "background", "custom")
+	check(
+		(
+			Migration.apply(retired_background)
+			and retired_background.get_value("appearance", "background") == "starry_night"
+		),
+		"An unavailable legacy custom background falls back to Starry night"
+	)
+	var saved_background := ConfigFile.new()
+	saved_background.set_value("appearance", "background", "belfast")
+	check(
+		(
+			not Migration.apply(saved_background)
+			and saved_background.get_value("appearance", "background") == "belfast"
+		),
+		"Changing the default does not overwrite an existing panorama choice"
+	)
 	for failure in failures:
 		push_error(failure)
 	print("Player settings migration: %d failures" % failures.size())

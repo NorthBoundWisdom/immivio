@@ -22,6 +22,8 @@ class Catalog:
 
 
 func _initialize() -> void:
+	if not preload("res://tests/support/test_result.gd").prepare(self):
+		return
 	call_deferred("_run")
 
 
@@ -32,7 +34,8 @@ func _run() -> void:
 	)
 	var output := OS.get_environment("QUEST_LIBRARY_PREVIEW_DIR")
 	if output.is_empty():
-		quit(1)
+		push_error("Set QUEST_LIBRARY_PREVIEW_DIR to an artifacts capture directory")
+		preload("res://tests/support/test_result.gd").finish(self, 1)
 		return
 	DirAccess.make_dir_recursive_absolute(output)
 	var viewport := SubViewport.new()
@@ -203,4 +206,4 @@ func _run() -> void:
 	platform.free()
 	for failure in failures:
 		push_error(failure)
-	quit(0 if failures.is_empty() else 1)
+	preload("res://tests/support/test_result.gd").finish(self, 0 if failures.is_empty() else 1)

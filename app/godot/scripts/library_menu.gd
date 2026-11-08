@@ -149,6 +149,7 @@ const AppBackground := preload("res://scripts/app_background.gd")
 const LANGUAGE_NAMES := I18n.NAMES
 const PANEL_SIZE := Vector2(1.46, 1.12)
 const PANEL_CENTRE := Vector2(.13, 0)
+const CAPTURE_ENVELOPE := Rect2(-1.18, -0.82, 2.16, 1.44)
 const PANEL_PADDING := .06
 const CONTENT_LEFT := PANEL_CENTRE.x - PANEL_SIZE.x * .5 + PANEL_PADDING
 const CONTENT_RIGHT := PANEL_CENTRE.x + PANEL_SIZE.x * .5 - PANEL_PADDING
@@ -352,7 +353,7 @@ func attach_platform(value: Object) -> void:
 
 func capture_envelope() -> Rect2:
 	# Browsing and ordinary settings share a projection from the first frame.
-	return Rect2(-1.18, -0.82, 2.16, 1.44)
+	return CAPTURE_ENVELOPE
 
 
 func presentation_page() -> Variant:
@@ -868,6 +869,7 @@ func _rebuild_rows() -> void:
 				)
 				if not str(entry.get("cover", "")).is_empty():
 					rows.back()["cover"] = entry.cover
+				_add_progress(rows.back(), entry)
 		Section.LOCAL:
 			for entry in _local_entries:
 				var row := _entry_row(entry)
@@ -941,6 +943,7 @@ func _rebuild_rows() -> void:
 			if int(recent.get("position_ms", 0)) > 0:
 				var seconds := int(recent.position_ms) / 1000
 				parts.append("%02d:%02d" % [seconds / 60, seconds % 60])
+				_add_progress(row, recent)
 			if not parts.is_empty():
 				row.detail = " · ".join(parts)
 	file_actions.sort_rows()
@@ -1080,15 +1083,15 @@ func _settings_rows() -> Array[Dictionary]:
 			out.append_array(_subtitle_rows(settings))
 		APPEARANCE_TAB:
 			out.append(_group("Background"))
-			var selected := str(settings.get("background", "belfast"))
+			var selected := str(settings.get("background", AppBackground.DEFAULT_CHOICE))
 			out.append(
 				_choice_row(
 					"Background",
 					"background",
 					selected,
 					[
-						{"value": "belfast", "label": "Belfast sunset"},
 						{"value": "starry_night", "label": "Starry night"},
+						{"value": "belfast", "label": "Sunset"},
 						{"value": "beach", "label": "Beach"},
 						{"value": "cloud_sea", "label": "Sea of clouds"},
 						{"value": "dark", "label": "Dark background"},
@@ -1224,6 +1227,7 @@ const CREDITS := [
 				"Belfast Sunset (Pure Sky)",
 				"Poly Haven · CC0 1.0 · Dimitrios Savva / Greg Zaal / Jarod Guest"
 			],
+			["Blouberg Sunrise 2", "Poly Haven · CC0 1.0 · Greg Zaal"],
 		]
 	],
 ]
@@ -1986,6 +1990,7 @@ func _draw() -> void:
 		var column := _quad(Vector2(0.42, 1.12), Vector3.ZERO, PANEL, 10)
 		_side.add_child(column)
 		_decorations.append(column)
+		_draw_brand(column)
 		var order := nav_order()
 		for position in order.size():
 			var i: int = order[position]
@@ -2036,26 +2041,25 @@ func _draw() -> void:
 		var tabs: Array = SETTING_TABS if section == Section.SETTINGS else []
 		if section == Section.SETTINGS and tab == ABOUT_TAB and _about_page != 0:
 			tabs = []
-			_label(
+			var page_title := _label(
 				I18n.t("Open source licenses" if _about_page == 3 else "Credits"),
 				Vector3(PANEL_CENTRE.x, HEADER_Y, .004),
 				24
 			)
+			page_title.font = ui_font_bold()
 		var tab_width := (
 			(CONTENT_RIGHT - CONTENT_LEFT - maxf(0, tabs.size() - 1) * .015) / maxf(1, tabs.size())
 		)
 		for i in tabs.size():
-			_control_button(
+			_tab_button(
 				TAB_BASE + i,
 				I18n.t(tabs[i]),
 				Vector2(CONTENT_LEFT + tab_width * .5 + i * (tab_width + .015), HEADER_Y),
-				tab_width
+				tab_width,
+				i == tab
 			)
-			(_buttons.back().node.get_child(0) as Label3D).font_size = 18
-			_lit(i == tab)
 		if section in [Section.RECENT, Section.LOCAL, Section.SMB, Section.DLNA]:
-			var title := _label(I18n.t(NAV[section]), Vector3(CONTENT_LEFT, HEADER_Y, .004), 24)
-			title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+			_heading(I18n.t(NAV[section]), Vector3(CONTENT_LEFT, HEADER_Y, .004))
 	else:
 		_button(BACK, "", Vector2(CONTENT_LEFT + .045, HEADER_Y), Vector2(0.09, 0.07), true, "up")
 		_draw_crumbs(crumbs)
@@ -2145,7 +2149,7 @@ func _draw() -> void:
 	_decoration(
 		Vector2(CONTENT_RIGHT - CONTENT_LEFT, .002),
 		Vector2(PANEL_CENTRE.x, GRID_TOP + .03),
-		Color(0.17, 0.2, 0.24)
+		DIVIDER
 	)
 	_draw_rows()
 	if section == Section.SETTINGS and tab == ABOUT_TAB:
@@ -2231,8 +2235,9 @@ func _draw_crumbs(crumbs: Array) -> void:
 		)
 		var label: Label3D = _buttons.back().node.get_child(0)
 		label.font_size = 19
-		label.modulate = ACCENT if current else MUTED
+		label.modulate = TEXT if current else MUTED
 		if current:
+			label.font = ui_font_bold()
 			_buttons.back().base_color = Color(TILE, 0.0)
 			_buttons.back()["keep_visible"] = true
 			_buttons.back().node.visible = true
@@ -2359,8 +2364,14 @@ func _draw_rows() -> void:
 	if _max_scroll() > 0:
 		_draw_scrollbar(_bar_span())
 	elif rows.is_empty() and status.is_empty() and section != Section.NETWORK:
-		# Network media draws its own empty state with guidance; a dash would sit under it.
-		var empty := _label("—", Vector3(0.19, 0.0, 0.004), 30)
+		# Network media draws its own empty state with guidance; this one would sit under it.
+		_icon(
+			NAV_ICONS[section] if section < NAV_ICONS.size() else "video",
+			Vector3(PANEL_CENTRE.x, 0.06, 0.004),
+			0.08,
+			Color(MUTED, 0.7)
+		)
+		var empty := _label(I18n.t("No items"), Vector3(PANEL_CENTRE.x, -0.03, 0.004), 20)
 		empty.modulate = MUTED
 	_place_list()
 	choices.finish()
@@ -2370,12 +2381,15 @@ func _draw_scrollbar(span: Vector2) -> void:
 	_button(
 		SCROLLBAR, "", Vector2(SCROLLBAR_X, span.x - span.y * .5), Vector2(SCROLLBAR_WIDTH, span.y)
 	)
+	_buttons.back().base_color = Color(TEXT, 0.06)
 	# Keep the generous ray target while giving the visible rail equal edge padding.
 	_buttons.back().rect = Rect2(
 		SCROLLBAR_X - SCROLLBAR_HIT_WIDTH * .5, span.x - span.y, SCROLLBAR_HIT_WIDTH, span.y
 	)
 	var thumb := span.y * float(_lines()) / _line_count()
-	_bar_thumb = _decoration(Vector2(.012, thumb), Vector2(SCROLLBAR_X, span.x - thumb * .5), MUTED)
+	_bar_thumb = _decoration(
+		Vector2(.010, thumb), Vector2(SCROLLBAR_X, span.x - thumb * .5), Color(TEXT, 0.32)
+	)
 	_bar_thumb.material_override.render_priority = 13
 
 
@@ -2386,6 +2400,8 @@ const SETTING_TITLE_WIDTH := 0.43
 const SETTING_FIELD_X := 0.225
 const SETTING_FIELD_WIDTH := 0.72
 const SETTING_ACTION_WIDTH := 0.26
+const SETTING_CARD_GAP := 0.012
+const CARD := Color(0.063, 0.09, 0.14, 1.0)
 
 
 func _setting_field(target: int, row: Dictionary, centre: Vector2) -> void:
@@ -2409,6 +2425,12 @@ func _setting_heading(
 	var node: MeshInstance3D = button.node
 	if node.get_child_count() > 1:
 		node.get_child(1).visible = false
+	# Each setting sits on its own card; controls draw above it (priority 13+).
+	var card := _quad(
+		Vector2(BODY_WIDTH, _pitch() - SETTING_CARD_GAP), Vector3(0, 0, -0.001), CARD, 11
+	)
+	card.material_override.set_shader_parameter("corner_radius", 0.02)
+	node.add_child(card)
 	var title: Label3D = node.get_child(0)
 	title.position = Vector3(SETTING_TITLE_X, 0.014 if not hint.is_empty() else 0, 0.004)
 	title.font_size = 18
@@ -2441,11 +2463,22 @@ func _setting_action(target: int, row: Dictionary, centre: Vector2) -> void:
 	)
 	_buttons.back()["keep_visible"] = true  # An empty cache shows a dimmed button, not a gap.
 	_buttons.back().node.visible = true
+	_above_card(_buttons.back().node)
 	_lit(bool(row.get("selected", false)))
 
 
-## Group heading: accent caption over a hairline, set low in its line so it reads with its group.
-func _setting_group(target: int, row: Dictionary, centre: Vector2, first: bool) -> void:
+## Controls placed on a setting card draw over it regardless of transparent sort order.
+func _above_card(node: MeshInstance3D) -> void:
+	node.material_override.render_priority = 13
+	for child in node.get_children():
+		if child is Label3D:
+			child.render_priority = 14
+		elif child is MeshInstance3D:
+			child.material_override.render_priority = 14
+
+
+## Group heading: accent caption set low in its line, so it reads with the cards below it.
+func _setting_group(target: int, row: Dictionary, centre: Vector2, _first: bool) -> void:
 	_row_button(target, str(row.title), "", "", centre, false)
 	var button: Dictionary = _buttons.back()
 	button.enabled = false
@@ -2457,13 +2490,9 @@ func _setting_group(target: int, row: Dictionary, centre: Vector2, first: bool) 
 	var title: Label3D = node.get_child(0)
 	title.position = Vector3(SETTING_TITLE_X - 0.03, -0.012, 0.004)
 	title.font_size = 16
+	title.font = ui_font_bold()
 	title.modulate = ACCENT
 	title.text = _fit_title(str(row.title), "", BODY_WIDTH - 0.1, 16)
-	if not first:
-		var rule := _quad(
-			Vector2(BODY_WIDTH - 0.04, 0.002), Vector3(0, 0.03, 0.003), Color(0.17, 0.2, 0.24), 12
-		)
-		node.add_child(rule)
 
 
 func _choice_row(
@@ -2510,24 +2539,24 @@ func _tile(target: int, row: Dictionary, centre: Vector2) -> void:
 	name.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	name.position = Vector3(0, -0.06, 0.004)
 	var picture := icon in ["video", "image"]
+	var area_size := Vector2(TILE_SIZE.x - .02, TILE_SIZE.y - .10)
 	var area := _quad(
-		Vector2(TILE_SIZE.x - .02, TILE_SIZE.y - .10),
+		area_size,
 		Vector3(0, 0.04, 0.003),
-		Color(0.13, 0.15, 0.18) if picture else Color(TILE, 0.0),
+		Color(0.055, 0.078, 0.122) if picture else Color(TILE, 0.0),
 		12
 	)
+	area.material_override.set_shader_parameter("corner_radius", 0.012)
 	node.add_child(area)
 	var shown: Texture2D = _picture(row) if picture else null
 	if shown:
-		var frame := _material(Color.WHITE, 12)
-		frame.albedo_texture = shown
-		area.material_override = frame
+		_show_picture(area, shown)
 	else:
 		var glyph := _icon(
 			icon,
 			Vector3(0, 0.04, 0.005),
 			0.065 if picture else 0.1,
-			MUTED if picture else (FOLDER if icon == "folder" else Color(0.93, 0.95, 0.98)),
+			MUTED if picture else (FOLDER if icon == "folder" else TEXT),
 			node
 		)
 		glyph.material_override.render_priority = 13
@@ -2539,20 +2568,43 @@ func _tile(target: int, row: Dictionary, centre: Vector2) -> void:
 			ACCENT,
 			node
 		)
+	var bottom := 0.04 - area_size.y * 0.5
+	var progress := float(row.get("progress", -1.0)) if picture else -1.0
+	if progress >= 0.0:
+		var span := area_size.x - 0.03
+		var track := _quad(
+			Vector2(span, 0.005), Vector3(0, bottom + 0.0045, 0.005), Color(0, 0, 0, 0.55), 13
+		)
+		node.add_child(track)
+		var fill := _quad(
+			Vector2(maxf(0.005, span * progress), 0.005),
+			Vector3(-span * 0.5 + maxf(0.005, span * progress) * 0.5, bottom + 0.0045, 0.006),
+			ACCENT,
+			14
+		)
+		node.add_child(fill)
 	var detail := str(row.get("detail", ""))
 	if not detail.is_empty():
-		var badge := _label(
-			_fit_title(detail, "", TILE_SIZE.x - 0.03, 13),
-			Vector3(TILE_SIZE.x * 0.5 - 0.02, -0.03, 0.006),
-			13,
-			node
+		# Length or size on a dark chip in the picture's corner, readable over any frame.
+		var text := _fit_title(detail, "", TILE_SIZE.x - 0.06, 14)
+		var width := ui_font().get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x * 0.0012
+		var right := area_size.x * 0.5 - 0.008
+		var y := bottom + 0.022
+		var chip := _quad(
+			Vector2(width + 0.018, 0.026),
+			Vector3(right - (width + 0.018) * 0.5, y, 0.005),
+			Color(0.0, 0.0, 0.0, 0.62),
+			13
 		)
+		chip.material_override.set_shader_parameter("corner_radius", 0.013)
+		node.add_child(chip)
+		var badge := _label(text, Vector3(right - 0.009, y, 0.006), 14, node)
 		badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		badge.render_priority = 14
-		badge.modulate = MUTED
+		badge.modulate = Color(TEXT, 0.92)
 
 
-## The current choice is lit by colour (dark green tile, accent text), not a solid accent fill.
+## The current choice is lit by colour (tinted tile, accent text), not a solid accent fill.
 func _lit(selected: bool) -> void:
 	if not selected:
 		return
@@ -2560,6 +2612,46 @@ func _lit(selected: bool) -> void:
 	button.base_color = SELECTED
 	button.foreground = ACCENT
 	button.node.get_child(0).modulate = ACCENT
+
+
+## Page title at the top-left of the browser.
+func _heading(text: String, location: Vector3, size: int = 26) -> Label3D:
+	var title := _label(text, location, size)
+	title.font = ui_font_bold()
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	return title
+
+
+## Settings tab: idle tabs sit on the panel as plain text; the current one is a lit chip.
+func _tab_button(target: int, text: String, centre: Vector2, width: float, current: bool) -> void:
+	_control_button(target, text, centre, width)
+	var button: Dictionary = _buttons.back()
+	var label: Label3D = button.node.get_child(0)
+	label.font_size = 18
+	if current:
+		_lit(true)
+		label.font = ui_font_bold()
+	else:
+		button.base_color = Color(TILE, 0.0)
+		button.foreground = NAV_IDLE
+		label.modulate = NAV_IDLE
+
+
+## How far a started video got, when its length is known: tiles show it as a bar.
+static func _add_progress(row: Dictionary, entry: Dictionary) -> void:
+	var duration := int(entry.get("duration_ms", -1))
+	var position := int(entry.get("position_ms", 0))
+	if duration > 0 and position > 0:
+		row["progress"] = clampf(float(position) / duration, 0.0, 1.0)
+
+
+## Draws [texture] inside [area]'s rounded shape instead of a square-cornered material.
+func _show_picture(area: MeshInstance3D, texture: Texture2D) -> void:
+	var surface: ShaderMaterial = area.material_override
+	surface.set_shader_parameter("surface_color", Color.WHITE)
+	surface.set_shader_parameter("use_texture", true)
+	surface.set_shader_parameter("surface_texture", texture)
+	surface.set_shader_parameter("sheen", 0.0)
 
 
 ## A played video's frame, or the cover a DLNA server offers (fetched once, then cached).
@@ -2693,23 +2785,55 @@ func _row_button(
 		info.modulate = MUTED
 
 
-## Navigation entry on the angled column: the current one is lit by colour, not a solid fill.
+const NAV_IDLE := Color(0.76, 0.81, 0.88)
+const NAV_WIDTH := 0.36
+static var _brand_texture: Texture2D
+
+
+## App mark and name at the top of the navigation column.
+func _draw_brand(column: MeshInstance3D) -> void:
+	var mark := _quad(
+		Vector2.ONE * 0.056, Vector3(-NAV_WIDTH * .5 + 0.05, 0.495, 0.004), Color.WHITE, 12
+	)
+	# Clip to the icon's own squircle; the source image has light corners.
+	mark.material_override.set_shader_parameter("corner_radius", 0.013)
+	_show_picture(mark, _brand())
+	column.add_child(mark)
+	var name := _label("Immivio", Vector3(-NAV_WIDTH * .5 + 0.094, 0.495, 0.004), 26, column)
+	name.font = ui_font_bold()
+	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	column.add_child(_quad(Vector2(NAV_WIDTH - 0.02, 0.002), Vector3(0, 0.45, 0.003), DIVIDER, 12))
+
+
+## The launcher icon is far larger than its spot here: keep one small, mipmapped copy.
+static func _brand() -> Texture2D:
+	if _brand_texture == null:
+		var image := (load("res://branding/immivio-icon.png") as Texture2D).get_image()
+		if image.is_compressed():
+			image.decompress()
+		image.resize(128, 128, Image.INTERPOLATE_LANCZOS)
+		image.generate_mipmaps()
+		_brand_texture = ImageTexture.create_from_image(image)
+	return _brand_texture
+
+
+## Navigation entry on the angled column: rows rest on the panel itself; the current
+## one gets a tinted fill, an accent bar at its leading edge and a heavier label.
 func _nav_button(target: int, text: String, icon: String, centre: Vector2, selected: bool) -> void:
-	_control_button(target, text, centre, 0.36, true, "", false, _side)
+	_control_button(target, text, centre, NAV_WIDTH, true, "", false, _side)
 	var button: Dictionary = _buttons.back()
-	button.base_color = SELECTED if selected else TILE
+	button.base_color = SELECTED if selected else Color(TILE, 0.0)
 	var node: MeshInstance3D = button.node
 	var label: Label3D = node.get_child(0)
 	label.position.x = -0.08
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	label.modulate = ACCENT if selected else button.foreground
-	_icon(
-		icon,
-		Vector3(-0.13, 0, 0.004),
-		CONTROL_ICON_SIZE,
-		ACCENT if selected else button.foreground,
-		node
+	label.modulate = ACCENT if selected else NAV_IDLE
+	_icon(icon, Vector3(-0.13, 0, 0.004), CONTROL_ICON_SIZE, ACCENT if selected else NAV_IDLE, node)
+	var marker := _quad(
+		Vector2(0.006, CONTROL_HEIGHT * 0.5), Vector3(-NAV_WIDTH * .5 + 0.012, 0, 0.004), ACCENT, 12
 	)
+	marker.visible = selected
+	node.add_child(marker)
 
 
 ## Over a playing video the library only switches videos, so it hides Settings.
@@ -2744,11 +2868,14 @@ func _update_navigation_selection() -> void:
 		var selected: bool = (
 			button.target == NAV_BASE + (Section.NETWORK if network.contains(section) else section)
 		)
-		button.base_color = SELECTED if selected else TILE
+		button.base_color = SELECTED if selected else Color(TILE, 0.0)
 		var label: Label3D = button.node.get_child(0)
-		label.modulate = ACCENT if selected else button.foreground
+		label.modulate = ACCENT if selected else NAV_IDLE
+		label.font = ui_font_bold() if selected else ui_font()
 		var icon: MeshInstance3D = button.node.get_child(1)
-		icon.material_override.albedo_color = ACCENT if selected else button.foreground
+		icon.material_override.albedo_color = ACCENT if selected else NAV_IDLE
+		if button.node.get_child_count() > 2:
+			button.node.get_child(2).visible = selected
 
 
 func _draw_about() -> void:
@@ -2807,8 +2934,7 @@ func _engine_notices() -> String:
 func _draw_editor() -> void:
 	var dlna_editor := section == Section.DLNA
 	var fields := _editor_fields()
-	var title := _label("DLNA" if dlna_editor else "SMB", Vector3(-0.42, 0.46, 0.004), 24)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_heading("DLNA" if dlna_editor else "SMB", Vector3(-0.42, 0.46, 0.004))
 	for i in fields.size():
 		var value := str(_editor[fields[i]])
 		if fields[i] == "password":
@@ -2830,14 +2956,15 @@ func _draw_editor() -> void:
 			_fit_title(value, "", field_width - 0.10 if dlna_editor else 0.42, 21),
 			centre,
 			Vector2(field_width, 0.1),
-			not _editor_busy(),
-			"",
-			i == _field
+			not _editor_busy()
 		)
+		_lit(i == _field)
 		var node: MeshInstance3D = _buttons.back().node
 		var label: Label3D = node.get_child(0)
 		label.position = Vector3(-field_width * 0.5 + 0.04 if dlna_editor else -0.17, -0.012, 0.004)
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		if i == _field and not _editor_busy():
+			label.modulate = TEXT
 		var name := _label(
 			I18n.t("IP address" if i == 0 else "Port") if dlna_editor else I18n.t(FIELD_NAMES[i]),
 			Vector3(
@@ -2849,7 +2976,7 @@ func _draw_editor() -> void:
 			node
 		)
 		name.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-		name.modulate = Color(0.06, 0.18, 0.14) if dlna_editor and i == _field else MUTED
+		name.modulate = ACCENT if i == _field else MUTED
 	var layer: Array = SYMBOLS if _symbols else KEYS
 	for r in layer.size():
 		for c in 10:
@@ -2873,6 +3000,8 @@ func _draw_editor() -> void:
 	)
 	_button(SPACE, "␣", Vector2(0.15, y), Vector2(0.34, 0.085))
 	_button(BACKSPACE, "", Vector2(0.43, y), Vector2(0.18, 0.085), true, "backspace")
+	# A key among keys: keep the keyboard's rectangle rather than the icon capsule.
+	_buttons.back().node.material_override.set_shader_parameter("corner_radius", CONTROL_RADIUS)
 	var actions := -0.44
 	_button(
 		SAVE,

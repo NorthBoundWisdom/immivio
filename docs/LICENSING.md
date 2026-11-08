@@ -25,7 +25,7 @@ The project license does not replace third-party notices or claim ownership of u
 | AndroidX Media3 | Apache-2.0; retain applicable dependency/transitive notices when distributing an APK. |
 | ICU4J charset detector 78.1 | Unicode-3.0; only `Charset*.class` are packaged, with verified upstream SHA-256 and notices in `third_party/icu-charset`. |
 | CodeLibs JCIFS | LGPL-2.1; keep its source/license obligations and those of transitive dependencies. |
-| Belfast Sunset (Pure Sky) | Unmodified Poly Haven background, CC0-1.0; source and attribution are kept with the image. |
+| Belfast Sunset (Pure Sky), Blouberg Sunrise 2 | Unmodified Poly Haven panoramas, CC0-1.0; source, checksums and attribution are kept with the images. |
 | Project-generated test fixtures | Synthetic images, patterns and audio; no private source media is included. |
 
 

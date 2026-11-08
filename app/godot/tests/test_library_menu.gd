@@ -631,6 +631,7 @@ func _run() -> void:
 	var belfast: Array = menu.rows.filter(
 		func(row): return row.title == "Belfast Sunset (Pure Sky)"
 	)
+	var beach: Array = menu.rows.filter(func(row): return row.title == "Blouberg Sunrise 2")
 	check(
 		(
 			menu.rows[0].get("group", false)
@@ -638,6 +639,8 @@ func _run() -> void:
 			and belfast.size() == 1
 			and belfast[0].detail.contains("Poly Haven · CC0 1.0")
 			and belfast[0].detail.contains("Dimitrios Savva / Greg Zaal / Jarod Guest")
+			and beach.size() == 1
+			and beach[0].detail.contains("Poly Haven · CC0 1.0 · Greg Zaal")
 		),
 		"Credits open with the engine group; the panorama entry keeps source, license and authors"
 	)
@@ -715,8 +718,8 @@ func _run() -> void:
 		for name in ["RVM", "MNN", "ncnn", "Depth Anything"]:
 			retired = retired or title.contains(name)
 	check(
-		menu.text_snapshot().contains("Belfast Sunset") and not retired,
-		"Credits end with the panorama and omit retired inference components"
+		menu.text_snapshot().contains("Blouberg Sunrise 2") and not retired,
+		"Credits end with the beach panorama and omit retired inference components"
 	)
 	menu._activate(Menu.ABOUT_HOME)
 	check(

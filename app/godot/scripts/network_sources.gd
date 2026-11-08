@@ -229,8 +229,9 @@ func draw() -> void:
 		"Add source" if mode == "add" else ("Manage sources" if chooser else "Network media")
 	)
 	var label: Label3D = menu._label(
-		title, Vector3(menu.CONTENT_LEFT + (.12 if chooser else 0), menu.HEADER_Y, .004), 23
+		title, Vector3(menu.CONTENT_LEFT + (.12 if chooser else 0), menu.HEADER_Y, .004), 26
 	)
+	label.font = menu.ui_font_bold()
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	if mode == "add":
 		menu._glyph(
@@ -269,12 +270,15 @@ func draw() -> void:
 	menu._decoration(
 		Vector2(menu.CONTENT_RIGHT - menu.CONTENT_LEFT, .002),
 		Vector2(menu.PANEL_CENTRE.x, menu.GRID_TOP + .03),
-		Color(.17, .2, .24)
+		menu.DIVIDER
 	)
 	menu._draw_rows()
 	if menu.rows.is_empty():
 		menu._icon("media_library", Vector3(menu.PANEL_CENTRE.x, .2, .004), .09, menu.MUTED)
-		menu._label(I18n.t("No network sources yet"), Vector3(menu.PANEL_CENTRE.x, .09, .004), 22)
+		var empty: Label3D = menu._label(
+			I18n.t("No network sources yet"), Vector3(menu.PANEL_CENTRE.x, .09, .004), 22
+		)
+		empty.font = menu.ui_font_bold()
 		var hint: Label3D = menu._label(
 			I18n.t("Add a source or refresh to find devices"),
 			Vector3(menu.PANEL_CENTRE.x, .02, .004),

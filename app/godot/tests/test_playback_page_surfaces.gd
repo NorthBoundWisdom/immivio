@@ -54,6 +54,62 @@ func tap(host: Node3D, target: int) -> bool:
 	return handled
 
 
+func check_first_browser_open(host: Node3D, geometry: int, follow: bool) -> void:
+	host.view_follow.enabled = follow
+	host.video.geometry = geometry
+	host.video._apply_geometry()
+	host._show_player_menu()
+	var menu: Node3D = host.player_menu
+	menu.refresh()
+	var surface: Node3D = host.menu_compositor
+	surface._process(0)
+	var original_rect: Rect2 = surface.surface_rect
+	var original_pose: Transform3D = menu.global_transform
+	var original_progress: int = menu._progress.get_instance_id()
+	var previous: Dictionary = surface._capture_metadata(Surface.capture_pose(menu))
+	check(tap(host, Menu.BROWSE), "First browser open accepts a toolbar ray click")
+	check(
+		surface.surface_rect == original_rect,
+		"First browser open preserves the original capture projection: %d" % geometry
+	)
+	check(
+		surface._can_display_capture(previous),
+		"First browser open retains the preceding toolbar image: %d" % geometry
+	)
+	check(
+		(
+			menu.global_transform.is_equal_approx(original_pose)
+			and menu._progress.get_instance_id() == original_progress
+		),
+		"First browser open preserves timeline geometry and nodes"
+	)
+	var eye_before: Vector3 = host.xr_camera.global_position
+	host.xr_camera.global_position += Vector3(.012, .004, .009)
+	host._update_view_follow()
+	host._update_player_menu_anchor()
+	if geometry != 0:
+		check(
+			menu.global_position.is_equal_approx(original_pose.origin + Vector3(.012, .004, .009)),
+			"Immersive toolbar follows translation while the browser is open"
+		)
+	check(
+		host.recent_menu.global_transform.is_equal_approx(Menu.switcher_pose(menu)),
+		"Browser remains attached to the toolbar with follow=%s" % follow
+	)
+	var before_return: Transform3D = menu.global_transform
+	host.recent_menu._activate(host.recent_menu.PLAYER)
+	surface._process(0)
+	check(
+		menu.global_transform.is_equal_approx(before_return),
+		"Returning from Library to Playback cannot reanchor the timeline: %d" % geometry
+	)
+	check(
+		surface.surface_rect == original_rect,
+		"Returning from Library keeps the original capture projection"
+	)
+	host.xr_camera.global_position = eye_before
+
+
 func _run() -> void:
 	var host := Main.new()
 	host.settings_path = "user://playback-surfaces.cfg"
@@ -87,6 +143,13 @@ func _run() -> void:
 			true
 		)
 		return state
+	for follow in [false, true]:
+		for geometry in [0, 1, 3]:
+			check_first_browser_open(host, geometry, follow)
+	host.view_follow.enabled = false
+	host.video.geometry = 0
+	host.video._apply_geometry()
+	host._show_player_menu()
 	for target in [
 		Menu.QUICK_SCREEN,
 		Menu.MODE,

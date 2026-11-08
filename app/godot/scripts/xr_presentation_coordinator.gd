@@ -367,6 +367,8 @@ func _update_view_follow() -> void:
 	for menu in [host.recent_menu, host.video_menu]:
 		if not menu or not menu.visible:
 			continue
+		if menu == host.recent_menu and menu.playback_browser and host.video_menu.visible:
+			continue
 		# Immersive controls belong to the reset/content sphere, even in follow mode.
 		if menu == host.player_menu and host._viewer().geometry != Geometry.Geometry.FLAT:
 			continue
@@ -378,6 +380,18 @@ func _update_view_follow() -> void:
 	var surface = host._viewer() if host.video else null
 	if surface and host._flat_followable(surface) and not surface.local_uri.is_empty():
 		surface.set_flat_world_pose(host._follow_screen_pose(surface, head))
+	_sync_playback_browser()
+
+
+func _sync_playback_browser() -> void:
+	var host := _host_ref.get_ref() as Node3D
+	if (
+		is_instance_valid(host)
+		and host.recent_menu.visible
+		and host.recent_menu.playback_browser
+		and host.video_menu.visible
+	):
+		host.recent_menu.global_transform = PlayerMenu.switcher_pose(host.video_menu)
 
 
 func _place_menu(menu: Node3D) -> void:
@@ -540,8 +554,9 @@ func _update_player_menu_anchor() -> void:
 	# the plane during a captured slider drag so its target cannot move away.
 	if (
 		host.player_menu
-		and host._active_menu() == host.player_menu
+		and host.player_menu.visible
 		and not host.player_menu.has_pointer_capture()
+		and not (host.recent_menu.visible and host.recent_menu.has_pointer_capture())
 		and not host._viewer().local_uri.is_empty()
 		and is_instance_valid(host._viewer().get("panel"))
 		and host._viewer().panel.visible
@@ -552,6 +567,7 @@ func _update_player_menu_anchor() -> void:
 			var eye = host._eye()
 			host.player_menu.global_position += eye - host._player_menu_anchor_eye
 			host._player_menu_anchor_eye = eye
+	_sync_playback_browser()
 
 
 func _toggle_player_menu() -> void:

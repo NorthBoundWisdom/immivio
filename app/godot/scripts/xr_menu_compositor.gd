@@ -430,6 +430,7 @@ func _capture_metadata(pose: Transform3D) -> Dictionary:
 		"layout_revision": active_menu.layout_revision,
 		"menu_revisions": _capture_revisions(),
 		"menu_pages": _capture_pages(),
+		"pointer_panels": _capture_pointer_panels(pose),
 		"pose": pose,
 		"rect": surface_rect,
 		"curve_radius": active_menu.curve_radius
@@ -711,6 +712,33 @@ func _capture_pages() -> Dictionary:
 	return result
 
 
+## Geometry follows the image acknowledgement, even if a redraw retires its nodes.
+## Store values in capture space; no scene nodes/resources are retained here.
+func _capture_pointer_panels(pose: Transform3D) -> Array:
+	var result := []
+	var inverse := pose.affine_inverse()
+	for menu in _capture_menus():
+		var surfaces: Array[MeshInstance3D] = menu._pointer_panels()
+		# Floating actions can sit outside every backdrop (e.g. Close video).
+		for button in menu._buttons:
+			if is_instance_valid(button.node) and button.node.is_visible_in_tree():
+				surfaces.append(button.node)
+		for panel in surfaces:
+			(
+				result
+				. append(
+					{
+						"menu_id": str(menu.get_instance_id()),
+						"transform": inverse * panel.global_transform,
+						"size": panel.mesh.size,
+						"radius":
+						float(panel.material_override.get_shader_parameter("corner_radius")),
+					}
+				)
+			)
+	return result
+
+
 func _update_bounds() -> void:
 	var result: Array = []
 	var inverse := capture_pose(active_menu).affine_inverse()
@@ -886,6 +914,58 @@ func map_ray(menu: Node3D, origin: Vector3, direction: Vector3) -> Dictionary:
 			direction
 		)
 	return project_ray(layer.global_transform, layer.quad_size, origin, direction)
+
+
+## Visual occlusion uses the displayed panels while map_ray() still gates input
+## on the new layout's acknowledgement. Transparent texture padding never blocks.
+func map_panel_ray(menu: Node3D, origin: Vector3, direction: Vector3) -> Dictionary:
+	if (
+		not native_supported
+		or not captures_menu(menu)
+		or not origin.is_finite()
+		or not direction.is_finite()
+		or not _can_display_capture(presented)
+	):
+		return {}
+	var pose := presented_pose(presented, active_menu)
+	var rect: Rect2 = presented.rect
+	var radius: float = presented.get("curve_radius", 0.0)
+	var mapped := (
+		project_curved_ray(pose, rect, radius, origin, direction)
+		if radius > 0
+		else project_ray(
+			(
+				pose
+				* Transform3D(Basis.IDENTITY, Vector3(rect.get_center().x, rect.get_center().y, 0))
+			),
+			rect.size,
+			origin,
+			direction
+		)
+	)
+	if mapped.is_empty():
+		return {}
+	var shown := _capture_pages()
+	for panel in presented.get("pointer_panels", []):
+		# A closed companion can remain in the retained image for one GPU copy.
+		# Its visible pixels still block, without stealing another visible menu's input.
+		if panel.menu_id != str(menu.get_instance_id()) and shown.has(panel.menu_id):
+			continue
+		var transform: Transform3D = pose * panel.transform
+		var hit := project_ray(transform, panel.size, mapped.origin, mapped.direction)
+		if hit.is_empty():
+			continue
+		var local: Vector3 = transform.affine_inverse() * hit.point
+		var half: Vector2 = panel.size * .5
+		var corner_radius := minf(float(panel.radius), minf(half.x, half.y))
+		var corner := Vector2(absf(local.x), absf(local.y)) - (half - Vector2.ONE * corner_radius)
+		if (
+			corner.x <= corner_radius
+			and corner.y <= corner_radius
+			and corner.max(Vector2.ZERO).length() <= corner_radius
+		):
+			return mapped
+	return {}
 
 
 func snapshot() -> Dictionary:

@@ -348,7 +348,8 @@ func _draw_server_choices() -> void:
 
 func draw() -> void:
 	menu._button(BASE, "", Vector2(-0.52, 0.46), Vector2(0.09, 0.07), true, "up")
-	menu._label(I18n.t(title), Vector3(0.13, 0.46, 0.004), 24)
+	var heading: Label3D = menu._label(I18n.t(title), Vector3(0.13, 0.46, 0.004), 26)
+	heading.font = menu.ui_font_bold()
 	var enabled := not bool(data.get("busy", false))
 	if view in ["choose", "accounts", "discover", "license", "plex_servers"]:
 		if view == "choose" and kind == "server":
@@ -386,7 +387,11 @@ func draw() -> void:
 			)
 	elif view == "plex_link":
 		menu._label("plex.tv/link", Vector3(0.15, 0.22, 0.008), 30)
-		menu._label(str(data.get("result", {}).get("code", "")), Vector3(0.15, 0.05, 0.008), 56)
+		var code: Label3D = menu._label(
+			str(data.get("result", {}).get("code", "")), Vector3(0.15, 0.05, 0.008), 56
+		)
+		code.font = menu.ui_font_bold()
+		code.modulate = menu.ACCENT
 		menu._label(I18n.t("Pair on phone or computer"), Vector3(0.15, -0.065, 0.008), 17)
 		menu._button(
 			BASE + 28,
@@ -431,11 +436,12 @@ func draw_fields(enabled: bool) -> void:
 			if key == "password" and value.is_empty() and data.get("has_password", false):
 				value = I18n.t("Keep saved login")
 		var y := 0.30 - i * 0.087
-		menu._button(
-			FIELD + i, "", Vector2(0.17, y), Vector2(1.2, 0.077), enabled, "", key == field
-		)
+		menu._button(FIELD + i, "", Vector2(0.17, y), Vector2(1.2, 0.077), enabled)
+		if key == field:
+			menu._buttons.back().base_color = menu.SELECTED
 		var node: MeshInstance3D = menu._buttons.back().node
 		var label: Label3D = node.get_child(0)
+		label.modulate = menu.ACCENT if key == field else menu.MUTED
 		label.text = I18n.t(names[key])
 		label.font_size = 16
 		label.position = Vector3(-0.57, 0.012, 0.004)
@@ -444,7 +450,7 @@ func draw_fields(enabled: bool) -> void:
 			menu._fit_title(value, "", 1.1, 19), Vector3(-0.57, -0.018, 0.004), 19, node
 		)
 		detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-		detail.modulate = Color(0.04, 0.10, 0.08) if key == field else Color.WHITE
+		detail.modulate = menu.TEXT
 
 
 func draw_keyboard(enabled: bool, offset: Vector2 = Vector2.ZERO) -> void:

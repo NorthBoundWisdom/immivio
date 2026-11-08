@@ -25,7 +25,8 @@ func _panel(title: String, height: float) -> float:
 	)
 	menu.add_child(panel)
 	menu._decorations.append(panel)
-	var heading: Label3D = menu._label(menu.I18n.t(title), Vector3(-0.49, top - 0.045, 0.004), 19)
+	var heading: Label3D = menu._label(menu.I18n.t(title), Vector3(-0.49, top - 0.045, 0.004), 20)
+	heading.font = menu.ui_font_bold()
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	menu._glyph(
 		menu.QUICK_CLOSE, "close", Vector2(0.49, top - 0.045), 0.06, true, menu.I18n.t("Close")

@@ -182,7 +182,10 @@ func _run() -> void:
 	var recent_tile: Dictionary = menu._buttons.filter(func(b): return b.target == menu.ROW_BASE)[0]
 	var recent_area: MeshInstance3D = recent_tile.node.get_child(1)
 	check(
-		recent_area.material_override.albedo_texture == Thumbnails.texture(uri),
+		(
+			recent_area.material_override.get_shader_parameter("surface_texture")
+			== Thumbnails.texture(uri)
+		),
 		"Actual recent card binds the screenshot when its DLNA cover is absent"
 	)
 	menu._cancel_covers()

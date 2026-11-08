@@ -1296,6 +1296,8 @@ func _fit_picture(picture: MeshInstance3D, texture: Texture2D, area: Vector2) ->
 	var size := texture.get_size()
 	if size.x > 0 and size.y > 0:
 		picture.mesh.size = size * minf(area.x / size.x, area.y / size.y)
+	if picture.material_override is ShaderMaterial:
+		picture.material_override.set_shader_parameter("surface_size", picture.mesh.size)
 
 
 func tile(target: int, row: Dictionary, center: Vector2) -> void:
@@ -1310,9 +1312,7 @@ func tile(target: int, row: Dictionary, center: Vector2) -> void:
 	node.add_child(picture)
 	var texture := cover(row)
 	if texture:
-		var material = menu._material(Color.WHITE, 12)
-		material.albedo_texture = texture
-		picture.material_override = material
+		menu._show_picture(picture, texture)
 		_fit_picture(picture, texture, Vector2(menu.TILE_SIZE.x - .022, menu.TILE_SIZE.y - .078))
 	else:
 		menu._icon(str(row.get("icon", "video")), Vector3(0, 0.026, 0.006), 0.064, menu.MUTED, node)
@@ -1321,6 +1321,7 @@ func tile(target: int, row: Dictionary, center: Vector2) -> void:
 		menu._fit_title(str(row.title), "", 0.265, 22), Vector3(0, -.077, .006), 22, node
 	)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.font = menu.ui_font_bold()
 	var meta: Label3D = menu._label(str(row.get("detail", "")), Vector3(0, -.105, .006), 16, node)
 	meta.modulate = menu.MUTED
 
@@ -1349,6 +1350,7 @@ func draw() -> void:
 		Vector3(menu.CONTENT_LEFT + .12, menu.HEADER_Y, .004),
 		22
 	)
+	heading.font = menu.ui_font_bold()
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	if view == "servers":
 		for item in [[1, "plus"], [14, "edit"], [12, "refresh"], [13, "trash"]]:
@@ -1587,7 +1589,10 @@ func _draw_home() -> void:
 	var row_offset := 0
 	var latest_y := 0.11
 	if not resume.is_empty():
-		menu._label(I18n.t("Continue watching"), Vector3(-0.25, 0.195, 0.004), 21)
+		var continue_heading: Label3D = menu._label(
+			I18n.t("Continue watching"), Vector3(-0.25, 0.195, 0.004), 21
+		)
+		continue_heading.font = menu.ui_font_bold()
 		var item: Dictionary = resume[0]
 		var row := _node_row(item)
 		menu._button(
@@ -1607,9 +1612,7 @@ func _draw_home() -> void:
 		node.add_child(frame)
 		var texture := cover(row)
 		if texture:
-			var material = menu._material(Color.WHITE, 12)
-			material.albedo_texture = texture
-			frame.material_override = material
+			menu._show_picture(frame, texture)
 			_fit_picture(frame, texture, Vector2(0.18, 0.14))
 		else:
 			menu._icon("video", Vector3(-0.5, 0, 0.005), 0.055, menu.MUTED, node)
@@ -1642,7 +1645,10 @@ func _draw_home() -> void:
 			)
 		row_offset = 1
 		latest_y = -0.085
-	menu._label(I18n.t("Recently added"), Vector3(-0.27, latest_y, 0.004), 21)
+	var latest_heading: Label3D = menu._label(
+		I18n.t("Recently added"), Vector3(-0.27, latest_y, 0.004), 21
+	)
+	latest_heading.font = menu.ui_font_bold()
 	menu._button(
 		ACTION + 101,
 		I18n.t("All") + " · " + str(total) + " ›",

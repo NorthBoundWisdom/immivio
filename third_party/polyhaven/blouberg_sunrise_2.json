@@ -1,0 +1,23 @@
+{
+  "asset": "Blouberg Sunrise 2",
+  "source": "https://polyhaven.com/a/blouberg_sunrise_2",
+  "license": "CC0-1.0",
+  "license_url": "https://polyhaven.com/license",
+  "verified_date": "2026-11-08",
+  "authors": {
+    "photography": "Greg Zaal",
+    "backplates": "Rico Cilliers"
+  },
+  "bundled_source": {
+    "path": "app/godot/backgrounds/blouberg_sunrise_2.jpg",
+    "url": "https://dl.polyhaven.org/file/ph-assets/HDRIs/extra/Tonemapped%20JPG/blouberg_sunrise_2.jpg",
+    "dimensions": [
+      8192,
+      4096
+    ],
+    "bytes": 3248257,
+    "md5": "9af47753c97cc5fd32d43358870ffba9",
+    "sha256": "3e0722f1cf7ec79ecc64ca488a68cbf9f8d37d798ffa4cfe1dd420535a23d6c9",
+    "changes": "Official tonemapped JPEG unchanged; Godot imports full-size GPU-compressed texture with mipmaps."
+  }
+}

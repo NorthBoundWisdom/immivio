@@ -13,5 +13,17 @@ MD5: 5313193c1b09d9776dd3395d08b6beee
 Godot imports it with mipmaps and GPU texture compression at its full dimensions.
 The 24K HDR original is a development source archive, not packaged in the app.
 
+Blouberg Sunrise 2 (Beach)
+Source: https://polyhaven.com/a/blouberg_sunrise_2
+License: CC0 1.0 Universal (see CC0-1.0.txt).
+License verified: 2026-11-08, https://polyhaven.com/license
+Photography: Greg Zaal
+Backplates: Rico Cilliers (not bundled)
+
+The included blouberg_sunrise_2.jpg is the official, unmodified
+8192 x 4096 tonemapped JPEG (3,248,257 bytes).
+MD5: 9af47753c97cc5fd32d43358870ffba9
+Godot imports it with mipmaps and GPU texture compression at its full dimensions.
+
 CC0 permits commercial use, modification and redistribution without attribution.
 This voluntary credit does not imply endorsement by the authors or Poly Haven.

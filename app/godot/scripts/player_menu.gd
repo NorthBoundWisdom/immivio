@@ -189,8 +189,6 @@ func capture_envelope() -> Rect2:
 
 const LibraryMenu := preload("res://scripts/library_menu.gd")
 const SWITCHER_GAP := 0.03
-## The switcher's drawn extent in its own units: the angled navigation column to the panel edge.
-const SWITCHER_EXTENT := Rect2(-1.06, -0.58, 1.92, 1.16)
 
 
 ## The video switcher (the library opened over playback) sits above this bar: uniformly
@@ -212,9 +210,14 @@ static func switcher_pose(bar: Node3D) -> Transform3D:
 func _switcher_envelope() -> Rect2:
 	if not is_inside_tree() or global_basis.determinant() == 0.0:
 		return Rect2()
+	# Reserve the library's full capture policy, including hover text, before
+	# its first open. Its visible panel alone is smaller than its projection.
+	var extent := LibraryMenu.CAPTURE_ENVELOPE.grow_individual(
+		0, LibraryMenu.TOOLTIP_MARGIN, 0, LibraryMenu.TOOLTIP_MARGIN
+	)
 	var local := global_transform.affine_inverse() * switcher_pose(self)
-	var low := local * Vector3(SWITCHER_EXTENT.position.x, SWITCHER_EXTENT.position.y, 0)
-	var high := local * Vector3(SWITCHER_EXTENT.end.x, SWITCHER_EXTENT.end.y, 0)
+	var low := local * Vector3(extent.position.x, extent.position.y, 0)
+	var high := local * Vector3(extent.end.x, extent.end.y, 0)
 	return Rect2(Vector2(low.x, low.y), Vector2.ZERO).expand(Vector2(high.x, high.y))
 
 
@@ -275,7 +278,8 @@ func _middle_title(title: String, width: float) -> String:
 	var clean := title.replace("\n", " ").replace("\r", " ")
 	var fits := func(value: String) -> bool:
 		return (
-			ui_font().get_string_size(value, HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x * 0.0012 <= width
+			ui_font_bold().get_string_size(value, HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x * 0.0012
+			<= width
 		)
 	if fits.call(clean):
 		return clean
@@ -635,25 +639,23 @@ func _draw_bar() -> void:
 	add_child(_title_pill)
 	_decorations.append(_title_pill)
 	_title = _label("", Vector3(0, HEADER_Y, 0.006), 18)
+	_title.font = ui_font_bold()
 	var has_video: bool = _state.get("has_video", false)
-	var controls := [
+	# Grouped by purpose around the transport: what to watch on the left (library, queue,
+	# bookmarks, info), how it looks and sounds on the right. The most used sit nearest Play.
+	var watch := [
+		{"target": 12, "icon": "info", "tip": "Info", "enabled": true},
 		{
-			"target": QUICK_SCREEN,
-			"icon": "screen",
-			"tip": "Screen layout",
-			"enabled": has_video and int(_state.get("geometry", 0)) == 0
+			"target": BookmarkMenu.UNDO,
+			"icon": "undo",
+			"tip": "Undo delete",
+			"enabled": _state.get("bookmark_undo", false)
 		},
-		{"target": BROWSE, "icon": "folder", "tip": "Library", "enabled": has_video},
-		{"target": 110, "icon": "subtitle", "tip": "Subtitles", "enabled": _enabled("subtitles")},
-		{"target": MODE, "icon": "view_mode", "tip": "Video mode", "enabled": has_video},
-		{"target": QUICK_SPEED, "icon": "time", "tip": "Playback speed", "enabled": has_video},
-		{"target": QUICK_COLOR, "icon": "adjust", "tip": "Color grading", "enabled": has_video},
-		{"target": IPD_SETTINGS, "icon": "eyes", "tip": "IPD", "enabled": _enabled("stereo_view")},
 		{
-			"target": SYNC_SETTINGS,
-			"icon": "refresh",
-			"tip": "Synchronization",
-			"enabled": has_video
+			"target": BookmarkMenu.LIST,
+			"icon": "bookmark",
+			"tip": "Bookmarks",
+			"enabled": has_video and not _state.get("bookmarks", []).is_empty()
 		},
 		{
 			"target": PLAYBACK_ORDER,
@@ -667,24 +669,29 @@ func _draw_bar() -> void:
 			"enabled": has_video
 		},
 		{"target": QUEUE_SETTINGS, "icon": "list", "tip": "Queue", "enabled": has_video},
-		{
-			"target": BookmarkMenu.LIST,
-			"icon": "bookmark",
-			"tip": "Bookmarks",
-			"enabled": has_video and not _state.get("bookmarks", []).is_empty()
-		},
-		{
-			"target": BookmarkMenu.UNDO,
-			"icon": "undo",
-			"tip": "Undo delete",
-			"enabled": _state.get("bookmark_undo", false)
-		},
-		{"target": 12, "icon": "info", "tip": "Info", "enabled": true},
+		{"target": BROWSE, "icon": "folder", "tip": "Library", "enabled": has_video},
 	]
-	var shown := controls.filter(func(item): return item.enabled)
-	var left_count := (shown.size() + 1) / 2
+	var picture := [
+		{"target": 110, "icon": "subtitle", "tip": "Subtitles", "enabled": _enabled("subtitles")},
+		{"target": MODE, "icon": "view_mode", "tip": "Video mode", "enabled": has_video},
+		{
+			"target": QUICK_SCREEN,
+			"icon": "screen",
+			"tip": "Screen layout",
+			"enabled": has_video and int(_state.get("geometry", 0)) == 0
+		},
+		{"target": QUICK_SPEED, "icon": "time", "tip": "Playback speed", "enabled": has_video},
+		{"target": QUICK_COLOR, "icon": "adjust", "tip": "Color grading", "enabled": has_video},
+		{"target": IPD_SETTINGS, "icon": "eyes", "tip": "IPD", "enabled": _enabled("stereo_view")},
+		{
+			"target": SYNC_SETTINGS,
+			"icon": "refresh",
+			"tip": "Synchronization",
+			"enabled": has_video
+		},
+	]
 	for side in [-1, 1]:
-		var group: Array = shown.slice(0, left_count) if side < 0 else shown.slice(left_count)
+		var group: Array = (watch if side < 0 else picture).filter(func(item): return item.enabled)
 		if group.is_empty():
 			continue
 		var width := 0.058
@@ -928,7 +935,8 @@ func _draw_subtitles() -> void:
 	panel.material_override.set_shader_parameter("corner_radius", 0.025)
 	add_child(panel)
 	_decorations.append(panel)
-	var heading := _label(I18n.t("Subtitles"), Vector3(-0.48, top - 0.05, 0.004), 18)
+	var heading := _label(I18n.t("Subtitles"), Vector3(-0.48, top - 0.05, 0.004), 20)
+	heading.font = ui_font_bold()
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	var y := top - 0.125
 	choices.field(
@@ -1469,15 +1477,16 @@ func _on_choice_changed(key: String, value: Variant) -> void:
 func _seek_bar(y: float) -> void:
 	_button(SEEK, "", Vector2(0, y), Vector2(BAR_SEEK + 0.06, 0.05), _can_seek())
 	_buttons.back().base_color = Color(TILE, 0.0)  # the track itself is the visible part
-	_decoration(Vector2(BAR_SEEK, 0.007), Vector2(0, y), Color(0.3, 0.35, 0.4))
-	_progress = _decoration(Vector2(BAR_SEEK, 0.007), Vector2(0, y), ACCENT)
-	_thumb = _decoration(Vector2(0.023, 0.023), Vector2(0, y), Color.WHITE)
+	_decoration(Vector2(BAR_SEEK, 0.008), Vector2(0, y), TRACK)
+	_progress = _decoration(Vector2(BAR_SEEK, 0.008), Vector2(0, y), ACCENT)
+	_thumb = _decoration(Vector2(0.024, 0.024), Vector2(0, y), Color.WHITE)
 	_progress.material_override.render_priority = 13
 	_thumb.material_override.render_priority = 14
 	_elapsed = _label("", Vector3(-BAR_SEEK / 2 - 0.035, y, 0.004), 18)
 	_elapsed.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_duration = _label("", Vector3(BAR_SEEK / 2 + 0.035, y, 0.004), 18)
 	_duration.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_duration.modulate = MUTED
 	_refresh_progress()
 
 

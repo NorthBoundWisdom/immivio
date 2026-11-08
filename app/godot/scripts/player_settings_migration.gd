@@ -1,5 +1,6 @@
 extends RefCounted
 ## Retire removed effect preferences while preserving ordinary playback data.
+const Background := preload("res://scripts/app_background.gd")
 
 const RETIRED_KEYS := [
 	["effects", "auto_3d"],
@@ -72,8 +73,8 @@ static func apply(settings: ConfigFile, existing_file: bool = false) -> bool:
 		if settings.has_section(retired):
 			settings.erase_section(retired)
 			changed = true
-	if settings.get_value("appearance", "background", "belfast") == "custom":
-		settings.set_value("appearance", "background", "belfast")
+	if settings.get_value("appearance", "background", Background.DEFAULT_CHOICE) == "custom":
+		settings.set_value("appearance", "background", Background.DEFAULT_CHOICE)
 		changed = true
 	for key in ["custom_path", "custom_title", "custom_orientation"]:
 		if settings.has_section_key("appearance", key):

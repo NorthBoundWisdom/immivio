@@ -24,22 +24,51 @@ var xr_surface: Node
 var curve_radius := 1.4
 var allow_user_dismiss := true
 const TOOLTIP_MAX_WIDTH := 0.64
+const TOOLTIP_MARGIN := 0.12
 var layout_revision := 0
 const PointerRay := preload("res://scripts/pointer_ray.gd")
 const SURFACE := preload("res://shaders/menu_surface.gdshader")
 const Icons := preload("res://scripts/menu_icons.gd")
 const I18n := preload("res://scripts/i18n.gd")
 const DeviceStatus := preload("res://scripts/device_status.gd")
-const PANEL := Color(0.065, 0.08, 0.105, 0.98)
-const TILE := Color(0.19, 0.235, 0.29, 1.0)
-const SELECTED := Color(0.13, 0.39, 0.31, 1.0)
-const POPUP := Color(0.11, 0.145, 0.19, 1.0)
-const OUTLINE := Color(0.36, 0.44, 0.53, 0.8)
-const ACCENT := Color(0.54, 0.93, 0.77)
-const MUTED := Color(0.56, 0.62, 0.69)
+# Design tokens. Surfaces take the brand's deep navy; one aqua accent marks selection,
+# focus and progress. Resting controls carry no outline: hover/selection draw the ring.
+const PANEL := Color(0.043, 0.063, 0.106, 0.97)
+const TILE := Color(0.098, 0.133, 0.196, 1.0)
+const HOVER := Color(0.165, 0.216, 0.302, 1.0)
+const SELECTED := Color(0.075, 0.235, 0.255, 1.0)
+const SELECTED_HOVER := Color(0.102, 0.305, 0.325, 1.0)
+const POPUP := Color(0.071, 0.098, 0.153, 1.0)
+const DISABLED := Color(0.071, 0.094, 0.137, 1.0)
+const OUTLINE := Color(1.0, 1.0, 1.0, 0.05)
+const PANEL_EDGE := Color(1.0, 1.0, 1.0, 0.09)
+const ACCENT := Color(0.49, 0.87, 0.80)
+const ACCENT_HOVER := Color(0.68, 0.95, 0.89)
+const ACCENT_DIM := Color(0.24, 0.42, 0.40)
+const ON_ACCENT := Color(0.02, 0.09, 0.10)
+const TEXT := Color(0.94, 0.96, 0.99)
+const MUTED := Color(0.55, 0.62, 0.72)
+const DIVIDER := Color(1.0, 1.0, 1.0, 0.07)
+const TRACK := Color(1.0, 1.0, 1.0, 0.16)
+const PANEL_RADIUS := 0.04
+const CONTROL_RADIUS := 0.016
 # File names and the menu are often Chinese/Japanese: fall back to the system CJK font.
 static var FONT: Font = _make_font()
 static var _font_language := I18n.language
+static var _bold: Font
+static var _bold_language := ""
+
+
+## Headings, titles and the current navigation entry: the same face, emboldened. Embolden
+## keeps glyph advances, so text fitted with ui_font() still fits.
+static func ui_font_bold() -> Font:
+	if _bold == null or _bold_language != I18n.language:
+		_bold_language = I18n.language
+		var variation := FontVariation.new()
+		variation.base_font = ui_font()
+		variation.variation_embolden = 0.55
+		_bold = variation
+	return _bold
 
 
 static func _make_font() -> Font:
@@ -219,6 +248,17 @@ func ray_panel_hit(origin: Vector3, direction: Vector3) -> Dictionary:
 		or direction.length_squared() < 0.000001
 	):
 		return {}
+	if xr_surface and xr_surface.native_supported and xr_surface.has_method("map_panel_ray"):
+		var feedback: Dictionary = xr_surface.map_panel_ray(self, origin, direction)
+		if feedback.is_empty() or float(feedback.distance) > max_ray_metres:
+			return {}
+		return {
+			"target": NONE,
+			"point": to_local(feedback.get("canvas_point", feedback.point)),
+			"world_point": feedback.point,
+			"distance": feedback.distance,
+			"enabled": false,
+		}
 	var mapped := {}
 	if (
 		xr_surface
@@ -309,9 +349,9 @@ func update_pointer(hand: String, origin: Vector3, direction: Vector3, tracked: 
 	if not visible:
 		return
 	# A popup capture gates clicks for one or more frames. Its unchanged toolbar
-	# should not lose hover and its reticle in that interval. Popup rebuilds already
-	# remove hover targets whose nodes were retired; tracking loss still clears it.
-	if (
+	# should not lose hover in that interval. Keep updating the beam from the
+	# current hand to the displayed panel instead of freezing its old endpoints.
+	var retain_hover: bool = (
 		tracked
 		and origin.is_finite()
 		and direction.is_finite()
@@ -319,13 +359,14 @@ func update_pointer(hand: String, origin: Vector3, direction: Vector3, tracked: 
 		and xr_surface
 		and xr_surface.has_method("retains_toolbar")
 		and xr_surface.retains_toolbar(self)
-	):
-		_update_highlights()
-		return
+	)
 	var hit := ray_hit(origin, direction) if tracked else {}
-	_hover[hand] = int(hit.get("target", NONE))
+	if not retain_hover or not _hover.has(hand):
+		_hover[hand] = int(hit.get("target", NONE))
 	if tracked and hit.is_empty():
 		hit = ray_panel_hit(origin, direction)
+	if hit.is_empty():
+		_hover[hand] = NONE
 	var pointer := _pointer(hand)
 	var valid := (
 		tracked
@@ -342,10 +383,12 @@ func update_pointer(hand: String, origin: Vector3, direction: Vector3, tracked: 
 			else origin + direction.normalized() * max_ray_metres
 		)
 		PointerRay.draw(pointer.line, origin, to_global(to_local(endpoint) + Vector3(0, 0, 0.006)))
-		var actionable := (
+		var actionable: bool = (
 			not hit.is_empty()
-			and bool(hit.get("enabled", false))
-			and int(hit.get("target", NONE)) != NONE
+			and (
+				(retain_hover and _hover.get(hand, NONE) != NONE)
+				or (bool(hit.get("enabled", false)) and int(hit.get("target", NONE)) != NONE)
+			)
 		)
 		pointer.line.material_override.set_shader_parameter(
 			"ray_color",
@@ -441,8 +484,11 @@ func _button(
 	parent: Node3D = null
 ) -> void:
 	var base := ACCENT if primary else TILE
-	var foreground := Color(0.045, 0.1, 0.085) if primary else Color(0.93, 0.95, 0.98)
+	var foreground := ON_ACCENT if primary else TEXT
 	var node := _quad(size, Vector3(centre.x, centre.y, 0.002), base, 11)
+	if text.is_empty() and not icon.is_empty():
+		# Icon-only actions read as capsules; text buttons keep the softer rectangle.
+		node.material_override.set_shader_parameter("corner_radius", minf(size.x, size.y) * 0.5)
 	node.visible = enabled
 	(parent if parent else self).add_child(node)
 	var label := _label(
@@ -452,6 +498,8 @@ func _button(
 		node
 	)
 	label.modulate = foreground if enabled else MUTED * Color(0.7, 0.7, 0.7)
+	if primary:
+		label.font = ui_font_bold()
 	if not icon.is_empty():
 		# Icon-only buttons centre a larger glyph; captioned buttons stack icon over text.
 		var alone := text.is_empty()
@@ -656,11 +704,18 @@ func _quad(size: Vector2, location: Vector3, color: Color, priority: int) -> Mes
 	surface.render_priority = priority
 	surface.set_shader_parameter("surface_color", color)
 	surface.set_shader_parameter("surface_size", size)
+	var panel := priority in [10, 30]
+	# Panels get a hairline edge and a faint top light so they separate from bright
+	# skyboxes and passthrough; controls only lift slightly towards their top.
 	surface.set_shader_parameter(
-		"border_width", 0.002 if priority == 30 else (0.0012 if priority == 11 else 0.0)
+		"border_width", 0.0016 if panel else (0.0012 if priority == 11 else 0.0)
 	)
-	surface.set_shader_parameter("border_color", OUTLINE)
-	surface.set_shader_parameter("corner_radius", 0.028 if priority == 10 else 0.012)
+	surface.set_shader_parameter("border_color", PANEL_EDGE if panel else OUTLINE)
+	surface.set_shader_parameter(
+		"corner_radius", PANEL_RADIUS if priority == 10 else CONTROL_RADIUS
+	)
+	surface.set_shader_parameter("sheen", 0.025 if panel else (0.018 if priority == 11 else 0.0))
+	surface.set_shader_parameter("rim_light", 0.06 if panel else 0.0)
 	node.material_override = surface
 	return node
 
@@ -730,16 +785,18 @@ func _update_highlights() -> void:
 		var color: Color = button.base_color
 		if not button.enabled:
 			color = (
-				Color(0.26, 0.44, 0.38)
+				ACCENT_DIM
 				if button.get("hover_disabled", false) and button.base_color == ACCENT
-				else Color(0.13, 0.16, 0.20, button.base_color.a)
+				else Color(DISABLED, button.base_color.a)
 			)
 		elif hovered:
 			color = (
-				Color(0.67, 1.0, 0.86) if button.base_color == ACCENT else Color(0.27, 0.40, 0.39)
+				ACCENT_HOVER
+				if button.base_color == ACCENT
+				else (SELECTED_HOVER if button.base_color == SELECTED else HOVER)
 			)
 		var outline: Color = (
-			ACCENT
+			(ACCENT if button.base_color != ACCENT else ACCENT_HOVER)
 			if hovered or button.get("open_choice", false) or button.base_color == SELECTED
 			else OUTLINE
 		)
@@ -766,7 +823,9 @@ func _update_tooltip() -> void:
 			_tooltip.visible = false
 		return
 	if not _tooltip:
-		_tooltip = _quad(Vector2(0.2, 0.05), Vector3.ZERO, Color(0.02, 0.025, 0.03, 0.92), 16)
+		_tooltip = _quad(Vector2(0.2, 0.05), Vector3.ZERO, Color(0.016, 0.027, 0.05, 0.94), 16)
+		_tooltip.material_override.set_shader_parameter("border_width", 0.0012)
+		_tooltip.material_override.set_shader_parameter("border_color", PANEL_EDGE)
 		_tooltip.set_meta("xr_ui_transient_bounds", true)
 		add_child(_tooltip)
 		var text := _label("", Vector3(0, 0, 0.002), 17, _tooltip)
@@ -818,7 +877,7 @@ func tooltip_envelope() -> Rect2:
 	var reserved := capture_envelope()
 	if reserved.has_area():
 		# Reserve the same footer-tip margin for every page in the family.
-		return Rect2(reserved.position - Vector2(0, 0.12), reserved.size + Vector2(0, 0.24))
+		return reserved.grow_individual(0, TOOLTIP_MARGIN, 0, TOOLTIP_MARGIN)
 	var bounds := Rect2()
 	for button in _buttons:
 		if not _tips.has(button.target):

@@ -55,6 +55,35 @@ func frame(viewport: SubViewport, name: String) -> Image:
 	return image
 
 
+func check_fresh_default() -> void:
+	var host := Main.new()
+	host.settings_path = folder.path_join("fresh.cfg")
+	root.add_child(host)
+	host.set_process(false)
+	host.report_timer.stop()
+	check(host.background.choice == "starry_night", "A fresh installation selects Starry night")
+	await settle(host.background)
+	check(host.background.ready_sky() != null, "The default starry sky completes its first bake")
+	host.recent_menu.section = host.recent_menu.Section.SETTINGS
+	host.recent_menu.tab = host.recent_menu.APPEARANCE_TAB
+	host.recent_menu.refresh()
+	check(
+		(
+			(
+				host
+				. recent_menu
+				. rows
+				. filter(func(row): return row.get("key", "") == "background")[0]
+				. value
+			)
+			== "starry_night"
+		),
+		"The appearance field agrees with the fresh default sky"
+	)
+	host.queue_free()
+	await process_frame
+
+
 func check_panorama_direction() -> void:
 	var viewport := SubViewport.new()
 	viewport.size = Vector2i(256, 256)
@@ -104,6 +133,7 @@ func check_panorama_direction() -> void:
 func _run() -> void:
 	DirAccess.make_dir_recursive_absolute(folder)
 	DirAccess.make_dir_recursive_absolute(output)
+	await check_fresh_default()
 	if DisplayServer.get_name() != "headless":
 		await check_panorama_direction()
 	var config := ConfigFile.new()
@@ -145,6 +175,18 @@ func _run() -> void:
 	check(
 		main.background._panorama.get_size() == Vector2(8192, 4096),
 		"Packaged sky retains full 8K dimensions"
+	)
+	main._on_setting_changed("background", "beach")
+	await settle(main.background)
+	check(
+		(
+			main.background._panorama.get_size() == Vector2(8192, 4096)
+			and main.background._panorama_path == Background.PANORAMAS.beach
+			and main.background._bake == null
+			and main.background.ready_sky() != null
+			and main.display.environment.background_mode == Environment.BG_SKY
+		),
+		"The saved beach choice loads its full photographic panorama without a procedural bake"
 	)
 	for choice in main.background.PROCEDURAL:
 		main._on_setting_changed("background", choice)

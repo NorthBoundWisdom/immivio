@@ -40,7 +40,7 @@ func _ready() -> void:
 	_pill = _quad(Vector2(0.2, HEIGHT), Vector3.ZERO, Menu.TILE, 11)
 	_pill.set_meta("xr_ui_panel", true)
 	_pill.material_override.set_shader_parameter("corner_radius", HEIGHT * 0.5)
-	_battery = _icon("battery", Color(0.93, 0.95, 0.98))
+	_battery = _icon("battery", Menu.TEXT)
 	# Inside of the battery outline (icon units 8.5..15.5 x 5.5..20.5 of 24), filled from the bottom.
 	_fill = _quad(Vector2(ICON * 7.0 / 24, ICON * 15.0 / 24), Vector3.ZERO, Color.WHITE, 12)
 	_fill.material_override.set_shader_parameter("corner_radius", 0.002)
@@ -103,7 +103,7 @@ func refresh(force: bool = false) -> void:
 	# Outline interior spans y 5.5..20.5 of 24 (top to bottom); grow upwards from the bottom.
 	_fill.position = Vector3(_battery.position.x, ICON * (0.5 - 20.5 / 24) + height / 2, 0.003)
 	var low := has_battery and level < LOW and not charging
-	var foreground := Color(0.93, 0.95, 0.98)
+	var foreground := Menu.TEXT
 	_fill.material_override.set_shader_parameter(
 		"surface_color", Menu.ACCENT if charging else (LOW_COLOR if low else foreground)
 	)

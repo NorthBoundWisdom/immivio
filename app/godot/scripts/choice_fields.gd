@@ -93,6 +93,8 @@ func field(
 		var target := BASE + targets.size()
 		targets[target] = {"kind": "disabled"}
 		menu._control_button(target, value_label, centre, width, false, "", false, parent)
+		if menu.has_method("_above_card"):
+			menu._above_card(menu._buttons.back().node)
 		menu._tips[target] = menu.I18n.t(str(row.get("hint", "")))
 		return
 	if row.get("slider", false):
@@ -179,11 +181,11 @@ func _slider(parent: Node3D, row: Dictionary, centre: Vector2, width: float, hei
 	var left := -field_width / 2 + 0.015
 	var y := -0.008 if row.get("midpoint", false) else 0.0
 	var rail: MeshInstance3D = menu._quad(
-		Vector2(rail_width, 0.007), Vector3(left + rail_width / 2, y, 0.004), menu.MUTED, 14
+		Vector2(rail_width, 0.008), Vector3(left + rail_width / 2, y, 0.004), menu.TRACK, 14
 	)
 	node.add_child(rail)
 	var fill: MeshInstance3D = menu._quad(
-		Vector2(rail_width, 0.007), rail.position, menu.ACCENT, 15
+		Vector2(rail_width, 0.008), rail.position, menu.ACCENT, 15
 	)
 	node.add_child(fill)
 	if row.get("midpoint", false):
@@ -196,7 +198,7 @@ func _slider(parent: Node3D, row: Dictionary, centre: Vector2, width: float, hei
 		)
 		middle.render_priority = 16
 	var knob: MeshInstance3D = menu._quad(
-		Vector2(0.022, 0.022), Vector3(left, y, 0.006), Color.WHITE, 17
+		Vector2(0.024, 0.024), Vector3(left, y, 0.006), Color.WHITE, 17
 	)
 	node.add_child(knob)
 	var label: Label3D = node.get_child(0)
@@ -354,6 +356,7 @@ func finish() -> void:
 	menu._decorations.append(panel)
 	if not header.is_empty():
 		var heading: Label3D = menu._label(menu.I18n.t(header), Vector3(x, top - 0.032, 0.039), 20)
+		heading.font = menu.ui_font_bold()
 		heading.render_priority = 32
 	for row_index in count:
 		var option: Dictionary = options[offset + row_index]

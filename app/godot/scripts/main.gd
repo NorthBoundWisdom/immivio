@@ -332,7 +332,7 @@ func _ready() -> void:
 			if _queue_add_mode:
 				_queue_action("queue_done")
 			else:
-				_show_player_menu()
+				_presentation._show_player_menu(false)
 	)
 	recent_menu.queue_requested.connect(_queue_action)
 	recent_menu.setting_changed.connect(_on_setting_changed)
@@ -382,7 +382,9 @@ func _ready() -> void:
 		func(): return display.session_state
 	)
 	background = Background.new()
-	background.choice = str(settings.get_value("appearance", "background", "belfast"))
+	background.choice = str(
+		settings.get_value("appearance", "background", Background.DEFAULT_CHOICE)
+	)
 	background.yaw = fposmod(float(settings.get_value("appearance", "background_yaw", 0.0)), 360.0)
 	background.brightness = clampf(
 		float(settings.get_value("appearance", "background_brightness", 1.0)), 0.5, 1.25

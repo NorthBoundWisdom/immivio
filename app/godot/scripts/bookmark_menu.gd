@@ -131,9 +131,10 @@ func draw_popup() -> void:
 	var panel = menu._quad(Vector2(0.84, 0.45), Vector3(0, 0.505, 0.001), menu.PANEL, 10)
 	menu.add_child(panel)
 	menu._decorations.append(panel)
-	menu._label(
+	var heading: Label3D = menu._label(
 		menu.I18n.t("Bookmarks") + " · " + str(entries.size()), Vector3(-0.05, 0.685, 0.01), 21
 	)
+	heading.font = menu.ui_font_bold()
 	menu._glyph(CLOSE, "close", Vector2(0.355, 0.685), 0.065, true, menu.I18n.t("Close"))
 	if entries.is_empty():
 		menu._label(menu.I18n.t("No bookmarks"), Vector3(0, 0.49, 0.01), 20)
