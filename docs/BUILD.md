@@ -67,6 +67,8 @@ Channels use mutually exclusive Godot export features (`immivio_appstore` / `imm
 
 Configure is explicit. Build/Test/Package reject missing or stale configuration; Package requires a successful current Build. `run` installs an already packaged APK on the attached device. Generated projects and outputs stay under ignored build directories. `python3 configs/android_workflow.py clean --dry-run` previews cleanup; `clean` defaults to the build scope, removing `build/` while preserving final packages, archives, addon caches and persistent signing material. Configure again afterward.
 
+The initial Godot editor configuration and asset-import passes each have a 30-minute wall-clock limit. Full-size panorama compression on a hosted macOS runner with an empty import cache can exceed ten minutes. This allowance preserves the reviewed image dimensions and compression quality; import timeouts still fail the build.
+
 ## PICO store APKs
 
 The default PICO store workflow uses the existing application identity, project-owned release key, ARM64 and `minSdkVersion=29` for PICO Neo3, PICO 4 and PICO 4 Ultra:

@@ -27,6 +27,9 @@ CACHE = ROOT / ".cache"
 PROJECT = ROOT / "app/godot"
 BIN = PROJECT / "addons/quest_player/bin"
 LOGS = ROOT / "artifacts/logs/build/common"
+# Cold full-size panorama compression can exceed ten minutes on hosted macOS.
+# Keep both editor passes bounded without reducing imported texture quality.
+GODOT_IMPORT_TIMEOUT_SECONDS = 1800
 from configs.android_manifest import ANDROID, verify_xmltree
 from configs.dependencies import (
     TOOLCHAIN,
@@ -1122,7 +1125,7 @@ def configure_android_editor(args, env, sdk):
         ],
         env=env,
         log="base-editor-settings.log",
-        timeout=600,
+        timeout=GODOT_IMPORT_TIMEOUT_SECONDS,
     )
     setup_log = (LOGS / "base-editor-settings.log").read_text()
     # Godot's editor + custom SceneTree helper reports editor RIDs on shutdown.
@@ -1153,7 +1156,7 @@ def configure_android_editor(args, env, sdk):
         ],
         env=env,
         log="base-godot-import.log",
-        timeout=600,
+        timeout=GODOT_IMPORT_TIMEOUT_SECONDS,
         fail_on_engine_error=True,
     )
     if re.search(
