@@ -6,6 +6,24 @@
 
 Newest first, with the main changes that affect everyday use. Unreleased items are not yet part of a public release. Versions 0.6.0 and earlier belong to the original project. Photo viewing, cloud drives and AI 3D conversion appear only as historical features and were removed later; see the [README](README.md) for current capabilities.
 
+## 0.9.9 — 2026-11-08
+
+**中文**
+
+- 新安装默认使用星空背景，保留已保存的选择；将夕阳背景名称简化为“夕阳”。
+- 海边改用 8K 实景全景，保留方向与亮度调节，让海浪、沙滩与天空更自然。
+- 统一深色面板、分组标题与控件样式，封面使用圆角裁切；已开始且时长已知的视频显示观看进度。
+- 修复播放、媒体库和信息页面切换时控制栏轻微位移，以及首次打开媒体库时整窗闪烁。
+- 修复部分按钮点击后激光短暂穿透的问题，等待新画面时仍跟随手柄并停在可见面板或浮动按钮上。
+
+**English**
+
+- Start new installations with Starry night while preserving saved choices, and shorten the sunset background name to Sunset.
+- Replace Beach with an 8K photographic panorama, retaining direction and brightness controls for more natural surf, sand and sky.
+- Unify dark panels, grouped headings and controls, with rounded covers and watch-progress bars for started videos with a known duration.
+- Fix small control-bar shifts when switching between Playback, Library and Info, and the window flash on the first Library opening.
+- Fix the laser briefly passing through some buttons after a click. While the next page appears, it continues to follow the hand and stop on visible panels or floating buttons.
+
 ## 0.9.8 — 2026-11-07
 
 **中文**
