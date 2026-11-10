@@ -192,21 +192,53 @@ func _run() -> void:
 		main._on_setting_changed("background", choice)
 		check(main.background.loading, "Procedural %s scene bakes before it is shown" % choice)
 		await settle(main.background)
+		var night: bool = choice == "starry_night"
+		var rendered_cache: bool = night and DisplayServer.get_name() != "headless"
+		var texture_ready: bool
+		if rendered_cache:
+			texture_ready = main.background._cached_night != null and main.background._bake == null
+		else:
+			var size: Vector2i = (
+				main.background.NIGHT_BAKE_SIZE if night else main.background.BAKE_SIZE
+			)
+			texture_ready = main.background._bake != null and main.background._bake.size == size
+		var material_matches: bool = (
+			main.background.sky.sky_material.shader == main.background.CACHED_NIGHT_SHADER
+			if night
+			else (
+				main.background.sky.sky_material.get_shader_parameter("scene")
+				== main.background.PROCEDURAL[choice]
+			)
+		)
 		check(
 			(
 				not main.background.loading
-				and main.background._bake != null
-				and main.background._bake.size == main.background.BAKE_SIZE
+				and texture_ready
 				and main.background.ready_sky() != null
 				and main.background.sky.sky_material is ShaderMaterial
-				and (
-					main.background.sky.sky_material.get_shader_parameter("scene")
-					== main.background.PROCEDURAL[choice]
-				)
+				and material_matches
 				and main.display.environment.background_mode == Environment.BG_SKY
 			),
 			"Baked procedural %s scene applies as an opaque sky" % choice
 		)
+		if rendered_cache:
+			var image: Image = main.background._cached_night.get_image()
+			check(
+				image.get_size() == Vector2i(8192, 4096)
+				and image.get_format() == Image.FORMAT_RGBE9995
+				and image.has_mipmaps(),
+				"Night cache retains 8K linear HDR with minification mipmaps"
+			)
+			var texture: RID = main.background._cached_night.get_rid()
+			main.background.set_yaw(45)
+			main.background.set_brightness(.75)
+			check(
+				main.background._cached_night.get_rid() == texture
+				and main.background._bake == null,
+				"Rotation and brightness reuse the completed star cache without rendering it again"
+			)
+			main.background.set_yaw(0)
+			main.background.set_brightness(1.0)
 	main._on_setting_changed("background_brightness", 0.75)
 	check(
 		is_equal_approx(main.background.sky.sky_material.get_shader_parameter("energy"), 0.75),
@@ -215,7 +247,9 @@ func _run() -> void:
 	main._on_setting_changed("background_brightness", 1.0)
 	main._on_setting_changed("background", "dark")
 	check(
-		main.background._bake == null and main.background.ready_sky() == null,
+		main.background._bake == null
+		and main.background._cached_night == null
+		and main.background.ready_sky() == null,
 		"Leaving procedural scenery releases its bake texture"
 	)
 	main._on_setting_changed("background", "belfast")

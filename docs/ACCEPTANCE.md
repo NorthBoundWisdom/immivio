@@ -1,5 +1,29 @@
 # Device and build acceptance
 
+## Cached night sky follow-up — 2026-11-10
+
+The owner reported drops to about 60 FPS while looking around after the stationary home result below. The final night renderer now generates the static star field and Milky Way once at 8192×4096 in linear HDR, stores RGB9E5 mipmaps, and keeps only the hill silhouette analytic. Rotation and brightness reuse the texture; leaving the scene releases it. The cache occupies 178,956,972 bytes (about 171 MiB) including mipmaps, trading additional memory and startup work for lower steady rendering cost.
+
+The installed Pico/Debug/appstore APK before final code cleanup has SHA-256 `5491b72d17cac827eabc4a8affc1a38f91fed82e8d03bbd7e4bfe7743cc73918`. Initial focused starry-home runtime logs show 72 FPS and about 4–7 ms app GPU time, compared with about 12 ms after the UI-only optimization. The subsequent observer ran for 90 seconds and collected 89 focused head poses spanning 111° and eight fresh runtime FPS records, all 72 FPS (GPU median 4.145 ms, p95 4.34 ms). The FPS records do not cover that entire pose-observation window; a later screenshot contains owner-started video playback, so it is not used as starry-home evidence. The owner subsequently reported the result was essentially satisfactory.
+
+All 102 headless Godot scripts passed; the real-GPU background test passed 70 checks including cache storage/reuse/release, and paired sky captures were reviewed across upward, horizon, downward, pole, seam and dimmed views. Logs remain under ignored `artifacts/reports/pico-performance/starry-followup/` and `artifacts/tests/godot/`; pre-cache APK/receipt are preserved in `artifacts/archive/pico-performance/pre-star-cache/`. Local captures and device logs are not repository assets. These observations do not certify every viewpoint or long thermal operation.
+
+## PICO 4 home rendering — 2026-11-10
+
+This earlier UI-only optimization of the 0.9.10 worktree was built as Pico/Debug/appstore, installed over the matching Debug identity with `adb install -r`, and measured on the stationary focused home page with no video. Both runs used the original starry sky, 1504×1504 eye buffers, 2× MSAA and foveation off. The optimized APK SHA-256 is `931bdb13f874adea750f27f1418ff87c24d1e3367558fef4d5810992be6e0948`.
+
+| PICO runtime measurement | Baseline | Optimized |
+| --- | --- | --- |
+| Median reported FPS | 53 / 72 | 72 / 72 |
+| Median app GPU time | 18.55 ms | 12.56 ms |
+| Median app CPU time | 0.935 ms | 0.47 ms |
+| Median GPU utilization | 99% | 88% |
+| Reported composition layers | 6 | 4 |
+
+After warmup, all 97 one-second runtime samples in the sustained optimized capture reported 72 FPS; GPU time p95 was 12.7 ms. The physical stereo screenshot also shows 72 FPS. Beams render directly in the main stereo projection, as in 0.9.0, retaining the current analytic thin edges/fade and avoiding two full-eye copies/layers. The native UI presenter acknowledges successful copies and leaves unchanged captures in the retained Android Surface buffer.
+
+Six JVM surface/frame tests, four focused Godot behavior scripts (composition, panel ray geometry, redraw continuity and UI presentation), and real-GPU beam style/stereo renders passed. APK packaging verified the signature, native dependencies, alignment and application identity. Evidence is under ignored `artifacts/reports/pico-performance/`, `artifacts/captures/device/pico-performance/` and `artifacts/tests/godot/pico-performance/`; the original package/receipt are preserved in `artifacts/archive/pico-performance/baseline/`. The attempted dark-background baseline did not apply its setting and is explicitly excluded from the comparison. These results cover this observed home scene, not video playback, every head pose or long thermal operation.
+
 ## 0.9.5 (`v0.9.4..v0.9.5`) — device acceptance remains pending
 
 No headset was available for rounds 4 and 5. The checks below cover the selected ports and review corrections included in v0.9.5; historical device results later in this document do not certify this source. Raw logs, APK inspection output, size reports and synthetic-server evidence remain under ignored `artifacts/upstream-round4/`; emulator evidence is under `artifacts/emulator-acceptance-2026-11-04/`. Round 5 host, native, Jellyfin and new APK evidence is under `artifacts/upstream-round5/`. This range includes the first post-v0.9.4 commit (FreeCM removal).

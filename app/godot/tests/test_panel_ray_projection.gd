@@ -2,7 +2,6 @@ extends SceneTree
 ## The panel texture owns only a reticle. The beam keeps the controller-to-hit segment in 3D.
 const Menu := preload("res://scripts/ray_menu.gd")
 const Surface := preload("res://scripts/xr_menu_compositor.gd")
-const Stereo := preload("res://scripts/xr_pointer_compositor.gd")
 var checks := 0
 var failures: Array[String] = []
 
@@ -66,7 +65,7 @@ func _run() -> void:
 	compositor.native_supported = true
 	compositor._tag_tree(menu)
 	check(
-		pointer.line.layers == Stereo.RAY_LAYER, "The native beam has its own stereo render channel"
+		pointer.line.layers == 1, "The native menu's beam remains in the main stereo projection"
 	)
 	check(pointer.dot.layers == Surface.UI_LAYER, "Only the reticle enters the UI capture")
 	compositor._set_native_ready(false)
@@ -76,46 +75,6 @@ func _run() -> void:
 		not pointer.line.visible and not pointer.dot.visible,
 		"Tracking loss clears beam and reticle"
 	)
-	var camera := Camera3D.new()
-	root.add_child(camera)
-	var stereo := Stereo.new()
-	root.add_child(stereo)
-	stereo.configure(camera)
-	var projection := Projection.create_frustum(-.018, .022, -.02, .02, Stereo.NEAR, Stereo.FAR)
-	for eye in 2:
-		var pose := Transform3D(Basis.IDENTITY, Vector3(-.032 if eye == 0 else .032, 0, 1.5))
-		stereo.update_eye(eye, pose, projection)
-		var actual := stereo.cameras[eye].get_camera_projection()
-		check(
-			(
-				absf(actual.x.x - projection.x.x) < .002
-				and absf(actual.y.y - projection.y.y) < .002
-				and absf(actual.z.x - projection.z.x) < .002
-			),
-			"The perspective camera preserves the asymmetric eye frustum"
-		)
-		check(stereo.cameras[eye].global_transform == pose, "Each camera retains its own eye pose")
-		check(
-			stereo.layers[eye].sort_order > 5, "Stereo beams composite in front of the native menu"
-		)
-		check(
-			stereo.cameras[eye].cull_mask == Stereo.RAY_LAYER,
-			"Eye images contain only world-space beams"
-		)
-	check(
-		stereo.layers[0].eye_visibility != stereo.layers[1].eye_visibility,
-		"The two eye images cannot become one monocular panel image"
-	)
-	stereo.hide_beams()
-	check(
-		(
-			not stereo.active
-			and stereo.layers.all(func(layer): return is_equal_approx(layer.quad_size.x, .001))
-		),
-		"Inactive beams hide both eye layers"
-	)
-	stereo.free()
-	camera.free()
 	compositor.free()
 	menu.xr_surface = null
 	mapping.free()

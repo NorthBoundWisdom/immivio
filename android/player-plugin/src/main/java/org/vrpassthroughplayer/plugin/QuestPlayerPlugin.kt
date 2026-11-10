@@ -692,7 +692,6 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
             media.draw()
             mpv.draw()
             XrUiSurfaceBridge.draw()
-            XrPointerSurfaceBridge.draw()
         }
     }
 
@@ -747,7 +746,6 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
 
     override fun onGLSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         XrUiSurfaceBridge.contextCreated()
-        XrPointerSurfaceBridge.contextCreated()
         media.contextCreated()
         mpv.contextCreated()
         val report =

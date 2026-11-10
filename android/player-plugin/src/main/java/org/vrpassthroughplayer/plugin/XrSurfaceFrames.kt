@@ -2,7 +2,7 @@ package org.vrpassthroughplayer.plugin
 
 import java.util.concurrent.atomic.AtomicInteger
 
-/** Frame ownership shared by the UI and each eye presenter, independent of EGL resources. */
+/** UI capture ownership and successful-copy acknowledgement, independent of EGL resources. */
 internal class XrSurfaceFrames {
     data class Frame(
         val texture: Int,
@@ -14,17 +14,26 @@ internal class XrSurfaceFrames {
 
     private val generation = AtomicInteger(0)
     @Volatile private var frame: Frame? = null
+    @Volatile private var presented: Frame? = null
 
     fun contextGeneration(): Int = generation.get()
 
     fun current(): Frame? = frame
 
+    /** An Android Surface retains its last buffer; unchanged captures need no new blit. */
+    fun pending(): Frame? = frame?.takeUnless { it == presented }
+
+    fun acknowledge(source: Frame) {
+        if (source.generation == generation.get()) presented = source
+    }
+
     fun clear() {
         frame = null
+        presented = null
     }
 
     fun contextCreated() {
-        frame = null
+        clear()
         generation.incrementAndGet()
     }
 

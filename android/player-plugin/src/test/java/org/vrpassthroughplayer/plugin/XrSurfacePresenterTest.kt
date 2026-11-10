@@ -1,11 +1,55 @@
 package org.vrpassthroughplayer.plugin
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class XrSurfacePresenterTest {
     @Test
-    fun eyeFramesNeverReplaceEachOther() {
+    fun unchangedCaptureIsCopiedOnlyOnce() {
+        val frames = XrSurfaceFrames()
+        val generation = frames.contextGeneration()
+        frames.submit(101, 3072, 2048, generation, 7)
+        val first = requireNotNull(frames.pending())
+        frames.acknowledge(first)
+        repeat(72) {
+            frames.submit(101, 3072, 2048, generation, 7)
+            assertNull(frames.pending())
+        }
+        frames.submit(101, 3072, 2048, generation, 8)
+        assertEquals(8L, frames.pending()?.serial)
+    }
+
+    @Test
+    fun failedCopyCanRetryAndAcknowledgingOlderCaptureKeepsNewerOnePending() {
+        val frames = XrSurfaceFrames()
+        val generation = frames.contextGeneration()
+        frames.submit(101, 3072, 2048, generation, 7)
+        val first = requireNotNull(frames.pending())
+        assertEquals(first, frames.pending()) // No acknowledgement on a failed EGL copy.
+        frames.submit(101, 3072, 2048, generation, 8)
+        frames.acknowledge(first)
+        assertEquals(8L, frames.pending()?.serial)
+    }
+
+    @Test
+    fun newSurfaceAndContextRequireTheirOwnCopyEvenForTheSameSerial() {
+        val frames = XrSurfaceFrames()
+        frames.submit(101, 3072, 2048, frames.contextGeneration(), 7)
+        val old = requireNotNull(frames.pending())
+        frames.acknowledge(old)
+        frames.clear()
+        frames.submit(101, 3072, 2048, frames.contextGeneration(), 7)
+        assertEquals(old, frames.pending())
+        frames.acknowledge(old)
+        frames.contextCreated()
+        frames.submit(101, 3072, 2048, frames.contextGeneration(), 7)
+        frames.acknowledge(old)
+        assertEquals(frames.contextGeneration(), frames.pending()?.generation)
+    }
+
+    @Test
+    fun independentSurfacesNeverReplaceEachOther() {
         val left = XrSurfaceFrames()
         val right = XrSurfaceFrames()
         left.submit(101, 1536, 1536, left.contextGeneration(), 7)

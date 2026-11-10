@@ -1,7 +1,6 @@
-// Shared procedural scenery. Smooth, low-frequency parts (gradients, Milky Way, clouds, sea and
-// sand, cloud sea) are baked once per scene into an equirect texture by procedural_bake;
-// details that must stay sharp (stars, the hill ridge, the sun disc) are drawn per pixel by
-// procedural_sky. Nothing depends on TIME, so the sky's radiance is computed only once.
+// Shared procedural scenery. The night sky, including stars, is cached once in an 8K
+// linear HDR texture with mipmaps. Daytime scenes bake their smooth base only.
+// The hill ridge and sun disc remain analytic. Nothing depends on TIME.
 // scene 0: starry night over low hills; 1: beach with sea and sand; 2: sea of clouds.
 
 vec3 linear(vec3 srgb) { return pow(srgb, vec3(2.2)); }
@@ -199,14 +198,32 @@ float hills(vec3 dir) {
          0.006 * sin(azimuth * 17.0 + 2.1);
 }
 
+vec3 star_footprint(vec3 dir) {
+  return max(vec3(length(fwidth(dir * 60.0)), length(fwidth(dir * 140.0)),
+                  length(fwidth(dir * 300.0))), vec3(1e-5));
+}
+
+vec3 night_sky(vec3 dir, vec3 base, vec3 pixel) {
+  vec3 stars = star_layer(dir, 60.0, 0.30, 0.07, pixel.x) * 1.6 +
+               star_layer(dir, 140.0, 0.45, 0.07, pixel.y) +
+               star_layer(dir, 300.0, 0.6, 0.08, pixel.z) * (0.5 + 1.5 * milky_way_band(dir));
+  return base + stars * smoothstep(0.0, 0.08, dir.y);
+}
+
+vec3 night_terrain(vec3 dir, vec3 sky) {
+  float ridge = dir.y - hills(dir);
+  float edge = max(fwidth(ridge), 1e-5);
+  vec3 land = mix(linear(vec3(0.07, 0.08, 0.11)), linear(vec3(0.025, 0.028, 0.04)),
+                  clamp(-dir.y * 3.0, 0.0, 1.0));
+  return mix(sky, land, smoothstep(edge, -edge, ridge));
+}
+
 // Per-pixel details composed over the baked base.
 vec3 scene_detail(int scene, vec3 dir, vec3 base) {
   if (scene == 0) {
     // Derivatives must be evaluated before any per-pixel early exit, including
     // the terrain mask, so neighbouring fragments retain the same AA footprint.
-    vec3 pixel = max(
-        vec3(length(fwidth(dir * 60.0)), length(fwidth(dir * 140.0)), length(fwidth(dir * 300.0))),
-        vec3(1e-5));
+    vec3 pixel = star_footprint(dir);
     float ridge = dir.y - hills(dir);
     float edge = max(fwidth(ridge), 1e-5);
     vec3 land = mix(linear(vec3(0.07, 0.08, 0.11)), linear(vec3(0.025, 0.028, 0.04)),
@@ -215,10 +232,7 @@ vec3 scene_detail(int scene, vec3 dir, vec3 base) {
     if (ridge <= -edge) {
       return land;
     }
-    vec3 stars = star_layer(dir, 60.0, 0.30, 0.07, pixel.x) * 1.6 +
-                 star_layer(dir, 140.0, 0.45, 0.07, pixel.y) +
-                 star_layer(dir, 300.0, 0.6, 0.08, pixel.z) * (0.5 + 1.5 * milky_way_band(dir));
-    vec3 sky = base + stars * smoothstep(0.0, 0.08, dir.y);
+    vec3 sky = night_sky(dir, base, pixel);
     return mix(sky, land, smoothstep(edge, -edge, ridge));
   }
   vec3 sun = scene == 1 ? BEACH_SUN : CLOUD_SEA_SUN;

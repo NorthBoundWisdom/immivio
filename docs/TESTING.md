@@ -39,15 +39,15 @@ Workflow tests cover corrupt assets, offline acquisition boundaries, configurati
 
 Use the Android workflow for host tests and package verification. Rendering fixtures remain under `app/godot/tests/render_*.gd` for focused visual checks. Build and package each target before device verification. Existing device probes and media benchmarks remain available. Host/APK checks do not establish media or rendering correctness on a headset.
 
-`render_background_performance.gd` compares the production starry sky with a dark clear, the same sky without its three star layers, and a baked-texture lookup. It warms each case for 60 frames, samples 180 frames, repeats the original sky, and checks looking down at the hills. Two independent 1440²/2048² viewports with 2× MSAA approximate stereo pixel load; they do not emulate headset hardware, OpenXR multiview or its compositor. Run with a real GPU and no frame cap:
+`render_background_performance.gd` compares the production cached starry sky with a dark clear, the legacy analytic sky without its star layers, and its 4K base-texture lookup. It warms each case for 60 frames, samples 180 frames, repeats the production sky, and checks looking down at the hills. Two independent 1440²/2048² viewports with 2× MSAA approximate stereo pixel load; they do not emulate headset hardware, OpenXR multiview or its compositor. Run with a real GPU and no frame cap:
 
 ```sh
 godot --path app/godot --xr-mode off --rendering-method gl_compatibility --disable-vsync --script tests/render_background_performance.gd
 ```
 
-The fixture also compares a static copy of the baked texture to check for ongoing viewport dependencies. It writes frame-time medians/p95, requested/actual VSync, available rendering timings and sky screenshots under `artifacts/reports/background-performance/`. GPU timing values of zero mean the backend did not supply a measurement. Diagnostic variants remove visible details to isolate cost; they are not proposed visual replacements. No video, UI or personal settings are loaded.
+The fixture also compares a copy of the completed HDR cache. It writes frame-time medians/p95, requested/actual VSync, available rendering timings and sky screenshots under `artifacts/reports/background-performance/`. GPU timing values of zero mean the backend did not supply a measurement. Diagnostic variants remove visible details to isolate cost; they are not proposed visual replacements. No video, UI or personal settings are loaded.
 
-For before/after optimization checks, capture an expanded reference shader **before editing**:
+To compare with the legacy per-pixel star field, capture its expanded reference shader **before editing**:
 
 ```sh
 python3 - <<'PY'
@@ -62,14 +62,15 @@ output.write_text(reference)
 PY
 ```
 
-After editing, run the paired probe and pixel comparison (the latter uses the optional dependencies in `requirements-media-tools.txt`):
+Run the paired timing/capture probe:
 
 ```sh
 IMMIVIO_SKY_REFERENCE="$PWD/build/tests/background-optimization/original_sky.gdshader" godot --path app/godot --xr-mode off --disable-vsync --script tests/render_background_optimization.gd
-python3 benchmarks/background_compare.py artifacts/reports/background-optimization
 ```
 
-This probe uses explicit offscreen draws to keep running when its host window is occluded. It compares original/optimized/original timings at 1024² and 2048² for upward, level and downward views, and captures twelve paired images including the pole, panorama seam, small head rotations and reduced brightness. Both variants use the same baked base, scene parameters and 2× MSAA. Results and the reference hash go under `artifacts/reports/background-optimization/`; compare timings within the same run and avoid overlapping other GPU workloads. The image check permits sparse numerical rounding (maximum 16/255 per channel, mean ≤0.001/255, and at most 0.01% of pixels differing by more than 1/255), and fails on larger changes. Passing this check does not establish temporal stability or performance on a headset.
+This probe uses explicit offscreen draws to keep running when its host window is occluded. It compares reference/production/reference timings at 1024² and 2048² for upward, level and downward views, and captures twelve paired images including the pole, panorama seam, small head rotations and reduced brightness. The reference uses its original gamma-encoded 4K base; production uses an 8K linear HDR cache containing the star field. Both use the same scene parameters and 2× MSAA. Results and the reference hash go under `artifacts/reports/background-optimization/`; compare timings within the same run and avoid overlapping other GPU workloads. Review brightness, star detail, the horizon and seam in the paired images. Cached resampling is not pixel-identical to analytic per-eye antialiasing.
+
+`benchmarks/background_compare.py` remains the strict pixel guard for analytic shader changes that promise equivalent output; it is not an acceptance test for cached resampling. `test_background.gd` additionally checks 8K RGB9E5/mipmap storage, cache reuse during rotation/brightness changes, and release on scene changes when run with a real renderer. Its headless run checks lifecycle/state only. Neither host probe establishes headset frame rate: record focused runtime samples and head poses while looking around, and distinguish the frame-rate sample interval from the pose-observation interval.
 
 Host-environment tests verify SDK selection, actual downloads through a local HTTP fixture, checksum failures, failed responses and archive extraction boundaries. No external network or account is needed for these checks.
 
@@ -88,7 +89,9 @@ Use [ACCEPTANCE.md](ACCEPTANCE.md) for recorded local checks and the remaining d
 
 `render_library_page_switch.gd` switches the production library between Settings and Network media four times, checking all twelve rendered transition frames for loss of window coverage. `IMMIVIO_PAGE_SWITCH_DIR` optionally saves the frames. `test_library_page_presentation.gd` covers the same continuity policy for native quad and cylinder layers, preserves acknowledgement-based input readiness, and rejects reuse after changing placement, bounds, curvature or the visible menu set.
 
-`render_stereo_pointer.gd` renders the production 3D beam from separate left/right eye poses and verifies depth-dependent disparity. Its independent orthographic UI capture must contain only the hit reticle. Run it with the OpenGL compatibility renderer. `test_panel_ray_projection.gd` checks controller-to-hit geometry, asymmetric eye frustums, native-layer separation and tracking/fallback visibility.
+`render_stereo_pointer.gd` renders the production 3D beam in the main scene from separate left/right eye poses with 2× MSAA and verifies depth-dependent disparity. Its independent orthographic UI capture must contain only the hit reticle. Production beams use the main XR projection, without additional per-eye pointer viewports or composition layers. Run it with the OpenGL compatibility renderer. `test_panel_ray_projection.gd` checks controller-to-hit geometry, UI/main-scene separation and tracking/fallback visibility.
+
+`XrSurfacePresenterTest` checks that a successful Android Surface copy consumes its capture once, an unchanged serial needs no further copy, a failed copy can retry, and acknowledging an older frame cannot discard a newer capture. Surface replacement and context loss require a fresh copy even when the serial is reused. This keeps idle UI paint scheduling effective through the native presenter; frame ownership tests alone do not establish headset frame rate.
 
 `render_pointer_style.gd` checks the production beam at two pixel densities and four angles with MSAA disabled. It measures thin-stroke coverage, fractional edge alpha and decreasing opacity toward the hit point. `IMMIVIO_RAY_STYLE_DIR` optionally saves synthetic captures under `artifacts/captures/ui/`.
 

@@ -6,12 +6,14 @@ const PANORAMAS := {
 	"belfast": "res://backgrounds/belfast_sunset_puresky.jpg",
 	"beach": "res://backgrounds/blouberg_sunrise_2.jpg",
 }
-## Procedural scenes, no image assets: the smooth base is baked once on the GPU when a scene is
-## chosen; stars, ridges and the sun stay per pixel, so they are sharp at any resolution.
+## Procedural scenes have no bundled image assets. The static night sky is cached
+## once in linear HDR with mipmaps; the ridge and daytime sun remain analytic.
 const PROCEDURAL := {"starry_night": 0, "cloud_sea": 2}
 const PROCEDURAL_SHADER := preload("res://shaders/procedural_sky.gdshader")
 const BAKE_SHADER := preload("res://shaders/procedural_bake.gdshader")
 const BAKE_SIZE := Vector2i(4096, 2048)
+const NIGHT_BAKE_SIZE := Vector2i(8192, 4096)
+const CACHED_NIGHT_SHADER := preload("res://shaders/cached_starry_sky.gdshader")
 const DEFAULT_CHOICE := "starry_night"
 const CHOICES := ["starry_night", "belfast", "beach", "cloud_sea", "dark", "passthrough"]
 var choice := DEFAULT_CHOICE
@@ -22,12 +24,14 @@ var error := ""
 var sky := Sky.new()
 var _material := PanoramaSkyMaterial.new()
 var _procedural := ShaderMaterial.new()
+var _cached_night_material := ShaderMaterial.new()
+var _cached_night: ImageTexture
 var _panorama: Texture2D
 var _panorama_path := ""  # the path _panorama holds
 var _requested: Array[String] = []  # threaded loads in flight; superseded ones are dropped
-var _bake: SubViewport  # exists only while a procedural scene is chosen
+var _bake: SubViewport  # temporary for the night cache; retained for the daytime base
 var _bake_material := ShaderMaterial.new()
-var _baked_scene := -1  # the scene the bake texture holds
+var _baked_scene := -1  # the scene represented by the completed texture
 var _baking_scene := -1  # the scene rendering into it
 var _bake_frame := 0  # process frame of the request; the one-shot render follows that frame
 
@@ -37,6 +41,7 @@ func _ready() -> void:
 	sky.radiance_size = Sky.RADIANCE_SIZE_32
 	_material.filter = true
 	_procedural.shader = PROCEDURAL_SHADER
+	_cached_night_material.shader = CACHED_NIGHT_SHADER
 	_bake_material.shader = BAKE_SHADER
 	if not select(choice):
 		select(DEFAULT_CHOICE)
@@ -65,9 +70,7 @@ func select(value: String) -> bool:
 
 func _process(_delta: float) -> void:
 	if _bake and _baking_scene >= 0 and Engine.get_process_frames() >= _bake_frame + 2:
-		_baked_scene = _baking_scene
-		_baking_scene = -1
-		_apply()
+		_finish_bake()
 	for path in _requested.duplicate():
 		var status := ResourceLoader.load_threaded_get_status(path)
 		if status == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
@@ -95,7 +98,8 @@ func _apply() -> void:
 		_bake_scene(PROCEDURAL[choice])
 		_procedural.set_shader_parameter("scene", _baked_scene)
 		_procedural.set_shader_parameter("energy", brightness)
-		sky.sky_material = _procedural
+		_cached_night_material.set_shader_parameter("energy", brightness)
+		sky.sky_material = _cached_night_material if choice == "starry_night" else _procedural
 		loading = _baked_scene != PROCEDURAL[choice]
 	else:
 		_release_bake()
@@ -115,34 +119,66 @@ func ready_sky() -> Sky:
 func _bake_scene(scene: int) -> void:
 	if scene in [_baked_scene, _baking_scene]:
 		return
-	if not _bake:
-		_bake = SubViewport.new()
-		_bake.size = BAKE_SIZE
-		_bake.disable_3d = true
-		_bake.transparent_bg = false
-		_bake.gui_disable_input = true
-		_bake.render_target_update_mode = SubViewport.UPDATE_DISABLED
-		var canvas := ColorRect.new()
-		canvas.size = BAKE_SIZE
-		canvas.material = _bake_material
-		_bake.add_child(canvas)
-		add_child(_bake)
-		_procedural.set_shader_parameter("baked", _bake.get_texture())
+	_release_bake()
+	_bake = SubViewport.new()
+	_bake.size = NIGHT_BAKE_SIZE if scene == 0 else BAKE_SIZE
+	_bake.use_hdr_2d = scene == 0
+	_bake.disable_3d = true
+	_bake.transparent_bg = false
+	_bake.gui_disable_input = true
+	_bake.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	var canvas := ColorRect.new()
+	canvas.size = _bake.size
+	canvas.material = _bake_material
+	_bake.add_child(canvas)
+	add_child(_bake)
+	_procedural.set_shader_parameter("baked", _bake.get_texture())
 	_bake_material.set_shader_parameter("scene", scene)
+	_bake_material.set_shader_parameter("cache_stars", scene == 0)
 	_bake.render_target_update_mode = SubViewport.UPDATE_ONCE
 	_baking_scene = scene
 	_bake_frame = Engine.get_process_frames()
 
 
-## Panoramas and plain backgrounds do not keep the 32 MB bake texture.
+func _finish_bake() -> void:
+	# Headless lifecycle tests have no rendered pixels to read back or cache.
+	if _baking_scene == 0 and DisplayServer.get_name() != "headless":
+		var image := _bake.get_texture().get_image()
+		if image == null or image.is_empty():
+			_fail_bake()
+			return
+		# RGB9E5 retains linear HDR in four bytes per texel, including mipmaps.
+		image.convert(Image.FORMAT_RGBE9995)
+		if image.generate_mipmaps() != OK:
+			_fail_bake()
+			return
+		_cached_night = ImageTexture.create_from_image(image)
+		_cached_night_material.set_shader_parameter("baked", _cached_night)
+		_procedural.set_shader_parameter("baked", null)
+		_bake.queue_free()
+		_bake = null
+	_baked_scene = _baking_scene
+	_baking_scene = -1
+	_apply()
+
+
+## Keep only the selected scene's texture, including when the bake viewport is gone.
 func _release_bake() -> void:
-	if not _bake:
-		return
 	_procedural.set_shader_parameter("baked", null)
-	_bake.queue_free()
+	_cached_night_material.set_shader_parameter("baked", null)
+	_cached_night = null
+	if _bake:
+		_bake.queue_free()
 	_bake = null
 	_baked_scene = -1
 	_baking_scene = -1
+
+
+func _fail_bake() -> void:
+	_release_bake()
+	error = "Background unavailable"
+	loading = false
+	changed.emit()
 
 
 func rotate_sky() -> void:

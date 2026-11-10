@@ -169,8 +169,8 @@ func _run() -> void:
 	compositor._tag(pointer.line)
 	compositor._tag(pointer.dot)
 	check(
-		pointer.line.layers == Surface.RAY_LAYER,
-		"Laser stays in the stereo beam channel and never enters the UI capture"
+		pointer.line.layers == 1,
+		"Laser stays in the main stereo projection and never enters the UI capture"
 	)
 	check(
 		pointer.dot.layers & Surface.UI_LAYER != 0,

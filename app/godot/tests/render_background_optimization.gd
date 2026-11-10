@@ -82,11 +82,14 @@ func _run() -> void:
 	root.add_child(background)
 	while background.loading:
 		await draw_frame()
+	var reference_base := preload("res://tests/support/background_reference.gd").create(root)
+	await draw_frame()
+	await draw_frame()
 	var reference_material := ShaderMaterial.new()
 	reference_material.shader = Shader.new()
 	reference_material.shader.code = FileAccess.get_file_as_string(reference_path)
 	reference_material.set_shader_parameter("scene", 0)
-	reference_material.set_shader_parameter("baked", background._bake.get_texture())
+	reference_material.set_shader_parameter("baked", reference_base.get_texture())
 	var reference := Sky.new()
 	reference.radiance_size = Sky.RADIANCE_SIZE_32
 	reference.sky_material = reference_material

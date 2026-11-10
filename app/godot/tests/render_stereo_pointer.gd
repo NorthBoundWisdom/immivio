@@ -3,7 +3,6 @@ extends SceneTree
 ## disparities. The independent UI capture may change only around the reticle.
 const Menu := preload("res://scripts/ray_menu.gd")
 const Surface := preload("res://scripts/xr_menu_compositor.gd")
-const Stereo := preload("res://scripts/xr_pointer_compositor.gd")
 var checks := 0
 var failures: Array[String] = []
 
@@ -58,22 +57,34 @@ func _run() -> void:
 	surface.active_menu = menu
 	surface.menus = [menu]
 	surface._tag_tree(menu)
-	var stereo := Stereo.new()
-	main.add_child(stereo)
-	stereo.configure(head)
-	var projection := Projection.create_frustum(-.02, .02, -.02, .02, Stereo.NEAR, Stereo.FAR)
+	var views: Array[SubViewport] = []
 	var near_point := origin.lerp(target + Vector3(0, 0, .006), .15)
 	var far_point := origin.lerp(target + Vector3(0, 0, .006), .75)
 	var near_pixels: Array[Vector2] = []
 	var far_pixels: Array[Vector2] = []
 	for eye in 2:
+		var view := SubViewport.new()
+		view.size = Vector2i(1536, 1536)
+		view.world_3d = head.get_world_3d()
+		view.transparent_bg = true
+		view.msaa_3d = Viewport.MSAA_2X
+		view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+		root.add_child(view)
+		views.append(view)
+		var camera := Camera3D.new()
+		view.add_child(camera)
+		camera.cull_mask = head.cull_mask & ~Surface.UI_LAYER
+		camera.set_frustum(.04, Vector2.ZERO, .02, 20.0)
+		camera.environment = Environment.new()
+		camera.environment.background_mode = Environment.BG_COLOR
+		camera.environment.background_color = Color.TRANSPARENT
 		var pose := Transform3D(Basis.IDENTITY, Vector3(-.032 if eye == 0 else .032, 0, 1.5))
-		stereo.update_eye(eye, pose, projection)
-		near_pixels.append(stereo.cameras[eye].unproject_position(near_point))
-		far_pixels.append(stereo.cameras[eye].unproject_position(far_point))
+		camera.global_transform = pose
+		near_pixels.append(camera.unproject_position(near_point))
+		far_pixels.append(camera.unproject_position(far_point))
 	await frame()
 	for eye in 2:
-		var image := stereo.views[eye].get_texture().get_image()
+		var image := views[eye].get_texture().get_image()
 		var near_alpha := alpha_near(image, near_pixels[eye])
 		var far_alpha := alpha_near(image, far_pixels[eye])
 		check(near_alpha > .1, "Eye %d sees the near 3D beam" % eye)

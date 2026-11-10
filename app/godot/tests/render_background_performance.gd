@@ -89,15 +89,18 @@ func _run() -> void:
 	root.add_child(background)
 	while background.loading:
 		await RenderingServer.frame_post_draw
+	var reference_base := preload("res://tests/support/background_reference.gd").create(root)
+	await RenderingServer.frame_post_draw
+	await RenderingServer.frame_post_draw
 	# Keep the ridge and all other runtime math to isolate the three star layers.
 	var shared := FileAccess.get_file_as_string("res://shaders/procedural_scenery.gdshaderinc")
-	var start := shared.find("    vec3 stars =")
+	var start := shared.find("  vec3 stars =")
 	var end := shared.find(";", start)
 	if start < 0 or end < 0:
 		push_error("Star layer source changed; update the diagnostic variant before measuring.")
 		quit(1)
 		return
-	shared = shared.substr(0, start) + "    vec3 stars = vec3(0.0)" + shared.substr(end)
+	shared = shared.substr(0, start) + "  vec3 stars = vec3(0.0)" + shared.substr(end)
 	var no_stars_material := ShaderMaterial.new()
 	no_stars_material.shader = Shader.new()
 	var sky_code := FileAccess.get_file_as_string("res://shaders/procedural_sky.gdshader")
@@ -105,7 +108,7 @@ func _run() -> void:
 		'#include "res://shaders/procedural_scenery.gdshaderinc"', shared
 	)
 	no_stars_material.set_shader_parameter("scene", 0)
-	no_stars_material.set_shader_parameter("baked", background._bake.get_texture())
+	no_stars_material.set_shader_parameter("baked", reference_base.get_texture())
 	var no_stars := Sky.new()
 	no_stars.radiance_size = Sky.RADIANCE_SIZE_32
 	no_stars.sky_material = no_stars_material
@@ -119,7 +122,7 @@ void sky() {
  vec2 uv = vec2(atan(dir.x, dir.z) / 6.2831853 + 0.5, acos(clamp(dir.y, -1.0, 1.0)) / 3.14159265);
  COLOR = pow(texture(baked, uv).rgb, vec3(2.2));
 }"""
-	lookup.set_shader_parameter("baked", background._bake.get_texture())
+	lookup.set_shader_parameter("baked", reference_base.get_texture())
 	var lookup_sky := Sky.new()
 	lookup_sky.radiance_size = Sky.RADIANCE_SIZE_32
 	lookup_sky.sky_material = lookup
@@ -131,7 +134,7 @@ void sky() {
 		# Rule out a live ViewportTexture/radiance dependency as the steady-state cost.
 		var static_material: ShaderMaterial = background.sky.sky_material.duplicate()
 		static_material.set_shader_parameter(
-			"baked", ImageTexture.create_from_image(background._bake.get_texture().get_image())
+			"baked", ImageTexture.create_from_image(background._cached_night.get_image())
 		)
 		var static_sky := Sky.new()
 		static_sky.radiance_size = Sky.RADIANCE_SIZE_32

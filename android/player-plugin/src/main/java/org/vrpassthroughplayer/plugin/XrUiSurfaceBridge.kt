@@ -10,7 +10,7 @@ import android.view.Surface
 import java.util.concurrent.atomic.AtomicInteger
 import org.json.JSONObject
 
-/** Independent GPU-only presenters share the owner context, never Surface or frame state. */
+/** GPU-only UI presentation using the owner's render context. */
 object XrUiSurfaceBridge {
     private val presenter = XrUiSurfacePresenter()
 
@@ -159,7 +159,7 @@ internal class XrUiSurfacePresenter {
             if (window != EGL14.EGL_NO_SURFACE) releaseWindow()
             return
         }
-        val source = frames.current() ?: return
+        val source = frames.pending() ?: return
         if (!enabled || source.generation != frames.contextGeneration() || !target.isValid) return
         val currentDisplay = EGL14.eglGetCurrentDisplay()
         val currentContext = EGL14.eglGetCurrentContext()
@@ -235,6 +235,7 @@ internal class XrUiSurfacePresenter {
             presentedRevision = serial
             presentedSerial = source.serial
             failure = ""
+            frames.acknowledge(source)
         } catch (error: Exception) {
             failure = error.message?.takeIf { it.startsWith("UI_") } ?: "UI_SURFACE_PRESENT_FAILED"
             presentedRevision = -1
