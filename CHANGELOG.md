@@ -6,6 +6,20 @@
 
 Newest first, with the main changes that affect everyday use. Unreleased items are not yet part of a public release. Versions 0.6.0 and earlier belong to the original project. Photo viewing, cloud drives and AI 3D conversion appear only as historical features and were removed later; see the [README](README.md) for current capabilities.
 
+## 0.9.11 — 2026-11-10
+
+**中文**
+
+- 优化星空背景的渲染负载，保留星点、银河、清晰山脊与方向／亮度调节，改善转头时的流畅度。
+- 恢复主场景中的立体手柄光束，保留细线、柔边与渐淡效果，减少额外合成开销。
+- 避免静止菜单重复提交同一画面，降低主页面的 GPU 负载。
+
+**English**
+
+- Reduce starry-sky rendering cost while retaining stars, the Milky Way, sharp hills and direction/brightness controls, improving smoothness when looking around.
+- Render stereoscopic controller beams in the main scene, retaining thin lines, soft edges and fading while reducing composition overhead.
+- Stop resubmitting unchanged menu captures to reduce home-page GPU load.
+
 ## 0.9.10 — 2026-11-10
 
 **中文**
