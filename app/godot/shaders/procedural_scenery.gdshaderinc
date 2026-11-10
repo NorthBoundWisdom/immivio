@@ -163,8 +163,15 @@ vec3 scene_base(int scene, vec3 dir) {
 
 // One star per grid cell at most, kept away from cell borders so a single lookup suffices.
 // Stars never shrink below ~1.2 pixels; smaller ones dim instead, so they do not shimmer.
-vec3 star_layer(vec3 dir, float cells, float density, float radius) {
+vec3 star_layer(vec3 dir, float cells, float density, float radius, float pixel) {
   vec3 p = dir * cells;
+  float size = max(radius, pixel * 1.2);
+  // Every centre lies within the middle 40% of its cell. Outside this expanded
+  // box the star contributes exactly zero, so do not calculate its random data.
+  vec3 nearest = max(abs(fract(p) - 0.5) - 0.2, vec3(0.0));
+  if (dot(nearest, nearest) >= size * size) {
+    return vec3(0.0);
+  }
   ivec3 cell = ivec3(floor(p));
   uint h = hash3(cell);
   if (unit(h) > density) {
@@ -172,10 +179,15 @@ vec3 star_layer(vec3 dir, float cells, float density, float radius) {
   }
   vec3 jitter = vec3(unit(pcg(h)), unit(pcg(h + 1u)), unit(pcg(h + 2u))) - 0.5;
   vec3 centre = vec3(cell) + 0.5 + jitter * 0.4;
-  float pixel = max(length(fwidth(p)), 1e-5);
-  float size = max(radius, pixel * 1.2);
+  vec3 offset = p - centre;
+  float distance_squared = dot(offset, offset);
+  // Most candidate pixels still miss the star. Skip colour/magnitude hashes
+  // and the square root for these, retaining the original footprint and AA.
+  if (distance_squared >= size * size) {
+    return vec3(0.0);
+  }
   float core =
-      smoothstep(size, size * 0.35, length(p - centre)) * (radius * radius) / (size * size);
+      smoothstep(size, size * 0.35, sqrt(distance_squared)) * (radius * radius) / (size * size);
   float magnitude = pow(unit(pcg(h + 3u)), 3.0);
   vec3 tint = mix(vec3(0.75, 0.85, 1.0), vec3(1.0, 0.88, 0.72), unit(pcg(h + 5u)));
   return tint * core * (0.5 + 4.0 * magnitude);
@@ -190,13 +202,23 @@ float hills(vec3 dir) {
 // Per-pixel details composed over the baked base.
 vec3 scene_detail(int scene, vec3 dir, vec3 base) {
   if (scene == 0) {
-    vec3 stars = star_layer(dir, 60.0, 0.30, 0.07) * 1.6 + star_layer(dir, 140.0, 0.45, 0.07) +
-                 star_layer(dir, 300.0, 0.6, 0.08) * (0.5 + 1.5 * milky_way_band(dir));
-    vec3 sky = base + stars * smoothstep(0.0, 0.08, dir.y);
+    // Derivatives must be evaluated before any per-pixel early exit, including
+    // the terrain mask, so neighbouring fragments retain the same AA footprint.
+    vec3 pixel = max(
+        vec3(length(fwidth(dir * 60.0)), length(fwidth(dir * 140.0)), length(fwidth(dir * 300.0))),
+        vec3(1e-5));
     float ridge = dir.y - hills(dir);
     float edge = max(fwidth(ridge), 1e-5);
     vec3 land = mix(linear(vec3(0.07, 0.08, 0.11)), linear(vec3(0.025, 0.028, 0.04)),
                     clamp(-dir.y * 3.0, 0.0, 1.0));
+    // Preserve the antialiased ridge, but do not shade stars behind solid land.
+    if (ridge <= -edge) {
+      return land;
+    }
+    vec3 stars = star_layer(dir, 60.0, 0.30, 0.07, pixel.x) * 1.6 +
+                 star_layer(dir, 140.0, 0.45, 0.07, pixel.y) +
+                 star_layer(dir, 300.0, 0.6, 0.08, pixel.z) * (0.5 + 1.5 * milky_way_band(dir));
+    vec3 sky = base + stars * smoothstep(0.0, 0.08, dir.y);
     return mix(sky, land, smoothstep(edge, -edge, ridge));
   }
   vec3 sun = scene == 1 ? BEACH_SUN : CLOUD_SEA_SUN;

@@ -3,7 +3,7 @@ extends Node3D
 const HandInput := preload("res://scripts/hand_pointer.gd")
 const LEFT_HAND := preload("res://models/hands/LeftHandHumanoid.gltf")
 const RIGHT_HAND := preload("res://models/hands/RightHandHumanoid.gltf")
-const CONTROLLER_HIDE_SECONDS := 3.0
+const CONTROLLER_HIDE_SECONDS := 2.0
 const CONTROLLER_MOVE_METERS := 0.025
 const CONTROLLER_TURN_RADIANS := deg_to_rad(8.0)
 var use_runtime_models := true

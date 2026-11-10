@@ -149,17 +149,17 @@ func _run() -> void:
 		set_grip(controllers[i], Transform3D(Basis.IDENTITY, Vector3(0.2, 1.3, -0.4)))
 	await process_frame
 	visuals.update_visibility(true)
-	visuals.update_visibility(true, 2.8, true)
+	visuals.update_visibility(true, 1.9, true)
 	check(
 		visuals.hands.left_hand.controller_gate.visible, "Playback starts with a visible controller"
 	)
-	visuals.update_visibility(true, 0.3, true)
+	visuals.update_visibility(true, 0.1, true)
 	check(
 		(
 			not visuals.hands.left_hand.controller_gate.visible
 			and not visuals.hands.right_hand.controller_gate.visible
 		),
-		"Idle playback hides both controller models"
+		"Two idle seconds during playback hide both controller models"
 	)
 	check(visuals._pose_tracked(visuals.hands.left_hand.grip), "Hidden model retains live tracking")
 	for i in 4:

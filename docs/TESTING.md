@@ -35,6 +35,38 @@ Workflow tests cover corrupt assets, offline acquisition boundaries, configurati
 
 Use the Android workflow for host tests and package verification. Rendering fixtures remain under `app/godot/tests/render_*.gd` for focused visual checks. Build and package each target before device verification. Existing device probes and media benchmarks remain available. Host/APK checks do not establish media or rendering correctness on a headset.
 
+`render_background_performance.gd` compares the production starry sky with a dark clear, the same sky without its three star layers, and a baked-texture lookup. It warms each case for 60 frames, samples 180 frames, repeats the original sky, and checks looking down at the hills. Two independent 1440²/2048² viewports with 2× MSAA approximate stereo pixel load; they do not emulate headset hardware, OpenXR multiview or its compositor. Run with a real GPU and no frame cap:
+
+```sh
+godot --path app/godot --xr-mode off --rendering-method gl_compatibility --disable-vsync --script tests/render_background_performance.gd
+```
+
+The fixture also compares a static copy of the baked texture to check for ongoing viewport dependencies. It writes frame-time medians/p95, requested/actual VSync, available rendering timings and sky screenshots under `artifacts/reports/background-performance/`. GPU timing values of zero mean the backend did not supply a measurement. Diagnostic variants remove visible details to isolate cost; they are not proposed visual replacements. No video, UI or personal settings are loaded.
+
+For before/after optimization checks, capture an expanded reference shader **before editing**:
+
+```sh
+python3 - <<'PY'
+from pathlib import Path
+shaders = Path('app/godot/shaders')
+reference = (shaders / 'procedural_sky.gdshader').read_text().replace(
+    '#include "res://shaders/procedural_scenery.gdshaderinc"',
+    (shaders / 'procedural_scenery.gdshaderinc').read_text())
+output = Path('build/tests/background-optimization/original_sky.gdshader')
+output.parent.mkdir(parents=True, exist_ok=True)
+output.write_text(reference)
+PY
+```
+
+After editing, run the paired probe and pixel comparison (the latter uses the optional dependencies in `requirements-media-tools.txt`):
+
+```sh
+IMMIVIO_SKY_REFERENCE="$PWD/build/tests/background-optimization/original_sky.gdshader" godot --path app/godot --xr-mode off --disable-vsync --script tests/render_background_optimization.gd
+python3 benchmarks/background_compare.py artifacts/reports/background-optimization
+```
+
+This probe uses explicit offscreen draws to keep running when its host window is occluded. It compares original/optimized/original timings at 1024² and 2048² for upward, level and downward views, and captures twelve paired images including the pole, panorama seam, small head rotations and reduced brightness. Both variants use the same baked base, scene parameters and 2× MSAA. Results and the reference hash go under `artifacts/reports/background-optimization/`; compare timings within the same run and avoid overlapping other GPU workloads. The image check permits sparse numerical rounding (maximum 16/255 per channel, mean ≤0.001/255, and at most 0.01% of pixels differing by more than 1/255), and fails on larger changes. Passing this check does not establish temporal stability or performance on a headset.
+
 Host-environment tests verify SDK selection, actual downloads through a local HTTP fixture, checksum failures, failed responses and archive extraction boundaries. No external network or account is needed for these checks.
 
 Use [ACCEPTANCE.md](ACCEPTANCE.md) for recorded local checks and the remaining device verification sequence, and [FRAME_CONTRACT.md](FRAME_CONTRACT.md) when adapting device reports. Historical results do not certify later source changes.
