@@ -34,8 +34,24 @@ func draw() -> void:
 			"compact": true,
 			"choices": [{"value": false, "label": "Off"}, {"value": true, "label": "On"}]
 		},
-		Vector2(0.28, 0.605),
-		0.48,
+		Vector2(-0.22, 0.605),
+		0.24,
+		0.055
+	)
+	var repeat_label: Label3D = menu._label(
+		menu.I18n.t("Repeat queue"), Vector3(0.015, 0.605, 0.004), 16
+	)
+	repeat_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	menu.choices.field(
+		null,
+		{
+			"key": "queue_loop",
+			"value": menu._state.get("queue_loop", false),
+			"compact": true,
+			"choices": [{"value": false, "label": "Off"}, {"value": true, "label": "On"}]
+		},
+		Vector2(0.40, 0.605),
+		0.24,
 		0.055
 	)
 	for i in range(offset, mini(entries.size(), offset + ROWS)):

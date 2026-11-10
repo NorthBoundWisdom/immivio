@@ -5,6 +5,8 @@ import android.content.IntentFilter
 import android.opengl.EGL14
 import android.opengl.GLES30
 import android.os.BatteryManager
+import android.os.Handler
+import android.os.Looper
 import android.text.format.DateFormat
 import android.util.Log
 import androidx.media3.common.util.UnstableApi
@@ -28,6 +30,58 @@ import org.json.JSONObject
 @UnstableApi
 class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     private val closed = AtomicBoolean(false)
+    private var presenceMonitor: HeadsetPresenceMonitor? = null
+    private var nativeWearerPresent = true // Main thread only.
+    private var openxrWearerPresent = true // Main thread only.
+    @Volatile private var wearerPresent = true
+    @Volatile private var appForeground = true
+    private val thumbnails =
+        LocalVideoThumbnails(
+            {
+                !closed.get() &&
+                    appForeground &&
+                    wearerPresent &&
+                    !media.hasActiveVideo() &&
+                    !mpv.hasActiveVideo()
+            },
+            { id, result -> if (!closed.get()) emitSignal("media_list", id, result) },
+        )
+
+    @UsedByGodot fun is_headset_present(): Boolean = wearerPresent
+
+    @UsedByGodot
+    fun set_openxr_presence(present: Boolean) {
+        runOnHostThread {
+            if (!closed.get()) {
+                openxrWearerPresent = present
+                updateWearerPresence("OpenXR")
+            }
+        }
+    }
+
+    private fun updateWearerPresence(source: String) {
+        val present = nativeWearerPresent && openxrWearerPresent
+        if (present == wearerPresent) return
+        wearerPresent = present
+        media.setWearerPresent(present)
+        mpv.setWearerPresent(present)
+        if (!present) thumbnails.cancel()
+        if (signalsReady) emitSignal("headset_presence_changed", present, source)
+    }
+
+    @UsedByGodot
+    fun media_local_thumbnail(uri: String): Int {
+        if (closed.get() || LocalThumbnailPolicy.path(uri) == null) return -1
+        val id = sources.nextId()
+        thumbnails.request(id, uri)
+        return id
+    }
+
+    @UsedByGodot
+    fun media_local_thumbnail_cancel() {
+        thumbnails.cancel()
+    }
+
     private val updateChecks = UpdateCheckRequests { id, result ->
         if (!closed.get()) emitSignal("update_check_ready", id, result)
     }
@@ -146,6 +200,11 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
             SignalInfo("diagnostic_log_saved", Int::class.javaObjectType, String::class.java),
             SignalInfo("capabilities_ready", Int::class.javaObjectType, String::class.java),
             SignalInfo("android_lifecycle", String::class.java),
+            SignalInfo(
+                "headset_presence_changed",
+                Boolean::class.javaObjectType,
+                String::class.java,
+            ),
             SignalInfo("media_list", Int::class.javaObjectType, String::class.java),
             SignalInfo("local_video_selected", String::class.java),
             SignalInfo("local_subtitle_selected", String::class.java),
@@ -470,7 +529,8 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         exactSeek: Boolean,
     ): Int =
         if (closed.get()) -1
-        else
+        else {
+            thumbnails.cancel()
             mpv.open(
                 uri,
                 startMs,
@@ -480,6 +540,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
                 topBottom = topBottom,
                 exactSeek = exactSeek,
             )
+        }
 
     @UsedByGodot
     fun revise_mpv_video(
@@ -712,9 +773,25 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     override fun onGodotSetupCompleted() {
         activity?.applicationContext?.let { CrashRecords.start(it) }
         signalsReady = true
+        activity?.runOnUiThread {
+            if (!closed.get() && presenceMonitor == null) {
+                activity?.applicationContext?.let { context ->
+                    presenceMonitor =
+                        HeadsetPresenceMonitor(context) { present, source ->
+                                if (!closed.get()) {
+                                    nativeWearerPresent = present
+                                    updateWearerPresence(source)
+                                }
+                            }
+                            .also { it.start() }
+                }
+            }
+        }
     }
 
     override fun onMainPause() {
+        appForeground = false
+        thumbnails.cancel()
         if (!closed.get()) {
             CrashRecords.foreground(false)
             media.pause()
@@ -728,6 +805,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     }
 
     override fun onMainResume() {
+        appForeground = true
         if (!closed.get()) {
             CrashRecords.foreground(true)
             media.resume()
@@ -749,6 +827,11 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
 
     private fun close() {
         if (closed.compareAndSet(false, true)) {
+            thumbnails.close()
+            Handler(Looper.getMainLooper()).post {
+                presenceMonitor?.close()
+                presenceMonitor = null
+            }
             updateChecks.close()
             CrashRecords.cleanExit()
             accounts.close()

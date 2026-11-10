@@ -152,16 +152,37 @@
       <div class="wrap doc">
         <nav class="toc" aria-label="本页目录">
           <p>本页目录</p>
-          <a href="#v0-9-9">v0.9.9</a><a href="#v0-9-8">v0.9.8</a><a href="#v0-9-7">v0.9.7</a
-          ><a href="#v0-9-6">v0.9.6</a><a href="#v0-9-5">v0.9.5</a><a href="#v0-9-4">v0.9.4</a
-          ><a href="#v0-9-3">v0.9.3</a><a href="#v0-9-2">v0.9.2</a><a href="#v0-9-1">v0.9.1</a
-          ><a href="#v0-9-0">v0.9.0</a><a href="#channels">安装包与渠道</a>
+          <a href="#v0-9-10">v0.9.10</a><a href="#v0-9-9">v0.9.9</a><a href="#v0-9-8">v0.9.8</a
+          ><a href="#v0-9-7">v0.9.7</a><a href="#v0-9-6">v0.9.6</a><a href="#v0-9-5">v0.9.5</a
+          ><a href="#v0-9-4">v0.9.4</a><a href="#v0-9-3">v0.9.3</a><a href="#v0-9-2">v0.9.2</a
+          ><a href="#v0-9-1">v0.9.1</a><a href="#v0-9-0">v0.9.0</a
+          ><a href="#channels">安装包与渠道</a>
         </nav>
         <article class="prose">
+          <section id="v0-9-10" class="release">
+            <div class="release-head">
+              <h2>v0.9.10</h2>
+              <time datetime="2026-11-10">2026 年 11 月 10 日</time> <span class="badge">最新</span>
+            </div>
+            <ul>
+              <li>
+                播放清单新增可保存的“列表循环”，支持单片重复；关闭时最后一部播完仍返回媒体库。
+              </li>
+              <li>
+                本地媒体库为可见的未播放影片生成缩图，支持立体／全景裁切并沿用统一缓存；无法解码时保留影片图标。
+              </li>
+              <li>
+                收到头显摘下事件时暂停，戴回后继续原位置，保留手动暂停与音讯焦点中断状态。检测能力与延迟取决于设备。
+              </li>
+              <li>
+                修复休眠／摘戴后缩图等待旧回覆、文件替换后沿用旧预览，以及预览阻止播放截图更新的问题。
+              </li>
+            </ul>
+          </section>
           <section id="v0-9-9" class="release">
             <div class="release-head">
               <h2>v0.9.9</h2>
-              <time datetime="2026-11-08">2026 年 11 月 8 日</time> <span class="badge">最新</span>
+              <time datetime="2026-11-08">2026 年 11 月 8 日</time>
             </div>
             <ul>
               <li>新安装默认使用星空背景，保留已保存的选择；将夕阳背景名称简化为“夕阳”。</li>

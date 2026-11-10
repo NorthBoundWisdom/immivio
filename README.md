@@ -48,6 +48,7 @@
 - **Local files**, including USB drives mounted by the system. Supports STRM shortcuts and opening videos from Android's Open/Share menu.
 - **Network media**, a single place for SMB shared folders, DLNA libraries, and Plex, Emby, Jellyfin, Stash and XBVR servers. What you can do depends on the source and your account permissions.
 - File lists show only videos and folders, with list/icon views and remembered folder positions. During playback, Browse opens a compact video switcher above the controls. Close the video to return to the full library and Settings.
+- Visible local videos can receive preview thumbnails before their first playback. Previews are generated one at a time while browsing, use the existing cache, and leave the video icon when Android cannot decode them.
 
 **Comfortable viewing**
 - Start with a starry sky, or choose Sunset/Beach panoramas, cloud scenery, a dark background or passthrough. Adjust scenery direction and brightness.
@@ -58,7 +59,8 @@
 **Playback and subtitles**
 - Automatically recognizes SBS/top-bottom video from naming, container metadata and matching eye images. Uncertain content stays in its current mode; saved manual choices take priority. Use **Video mode → Auto detect** to recheck a previously saved format. Image matching identifies stereo packing, while VR projection and lens angle still follow file markers or your settings.
 - One compact control bar with popups for subtitles, speed, color, audio/subtitle timing, stereo alignment and the queue.
-- Sequential or shuffled queues, which return to the library after the last video.
+- Sequential or shuffled queues, with an optional **Repeat queue** switch, including single-video repeat. With repeat off, playback returns to the library after the last video.
+- Headset removal pauses playback when the runtime or Android reports absence. Wearing it again continues at the same position; a manually paused video stays paused. Detection availability and delay depend on the headset.
 - SRT, ASS, SSA and VTT text subtitles, with automatic encoding detection and bilingual primary/secondary tracks. Captions can sit below a flat screen. Bitmap subtitles are not supported.
 - Color grading presets: Original, Warm, Cool and Custom. Every slider has its own reset button.
 - Track choices, stereo alignment, immersive adjustments and progress are remembered for each video.

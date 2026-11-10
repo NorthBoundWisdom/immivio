@@ -1,7 +1,8 @@
 extends RefCounted
 ## Pictures for library tiles. Played videos get a frame of the displayed picture (see capture).
 ## DLNA items prefer the cover their server offers, with the played frame as fallback. Nothing
-## here opens or reads a video file. Settings > clear cache empties the directory.
+## here opens or reads a video file. Local previews arrive from Android's bounded worker.
+## Settings > clear cache empties this single shared directory.
 
 const DIRECTORY := "user://thumbnails"
 const SIZE := Vector2i(320, 180)
@@ -27,8 +28,13 @@ static func path_for(key: String) -> String:
 
 
 static func relocate(old_uri: String, new_uri: String) -> void:
+	if is_preview(old_uri):
+		forget(old_uri)
+		forget(new_uri)
+		return
 	var old_path := path_for(old_uri)
 	var new_path := path_for(new_uri)
+	DirAccess.remove_absolute(new_path + ".preview")
 	_textures.erase(old_path)
 	_textures.erase(new_path)
 	if FileAccess.file_exists(new_path):
@@ -39,6 +45,23 @@ static func relocate(old_uri: String, new_uri: String) -> void:
 
 static func has(key: String) -> bool:
 	return not key.is_empty() and FileAccess.file_exists(path_for(key))
+
+
+static func is_preview(key: String) -> bool:
+	return FileAccess.file_exists(path_for(key) + ".preview")
+
+
+static func preview_matches(key: String, signature: String) -> bool:
+	return (
+		not is_preview(key)
+		or FileAccess.get_file_as_string(path_for(key) + ".preview") == signature.sha256_text()
+	)
+
+
+static func forget(key: String) -> void:
+	_textures.erase(path_for(key))
+	DirAccess.remove_absolute(path_for(key))
+	DirAccess.remove_absolute(path_for(key) + ".preview")
 
 
 static func texture(key: String) -> Texture2D:
@@ -63,7 +86,7 @@ static func texture(key: String) -> Texture2D:
 
 
 ## Fills SIZE (centre crop, no bars) and stores it as the picture of [key].
-static func store(key: String, image: Image) -> bool:
+static func store(key: String, image: Image, preview_signature: String = "") -> bool:
 	if key.is_empty() or not image or image.is_empty():
 		return false
 	var picture := fit(image)
@@ -72,6 +95,15 @@ static func store(key: String, image: Image) -> bool:
 	_textures.erase(path)
 	if picture.save_jpg(path, 0.85) != OK:
 		return false
+	if preview_signature.is_empty():
+		DirAccess.remove_absolute(path + ".preview")
+	else:
+		var marker := FileAccess.open(path + ".preview", FileAccess.WRITE)
+		if not marker:
+			forget(key)
+			return false
+		marker.store_string(preview_signature.sha256_text())
+		marker.close()
 	prune(MAX_IMAGES, MAX_BYTES, path)
 	return true
 
@@ -99,6 +131,9 @@ static func prune(
 			continue
 		var size := file.get_length()
 		file.close()
+		# Preview markers contain exactly one SHA-256 hex digest.
+		if FileAccess.file_exists(path + ".preview"):
+			size += 64
 		count += 1
 		bytes += size
 		if path != keep and not _protected.has(path):
@@ -113,6 +148,7 @@ static func prune(
 		if count <= max_images and bytes <= max_bytes:
 			break
 		if dir.remove(str(record.name)) == OK:
+			dir.remove(str(record.name) + ".preview")
 			count -= 1
 			bytes -= int(record.bytes)
 			_textures.erase(DIRECTORY.path_join(str(record.name)))
@@ -165,6 +201,33 @@ static func crop_for(geometry: int, eye_size: Vector2) -> Vector4:
 		width /= height
 		height = 1.0
 	return Vector4((1.0 - width) * 0.5, (1.0 - height) * 0.5, width, height)
+
+
+## Match displayed-frame crops without presenting both packed eyes in a tile.
+static func preview_frame(image: Image, mode: Dictionary, source_size: Vector2) -> Image:
+	var start := Vector2.ZERO
+	var span := Vector2.ONE
+	var eye := source_size
+	if bool(mode.get("stereo", false)):
+		if bool(mode.get("top_bottom", false)):
+			span.y = 0.5
+			if not bool(mode.get("stereo_half", false)):
+				eye.y *= 0.5
+		else:
+			span.x = 0.5
+			if not bool(mode.get("stereo_half", false)):
+				eye.x *= 0.5
+		if bool(mode.get("swap", false)):
+			start = Vector2.ONE - span
+	var crop := crop_for(int(mode.get("geometry", 0)), eye)
+	var size := Vector2(image.get_size())
+	var at := Vector2i((start + Vector2(crop.x, crop.y) * span) * size)
+	var extent := Vector2i(Vector2(crop.z, crop.w) * span * size).max(Vector2i.ONE)
+	var picture := image.get_region(Rect2i(at, extent))
+	# Half-width/half-height packing has non-square eye pixels. The UV crop is
+	# already 16:9 in display space; stretch it before the cache's cover-fit step.
+	picture.resize(SIZE.x, SIZE.y, Image.INTERPOLATE_BILINEAR)
+	return picture
 
 
 ## Renders the left eye of a bound video frame (an RGBA texture, or the decoder's external image)

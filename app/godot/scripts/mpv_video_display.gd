@@ -560,7 +560,11 @@ func open_local(
 	_thumb_tries = 0
 	_thumbnail_result = {}
 	_thumb_after_ms = -1
-	if not _debug_benchmark and _thumbnail_source(uri) and Thumbnails.texture(uri) == null:
+	if (
+		not _debug_benchmark
+		and _thumbnail_source(uri)
+		and (Thumbnails.is_preview(uri) or Thumbnails.texture(uri) == null)
+	):
 		_thumb_after_ms = 0
 	local_uri = uri
 	_auto_stereo = (

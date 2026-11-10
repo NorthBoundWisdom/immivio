@@ -180,14 +180,15 @@ func _advance_queue(session_id: int, uri: String) -> void:
 	if not is_instance_valid(host):
 		return
 	if (
-		host.video.media.session_id != session_id
+		not host._wearer_present
+		or host.video.media.session_id != session_id
 		or host.video.local_uri != uri
 		or (not host.video.completed_presentation())
 	):
 		return
 	if host.video.loop_enabled:
 		return
-	var item = host.playback_queue.adjacent(uri, 1)
+	var item = host.playback_queue.adjacent(uri, 1, host.playback_queue.loop)
 	if item.is_empty():
 		host._on_menu_action("stop")
 		return
@@ -209,7 +210,9 @@ func _on_video_changed() -> void:
 		return
 	if host.video.media.state != "ended":
 		host._queue_end_key = ""
-	elif not host.video.loop_enabled and host.video.completed_presentation():
+	elif (
+		host._wearer_present and not host.video.loop_enabled and host.video.completed_presentation()
+	):
 		var key = (
 			"%s/%s/%s"
 			% [
@@ -340,7 +343,9 @@ func _on_player_setting(key: String, value: Variant) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
-	if key == "queue_shuffle":
+	if key in ["queue_shuffle", "queue_loop"]:
+		if not value is bool:
+			return
 		host.playback_queue.configure(key, bool(value), host.video.local_uri)
 		host.settings.set_value("playback", key, bool(value))
 		host.settings.save(host.settings_path)

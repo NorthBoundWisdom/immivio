@@ -2,6 +2,16 @@
 
 This implementation adapts selected behaviors from zerochocobo/Thru3D-Media-Player through commit `9a6a905941ecb69e9484ef2bb87d2e3a27705594` (0.13.3). `StrmFile.kt`, `StrmHttp.kt`, their parser/HTTP test scenarios, and `screen_presets.gd` derive from that GPL-3.0 source. Other integration code follows Immivio's independently maintained playback, menu and persistence architecture. The shared baseline is `9d36169` (0.6.0). Original project attribution and the repository GPL-3.0 license remain in place.
 
+## VERTOconnect fork — queue repeat, previews and wearer presence
+
+Selected source: DiggerPriest/VERTOconnect-Immersive-Experiences-VR-Player at `156721530c9a8c59b9de3d179940713ab0b4e733`; shared Immivio baseline `52f2fb5528d0e3e616a6d57deec1a28470cdbc17`. The fork retains GPL-3.0. Queue wrapping and the Android `HeadsetPresenceMonitor.kt`, `HeadsetPresenceState.kt` and state tests derive from that source. The current Immivio queue menu, settings and playback gates own integration. No fork branding, service endpoint or media asset is imported.
+
+Repeat queue is off by default. Automatic completion can wrap forward, including a single entry, after the final-frame presentation gate. Manual previous/next retain their boundaries. Toggling repeat preserves the current shuffle traversal; the preference is saved with existing settings.
+
+Local previews are independently implemented around the fork's background-extraction idea. Only visible `file://` videos in the full local browser are requested, one at a time; STRM and network URLs are excluded. Android extracts a scaled keyframe off the browsing/render threads, bounded to 1280×720 before rotation, and returns a bounded JPEG in memory. Godot crops a logical eye and the existing panoramic centre using filename/size hints, then stores it in its existing 256-image/32-MiB cache. There is no second disk cache. Small hashed fingerprint markers in the same directory identify lightweight previews, invalidate changed files, and allow playback to replace them with displayed frames. Clearing/evicting a preview also removes its marker. Unsupported media retain their icon. Cancellation rejects replies after folder changes, playback, cache clearing or dismissal. Wearer/Activity suspension cancels the Godot request too, so returning can retry without a stale timeout. Full container stereo metadata and playback's image-matching analysis are unavailable to this lightweight preview; a thumbnail is not proof of a media layout.
+
+Wearer detection combines OpenXR absence with exposed Android proximity and display-off fallback. Confirmed native absence cannot be overridden by an OpenXR-present event. A separate native wearer gate stops audio/video even when Godot is not updating, while retaining the user's playback intent and respecting Activity suspension. Wearing again does not seek to zero, reset projection or start manually paused/closed media. Queues do not advance while absent. Android may not expose a proximity sensor; the display fallback depends on device sleep policy and can be delayed. No hand tracking or focus loss is interpreted as physical removal.
+
 ## STRM
 
 A local/SMB `.strm` file contains one accessible HTTP(S), SMB or local media address, or a relative path. The system picker can also select a STRM document; opaque document URIs require an absolute target. UTF-8 (optional BOM) and BOM-marked UTF-16 are supported, with comments/blank lines, a 64 KiB limit, at most four shortcut levels and loop rejection. HTTP redirects resolve relative paths against the final document URL. Parsing happens only on playback, not directory scanning.
@@ -160,7 +170,6 @@ Third-round correction to P17. ReleasePageOpener validates the same fixed releas
 
 Third-round text completion for F2. media_server_browser.gd already renders menu.status through I18n.t; no routing change is needed. The resume/version integration test now removes the requested version, receives the actual error status and verifies the rendered text snapshot in all three locales. English remains the source-key fallback.
 
-
 ### J1 — dual text subtitles (0.16.2, GPL-3.0)
 
 Behavior and selection/composition scenarios derive from upstream `42bbca9` (0.16.2), within `9a6a905..da5f86c`: `app/godot/scripts/dual_subtitles.gd`, `app/godot/tests/test_dual_subtitles.gd` and secondary-channel portions of `native/mpv/mpv_source.cpp`. Immivio's `dual_subtitles.gd`, native secondary snapshot/control channel, Kotlin boundary, mode-record extension and compact subtitle-panel integration are adapted to its own playback/session owners. No upstream store or rendering architecture is copied. `@UsedByGodot` registers `set_mpv_secondary_subtitle` in Godot's Java method registry; availability uses `PlatformMethods.supports`.
@@ -168,7 +177,6 @@ Behavior and selection/composition scenarios derive from upstream `42bbca9` (0.1
 Both text tracks use the existing single subtitle delay and per-track charset overrides. The ordinary import action still selects primary. Secondary preferences live in existing `track_choices` records, migrate with file operations, and are written only when history and per-file memory are enabled. Missing/ambiguous track metadata does not select a different language. Caption sizing fits both wrapped text blocks inside the flat display or projected patch. Narration, live subtitles, cast, independent delays and 3D text protection are excluded; bitmap subtitles remain unsupported.
 
 Native host tests decode production subtitle JSON with an independent Python parser, test separate command IDs/track IDs, shared delay metadata and blank text on timeline invalidation. Android NDK compilation verifies the complete JNI/libmpv integration. These checks do not execute an XR libmpv session or certify headset rendering.
-
 
 ### J2 — captions below flat video (0.16.3, GPL-3.0)
 

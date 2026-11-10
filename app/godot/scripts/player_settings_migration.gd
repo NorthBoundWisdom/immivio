@@ -35,12 +35,13 @@ static func apply(settings: ConfigFile, existing_file: bool = false) -> bool:
 		if previous != mode:
 			settings.set_value("video", "last_mode", mode)
 			changed = true
-	if (
-		settings.has_section_key("playback", "queue_shuffle")
-		and not settings.get_value("playback", "queue_shuffle") is bool
-	):
-		settings.set_value("playback", "queue_shuffle", false)
-		changed = true
+	for key in ["queue_shuffle", "queue_loop"]:
+		if (
+			settings.has_section_key("playback", key)
+			and not settings.get_value("playback", key) is bool
+		):
+			settings.set_value("playback", key, false)
+			changed = true
 	if settings.has_section_key("ui", "library_distance"):
 		var distance: Variant = settings.get_value("ui", "library_distance")
 		var normalized := 1.4

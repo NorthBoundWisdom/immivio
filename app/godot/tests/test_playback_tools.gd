@@ -69,6 +69,28 @@ func _run() -> void:
 		"Sequential queue ends without implicit wrapping"
 	)
 	queue.configure("queue_shuffle", true, "file:///a.mp4")
+	var traversal := queue._order.duplicate()
+	queue.configure("queue_loop", true)
+	check(queue._order == traversal, "Loop toggle preserves the shuffled traversal")
+	check(
+		queue.adjacent(traversal.back(), 1, queue.loop).uri == traversal.front(),
+		"Loop wraps the final shuffled entry"
+	)
+	check(
+		queue.adjacent(traversal.back(), 1).is_empty(),
+		"Manual next retains its boundary when loop is on"
+	)
+	queue.configure("queue_loop", false)
+	var single := Queue.new()
+	single.replace([entries[0]])
+	check(
+		single.adjacent("file:///a.mp4", 1, true).uri == "file:///a.mp4",
+		"A one-item queue can repeat"
+	)
+	single.clear()
+	check(
+		single.adjacent("file:///a.mp4", 1, true).is_empty(), "An empty repeating queue stays empty"
+	)
 	var seen := {}
 	var uri := "file:///a.mp4"
 	while not uri.is_empty():
@@ -318,6 +340,13 @@ func _run() -> void:
 		"Single-video loop takes precedence over queue auto-play"
 	)
 	main.video.loop_enabled = false
+	main._on_native_presence_changed(false, "proximity")
+	main._advance_queue(7, "file:///timing-a.mp4")
+	check(
+		main.video.local_uri == "file:///timing-a.mp4",
+		"Confirmed EOF cannot advance the queue while the headset is off"
+	)
+	main._on_native_presence_changed(true, "proximity")
 	main._advance_queue(6, "file:///timing-a.mp4")
 	check(
 		main.video.local_uri == "file:///timing-a.mp4",
@@ -332,6 +361,12 @@ func _run() -> void:
 		"Confirmed EOF automatically opens next video from zero despite a legacy auto-play-off preference"
 	)
 	main._on_player_setting("queue_shuffle", true)
+	main._on_player_setting("queue_loop", true)
+	check(main.playback_queue.loop, "Queue loop setting reaches the active queue")
+	var loop_saved := ConfigFile.new()
+	loop_saved.load(main.settings_path)
+	check(loop_saved.get_value("playback", "queue_loop", false), "Queue loop preference persists")
+	main._on_player_setting("queue_loop", false)
 	main._queue_action("queue_play_0")
 	check(
 		main.playback_queue._order.front() == main.video.local_uri,
@@ -378,6 +413,35 @@ func _run() -> void:
 		"eof_source_ticket": {"source_epoch": 2, "frame_id": 8, "pts_us": 9000000}
 	}
 	main._on_video_changed()
+	main._on_video_changed()
+	# The same completed single entry reopens at zero when repeat is enabled.
+	main._on_player_setting("queue_loop", true)
+	main._advance_queue(7, "file:///next.mp4")
+	check(
+		(
+			main.video.local_uri == "file:///next.mp4"
+			and host.calls.filter(func(call): return call[0] == "open").back()[2] == 0
+		),
+		"A completed one-item queue repeats from zero"
+	)
+	main._on_player_setting("queue_loop", false)
+	main.video._waiting_first = false
+	main.video.media.state = "ended"
+	main.video.media.last_pair = {
+		"contract_version": 2,
+		"session_id": 7,
+		"slot_token": 1,
+		"source_epoch": 2,
+		"frame_id": 8,
+		"pts_us": 9000000
+	}
+	main.video.media.playback = {
+		"eof_source_resolved": true,
+		"eof_pair_post_draw": true,
+		"eof_presented_slot": 1,
+		"eof_source_ticket": {"source_epoch": 2, "frame_id": 8, "pts_us": 9000000}
+	}
+	main._queue_end_key = ""
 	main._on_video_changed()
 	await process_frame
 	check(

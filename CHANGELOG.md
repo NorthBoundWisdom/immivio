@@ -6,6 +6,22 @@
 
 Newest first, with the main changes that affect everyday use. Unreleased items are not yet part of a public release. Versions 0.6.0 and earlier belong to the original project. Photo viewing, cloud drives and AI 3D conversion appear only as historical features and were removed later; see the [README](README.md) for current capabilities.
 
+## 0.9.10 — 2026-11-10
+
+**中文**
+
+- 播放清单新增“列表循环”，支持单片重复，保存开关；关闭时仍在播完后返回媒体库。
+- 本地媒体库为可见的未播放影片逐一生成缩图，按文件名及尺寸裁切立体／全景画面；播放期间停止生成，沿用统一缓存与清理入口。
+- 接入 OpenXR 佩戴事件及 Android 距离感测／熄屏回退，摘下头显时暂停音画，戴回继续原位置；手动暂停、打开／关闭状态与清单保持原意图。实际检测能力与延迟取决于设备。
+- 修复休眠／摘戴后缩图工作等待旧回覆、文件替换后误用旧预览，以及预览阻止播放截图更新的问题。
+
+**English**
+
+- Add a saved Repeat queue switch, including single-video repeat; keep the return-to-library behavior when off.
+- Generate visible unplayed local-video thumbnails sequentially, crop named stereo/panoramic layouts, suspend generation during playback, and use the existing shared cache and clear action.
+- Suspend audio/video on OpenXR wearer absence or Android proximity/display-off events. Wearing again continues in place without overriding manual pause or reviving closed media. Detection availability and delay depend on the device.
+- Retry canceled preview work on return, discard previews for changed files, and replace lightweight previews with displayed-frame captures during playback.
+
 ## 0.9.9 — 2026-11-08
 
 **中文**

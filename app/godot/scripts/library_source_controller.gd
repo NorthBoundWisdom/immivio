@@ -41,6 +41,8 @@ func _on_media_list(id: int, payload: String) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
+	if host.local_thumbnails.receive(host, id, payload):
+		return
 	if host.file_actions.receive(id, payload):
 		return
 	# Unsolicited store notifications also work when Quest does not pause/resume VR.

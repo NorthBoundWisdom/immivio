@@ -781,6 +781,7 @@ func _menu_state() -> Dictionary:
 		"queue_items": host.video_queue,
 		"queue_revision": host.playback_queue.revision,
 		"queue_shuffle": host.playback_queue.shuffle,
+		"queue_loop": host.playback_queue.loop,
 		"audio_tracks": details.get("audio_tracks", []).size(),
 		"audio_track": host._audio_track_name(details),
 		"clone_voice": host.video.clone_voice_track() > 0,

@@ -4,6 +4,7 @@ const LIMIT := 500
 const MediaFiles := preload("res://scripts/media_files.gd")
 var items: Array[Dictionary] = []
 var shuffle := false
+var loop := false
 var revision := 0
 var custom := false
 var anchor := ""
@@ -62,6 +63,10 @@ func configure(key: String, enabled: bool, current_uri: String = "") -> void:
 	match key:
 		"queue_shuffle":
 			shuffle = enabled
+		"queue_loop":
+			loop = enabled
+			revision += 1
+			return
 	_changed()
 
 
@@ -75,7 +80,7 @@ func _changed() -> void:
 			_order.push_front(anchor)
 
 
-func adjacent(uri: String, direction: int) -> Dictionary:
+func adjacent(uri: String, direction: int, wrap: bool = false) -> Dictionary:
 	if direction == 0 or _order.is_empty():
 		return {}
 	var index := _order.find(uri)
@@ -83,11 +88,15 @@ func adjacent(uri: String, direction: int) -> Dictionary:
 		if direction <= 0:
 			return {}
 		if uri == _removed_uri:
-			return find(_continuation)
+			return (
+				find(_continuation)
+				if not _continuation.is_empty()
+				else (find(_order[0]) if wrap else {})
+			)
 		return find(_order[0]) if uri == anchor else {}
 	var next := index + (1 if direction > 0 else -1)
 	if next < 0 or next >= _order.size():
-		return {}
+		return find(_order[0]) if wrap and direction > 0 else {}
 	return find(_order[next])
 
 

@@ -37,6 +37,7 @@ internal class LocalVideoBridge(
     private val gate = MediaSessionGate()
     private val sessions = ConcurrentHashMap<Int, Session>()
     private var foreground = true // UI thread only
+    private var wearerPresent = true // UI thread only
 
     private class Session(
         val scope: MediaSessionGate.Scope,
@@ -105,7 +106,7 @@ internal class LocalVideoBridge(
             val session = sessions[id] ?: return@post
             if (!active(session)) return@post
             session.requestedPlay = playing
-            session.player?.playWhenReady = foreground && playing
+            session.player?.playWhenReady = foreground && wearerPresent && playing
             state(session)
         }
     }
@@ -118,6 +119,20 @@ internal class LocalVideoBridge(
         // Invalidation is immediate, even if the UI queue or codec is still busy.
         gate.invalidate(id)
         sessions[id]?.let(::dispose)
+    }
+
+    fun hasActiveVideo(): Boolean = sessions.isNotEmpty()
+
+    fun setWearerPresent(present: Boolean) {
+        ui.post {
+            wearerPresent = present
+            sessions.values.forEach {
+                if (active(it)) {
+                    it.player?.playWhenReady = foreground && present && it.requestedPlay
+                    state(it)
+                }
+            }
+        }
     }
 
     fun pause() {
@@ -137,7 +152,7 @@ internal class LocalVideoBridge(
             foreground = true
             sessions.values.forEach {
                 if (active(it)) {
-                    it.player?.playWhenReady = it.requestedPlay
+                    it.player?.playWhenReady = wearerPresent && it.requestedPlay
                     state(it)
                 }
             }
@@ -234,7 +249,7 @@ internal class LocalVideoBridge(
                     override fun onPlayerError(error: PlaybackException) {
                         fail(session, error.errorCodeName)
                     }
-                }
+                },
             )
             player.addAnalyticsListener(
                 object : AnalyticsListener {
@@ -266,12 +281,12 @@ internal class LocalVideoBridge(
                                 .put("elapsed_ms", elapsedMs),
                         )
                     }
-                }
+                },
             )
             player.setVideoSurface(session.surface)
             player.setMediaItem(MediaItem.fromUri(session.uri), session.startMs.toLong())
             player.prepare()
-            player.playWhenReady = foreground && session.requestedPlay
+            player.playWhenReady = foreground && wearerPresent && session.requestedPlay
             state(session)
         } catch (_: Exception) {
             fail(session, "PLAYER_PREPARE_FAILED")

@@ -39,6 +39,7 @@ internal class MpvVideoBridge(
     private val hosts = ConcurrentHashMap.newKeySet<PlaybackHost>()
 
     @Volatile private var foreground = true
+    @Volatile private var wearerPresent = true
 
     @Volatile private var stopped = false
     private val freezePending = AtomicBoolean(false)
@@ -607,6 +608,7 @@ internal class MpvVideoBridge(
             val needsAudio =
                 !stopped &&
                     foreground &&
+                    wearerPresent &&
                     hosts.any {
                         !it.closing &&
                             it.handle > 0 &&
@@ -661,13 +663,16 @@ internal class MpvVideoBridge(
                 }
             audioFocusState = if (needsAudio) audioFocus?.state() ?: "unavailable" else "none"
             hosts.forEach { host ->
-                if (!stopped && !host.closing && host.handle > 0) {
-                    MpvSourceNative.setPlaying(
-                        host.handle,
-                        foreground &&
-                            host.playing &&
-                            (!(host.audioEnabled && host.audioAvailable) || granted),
-                    )
+                synchronized(host) {
+                    if (!stopped && !host.closing && host.handle > 0) {
+                        MpvSourceNative.setPlaying(
+                            host.handle,
+                            foreground &&
+                                wearerPresent &&
+                                host.playing &&
+                                (!(host.audioEnabled && host.audioAvailable) || granted),
+                        )
+                    }
                 }
             }
         }
@@ -1356,6 +1361,19 @@ internal class MpvVideoBridge(
             gate.invalidate(id)
             dispose(it, true)
         }
+    }
+
+    fun hasActiveVideo(): Boolean = sessions.isNotEmpty()
+
+    fun setWearerPresent(present: Boolean) {
+        wearerPresent = present
+        if (!present)
+            hosts.forEach { host ->
+                synchronized(host) {
+                    if (host.handle > 0) MpvSourceNative.setPlaying(host.handle, false)
+                }
+            }
+        refreshPlayback()
     }
 
     fun pause() {

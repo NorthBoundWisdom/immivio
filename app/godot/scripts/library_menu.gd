@@ -233,6 +233,7 @@ const KEY_BASE := 300
 
 var catalog: RefCounted  # recent files
 var platform: Object  # QuestPlayer singleton or a test double
+var local_thumbnails := preload("res://scripts/local_thumbnail_controller.gd").new()
 var settings_provider: Callable  # -> {"profile", "profiles", "output_width", "version"}
 
 var section := Section.RECENT
@@ -288,6 +289,7 @@ var _covers := {}  # DLNA cover URL -> HTTPRequest while it downloads
 
 
 func dismiss() -> void:
+	local_thumbnails.cancel(self)
 	diagnostic_confirmation = false
 	subtitle_picker.close()
 	remember_browse()
@@ -563,6 +565,7 @@ func stick_scroll(y: float, delta: float) -> void:
 
 
 func _process(delta: float) -> void:
+	local_thumbnails.tick(self)
 	if visible:
 		remember_browse()
 	browse_memory.tick()
@@ -1443,6 +1446,7 @@ func _poll_cache_usage() -> void:
 
 
 func _exit_tree() -> void:
+	local_thumbnails.cancel(self)
 	browse_memory.flush()
 	if _cache_thread:
 		_cache_thread.wait_to_finish()
@@ -1675,6 +1679,7 @@ func _choose(row: Dictionary) -> void:
 			return
 		_confirm = ""
 		_cancel_covers()
+		local_thumbnails.cancel(self)
 		Thumbnails.clear()
 		_cache_revision += 1
 		_cache_usage = null
@@ -2332,6 +2337,14 @@ func _draw_rows() -> void:
 				bool(row.get("selected", false)),
 				bool(row.get("stack_detail", false))
 			)
+			if section == Section.LOCAL and str(row.get("icon", "")) == "video":
+				var picture := _picture(row)
+				if picture:
+					var preview := _quad(
+						Vector2(0.072, 0.052), Vector3(-0.565, 0, 0.008), Color.WHITE, 14
+					)
+					_show_picture(preview, picture)
+					_buttons.back().node.add_child(preview)
 			if bool(row.get("about_info", false)):
 				_buttons.back().enabled = false
 				_buttons.back()["keep_visible"] = true
@@ -2654,8 +2667,7 @@ func _show_picture(area: MeshInstance3D, texture: Texture2D) -> void:
 	surface.set_shader_parameter("sheen", 0.0)
 
 
-## A played video's frame, or the cover a DLNA server offers (fetched once, then cached).
-## Never reads a video to make one.
+## Cached local/played frame, or the cover a DLNA server offers.
 func _picture(row: Dictionary) -> Texture2D:
 	if row.has("scene"):
 		var server_picture: Texture2D = server_browser.cover(row)

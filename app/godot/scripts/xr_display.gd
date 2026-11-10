@@ -1,6 +1,7 @@
 class_name XrDisplay extends RefCounted
 
 signal status_changed
+signal presence_changed(present: bool)
 
 var xr: XRInterface
 var viewport: Viewport
@@ -189,6 +190,7 @@ func _apply_performance_levels() -> void:
 
 func _on_presence_changed(present: bool) -> void:
 	DiagnosticLog.record("user_presence_changed", {"present": present})
+	presence_changed.emit(present)
 
 
 static func refresh_rates_from(target: Object) -> Array[float]:

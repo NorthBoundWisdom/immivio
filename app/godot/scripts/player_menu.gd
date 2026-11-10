@@ -1214,6 +1214,7 @@ func _bar_key() -> String:
 				else ""
 			),
 			_state.get("queue_revision", 0) if _quick_open == "queue" else -1,
+			_state.get("queue_loop", false) if _quick_open == "queue" else false,
 			_state.get("queue_shuffle", false),
 			_state.get("clone_voice", false),
 			_state.get("geometry", 0),

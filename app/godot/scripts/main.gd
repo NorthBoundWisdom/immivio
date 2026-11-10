@@ -45,6 +45,10 @@ var low_end_gpu := false
 var status_label: Label3D
 var report_timer: Timer
 var platform_plugin: Object
+var _xr_wearer_present := true
+var _native_wearer_present := true
+var _wearer_present := true
+var _thumbnail_foreground := true
 var last_request := 0
 var android_report: Dictionary = {}
 var video_menu: Node3D
@@ -179,6 +183,7 @@ func _ready() -> void:
 	add_child(status_label)
 	display.status_changed.connect(_update_status)
 	display.status_changed.connect(_on_input_session_changed)
+	display.presence_changed.connect(_on_openxr_presence_changed)
 	_preferences.load_preferences()
 	var saved_window_height := float(
 		settings.get_value("ui", "window_height", XrPresentationCoordinator.WINDOW_HEIGHT_DEFAULT)
@@ -209,6 +214,9 @@ func _ready() -> void:
 	playback_queue.custom = bool(settings.get_value("playback", "custom_queue", false))
 	playback_queue.configure(
 		"queue_shuffle", bool(settings.get_value("playback", "queue_shuffle", false))
+	)
+	playback_queue.configure(
+		"queue_loop", settings.get_value("playback", "queue_loop", false) == true
 	)
 	reclining_mode = bool(settings.get_value("ui", "reclining_mode", false))
 	I18n.use(str(settings.get_value("ui", "language", "auto")))
@@ -397,6 +405,12 @@ func _ready() -> void:
 			platform_plugin.set_ui_language(I18n.choice)
 		platform_plugin.connect("capabilities_ready", _on_capabilities_ready)
 		platform_plugin.connect("android_lifecycle", _on_android_lifecycle)
+		if platform_plugin.has_signal("headset_presence_changed"):
+			platform_plugin.connect("headset_presence_changed", _on_native_presence_changed)
+		if PlatformMethods.supports(platform_plugin, "set_openxr_presence"):
+			platform_plugin.set_openxr_presence(_xr_wearer_present)
+		if PlatformMethods.supports(platform_plugin, "is_headset_present"):
+			_on_native_presence_changed(platform_plugin.is_headset_present(), "initial")
 		pass
 		request_capabilities()
 	else:
@@ -1059,8 +1073,55 @@ func _on_capabilities_ready(request_id: int, json_report: String) -> void:
 	_save_report()
 
 
+func _on_openxr_presence_changed(present: bool) -> void:
+	_xr_wearer_present = present
+	if PlatformMethods.supports(platform_plugin, "set_openxr_presence"):
+		platform_plugin.set_openxr_presence(present)
+	_apply_wearer_presence()
+
+
+func _on_native_presence_changed(present: bool, source: String) -> void:
+	_native_wearer_present = present
+	Log.record("headset_presence", {"present": present, "source": source})
+	_apply_wearer_presence()
+
+
+func _apply_wearer_presence() -> void:
+	var present := _xr_wearer_present and _native_wearer_present
+	if present == _wearer_present:
+		_update_local_thumbnail_activity()
+		return
+	_wearer_present = present
+	_update_local_thumbnail_activity()
+	_queue_end_key = ""
+	if video and video.media.accepts(video.media.session_id):
+		# Wearer absence is a suspension, not a new play/pause choice or a seek.
+		# Native gates also cover opening/first-frame work while the wearer is absent.
+		if not present:
+			video.checkpoint_playback()
+		# Current Android bridges retain their own play/audio-focus intent behind
+		# the wearer gate. Do not turn a focus-loss pause into an explicit play.
+		if not PlatformMethods.supports(platform_plugin, "set_openxr_presence"):
+			video.platform.set_mpv_playing(
+				video.media.session_id,
+				present and video.requested_play and not video._waiting_first
+			)
+		if present:
+			_on_video_changed()
+
+
+func _update_local_thumbnail_activity() -> void:
+	if recent_menu:
+		recent_menu.local_thumbnails.set_suspended(
+			recent_menu, not (_wearer_present and _thumbnail_foreground)
+		)
+
+
 func _on_android_lifecycle(event: String) -> void:
 	Log.record("android_lifecycle", {"event": event})
+	if event in ["pause", "resume"]:
+		_thumbnail_foreground = event == "resume"
+		_update_local_thumbnail_activity()
 	if event == "resume":
 		request_capabilities()
 	elif event == "pause" and video:
