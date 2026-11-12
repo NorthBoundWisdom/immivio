@@ -178,9 +178,10 @@ The old inference-mode/motion/Alpha-owner verification matrices have been retire
 - Confirm normal and packed-alpha playback after removal of unused calibration
   images, including the retained independent-alpha diagnostic video.
 - Confirm the remaining Python selected-feature/playback/seek/startup device
-  probes can enter through the retained debug receiver after test-only URI and
-  local-access facilities are removed. External URI grants and revocation now
-  require manual headset acceptance; no automated device coverage is claimed.
+  probes can enter through the retained debug receiver after legacy local-access
+  facilities are removed. Run `tools/run_external_uri_probe.py` on the target
+  headset for external URI grants, revocation and process restart; the rebuilt
+  driver has host/build verification only until device evidence is recorded.
 
 - After retiring the three Debug A/B controls, confirm ordinary/packed-alpha
   playback, pause, seek, repeat/EOF and close on the headset using the fixed
@@ -193,3 +194,23 @@ The old inference-mode/motion/Alpha-owner verification matrices have been retire
 - After enabling translation provenance checks, browse all three translated
   locales for unintended English; specifically verify Refresh, Done, Add server
   and Internal storage, whose directly translated labels now have catalog entries.
+
+- Run the shared Python core/GPU/audio and player probes on each supported
+  headset after rebuilding the current Debug APK. Confirm request-key/process
+  correlation and timeout evidence; host fake-ADB tests do not verify Android
+  permission delivery, decoding, audible output or XR presentation.
+
+- Manual local-access acceptance: readable/missing files, denied or revoked
+  storage access and ejection must produce the correct player outcome without
+  stale readers; this probe category has not been rebuilt.
+- Manual document-picker acceptance: selection, cancellation, unusual file names
+  and returned URI grants must work through the real system picker; no picker
+  automation is claimed.
+- Manual seek-image acceptance: confirm the frozen transition image, pause/redraw,
+  rapid seek changes and final-frame retention on the headset; no device pixel
+  comparison driver has been rebuilt.
+
+- After removing the unused non-cached capture JNI entry, verify ordinary and
+  packed-alpha playback, pause/seek transitions and frozen-frame retention on the
+  headset. Confirm opaque-mask cache reuse and borrowed producer lease cleanup;
+  host compilation and symbol checks do not establish device rendering behavior.

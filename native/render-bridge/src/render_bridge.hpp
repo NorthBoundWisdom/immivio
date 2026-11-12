@@ -14,7 +14,7 @@ struct Bridge final {
   GLuint copy_2d = 0, vao = 0, fbo = 0;
   // Keep the existing capacity until device measurements establish a new limit.
   std::array<Slot, 7> slots;
-  uint64_t copies = 0, opaque_copies = 0, opaque_uploads = 0, mask_refreshes = 0;
+  uint64_t copies = 0, opaque_copies = 0, opaque_uploads = 0;
   uint64_t copy_pending_polls = 0, retire_pending_polls = 0, slot_exhaustions = 0, borrows = 0;
   uint64_t opaque_state_bypasses = 0, capture_state_saves = 0;
   uint64_t capture_calls = 0, capture_cpu_us = 0, capture_cpu_max_us = 0;
@@ -91,7 +91,7 @@ struct Bridge final {
         return slot;
     throw std::runtime_error("Render bridge lease stale/unknown");
   }
-  jlong capture_texture(GLuint source, jlong token, bool cache_mask) {
+  jlong capture_texture(GLuint source, jlong token) {
     current();
     CaptureTiming timing(capture_calls, capture_cpu_us, capture_cpu_max_us);
     isolate_owner_errors();
@@ -106,7 +106,7 @@ struct Bridge final {
       slot_exhaustions++;
       return 0;
     }
-    if (opaque_state_fast && borrow && cache_mask && free->opaque_cached) {
+    if (opaque_state_fast && borrow && free->opaque_cached) {
       check_gl("Borrowed opaque handoff");
       // No texture upload, draw, framebuffer or pixel-store mutation: both the
       // immutable producer color and this slot's cached opaque mask are already
@@ -145,22 +145,17 @@ struct Bridge final {
       glDrawArrays(GL_TRIANGLES, 0, 3);
       copies++;
     }
-    {
-      if (!cache_mask || !free->opaque_cached) {
-        if (!free->alpha)
-          image(free->alpha, mask_width * 2, mask_height, GL_R8);
-        std::vector<unsigned char> mask(static_cast<size_t>(mask_width) * mask_height * 2, 255);
-        glBindTexture(GL_TEXTURE_2D, free->alpha);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mask_width * 2, mask_height, GL_RED,
-                        GL_UNSIGNED_BYTE, mask.data());
-        free->opaque_cached = true;
-        if (cache_mask)
-          opaque_uploads++;
-        else
-          mask_refreshes++;
-      }
-      opaque_copies++;
+    if (!free->opaque_cached) {
+      if (!free->alpha)
+        image(free->alpha, mask_width * 2, mask_height, GL_R8);
+      std::vector<unsigned char> mask(static_cast<size_t>(mask_width) * mask_height * 2, 255);
+      glBindTexture(GL_TEXTURE_2D, free->alpha);
+      glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mask_width * 2, mask_height, GL_RED, GL_UNSIGNED_BYTE,
+                      mask.data());
+      free->opaque_cached = true;
+      opaque_uploads++;
     }
+    opaque_copies++;
     check_gl("Render bridge color/mask capture");
     free->fence = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
     if (!free->fence)

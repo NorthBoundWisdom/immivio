@@ -95,10 +95,13 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                             }
                                 .start()
                             1
+                        } else if (intent.action == "${context.packageName}.DEBUG_MPV_URI") {
+                            MpvDiagnostics.requestExternal(context.applicationContext, request)
                         } else if (intent.action == "${context.packageName}.DEBUG_MPV_AUDIO") {
                             MpvAudioDiagnostics.request(
                                 context.applicationContext,
                                 intent.getBooleanExtra("hardware", true),
+                                requestKey = request,
                             )
                         } else if (
                             intent.action in
@@ -112,6 +115,7 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                 intent.getStringExtra("fixture") ?: "c03_sbs_grid",
                                 gpu = !intent.action!!.endsWith("_CORE"),
                                 hardware = intent.getBooleanExtra("hardware", false),
+                                requestKey = request,
                             )
                         } else {
                             val plugin =

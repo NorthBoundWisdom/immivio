@@ -2,6 +2,7 @@ extends RefCounted
 ## The pre-cache sky used a gamma-encoded 4K base without star detail. Keep this
 ## independent input for diagnostics comparing it with the linear HDR cache.
 
+
 static func create(parent: Node) -> SubViewport:
 	var view := SubViewport.new()
 	view.size = Vector2i(4096, 2048)

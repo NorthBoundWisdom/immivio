@@ -71,7 +71,7 @@ internal class LocalVideoThumbnails(
                                 val rotation =
                                     retriever
                                         .extractMetadata(
-                                            MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION,
+                                            MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION
                                         )
                                         ?.toIntOrNull() ?: 0
                                 result

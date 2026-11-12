@@ -57,6 +57,22 @@ def check(root: Path = ROOT, files: list[str] | None = None) -> list[str]:
         match = re.search(r"^class_name\s+(\w+)", texts.get(name, ""), re.M)
         if match:
             classes[match.group(1)] = name
+    # Keep quoted resource paths, but never make an orphan live through a comment.
+    quoted = r'"(?:\\.|[^"\\])*"|\x27(?:\\.|[^\x27\\])*\x27'
+    for name, text in texts.items():
+        suffix = Path(name).suffix
+        comments = (
+            r"//[^\n]*|/\*[\s\S]*?\*/"
+            if suffix in {".kt", ".java", ".gdshader", ".gdshaderinc"}
+            else r"\#[^\n]*"
+        )
+        if suffix == ".json":
+            continue
+        pattern = re.compile(quoted + "|(?P<comment>" + comments + ")")
+        texts[name] = pattern.sub(
+            lambda match: " " if match.group("comment") is not None else match.group(),
+            text,
+        )
     edges = {}
     for name, text in texts.items():
         references = set()

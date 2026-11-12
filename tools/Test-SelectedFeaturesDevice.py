@@ -7,105 +7,78 @@ ray events through production menus, not physical controller actuation.
 """
 
 import argparse
-import hashlib
 import json
 from pathlib import Path
 import shlex
-import subprocess
-import time
-import uuid
+import sys
 
-PACKAGE = "com.northboundwisdom.immivio"
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from tools.device_probe import Device as ProbeDevice, PACKAGE, output_directory
 
 
-class Device:
+class Device(ProbeDevice):
     def __init__(self, adb, port, serial, out):
-        self.base = [adb, "-P", str(port), "-s", serial]
-        self.out = Path(out)
-        self.out.mkdir(parents=True, exist_ok=True)
+        super().__init__(adb, serial, out, package=PACKAGE, port=port)
+        self.out = self.output
         self.shell("input", "keyevent", "KEYCODE_WAKEUP")
 
     def adb(self, *args, timeout=30):
-        result = subprocess.run(
-            self.base + list(args), capture_output=True, timeout=timeout
-        )
-        if result.returncode:
-            raise RuntimeError(result.stderr.decode(errors="replace"))
-        return result.stdout
+        return self.adb_bytes(*args, timeout=timeout)
 
     def shell(self, *args):
         return self.adb("shell", shlex.join(list(args)))
 
-    def read(self, path):
-        try:
-            return json.loads(
-                self.adb(
-                    "exec-out", "run-as", PACKAGE, "cat", "files/diagnostics/" + path
+    def command(self, operation, extras=None, wait=None, timeout=35):
+        values = {}
+        for kind, name, value in extras or []:
+            values[name] = (
+                (str(value).lower() == "true")
+                if kind == "--ez"
+                else (
+                    int(value)
+                    if kind == "--ei"
+                    else float(value) if kind == "--ef" else str(value)
                 )
             )
-        except (ValueError, RuntimeError):
-            return {}
-
-    def command(self, operation, extras=None, wait=None, timeout=35):
-        key = "accept_" + uuid.uuid4().hex[:16]
-        args = [
-            "am",
-            "broadcast",
-            "-n",
-            PACKAGE + "/org.vrpassthroughplayer.plugin.DebugDiagnosticsReceiver",
-            "-a",
-            PACKAGE + ".DEBUG_PLAYER_MPV",
-            "--es",
-            "request",
-            key,
-            "--es",
-            "operation",
-            operation,
-        ]
-        for kind, name, value in extras or []:
-            args += [kind, name, str(value)]
-        self.shell(*args)
-        start = time.monotonic()
-        receipt = {}
-        report = {}
+        receipt = self.request(operation, operation, **values)
+        key = receipt["request"]
         observations = []
-        while time.monotonic() - start < timeout:
-            receipt = self.read("debug_request_" + key + ".json")
-            if receipt and receipt.get("state") != "accepted":
-                raise RuntimeError(str(receipt))
-            if receipt:
-                report = self.read("mpv_player_" + str(receipt["id"]) + ".json")
-                if report:
-                    observations.append(
-                        {
-                            "elapsed": round(time.monotonic() - start, 3),
-                            "state": report.get("media", {}).get("state"),
-                            "feedback": report.get("loading_feedback", {}),
-                            "read_bytes_per_second": (
-                                report.get("native_status", {})
-                                .get("details", {})
-                                .get("read_bytes_per_second")
-                                if report.get("native_status", {}).get("session_id")
-                                == report.get("media", {}).get("session_id")
-                                else None
-                            ),
-                        }
-                    )
-                    observations = observations[-120:]
-                if any(
-                    c.get("request_key") == key for c in report.get("commands", [])
-                ) and (wait is None or wait(report, key)):
-                    report["device_observations"] = observations
-                    self.save(key, receipt, report)
-                    return report, key
-            time.sleep(0.2)
+
+        def observe(report, elapsed):
+            native = report.get("native_status", {})
+            observations.append(
+                {
+                    "elapsed": round(elapsed, 3),
+                    "state": report.get("media", {}).get("state"),
+                    "feedback": report.get("loading_feedback", {}),
+                    "read_bytes_per_second": (
+                        native.get("details", {}).get("read_bytes_per_second")
+                        if native.get("session_id")
+                        == report.get("media", {}).get("session_id")
+                        else None
+                    ),
+                }
+            )
+            del observations[:-120]
+
+        try:
+            report = self.wait(
+                key,
+                receipt,
+                lambda r: wait is None or wait(r, key),
+                timeout=timeout,
+                fail_on_error=False,
+                observer=observe,
+            )
+        except (RuntimeError, TimeoutError):
+            self.save(key, receipt, self.last_report or {})
+            raise
+        report["device_observations"] = observations
         self.save(key, receipt, report)
-        raise TimeoutError(operation + ": no matching completion: " + key)
+        return report, key
 
     def save(self, key, receipt, report):
-        (self.out / (key + ".json")).write_text(
-            json.dumps({"receipt": receipt, "report": report}, indent=2) + "\n"
-        )
+        self.save_json(key, {"receipt": receipt, "report": report})
 
     def step(self, step):
         report, key = self.command(
@@ -173,7 +146,7 @@ def main():
     parser.add_argument("--port", type=int, default=5037)
     parser.add_argument("--serial", required=True)
     parser.add_argument("--apk", type=Path, required=True)
-    parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--out", type=Path)
     parser.add_argument(
         "--step",
         choices=[
@@ -192,15 +165,12 @@ def main():
     parser.add_argument("--open-uri")
     parser.add_argument("--expect-error")
     args = parser.parse_args()
+    args.out = output_directory(args.out, "selected-features")
     PACKAGE = args.package
     d = Device(args.adb, args.port, args.serial, args.out)
     if d.shell("getprop", "ro.kernel.qemu").strip() == b"1":
         raise RuntimeError("A physical headset is required")
-    installed = d.shell("pm", "path", PACKAGE).decode().strip().removeprefix("package:")
-    actual = d.shell("sha256sum", installed).decode().split()[0]
-    expected = hashlib.sha256(args.apk.read_bytes()).hexdigest()
-    if actual != expected:
-        raise RuntimeError("Installed APK hash differs from --apk")
+    actual = d.verify_apk(args.apk)
     if args.step:
         result = d.step(args.step)
         raise SystemExit(0 if result["passed"] else 1)

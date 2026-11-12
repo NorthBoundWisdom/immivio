@@ -14,3 +14,7 @@ dependencyResolutionManagement {
 }
 rootProject.name = 'VRPassthroughPlayerAndroid'
 include ':player-plugin'
+// Separate-UID diagnostic APK; excluded from ordinary app/plugin builds.
+if (providers.gradleProperty('includeUriFixture').orNull == 'true') {
+    include ':uri-fixture'
+}

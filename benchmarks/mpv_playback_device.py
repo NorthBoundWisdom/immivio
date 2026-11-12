@@ -6,52 +6,28 @@ Defaults to a hash-verified local file. Optional ADB loopback HTTP is not a Wi-F
 
 import argparse
 import base64
-from contextlib import contextmanager
 import hashlib
 import json
-import os
 from pathlib import Path
 import statistics
 import shlex
-import subprocess
+import sys
 import threading
 import time
 
-from mpv_seek_strategy_device import Device, PACKAGE
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from tools.device_probe import Device, PACKAGE, device_lock, output_directory
 from mpv_startup_device import MediaServer
-
-
-@contextmanager
-def device_lock(serial):
-    root = Path(__file__).resolve().parents[1] / ".cache"
-    root.mkdir(exist_ok=True)
-    key = hashlib.sha256(serial.encode()).hexdigest()[:16]
-    with (root / f"playback-{key}.lock").open("a+b") as lock:
-        try:
-            if os.name == "nt":
-                import msvcrt
-
-                if lock.seek(0, 2) == 0:
-                    lock.write(b"0")
-                    lock.flush()
-                lock.seek(0)
-                msvcrt.locking(lock.fileno(), msvcrt.LK_NBLCK, 1)
-            else:
-                import fcntl
-
-                fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except OSError as error:
-            raise RuntimeError("Another playback probe owns this device") from error
-        yield
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--port", type=int, default=5037)
     parser.add_argument("--adb", default="adb")
     parser.add_argument("--serial", required=True)
     parser.add_argument("--apk", required=True, type=Path)
     parser.add_argument("--original", required=True, type=Path)
-    parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--output", type=Path)
     parser.add_argument("--seconds", type=int, default=30)
     parser.add_argument(
         "--start-ms",
@@ -65,7 +41,6 @@ def main():
         default="2d",
         help="Normal headset VR launcher or diagnostic 2D activity",
     )
-    parser.add_argument("--borrow-color", choices=("yes", "no"), default="yes")
     parser.add_argument(
         "--controls",
         action="store_true",
@@ -143,30 +118,24 @@ def main():
         parser.error("Use --expect-eof separately from --controls")
     if args.replay_after_eof and not args.expect_eof:
         parser.error("--replay-after-eof requires --expect-eof")
+    args.output = output_directory(args.output, "playback")
     with device_lock(args.serial):
         measure(args)
 
 
 def measure(args):
     args.output.mkdir(parents=True, exist_ok=True)
-    device = Device(args.adb, args.serial, args.output)
+    device = Device(args.adb, args.serial, args.output, port=args.port)
 
     def set_property(name, value, *, optional=False):
         # adb shell reconstructs a shell command; keep option values a single literal argument.
         device.run("shell", "setprop", name, shlex.quote(value), optional=optional)
 
-    installed = (
-        device.run("shell", "pm", "path", PACKAGE).strip().removeprefix("package:")
-    )
-    installed_sha = device.run("shell", "sha256sum", installed).split()[0]
-    with args.apk.open("rb") as apk:
-        if installed_sha != hashlib.file_digest(apk, "sha256").hexdigest():
-            raise RuntimeError("Installed APK differs from --apk")
+    installed_sha = device.verify_apk(args.apk)
     result = {
         "state": "running",
         "apk_sha256": installed_sha,
         "serial": args.serial,
-        "borrow_color_requested": args.borrow_color == "yes",
         "samples": [],
         "entry": args.entry,
         "scope": "Distinct libmpv render transactions drawn by the Godot "
@@ -244,24 +213,16 @@ def measure(args):
         if args.transport == "local":
             # Stream directly into the debug app's private fixture directory; no storage permission,
             # second on-device copy or modification of the supplied original is needed.
-            with args.original.open("rb") as source:
-                subprocess.run(
-                    [
-                        args.adb,
-                        "-s",
-                        args.serial,
-                        "shell",
-                        "-T",
-                        "run-as",
-                        PACKAGE,
-                        "sh",
-                        "-c",
-                        "'mkdir -p files/fixtures && cat > files/fixtures/mpv_performance.mp4'",
-                    ],
-                    stdin=source,
-                    check=True,
-                    timeout=180,
-                )
+            device.stream(
+                "shell",
+                "-T",
+                "run-as",
+                PACKAGE,
+                "sh",
+                "-c",
+                "'mkdir -p files/fixtures && cat > files/fixtures/mpv_performance.mp4'",
+                source=args.original,
+            )
             source_args = {"fixture": "mpv_performance"}
             with args.original.open("rb") as source:
                 source_sha = hashlib.file_digest(source, "sha256").hexdigest()
@@ -318,7 +279,6 @@ def measure(args):
             profile="320x320",
             projection=args.projection,
             position_ms=args.start_ms,
-            borrow_color=args.borrow_color == "yes",
         )
         first = device.wait(
             "open",

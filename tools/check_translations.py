@@ -24,12 +24,12 @@ def literals(text: str, kotlin: bool = False) -> tuple[list[tuple[int, int, str]
             ]
             continue
         token = match.group()
-        if kotlin:
+        if kotlin and not token.startswith('"""'):
             token = token.replace("\\$", "$")
         try:
             value = (
                 token[3:-3]
-                if token.startswith(('"""', "'''"))
+                if kotlin and token.startswith('"""')
                 else ast.literal_eval(token)
             )
         except (SyntaxError, ValueError):

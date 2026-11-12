@@ -87,3 +87,9 @@ class TranslationConsistency(unittest.TestCase):
         self.assertTrue(any("Missing" in e for e in checker.check(self.root)))
         tokens, _ = checker.literals('# "comment"\nI18n.t("quote: \\"ok\\"")')
         self.assertEqual([v for _, _, v in tokens], ['quote: "ok"'])
+
+    def test_raw_kotlin_and_gdscript_multiline_escapes(self):
+        tokens, _ = checker.literals(r'"""price: \$5"""', kotlin=True)
+        self.assertEqual(tokens[0][2], r"price: \$5")
+        tokens, _ = checker.literals('"""line\\nnext"""')
+        self.assertEqual(tokens[0][2], "line\nnext")

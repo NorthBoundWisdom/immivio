@@ -25,3 +25,22 @@ Keep search titles, descriptions, social previews and JSON-LD consistent with ea
 The supplied application artwork is `app/godot/branding/immivio-icon.png`. After replacing it, run `godot --headless --xr-mode off --path app/godot --script ../../tools/prepare_branding.gd` for adaptive safe-area sizing and the website icon. The script uses the supplied transparent layers under `branding/source/` for adaptive/themed icons and prepares website posters and PICO portal assets. Keep all six original sources and their checksums in `branding/source-manifest.json`; Android monochrome and background assets are generated PNGs. All three Android export presets share these assets.
 
 Generated outputs must follow `configs/output_paths.py` and the layout in `docs/BUILD.md`: installable packages under `artifacts/packages/`, test results under `artifacts/tests/`, captures under `artifacts/captures/`, and logs under `artifacts/logs/`. Put temporary scripts, extracted libraries and test inputs under the appropriate `build/` category. Do not create ad hoc files directly in either output root. Use the workflow `organize`, `locate` and scoped `clean` commands. Never store signing material in either output root.
+
+Source lint runs on every push and pull request without an Android SDK. Install
+`requirements-lint.txt` in a prepared Python environment and use the ktfmt JAR
+recorded in `configs/lint_tools.json` (version and SHA-256 are checked). ktfmt
+requires a JDK; CI uses JDK 25. Run
+`python3 tools/check_format.py --ktfmt /path/to/ktfmt.jar` with `gdformat` on PATH,
+or pass `--gdformat .cache/python-tools/formatting/bin/gdformat` locally. The
+checker uses only Git-tracked GDScript/Kotlin files, excluding generated export
+projects. It pins ktfmt's Kotlin style and preserves unused imports.
+
+`python3 tools/check_translations.py` checks equal locale keys, duplicate keys,
+source-literal provenance (including Kotlin errors and license text), and
+literal `I18n.t` calls. Capitalized runtime keys require a reason and live source
+expression in `app/godot/i18n/dynamic_keys.json`; comments and tests do not justify
+keeping unused UI text. `python3 tools/check_godot_resources.py` checks UID owners
+and resource reachability from the app, tests and tools, including global class
+names and UID references. Both checks run in the workflow suite and source CI.
+The existing `test_render_scripts_load.gd` additionally compiles the render
+fixtures during the Godot host suite, without running their GPU loops.

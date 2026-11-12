@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import tempfile
 from urllib.request import urlopen
@@ -108,13 +109,37 @@ def stage_vendors():
     )
 
 
+def find_gradle():
+    """Prefer an explicit/system tool, then an already prepared CI-version cache."""
+    selected = os.environ.get("GRADLE_EXE") or shutil.which("gradle")
+    if selected:
+        return selected
+    record = json.loads((ROOT / "configs/ci_toolchain.json").read_text())["assets"][
+        "Gradle"
+    ]
+    match = re.fullmatch(r"gradle-([0-9.]+)-bin\.zip", record["fileName"])
+    if not match:
+        raise RuntimeError("Invalid Gradle distribution name in ci_toolchain.json")
+    version = match.group(1)
+    command = "gradle.bat" if os.name == "nt" else "gradle"
+    directory = ROOT / ".cache/gradle/wrapper/dists" / f"gradle-{version}-bin"
+    for candidate in sorted(directory.glob(f"*/gradle-{version}/bin/{command}")):
+        if candidate.is_file():
+            return str(candidate.absolute())
+    return None
+
+
 def host_tools():
     """Find installed tools; never install or download a host dependency."""
     from types import SimpleNamespace
     from configs import player_build as player
 
     def executable(variable, fallback):
-        value = os.environ.get(variable) or shutil.which(fallback)
+        value = (
+            find_gradle()
+            if variable == "GRADLE_EXE"
+            else os.environ.get(variable) or shutil.which(fallback)
+        )
         path = (
             Path(shutil.which(value) or value).expanduser().absolute()
             if value

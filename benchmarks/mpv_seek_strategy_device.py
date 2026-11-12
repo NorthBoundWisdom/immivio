@@ -1,121 +1,17 @@
-"""Compare actual production Quest seeks using fresh debug receipts and playback-clock estimates."""
+"""Compare actual production headset seeks using fresh debug receipts and playback-clock estimates."""
 
 import argparse
-import hashlib
 import json
 from pathlib import Path
 import random
 import statistics
-import subprocess
-import time
-import uuid
+import sys
 
-PACKAGE = "com.northboundwisdom.immivio"
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from tools.device_probe import Device as ProbeDevice, PLAYER_FIXTURES, output_directory
 
 
-class Device:
-    def __init__(self, adb, serial, output):
-        self.adb, self.serial, self.output = adb, serial, output
-        self.process = None
-
-    def run(self, *args, optional=False):
-        p = subprocess.run(
-            [self.adb, "-s", self.serial, *map(str, args)],
-            capture_output=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=35,
-        )
-        if p.returncode and not optional:
-            raise RuntimeError(p.stderr + p.stdout)
-        return p.stdout if p.returncode == 0 else ""
-
-    def read(self, filename):
-        text = self.run(
-            "shell",
-            "run-as",
-            PACKAGE,
-            "cat",
-            "files/diagnostics/" + filename,
-            optional=True,
-        )
-        try:
-            return json.loads(text)
-        except ValueError:
-            return None
-
-    def request(self, label, operation, **extras):
-        key = "seek_" + uuid.uuid4().hex
-        args = [
-            "shell",
-            "am",
-            "broadcast",
-            "-n",
-            PACKAGE + "/org.vrpassthroughplayer.plugin.DebugDiagnosticsReceiver",
-            "-a",
-            PACKAGE + ".DEBUG_PLAYER_MPV",
-            "--es",
-            "request",
-            key,
-            "--es",
-            "operation",
-            operation,
-        ]
-        for name, value in extras.items():
-            flag = (
-                "--ez"
-                if isinstance(value, bool)
-                else "--ei" if isinstance(value, int) else "--es"
-            )
-            args += [
-                flag,
-                name,
-                str(value).lower() if isinstance(value, bool) else str(value),
-            ]
-        self.run(*args)
-        deadline = time.monotonic() + 15
-        while time.monotonic() < deadline:
-            receipt = self.read("debug_request_" + key + ".json")
-            if receipt:
-                break
-            time.sleep(0.1)
-        else:
-            raise TimeoutError("No request receipt: " + label)
-        if receipt.get("state") != "accepted" or receipt.get("request") != key:
-            raise RuntimeError("Rejected request: " + str(receipt))
-        if self.process and receipt["diagnostic_process"] != self.process:
-            raise RuntimeError("App process changed; cannot combine this run")
-        self.process = receipt["diagnostic_process"]
-        (self.output / (label + "-receipt.json")).write_text(
-            json.dumps(receipt, indent=2), encoding="utf-8"
-        )
-        return receipt
-
-    def wait(self, label, receipt, condition, timeout=60):
-        deadline = time.monotonic() + timeout
-        report = None
-        while time.monotonic() < deadline:
-            report = self.read(f"mpv_player_{receipt['id']}.json")
-            if (
-                report
-                and sum(
-                    c["request_key"] == receipt["request"] for c in report["commands"]
-                )
-                == 1
-            ):
-                if report["media"]["state"] == "failed":
-                    raise RuntimeError("Player failed: " + str(report["native_status"]))
-                if condition(report):
-                    (self.output / (label + "-report.json")).write_text(
-                        json.dumps(report, indent=2), encoding="utf-8"
-                    )
-                    return report
-            time.sleep(0.12)
-        (self.output / (label + "-timeout.json")).write_text(
-            json.dumps(report, indent=2), encoding="utf-8"
-        )
-        raise TimeoutError("Report timeout: " + label)
-
+class Device(ProbeDevice):
     def seek(self, label, target_ms, mode):
         receipt = self.request(label, "seek", position_ms=target_ms, seek_mode=mode)
         report = self.wait(
@@ -166,29 +62,34 @@ class Device:
         return row
 
 
-def main():
+def arguments(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--port", type=int, default=5037)
     parser.add_argument("--adb", required=True)
     parser.add_argument("--serial", required=True)
     parser.add_argument("--apk", required=True, type=Path)
-    parser.add_argument("--fixture", default="mp08_8k_high_30")
-    parser.add_argument(
+    sources = parser.add_mutually_exclusive_group(required=True)
+    sources.add_argument(
+        "--fixture",
+        choices=PLAYER_FIXTURES,
+        help="Explicitly prepared app-private fixture",
+    )
+    sources.add_argument(
         "--uri-file",
         type=Path,
         help="Authorized actual network video JSON with uri/title",
     )
     parser.add_argument("--packets", required=True, type=Path)
-    parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--output", type=Path)
     parser.add_argument("--repeats", type=int, default=3)
-    args = parser.parse_args()
-    args.output.mkdir(parents=True, exist_ok=True)
-    device = Device(args.adb, args.serial, args.output)
-    installed = (
-        device.run("shell", "pm", "path", PACKAGE).strip().removeprefix("package:")
-    )
-    installed_sha = device.run("shell", "sha256sum", installed).split()[0]
-    if installed_sha != hashlib.sha256(args.apk.read_bytes()).hexdigest():
-        raise RuntimeError("Installed APK is not the test package")
+    return parser.parse_args(argv)
+
+
+def main():
+    args = arguments()
+    args.output = output_directory(args.output, "seek")
+    device = Device(args.adb, args.serial, args.output, port=args.port)
+    installed_sha = device.verify_apk(args.apk)
     packet_data = json.loads(args.packets.read_text(encoding="utf-8-sig"))
     keys = sorted(
         {

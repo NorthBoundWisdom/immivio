@@ -28,21 +28,22 @@ internal object MpvAudioDiagnostics {
             ThreadPoolExecutor.AbortPolicy(),
         )
 
-    fun request(context: Context, hardware: Boolean = true): Int {
+    fun request(context: Context, hardware: Boolean = true, requestKey: String): Int {
         val id = ids.incrementAndGet()
         return try {
-            worker.execute { run(context.applicationContext, id, hardware) }
+            worker.execute { run(context.applicationContext, id, hardware, requestKey) }
             id
         } catch (_: Exception) {
             -1
         }
     }
 
-    private fun run(context: Context, id: Int, hardware: Boolean) {
+    private fun run(context: Context, id: Int, hardware: Boolean, requestKey: String) {
         val report =
             JSONObject()
                 .put("schema_version", 1)
                 .put("request_id", id)
+                .put("request_key", requestKey)
                 .put("diagnostic_process", DiagnosticRequests.processId)
                 .put("fixture", "mp06_audio_clock")
                 .put("hardware_requested", hardware)

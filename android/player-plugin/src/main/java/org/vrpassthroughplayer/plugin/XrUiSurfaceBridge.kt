@@ -138,7 +138,7 @@ internal class XrUiSurfacePresenter {
                 configs.size,
                 count,
                 0,
-            ),
+            )
         )
         val value = IntArray(1)
         return configs.filterNotNull().first {
@@ -204,7 +204,7 @@ internal class XrUiSurfacePresenter {
             )
             check(
                 GLES30.glCheckFramebufferStatus(GLES30.GL_READ_FRAMEBUFFER) ==
-                    GLES30.GL_FRAMEBUFFER_COMPLETE,
+                    GLES30.GL_FRAMEBUFFER_COMPLETE
             ) {
                 "UI_READ_FRAMEBUFFER"
             }

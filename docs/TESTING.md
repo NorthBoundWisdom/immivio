@@ -123,19 +123,50 @@ Playback popup continuity: `test_playback_popup_continuity.gd` checks transport 
 
 ## Device probes and local media
 
-Device automation is Python-only. `tools/Test-SelectedFeaturesDevice.py` drives the
-normal VR launcher and the retained `DEBUG_PLAYER_MPV` receiver. It uses the
-bundled `mp03_frame_identity` fixture. `benchmarks/mpv_playback_device.py` accepts
-local media and uploads it as `mpv_performance`, or uses an explicitly supplied
-network source. `benchmarks/mpv_seek_strategy_device.py` and
-`benchmarks/mpv_startup_device.py` default to `mp08_8k_high_30`: this is private,
-locally prepared media, with no checked-in generator or manifest. Prepare a
-readable MP4 on the device at `files/fixtures/mp08_8k_high_30.mp4` using
-`adb exec-in run-as com.northboundwisdom.immivio sh -c 'mkdir -p files/fixtures; cat > files/fixtures/mp08_8k_high_30.mp4' < /path/to/sample.mp4`
-after installing the matching Debug APK. The seek probe additionally requires
-`--packets` from FFprobe for that exact file. Use each probe's `--help` for APK,
-serial, output and network options. Missing local media is rejected by the debug
-receiver; it is never downloaded automatically.
+All device probes use `tools/device_probe.py` for ADB selection/quoting, installed
+APK SHA-256 checks, unique request keys, process identity, bounded waits and JSON
+evidence. Choose the device with `--serial` and optionally `--port`. Supply the
+exact installed current Debug APK with `--apk`; the tools do not install or
+upgrade the player automatically. Default output is a unique run directory under
+`artifacts/captures/device/<probe>/`; explicit `--output` (or `--out` for selected
+features) must remain under `artifacts/captures/device/`.
+
+| Script | Device required | Media | Source |
+| --- | --- | --- | --- |
+| `tools/Test-SelectedFeaturesDevice.py` | Physical headset | MP03 for player steps; optional prepared acceptance clips | Bundled MP03 / synthetic acceptance fixtures |
+| `benchmarks/mpv_playback_device.py` | Android device; XR needs headset | Explicit `--original` | Caller-owned file, hash-verified upload or USB HTTP |
+| `benchmarks/mpv_seek_strategy_device.py` | Physical headset | Explicit `--fixture` or `--uri-file`, plus `--packets` for exact media | Caller-prepared local/network source |
+| `benchmarks/mpv_startup_device.py` | Physical headset | Explicit `--fixture`, `--original` or `--uri-file` | Caller-prepared local/network source |
+| `tools/run_device_diagnostics.py core` | Android device | C03/C04 | Bundled |
+| `tools/run_device_diagnostics.py gpu` | Android device with compatible GLES | C03/C04 | Bundled |
+| `tools/run_device_diagnostics.py audio` | Android device with audio focus | MP06 audio clock | Bundled |
+| `tools/run_external_uri_probe.py` | Android device; headset acceptance pending | MP03 in a separate-UID fixture APK | Conditional `android/uri-fixture` module |
+| `benchmarks/mpv_audio_probe.py`, `mpv_gpu_probe.py`, `c04_fixture_decode.py` | No live device | Captured report and matching fixture | Reports from the native driver / bundled or generated media |
+
+For example, `python3 tools/run_device_diagnostics.py gpu --serial SERIAL --apk
+/path/to/debug.apk --fixture c03_sbs_grid` verifies the installed bytes, sends
+`DEBUG_MPV_GPU`, waits for matching request/process/ID and saves the raw report.
+`core` is software-only; `--software` selects software decode for GPU/audio.
+The native GPU and audio auditors can then inspect the saved `gpu-report.json`
+or `audio-report.json`. Successful native probes do not establish Godot/XR
+presentation, audible speaker output or headset performance.
+
+Player reports must echo the unique command key; native core/GPU/audio reports
+now echo it directly. Old, mismatched or cross-process reports cannot complete a
+run. On timeout, the tools preserve the last receipt/report for inspection.
+The playback probe's obsolete `--borrow-color` option has been removed; capture
+uses the fixed production borrowed-color path.
+
+Prepare any local player fixture explicitly in `files/fixtures/` using the Debug
+app UID. For example:
+
+```sh
+adb -s SERIAL exec-in run-as com.northboundwisdom.immivio sh -c 'mkdir -p files/fixtures; cat > files/fixtures/mp08_8k_high_30.mp4' < /path/to/owned.mp4
+```
+
+The seek probe also needs FFprobe `--packets` for those exact bytes. Fixtures are
+never downloaded automatically. Use each driver's `--help` for transport and
+measurement controls.
 
 The player receiver accepts only `mp03_frame_identity`, `mp06_text_subtitles`,
 `mp08_8k_high_30` and `mpv_performance`. The default MP03 fixture is bundled;
@@ -145,12 +176,11 @@ including the app-private target path and permitted byte range. Unused legacy
 fixture names and the private-source MP07 generator have been removed.
 
 `benchmarks/mpv_audio_probe.py`, `mpv_gpu_probe.py` and `c04_fixture_decode.py`
-audit supplied diagnostic JSON or decode bundled/generated fixtures; they do not
-launch a device run. `dlna_catalog_probe.py` reads an explicitly supplied LAN DLNA
+audit supplied diagnostic JSON or decode bundled/generated fixtures. `dlna_catalog_probe.py` reads an explicitly supplied LAN DLNA
 catalog; the background and host seek probes run on the host. The former local
-access, selection, external-URI and seek-hold report auditors and their dedicated
-provider APK/debug requests have been removed with their sole report producers.
-No JVM or workflow test cases were removed.
+access, selection and seek-hold auditors remain removed, with those categories
+covered by manual acceptance. External URI testing now uses the conditional
+fixture and Python driver below. No existing JVM or workflow cases were removed.
 
 Generate the bundled C03 grid with
 `python3 tools/media/generate_c03_fixtures.py --font /path/to/Arial.ttf` using
@@ -166,10 +196,49 @@ it through the player receiver. GPU/core requests accept the bundled
 use bundled `mp06_audio_clock`. Capture reports with the retained
 `DEBUG_MPV_GPU`, `DEBUG_MPV_CORE` or `DEBUG_MPV_AUDIO` broadcasts, including a
 unique `request` string, then pull the resulting JSON from `files/diagnostics`
-using `run-as` before running the matching auditor. There is no replacement
-end-to-end driver for these report auditors.
+using `run-as` before running the matching auditor. `tools/run_device_diagnostics.py` drives these three native report routes end to
+end; host audits still require the matching media and optional media-tool packages.
 
 The retired `normal_fast`, `frame_cap` and `borrow_color` player command options
-are no longer accepted. Debug and Release use the same opaque capture path,
-unlimited native cadence and borrowed producer color. Reports retain the fixed
-`normal_fast_path=true` and `video_fps_cap=0` values for existing readers.
+are no longer read. Debug and Release use the same opaque capture path,
+unlimited native cadence and borrowed producer color.
+
+
+### External URI grant automation
+
+The URI fixture is excluded from the default Gradle graph and every ordinary
+player package. After configuring the Debug player, build the test APK explicitly:
+
+```sh
+python3 - <<'PYCODE'
+import subprocess
+from configs.dependencies import find_gradle
+subprocess.run([find_gradle(), '-p', 'android', '--offline',
+                '-PincludeUriFixture=true', ':uri-fixture:assembleDebug'], check=True)
+PYCODE
+python3 tools/run_external_uri_probe.py --serial SERIAL --apk /path/to/current-player-debug.apk --fixture-apk android/uri-fixture/build/outputs/apk/debug/uri-fixture-debug.apk
+```
+
+The driver verifies the installed player, installs/verifies the fixture, checks
+separate UIDs and exact synthetic clip bytes, proves denial before grant, decodes
+through a real granted FD, revokes permission, then proves denial both before and
+after restarting the player process. A decoder error cannot count as a permission
+denial. Receipts and native reports must match request key, ID and process.
+The driver stops the player, never clears player data, and attempts revocation
+and fixture uninstall even after failure. `--keep-fixture` retains only the test
+APK; grant cleanup still runs. It does not automate the system document picker,
+local-access preflight or seek pixel comparisons. Those remain manual checks.
+
+The fixture packages only `mp03_frame_identity.mp4`; no personal source is used.
+Default output is `artifacts/captures/device/external-uri/<run>/`. Host fake-ADB
+checks and a built APK do not verify Android grant delivery; run this command on
+the target headset and keep its result directory for acceptance.
+
+
+The seek and startup drivers have no implicit media default. Seek requires
+exactly one of `--fixture` or `--uri-file`; startup requires exactly one of
+`--fixture`, `--original` or `--uri-file`. The four player fixture names are
+validated by argument parsing. Selecting `--fixture mp08_8k_high_30` explicitly
+still requires a locally prepared MP4; it is not bundled or generated by the
+probe. A missing source choice fails before any ADB call. No synthetic fixture
+is presented as a substitute for real-media headset performance evidence.

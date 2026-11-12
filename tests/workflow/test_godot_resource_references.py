@@ -41,6 +41,8 @@ class GodotResources(unittest.TestCase):
         self.write("app/godot/scripts/missing.gd.uid", "uid://abc")
         self.write("app/godot/scripts/a.gd", 'preload("res://scripts/b.gd")')
         self.write("app/godot/scripts/b.gd", 'preload("res://scripts/a.gd")')
+        main = self.root / "app/godot/scripts/main.gd"
+        main.write_text(main.read_text() + '\n# preload("res://scripts/a.gd")')
         errors = self.check()
         self.assertEqual(sum("Orphan UID" in e for e in errors), 1)
         self.assertEqual(sum("Unreferenced" in e for e in errors), 2)

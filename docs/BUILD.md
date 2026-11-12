@@ -18,6 +18,24 @@ There is no source-root initialization or materialization step. Edit Gradle file
 
 Use compatible installed tools. Python needs the standard-library features available in 3.11+. JDK/Gradle compatibility is checked by the Android build plugin. No exact host tool versions are prescribed. `configs/toolchain.json` records Android application targets, not host versions. Use `JAVA_HOME`, `ANDROID_HOME` / `ANDROID_SDK_ROOT`, and `PATH` for the installed tools. `GODOT_EXE`, `GODOT_TEMPLATES_DIR` and `GRADLE_EXE` can select nonstandard installation paths. Godot's matching Android export templates must already contain `android_source.zip` and `version.txt`.
 
+For this macOS workspace, first load the shared host environment:
+
+```sh
+source "$HOME/.config/dev-environment/environment.sh"
+export GRADLE_USER_HOME="$PWD/.cache/gradle"
+export IMMIVIO_MPV_LIB_DIR="$PWD/.cache/verified-mpv/arm64-v8a"
+```
+
+Tool selection prefers an explicit `GRADLE_EXE`, then `gradle` on PATH. If both
+are absent, it selects only a prepared project cache matching the Gradle version
+in `configs/ci_toolchain.json`, under
+`.cache/gradle/wrapper/dists/gradle-<version>-bin/*/gradle-<version>/bin/`.
+It does not select an older cached version or download a missing distribution.
+Prepare the CI-recorded archive once and verify its SHA-256 before extracting
+it into that cache. `GRADLE_EXE` remains available for compatible host overrides.
+The local default cache is aligned to CI's 9.8.2; the former 9.8.1 cache can stay
+for rollback and is not selected by this fallback.
+
 Large desktop media libraries and ordinary native build tools can be installed with the operating system's package manager, for example:
 
 ```sh

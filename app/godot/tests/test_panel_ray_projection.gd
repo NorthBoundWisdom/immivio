@@ -64,9 +64,7 @@ func _run() -> void:
 	compositor.menus = [menu]
 	compositor.native_supported = true
 	compositor._tag_tree(menu)
-	check(
-		pointer.line.layers == 1, "The native menu's beam remains in the main stereo projection"
-	)
+	check(pointer.line.layers == 1, "The native menu's beam remains in the main stereo projection")
 	check(pointer.dot.layers == Surface.UI_LAYER, "Only the reticle enters the UI capture")
 	compositor._set_native_ready(false)
 	check(pointer.line.layers == 1, "Scene fallback restores the original 3D beam layer")

@@ -720,7 +720,6 @@ internal class MpvVideoBridge(
                             "bridge",
                             JSONObject(RenderBridgeNative.stats(session.output.renderer)),
                         )
-                    status.put("normal_fast_path", true).put("video_fps_cap", 0)
                     val details = status.optJSONObject("details")
                     details?.optJSONArray("subtitle_tracks")?.let { tracks ->
                         session.host.subtitleTracks = JSONArray(tracks.toString())

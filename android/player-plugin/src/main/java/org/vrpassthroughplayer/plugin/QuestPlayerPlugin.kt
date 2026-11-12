@@ -582,10 +582,6 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
 
     internal fun requestMpvPlayerCommand(json: String): Int {
         if (closed.get()) return -1
-        if (BuildConfig.DEBUG) {
-            val command = JSONObject(json)
-            if (command.optString("operation") == "open") {}
-        }
         val id = requestId.incrementAndGet()
         emitSignal("mpv_debug_command", id, json)
         return id

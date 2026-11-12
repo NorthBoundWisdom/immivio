@@ -72,7 +72,7 @@ sets playback/decoder/state (`:2021–2070`), and `_on_error` sets failure (`:20
 Follow-up: merge the retained state into `mpv_media_state.gd`, delete the base and
 its UID, keep frame-contract assertions intact, and rerun the full Godot suite.
 
-## B4: profile (owner decision pending)
+## B4: profile (owner decided: fix dimensions after release)
 
 `session.dims` comes from the profile string (`MpvVideoBridge.kt:115`) and is
 passed to renderer creation and completed frame contracts (`:869–870`, `:976–977`).
@@ -89,8 +89,10 @@ no ordinary UI profile control; Debug open/profile commands can change it
 
 The per-file value is redundant for ordinary restoration. Removing it requires a
 versioned migration so existing geometry/stereo preferences are not rejected.
-Do not change profile constants, storage, validation or Debug commands until the
-owner chooses between fixing the dimensions and retaining a documented control.
+The owner chose fixed dimensions and removal of the saved field on 2026-11-13.
+Implement the constant and versioned migration after the next release, preserving
+existing geometry/stereo/subtitle preferences. Keep current constants, storage,
+validation and Debug commands unchanged until that stage.
 
 ## Review follow-up evidence
 
@@ -134,3 +136,29 @@ longer UI labels, historical documentation and negative tests do not produce
 these standalone keys:
 
 `Discovered`, `Stereo viewing`, `Inspect`, `SMB network`, `Player`, `Screen curve`, `Loop`, `Eye order`, `Projection`, `Alpha resolution`, `View`, `Sample`, `Volume`, `Audio track`, `Mute`, `Previous`, `Next`, `Muted`, `Remove`, `Back`, `Sign in`, `Character`, `Continue`, `Search again`, `Show`, `Support`, `Website`, `Seek mode`, `Speed`, `Top`, `Upper`, `Lower`, `Bottom`, `Select a file`, `Screen`.
+
+## Dependency-preparation follow-up with Gradle 9.8.2
+
+The R2 rollback passed ordinary offline assemble/test against the prepared cache.
+A later explicit `prepareDependencyCache --write-locks` run on 9.8.2 failed on
+`annotation-1.1.0.pom` verification in `:player-plugin:debugCompileClasspath`.
+That task resolves additional configurations/descriptors and is also used when
+preparing CI caches. It therefore needs verification coverage that the ordinary
+cached build did not exercise. This is stronger evidence than the earlier
+assemble-only result; the POMs are required preparation metadata, not runtime
+version upgrades or a dependency introduced by the URI fixture.
+
+Regenerate with `prepareDependencyCache --write-locks
+--write-verification-metadata sha256` and `-PincludeUriFixture=true`, then rerun
+`prepareDependencyCache` without metadata-writing flags. Both tasks pass.
+Gradle adds exactly the previously observed annotation 1.1.0 and core-common
+2.1.0 POM hashes. Existing root/player locks remain byte-identical; the new
+conditional fixture owns its newly generated lock. The fixture APK builds
+offline and contains only the MP03 asset matching the repository manifest.
+
+A follow-up omission experiment on the now-prepared cache subsequently passed
+without the annotation record. That warm-cache result does not contradict the
+first 9.8.2 verification failure, and cannot establish that a fresh CI resolver
+will not need the POM. Keep the Gradle-generated descriptor coverage; distinguish
+selected runtime versions from descriptor-verification inputs. No claim is made
+that every repeated warm-cache task will re-check every descriptor.

@@ -7,3 +7,5 @@ target-version = ["py311"]
 "configs/*.py" = ["E402"]
 "tests/workflow/*.py" = ["E402"]
 "tools/*.py" = ["E402"]
+
+"benchmarks/*_device.py" = ["E402"]

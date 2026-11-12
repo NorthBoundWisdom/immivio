@@ -17,6 +17,7 @@ from configs import player_build as player
 from configs.dependencies import (
     TOOLCHAIN,
     digest,
+    find_gradle,
     stage_vendors,
     host_tools,
     vendors_archive,
@@ -389,9 +390,7 @@ def main(argv=None):
         print(apk)
         return 0
     if opts.command == "stop-gradle":
-        import shutil
-
-        gradle = os.environ.get("GRADLE_EXE") or shutil.which("gradle")
+        gradle = find_gradle()
         if gradle and Path(gradle).is_file():
             player.run([gradle, "--stop"], env=os.environ.copy(), timeout=60)
         return 0

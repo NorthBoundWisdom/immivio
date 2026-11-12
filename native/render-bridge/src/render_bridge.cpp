@@ -144,21 +144,6 @@ extern "C" JNIEXPORT jboolean JNICALL Java_org_vrpassthroughplayer_plugin_Render
     return JNI_FALSE;
   }
 }
-extern "C" JNIEXPORT jlong JNICALL
-Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_captureTexture(JNIEnv *env, jclass, jlong id,
-                                                                      jint texture) {
-  try {
-    if (texture <= 0)
-      throw std::runtime_error("Shared MPV texture name invalid");
-    std::lock_guard<std::mutex> guard(registry_mutex);
-    if (token_sequence == std::numeric_limits<jlong>::max())
-      throw std::runtime_error("Render bridge lease space exhausted");
-    return find(id).capture_texture(static_cast<GLuint>(texture), ++token_sequence, false);
-  } catch (const std::exception &e) {
-    error(env, e.what());
-    return 0;
-  }
-}
 // EGLImage of a held decoder-buffer slot (0 for copied/borrowed RGBA colors).
 // Borrowed color: captures keep the producer texture (no full-resolution copy).
 // The caller must hold the producer lease until retired() reports the slot
@@ -198,7 +183,7 @@ Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_captureOpaqueTexture(JNIE
     std::lock_guard<std::mutex> guard(registry_mutex);
     if (token_sequence == std::numeric_limits<jlong>::max())
       throw std::runtime_error("Render bridge lease space exhausted");
-    return find(id).capture_texture(static_cast<GLuint>(texture), ++token_sequence, true);
+    return find(id).capture_texture(static_cast<GLuint>(texture), ++token_sequence);
   } catch (const std::exception &e) {
     error(env, e.what());
     return 0;
@@ -230,7 +215,6 @@ Java_org_vrpassthroughplayer_plugin_RenderBridgeNative_stats(JNIEnv *env, jclass
         ",\"color_texture_count\":" + std::to_string(color_textures) +
         ",\"color_texture_bytes\":" + std::to_string(color_textures * b.width * b.height * 4) +
         ",\"opaque_initial_uploads\":" + std::to_string(b.opaque_uploads) +
-        ",\"regular_alpha_uploads\":" + std::to_string(b.mask_refreshes) +
         ",\"input_stages\":0,\"zero_copy\":false,\"zero_copy_commits\":0,"
         "\"decoder_captures\":0,\"warp_frames\":0,\"warp_maps\":0" +
         ",\"copy_pending_polls\":" + std::to_string(b.copy_pending_polls) +

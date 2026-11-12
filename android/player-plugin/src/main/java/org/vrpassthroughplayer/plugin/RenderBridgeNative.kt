@@ -33,8 +33,6 @@ internal object RenderBridgeNative {
         layout: Int,
     ): Long
 
-    @JvmStatic external fun captureTexture(handle: Long, texture: Int): Long
-
     @JvmStatic external fun captureOpaqueTexture(handle: Long, texture: Int): Long
 
     @JvmStatic external fun stats(handle: Long): String

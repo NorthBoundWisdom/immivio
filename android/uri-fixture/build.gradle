@@ -1,0 +1,25 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'org.vrpassthroughplayer.urifixture'
+    compileSdk androidCompileSdk.toInteger()
+    buildToolsVersion androidBuildToolsVersion
+    defaultConfig {
+        applicationId 'org.vrpassthroughplayer.urifixture'
+        minSdk androidMinSdk.toInteger()
+        targetSdk 32
+        versionCode 1
+        versionName '0.1-test-only'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    sourceSets.main.assets.srcDirs = [layout.buildDirectory.dir('generated/fixture-assets')]
+}
+
+// Package only the project-owned clip used by this cross-UID permission probe.
+def fixtureAssets = tasks.register('fixtureAssets', Sync) {
+    from('../../app/godot/media') { include 'mp03_frame_identity.mp4' }
+    into(layout.buildDirectory.dir('generated/fixture-assets'))
+}
+tasks.named('preBuild').configure { dependsOn fixtureAssets }

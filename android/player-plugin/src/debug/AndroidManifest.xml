@@ -24,6 +24,7 @@
                 <action android:name="${applicationId}.DEBUG_PLAYER_MPV" />
                 <action android:name="${applicationId}.DEBUG_SMB_CRYPTO" />
                 <action android:name="${applicationId}.DEBUG_MPV_AUDIO" />
+                <action android:name="${applicationId}.DEBUG_MPV_URI" />
                 <action android:name="${applicationId}.DEBUG_LAUNCH" />
                 <action android:name="${applicationId}.DEBUG_LAUNCH_2D" />
             </intent-filter>

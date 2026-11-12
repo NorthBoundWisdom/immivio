@@ -1,15 +1,17 @@
-"""Measure cold-process and warm video opens on Quest, with production stage clocks."""
+"""Measure cold-process and warm video opens on a headset, with production stage clocks."""
 
 import argparse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-import hashlib
 import json
 from pathlib import Path
 import statistics
 import threading
 import time
 
-from mpv_seek_strategy_device import Device, PACKAGE
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from tools.device_probe import Device, PACKAGE, PLAYER_FIXTURES, output_directory
 
 
 class MediaServer(ThreadingHTTPServer):
@@ -88,16 +90,24 @@ class MediaHandler(BaseHTTPRequestHandler):
         row["duration_ms"] = (time.monotonic() - row["started"]) * 1000
 
 
-def main():
+def arguments(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    for arg in ("adb", "serial", "apk", "output"):
+    parser.add_argument("--port", type=int, default=5037)
+    for arg in ("adb", "serial", "apk"):
         parser.add_argument("--" + arg, required=True)
-    parser.add_argument(
+    parser.add_argument("--output", type=Path)
+    sources = parser.add_mutually_exclusive_group(required=True)
+    sources.add_argument(
+        "--fixture",
+        choices=PLAYER_FIXTURES,
+        help="Explicitly prepared app-private fixture",
+    )
+    sources.add_argument(
         "--original",
         type=Path,
         help="Serve this original video through ADB USB loopback HTTP",
     )
-    parser.add_argument(
+    sources.add_argument(
         "--uri-file",
         type=Path,
         help="JSON containing uri/title for an authorized real network source",
@@ -117,16 +127,14 @@ def main():
     parser.add_argument(
         "--cases-file", type=Path, help="JSON list of cold_process/start_ms/mode cases"
     )
-    args = parser.parse_args()
-    if args.original and args.uri_file:
-        parser.error("Choose original or uri-file")
-    directory = Path(args.output)
-    directory.mkdir(parents=True, exist_ok=True)
-    device = Device(args.adb, args.serial, directory)
-    path = device.run("shell", "pm", "path", PACKAGE).strip().removeprefix("package:")
-    sha = device.run("shell", "sha256sum", path).split()[0]
-    if sha != hashlib.sha256(Path(args.apk).read_bytes()).hexdigest():
-        raise RuntimeError("Installed APK differs")
+    return parser.parse_args(argv)
+
+
+def main():
+    args = arguments()
+    directory = output_directory(args.output, "startup")
+    device = Device(args.adb, args.serial, directory, port=args.port)
+    sha = device.verify_apk(args.apk)
     result = {
         "state": "running",
         "apk_sha256": sha,
@@ -171,7 +179,7 @@ def main():
                 "uri": source["uri"],
             }
         else:
-            source = {"fixture": "mp08_8k_high_30"}
+            source = {"fixture": args.fixture}
             result["source"] = {
                 "transport": "Quest local storage",
                 "fixture": source["fixture"],

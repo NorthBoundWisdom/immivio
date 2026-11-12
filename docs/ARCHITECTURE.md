@@ -2,6 +2,18 @@
 
 Immivio is a Godot/OpenXR interface over an Android media-library plugin, libmpv playback and shared GPU rendering. It is independently maintained from the original project's 0.6.0 baseline.
 
+## Retained internal names
+
+The Android package namespace `org.vrpassthroughplayer.plugin`, Godot addon
+`quest_player`, plugin class `QuestPlayerPlugin` and Godot singleton `QuestPlayer`
+retain their upstream names.
+They are shared by Quest, PICO and generic OpenXR targets; these names do not
+limit platform support. Keeping them avoids changing JNI symbols, reflection
+strings, plugin metadata and component checks solely for cosmetic consistency.
+The application ID remains `com.northboundwisdom.immivio` so updates preserve
+installation identity and user data. Other internal labels can be renamed in
+later isolated changes after release acceptance.
+
 ## Application and input
 
 `app/godot/scripts/main.gd` assembles the scene and connects lifecycle/events. Input, playback/queue, preferences and XR presentation coordinators own their respective behavior/state. The main scene retains narrow adapters for existing integrations; controllers access it through weak references. `player_settings_migration.gd` owns the idempotent cleanup of retired effect preferences; ordinary audio, subtitles, queues and native stereo locks are preserved. Controller rays/triggers and supported hand gestures select controls. Grip placement, reclining mode, follow behavior and recentering retain their existing contracts. Lists and captured sliders suppress playback shortcuts until the stick returns to center.
