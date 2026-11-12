@@ -172,9 +172,9 @@ The old inference-mode/motion/Alpha-owner verification matrices have been retire
 
 ## Cleanup follow-up (2026-11-12)
 
-- On Chinese, Traditional Chinese and Japanese interfaces, trigger a DLNA folder
-  too large to sort and confirm the translated error appears; browse the library
-  and settings after translation cleanup to check for unintended English text.
+- On Chinese, Traditional Chinese and Japanese interfaces, browse the library,
+  settings and playback menus after translation cleanup to check for unintended
+  English text.
 - Confirm normal and packed-alpha playback after removal of unused calibration
   images, including the retained independent-alpha diagnostic video.
 - Confirm the remaining Python selected-feature/playback/seek/startup device
