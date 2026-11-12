@@ -32,12 +32,12 @@ func bent_ray(host: Node3D, flat: Vector3) -> Array:
 	var centre: Vector2 = surface.surface_rect.get_center()
 	var radius: float = surface.active_menu.curve_radius
 	if radius <= 0:
-		return [host._eye(), (flat - host._eye()).normalized()]
+		return [host.eye(), (flat - host.eye()).normalized()]
 	var angle: float = (local.x - centre.x) / radius
 	var point: Vector3 = (
 		pose * Vector3(centre.x + sin(angle) * radius, local.y, (1 - cos(angle)) * radius)
 	)
-	var origin: Vector3 = host._eye() + Vector3(.18, -.06, .08)
+	var origin: Vector3 = host.eye() + Vector3(.18, -.06, .08)
 	return [origin, (point - origin).normalized()]
 
 
@@ -206,7 +206,7 @@ func _run() -> void:
 			"Playback page uses the same curved renderer: %d" % target
 		)
 		var centre: Vector2 = menu.capture_envelope().get_center()
-		var distance := menu.to_global(Vector3(centre.x, centre.y, 0)).distance_to(host._eye())
+		var distance := menu.to_global(Vector3(centre.x, centre.y, 0)).distance_to(host.eye())
 		check(
 			is_equal_approx(menu.curve_radius, distance),
 			"Playback curvature matches its placed viewing distance"

@@ -33,7 +33,7 @@ func _run() -> void:
 	var library: Node3D = host.library_menu
 	var centre: Vector2 = library.capture_envelope().get_center()
 	check(
-		is_equal_approx(library.to_global(Vector3(centre.x, centre.y, 0)).y, host._eye().y - .12),
+		is_equal_approx(library.to_global(Vector3(centre.x, centre.y, 0)).y, host.eye().y - .12),
 		"Startup library applies the default height"
 	)
 	library.section = library.Section.SETTINGS
@@ -71,7 +71,7 @@ func _run() -> void:
 	)
 	host._place_menu(library)
 	check(
-		is_equal_approx(library.to_global(Vector3(centre.x, centre.y, 0)).y, host._eye().y - .3),
+		is_equal_approx(library.to_global(Vector3(centre.x, centre.y, 0)).y, host.eye().y - .3),
 		"Reopening applies the same height once"
 	)
 	host.video.local_uri = "file:///height.mp4"

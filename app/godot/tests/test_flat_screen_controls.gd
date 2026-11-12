@@ -83,7 +83,7 @@ func _run() -> void:
 			main.test_ray = [eye, Vector3.FORWARD]
 			main._on_pointer_button("grip_click", "right_hand")
 			check(
-				not menu.visible and main._grab.get("action", "") == "grip_click",
+				not menu.visible and main.grab.get("action", "") == "grip_click",
 				"%s grip closes controls" % mode
 			)
 			main._update_flat_grab_stick(Vector2(0, 1), Vector2.ZERO, 0.4)
@@ -106,7 +106,7 @@ func _run() -> void:
 			)
 			main._on_pointer_release("grip_click", "right_hand")
 			check(
-				main._grab.is_empty() and not menu.visible,
+				main.grab.is_empty() and not menu.visible,
 				"Release finishes without reopening controls"
 			)
 			for corner in [0, 1]:
@@ -115,7 +115,7 @@ func _run() -> void:
 				main.test_ray = [eye, (hit - eye).normalized()]
 				main._begin_grab("right_hand")
 				check(
-					main._grab.has("resize"),
+					main.grab.has("resize"),
 					"%s curve %s corner %s begins resize" % [mode, curve, corner]
 				)
 				main._update_corner_hover()
@@ -143,11 +143,11 @@ func _run() -> void:
 				)
 				main._on_pointer_release("grip_click", "right_hand")
 			video.set_screen_scale(1)
-			main._grab = {"hand": "right_hand", "moved": false}
+			main.grab = {"hand": "right_hand", "moved": false}
 			menu.toggle()
 			main._update_flat_grab_stick(Vector2.ZERO, Vector2(0, 1), 1)
 			check(video.screen_scale == 1, "Open menu blocks held stick playback action")
-			main._grab = {}
+			main.grab = {}
 			check(
 				not menu._buttons.any(func(item): return item.target == 210),
 				"Removed screen settings cannot be reopened"
@@ -202,12 +202,12 @@ func _run() -> void:
 	)
 	video.global_transform = Transform3D.IDENTITY
 	video.set_screen_rotation(0)
-	main._grab = {"hand": "right_hand", "moved": false}
+	main.grab = {"hand": "right_hand", "moved": false}
 	main._update_flat_grab_stick(Vector2.ZERO, Vector2(0, 1), 10)
 	check(video.screen_scale == video.SCALE_LIMITS.y, "Upper scale limit")
 	main._update_flat_grab_stick(Vector2.ZERO, Vector2(0, -1), 10)
 	check(video.screen_scale == video.SCALE_LIMITS.x, "Lower scale limit")
-	main._grab = {}
+	main.grab = {}
 	video.geometry = 1
 	menu.toggle()
 	menu.section = 1
@@ -225,7 +225,7 @@ func _run() -> void:
 		is_equal_approx(video.screen_distance, 2), "Immersive adjustment cannot change flat screen"
 	)
 	menu.dismiss()
-	main._grab = {"hand": "right_hand", "action": "grip_click", "moved": false}
+	main.grab = {"hand": "right_hand", "action": "grip_click", "moved": false}
 	video.view_zoom = 0.0
 	main._update_flat_grab_stick(Vector2(0, 1), Vector2.ZERO, .5)
 	check(is_zero_approx(video.view_zoom), "Other hand cannot move held immersive view")
@@ -236,7 +236,7 @@ func _run() -> void:
 	check(video.view_zoom == held_zoom, "Grip blocks ordinary playback stick shortcuts")
 	main._update_flat_grab_stick(Vector2.ZERO, Vector2(0, -1), .5)
 	check(is_zero_approx(video.view_zoom), "Immersive grip plus stick down reverses depth movement")
-	main._grab.clear()
+	main.grab.clear()
 	video.geometry = 0
 	video.reclining_mode = true
 	video.screen_distance = 2.0

@@ -33,7 +33,7 @@ func _run() -> void:
 	var opens: int = host.calls.filter(func(call): return call[0] == "open").size()
 	main.display._on_presence_changed(false)
 	check(
-		not main._wearer_present and main.video.requested_play,
+		not main.wearer_present and main.video.requested_play,
 		"Removal suspends without changing the user's play intent"
 	)
 	check(host.calls.back() == ["play", 7, false], "OpenXR removal stops the active native video")
@@ -42,7 +42,7 @@ func _run() -> void:
 	check(host.calls.size() == count, "Duplicate absence is idempotent")
 	main._on_native_presence_changed(false, "proximity")
 	main.display._on_presence_changed(true)
-	check(not main._wearer_present, "XR presence cannot override confirmed native absence")
+	check(not main.wearer_present, "XR presence cannot override confirmed native absence")
 	main._on_native_presence_changed(true, "proximity")
 	check(
 		not main.library_menu.local_thumbnails._suspended,
@@ -61,7 +61,7 @@ func _run() -> void:
 	)
 	main._on_native_presence_changed(true, "proximity")
 	check(
-		main._wearer_present and host.calls.back() == ["play", 7, true],
+		main.wearer_present and host.calls.back() == ["play", 7, true],
 		"Wearing again resumes an originally playing video"
 	)
 	check(

@@ -103,7 +103,7 @@ func show_guide() -> void:
 		material.albedo_color = Color(0.15, 0.3, 0.32)
 		guide.material_override = material
 		host.add_child(guide)
-	guide.global_transform = host._upright_pose(head)
+	guide.global_transform = host.upright_pose(head)
 	guide.global_position.y -= 1.25
 	guide.visible = true
 	guide_until = Time.get_ticks_msec() + 5000

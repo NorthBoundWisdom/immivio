@@ -70,7 +70,7 @@ func _run() -> void:
 	main.test_ray[1] = Vector3.RIGHT
 	main._update_grab()
 	check(
-		main._grab.is_empty() and video.flat_pose.is_equal_approx(before),
+		main.grab.is_empty() and video.flat_pose.is_equal_approx(before),
 		"Holding/moving trigger cannot drag canvas"
 	)
 	main._on_pointer_release("trigger_click", "right_hand")
@@ -146,7 +146,7 @@ func _run() -> void:
 	]
 	main._on_pointer_button("grip_click", "right_hand")
 	check(
-		not menu.visible and main._grab.get("action") == "grip_click",
+		not menu.visible and main.grab.get("action") == "grip_click",
 		"Grip dismisses controls and owns canvas movement"
 	)
 	main.test_ray[1] = Basis(Vector3.UP, .25) * main.test_ray[1]
@@ -155,12 +155,12 @@ func _run() -> void:
 	main._on_pointer_release("trigger_click", "right_hand")
 	main._on_pointer_release("grip_click", "left_hand")
 	check(
-		not main._grab.is_empty() and not menu.visible,
+		not main.grab.is_empty() and not menu.visible,
 		"Trigger or other-hand release cannot finish grip"
 	)
 	main._on_pointer_release("grip_click", "right_hand")
 	check(
-		main._grab.is_empty() and not menu.visible and video.requested_play,
+		main.grab.is_empty() and not menu.visible and video.requested_play,
 		"Grip release neither opens controls nor pauses playback"
 	)
 	main._on_pointer_button("grip_click", "right_hand")
@@ -173,14 +173,14 @@ func _run() -> void:
 	main._on_pointer_button("grip_click", "right_hand")
 	main._on_pointer_release("trigger_click", "right_hand")
 	check(
-		not menu.visible and not main._grab.is_empty(),
+		not menu.visible and not main.grab.is_empty(),
 		"Starting a grip cancels a pending trigger tap"
 	)
 	main._on_pointer_release("grip_click", "right_hand")
 	main._on_pointer_button("trigger_click", "right_hand")
 	main.test_ray = null
 	main._on_pointer_release("trigger_click", "right_hand")
-	check(main._trigger_taps.is_empty() and not menu.visible, "Tracking loss cancels trigger tap")
+	check(main.trigger_taps.is_empty() and not menu.visible, "Tracking loss cancels trigger tap")
 	main.test_ray = [camera.global_position, Vector3.FORWARD]
 	main._on_pointer_button("trigger_click", "right_hand")
 	video.local_uri = "file:///other.mp4"
@@ -200,7 +200,7 @@ func _run() -> void:
 	main._on_pointer_button("trigger_click", "right_hand")
 	check(menu.has_pointer_capture(), "Trigger still captures the timeline slider")
 	main._on_pointer_button("grip_click", "left_hand")
-	check(main._grab.is_empty() and menu.visible, "Grip cannot steal a captured slider")
+	check(main.grab.is_empty() and menu.visible, "Grip cannot steal a captured slider")
 	var captured_pose := menu.global_transform
 	camera.rotation.x += .2
 	video.flat_pose.origin.x += .3

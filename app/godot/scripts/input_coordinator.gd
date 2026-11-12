@@ -58,7 +58,7 @@ func _preview_menu_input(event: InputEvent) -> bool:
 	if event is InputEventMouseMotion:
 		menu.update_pointer("desktop", origin, direction, true)
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		host._menu_touched_ms = Time.get_ticks_msec()
+		host.menu_touched_ms = Time.get_ticks_msec()
 		if event.pressed:
 			menu.press_pointer("desktop", origin, direction, true)
 		else:
@@ -82,7 +82,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if _preview_menu_input(event):
 		return
-	if host._active_menu() or not host.video or host._viewer().local_uri.is_empty():
+	if host._active_menu() or not host.video or host.viewer().local_uri.is_empty():
 		return
 	if event is InputEventMouseMotion and event.button_mask & MOUSE_BUTTON_MASK_LEFT:
 		host.presentation_coordinator._turn_picture(
@@ -94,8 +94,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]
 	):
 		var forward = 1.0 if event.button_index == MOUSE_BUTTON_WHEEL_UP else -1.0
-		if host._viewer().geometry != Geometry.Geometry.FLAT:
-			host._viewer().zoom_view(0.05 * forward)
+		if host.viewer().geometry != Geometry.Geometry.FLAT:
+			host.viewer().zoom_view(0.05 * forward)
 		else:
 			host.presentation_coordinator._push_screen(0.1 * forward)
 			host.presentation_coordinator._save_screen()
@@ -186,11 +186,11 @@ func _on_pointer_release(action: String, hand: String) -> void:
 	if action in ["trigger_click", "grip_click"] and host._ray(hand) == null:
 		_cancel_pointer(hand)
 		return
-	if action == "trigger_click" and host._trigger_taps.has(hand):
-		var tap: Dictionary = host._trigger_taps[hand]
-		host._trigger_taps.erase(hand)
-		if tap.uri == host._viewer().local_uri:
-			if host._active_menu() or host._picture_pinch_allowed(hand):
+	if action == "trigger_click" and host.trigger_taps.has(hand):
+		var tap: Dictionary = host.trigger_taps[hand]
+		host.trigger_taps.erase(hand)
+		if tap.uri == host.viewer().local_uri:
+			if host._active_menu() or host.picture_pinch_allowed(hand):
 				host.presentation_coordinator._toggle_player_menu()
 		return
 	if (
@@ -202,13 +202,13 @@ func _on_pointer_release(action: String, hand: String) -> void:
 		if host.picture_center_guide:
 			host.picture_center_guide.release(hand)
 		_grab = {}
-		host._viewer().set_corner_hover(-1)
-		if grab.moved and host._viewer().geometry == Geometry.Geometry.FLAT:
+		host.viewer().set_corner_hover(-1)
+		if grab.moved and host.viewer().geometry == Geometry.Geometry.FLAT:
 			host.presentation_coordinator._save_screen()
 		if action == "trigger_click" and not grab.moved:
 			if host.player_menu.visible:
 				host.player_menu.dismiss()
-			elif not grab.get("hid_menu", false) and host._picture_pinch_allowed(hand):
+			elif not grab.get("hid_menu", false) and host.picture_pinch_allowed(hand):
 				host.presentation_coordinator._show_player_menu()
 		return
 	var menu = host._active_menu()
@@ -244,7 +244,7 @@ func _on_pointer_button(action: String, hand: String) -> void:
 		return
 	if (
 		action == "trigger_click"
-		and not host._picture_pinch_allowed(hand)
+		and not host.picture_pinch_allowed(hand)
 		and not host._active_menu()
 	):
 		return
@@ -257,7 +257,7 @@ func _on_pointer_button(action: String, hand: String) -> void:
 			_begin_library_grab(hand)
 			return
 		if (
-			not host._viewer().local_uri.is_empty()
+			not host.viewer().local_uri.is_empty()
 			and host._ray(hand) != null
 			and (
 				menu == null
@@ -265,13 +265,13 @@ func _on_pointer_button(action: String, hand: String) -> void:
 					menu == host.player_menu
 					and (not menu.has_pointer_capture())
 					and (
-						host._viewer().geometry == Geometry.Geometry.FLAT
+						host.viewer().geometry == Geometry.Geometry.FLAT
 						or menu.allows_playback_sticks()
 					)
 				)
 			)
 		):
-			host._trigger_taps.clear()
+			host.trigger_taps.clear()
 			if menu == host.player_menu:
 				menu.dismiss()
 			_begin_grab(hand, "grip_click")
@@ -303,7 +303,7 @@ func _on_pointer_button(action: String, hand: String) -> void:
 		return
 	match action:
 		"trigger_click":
-			if host._viewer().local_uri.is_empty():
+			if host.viewer().local_uri.is_empty():
 				host.presentation_coordinator._show_library_menu()
 			else:
 				_begin_picture_press(hand)
@@ -354,7 +354,7 @@ func _process_sticks(left: Vector2, right: Vector2, delta: float) -> void:
 		_update_controls_visibility(menu)
 		return
 	var actions = host.stick_controls.poll(
-		left, right, host.video != null and (host._viewer().geometry != Geometry.Geometry.FLAT)
+		left, right, host.video != null and (host.viewer().geometry != Geometry.Geometry.FLAT)
 	)
 	if not _grab.is_empty():
 		# Holding the picture: only zoom; other stick shortcuts wait for the stick to recenter.
@@ -362,7 +362,7 @@ func _process_sticks(left: Vector2, right: Vector2, delta: float) -> void:
 	_apply_stick_actions(actions, delta)
 	if menu == host.player_menu and menu != null:
 		if not actions.is_empty():
-			host._menu_touched_ms = Time.get_ticks_msec()
+			host.menu_touched_ms = Time.get_ticks_msec()
 			host.player_menu.refresh_values()
 		_update_controls_visibility(menu)
 
@@ -447,7 +447,7 @@ func _update_controls_visibility(menu: Node3D) -> void:
 		menu.has_pointer_capture()
 		or menu._hover.values().any(func(target): return int(target) != menu.NONE)
 	):
-		host._menu_touched_ms = now
+		host.menu_touched_ms = now
 		return
 	# Keep popups, sliders and pending seeks visible; use media state, not the seek queue's state.
 	if (
@@ -467,7 +467,7 @@ func _update_controls_visibility(menu: Node3D) -> void:
 		or host.video.control.in_flight > 0
 	):
 		return
-	if now - host._menu_touched_ms > host.CONTROLS_HIDE_MS:
+	if now - host.menu_touched_ms > host.CONTROLS_HIDE_MS:
 		menu.dismiss()
 
 
@@ -560,7 +560,7 @@ func _update_hand_input(delta: float) -> void:
 				host._active_menu() != null
 				or not _grab.is_empty()
 				or not _library_grab.is_empty()
-				or not host._trigger_taps.is_empty()
+				or not host.trigger_taps.is_empty()
 			)
 		)
 	var inputs = {}
@@ -634,12 +634,12 @@ func _cancel_pointer(hand: String) -> void:
 		return
 	if _library_grab.get("hand", "") == hand:
 		_library_grab.clear()
-	host._trigger_taps.erase(hand)
+	host.trigger_taps.erase(hand)
 	if not _grab.is_empty() and _grab.hand == hand:
-		if _grab.moved and host._viewer().geometry == Geometry.Geometry.FLAT:
+		if _grab.moved and host.viewer().geometry == Geometry.Geometry.FLAT:
 			host.presentation_coordinator._save_screen()
 		_grab = {}
-		host._viewer().set_corner_hover(-1)
+		host.viewer().set_corner_hover(-1)
 	# Cancellation never becomes a tap, row selection, or fling.
 	for menu in [host.library_menu, host.video_menu]:
 		if is_instance_valid(menu) and menu.has_method("cancel_pointer"):
@@ -652,7 +652,7 @@ func _on_input_session_changed() -> void:
 		return
 	if host._input_focused():
 		return
-	host._trigger_taps.clear()
+	host.trigger_taps.clear()
 	for hand in host.hand_pointers:
 		host.hand_pointers[hand].update({}, 0)
 		_cancel_pointer(hand)
@@ -675,8 +675,8 @@ func _hand_input_report() -> Dictionary:
 			"tracked": pointer.ray != null,
 			"pinching": pointer.down,
 			"profile": str(action.get_tracker_profile()) if action else "",
-			"action_aim_tracked": host._input_pose_tracked(action, "aim"),
-			"action_grip_tracked": host._input_pose_tracked(action, "grip"),
+			"action_aim_tracked": host.input_pose_tracked(action, "aim"),
+			"action_grip_tracked": host.input_pose_tracked(action, "grip"),
 			"joint_tracking": joints != null and joints.has_tracking_data,
 			"joint_source": int(joints.hand_tracking_source) if joints else -1
 		}
@@ -695,14 +695,14 @@ func _begin_library_grab(hand: String) -> void:
 	var point: Variant = host.library_menu._plane_point(ray[0], ray[1])
 	if point == null or not Rect2(-1.1, -0.85, 2.05, 1.5).has_point(Vector2(point.x, point.y)):
 		return
-	var offset: Vector3 = host.library_menu.global_position - host._eye()
+	var offset: Vector3 = host.library_menu.global_position - host.eye()
 	if offset.length() < .1:
 		return
-	host._trigger_taps.clear()
+	host.trigger_taps.clear()
 	host.stick_controls.suspend()
 	host.library_menu._fling = 0.0
 	var ray_length: float = ray[0].distance_to(host.library_menu.to_global(point))
-	var direction: Vector3 = (ray[0] + ray[1] * ray_length - host._eye()).normalized()
+	var direction: Vector3 = (ray[0] + ray[1] * ray_length - host.eye()).normalized()
 	_library_grab = {
 		"hand": hand,
 		"ray_length": ray_length,
@@ -725,7 +725,7 @@ func _update_library_grab() -> void:
 		return
 	host.library_menu._stick_ms = Time.get_ticks_msec()
 	var direction: Vector3 = (
-		(ray[0] + ray[1] * float(_library_grab.ray_length) - host._eye()).normalized()
+		(ray[0] + ray[1] * float(_library_grab.ray_length) - host.eye()).normalized()
 	)
 	var head: Variant = host.presentation_coordinator._head_pose()
 	var frame: Basis = (
@@ -733,22 +733,22 @@ func _update_library_grab() -> void:
 		if head != null and (host.view_follow.enabled or host.reclining_mode)
 		else Basis.IDENTITY
 	)
-	var angles = host._ray_angles(frame.inverse() * direction)
+	var angles = host.ray_angles(frame.inverse() * direction)
 	if not _library_grab.dragged:
-		var turned = angles - host._ray_angles(frame.inverse() * _library_grab.start_direction)
+		var turned = angles - host.ray_angles(frame.inverse() * _library_grab.start_direction)
 		turned.x = wrapf(turned.x, -PI, PI)
 		if not host.reclining_mode:
 			turned.y = 0.0
 		if turned.length() < host.GRAB_START:
 			return
 		_library_grab.dragged = true
-	var previous = host._ray_angles(frame.inverse() * _library_grab.last_direction)
+	var previous = host.ray_angles(frame.inverse() * _library_grab.last_direction)
 	_library_grab.last_direction = direction
 	_library_grab.moved = true
-	var pose = Transform3D(frame, host._eye()).affine_inverse() * host.library_menu.global_transform
+	var pose = Transform3D(frame, host.eye()).affine_inverse() * host.library_menu.global_transform
 	var offset = pose.origin
 	var placement = (
-		host._ray_angles(offset)
+		host.ray_angles(offset)
 		+ Vector2(
 			wrapf(angles.x - previous.x, -PI, PI),
 			angles.y - previous.y if host.reclining_mode else 0.0
@@ -767,7 +767,7 @@ func _update_library_grab() -> void:
 			pose.basis * Vector3(0, 0, -Vector2(offset.x, offset.z).length())
 			+ Vector3.UP * offset.y
 		)
-	host.library_menu.global_transform = Transform3D(frame, host._eye()) * pose
+	host.library_menu.global_transform = Transform3D(frame, host.eye()) * pose
 	host.presentation_coordinator._on_menu_placement_changed(host.library_menu)
 
 
@@ -796,13 +796,13 @@ func _update_library_grab_stick(left: Vector2, right: Vector2, delta: float) -> 
 		host.LIBRARY_DISTANCE_LIMITS.x,
 		host.LIBRARY_DISTANCE_LIMITS.y
 	)
-	var offset = host.library_menu.global_position - host._eye()
+	var offset = host.library_menu.global_position - host.eye()
 	if host.reclining_mode:
-		host.library_menu.global_position = host._eye() + offset.normalized() * distance
+		host.library_menu.global_position = host.eye() + offset.normalized() * distance
 	else:
 		var horizontal = Vector3(offset.x, 0, offset.z).normalized()
 		host.library_menu.global_position = (
-			host._eye() + horizontal * distance + Vector3.UP * offset.y
+			host.eye() + horizontal * distance + Vector3.UP * offset.y
 		)
 	host.library_distance = distance
 	_library_grab.moved = true
@@ -818,7 +818,7 @@ func _begin_picture_press(hand: String) -> void:
 	if host.hand_pointers.has(hand) and host.hand_pointers[hand].source == "hand":
 		_begin_grab(hand, "trigger_click")
 	else:
-		host._trigger_taps[hand] = {"uri": host._viewer().local_uri}
+		host.trigger_taps[hand] = {"uri": host.viewer().local_uri}
 
 
 func _update_flat_grab_stick(left: Vector2, right: Vector2, delta: float) -> void:
@@ -839,8 +839,8 @@ func _update_flat_grab_stick(left: Vector2, right: Vector2, delta: float) -> voi
 		signf(held.y) * (absf(held.y) - host.STICK_DEADZONE) / (1.0 - host.STICK_DEADZONE) * delta
 	)
 	_grab.moved = true
-	if host._viewer().geometry != Geometry.Geometry.FLAT:
-		host._viewer().zoom_view(-amount * host.ZOOM_SPEED)
+	if host.viewer().geometry != Geometry.Geometry.FLAT:
+		host.viewer().zoom_view(-amount * host.ZOOM_SPEED)
 	elif _grab.get("action", "") == "grip_click":
 		host.presentation_coordinator._push_screen(amount * host.PUSH_SPEED)
 	else:
@@ -864,7 +864,7 @@ func _update_corner_hover() -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
-	if not host.video or not host._viewer().has_method("corner_at"):
+	if not host.video or not host.viewer().has_method("corner_at"):
 		return
 	var corner = -1
 	if _grab.has("resize"):
@@ -872,7 +872,7 @@ func _update_corner_hover() -> void:
 	elif (
 		_grab.is_empty()
 		and (not host.library_menu.visible)
-		and (not host._viewer().local_uri.is_empty())
+		and (not host.viewer().local_uri.is_empty())
 	):
 		for hand in ["right_hand", "left_hand"]:
 			var ray: Variant = host._ray(hand)
@@ -880,17 +880,17 @@ func _update_corner_hover() -> void:
 				ray != null
 				and not (host.player_menu.visible and host.player_menu._hover.get(hand, -1) != -1)
 			):
-				corner = host._viewer().corner_at(ray[0], ray[1])
+				corner = host.viewer().corner_at(ray[0], ray[1])
 				if corner >= 0:
 					break
-	host._viewer().set_corner_hover(corner)
+	host.viewer().set_corner_hover(corner)
 
 
 func _begin_grab(hand: String, action: String = "grip_click") -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
-	if not host._picture_pinch_allowed(hand):
+	if not host.picture_pinch_allowed(hand):
 		return
 	if not _grab.is_empty():
 		return
@@ -901,7 +901,7 @@ func _begin_grab(hand: String, action: String = "grip_click") -> void:
 		if host.player_menu.visible:
 			host.player_menu.dismiss()
 		return
-	var angles = host._ray_angles(ray[1])
+	var angles = host.ray_angles(ray[1])
 	_grab = {
 		"hand": hand,
 		"action": action,
@@ -913,41 +913,41 @@ func _begin_grab(hand: String, action: String = "grip_click") -> void:
 	}
 	if action == "grip_click":
 		_grab.ray_length = (
-			maxf(.25, ray[0].distance_to(host._viewer().panel.global_position))
-			if host._viewer().geometry == Geometry.Geometry.FLAT
+			maxf(.25, ray[0].distance_to(host.viewer().panel.global_position))
+			if host.viewer().geometry == Geometry.Geometry.FLAT
 			else 2.0
 		)
 		var direction: Vector3 = (
-			(ray[0] + ray[1] * float(_grab.ray_length) - host._eye()).normalized()
+			(ray[0] + ray[1] * float(_grab.ray_length) - host.eye()).normalized()
 		)
-		_grab.start = host._ray_angles(direction)
+		_grab.start = host.ray_angles(direction)
 		_grab.last = _grab.start
 		_grab.start_direction = direction
 		_grab.last_direction = direction
-	var corner: int = host._viewer().corner_at(ray[0], ray[1])
-	var point: Variant = host._viewer().screen_point(ray[0], ray[1]) if corner >= 0 else null
+	var corner: int = host.viewer().corner_at(ray[0], ray[1])
+	var point: Variant = host.viewer().screen_point(ray[0], ray[1]) if corner >= 0 else null
 	if point != null and Vector2(point.x, point.y).length() > 0.05:
 		_grab["resize"] = {
 			"corner": corner,
 			"start_length": Vector2(point.x, point.y).length(),
-			"start_scale": host._viewer().screen_scale
+			"start_scale": host.viewer().screen_scale
 		}
 	# A deliberate screen press leaves the controls before sticks may affect playback.
 	# Remember this on release so a tap does not immediately reopen the controls.
 	if (
-		host._viewer().geometry == Geometry.Geometry.FLAT
-		and host._viewer().panel.visible
+		host.viewer().geometry == Geometry.Geometry.FLAT
+		and host.viewer().panel.visible
 		and host.player_menu.visible
 	):
 		if point == null:
-			point = host._viewer().screen_point(ray[0], ray[1])
+			point = host.viewer().screen_point(ray[0], ray[1])
 		if (
 			point != null
 			and (
 				corner >= 0
 				or (
-					absf(point.x) <= host._viewer()._flat.size.x / 2
-					and absf(point.y) <= host._viewer()._flat.size.y / 2
+					absf(point.x) <= host.viewer()._flat.size.x / 2
+					and absf(point.y) <= host.viewer()._flat.size.y / 2
 				)
 			)
 		):
@@ -970,26 +970,26 @@ func _update_grab() -> void:
 	if (
 		ray == null
 		or not host.video
-		or host._viewer().local_uri.is_empty()
+		or host.viewer().local_uri.is_empty()
 		or host.library_menu.visible
 	):
 		_grab = {}
 		return
 	var direction: Vector3 = ray[1]
 	if _grab.has("ray_length"):
-		direction = (ray[0] + ray[1] * float(_grab.ray_length) - host._eye()).normalized()
-	var angles = host._ray_angles(direction)
+		direction = (ray[0] + ray[1] * float(_grab.ray_length) - host.eye()).normalized()
+	var angles = host.ray_angles(direction)
 	var head: Variant = host.presentation_coordinator._head_pose()
 	var local_drag: bool = (
 		host.view_follow.enabled
-		and host.presentation_coordinator._flat_followable(host._viewer())
+		and host.presentation_coordinator._flat_followable(host.viewer())
 		and head != null
 	)
 	if local_drag:
-		angles = host._ray_angles(head.basis.inverse() * direction)
+		angles = host.ray_angles(head.basis.inverse() * direction)
 	if not _grab.moved:
 		var start_angles: Vector2 = (
-			host._ray_angles(head.basis.inverse() * _grab.start_direction)
+			host.ray_angles(head.basis.inverse() * _grab.start_direction)
 			if local_drag
 			else _grab.start
 		)
@@ -1000,9 +1000,9 @@ func _update_grab() -> void:
 		_grab.moved = true
 	if _grab.has("resize"):
 		# The corner follows the ray: the screen grows or shrinks about its centre.
-		var point: Variant = host._viewer().screen_point(ray[0], ray[1])
+		var point: Variant = host.viewer().screen_point(ray[0], ray[1])
 		if point != null:
-			host._viewer().set_screen_scale(
+			host.viewer().set_screen_scale(
 				(
 					float(_grab.resize.start_scale)
 					* Vector2(point.x, point.y).length()
@@ -1011,7 +1011,7 @@ func _update_grab() -> void:
 			)
 		return
 	var last_angles: Vector2 = (
-		host._ray_angles(head.basis.inverse() * _grab.last_direction) if local_drag else _grab.last
+		host.ray_angles(head.basis.inverse() * _grab.last_direction) if local_drag else _grab.last
 	)
 	var step: Vector2 = angles - last_angles
 	_grab.last = angles

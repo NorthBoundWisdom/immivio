@@ -153,7 +153,7 @@ func close_menu_check(main: Node3D, menu: Node3D, name: String) -> void:
 			not menu.visible and main._active_menu() == null and menu._hover.is_empty(),
 			name + " playback controls still dismiss via controller"
 		)
-	check(main._grab.is_empty(), name + " dismissal cannot start a screen drag")
+	check(main.grab.is_empty(), name + " dismissal cannot start a screen drag")
 	check(
 		(
 			main.view_follow.enabled == state
@@ -238,7 +238,7 @@ func _run() -> void:
 		"Pitch and roll cannot move or tilt a following library"
 	)
 	var menu_local: Transform3D = (
-		Main._upright_pose(main.xr_camera.global_transform).affine_inverse()
+		Main.upright_pose(main.xr_camera.global_transform).affine_inverse()
 		* main.library_menu.global_transform
 	)
 	main.xr_camera.transform = Transform3D(
@@ -248,7 +248,7 @@ func _run() -> void:
 	check(
 		(
 			(
-				Main._upright_pose(main.xr_camera.global_transform).affine_inverse()
+				Main.upright_pose(main.xr_camera.global_transform).affine_inverse()
 				* main.library_menu.global_transform
 			)
 			. is_equal_approx(menu_local)
@@ -328,7 +328,7 @@ func _run() -> void:
 	)
 	footer_check(main.video_menu, "Player bar")
 	var bar_local: Transform3D = (
-		Main._upright_pose(main.xr_camera.global_transform).affine_inverse()
+		Main.upright_pose(main.xr_camera.global_transform).affine_inverse()
 		* main.video_menu.global_transform
 	)
 	for target in [
@@ -343,7 +343,7 @@ func _run() -> void:
 		check(
 			(
 				(
-					Main._upright_pose(main.xr_camera.global_transform).affine_inverse()
+					Main.upright_pose(main.xr_camera.global_transform).affine_inverse()
 					* main.video_menu.global_transform
 				)
 				. is_equal_approx(bar_local)
@@ -354,7 +354,7 @@ func _run() -> void:
 	main.video_menu._activate(main.video_menu.QUICK_CLOSE)
 	main.video_menu._seek_hand = "left_hand"
 	var captured_menu: Transform3D = (
-		Main._upright_pose(main.xr_camera.global_transform).affine_inverse()
+		Main.upright_pose(main.xr_camera.global_transform).affine_inverse()
 		* main.video_menu.global_transform
 	)
 	var captured_screen := placement(main, main.video)
@@ -365,7 +365,7 @@ func _run() -> void:
 		(
 			(
 				(
-					Main._upright_pose(main.xr_camera.global_transform).affine_inverse()
+					Main.upright_pose(main.xr_camera.global_transform).affine_inverse()
 					* main.video_menu.global_transform
 				)
 				. is_equal_approx(captured_menu)

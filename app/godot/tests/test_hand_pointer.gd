@@ -274,7 +274,7 @@ func _run() -> void:
 	frames(main, tracker, center, 0.8)
 	frames(main, tracker, center, 0.1)
 	frames(main, tracker, center, 0.8)
-	check(player.visible and main._grab.is_empty(), "Pinch tap without menu opens player controls")
+	check(player.visible and main.grab.is_empty(), "Pinch tap without menu opens player controls")
 	frames(main, tracker, center, 0.1)
 	frames(main, tracker, center, 0.8)
 	check(not player.visible, "Pinch outside controls hides them")
@@ -409,7 +409,7 @@ func _run() -> void:
 	left_aim.set_input("index_pinch", true)
 	main._update_hand_input(1.0 / 72)
 	check(
-		player.visible and main._grab.is_empty(),
+		player.visible and main.grab.is_empty(),
 		"Left official palm menu pinch opens controls independently of pinch preference without a picture grab"
 	)
 	main._update_hand_input(1.0 / 72)
@@ -422,11 +422,11 @@ func _run() -> void:
 	XRServer.remove_tracker(left_aim)
 	XRServer.remove_tracker(left_optical)
 	main.hand_pointers.erase("left_hand")
-	main._grab = {"hand": "right_hand", "moved": false}
+	main.grab = {"hand": "right_hand", "moved": false}
 	other.ray = null
 	main._on_pointer_release("trigger_click", "right_hand")
 	check(
-		main._grab.is_empty() and not player.visible,
+		main.grab.is_empty() and not player.visible,
 		"Release arriving after tracking loss cancels instead of opening controls"
 	)
 	viewer.free()

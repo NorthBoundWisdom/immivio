@@ -1226,7 +1226,7 @@ func _check_control_sticks(main: Node3D, video: Node3D, menu: Node3D, host: RefC
 	menu._reset_navigation()
 	menu.visible = true
 	menu.refresh()
-	main._menu_touched_ms = Time.get_ticks_msec()
+	main.menu_touched_ms = Time.get_ticks_msec()
 	main._process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
 	main._process_sticks(Vector2(.99, 0), Vector2(-.99, 0), 0.1)
 	check(
@@ -1390,13 +1390,13 @@ func _check_control_sticks(main: Node3D, video: Node3D, menu: Node3D, host: RefC
 	main._process_sticks(Vector2.ZERO, Vector2(.99, 0), 0.1)
 	check(host.calls.size() == calls, "Focus recovery with a held stick waits for center")
 	main._process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
-	main._menu_touched_ms = Time.get_ticks_msec() - main.CONTROLS_HIDE_MS - 1
+	main.menu_touched_ms = Time.get_ticks_msec() - main.CONTROLS_HIDE_MS - 1
 	main._process_sticks(Vector2.ZERO, Vector2(.99, 0), 0.1)
 	check(
 		(
 			menu.visible
 			and menu._elapsed.text == "01:10"
-			and Time.get_ticks_msec() - main._menu_touched_ms < 1000
+			and Time.get_ticks_msec() - main.menu_touched_ms < 1000
 		),
 		"A visible-bar seek refreshes feedback and resets its hide timer"
 	)
@@ -1409,7 +1409,7 @@ func _check_control_sticks(main: Node3D, video: Node3D, menu: Node3D, host: RefC
 	video.control.reject()
 	video.control.observe(50000, 120000)
 	video.requested_play = false
-	main._menu_touched_ms = Time.get_ticks_msec() - main.CONTROLS_HIDE_MS - 1
+	main.menu_touched_ms = Time.get_ticks_msec() - main.CONTROLS_HIDE_MS - 1
 	main._process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
 	check(menu.visible, "Paused video does not hide controls")
 	video.requested_play = true
@@ -1423,11 +1423,11 @@ func _check_control_sticks(main: Node3D, video: Node3D, menu: Node3D, host: RefC
 	main.test_rays.right_hand = [menu.to_global(Vector3(0, 0.025, 0.1)), direction]
 	main._process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
 	check(
-		menu.visible and Time.get_ticks_msec() - main._menu_touched_ms < 1000,
+		menu.visible and Time.get_ticks_msec() - main.menu_touched_ms < 1000,
 		"A real button hover resets the idle timer"
 	)
 	main.test_rays.clear()
-	main._menu_touched_ms = Time.get_ticks_msec() - main.CONTROLS_HIDE_MS - 1
+	main.menu_touched_ms = Time.get_ticks_msec() - main.CONTROLS_HIDE_MS - 1
 	main._process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
 	check(
 		not menu.visible and menu._hover.is_empty(),

@@ -40,9 +40,9 @@ func _run() -> void:
 	for hand in host.hand_pointers:
 		host.hand_pointers[hand].source = "hand"
 		host.hand_pointers[hand].ray = [
-			host._eye(), (host.video.panel.global_position - host._eye()).normalized()
+			host.eye(), (host.video.panel.global_position - host.eye()).normalized()
 		]
-	assert(host.pinch_hand == "right_hand" and not host._picture_pinch_allowed("left_hand"))
+	assert(host.pinch_hand == "right_hand" and not host.picture_pinch_allowed("left_hand"))
 	host._dispatch_hand_input({"left_hand": sample(left, true, true)})
 	host._dispatch_hand_input({"left_hand": sample(left, false, false, true)})
 	assert(not host.video_menu.visible)

@@ -47,7 +47,7 @@ var report_timer: Timer
 var platform_plugin: Object
 var _xr_wearer_present := true
 var _native_wearer_present := true
-var _wearer_present := true
+var wearer_present := true
 var _thumbnail_foreground := true
 var last_request := 0
 var android_report: Dictionary = {}
@@ -60,7 +60,7 @@ var video_queue: Array[Dictionary]:
 		return playback_queue.items
 	set(value):
 		playback_queue.replace(value)
-var _queue_add_mode: bool:
+var queue_add_mode: bool:
 	get:
 		return playback_coordinator._queue_add_mode
 	set(value):
@@ -90,7 +90,7 @@ var library_distance: float:
 		return presentation_coordinator.library_distance
 	set(value):
 		presentation_coordinator.library_distance = value
-var _library_grab: Dictionary:
+var library_grab: Dictionary:
 	get:
 		return input_coordinator._library_grab
 	set(value):
@@ -181,7 +181,7 @@ func _ready() -> void:
 	status_label.pixel_size = 0.003
 	status_label.outline_size = 5
 	add_child(status_label)
-	display.status_changed.connect(_update_status)
+	display.status_changed.connect(update_status)
 	display.status_changed.connect(_on_input_session_changed)
 	display.presence_changed.connect(_on_openxr_presence_changed)
 	settings_controller.load_preferences()
@@ -304,7 +304,7 @@ func _ready() -> void:
 		bool(settings.get_value("library", "file_editing", false))
 	)
 	library_menu.file_renamed.connect(_on_file_renamed)
-	library_menu.current_file_provider = func(): return _viewer().local_uri
+	library_menu.current_file_provider = func(): return viewer().local_uri
 	library_menu.file_delete_preparing.connect(_prepare_file_delete)
 	library_menu.file_deleted.connect(_forget_deleted_file)
 	library_menu.settings_provider = _library_settings
@@ -339,7 +339,7 @@ func _ready() -> void:
 	library_menu.storage_removed.connect(_release_storage_readers)
 	library_menu.player_requested.connect(
 		func():
-			if _queue_add_mode:
+			if queue_add_mode:
 				_queue_action("queue_done")
 			else:
 				presentation_coordinator._show_player_menu(false)
@@ -419,10 +419,10 @@ func _ready() -> void:
 		Log.record("android_plugin_unavailable", {"desktop_preview": desktop})
 	report_timer = Timer.new()
 	report_timer.wait_time = 2.0
-	report_timer.timeout.connect(_save_report)
+	report_timer.timeout.connect(save_report)
 	add_child(report_timer)
 	report_timer.start()
-	_update_status()
+	update_status()
 	if not OS.get_cmdline_user_args().has("--mpv-diagnostic-2d"):
 		_show_library_menu()
 	Log.record(
@@ -524,16 +524,16 @@ func _process(delta: float) -> void:
 	_update_view_follow()
 	_refresh_session_controls()
 	_update_hand_input(delta)
-	if video and is_instance_valid(_viewer().get("panel")):
+	if video and is_instance_valid(viewer().get("panel")):
 		display.set_flat_surface_visible(
-			_viewer().panel.visible and _viewer().geometry == Geometry.Geometry.FLAT
+			viewer().panel.visible and viewer().geometry == Geometry.Geometry.FLAT
 		)
 	if not _head_placed and _head_tracked():
 		_head_placed = true
 		if not view_follow.enabled:
 			_recenter()
-	if video and _viewer().local_uri != _screen_uri:
-		_screen_uri = _viewer().local_uri
+	if video and viewer().local_uri != _screen_uri:
+		_screen_uri = viewer().local_uri
 		if not _screen_uri.is_empty():
 			if screen_layout.fixed():
 				screen_layout.restore()
@@ -565,15 +565,15 @@ func _picture_center_sample() -> Dictionary:
 	if (
 		not head is Transform3D
 		or (
-			_grab.is_empty()
+			grab.is_empty()
 			and (not picture_center_guide or picture_center_guide.identity.is_empty())
 		)
 	):
 		return {}
 	return {
 		"identity": video.local_uri,
-		"hand": str(_grab.get("hand", "")),
-		"held": not _grab.is_empty(),
+		"hand": str(grab.get("hand", "")),
+		"held": not grab.is_empty(),
 		"head": head,
 		"centre": video.panel.to_global(Vector3(0, 0, -video.SPHERE_RADIUS))
 	}
@@ -607,7 +607,7 @@ func _update_hand_input(delta: float) -> void:
 	input_coordinator._update_hand_input(delta)
 
 
-func _picture_pinch_allowed(hand: String) -> bool:
+func picture_pinch_allowed(hand: String) -> bool:
 	return (
 		not (hand_pointers.has(hand) and hand_pointers[hand].source == "hand")
 		or preload("res://scripts/hand_preferences.gd").allows(hand, pinch_hand)
@@ -630,7 +630,7 @@ func _hand_input_report() -> Dictionary:
 	return input_coordinator._hand_input_report()
 
 
-static func _input_pose_tracked(tracker: XRPositionalTracker, pose_name: String) -> bool:
+static func input_pose_tracked(tracker: XRPositionalTracker, pose_name: String) -> bool:
 	if tracker == null or not tracker.has_pose(pose_name):
 		return false
 	var pose := tracker.get_pose(pose_name)
@@ -646,12 +646,12 @@ const PUSH_SPEED := 1.5  # metres per second the held flat screen moves at full 
 const STICK_DEADZONE := 0.2
 ## Grip (or optical pinch) held outside menus: action, hand, ray angles, moved; a press on a
 ## flat screen corner adds resize = {corner, start_length, start_scale}.
-var _grab: Dictionary:
+var grab: Dictionary:
 	get:
 		return input_coordinator._grab
 	set(value):
 		input_coordinator._grab = value
-var _trigger_taps := {}
+var trigger_taps := {}
 
 
 func _update_library_grab() -> void:
@@ -666,9 +666,9 @@ func _update_flat_grab_stick(left: Vector2, right: Vector2, delta: float) -> voi
 	input_coordinator._update_flat_grab_stick(left, right, delta)
 
 
-func _eye() -> Vector3:
-	if is_instance_valid(_viewer().view_camera) and _viewer().view_camera.is_inside_tree():
-		return _viewer().view_camera.global_position
+func eye() -> Vector3:
+	if is_instance_valid(viewer().view_camera) and viewer().view_camera.is_inside_tree():
+		return viewer().view_camera.global_position
 	return Vector3(0, 1.6, 0)
 
 
@@ -690,7 +690,7 @@ func _update_grab() -> void:
 
 
 ## Yaw (positive left) and pitch (positive up) of a direction.
-static func _ray_angles(direction: Vector3) -> Vector2:
+static func ray_angles(direction: Vector3) -> Vector2:
 	var unit := direction.normalized()
 	return Vector2(atan2(-unit.x, -unit.z), asin(clampf(unit.y, -1.0, 1.0)))
 
@@ -721,14 +721,14 @@ func _update_menu_pointer(hand: String, pressed: bool = false) -> bool:
 
 
 const CONTROLS_HIDE_MS := 5000
-var _menu_touched_ms: int:
+var menu_touched_ms: int:
 	get:
 		return presentation_coordinator._menu_touched_ms
 	set(value):
 		presentation_coordinator._menu_touched_ms = value
 
 
-func _viewer() -> Node3D:
+func viewer() -> Node3D:
 	return video
 
 
@@ -752,7 +752,7 @@ func _on_file_renamed(old_uri: String, new_uri: String, title: String) -> void:
 func _prepare_file_delete(uri: String) -> void:
 	if video.local_uri == uri or video.local_uri.begins_with(uri.trim_suffix("/") + "/"):
 		video.close_video()
-	_grab = {}
+	grab = {}
 	stick_controls.suspend()
 
 
@@ -790,7 +790,7 @@ func _release_storage_readers(volume: Dictionary) -> void:
 		func(item): return not StorageVolume.contains_uri(volume, str(item.get("uri", "")))
 	)
 	_save_queue()
-	_grab = {}
+	grab = {}
 	stick_controls.suspend()
 
 
@@ -807,8 +807,8 @@ func _advance_queue(session_id: int, uri: String) -> void:
 
 
 var _screen_uri := ""
-var _player_menu_anchor_key: Array = []
-var _player_menu_anchor_eye := Vector3.ZERO
+var player_menu_anchor_key: Array = []
+var player_menu_anchor_eye := Vector3.ZERO
 
 
 ## Full tracked pose is retained for media follow; reclining menus also use it.
@@ -818,7 +818,7 @@ func _head_pose() -> Variant:
 
 ## Menus use world up and the horizontal head direction. Looking straight up or
 ## down uses the head's right axis to avoid an undefined horizontal forward.
-static func _upright_pose(head: Transform3D) -> Transform3D:
+static func upright_pose(head: Transform3D) -> Transform3D:
 	return MediaSurface.upright_pose(head)
 
 
@@ -914,7 +914,7 @@ func _apply_stick_actions(actions: Array[Dictionary], delta: float = 1.0 / 72.0)
 	input_coordinator._apply_stick_actions(actions, delta)
 
 
-func _capture_last_video_mode() -> void:
+func capture_last_video_mode() -> void:
 	if (
 		not video
 		or not video.reuse_last_mode
@@ -936,7 +936,7 @@ func _capture_last_video_mode() -> void:
 
 
 func _on_video_changed() -> void:
-	_capture_last_video_mode()
+	capture_last_video_mode()
 	playback_coordinator._on_video_changed()
 
 
@@ -944,7 +944,7 @@ func _on_video_thumbnail_ready(_uri: String) -> void:
 	playback_coordinator._on_video_thumbnail_ready(_uri)
 
 
-var _thumbnail_history_sequence := -1
+var thumbnail_history_sequence := -1
 
 
 func _update_thumbnail_protection() -> void:
@@ -994,7 +994,7 @@ func _on_capabilities_ready(request_id: int, json_report: String) -> void:
 		Log.record("capability_probe_completed", {"request_id": request_id})
 	else:
 		Log.record("capability_probe_invalid", {"request_id": request_id})
-	_save_report()
+	save_report()
 
 
 func _on_openxr_presence_changed(present: bool) -> void:
@@ -1012,10 +1012,10 @@ func _on_native_presence_changed(present: bool, source: String) -> void:
 
 func _apply_wearer_presence() -> void:
 	var present := _xr_wearer_present and _native_wearer_present
-	if present == _wearer_present:
+	if present == wearer_present:
 		_update_local_thumbnail_activity()
 		return
-	_wearer_present = present
+	wearer_present = present
 	_update_local_thumbnail_activity()
 	_queue_end_key = ""
 	if video and video.media.accepts(video.media.session_id):
@@ -1037,7 +1037,7 @@ func _apply_wearer_presence() -> void:
 func _update_local_thumbnail_activity() -> void:
 	if library_menu:
 		library_menu.local_thumbnails.set_suspended(
-			library_menu, not (_wearer_present and _thumbnail_foreground)
+			library_menu, not (wearer_present and _thumbnail_foreground)
 		)
 
 
@@ -1052,7 +1052,7 @@ func _on_android_lifecycle(event: String) -> void:
 		video.checkpoint_playback()
 
 
-func _save_report() -> void:
+func save_report() -> void:
 	var report := {
 		"schema_version": 1,
 		"app_version": ProjectSettings.get_setting("application/config/version"),
@@ -1079,10 +1079,10 @@ func _save_report() -> void:
 		var saved_path: String = platform_plugin.save_capability_report(encoded)
 		if saved_path.begins_with("ERROR:"):
 			Log.record("capability_report_save_failed", {"reason": saved_path})
-	_update_status()
+	update_status()
 
 
-func _update_status() -> void:
+func update_status() -> void:
 	if not status_label:
 		return
 	var mode := "Passthrough" if display.applied_passthrough else "Opaque"

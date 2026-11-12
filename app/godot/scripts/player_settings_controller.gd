@@ -187,7 +187,7 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 				return
 			host.video.reuse_last_mode = value
 			host.settings.set_value("video", "reuse_last_mode", value)
-			host._capture_last_video_mode()
+			host.capture_last_video_mode()
 			host.settings.save(host.settings_path)
 		"history":
 			host.library_menu.remember_browse()
@@ -272,7 +272,7 @@ func _on_playback_adjustment(key: String, value: Variant) -> void:
 		host.presentation_coordinator._push_screen(
 			(
 				clampf(float(value), host.video.DISTANCE_LIMITS.x, host.video.DISTANCE_LIMITS.y)
-				- host.video.panel.global_position.distance_to(host._eye())
+				- host.video.panel.global_position.distance_to(host.eye())
 			)
 		)
 		return

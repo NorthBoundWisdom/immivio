@@ -26,7 +26,7 @@ func _initialize() -> void:
 
 
 func ray_to(host: Node3D, point: Vector3, curved: bool) -> Array:
-	var origin: Vector3 = host._eye() + Vector3(.10, .04, .20)
+	var origin: Vector3 = host.eye() + Vector3(.10, .04, .20)
 	var physical := point
 	if curved:
 		var surface: Node3D = host.menu_compositor
@@ -91,7 +91,7 @@ func _run() -> void:
 			host._on_pointer_button("trigger_click", "right_hand")
 			host._on_pointer_release("trigger_click", "right_hand")
 			check(
-				menu.visible and host._trigger_taps.is_empty() and host._grab.is_empty(),
+				menu.visible and host.trigger_taps.is_empty() and host.grab.is_empty(),
 				"Header press does not click through or dismiss controls: " + name
 			)
 	# Rounded transparent corners and gaps outside the header remain non-surfaces.

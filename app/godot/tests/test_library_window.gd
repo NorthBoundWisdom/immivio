@@ -86,7 +86,7 @@ func _run() -> void:
 		main.menu_compositor._process(0)
 		var centre: Vector2 = library.capture_envelope().get_center()
 		var viewing_distance := library.to_global(Vector3(centre.x, centre.y, 0)).distance_to(
-			main._eye()
+			main.eye()
 		)
 		check(
 			is_equal_approx(library.curve_radius, viewing_distance),
@@ -122,11 +122,11 @@ func _run() -> void:
 	main._place_menu(library)
 	main.menu_compositor._process(0)
 	var pose: Transform3D = library.global_transform
-	var origin: Vector3 = main._eye() + Vector3(.2, -.2, -.3)
+	var origin: Vector3 = main.eye() + Vector3(.2, -.2, -.3)
 	main.test_ray = [origin, (library.global_position - origin).normalized()]
 	main._on_pointer_button("grip_click", "right_hand")
 	check(
-		not main._library_grab.is_empty() and main._grab.is_empty(),
+		not main.library_grab.is_empty() and main.grab.is_empty(),
 		"Grip can own the library without an open video"
 	)
 	main.test_ray[0] = origin + Vector3.FORWARD * .35
@@ -151,7 +151,7 @@ func _run() -> void:
 		"Upright library ignores vertical grip movement"
 	)
 	main._on_pointer_release("grip_click", "left_hand")
-	check(not main._library_grab.is_empty(), "Other hand cannot release the library")
+	check(not main.library_grab.is_empty(), "Other hand cannot release the library")
 	main._update_library_grab_stick(Vector2(0, 1), Vector2.ZERO, .2)
 	check(
 		is_equal_approx(main.library_distance, 1.4), "Other hand's stick cannot move held library"
@@ -171,7 +171,7 @@ func _run() -> void:
 	)
 	main._on_pointer_release("grip_click", "right_hand")
 	check(
-		main._library_grab.is_empty() and library.visible and not main.video_menu.visible,
+		main.library_grab.is_empty() and library.visible and not main.video_menu.visible,
 		"Release retains library without opening playback controls"
 	)
 	settings.load(main.settings_path)
@@ -183,14 +183,14 @@ func _run() -> void:
 	var ring_centre: Vector2 = library.capture_envelope().get_center()
 	check(
 		is_equal_approx(
-			library.to_global(Vector3(ring_centre.x, ring_centre.y, 0)).distance_to(main._eye()),
+			library.to_global(Vector3(ring_centre.x, ring_centre.y, 0)).distance_to(main.eye()),
 			Vector2(1.5, main.presentation_coordinator.window_height).length()
 		),
 		"Reopened library visual centre uses remembered ring distance"
 	)
 	main.reclining_mode = true
 	main._place_menu(library)
-	main.test_ray = [main._eye(), (library.global_position - main._eye()).normalized()]
+	main.test_ray = [main.eye(), (library.global_position - main.eye()).normalized()]
 	main._on_pointer_button("grip_click", "right_hand")
 	var reclining_position: Vector3 = library.global_position
 	main.test_ray[0] += Vector3.UP * .35
@@ -205,20 +205,20 @@ func _run() -> void:
 	main._on_pointer_release("grip_click", "right_hand")
 	main.reclining_mode = false
 	main._place_menu(library)
-	origin = main._eye()
+	origin = main.eye()
 	main.test_ray = [origin, (library.global_position - origin).normalized()]
 	main._on_pointer_button("grip_click", "left_hand")
 	main.test_ray = null
 	main._update_library_grab()
-	check(main._library_grab.is_empty(), "Tracking loss cancels library drag")
+	check(main.library_grab.is_empty(), "Tracking loss cancels library drag")
 	main.test_ray = [origin, (library.global_position - origin).normalized()]
 	library._drag = {"hand": "right_hand"}
 	main._on_pointer_button("grip_click", "left_hand")
-	check(main._library_grab.is_empty(), "Grip cannot steal a captured row/scroll drag")
+	check(main.library_grab.is_empty(), "Grip cannot steal a captured row/scroll drag")
 	library._drag.clear()
 	main._on_pointer_button("grip_click", "left_hand")
 	main._cancel_pointer("left_hand")
-	check(main._library_grab.is_empty(), "Input session cancellation releases library ownership")
+	check(main.library_grab.is_empty(), "Input session cancellation releases library ownership")
 	main.video.open_local("file:///Movies/13.mp4", "Video 13")
 	main._show_player_menu()
 	main.menu_compositor._process(0)

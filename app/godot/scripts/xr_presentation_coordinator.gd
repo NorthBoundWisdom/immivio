@@ -76,8 +76,8 @@ func _on_system_recentered() -> void:
 	if _system_recenter_pending or repeated:
 		return
 	Log.record("system_recentered", {"runtime": "pico" if _runtime_is_pico else "openxr"})
-	host._library_grab.clear()
-	host._grab.clear()
+	host.library_grab.clear()
+	host.grab.clear()
 	host.stick_controls.suspend()
 	_system_recenter_pending = true
 	_apply_system_recenter(true)
@@ -106,39 +106,39 @@ func _turn_picture(yaw: float, pitch: float) -> void:
 		return
 	if is_zero_approx(yaw) and is_zero_approx(pitch):
 		return
-	if host._viewer().geometry != Geometry.Geometry.FLAT:
-		host._viewer().turn_view(yaw, pitch)
+	if host.viewer().geometry != Geometry.Geometry.FLAT:
+		host.viewer().turn_view(yaw, pitch)
 		return
 	var head: Variant = _head_pose()
-	if host.view_follow.enabled and _flat_followable(host._viewer()) and head != null:
+	if host.view_follow.enabled and _flat_followable(host.viewer()) and head != null:
 		var local: Transform3D = (
-			head.affine_inverse() * (host._viewer().global_transform * host._viewer().flat_pose)
+			head.affine_inverse() * (host.viewer().global_transform * host.viewer().flat_pose)
 		)
 		var offset = local.origin
 		if offset.length() < 0.1:
 			return
-		var angles = host._ray_angles(offset) + Vector2(yaw, pitch)
+		var angles = host.ray_angles(offset) + Vector2(yaw, pitch)
 		var direction = (
 			(Basis(Vector3.UP, angles.x) * Basis(Vector3.RIGHT, clampf(angles.y, -1.5, 1.5)))
 			* Vector3.FORWARD
 		)
 		local.basis = Basis(Quaternion(offset.normalized(), direction)) * local.basis
 		local.origin = direction * offset.length()
-		host._viewer().set_flat_world_pose(head * local)
-		_capture_follow_screen(host._viewer(), head)
+		host.viewer().set_flat_world_pose(head * local)
+		_capture_follow_screen(host.viewer(), head)
 		return
-	var eye = host._eye()
-	var offset: Vector3 = host._viewer().panel.global_position - eye
+	var eye = host.eye()
+	var offset: Vector3 = host.viewer().panel.global_position - eye
 	var distance = offset.length()
 	if distance < 0.1:
 		return
-	var angles = host._ray_angles(offset) + Vector2(yaw, pitch)
+	var angles = host.ray_angles(offset) + Vector2(yaw, pitch)
 	var facing = Basis(Vector3.UP, angles.x) * Basis(Vector3.RIGHT, clampf(angles.y, -1.3, 1.3))
-	host._viewer().flat_pose = (
-		host._viewer().global_transform.affine_inverse()
+	host.viewer().flat_pose = (
+		host.viewer().global_transform.affine_inverse()
 		* Transform3D(facing, eye + facing * Vector3(0, 0, -distance))
 	)
-	host._viewer()._apply_geometry()
+	host.viewer()._apply_geometry()
 
 
 func _push_screen(amount: float) -> void:
@@ -147,18 +147,18 @@ func _push_screen(amount: float) -> void:
 		return
 	if host.view_follow.enabled and _head_pose() == null:
 		return
-	var eye = host._eye()
-	var offset: Vector3 = host._viewer().panel.global_position - eye
+	var eye = host.eye()
+	var offset: Vector3 = host.viewer().panel.global_position - eye
 	if offset.length() < 0.1:
 		return
-	host._viewer().set_screen_distance(offset.length() + amount)
+	host.viewer().set_screen_distance(offset.length() + amount)
 	var pose = Transform3D(
-		host._viewer().subtitle_transform().basis,
-		eye + offset.normalized() * host._viewer().screen_distance
+		host.viewer().subtitle_transform().basis,
+		eye + offset.normalized() * host.viewer().screen_distance
 	)
-	host._viewer().flat_pose = host._viewer().global_transform.affine_inverse() * pose
-	host._viewer()._apply_geometry()
-	_capture_follow_screen(host._viewer(), _head_pose())
+	host.viewer().flat_pose = host.viewer().global_transform.affine_inverse() * pose
+	host.viewer()._apply_geometry()
+	_capture_follow_screen(host.viewer(), _head_pose())
 
 
 func _save_screen() -> void:
@@ -172,13 +172,13 @@ func _reset_picture() -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
-	host._viewer().reset_view()
-	host._viewer().set_screen_scale(1.0)
-	var offset: Vector3 = host._viewer().panel.global_position - host._eye()
+	host.viewer().reset_view()
+	host.viewer().set_screen_scale(1.0)
+	var offset: Vector3 = host.viewer().panel.global_position - host.eye()
 	var distance: float = host.video.SCREEN_DISTANCE
-	if host._viewer().geometry == Geometry.Geometry.FLAT and offset.length() >= 0.1:
+	if host.viewer().geometry == Geometry.Geometry.FLAT and offset.length() >= 0.1:
 		_push_screen(distance - offset.length())
-	host._viewer().set_screen_distance(distance)
+	host.viewer().set_screen_distance(distance)
 	_save_screen()
 
 
@@ -230,7 +230,7 @@ func _canvas_menu_anchor_key() -> Array:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return []
-	var viewer = host._viewer()
+	var viewer = host.viewer()
 	# Content owns placement. Head pitch/roll/yaw must not rotate idle controls.
 	# Immersive translation is handled separately; capture freezes the plane.
 	var pose: Variant = (
@@ -258,7 +258,7 @@ func _head_pose() -> Variant:
 		return null
 	var camera: Camera3D = host.xr_camera
 	if not is_instance_valid(camera) and host.video:
-		camera = host._viewer().view_camera
+		camera = host.viewer().view_camera
 	if not is_instance_valid(camera) or not camera.is_inside_tree():
 		return null
 	if not host.display.preview and not host._head_tracked():
@@ -273,7 +273,7 @@ func _menu_head_pose(head: Transform3D) -> Transform3D:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return Transform3D.IDENTITY
-	return head if host.reclining_mode else host._upright_pose(head)
+	return head if host.reclining_mode else host.upright_pose(head)
 
 
 func _view_pose(distance: float, drop: float) -> Variant:
@@ -294,15 +294,15 @@ func _place_screen(recenter: bool = false) -> void:
 	if recenter:
 		host.screen_layout.restore()
 		host.video._apply_geometry()
-	var pose: Variant = _view_pose(host._viewer().screen_distance, 0.0)
+	var pose: Variant = _view_pose(host.viewer().screen_distance, 0.0)
 	if pose != null and host.video.geometry == 0:
 		pose.origin += pose.basis.y * host.video._flat.size.y * (0.5 - host.video.screen_eye_level)
-	if host.view_follow.enabled and _flat_followable(host._viewer()) and head != null:
-		pose = _follow_screen_pose(host._viewer(), head, recenter)
+	if host.view_follow.enabled and _flat_followable(host.viewer()) and head != null:
+		pose = _follow_screen_pose(host.viewer(), head, recenter)
 	if pose != null:
-		host._viewer().set_flat_world_pose(pose)
-		if host._viewer().geometry == Geometry.Geometry.FLAT:
-			host._viewer()._apply_geometry()
+		host.viewer().set_flat_world_pose(pose)
+		if host.viewer().geometry == Geometry.Geometry.FLAT:
+			host.viewer()._apply_geometry()
 
 
 func _flat_followable(surface: Node3D) -> bool:
@@ -370,14 +370,14 @@ func _update_view_follow() -> void:
 		if menu == host.library_menu and menu.playback_browser and host.video_menu.visible:
 			continue
 		# Immersive controls belong to the reset/content sphere, even in follow mode.
-		if menu == host.player_menu and host._viewer().geometry != Geometry.Geometry.FLAT:
+		if menu == host.player_menu and host.viewer().geometry != Geometry.Geometry.FLAT:
 			continue
 		var pose: Variant = host.view_follow.pose(_menu_key(menu), menu_head)
 		if pose == null:
 			host.view_follow.capture(_menu_key(menu), menu_head, menu.global_transform)
 		else:
 			menu.global_transform = pose
-	var surface = host._viewer() if host.video else null
+	var surface = host.viewer() if host.video else null
 	if surface and _flat_followable(surface) and not surface.local_uri.is_empty():
 		surface.set_flat_world_pose(_follow_screen_pose(surface, head))
 	_sync_playback_browser()
@@ -417,25 +417,25 @@ func _place_menu(menu: Node3D) -> void:
 	var ui_scale = PlayerMenu.PANEL_SCALE if menu is PlayerMenu else Vector3.ONE
 	if (
 		menu == host.player_menu
-		and not host._viewer().local_uri.is_empty()
-		and is_instance_valid(host._viewer().get("panel"))
-		and host._viewer().panel.visible
+		and not host.viewer().local_uri.is_empty()
+		and is_instance_valid(host.viewer().get("panel"))
+		and host.viewer().panel.visible
 	):
 		host.player_menu.lift_panels = true
 		host.player_menu.panel_lift = PlayerMenu.BAR_SEEK_Y
 		host.player_menu.max_ray_metres = MediaSurface.DISTANCE_LIMITS.y + 1.0
 		var pose: Transform3D
-		var eye = host._eye()
-		if host._viewer().geometry == Geometry.Geometry.FLAT:
+		var eye = host.eye()
+		if host.viewer().geometry == Geometry.Geometry.FLAT:
 			if menu is PlayerMenu:
 				# Lower the transport bar while keeping expanded panels centred.
 				host.player_menu.panel_lift += PlayerMenu.EXTRA_DROP / ui_scale.y
-			pose = host._viewer().subtitle_transform()
+			pose = host.viewer().subtitle_transform()
 			var toward_eye = eye - pose.origin
 			var facing = pose.basis.orthonormalized()
 			if not host.reclining_mode:
 				var horizontal = Vector3(toward_eye.x, 0, toward_eye.z)
-				facing = host._upright_pose(head).basis if head != null else Basis.IDENTITY
+				facing = host.upright_pose(head).basis if head != null else Basis.IDENTITY
 				if horizontal.length_squared() > .0001:
 					facing = Basis.looking_at(-horizontal.normalized(), Vector3.UP)
 			if toward_eye.length() > 0.1:
@@ -459,7 +459,7 @@ func _place_menu(menu: Node3D) -> void:
 			pose.basis = facing
 		else:
 			# Use the reset/content gaze, including pitch, but never later head tilt.
-			pose = Transform3D(host._viewer().subtitle_transform().basis.orthonormalized(), eye)
+			pose = Transform3D(host.viewer().subtitle_transform().basis.orthonormalized(), eye)
 			var distance: float = PlayerMenu.IMMERSIVE_DISTANCE if menu is PlayerMenu else 1.4
 			var drop: float = PlayerMenu.IMMERSIVE_DROP if menu is PlayerMenu else 0.28
 			pose.origin += pose.basis * Vector3(0, -drop, -distance)
@@ -470,8 +470,8 @@ func _place_menu(menu: Node3D) -> void:
 		menu.global_transform = _window_pose(
 			pose * Transform3D(Basis.IDENTITY, Vector3(0, bar_offset, 0))
 		)
-		host._player_menu_anchor_key = _canvas_menu_anchor_key()
-		host._player_menu_anchor_eye = eye
+		host.player_menu_anchor_key = _canvas_menu_anchor_key()
+		host.player_menu_anchor_eye = eye
 		if head != null:
 			host.view_follow.capture(_menu_key(menu), _menu_head_pose(head), menu.global_transform)
 		return
@@ -490,7 +490,7 @@ func _place_menu(menu: Node3D) -> void:
 		# Centre the complete browser on its viewing ring before the height offset.
 		# Pitch/roll affect orientation in reclining mode, never placement radius.
 		var centre: Vector2 = menu.capture_envelope().get_center()
-		var horizontal: Basis = host._upright_pose(head).basis
+		var horizontal: Basis = host.upright_pose(head).basis
 		pose = Transform3D(_menu_head_pose(head).basis, head.origin - horizontal.z * distance)
 		pose.origin -= pose.basis * Vector3(centre.x, centre.y, 0)
 	if pose == null:
@@ -546,7 +546,7 @@ func _update_player_menu_anchor() -> void:
 	if _system_recenter_pending:
 		return
 	# Explicit head-follow owns menu placement, including captured interactions.
-	if host.view_follow.enabled and host._viewer().geometry == Geometry.Geometry.FLAT:
+	if host.view_follow.enabled and host.viewer().geometry == Geometry.Geometry.FLAT:
 		return
 	# Keep controls attached when projection/distance/content changes. Freeze
 	# the plane during a captured slider drag so its target cannot move away.
@@ -555,16 +555,16 @@ func _update_player_menu_anchor() -> void:
 		and host.player_menu.visible
 		and not host.player_menu.has_pointer_capture()
 		and not (host.library_menu.visible and host.library_menu.has_pointer_capture())
-		and not host._viewer().local_uri.is_empty()
-		and is_instance_valid(host._viewer().get("panel"))
-		and host._viewer().panel.visible
+		and not host.viewer().local_uri.is_empty()
+		and is_instance_valid(host.viewer().get("panel"))
+		and host.viewer().panel.visible
 	):
-		if _canvas_menu_anchor_key() != host._player_menu_anchor_key:
+		if _canvas_menu_anchor_key() != host.player_menu_anchor_key:
 			_place_menu(host.player_menu)
-		elif host._viewer().geometry != Geometry.Geometry.FLAT:
-			var eye = host._eye()
-			host.player_menu.global_position += eye - host._player_menu_anchor_eye
-			host._player_menu_anchor_eye = eye
+		elif host.viewer().geometry != Geometry.Geometry.FLAT:
+			var eye = host.eye()
+			host.player_menu.global_position += eye - host.player_menu_anchor_eye
+			host.player_menu_anchor_eye = eye
 	_sync_playback_browser()
 
 
@@ -582,7 +582,7 @@ func _toggle_player_menu() -> void:
 		and host.library_menu.get("allow_user_dismiss") == false
 	):
 		return
-	host._trigger_taps.clear()
+	host.trigger_taps.clear()
 	if host.player_menu and host.player_menu.visible:
 		host.player_menu.dismiss()
 	else:
@@ -613,11 +613,11 @@ func _show_player_menu(reanchor: bool = true) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
-	host._library_grab.clear()
-	host._queue_add_mode = false
+	host.library_grab.clear()
+	host.queue_add_mode = false
 	if host.library_menu is LibraryMenu:
 		host.library_menu.queue_add_mode = false
-	host._trigger_taps.clear()
+	host.trigger_taps.clear()
 	if host.library_menu:
 		host.library_menu.dismiss()
 	if _defer_video_controls():
@@ -637,7 +637,7 @@ func _show_library_menu(preserve_navigation: bool = false) -> void:
 	if not is_instance_valid(host):
 		return
 	_pending_video_controls_session = 0
-	host._trigger_taps.clear()
+	host.trigger_taps.clear()
 	var playing: bool = not host.video.local_uri.is_empty()
 	# Closing the video from the switcher turns it back into the full library in front.
 	var leaves_switcher: bool = (
@@ -676,15 +676,15 @@ func _canvas_controls_snapshot() -> Dictionary:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return {}
-	var viewer = host._viewer()
+	var viewer = host.viewer()
 	if not viewer or not is_instance_valid(viewer.get("panel")) or not host.player_menu:
 		return {}
 	var centre: Vector3 = viewer.panel.global_position
 	var normal: Vector3 = viewer.subtitle_transform().basis.z
 	var timeline: Vector3 = host.player_menu.to_global(Vector3(0, PlayerMenu.BAR_SEEK_Y, 0))
-	var toward_eye = (host._eye() - timeline).normalized()
+	var toward_eye = (host.eye() - timeline).normalized()
 	var content_offset: Vector3 = (
-		viewer.subtitle_transform().basis.orthonormalized().inverse() * (timeline - host._eye())
+		viewer.subtitle_transform().basis.orthonormalized().inverse() * (timeline - host.eye())
 	)
 	var view_normal: Vector3 = (
 		viewer.view_camera.global_basis.z.normalized()
@@ -694,7 +694,7 @@ func _canvas_controls_snapshot() -> Dictionary:
 	return {
 		"grab_action": "grip_click",
 		"controls_action": "trigger_click",
-		"grab_hand": str(host._grab.get("hand", "")),
+		"grab_hand": str(host.grab.get("hand", "")),
 		"menu_visible": host.player_menu.visible,
 		"canvas_origin": [centre.x, centre.y, centre.z],
 		"canvas_normal": [normal.x, normal.y, normal.z],
@@ -845,7 +845,7 @@ func _toggle_display() -> void:
 	else:
 		host.background.select("dark" if host.background.choice == "passthrough" else "passthrough")
 		host.settings_controller._save_background()
-	host._save_report()
+	host.save_report()
 
 
 func _on_background_changed() -> void:
@@ -995,8 +995,8 @@ func _on_session_control(operation: String) -> void:
 	elif operation == "follow":
 		_update_view_follow()
 		host.view_follow.set_enabled(not host.view_follow.enabled)
-		host._library_grab.clear()
-		host._grab.clear()
+		host.library_grab.clear()
+		host.grab.clear()
 		host.stick_controls.suspend()
 		var head: Variant = _head_pose()
 		if host.view_follow.enabled and head != null:
@@ -1005,7 +1005,7 @@ func _on_session_control(operation: String) -> void:
 					host.view_follow.capture(
 						_menu_key(menu), _menu_head_pose(head), menu.global_transform
 					)
-			var surface = host._viewer()
+			var surface = host.viewer()
 			if _flat_followable(surface) and not surface.local_uri.is_empty():
 				var local: Vector3 = (
 					head.affine_inverse() * (surface.global_transform * surface.flat_pose).origin
@@ -1027,13 +1027,13 @@ func _recenter() -> void:
 	if not is_instance_valid(host):
 		return
 	_system_recenter_pending = false
-	host._library_grab.clear()
-	host._grab.clear()
+	host.library_grab.clear()
+	host.grab.clear()
 	host.input_coordinator.immersive.suspend()
-	if not host._viewer().local_uri.is_empty():
+	if not host.viewer().local_uri.is_empty():
 		_place_screen(true)
-		if host._viewer().geometry != Geometry.Geometry.FLAT:
-			host._viewer().reset_view()
+		if host.viewer().geometry != Geometry.Geometry.FLAT:
+			host.viewer().reset_view()
 			host.video.reset_immersive_adjustments()
 	for menu in [host.player_menu, host.library_menu]:
 		if menu and menu.visible:

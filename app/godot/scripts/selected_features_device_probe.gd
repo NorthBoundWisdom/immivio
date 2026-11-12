@@ -9,13 +9,13 @@ func check(value: bool, title: String, details: Variant = null) -> void:
 
 
 func settle(host: Node, seconds: float = 0.4) -> void:
-	host._menu_touched_ms = Time.get_ticks_msec()
+	host.menu_touched_ms = Time.get_ticks_msec()
 	await host.get_tree().create_timer(seconds).timeout
 
 
 func presented(menu: Node3D) -> bool:
 	for i in 120:
-		menu.get_parent()._menu_touched_ms = Time.get_ticks_msec()
+		menu.get_parent().menu_touched_ms = Time.get_ticks_msec()
 		if (
 			not menu.xr_surface
 			or not menu.xr_surface.native_supported
@@ -90,7 +90,7 @@ func held_choice_tap(menu: Node3D, target: int) -> bool:
 			return false
 		for frame in 4:
 			await menu.get_tree().process_frame
-			menu.get_parent()._menu_touched_ms = Time.get_ticks_msec()
+			menu.get_parent().menu_touched_ms = Time.get_ticks_msec()
 			menu.update_pointer("diagnostic_choice", origin, direction, true)
 		var valid: bool = (
 			not menu.choices.capture.is_empty() and not menu.choices.capture.get("moved", false)

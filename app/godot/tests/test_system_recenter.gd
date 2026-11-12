@@ -82,7 +82,7 @@ func _run() -> void:
 						"Home retains the fixed viewing ring plus configured window height"
 					)
 					check(
-						offset.normalized().is_equal_approx(-Main._upright_pose(pose).basis.z),
+						offset.normalized().is_equal_approx(-Main.upright_pose(pose).basis.z),
 						"Ring direction follows horizontal gaze only"
 					)
 					var fixed := menu.global_transform

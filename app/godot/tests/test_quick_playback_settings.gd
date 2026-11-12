@@ -117,7 +117,7 @@ func _run() -> void:
 		"Speed opens a small popup on the playback page and suspends stick shortcuts"
 	)
 	menu._hover.clear()
-	main._menu_touched_ms = Time.get_ticks_msec() - main.CONTROLS_HIDE_MS - 1
+	main.menu_touched_ms = Time.get_ticks_msec() - main.CONTROLS_HIDE_MS - 1
 	main._update_controls_visibility(menu)
 	check(menu.visible, "Quick settings remain visible after the ordinary playback idle timeout")
 	check(

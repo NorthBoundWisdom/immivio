@@ -73,7 +73,7 @@ func _run() -> void:
 	host.player_menu.visible = true
 	host.video.requested_play = true
 	host.video.media.state = "playing"
-	host._menu_touched_ms = Time.get_ticks_msec() - host.CONTROLS_HIDE_MS - 100
+	host.menu_touched_ms = Time.get_ticks_msec() - host.CONTROLS_HIDE_MS - 100
 	host._show_player_menu()
 	host.input_coordinator._update_controls_visibility(host.player_menu)
 	check(

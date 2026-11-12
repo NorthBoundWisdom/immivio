@@ -25,7 +25,7 @@ func open_external(value: Dictionary) -> void:
 		return
 	host.library_menu.dismiss()
 	host.player_menu.dismiss()
-	host._grab = {}
+	host.grab = {}
 	host.stick_controls.suspend()
 	host.player_menu = host.video_menu
 	if host.video.open_library(uri, str(value.get("title", "Video"))):
@@ -59,7 +59,7 @@ func _on_library_chosen(uri: String, title: String) -> void:
 	host.library_menu.dismiss()
 	if host.player_menu:
 		host.player_menu.dismiss()
-	host._grab = {}
+	host.grab = {}
 	host.stick_controls.suspend()
 	host.player_menu = host.video_menu
 	host.playback_queue.anchor = uri
@@ -105,9 +105,9 @@ func _navigate_video(direction: int) -> void:
 	var item = _adjacent_video(direction)
 	if item.is_empty():
 		return
-	host._grab = {}
+	host.grab = {}
 	host.stick_controls.suspend()
-	host._menu_touched_ms = Time.get_ticks_msec()
+	host.menu_touched_ms = Time.get_ticks_msec()
 	host.video.open_library(str(item.uri), str(item.title), item.get("metadata", {}))
 	if host.player_menu and host.player_menu.visible:
 		host.player_menu.refresh()
@@ -180,7 +180,7 @@ func _advance_queue(session_id: int, uri: String) -> void:
 	if not is_instance_valid(host):
 		return
 	if (
-		not host._wearer_present
+		not host.wearer_present
 		or host.video.media.session_id != session_id
 		or host.video.local_uri != uri
 		or (not host.video.completed_presentation())
@@ -211,7 +211,7 @@ func _on_video_changed() -> void:
 	if host.video.media.state != "ended":
 		_queue_end_key = ""
 	elif (
-		host._wearer_present and not host.video.loop_enabled and host.video.completed_presentation()
+		host.wearer_present and not host.video.loop_enabled and host.video.completed_presentation()
 	):
 		var key = (
 			"%s/%s/%s"
@@ -228,7 +228,7 @@ func _on_video_changed() -> void:
 			)
 	_update_thumbnail_protection()
 	host.presentation_coordinator._update_background()
-	host._update_status()
+	host.update_status()
 	if host.player_menu and host.player_menu.visible:
 		if not host.library_menu.visible and host.presentation_coordinator._defer_video_controls():
 			return
@@ -247,9 +247,9 @@ func _update_thumbnail_protection() -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
-	if not host.video or host._thumbnail_history_sequence == host.video.recent_files.sequence:
+	if not host.video or host.thumbnail_history_sequence == host.video.recent_files.sequence:
 		return
-	host._thumbnail_history_sequence = host.video.recent_files.sequence
+	host.thumbnail_history_sequence = host.video.recent_files.sequence
 	ThumbnailCache.protect_keys(
 		host.video.recent_files.list_recent().map(func(e): return str(e.uri))
 	)
@@ -292,8 +292,8 @@ func _on_menu_action(operation: String) -> void:
 		"next_video":
 			_navigate_video(1)
 		"stop":
-			host._grab.clear()
-			host._trigger_taps.clear()
+			host.grab.clear()
+			host.trigger_taps.clear()
 			host.stick_controls.suspend()
 			host.video.close_video()
 			host.presentation_coordinator._show_library_menu(true)
@@ -384,7 +384,7 @@ func _on_bookmark_request(operation: String, marker_id: String, scope: String) -
 		return
 	if operation not in ["seek", "delete", "undo"]:
 		return
-	host._menu_touched_ms = Time.get_ticks_msec()
+	host.menu_touched_ms = Time.get_ticks_msec()
 	var message: String = host.video.bookmark_action(operation, marker_id, scope)
 	if not message.is_empty():
 		host.player_menu.bookmarks.notify(I18n.t(message))

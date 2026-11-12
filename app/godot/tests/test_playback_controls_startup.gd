@@ -67,7 +67,7 @@ func _run() -> void:
 			host.playback_feedback.visible and not host.playback_feedback.message.is_empty(),
 			"Loading keeps status feedback without a provisional control bar"
 		)
-		host._menu_touched_ms = Time.get_ticks_msec() - host.CONTROLS_HIDE_MS - 100
+		host.menu_touched_ms = Time.get_ticks_msec() - host.CONTROLS_HIDE_MS - 100
 		ready(host, projection)
 		host._update_controls_visibility(host.player_menu)
 		check(

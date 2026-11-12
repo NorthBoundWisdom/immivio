@@ -48,7 +48,7 @@ func _run() -> void:
 	host.video = video
 	video.last_video_mode = {}
 	video._waiting_first = false
-	host._capture_last_video_mode()
+	host.capture_last_video_mode()
 	assert(host.settings.get_value("video", "last_mode").geometry == 1)
 	assert(not host.settings.get_value("video", "last_mode").has("depth"))
 	host.video = null

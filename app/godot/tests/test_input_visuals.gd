@@ -264,7 +264,7 @@ func playback_checks() -> void:
 	check(
 		(
 			app.input_visuals.hands.left_hand.controller_gate.visible
-			and app._trigger_taps.has("left_hand")
+			and app.trigger_taps.has("left_hand")
 		),
 		"Trigger wakes a hidden controller and still reaches picture input"
 	)
