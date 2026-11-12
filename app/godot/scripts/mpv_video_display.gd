@@ -1971,7 +1971,7 @@ func _present_pending() -> void:
 	media.logical_session_id = int(claimed.logical_session_id)
 	media.generation = int(claimed.generation)
 	media.format_revision = int(claimed.format_revision)
-	media.effect_revision = int(claimed.presentation_revision)
+	media.presentation_revision = int(claimed.presentation_revision)
 	media.frame_counter += 1
 	var par := float(claimed.get("pixel_aspect", 1.0))
 	media.format = {

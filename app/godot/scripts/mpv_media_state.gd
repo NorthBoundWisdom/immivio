@@ -1,11 +1,36 @@
-extends "res://scripts/media_state.gd"
-
+extends RefCounted
+# Mirrors a native session without treating a SurfaceTexture timestamp as source PTS.
+var session_id := 0
+var logical_session_id := 0
+var generation := 0
+var format_revision := 0
+var presentation_revision := 0
+var state := "closed"
+var error := ""
+var frame_counter := 0
+var format := {"width": 0, "height": 0, "pixel_aspect": 1.0, "unapplied_rotation_degrees": 0}
+var playback: Dictionary = {}
+var decoder := ""
 var last_pair: Dictionary = {}
 
 
 func begin(id: int) -> void:
-	super.begin(id)
+	session_id = id
+	logical_session_id = 0
+	generation = 0
+	format_revision = 0
+	presentation_revision = 0
 	last_pair = {}
+	state = "opening" if id > 0 else "failed"
+	error = "" if id > 0 else "MEDIA_OPEN_REJECTED"
+	frame_counter = 0
+	format = {"width": 0, "height": 0, "pixel_aspect": 1.0, "unapplied_rotation_degrees": 0}
+	playback = {}
+	decoder = ""
+
+
+func accepts(id: int) -> bool:
+	return id > 0 and id == session_id and state not in ["closed", "failed"]
 
 
 func frame_identity() -> Dictionary:
@@ -34,9 +59,27 @@ func frame_identity() -> Dictionary:
 	return result
 
 
+func close() -> void:
+	session_id = 0
+	logical_session_id = 0
+	generation = 0
+	state = "closed"
+	frame_counter = 0
+
+
 func snapshot() -> Dictionary:
-	var result := super.snapshot()
-	result["backend"] = "Android_libmpv"
-	result["presentation_identity"] = frame_identity()
-	result["frame_pairing"] = "MPV_shared_RGBA8_plus_same_ticket_numeric_R8"
-	return result
+	return {
+		"session_id": session_id,
+		"state": state,
+		"error": error,
+		"logical_session_id": logical_session_id,
+		"generation": generation,
+		"presentation_identity": frame_identity(),
+		"frame_counter": frame_counter,
+		"format": format,
+		"playback": playback,
+		"decoder": decoder,
+		"presentation_revision": presentation_revision,
+		"backend": "Android_libmpv",
+		"device_validation": "pending"
+	}

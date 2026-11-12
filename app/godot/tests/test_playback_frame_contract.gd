@@ -49,6 +49,28 @@ func _initialize() -> void:
 	}
 	check(Contract.valid(pair), "Complete v2 source color/mask pair is accepted")
 	var media := preload("res://scripts/mpv_media_state.gd").new()
+	media.begin(7)
+	check(media.accepts(7) and not media.accepts(8), "Only the current live session is accepted")
+	media.presentation_revision = 3
+	var snapshot: Dictionary = media.snapshot()
+	check(
+		snapshot.presentation_revision == 3, "Snapshot preserves the actual presentation revision"
+	)
+	for retired in [
+		"surface_timestamp_ns",
+		"coalesced_notifications",
+		"codec_dropped_frames",
+		"frame_pairing",
+		"effect_revision"
+	]:
+		check(not snapshot.has(retired), "Snapshot excludes retired field: " + retired)
+	media.begin(8)
+	check(
+		media.presentation_revision == 0 and media.last_pair.is_empty(),
+		"New sessions reset revision and pair"
+	)
+	media.close()
+	check(not media.accepts(8), "Closed sessions reject late work")
 	media.last_pair = pair.duplicate(true)
 	check(
 		Contract.timing_valid(media.frame_identity()),
