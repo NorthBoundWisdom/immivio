@@ -115,3 +115,22 @@ T3: `app/godot/tests/test_render_scripts_load.gd` already enumerates every
 `render_*.gd`, calls `load`, `reload`, `can_instantiate`, and checks construction.
 Its normal host run checks 33 scripts without running their GPU rendering loop.
 It is included in the existing Godot suite. No duplicate loader was added.
+
+## T2: catalog provenance findings
+
+The new check found four direct I18n calls without translations: `Refresh`
+(`media_server_browser.gd`, `network_sources.gd`), `Done` (`library_file_actions.gd`),
+`Add server` (`library_menu.gd`) and `Internal storage` (`ui_warmup.gd`). Add their
+three locale translations.
+
+Retain `Paused`, `Ended`, `Opening`, `Failed` through the explicit dynamic-key
+list: `player_menu.gd` capitalizes `playback_state` before translation. The
+checker requires that producer expression to remain present.
+
+The following 35 keys have no matching literal in production GDScript, Kotlin
+or licenses.json and no dynamic producer. Full-repository fixed-string searches
+were also reviewed before removing them from each locale. Partial matches in
+longer UI labels, historical documentation and negative tests do not produce
+these standalone keys:
+
+`Discovered`, `Stereo viewing`, `Inspect`, `SMB network`, `Player`, `Screen curve`, `Loop`, `Eye order`, `Projection`, `Alpha resolution`, `View`, `Sample`, `Volume`, `Audio track`, `Mute`, `Previous`, `Next`, `Muted`, `Remove`, `Back`, `Sign in`, `Character`, `Continue`, `Search again`, `Show`, `Support`, `Website`, `Seek mode`, `Speed`, `Top`, `Upper`, `Lower`, `Bottom`, `Select a file`, `Screen`.

@@ -189,3 +189,7 @@ The old inference-mode/motion/Alpha-owner verification matrices have been retire
 - After merging MPV media state, verify open/close/reopen, seek/revision changes,
   decoder/status reporting and failure recovery; diagnostic snapshots should
   expose presentation revision and omit the retired codec/SurfaceTexture fields.
+
+- After enabling translation provenance checks, browse all three translated
+  locales for unintended English; specifically verify Refresh, Done, Add server
+  and Internal storage, whose directly translated labels now have catalog entries.

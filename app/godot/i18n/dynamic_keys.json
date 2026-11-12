@@ -1,0 +1,8 @@
+[
+  {
+    "keys": ["Paused", "Ended", "Opening", "Failed"],
+    "source": "app/godot/scripts/player_menu.gd",
+    "expression": "str(_state.get(\"playback_state\", \"Ready\")).capitalize()",
+    "reason": "MPV playback state names are capitalized before translation in the status line."
+  }
+]
