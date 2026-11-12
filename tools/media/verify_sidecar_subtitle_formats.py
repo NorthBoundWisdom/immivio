@@ -59,7 +59,7 @@ def main():
         source.write_text(content, encoding="utf-8")
         probe = subprocess.run(
             [
-                os.environ.get("THRU3D_FFPROBE", "ffprobe"),
+                os.environ.get("IMMIVIO_FFPROBE", "ffprobe"),
                 "-v",
                 "error",
                 "-show_streams",
@@ -77,7 +77,7 @@ def main():
         )
         decoded = subprocess.run(
             [
-                os.environ.get("THRU3D_FFMPEG", "ffmpeg"),
+                os.environ.get("IMMIVIO_FFMPEG", "ffmpeg"),
                 "-v",
                 "error",
                 "-i",

@@ -11,7 +11,7 @@ static func capture(parent: Node, pair: Dictionary, request: int) -> Dictionary:
 		"pair": pair.duplicate(true),
 		"images": [],
 		"scope":
-		"Adreno Godot SubViewport using production shader and pinned MPV/RVM native textures; XR and main viewport unverified",
+		"Adreno Godot SubViewport using production shader and pinned MPV native textures; XR and main viewport unverified",
 		"renderer": RenderingServer.get_video_adapter_name(),
 		"shader": "res://shaders/video_pair.gdshader"
 	}

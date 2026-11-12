@@ -69,7 +69,7 @@ func _run() -> void:
 		"images_saved": false,
 		"cases": cases
 	}
-	var output := OS.get_environment("THRU3D_MSAA_REPORT")
+	var output := OS.get_environment("IMMIVIO_MSAA_REPORT")
 	if not output.is_empty():
 		var file := FileAccess.open(output, FileAccess.WRITE)
 		if file:

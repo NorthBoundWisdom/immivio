@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ffmpeg", default=os.environ.get("THRU3D_FFMPEG", "ffmpeg"))
+    parser.add_argument("--ffmpeg", default=os.environ.get("IMMIVIO_FFMPEG", "ffmpeg"))
     args = parser.parse_args()
     output = ROOT / "app/godot/media/mp03_frame_identity.mp4"
     command = [
@@ -136,7 +136,7 @@ def main():
             [eye * 640 + 36 + bit * 50, 96] for eye in range(2) for bit in range(12)
         ],
         "pixel_limit_bytes": 8,
-        "scope": "Frame identity/PTS/redraw/seek calibration, not RVM or real-person quality",
+        "scope": "Frame identity/PTS/redraw/seek calibration, not real-person quality",
     }
     (ROOT / "tests/fixtures/mp03_frame_identity.json").write_text(
         json.dumps(manifest, indent=2) + "\n"

@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ffmpeg", default=os.environ.get("THRU3D_FFMPEG", "ffmpeg"))
+    parser.add_argument("--ffmpeg", default=os.environ.get("IMMIVIO_FFMPEG", "ffmpeg"))
     args = parser.parse_args()
     original = json.loads(
         (ROOT / "tests/fixtures/mp03_frame_identity.json").read_text()

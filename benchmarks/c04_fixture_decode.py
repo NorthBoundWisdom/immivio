@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ffmpeg", default=os.environ.get("THRU3D_FFMPEG", "ffmpeg"))
+    parser.add_argument("--ffmpeg", default=os.environ.get("IMMIVIO_FFMPEG", "ffmpeg"))
     args = parser.parse_args()
     manifest = json.loads((ROOT / "tests/fixtures/c04_alpha.json").read_text())
     video = ROOT / "app/godot/media/c04_alpha_f180.mp4"

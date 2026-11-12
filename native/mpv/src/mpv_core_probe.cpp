@@ -138,7 +138,7 @@ std::string probe(JNIEnv *env, jobject context, jstring path) {
          ",\"height\":" + quote(height) + ",\"duration\":" + quote(duration) +
          ",\"hardware_decode\":false,\"audio_enabled\":false,\"vo\":\"null\"," +
          "\"scope\":\"Android libmpv load/demux/software decode/EOS only; "
-         "GPU/XR/RVM/audio/PTS unverified\"}";
+         "GPU/XR/audio/PTS unverified\"}";
 }
 extern "C" JNIEXPORT jstring JNICALL Java_org_vrpassthroughplayer_plugin_MpvNative_probeGpu(
     JNIEnv *env, jclass, jobject context, jstring path, jboolean hardware, jint width,

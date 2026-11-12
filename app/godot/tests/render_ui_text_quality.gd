@@ -91,7 +91,7 @@ func _run() -> void:
 		"msdf_error": errors[1],
 		"coverage": coverage
 	}
-	var output := OS.get_environment("THRU3D_TEXT_REPORT")
+	var output := OS.get_environment("IMMIVIO_TEXT_REPORT")
 	if not output.is_empty():
 		var file := FileAccess.open(output, FileAccess.WRITE)
 		if file:

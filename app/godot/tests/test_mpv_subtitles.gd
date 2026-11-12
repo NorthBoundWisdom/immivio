@@ -155,7 +155,7 @@ func _initialize() -> void:
 	)
 	check(
 		video.media.session_id == 7 and video.media.generation == 3,
-		"Selecting subtitles preserves RVM/video processing generation"
+		"Selecting subtitles preserves video processing generation"
 	)
 	for mode in [0, 1, 2, 3]:
 		video.geometry = mode

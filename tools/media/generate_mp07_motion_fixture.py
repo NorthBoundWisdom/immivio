@@ -1,4 +1,4 @@
-"""Prepare a local-only ordinary stereo moving-person source for RVM/MPV tests."""
+"""Prepare a local-only ordinary stereo moving-person source for MPV tests."""
 
 import os
 from pathlib import Path
@@ -23,7 +23,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--start", type=float, default=30)
-    parser.add_argument("--ffmpeg", default=os.environ.get("THRU3D_FFMPEG", "ffmpeg"))
+    parser.add_argument("--ffmpeg", default=os.environ.get("IMMIVIO_FFMPEG", "ffmpeg"))
     args = parser.parse_args()
     source = args.source.resolve(strict=True)
     probe = str(Path(args.ffmpeg).with_name("ffprobe.exe"))

@@ -357,14 +357,14 @@ def verify(report, reference):
         clock_control_metrics=metrics,
         video_seek_identity=frame_checks,
         audio_tracks=2,
-        scope="Actual muted Android MPV AO, both AAC tracks/volume/mute/disabled audio, sampled initialized clock rate/pause and resumed seek/restart/EOF/cleanup; uninitialized audio clocks explicitly nullable. No audible speaker/RVM/Godot/XR AV sync or performance claim",
+        scope="Actual muted Android MPV AO, both AAC tracks/volume/mute/disabled audio, sampled initialized clock rate/pause and resumed seek/restart/EOF/cleanup; uninitialized audio clocks explicitly nullable. No audible speaker/Godot/XR AV sync or performance claim",
     )
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("report", type=Path)
-    parser.add_argument("--ffmpeg", default=os.environ.get("THRU3D_FFMPEG", "ffmpeg"))
+    parser.add_argument("--ffmpeg", default=os.environ.get("IMMIVIO_FFMPEG", "ffmpeg"))
     args = parser.parse_args()
     reference = fixture_reference(args.ffmpeg)
     report = json.loads(args.report.read_text(encoding="utf-8-sig"))

@@ -13,7 +13,7 @@ import org.json.JSONObject
 
 /**
  * Real production MPV source/control APIs and Android AO, with muted synthesized audio. No speaker
- * recording, RVM or Godot/XR AV synchronization assertion.
+ * recording or Godot/XR AV synchronization assertion.
  */
 internal object MpvAudioDiagnostics {
     private val ids = AtomicInteger()

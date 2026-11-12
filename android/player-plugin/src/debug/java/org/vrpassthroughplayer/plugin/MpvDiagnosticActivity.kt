@@ -4,7 +4,7 @@ import org.godotengine.godot.GodotActivity
 import org.godotengine.godot.xr.XRMode
 
 /**
- * Debug-only two-dimensional entry point. Same Godot/plugin/GPU/RVM player, with OpenXR explicitly
+ * Debug-only two-dimensional entry point. Same Godot/plugin/GPU player, with OpenXR explicitly
  * disabled. It proves no XR projection or passthrough.
  */
 class MpvDiagnosticActivity : GodotActivity() {

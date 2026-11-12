@@ -67,7 +67,7 @@ func _initialize() -> void:
 	video._on_state(7, JSON.stringify({"state": "paused", "audio_focus_change": "loss"}))
 	check(
 		not video.requested_play and video.media.session_id == 7 and video.media.generation == 3,
-		"Permanent focus loss requires a fresh play request without resetting RVM"
+		"Permanent focus loss requires a fresh play request without resetting playback"
 	)
 	video.free()
 	if failures.is_empty():

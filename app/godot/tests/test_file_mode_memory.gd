@@ -440,7 +440,7 @@ func _run() -> void:
 			and video.geometry == 2
 			and video.stereo_sbs
 		),
-		"Packed output shows its own mask without RVM"
+		"Packed output shows its own mask with its packed alpha"
 	)
 	var opens := host.calls.size()
 	check(

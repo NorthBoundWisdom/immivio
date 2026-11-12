@@ -236,7 +236,7 @@ func _run() -> void:
 		"source": "generated colour pattern",
 		"images_saved": false
 	}
-	var output := OS.get_environment("THRU3D_OPAQUE_REPORT")
+	var output := OS.get_environment("IMMIVIO_OPAQUE_REPORT")
 	if not output.is_empty():
 		var file := FileAccess.open(output, FileAccess.WRITE)
 		if file:

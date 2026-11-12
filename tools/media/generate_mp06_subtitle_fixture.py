@@ -30,7 +30,7 @@ def main():
         ),
     ]
     command = [
-        os.environ.get("THRU3D_FFMPEG", "ffmpeg"),
+        os.environ.get("IMMIVIO_FFMPEG", "ffmpeg"),
         "-hide_banner",
         "-loglevel",
         "error",
@@ -78,7 +78,7 @@ def main():
     ), "Fixture mux must reproduce identical bytes"
     probe = subprocess.run(
         [
-            os.environ.get("THRU3D_FFPROBE", "ffprobe"),
+            os.environ.get("IMMIVIO_FFPROBE", "ffprobe"),
             "-v",
             "error",
             "-show_streams",

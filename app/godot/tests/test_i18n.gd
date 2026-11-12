@@ -35,6 +35,10 @@ func _initialize() -> void:
 	var source: Dictionary = I18n.translations["zh"]
 	for language in ["zh", "zh_Hant", "ja"]:
 		I18n.use(language)
+		check(
+			I18n.t("Folder too large to sort") != "Folder too large to sort",
+			"DLNA sort error: " + language
+		)
 		var catalog: Dictionary = I18n.translations[language]
 		check(catalog.size() == source.size(), "Catalog key count: " + language)
 		for key in source:

@@ -78,7 +78,7 @@ internal object MpvDiagnostics {
                         .put("client_uid", android.os.Process.myUid())
                         .put(
                             "scope",
-                            "Actual external granted document FD consumed by native libmpv/EGL; Godot catalog/resume UI, RVM and XR not exercised",
+                            "Actual external granted document FD consumed by native libmpv/EGL; Godot catalog/resume UI and XR not exercised",
                         )
                     try {
                         val directory =

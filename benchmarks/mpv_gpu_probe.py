@@ -184,7 +184,7 @@ def verify(report: dict, ffmpeg: str) -> dict:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("report", type=Path)
-    parser.add_argument("--ffmpeg", default=os.environ.get("THRU3D_FFMPEG", "ffmpeg"))
+    parser.add_argument("--ffmpeg", default=os.environ.get("IMMIVIO_FFMPEG", "ffmpeg"))
     args = parser.parse_args()
     result = verify(
         json.loads(args.report.read_text(encoding="utf-8-sig")), args.ffmpeg

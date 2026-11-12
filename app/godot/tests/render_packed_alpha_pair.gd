@@ -82,7 +82,7 @@ func _run() -> void:
 							% [eye, x, y, pixel.a, expected]
 						)
 					)
-	# RVM matte: transparent where Alpha is 0 (the decoder image is not read there), opaque with
+	# Numeric matte: transparent where Alpha is 0 (the decoder image is not read there), opaque with
 	# the source colour where Alpha is 1, and partial Alpha at the edge keeps its value.
 	var matte := Image.create(64, 64, false, Image.FORMAT_R8)
 	matte.fill_rect(Rect2i(0, 32, 64, 32), Color(1, 1, 1))

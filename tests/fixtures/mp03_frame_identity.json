@@ -60,5 +60,5 @@
     [1226, 96]
   ],
   "pixel_limit_bytes": 8,
-  "scope": "Frame identity/PTS/redraw/seek calibration, not RVM or real-person quality"
+  "scope": "Frame identity/PTS/redraw/seek calibration, not real-person quality"
 }
