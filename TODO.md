@@ -1,164 +1,335 @@
-# Immivio 清理遗留事项
+# Immivio 后续任务与开发规划
 
-2026-11-12 · 基线：`main` 上包含本文件的那次提交（未推送）。
+2026-11-12 · 代码基线：`main` @ `ad9f142`。
 
-本文件是给实现窗口的任务书。实现完成后交回 review；review 只读 diff，不跑测试，所以每一项都要在回报里附上你自己执行过的验证命令和结果。
+本文件取代上一版任务书。上一版的 A 组、C2、C3、C4 已由实现窗口完成（`5df5525`…`ad9f142`），静态 review 的结论见第 0 节。后面各节按优先级排列：第 1 节是 review 发现的必须修正项，第 2 节起是规划。
+
+工作方式不变：实现窗口动手，review 窗口只读 diff、不跑测试。
 
 ## 约束
 
-- 不改版本号、不打 tag、不发布、不推送。
-- 只动任务里列出的范围；范围外发现的问题写进回报，不要顺手修。
-- 需要头显才能确认的行为，写进 `docs/ACCEPTANCE.md` 的待验收列表，不要用主机测试代替。
-- 依据和本文不符时（例如发现了本文没提到的调用方），跳过该项并在回报里写明证据（文件:行号）。
-- C 组是所有者已经做出的决定，按其中写明的范围执行；标了"待所有者确认"的子项先不动。
-- 格式化只针对你改过的文件：GDScript 用 `.cache/python-tools/formatting/bin/gdformat`，Python 用 `black`，Kotlin 用 ktfmt（见 `CONTRIBUTING.md`）。
+- 不改版本号、不打 tag、不发布。发布要等所有者完成头显验收。推送需要所有者当次授权。
+- 只动任务列出的范围；范围外的发现写进回报。
+- 需要头显确认的行为写进 `docs/ACCEPTANCE.md` 的待验收列表。
+- 依据和本文不符时跳过该项，回报证据（文件:行号）。
+- 标了"仍待定"的项，没有答复前不动。
+- 每个提交只做一件事，提交信息正文写明验证命令和通过数（上一轮 7 个提交都没有正文，见 R7）。
+- 只格式化改过的文件：GDScript 用 `.cache/python-tools/formatting/bin/gdformat`，Python 用 `black`，Kotlin 用 ktfmt `--kotlinlang-style`。
 
-## A 组：已确认有问题，可以直接修
+## 0. 上一轮 review 结论（静态，未跑测试）
 
-### A1：（已并入 C2）
+| 项 | 结论 |
+| --- | --- |
+| A3 无引用翻译 | 通过。5 条已从三个语言删除，全仓库无引用。 |
+| A4 测试图片 | 通过，有一处小残留（R4）。 |
+| A5 RVM 字样 | 通过。只剩 `test_library_menu.gd` 里应当保留的 3 处。 |
+| A6 `THRU3D_` 变量 | 通过。剩下的 `THRU3D_SIGNING_PASSWORD` 在泄密检查的正则里，应当保留。 |
+| A2 DLNA 排序翻译 | **任务书本身写错了**（见 R1）。实现窗口先改后撤，最终状态与改动前一致，没有造成损害。 |
+| C2 移除 PowerShell | 通过，有三处要补（R2、R3、R5）。`.ps1`/`.psd1` 已清零，连带的 `uri-fixture` 模块、三个调试入口、四个审计脚本都已删除，`c03_sbs_grid.mp4` 未变且与清单的 sha256 一致。 |
+| C3 改名 | 通过。`recent_menu`、`_show_recent_menu` 全仓库清零；提交里混入的非改名行都是 gdformat 重新折行。 |
+| C4 解耦 | 通过。`host._` 从 380 降到 51，剩下的正好是 7 个测试注入入口。有两点需要跟进（R6 和第 3 节）。 |
+| B1–B4 调查 | **review 窗口没有拿到调查结论**（回报在实现窗口的回复里）。B1 的白名单没有改动，TESTING.md 记录为"等待 review"。见第 2 节。 |
+| 测试文件数 | Godot `test_*.gd` 103 个、`render_*.gd` 33 个、JVM 测试 54 个文件，改动前后相同。通过数由实现窗口负责，review 未核实。 |
 
-原本要修 `tools/Test-SmbSubtitlesDevice.ps1` 的 alpha 步骤。所有者决定整体移除 PowerShell 设备脚本，这个脚本随 C2 删除，不再单独修。
+## 1. Review 修正项（下一轮先做）
 
-### A2：DLNA 排序错误的翻译键对不上
+### R1：删除无引用的排序翻译键（已完成，`903ced5`）
 
-- **现象**：`translations.json` 里的键是 `Folder too large to sort; use source order`，而 `DlnaClient.kt:231` 和 `:282` 抛出的是 `Folder too large to sort`。两者不相等，这条错误在中文和日文界面下显示的是英文原文。
-- **做法**：先确认这条消息到达界面的路径（是否经过 `I18n.t`），再让键和消息一致。以 Kotlin 侧实际抛出的文本为准。
-- **验收**：加一条 Godot 或 JVM 断言，证明这条消息能查到译文。
+- 事实：`Folder too large to sort` 这个键一直存在（`translations.json` 三个语言各一条），`DlnaClient.kt:231`、`:282` 的消息本来就能查到译文。上一版任务书说"键对不上"是错的。
+- 真正的问题：`Folder too large to sort; use source order` 这个键全仓库只出现在 `translations.json` 里，没有任何来源。
+- 做法：确认无来源后从三个语言删除。`test_i18n.gd:39` 新加的断言保留。
+- 同步：`docs/ACCEPTANCE.md` 的 "Cleanup follow-up" 第一条描述的是一个不存在的缺陷，改成只验证"清理翻译后界面没有冒出英文"。
 
-### A3：五条没有精确引用的翻译
+### R2：解释或撤销 `verification-metadata.xml` 的两条新增
 
-以下键在 `app/godot/scripts`、`android/player-plugin/src/main` 和 `licenses.json` 里都搜不到完全相同的字符串，上一轮因为有部分匹配而保留：
+- `f0387a5` 给 `android/gradle/verification-metadata.xml` 新增了 `androidx.annotation:annotation:1.1.0` 和 `androidx.arch.core:core-common:2.1.0` 两个 pom 条目，而所有锁文件都没有变化。
+- 被删的 `uri-fixture` 模块是条件 include（`includeUriFixture=true` 时才加入），删除它不应该引入新依赖。
+- 做法：说明这两条由哪个配置解析产生；如果只是重新生成时的副产物且离线构建不需要，撤销。
 
-- `Alpha passthrough FPS limit`（对应的 `alpha_fps` 设置已退休）
-- `Unable to load subtitle. Choose an SRT, ASS, SSA or VTT file.`
-- `Unable to open account settings.`
-- `Unable to read saved servers`
-- 含 `movie.mp4 → movie.si.mix.m4a` 的那条说明
+### R3：`DebugDiagnosticsReceiver.kt` 的格式
 
-**做法**：逐条确认是否由字符串拼接或 Kotlin 错误消息产生；确认无来源的从三个语言里一起删除。删除前用 `git grep -F` 对整个仓库（不只是脚本目录）搜一遍，上一轮就因为只搜了脚本目录而误删过 `licenses.json` 引用的三条。
+- `f0387a5` 在这个文件里去掉了一部分尾随逗号、改了缩进（忽略空白后仍有 17 增 37 删），与文件其余部分和同目录其他文件的风格不一致，看起来不是项目规定的 ktfmt 输出。
+- 做法：用 ktfmt `--kotlinlang-style --do-not-remove-unused-imports` 重新格式化该文件，diff 应当只剩功能改动。
 
-### A4：两张不再有使用方的测试图片
+### R4：`generate_c04_fixtures.py` 的残留分支
 
-- `app/godot/media/c04_independent_mask.png` 和 `c04_independent_rgb.png`（及各自的 `.import`）原先只被 `render_c04_alpha.gd` 使用，该测试已随旧显示管线删除。
-- 现在只剩 `tests/fixtures/c04_alpha.json` 和 `tools/media/generate_c04_fixtures.py` 提到它们。
-- **做法**：删除这两张图和 `.import`，同步清单和生成脚本。`c04_independent_alpha.mp4` 仍被 `MpvDiagnostics.kt` 和 `benchmarks/mpv_gpu_probe.py` 使用，不要动。
+- `encode()` 里仍然计算 `image_name = ... else "c04_independent_rgb.png"`，但独立素材已经改用临时文件，这个分支的值不再被使用。
+- 做法：去掉无用分支，让代码读起来和实际行为一致。
 
-### A5：残留的 RVM 字样
+### R5：`pico_store.py` 里已不存在的组件名
 
-`git grep -n -E "RVM|rvm_" -- . ':!CHANGELOG.md' ':!website' ':!docs/ARCHITECTURE.md'` 目前还有约 20 处命中，分布在调试类注释、探针的 `scope` 文字、测试断言文案、fixture 清单和生成脚本的说明里。
+- `configs/pico_store.py:21` 的 `DEBUG_COMPONENTS` 仍列着 `LocalAccessTestProvider`，该类已删除。
+- 做法：从集合里移除；`tests/workflow/test_pico_store.py` 如有对应用例一并更新。
 
-- **做法**：改成描述现状的措辞。fixture 清单（`tests/fixtures/*.json`）里的文字要和生成脚本一起改，保持两边一致。
-- **不要改**：`test_library_menu.gd:539` 和 `:718` 是"界面里不得出现这些名字"的断言；`test_library_menu.gd:309` 的 `"rvm_model": "fast"` 先确认是不是"旧设置被忽略"的输入，是就保留。
+### R6：公开名字的遮蔽检查
 
-### A6：`THRU3D_` 前缀的环境变量
+- `ad9f142` 把 `main.gd` 的成员改成了 `eye()`、`viewer()`、`grab`、`library_grab`、`trigger_taps`、`wearer_present` 等通用名字。
+- 风险：`main.gd` 及继承它的测试类里如果有同名局部变量或参数，会遮蔽成员（GDScript 只给警告）。
+- 做法：在 `main.gd` 和所有 `extends Main` / `extends "res://scripts/main.gd"` 的类里搜这些名字的局部声明，有遮蔽就改局部名。回报搜索命令和结果。
 
-`tools/media/generate_mp07_motion_fixture.py:26` 读取 `THRU3D_FFMPEG`。用 `git grep -n "THRU3D_"` 找出全部同类变量，改成 `IMMIVIO_` 前缀。
+### R7：补提交说明（已完成，`903ced5`）
 
-## B 组：需要先调查，回报结论后再决定是否动手
+`903ced5` 的正文补记了上一轮 7 个提交的验证结果：workflow 77、website 4、发布脚本 17、JVM 205（10 项跳过）、Godot 102，Quest Debug 完成构建和打包；Pico/OpenXR 和头显未验证。
 
-### B1：调试用的测试素材名单
+- 不改写已有提交。在本轮的第一个提交正文里，补记上一轮 7 个提交的验证结果（workflow、website、JVM、Godot 的通过数，以及构建/打包了哪些目标）。
+- 之后每个提交都按"约束"一节写正文。
 
-- `DebugDiagnosticsReceiver.kt` 约 320-340 行的 fixture 白名单里有 `mp05_person_still`、`mp07_motion_4k`、`mp08_8k_low`、`mp08_8k_high`、`mp08_8k_high_30`、`mp08_8k_long`、`mp08_4k`、`depth_2d`、`mpv_performance` 等名字。
-- 已确认：`mp05_person_still` 在仓库里没有清单、没有生成脚本、也没有其他使用方。
-- 已确认：`mp07_motion_4k` 有生成脚本（需要 `--source` 指定本地原片），但它生成的 `tests/fixtures/mp07_motion_4k.json` 不在仓库里；`Test-MpvSeekHoldDevice.ps1` 和 `Test-MpvSeekTimelineDevice.ps1` 依赖这个清单。
-- 已确认：`mp08_8k_high_30` 被 `benchmarks/mpv_seek_strategy_device.py` 和 `mpv_startup_device.py` 当默认素材，仓库里没有清单也没有生成脚本。
-- **要回答**：名单里每个名字，谁在用、素材从哪来。整理成表格：名字 · 使用方 · 清单/生成脚本 · 结论。
-- **建议做法**：没有任何使用方的名字从白名单删除；有使用方但素材需要本地准备的，在 `docs/TESTING.md` 写清楚准备步骤，并让脚本在缺素材时给出明确的报错。
-- **注意**：这项要在 C2 之后做。C2 会删掉一批使用方（例如依赖 `mp07_motion_4k` 的两个 `.ps1`），名单要按删除后的状态重新统计。
+### R8：C03 生成脚本的小问题
 
-### B2：三个调试参数是否还有人用
+- `tools/media/generate_c03_fixtures.py` 读取清单用的是固定路径，写回用的是 `--manifest`，两者不一致；改成读写同一个路径。
+- 脚本要求 `--font` 且输出随 FFmpeg/字体版本变化，这是如实记录的限制，保留现状即可。
 
-- `QuestPlayerPlugin.kt:591-593` 在 `open` 指令里读取 `normal_fast`、`frame_cap`、`borrow_color`，对应 `MpvVideoBridge.kt` 的 `debugNormalFramePath`、`debugFrameCap`、`debugBorrowColor`。
-- 已确认：`tools/` 和 `benchmarks/` 里没有任何脚本发送这三个参数。
-- **要回答**：这三个开关在 `MpvVideoBridge` 里各自控制什么，去掉后生产路径是否完全不变。只报告，不改。
+## 2. 上一轮遗留的调查项
 
-### B3：`media_state.gd` 里的旧管线分支
+实现窗口请把 B1–B4 的结论重新贴给 review 窗口（或写进本节），然后按下面的默认处理执行。
 
-- `media_state.gd` 现在只被 `mpv_media_state.gd` 继承。它的 `apply()` 里还有 `"frame"`（带 4×4 变换矩阵）和 `"codec"` 分支，以及 `surface_timestamp_ns`、`coalesced_notifications`、`codec_dropped_frames`、`"frame_pairing": "direct_OES_only"` 等字段。
-- 对应的 `media_frame`、`media_codec` 等信号已经从插件里删除，这些分支看起来不可能再被触发。
-- **要回答**：`apply()` 的每个分支现在由谁调用；哪些字段还被报告、测试或设备探针读取。
-- **建议做法**：确认无调用方后删除分支和字段，把剩余内容并进 `mpv_media_state.gd`；有测试断言这些字段的，一并更新并说明理由。
+### B1：调试素材白名单
 
-### B4：`profile` 参数现在的含义
+- 现状：`DebugDiagnosticsReceiver.kt` 的白名单仍接受 `mp05_person_still`、`mp07_motion_4k`、`mp08_8k_low`、`mp08_8k_high`、`mp08_8k_long`、`mp08_4k`、`depth_2d`；`docs/TESTING.md` 写明这些名字已经没有调用方。
+- 默认处理：从白名单和大小限制分支里删除这 7 个名字；保留 `mp03_frame_identity`、`mp06_text_subtitles`、`mp08_8k_high_30`、`mpv_performance`。`tools/media/generate_mp07_motion_fixture.py` 随之失去用途，一并删除。
+- 同时恢复 `82eb55e` 撤掉的那条缺素材报错（"Prepare local fixture … before running the probe"）：它只是让失败信息可读，不属于策略变更。
+- 更新 `docs/TESTING.md` 里对应的两段。
 
-- `mpv_video_display.gd:42-43` 的 `AUTOMATIC_PROFILE := "320x320"` 和 `PROFILES` 列表原本是推理输入尺寸；第 137 行的注释还写着 "ROI default"。
-- 这个值仍然一路传到 `open_mpv_video`，Kotlin 侧用 `BUFFER_SHAPES` 校验，并在 `MpvVideoBridge.kt:869` 和 `:976` 作为 `session.dims` 使用；`file_mode_memory.gd` 还按文件保存它。
-- **要回答**：`session.dims` 现在决定什么（遮罩缓冲尺寸？）；用户还能不能改它；按文件保存它是否还有意义。只报告，不改。
+### B2：三个调试开关（`normal_fast`、`frame_cap`、`borrow_color`）
 
-## C 组：所有者已决定（2026-11-12）
+- 没有任何脚本发送它们。默认处理：如果调查确认去掉后生产路径不变，删除 `QuestPlayerPlugin.kt` 里的读取和 `MpvVideoBridge.kt` 的 `debugNormalFramePath`、`debugFrameCap`、`debugBorrowColor` 及其字段；调试接收器里对应的三个参数一并删除。
+- 如果其中某个开关在排查性能问题时仍有价值，保留它并在 `docs/TESTING.md` 写明用法。
 
-### C1：APK 里的"已移除组件"检查——不恢复
+### B3：`media_state.gd` 的旧分支
 
-保持已删除的状态，不需要任何操作。`tools/Check-PublicSource.py` 仍然禁止把模型文件和二进制提交进仓库。
+- 默认处理：确认 `"frame"`、`"codec"` 分支和 `surface_timestamp_ns`、`coalesced_notifications`、`codec_dropped_frames`、`frame_pairing`、`effect_revision` 无调用方后删除，把剩余内容并入 `mpv_media_state.gd`，删除基类文件。
+- `effect_revision` 仍被 `mpv_video_display.gd` 赋值为 `presentation_revision`：改用后者的名字，或在回报里说明为什么必须保留。
 
-### C2：移除 PowerShell 设备脚本
+### B4：`profile` 参数
 
-所有者的决定：Windows 上的设备脚本维护成本大于意义，直接砍掉，不移植。
+- 待所有者决定，取决于调查结论。两种可能：
+  - 它现在只决定遮罩缓冲尺寸且用户无法修改：固定为常量，删除 `PROFILES` 列表、按文件保存的字段（`file_mode_memory.gd` 走版本化迁移）和调试接收器的 `profile` 参数。
+  - 它仍影响画质或性能：保留，但改掉"ROI default"这类过期注释，并在 `docs/ARCHITECTURE.md` 写明含义。
 
-**删除**
+## 3. 架构：把上一轮的"改名"推进到"归属"
 
-- `tools/` 下全部 11 个 `Test-*.ps1`。
-- `tools/environment/Activate-QuestEnvironment.ps1`（只被上述脚本引用）。
-- `PSScriptAnalyzerSettings.psd1`，以及 `CONTRIBUTING.md` 里关于 PowerShell 格式化的说明。
-- `tools/fixtures/download_panoramas.py` 文档字符串里的 PowerShell 示例改成 shell 写法。
+上一轮 C4 把私有访问降到了 51 处，但其中两步是换名字而不是换归属。按下面的顺序继续，每步单独提交。
 
-**随之失去使用方的东西：逐个确认后删除**
+### S1：资料库来源状态移进 controller
 
-- 只审计 `.ps1` 产出目录的 Python 脚本。已确认 `benchmarks/external_uri_device.py`、`local_access_device.py`、`local_selection_device.py` 分别只被对应的 `.ps1` 调用；`benchmarks/mpv_seek_hold_device.py` 读取的 `{mode}-before-report.json` 等文件也只有 `Test-MpvSeekHoldDevice.ps1` 会生成。其余 benchmark 逐个确认它们的输入由谁产生。
-- 只为这些脚本服务的调试设施：`android/uri-fixture` 模块（含 `android/settings.gradle` 里的 include）、`LocalAccessTestProvider`、调试接收器里的 `DEBUG_LOCAL_ACCESS`、`DEBUG_LOCAL_SELECTION`、`DEBUG_MPV_URI` 等入口。**删除前必须确认没有其他使用方**：`configs/pico_store.py:21` 引用了 `LocalAccessTestProvider`（看起来是商店包的排除检查），`tools/Test-SelectedFeaturesDevice.py` 等 Python 探针也走同一个调试接收器。
-- 删除 `uri-fixture` 模块会改变 Gradle 依赖图：按 `docs/BUILD.md` 的做法用 Gradle 重新生成锁文件和校验元数据，不要手改。
+- 现状：`de4c244` 在 `library_menu.gd` 上加了 18 个 `source_*` 属性和 4 个 `source_*` 函数，逐个转发到菜单的私有变量；`library_source_controller.gd` 改为访问这些入口。耦合换了名字，状态仍在菜单里。
+- 副作用：多个入口声明为 `Variant`，而底层是 `String`、`bool`、`Dictionary`，丢了类型。
+- 目标：SMB、DLNA、本地卷这三组来源状态由 `library_source_controller.gd` 持有，菜单通过 controller 读取。完成后删除全部 `source_*` 转发。
+- 步骤：先按来源分三次迁移（本地卷 → SMB → DLNA），每次迁移后菜单里对应的私有变量清零。
+- 约束：菜单的绘制和交互行为不变；直接读这些私有变量的测试（约 8 个文件）同步改为读 controller。
 
-**保留并处理**
+### S2：测试注入入口改成显式接口
 
-- `tools/media/Generate-C03Fixtures.ps1` 是 `app/godot/media/c03_sbs_grid.mp4` 的生成脚本，该素材仍被调试诊断和 `benchmarks/mpv_gpu_probe.py` 使用。把生成逻辑移植成 Python（参照 `tools/media/generate_c04_fixtures.py`），输出必须与现有文件逐字节一致或在回报里说明差异；然后删除 `.ps1` 并更新 `tests/fixtures/c03_sbs_grid.json` 的 `source` 字段。
-- `tools/Test-SelectedFeaturesDevice.py` 已经是 Python，保留。
+- 现状：7 个入口（`_ray`、`_active_menu`、`_input_focused`、`_controller_allowed`、`_controller_ray`、`_head_tracked`、`_recenter`）靠测试继承 `main.gd` 覆写来注入假输入，所以 coordinator 必须继续走 `host._xxx`。
+- 目标：把这 7 个入口收进一个可替换的输入来源对象（例如 `InputSource`，生产实现读 XR 控制器，测试实现返回固定值），`main.gd` 持有它，coordinator 直接调用。
+- 完成标准：`app/godot/scripts` 里 `host._` 清零；测试不再需要继承 `main.gd` 来改输入。
 
-**不要动**
+### S3：消除按字符串访问的私有成员
 
-- `android/gradlew.bat`：Godot 导出工程会复制它。
-- `configs/setup_hosted_ci.py` 里的 `pwsh` 调用和 `.github/workflows` 的 Windows runner：这是 Windows 上的 CI 构建，不是设备脚本。是否连 Windows CI 一起去掉**待所有者确认**，本轮不动。
-- `docs/BUILD.md:54` 关于 Python 命令可以在 PowerShell 里运行的说明：与上一条绑定，同样不动。
+- `mpv_video_display.gd:2276`、`:2302` 用 `host.has_method("_menu_state")`、`"_canvas_controls_snapshot"`，`playback_coordinator.gd:208` 用 `host.get("_finishing_app")`。这些引用改名时不会被任何工具发现。
+- 目标：改成公开方法，由持有者显式传入（Callable 或接口），不再按名字反射。
 
-**验收**
+### S4：测试对私有成员的访问
 
-- `git ls-files '*.ps1' '*.psd1'` 没有输出。
-- `git grep -n -i -E "\.ps1|PSScriptAnalyzer"` 只剩 `CHANGELOG.md` 里的历史记录（如果有）。
-- 完整验证命令全部通过；被删除的 JVM 或 workflow 用例逐条说明理由。
-- 在 `docs/TESTING.md` 里如实更新"设备探针"的现状：还剩哪些、各自需要什么素材。
+- 更早的统计是 95 个测试里有 79 个直接访问私有成员。上一轮只同步了被改名的成员。
+- 做法：先出一份清单（成员名 · 访问次数 · 所在测试），按访问次数从高到低，给前 20 个成员提供公开的只读快照或测试专用入口。不要求一轮做完。
 
-### C3：`recent_menu` 改名为 `library_menu`
+### S5：拆分过大的脚本
 
-- 把 `main.gd` 的 `recent_menu` 改成 `library_menu`，`_show_recent_menu` 改成 `_show_library_menu`，同步所有脚本、测试、设备探针和文档。
-- 真正表示"最近播放"的名字不要改：`list_recent`、`recent_scan.gd`、`test_recent_files.gd` 里关于最近文件存储的部分等。逐处判断，不要全局替换 `recent`。
-- 单独一个提交，只包含改名，不夹带其他改动；放在 C2 之后、C4 之前做。
-- 验收：`git grep -n "recent_menu\|_show_recent_menu"` 没有输出；Godot 测试数量和结果与基线一致。
+按当前行数：`library_menu.gd` 约 3200 行、`mpv_video_display.gd` 约 2560 行、`player_menu.gd` 约 1940 行、`main.gd` 约 1210 行、两个 coordinator 各约 1000 行。
 
-### C4：继续收缩 coordinator 对 `main.gd` 私有成员的依赖
+- `mpv_video_display.gd`：把调试命令处理和调试报告（`_on_debug_command`、`_write_debug_report` 一带，约 400 行）拆到独立脚本，仅 Debug 构建加载。
+- `library_menu.gd`：关于页与许可阅读器、来源列表（S1 之后）各自独立。
+- `player_menu.gd`：字幕、音轨、画面调整三组弹层已有 `playback_popups.gd`，把仍留在主文件里的绘制函数迁过去。
+- 每次拆分只移动代码，不改行为；以 Godot 测试数量和结果不变为准。
 
-现状：`app/godot/scripts` 里 `host._xxx` 共 380 处。按下面的顺序分步做，每一步单独提交、单独验证；任何一步需要改变行为或测试注入方式就停下回报。
+## 4. 发布前必须完成的事（所有者）
 
-1. **`library_source_controller.gd` 的 81 处**：它访问的是资料库菜单（`LibraryMenu`）的私有状态，如 `_pending`、`_dlna_stack`、`_local_stack`。把这些状态的归属定下来：要么移进 controller 自己持有，菜单通过它读取；要么在菜单上提供不带下划线的访问入口。选改动更小的一种，并在回报里说明理由。
-2. **跨 coordinator 的调用**：一个 coordinator 通过 `host._xxx()` 调用另一个 coordinator 的方法时，`main.gd` 只是转发。给 `main.gd` 的四个 coordinator 字段提供公开名字，让调用方直接调用目标 coordinator；之后删除 `main.gd` 里不再有调用方的转发函数。
-3. **`main.gd` 真正持有的状态和方法**（如 `_viewer()`、`_eye()`、`_head_pose()`）：被外部使用的改成不带下划线的公开名字。
+这些不属于实现窗口。
 
-约束：
+1. **头显验收**。至少覆盖：
+   - 普通播放、SBS/TB、VR180/360、封装 alpha 文件（Media3 已移除，`alpha_ready()` 的判定变了）。
+   - 三种语言下浏览资料库、设置、播放菜单，确认没有冒出英文原文（共删除约 70 条翻译）。
+   - 手柄光束、抓取、菜单跟随、重新居中（C4 改动了 coordinator 之间的调用路径）。
+   - SMB、DLNA、媒体服务器、本地卷的浏览和播放（S1 相关状态的访问方式变了）。
+   - `docs/ACCEPTANCE.md` 里既有的待验收列表。
+2. **Pico 和 OpenXR 目标**的构建与打包。上一轮和本轮都只验证了 Quest Debug。
+3. **推送后看 CI**。锁文件和校验元数据是用本机的 Gradle 9.8.1 离线生成的，`ci_toolchain.json` 指定 9.8.2；Windows 和 macOS runner 都要过。
+4. **CHANGELOG**。这 9 个提交对使用者可见的变化很少（安装包变小、移除了无用依赖），发布时决定是否单列一条。
 
-- 以下 7 个入口被测试通过继承 `main.gd` 覆写来注入假输入，必须继续经由 `host` 调用，不能改成直接调用：`_ray`、`_active_menu`、`_input_focused`、`_controller_allowed`、`_controller_ray`、`_head_tracked`、`_recenter`。开工前重新扫一遍测试里继承 `main.gd` 的类，名单以实际为准。
-- 测试对私有成员的直接访问（更早的统计是 95 个测试中的 79 个）只在被改名的成员上同步更新，不做额外的测试重构。
-- 不新增全局事件总线或服务容器。
-- 验收：回报每一步前后的 `host._` 计数；Godot 测试数量和结果与基线一致。
+## 5. 工具链与 CI
 
-## 待设备验收（不属于实现窗口的工作，记录在此）
+### T1：把现在靠人工跑的检查接进 CI
 
-- 外部 URI 授权测试：`android/uri-fixture` 的目标包名已改为 `com.northboundwisdom.immivio`。
-- 普通播放与封装 alpha 文件播放：已移除 Media3 依赖；`alpha_ready()` 不再依赖 `inference_ran`。
-- 菜单文案：删除了 65 条翻译，确认界面里没有冒出英文原文。
-- Pico 和 OpenXR 目标：上一轮只构建并打包了 Quest Debug。
-- CI：锁文件是用 Gradle 9.8.1 离线生成的，`configs/ci_toolchain.json` 指定的是 9.8.2；推送后留意依赖校验是否通过。
+以下检查目前只在本机手动执行，任何一项都可能悄悄退化：
+
+- `ruff check .`（现在零报错）。
+- `gdformat --check` 覆盖全部 GDScript。
+- ktfmt 检查（R3 就是没有这道检查的结果）。
+- `tools/Check-PublicSource.py`、`tools/check_website.py`。
+- 做法：加一个轻量的 lint job（只需 Python，不需要 Android SDK），PR 和 push 都跑。
+
+### T2：翻译一致性检查
+
+- 这一轮人工清了三次无引用翻译，还误删过一次。写成脚本：
+  - 每个键必须能在源码（GDScript、Kotlin、`licenses.json`）里找到完全相同的字符串，或者出现在一份显式的"动态键"清单里。
+  - 三个语言的键集合必须相同（现在是相同的）。
+  - 源码里传给 `I18n.t` 的字面量必须有译文。
+- 放进 `tests/workflow` 或 Godot 测试，随主机测试一起跑。
+
+### T3：`render_*.gd` 的加载检查
+
+- 33 个渲染测试需要真实 GPU，不在无头测试里运行，改名时很容易坏掉而不被发现（C3、C4 改了其中好几个）。
+- 做法：在主机测试里加一步，只做脚本加载和编译，不执行。
+
+### T4：`.uid` 与孤立文件检查
+
+- 本轮清理发现过孤立的 `.uid` 和无引用的着色器。加一个检查：每个 `.uid` 必须有对应文件；`app/godot/shaders` 和 `scripts` 下的文件必须能从 `project.godot` 可达，或在测试、工具里被引用。
+
+### T5：本机工具链
+
+- 本机没有 `gradle` 命令，每次都要手动拼 `GRADLE_EXE`。在 `docs/BUILD.md` 里写明推荐的本机设置，或让 `android_workflow.py` 在未设置时自动使用 `.cache/gradle/wrapper/dists` 下与 `ci_toolchain.json` 版本一致的发行版。
+- 把本机的 Gradle 对齐到 9.8.2，避免本机和 CI 生成的锁文件出现差异。
+
+### T6：移除 Windows CI（已决定，2026-11-12）
+
+决定：去掉 Windows 构建线，只保留 macOS。依据：
+
+- 发布包只取 macOS 构建。`tools/prepare_android_release.py:53` 拒绝非 macOS 的回执，`publish-android-release.yml` 只下载 `Immivio-Android-Release-macOS`。
+- Windows 那条线是对同一份源码的重复构建和测试，每次 push 都跑（`on.push.branches: ["**"]`），最长 90 分钟。
+- 所有者只在 macOS 上开发，Windows 设备脚本已全部移除。
+
+**排在发布之后做**（阶段 6 之前，见第 10 节）：发布流程目前要求两条线都成功，不要在下一次发布前改动它。
+
+范围：
+
+- `.github/workflows/android-release.yml`：`matrix.include` 只留 macOS。
+- `tools/select_android_release.py:11` 的 `BUILD_JOBS` 和第 38 行的报错改成只要求 macOS；`tools/test_prepare_android_release.py` 里涉及 `Release / Windows` 和 `ci_host == "Windows"` 的用例同步更新（"非 macOS 回执被拒绝"这条断言保留，换一个非 macOS 的值）。
+- `tools/prepare_android_release.py:143` 发布说明里 "Both Windows and macOS CI builds passed" 的措辞。
+- `configs/setup_hosted_ci.py`：删除 `windows` 分支（Godot Windows 资产、`gradle.bat`、SDK 路径空格处理、`pwsh` 注册字体）；`configs/ci_toolchain.json` 删除 `GodotWindows`；对应的 `tests/workflow/test_hosted_ci.py` 用例更新。
+- `docs/BUILD.md:54` 的 PowerShell 说明和第 146 行的 runner 描述；`docs/TESTING.md:28` 保持不动（原生测试本身仍可在三个平台构建）。
+
+不要动：
+
+- `configs/player_build.py`、`check_environment.py` 里的 `os.name == "nt"` 分支和 `android/gradlew.bat`。它们让脚本在 Windows 上仍然可以手动运行，删除它们没有收益，只有风险。文档里把 Windows 从"CI 验证过"降级为"未经验证，可能可用"。
+
+验收：workflow 和发布脚本测试全过；推送后只触发 macOS 一条构建线且成功。
+
+## 6. 设备探针
+
+### D1：一个统一的设备探针入口
+
+- 现状：`tools/Test-SelectedFeaturesDevice.py` 和 `benchmarks/` 下的几个设备脚本各自实现了 adb 调用、调试广播、等待报告、拉取文件。`docs/TESTING.md` 承认 GPU、core、audio 三类报告"没有端到端的驱动"，只能手动发广播再手动拉 JSON。
+- 目标：抽出一个共用的 Python 模块（设备选择、APK 一致性校验、发送请求、等待带 request key 的报告、保存证据），现有脚本改为调用它；再补上 GPU、core、audio 三类报告的驱动。
+- 输出统一放在 `artifacts/captures/device/`。
+
+### D2：只重建外部 URI 授权的自动化（已决定，2026-11-12）
+
+随 PowerShell 一起删除的四类设备自动化，处理如下：
+
+| 类别 | 决定 | 理由 |
+| --- | --- | --- |
+| 外部 URI 授权与撤销 | **用 Python 重建** | 跨应用、跨 UID 的权限行为，Android 或头显系统升级后最容易变；手动验收难以覆盖撤销和进程重启后的状态 |
+| 本地文件访问预检 | 不重建 | 逻辑由 JVM 测试覆盖（`LocalStorageVolumesTest` 等），设备上的差异在日常使用中立刻可见 |
+| 文档选择 | 不重建 | 依赖系统选择器界面，自动化本来就绕过了它；手动验收更真实 |
+| seek 冻结帧像素对比 | 不重建 | Godot 侧已有 `test_mpv_seek_hold.gd` 和渲染测试；设备上的像素对比维护成本高 |
+
+外部 URI 的重建范围（在 D1 完成后做）：
+
+- 恢复一个独立 UID 的测试 APK（原 `android/uri-fixture`，可从 `f0387a5^` 取回并改用当前应用 ID），仍然用条件 include，默认构建不包含它。
+- 恢复 `DEBUG_MPV_URI` 入口和 `MpvDiagnostics.requestExternal`。
+- 用 D1 的共用模块写驱动：安装 fixture → 授权 → 播放器经 FD 解码 → 撤销 → 确认访问失败 → 重启进程后确认不残留授权。
+- 恢复模块会再次改变 Gradle 依赖图，锁文件和校验元数据由 Gradle 重新生成。
+- `docs/ACCEPTANCE.md` 里"外部 URI 授权需手动验收"那条，在驱动可用后改为引用该驱动。
+
+其余三类保持手动验收，在 `docs/ACCEPTANCE.md` 的待验收列表里各留一条。
+
+### D3：素材准备
+
+- `mp08_8k_high_30` 是两个性能探针的默认素材，但仓库里没有生成方式，只能自备。要么提供一个从合成源生成同规格素材的脚本，要么把探针的默认值改成必填参数，避免"默认值指向一个不存在的文件"。
+
+## 7. 依赖
+
+| 项 | 现状 | 建议 |
+| --- | --- | --- |
+| OpenXR loader | 1.1.54，上一轮因需与 Godot OpenXR Vendors 5.1.0 对齐而未升 | 确认 Vendors 5.1.0 自带的 loader 版本；能升则升，需头显验收 |
+| Gradle | CI 9.8.2，本机 9.8.1 | 本机对齐（见 T5） |
+| Pillow | 12.3 | 13.0 是大版本，只影响素材工具；升级后重跑 C04 生成并比对输出 |
+| bcprov / slf4j | 与 jcifs 3.0.4 的 pom 对齐 | 保持；bcprov 有安全更新时再评估是否脱离对齐 |
+| GitHub Actions | 固定在 commit | 推送后统一升级一次并观察 |
+| Media3 | 已移除 | — |
+
+依赖升级一次只动一个，锁文件和校验元数据一律由 Gradle 生成，升级后看 `verification-metadata.xml` 的 diff 里有没有意外的传递依赖（参见 R2）。
+
+## 8. 文档
+
+- **`docs/ACCEPTANCE.md`**：文件里混着当前待验收项和多轮历史记录。拆成两部分：顶部只放"当前待验收"，历史记录按日期归档到文件后半部分或单独文件。
+- **`docs/ARCHITECTURE.md`**：C3、C4 之后，coordinator 的公开名字（`input_coordinator`、`playback_coordinator`、`settings_controller`、`presentation_coordinator`）和 `library_menu` 应当出现在文档里；S1、S2 完成后再更新一次。
+- **`docs/SELECTED_UPSTREAM_PORTS.md`**：第 183 行引用了上游的 `file_subtitle_layout_memory.gd`、`test_subtitle_layout_memory.gd`，读起来像本仓库的文件，标明它们是上游路径。
+- **`docs/TESTING.md`**：新加的 "Device probes and local media" 一节信息准确但很密，B1 处理完后重写成表格：脚本 · 是否需要设备 · 需要的素材 · 素材来源。
+- **`README.md`**：确认没有再提到已删除的重构计划和 PowerShell 脚本（上一轮已处理链接，发布前再读一遍）。
+
+## 9. 命名遗留（已决定，2026-11-12）
+
+这些名字来自原项目，不影响功能。逐项决定如下：
+
+| 名字 | 决定 | 理由 |
+| --- | --- | --- |
+| 应用 ID `com.northboundwisdom.immivio` | **永不改动** | 改了就无法覆盖安装，用户数据丢失 |
+| Kotlin/Java 包名 `org.vrpassthroughplayer.plugin` | **不改** | 见下 |
+| Godot 插件目录与单例 `quest_player`、`QuestPlayerPlugin` | **不改** | 见下 |
+| Gradle 根工程名 `VRPassthroughPlayerAndroid` | **改为 `ImmivioAndroid`** | 只出现在 `android/settings.gradle`，不进入产物 |
+| 调试属性前缀 `debug.vrpp.*` | **改为 `debug.immivio.*`** | 只有调试构建和几个 Python 探针读写，改动面小 |
+| 日志标签 `Quest*`（如 `QuestDlna`、`QuestCapabilityProbe`） | **改为 `Immivio*`** | 三个头显平台共用，带 Quest 会误导排查 |
+| 文档和注释里把三个平台统称为 Quest 的地方 | **随手改** | 遇到就改，不单独立项 |
+
+包名和插件名不改的理由：
+
+- 改动面覆盖全部 Kotlin 源码、C++ 侧的 JNI 函数名（`Java_org_vrpassthroughplayer_…`）、GDScript 里 `JavaClassWrapper.wrap` 的字符串、ProGuard 规则、`pico_store.py` 的组件名检查和导出预设。任何一处漏改都是运行时才暴露的崩溃，主机测试发现不了。
+- 这些名字用户看不到，也不出现在商店或文档的对外部分。
+- 收益只是读代码时少一点困惑；在 `docs/ARCHITECTURE.md` 里用一段话说明"包名和插件名沿用原项目，不代表只支持 Quest"就能达到同样效果。**这段说明本轮就加**。
+- 如果将来因为别的原因必须动 JNI 层（例如拆分插件），再顺带改名。
+
+三个要改的名字的做法：
+
+- 排在阶段 9。一个提交改一个名字。
+- `debug.vrpp.*`：同步 `benchmarks/` 里设置属性的脚本、`docs/TESTING.md`，以及 Kotlin 侧读取的位置；用 `git grep -n "debug\.vrpp"` 确认清零。
+- 日志标签：只改 `Log.x(TAG, …)` 的标签字符串，不改类名；`benchmarks/` 和文档里按标签过滤 logcat 的地方同步。
+- 根工程名：确认没有脚本按工程名定位构建产物（`git grep -n VRPassthroughPlayerAndroid`）。
+
+## 10. 建议的执行顺序
+
+| 阶段 | 内容 | 谁 | 前置 |
+| --- | --- | --- | --- |
+| 1 | R2–R6、R8（R1、R7 已完成）；`ARCHITECTURE.md` 加包名说明（第 9 节） | 实现窗口 | — |
+| 2 | B1–B3 按默认处理执行；B4 等调查结论 | 实现窗口 | B 组结论交给 review |
+| 3 | T1–T5（把检查接进 CI 和主机测试） | 实现窗口 | 阶段 1 |
+| 4 | 头显验收、Pico/OpenXR 构建、确认 CI 两条线都过 | 所有者 | 阶段 1–2 |
+| 5 | 发布 | 所有者 | 阶段 4 |
+| 6 | T6 移除 Windows CI | 实现窗口 | 阶段 5 |
+| 7 | S1 → S2 → S3 | 实现窗口 | 阶段 5（避免发布前再动交互路径） |
+| 8 | D1，随后 D2（外部 URI）、D3 | 实现窗口 | 阶段 2 |
+| 9 | S4、S5、文档整理；第 9 节的三个改名；依赖升级 | 实现窗口 | 阶段 7 |
+
+阶段 3 排在验收之前是有意的：这些检查不改变应用行为，却能防止后面每一轮清理再出现"误删翻译""格式跑偏"这类问题。阶段 6 排在发布之后，是因为发布流程目前要求 Windows 和 macOS 两条线都成功，发布前不动它。阶段 7 排在发布之后，是因为 S1、S2 会再次改动输入和资料库的调用路径，放在验收之前等于让验收作废。
+
+## 决定记录
+
+| 事项 | 状态 |
+| --- | --- |
+| APK "已移除组件"检查 | 不恢复（所有者，2026-11-12） |
+| PowerShell 设备脚本 | 全部移除，已完成（所有者，2026-11-12） |
+| 推送 | 已推送 `main`（所有者授权，2026-11-12） |
+| Windows CI | 移除，排在下次发布之后（T6） |
+| 设备自动化重建 | 只重建外部 URI 授权（D2） |
+| 命名遗留 | 包名、插件名不改；工程名、调试属性前缀、日志标签改（第 9 节） |
+| B4 `profile` 参数 | **仍待定**：需要先看到调查结论 |
+
+后三项由 review 窗口受所有者委托决定；不同意任何一项，直接改本表和对应章节即可。
 
 ## 验证命令
 
-在仓库根目录执行。本机 PATH 上没有 `gradle`，Android 相关步骤需要先设置：
+在仓库根目录执行。本机 PATH 上没有 `gradle`：
 
 ```sh
 source "$HOME/.config/dev-environment/environment.sh"
@@ -179,7 +350,7 @@ ruff check .
 git diff --check
 ```
 
-涉及 Godot、Kotlin 或构建脚本的改动，再执行（改过 GDScript 后必须重新 configure）：
+涉及 Godot、Kotlin 或构建脚本的改动（改过 GDScript 后必须重新 configure）：
 
 ```sh
 python3 configs/android_workflow.py configure --vendor Quest --build-type Debug
@@ -188,19 +359,15 @@ python3 configs/android_workflow.py test --vendor Quest --build-type Debug --lev
 python3 configs/android_workflow.py package --vendor Quest --build-type Debug
 ```
 
-基线结果（2026-11-12）：workflow 77 项、website 4 项、JVM 205 项（10 项跳过）、Godot 102 项全部通过，ruff 零报错。结果低于这个基线必须在回报里解释。
+基线（2026-11-12，`c00dc4d` 时由 review 窗口实测）：workflow 77 项、website 4 项、JVM 205 项（10 项跳过）、Godot 102 项全部通过，ruff 零报错。`ad9f142` 的结果由实现窗口负责提供；低于基线必须解释。
 
 ## 回报格式
 
 写在最终回复里，不要写进仓库：
 
-1. 任务状态表：任务 · 状态（完成／部分／跳过／未执行）· 改动的文件 · 执行过的验证命令及通过数／失败数。
-2. B 组每一项的调查结论，附证据（文件:行号）。
-3. 删除的每条断言、翻译或文件，以及删除依据。
+1. 任务状态表：任务 · 状态（完成／部分／跳过／未执行）· 提交 · 执行过的验证命令及通过数／失败数。
+2. 调查项的结论，附证据（文件:行号）。
+3. 删除的每条断言、翻译或文件，以及依据。
 4. 新增到 `docs/ACCEPTANCE.md` 的待设备验收项。
 5. 范围外发现，只列出不修改。
-6. `git status --short` 和 `git diff --stat` 的完整输出。
-
-## 执行顺序
-
-A 组 → C2 → B 组（B1 依赖 C2 的结果）→ C3 → C4。B 组只回报结论的项不阻塞后面的步骤。
+6. `git log --oneline` 的新增提交和 `git status --short`。
