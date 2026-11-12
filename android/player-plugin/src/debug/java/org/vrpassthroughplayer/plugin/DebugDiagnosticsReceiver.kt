@@ -161,15 +161,6 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                                 intent.getBooleanExtra("benchmark", false),
                                             )
                                             .put(
-                                                "normal_fast",
-                                                intent.getBooleanExtra("normal_fast", true),
-                                            )
-                                            .put("frame_cap", intent.getIntExtra("frame_cap", -1))
-                                            .put(
-                                                "borrow_color",
-                                                intent.getBooleanExtra("borrow_color", true),
-                                            )
-                                            .put(
                                                 "enabled",
                                                 intent.getBooleanExtra("enabled", false),
                                             )

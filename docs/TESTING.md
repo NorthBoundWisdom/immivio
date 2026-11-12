@@ -168,3 +168,8 @@ use bundled `mp06_audio_clock`. Capture reports with the retained
 unique `request` string, then pull the resulting JSON from `files/diagnostics`
 using `run-as` before running the matching auditor. There is no replacement
 end-to-end driver for these report auditors.
+
+The retired `normal_fast`, `frame_cap` and `borrow_color` player command options
+are no longer accepted. Debug and Release use the same opaque capture path,
+unlimited native cadence and borrowed producer color. Reports retain the fixed
+`normal_fast_path=true` and `video_fps_cap=0` values for existing readers.

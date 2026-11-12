@@ -36,10 +36,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     private val thumbnails =
         LocalVideoThumbnails(
             {
-                !closed.get() &&
-                    appForeground &&
-                    wearerPresent &&
-                    !mpv.hasActiveVideo()
+                !closed.get() && appForeground && wearerPresent && !mpv.hasActiveVideo()
             },
             { id, result -> if (!closed.get()) emitSignal("media_list", id, result) },
         )
@@ -587,11 +584,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         if (closed.get()) return -1
         if (BuildConfig.DEBUG) {
             val command = JSONObject(json)
-            if (command.optString("operation") == "open") {
-                mpv.debugNormalFramePath(command.optBoolean("normal_fast", true))
-                mpv.debugFrameCap(command.optInt("frame_cap", -1))
-                mpv.debugBorrowColor(command.optBoolean("borrow_color", true))
-            }
+            if (command.optString("operation") == "open") {}
         }
         val id = requestId.incrementAndGet()
         emitSignal("mpv_debug_command", id, json)
@@ -717,7 +710,7 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
             GLES30.glGetStringi(
                 GLES30.GL_EXTENSIONS,
                 index,
-            ),
+            )
         )
         graphicsSnapshot = report.put("extensions", extensions).toString()
         Log.i("VRPassthroughPlayer", "GLES context observed")

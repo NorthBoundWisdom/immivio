@@ -45,27 +45,6 @@ internal class MpvVideoBridge(
     private val freezePending = AtomicBoolean(false)
     private val frozenFrames = ConcurrentHashMap<Long, AtomicInteger>()
 
-    @Volatile private var debugNormalFastPath = true
-
-    internal fun debugNormalFramePath(enabled: Boolean) {
-        if (BuildConfig.DEBUG) debugNormalFastPath = enabled
-    }
-
-    @Volatile private var debugFrameCapOverride = -1
-
-    /** Debug cadence verification only: -1 keeps the mode default. */
-    internal fun debugFrameCap(fps: Int) {
-        if (BuildConfig.DEBUG) debugFrameCapOverride = fps
-    }
-
-    @Volatile private var debugBorrowDisabled = false
-
-    /** Debug A/B only: copy every captured 8K color instead of holding the MPV slot. */
-    internal fun debugBorrowColor(enabled: Boolean) {
-        if (BuildConfig.DEBUG) debugBorrowDisabled = !enabled
-    }
-
-    /** Debug A/B only: MPV renders an 8K RGBA copy instead of handing over the decoder's image. */
     private var audioFocus: MpvAudioFocus? = null // worker only
 
     @Volatile private var audioFocusState = "none"
@@ -79,7 +58,6 @@ internal class MpvVideoBridge(
         private val requestedStereo: Boolean,
         val profile: String,
         val vulkan: Boolean,
-        val normalFastPath: Boolean,
         private val requestedTopBottom: Boolean = false,
     ) {
         val stereo
@@ -120,9 +98,6 @@ internal class MpvVideoBridge(
 
     /** User setting: decoded color width cap for sources opened from now on (0 = source size). */
     @Volatile var outputWidthCap = 0
-
-    private fun frameCap(session: Session) =
-        if (BuildConfig.DEBUG && debugFrameCapOverride >= 0) debugFrameCapOverride else 0
 
     private fun active(session: Session) =
         !stopped && !session.disposed.get() && gate.accepts(session.id)
@@ -175,7 +150,6 @@ internal class MpvVideoBridge(
                 stereo,
                 profile,
                 vulkan,
-                debugNormalFastPath,
                 stereo && topBottom,
             )
         sessions[id] = session
@@ -297,14 +271,14 @@ internal class MpvVideoBridge(
                                 check(host.subtitleCommand > 0)
                                 host.secondarySubtitleCommand = host.subtitleCommand
                             }
-                            MpvSourceNative.setFrameCap(host.handle, frameCap(session))
+                            MpvSourceNative.setFrameCap(host.handle, 0)
                             // Native creation stays paused until focus policy has
                             // run off the Godot GL thread.
                             refreshPlayback()
                         } catch (failure: Throwable) {
                             fail(session, "MPV_SOURCE_START_FAILED", failure)
                         }
-                    },
+                    }
                 )
             } catch (failure: Throwable) {
                 fail(session, "MPV_LOCAL_SOURCE_FAILED", failure)
@@ -348,12 +322,11 @@ internal class MpvVideoBridge(
                 stereo,
                 profile,
                 old.vulkan,
-                old.normalFastPath,
                 stereo && topBottom,
             )
         sessions[next] = session
         dispose(old, false)
-        if (host.handle > 0) MpvSourceNative.setFrameCap(host.handle, frameCap(session))
+        if (host.handle > 0) MpvSourceNative.setFrameCap(host.handle, 0)
         if (host.handle > 0 && positionMs < 0) MpvSourceNative.requestFrame(host.handle)
         return next
     }
@@ -718,7 +691,7 @@ internal class MpvVideoBridge(
                     }
                 }
                 finishCopy(session)
-                if (session.normalFastPath) finishUploads(session)
+                finishUploads(session)
                 if (session.output.copying != null) return@synchronized
                 // Open/revise starts MPV paused until Godot displays the first complete pair.
                 // Keep the source ticket until a display lease can capture it; paused MPV
@@ -736,10 +709,8 @@ internal class MpvVideoBridge(
                     }
                     // Cached opaque borrowing can be ready immediately: no copy or upload was
                     // submitted. Offer that pair in this draw instead of waiting another tick.
-                    if (session.normalFastPath) {
-                        finishCopy(session)
-                        finishUploads(session)
-                    }
+                    finishCopy(session)
+                    finishUploads(session)
                 }
                 if (System.nanoTime() >= session.host.nextStatusNs) {
                     session.host.nextStatusNs = System.nanoTime() + 250_000_000L
@@ -749,9 +720,7 @@ internal class MpvVideoBridge(
                             "bridge",
                             JSONObject(RenderBridgeNative.stats(session.output.renderer)),
                         )
-                    status
-                        .put("normal_fast_path", session.normalFastPath)
-                        .put("video_fps_cap", frameCap(session))
+                    status.put("normal_fast_path", true).put("video_fps_cap", 0)
                     val details = status.optJSONObject("details")
                     details?.optJSONArray("subtitle_tracks")?.let { tracks ->
                         session.host.subtitleTracks = JSONArray(tracks.toString())
@@ -789,7 +758,7 @@ internal class MpvVideoBridge(
                                 it.getLong("frame_id"),
                                 it.getLong("pts_us"),
                             )
-                        },
+                        }
                     )
                     event(
                         "mpv_state",
@@ -850,7 +819,7 @@ internal class MpvVideoBridge(
             check(
                 source.getBoolean("source_ticket_valid") &&
                     source.getBoolean("producer_fence_ready") &&
-                    source.getBoolean("owner_context_shared"),
+                    source.getBoolean("owner_context_shared")
             )
             val width = source.getInt("width")
             val height = source.getInt("height")
@@ -875,21 +844,14 @@ internal class MpvVideoBridge(
                 // Avoid a second full-resolution RGBA read/write (256 MiB per 8192x4096 frame).
                 // retire()/cleanup() release the producer through a consumer-context GPU fence;
                 // display pins, seeks and mode changes retain the same ownership rules as Alpha.
-                if (session.normalFastPath && !debugBorrowDisabled)
-                    session.output.borrow =
-                        RenderBridgeNative.enableBorrowedColor(session.output.renderer)
+                session.output.borrow =
+                    RenderBridgeNative.enableBorrowedColor(session.output.renderer)
             }
             val token =
-                if (session.normalFastPath)
-                    RenderBridgeNative.captureOpaqueTexture(
-                        session.output.renderer,
-                        source.getInt("color_texture_id"),
-                    )
-                else
-                    RenderBridgeNative.captureTexture(
-                        session.output.renderer,
-                        source.getInt("color_texture_id"),
-                    )
+                RenderBridgeNative.captureOpaqueTexture(
+                    session.output.renderer,
+                    source.getInt("color_texture_id"),
+                )
             if (token == 0L) {
                 // A full consumer ring must not consume the only remaining EOF
                 // frame. Keep the immutable producer lease and retry next draw.
@@ -927,7 +889,7 @@ internal class MpvVideoBridge(
                     MpvSourceNative.release(
                         session.host.handle,
                         producer,
-                    ),
+                    )
                 ) {
                     "Producer lease release failed"
                 }
@@ -955,7 +917,7 @@ internal class MpvVideoBridge(
             RenderBridgeNative.alphaReady(
                 session.output.renderer,
                 copying.second,
-            ),
+            )
         ) {
             "Opaque mask must share the completed color fence"
         }
@@ -1066,7 +1028,7 @@ internal class MpvVideoBridge(
                         }
                         emit("mpv_frozen_pair", session.id, report.toString())
                     }
-                },
+                }
             )
             return true
         } catch (_: Throwable) {
@@ -1089,7 +1051,7 @@ internal class MpvVideoBridge(
                         )
                 )
                     RenderBridgeNative.releaseFrozen(id)
-            },
+            }
         )
     }
 
@@ -1128,7 +1090,7 @@ internal class MpvVideoBridge(
                     )
                         retire(session, token)
                 }
-            },
+            }
         )
         return true
     }
@@ -1144,7 +1106,7 @@ internal class MpvVideoBridge(
                     )
                         retire(session, token)
                 }
-            },
+            }
         )
     }
 
@@ -1164,7 +1126,7 @@ internal class MpvVideoBridge(
                 MpvSourceNative.release(
                     session.host.handle,
                     lease.producer,
-                ),
+                )
             ) {
                 "Borrowed producer release failed"
             }
@@ -1191,7 +1153,7 @@ internal class MpvVideoBridge(
                         try {
                             check(
                                 session.output.renderer > 0 &&
-                                    session.output.owner == EGL14.eglGetCurrentContext(),
+                                    session.output.owner == EGL14.eglGetCurrentContext()
                             )
                             val pixels = pair.getInt("alpha_width") * pair.getInt("alpha_height")
                             val buffer = ByteBuffer.allocateDirect(pixels)
@@ -1200,7 +1162,7 @@ internal class MpvVideoBridge(
                                     session.output.renderer,
                                     token,
                                     buffer,
-                                ),
+                                )
                             )
                             val bytes = ByteArray(pixels)
                             buffer.position(0)
@@ -1217,8 +1179,8 @@ internal class MpvVideoBridge(
                                         java.io.File(
                                             directory,
                                             name,
-                                        ),
-                                    ),
+                                        )
+                                    )
                                 )
                             } finally {
                                 temporary.delete()
@@ -1234,7 +1196,7 @@ internal class MpvVideoBridge(
                         }
                         emit("mpv_pixel_mask", request, report.toString())
                     }
-                },
+                }
             )
             return true
         } catch (_: Throwable) {
@@ -1280,7 +1242,7 @@ internal class MpvVideoBridge(
                     MpvSourceNative.release(
                         session.host.handle,
                         source.getLong("producer_token"),
-                    ),
+                    )
                 )
             } else {
                 // The lost owner context cannot insert a consumer release fence.

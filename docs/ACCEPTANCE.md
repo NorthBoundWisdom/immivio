@@ -181,3 +181,7 @@ The old inference-mode/motion/Alpha-owner verification matrices have been retire
   probes can enter through the retained debug receiver after test-only URI and
   local-access facilities are removed. External URI grants and revocation now
   require manual headset acceptance; no automated device coverage is claimed.
+
+- After retiring the three Debug A/B controls, confirm ordinary/packed-alpha
+  playback, pause, seek, repeat/EOF and close on the headset using the fixed
+  production capture/borrow path; compare cadence and retained-frame cleanup.
