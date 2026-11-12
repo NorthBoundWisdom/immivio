@@ -24,12 +24,6 @@
     "assets": ["player-licenses/vendors.txt"]
   },
   {
-    "id": "media3",
-    "name": "AndroidX Media3",
-    "license": "Apache-2.0",
-    "assets": ["player-licenses/media3.txt"]
-  },
-  {
     "id": "jcifs",
     "name": "CodeLibs JCIFS 3.0.4",
     "license": "LGPL-2.1",

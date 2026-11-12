@@ -953,11 +953,7 @@ func toggle_clone_voice() -> bool:
 
 
 func alpha_ready() -> bool:
-	return (
-		alpha_enabled
-		and not media.last_pair.is_empty()
-		and media.last_pair.get("inference_ran", false)
-	)
+	return alpha_enabled and not media.last_pair.is_empty()
 
 
 func set_playback_speed(value: float) -> bool:

@@ -101,7 +101,7 @@ func _run() -> void:
 	surface.panel.visible = true
 	surface.material.set_shader_parameter("alpha_enabled", false)
 	surface.sharpness = 0
-	for pipeline in ["video_pair", "video_pair_oes"]:
+	for pipeline in ["video_pair"]:
 		surface.material.shader = shader_for("res://shaders/" + pipeline + ".gdshader")
 		surface.material.set_shader_parameter("alpha_enabled", false)
 		surface.sharpness = 0

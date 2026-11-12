@@ -80,8 +80,7 @@ vec2 packed_texel(vec2 mask_pixel) {
 
 float packed_sample(vec2 mask_pixel) { return texture(color_texture, packed_texel(mask_pixel)).r; }
 
-// Four taps stay inside their own tiles and this eye's half (as
-// video_alpha_oes.gdshader).
+// Four taps stay inside their own tiles and this eye's half.
 float packed_mask(vec2 full_uv, int eye) {
   vec2 p = clamp(full_uv * packed_size - vec2(0.5), vec2(0.0), packed_size - vec2(1.0));
   if (stereo_sbs) {

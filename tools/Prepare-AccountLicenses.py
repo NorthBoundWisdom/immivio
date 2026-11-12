@@ -15,7 +15,6 @@ def prepare():
     output = root / "third_party/player-licenses"
     output.mkdir(exist_ok=True)
     copies = {
-        "media3.txt": root / "third_party/gradle/LICENSE.txt",
         "jcifs.txt": root / "third_party/mpv/LICENSE.LGPL",
         "panorama-notice.txt": root / "app/godot/backgrounds/NOTICE.txt",
     }

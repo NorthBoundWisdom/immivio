@@ -50,7 +50,6 @@ internal object MpvAudioDiagnostics {
                 .put("consumer_context_origin", "debug_offscreen_GLES_pbuffer")
                 .put("godot_display_verified", false)
                 .put("xr_verified", false)
-                .put("rvm_verified", false)
                 .put("audible_output_verified", false)
                 .put("av_sync_verified", false)
                 .put("performance_verified", false)

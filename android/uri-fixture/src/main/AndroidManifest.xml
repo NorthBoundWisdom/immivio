@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <queries>
-        <package android:name="com.wapok.thru3d" />
+        <package android:name="com.northboundwisdom.immivio" />
     </queries>
     <application android:label="VR Player URI Test Fixture" android:allowBackup="false">
         <provider

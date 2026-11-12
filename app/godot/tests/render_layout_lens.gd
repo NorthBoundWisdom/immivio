@@ -106,7 +106,7 @@ func _run() -> void:
 			)
 	# Compressed fisheye gradients: expected normalized UV comes from the viewing angle,
 	# independently of shader view_size(). Test both axes, eye orders and production variants.
-	for variant in ["video_pair", "video_pair_oes"]:
+	for variant in ["video_pair"]:
 		var half_shader := Shader.new()
 		half_shader.code = (
 			FileAccess

@@ -28,7 +28,6 @@ const MODE := 120
 const MODE_PROJECTION := 130
 const MODE_STEREO := 140
 const MODE_LENS := 150
-const SLIDER_RESET_BASE := 10000
 const LENS_FOVS := [180, 190, 200, 220]
 ## Timeline width: the slim bar while watching, the full width in the expanded panel.
 const BAR_SEEK := 0.82
@@ -1414,28 +1413,6 @@ func _settings_key() -> String:
 	)
 
 
-func _setting_choices(operation: String) -> Dictionary:
-	if not _enabled(operation):
-		return {}
-	match operation:
-		"screen_curve":
-			var values: Array = []
-			for i in Surface.CURVES.size():
-				values.append({"value": Surface.CURVES[i], "label": CURVE_NAMES[i]})
-			return {
-				"key": "screen_curve", "value": _state.get("screen_curve", 0.0), "choices": values
-			}
-		"audio":
-			if not _enabled("audio") or _state.get("audio_options", []).is_empty():
-				return {}
-			return {
-				"key": "audio_track",
-				"value": _state.get("audio_track_id", -1),
-				"choices": _state.get("audio_options", [])
-			}
-	return {}
-
-
 func _ready() -> void:
 	super()
 	scale = PANEL_SCALE
@@ -1825,13 +1802,6 @@ func _finish_adjustment() -> void:
 	adjustment_committed.emit()
 
 
-func _slider_tick(target: int, value: float, label: String, y: float) -> void:
-	var row: Dictionary = _adjust_rows[target]
-	var x := 0.03 + inverse_lerp(row.span.x, row.span.y, value) * 0.6
-	_decoration(Vector2(0.003, 0.025), Vector2(x, y), Color.WHITE)
-	_label(label, Vector3(x, y + 0.04, 0.004), 13)
-
-
 func _draw_adjustments() -> void:
 	_quick_open = {"sync": "sync", "stereo_view": "ipd", "color_grade": "color"}.get(
 		_adjustment, ""
@@ -1839,56 +1809,6 @@ func _draw_adjustments() -> void:
 	_adjustment = ""
 	section = 0
 	_draw_bar()
-
-
-func _adjustment_row(target: int, key: String, title: String, span: Vector3, y: float) -> void:
-	var heading := _label(I18n.t(title), Vector3(-0.66, y, 0.004), CONTROL_FONT_SIZE)
-	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	var value := _label("", Vector3(-0.06, y, 0.004), 18)
-	value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_button(target, "", Vector2(0.33, y), Vector2(0.7, CONTROL_HEIGHT))
-	_buttons.back().enabled = _state.get("has_video", false)
-	_buttons.back().base_color = Color(TILE, 0)
-	var slider_button: Dictionary = _buttons.back()
-	_decoration(Vector2(0.6, 0.009), Vector2(0.33, y), MUTED)
-	var fill := _decoration(Vector2(0.6, 0.009), Vector2(0.33, y), ACCENT)
-	fill.material_override.render_priority = 13
-	var knob := _decoration(Vector2(0.025, 0.025), Vector2(0.03, y), Color.WHITE)
-	knob.material_override.render_priority = 14
-	_adjust_rows[target] = {
-		"key": key,
-		"span": span,
-		"label": value,
-		"fill": fill,
-		"knob": knob,
-		"button": slider_button
-	}
-	var default_value: Variant = _adjustment_default(key)
-	if default_value != null:
-		_glyph(
-			SLIDER_RESET_BASE + target, "refresh", Vector2(0.715, y), 0.065, true, I18n.t("Reset")
-		)
-		var reset_button: Dictionary = _buttons.back()
-		reset_button["keep_visible"] = true
-		reset_button["reset_slider"] = target
-		reset_button["reset_value"] = float(default_value)
-		_adjust_rows[target]["reset"] = reset_button
-
-
-func _adjustment_default(key: String) -> Variant:
-	if Grade.DEFAULTS.has(key):
-		return Grade.DEFAULTS[key]
-	return (
-		{
-			"screen_distance": Surface.SCREEN_DISTANCE,
-			"screen_scale": 100.0,
-			"screen_rotation": 0.0,
-			"playback_speed": 1.0,
-			"stereo_horizontal": 0.0,
-			"stereo_vertical": 0.0
-		}
-		. get(key)
-	)
 
 
 func _activate_slider_reset(target: int) -> bool:
@@ -1921,15 +1841,6 @@ func _refresh_slider_resets() -> void:
 		)
 
 
-func _inline_reset(target: int, title: String, key: String, default_value: float, y: float) -> void:
-	_control_button(target, "", Vector2(-0.315, y), 0.22)
-	var button: Dictionary = _buttons.back()
-	button["reset_key"] = key
-	button["reset_value"] = default_value
-	button["reset_caption"] = _fit_title(I18n.t(title), "", 0.195, 16)
-	button.node.get_child(0).font_size = 16
-
-
 func _refresh_adjustments() -> void:
 	var values: Dictionary = _state.get("grade_values", Grade.DEFAULTS)
 	for row in _adjust_rows.values():
@@ -1939,7 +1850,6 @@ func _refresh_adjustments() -> void:
 			"screen_scale": 100.0,
 			"screen_rotation": 0.0,
 			"playback_speed": 1.0,
-			"alpha_fps": 20.0,
 			"stereo_horizontal": 0.0,
 			"stereo_vertical": 0.0,
 			"subtitle_delay_ms": 0.0,
@@ -1987,8 +1897,6 @@ func _refresh_adjustments() -> void:
 			row.label.text = "%.2f×" % value
 		elif row.key in ["subtitle_delay_ms", "audio_delay_ms"]:
 			row.label.text = "%+d ms" % roundi(value)
-		elif row.key == "alpha_fps":
-			row.label.text = "%d FPS" % roundi(value)
 		elif row.key in ["stereo_horizontal", "stereo_vertical"]:
 			row.label.text = "%+.2f%%" % value if value != 0 else "0.00%"
 		row.fill.visible = fraction > 0
@@ -2031,36 +1939,3 @@ func _set_adjustment_at(x: float) -> void:
 		value = 1.0
 	adjustment_requested.emit(row.key, value)
 	refresh_values()
-
-
-func _activate_adjustment(target: int) -> void:
-	_finish_adjustment()
-	if target == CLOSE:
-		dismiss()
-		return
-	if _adjustment == "sync" and target in [SUBTITLE_DELAY_RESET, AUDIO_DELAY_RESET]:
-		adjustment_requested.emit(
-			"subtitle_delay_ms" if target == SUBTITLE_DELAY_RESET else "audio_delay_ms", 0
-		)
-		adjustment_committed.emit()
-		refresh_values()
-		return
-	if target == 400:
-		_adjustment = ""
-	elif _adjustment == "stereo_view" and _enabled("stereo_view"):
-		if target >= VIEWING_EYE and target <= VIEWING_EYE + 2:
-			setting_requested.emit("viewing_eye", target - VIEWING_EYE)
-		elif target == EYE_SWAP:
-			action_requested.emit("eyes")
-		elif target == ALIGNMENT_RESET:
-			adjustment_requested.emit("stereo_reset", true)
-	elif _adjustment == "color_grade":
-		if target >= 410 and target < 410 + Grade.PRESETS.size():
-			adjustment_requested.emit("grade_preset", Grade.PRESETS[target - 410])
-			adjustment_committed.emit()
-		elif target >= 430 and target < 433:
-			_grade_page = target - 430
-		elif target == 440:
-			adjustment_requested.emit("grade_reset", true)
-			adjustment_committed.emit()
-	refresh()

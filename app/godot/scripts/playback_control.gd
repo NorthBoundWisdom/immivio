@@ -76,6 +76,6 @@ func snapshot() -> Dictionary:
 		"duration_ms": duration_ms,
 		"display_position_ms": display_position_ms(),
 		"capacity": 1,
-		"seek_method": "Media3_decoder_and_Surface_replacement",
+		"seek_method": "libmpv_seek",
 		"source_frame_pts_verified": false
 	}

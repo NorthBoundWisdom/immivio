@@ -22,7 +22,6 @@ The project license does not replace third-party notices or claim ownership of u
 | Godot | MIT engine and corresponding template notices. |
 | Hand fallback meshes and texture | Unmodified MIT Godot OpenXR hand demo assets; full license and pinned upstream provenance in `app/godot/models/hands`. These glTF buffers are runtime visuals, not AI weights. |
 | Godot OpenXR Vendors | External addon; preserve the addon and each vendor component's actual license. No vendor SDK binaries are vendored here. |
-| AndroidX Media3 | Apache-2.0; retain applicable dependency/transitive notices when distributing an APK. |
 | ICU4J charset detector 78.1 | Unicode-3.0; only `Charset*.class` are packaged, with verified upstream SHA-256 and notices in `third_party/icu-charset`. |
 | CodeLibs JCIFS | LGPL-2.1; keep its source/license obligations and those of transitive dependencies. |
 | Belfast Sunset (Pure Sky), Blouberg Sunrise 2 | Unmodified Poly Haven panoramas, CC0-1.0; source, checksums and attribution are kept with the images. |

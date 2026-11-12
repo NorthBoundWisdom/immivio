@@ -181,6 +181,6 @@ func snapshot() -> Dictionary:
 		"decoder": decoder,
 		"codec_dropped_frames": codec_dropped_frames,
 		"coalesced_notifications": coalesced_notifications,
-		"frame_pairing": "direct_OES_only_no_RVM",
+		"frame_pairing": "direct_OES_only",
 		"device_validation": "pending"
 	}

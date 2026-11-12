@@ -12,7 +12,7 @@ $installed = (( & $adb -s $Serial shell pm path $package) | Where-Object { $_ -m
 if ($installed -notmatch '^/data/app/[A-Za-z0-9_=/+.~\-]+/base\.apk$') { throw 'Unexpected installed APK path' }
 $installedHash = (( & $adb -s $Serial shell sha256sum $installed) -split '\s+')[0]
 if ($installedHash -ne (Get-FileHash $apkPath).Hash.ToLowerInvariant()) { throw 'Test APK differs from installed APK' }
-foreach ($fixture in @('mp07_motion_4k', 'mp05_person_still', 'mp06_text_subtitles')) {
+foreach ($fixture in @('mp07_motion_4k', 'mp06_text_subtitles')) {
     $meta = Get-Content "$workspace/tests/fixtures/$fixture.json" -Raw | ConvertFrom-Json
     $local = Join-Path $workspace $meta.file
     if ((Get-FileHash $local).Hash.ToLowerInvariant() -ne $meta.sha256) { throw 'Fixture hash differs' }

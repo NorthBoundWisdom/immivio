@@ -84,7 +84,7 @@ def clean_build(root, *, dry_run=False):
 
 def export_dependencies():
     records = []
-    for key in ("media3-exoplayer", "slf4j-api", "bcprov", "openxr-loader"):
+    for key in ("slf4j-api", "bcprov", "openxr-loader"):
         library = CATALOG["libraries"][key]
         records.append(
             library["module"] + ":" + CATALOG["versions"][library["version"]["ref"]]

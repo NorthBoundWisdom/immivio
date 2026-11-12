@@ -4,9 +4,9 @@ Immivio is a Godot/OpenXR interface over an Android media-library plugin, libmpv
 
 ## Application and input
 
-`app/godot/scripts/main.gd` assembles the scene and connects lifecycle/events. Input, photo, playback/queue, preferences and XR presentation coordinators own their respective behavior/state. The main scene retains narrow adapters for existing integrations; controllers access it through weak references. `player_settings_migration.gd` owns the idempotent cleanup of retired effect preferences; ordinary audio, subtitles, queues and native stereo locks are preserved. Controller rays/triggers and supported hand gestures select controls. Grip placement, reclining mode, follow behavior and recentering retain their existing contracts. Lists and captured sliders suppress playback shortcuts until the stick returns to center.
+`app/godot/scripts/main.gd` assembles the scene and connects lifecycle/events. Input, playback/queue, preferences and XR presentation coordinators own their respective behavior/state. The main scene retains narrow adapters for existing integrations; controllers access it through weak references. `player_settings_migration.gd` owns the idempotent cleanup of retired effect preferences; ordinary audio, subtitles, queues and native stereo locks are preserved. Controller rays/triggers and supported hand gestures select controls. Grip placement, reclining mode, follow behavior and recentering retain their existing contracts. Lists and captured sliders suppress playback shortcuts until the stick returns to center.
 
-The native menu texture contains the hit reticle, while `xr_pointer_compositor.gd` renders the world-space beam separately for each eye above that menu. The UI and both eyes use independent `XrUiSurfacePresenter` instances with generation-scoped frames and Android Surface GPU copies; ordinary GLES viewport textures retain Godot ownership. Beam edges use pixel-aware coverage and longitudinal fading. The playback browser is a compact switcher anchored above the control bar; closing playback restores the full library and Settings.
+The native menu texture contains the hit reticle, while `pointer_ray.gd` draws the world-space beam in the main scene through the main XR projection, without per-eye pointer viewports or composition layers. The UI uses an `XrUiSurfacePresenter` with generation-scoped frames and Android Surface GPU copies; ordinary GLES viewport textures retain Godot ownership. Beam edges use pixel-aware coverage and longitudinal fading. The playback browser is a compact switcher anchored above the control bar; closing playback restores the full library and Settings.
 
 `xr_menu_compositor.gd` owns the Android-Surface menu presenter, its acknowledged presentation queue and curved mapping. Native layers are selected by runtime support; frame rate does not switch off native UI composition. Unsupported layers use the scene fallback. Menu pose and ray targets use the same presented layout.
 
@@ -28,11 +28,7 @@ Per-video track intent is stored in the existing checksummed mode store. Track m
 
 Frame descriptors use [contract version 2](FRAME_CONTRACT.md), with source identity, presentation revision and same-fence color/mask completion. Model/inference/warp fields are retired. Saved-mode compatibility is handled by settings migration, separately from transport validation.
 
-## Photos and libraries
-
-`PhotoBridge.kt` transfers and decodes sources off the render thread. Foreground/preload bridges transfer source ownership without deleting active files. `PhotoPreviewBridge` supplies bounded gallery thumbnails. Spatial/HEIF metadata and supported native stereo decoding are independent of AI conversion.
-
-`photo_display.gd` handles ordinary/native-stereo images, preload/navigation, magnification and gallery presentation. Photo walls preserve aspect ratio and ordered groups, with a bounded vertical budget for multiple rows. Depth/portrait workers and their backend entry points have been removed.
+## Libraries
 
 The Android plugin owns local grants, SMB, DLNA, media-server adapters. Credentials remain in application-private storage. DLNA subtitle refresh matches server-scoped object IDs and uses a complete directory listing to confirm removal when item metadata is incomplete.
 
@@ -48,8 +44,6 @@ Each module under `native/` owns its CMake target and keeps implementation files
 
 `tests/native/` owns native regression executables and their verification scripts. The host CMake graph builds JSON and seek trace tests without JNI, Android SDK libraries or a prepared libmpv binary. Android builds use the same helper target and build the three production shared libraries. Cross-directory dependencies use target include directories and linked targets; source files never include another `.cpp` file.
 
-The old `photo_stereo_gpu_probe.cpp` referenced removed `PhotoEgl`/`photo_stereo` conversion entry points and has been retired with that subsystem. Current photo and native stereo checks remain in the Godot tests and supported device probes.
-
 ## Refactoring status
 
-[REFACTOR_PLAN.md](REFACTOR_PLAN.md) records completed code batches and remaining acceptance. The native renderer has separate GL state, slot, frozen-frame and JNI modules; it only captures RGBA source color and opaque R8 masks. It preserves borrowed producer ownership and seven slots pending device measurement. Runtime/cross-platform/package acceptance is deferred by the owner; see [ACCEPTANCE.md](ACCEPTANCE.md).
+The native renderer has separate GL state, slot, frozen-frame and JNI modules; it only captures RGBA source color and opaque R8 masks. It preserves borrowed producer ownership and seven slots pending device measurement. Runtime/cross-platform/package acceptance is deferred by the owner; see [ACCEPTANCE.md](ACCEPTANCE.md).

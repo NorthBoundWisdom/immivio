@@ -6,7 +6,6 @@ import argparse
 import copy
 import hashlib
 import json
-from pathlib import Path
 import subprocess
 
 import numpy as np
@@ -129,7 +128,6 @@ def verify(report, reference):
     forbidden = [
         "godot_display_verified",
         "xr_verified",
-        "rvm_verified",
         "audible_output_verified",
         "av_sync_verified",
         "performance_verified",

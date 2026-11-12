@@ -9,7 +9,6 @@ import android.os.Handler
 import android.os.Looper
 import android.text.format.DateFormat
 import android.util.Log
-import androidx.media3.common.util.UnstableApi
 import java.io.File
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.RejectedExecutionException
@@ -27,7 +26,6 @@ import org.godotengine.godot.plugin.UsedByGodot
 import org.json.JSONArray
 import org.json.JSONObject
 
-@UnstableApi
 class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     private val closed = AtomicBoolean(false)
     private var presenceMonitor: HeadsetPresenceMonitor? = null
@@ -41,7 +39,6 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
                 !closed.get() &&
                     appForeground &&
                     wearerPresent &&
-                    !media.hasActiveVideo() &&
                     !mpv.hasActiveVideo()
             },
             { id, result -> if (!closed.get()) emitSignal("media_list", id, result) },
@@ -63,7 +60,6 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         val present = nativeWearerPresent && openxrWearerPresent
         if (present == wearerPresent) return
         wearerPresent = present
-        media.setWearerPresent(present)
         mpv.setWearerPresent(present)
         if (!present) thumbnails.cancel()
         if (signalsReady) emitSignal("headset_presence_changed", present, source)
@@ -120,13 +116,6 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         )
 
     @Volatile private var graphicsSnapshot = "{\"observed\":false}"
-    private val media =
-        LocalVideoBridge(
-            { activity?.applicationContext },
-            { runOnRenderThread(it) },
-        ) { name, id, json ->
-            if (!closed.get()) emitSignal(name, id, json)
-        }
     private val picker =
         LocalVideoPicker({ activity }) { json ->
             if (!closed.get()) emitSignal("local_video_selected", json)
@@ -210,12 +199,6 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
             SignalInfo("local_subtitle_selected", String::class.java),
             SignalInfo("mpv_subtitle_import", Int::class.javaObjectType, String::class.java),
             SignalInfo("local_video_access", Int::class.javaObjectType, String::class.java),
-            SignalInfo("media_state", Int::class.javaObjectType, String::class.java),
-            SignalInfo("media_format", Int::class.javaObjectType, String::class.java),
-            SignalInfo("media_frame", Int::class.javaObjectType, String::class.java),
-            SignalInfo("media_codec", Int::class.javaObjectType, String::class.java),
-            SignalInfo("media_error", Int::class.javaObjectType, String::class.java),
-            SignalInfo("media_released", Int::class.javaObjectType, String::class.java),
             SignalInfo("mpv_state", Int::class.javaObjectType, String::class.java),
             SignalInfo("mpv_pair_available", Int::class.javaObjectType, String::class.java),
             SignalInfo("mpv_error", Int::class.javaObjectType, String::class.java),
@@ -327,29 +310,6 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         localAccess.cancel(id)
     }
 
-    @UsedByGodot
-    fun open_local_video(textureId: Int, uri: String, startMs: Int): Int =
-        if (closed.get()) -1 else media.open(textureId, uri, startMs)
-
-    @UsedByGodot
-    fun set_video_playing(id: Int, playing: Boolean) {
-        if (!closed.get()) media.setPlaying(id, playing)
-    }
-
-    @UsedByGodot
-    fun restart_video_at(id: Int, textureId: Int, positionMs: Int): Int =
-        if (closed.get()) -1 else media.restart(id, textureId, positionMs)
-
-    @UsedByGodot
-    fun request_video_status(id: Int) {
-        if (!closed.get()) media.requestStatus(id)
-    }
-
-    @UsedByGodot
-    fun close_video(id: Int) {
-        media.close(id)
-    }
-
     /**
      * Headset battery and clock style: {"level": 0..100 or -1, "charging", "plugged", "clock24"}.
      */
@@ -404,8 +364,6 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         runOnHostThread { if (!closed.get()) sources.browseLocal(id, path) }
         return id
     }
-
-    @UsedByGodot fun media_list_local(): Int = media_local_browse("")
 
     @UsedByGodot
     fun media_local_storage_settings(path: String): Int {
@@ -689,7 +647,6 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         if (EGL14.eglGetCurrentContext() == EGL14.EGL_NO_CONTEXT) return
         repeat(16) { controlledRenderTasks.poll()?.run() ?: return@repeat }
         if (!closed.get()) {
-            media.draw()
             mpv.draw()
             XrUiSurfaceBridge.draw()
         }
@@ -746,7 +703,6 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
 
     override fun onGLSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         XrUiSurfaceBridge.contextCreated()
-        media.contextCreated()
         mpv.contextCreated()
         val report =
             JSONObject()
@@ -792,7 +748,6 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         thumbnails.cancel()
         if (!closed.get()) {
             CrashRecords.foreground(false)
-            media.pause()
             mpv.pause()
             if (signalsReady)
                 emitSignal(
@@ -806,7 +761,6 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         appForeground = true
         if (!closed.get()) {
             CrashRecords.foreground(true)
-            media.resume()
             mpv.resume()
             if (signalsReady) {
                 sources.refreshLocalStorage()
@@ -837,7 +791,6 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
             subtitlePicker.close()
             localAccess.close()
             probe.shutdownNow()
-            media.shutdown()
             mpv.shutdown()
             sources.close()
         }

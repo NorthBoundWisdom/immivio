@@ -1188,7 +1188,6 @@ const CREDITS := [
 			["libplacebo", "LGPL-2.1-or-later"],
 			["shaderc · glslang · SPIRV-Tools", "Apache-2.0 · BSD-3-Clause"],
 			["dav1d", "BSD-2-Clause"],
-			["AndroidX Media3 1.11.1", "Apache-2.0"],
 		]
 	],
 	[

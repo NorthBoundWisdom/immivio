@@ -1,11 +1,9 @@
 """Audit two actual Android UIDs, grants and libmpv FD decode."""
 
-import os
 from pathlib import Path
 import copy
 import hashlib
 import json
-from pathlib import Path
 import re
 import sys
 
@@ -297,7 +295,6 @@ def main():
         device_reboot_persistence_verified=False,
         android_catalog_verified=False,
         actual_Godot_resume_verified=False,
-        rvm_xr_verified=False,
         audio_verified=False,
     )
     (directory / "external-uri-verified.json").write_text(

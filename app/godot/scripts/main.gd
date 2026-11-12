@@ -1136,7 +1136,7 @@ func _save_report() -> void:
 		"captured_unix_seconds": Time.get_unix_time_from_system(),
 		"xr": display.capabilities(),
 		"android": android_report,
-		"stage": "MP04_shared_MPV_RVM_display_development",
+		"stage": "MPV_shared_display",
 		"video_implemented": true,
 		"video_device_validation": "pending",
 		"media": video.media.snapshot() if video else {},

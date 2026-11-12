@@ -52,7 +52,6 @@ credentials/
 *.key
 *.pem
 signing-identities.json
-thru3d*-signing.json
 .DS_Store
 
 # Optional editor plugin local files

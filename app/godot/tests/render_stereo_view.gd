@@ -42,7 +42,7 @@ func _run() -> void:
 	quad.mesh = QuadMesh.new()
 	quad.mesh.size = Vector2(2, 2)
 	viewport.add_child(quad)
-	for variant in ["video_pair", "video_pair_oes"]:
+	for variant in ["video_pair"]:
 		var code := (
 			FileAccess
 			. get_file_as_string("res://shaders/" + variant + ".gdshader")

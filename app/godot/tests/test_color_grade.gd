@@ -83,15 +83,14 @@ func _run() -> void:
 	material.shader = load("res://shaders/video_pair.gdshader")
 	grade.adjust("exposure", 1)
 	grade.apply(material)
-	preload("res://scripts/pair_texture_binding.gd")._use_shader(
-		material, load("res://shaders/video_pair_oes.gdshader")
-	)
+	var binding := preload("res://scripts/pair_texture_binding.gd")
+	binding._use_shader(material, binding.OPAQUE_SHADER)
 	check(
 		(
 			material.get_shader_parameter("grade_enabled")
 			and material.get_shader_parameter("grade_gain").is_equal_approx(Vector3.ONE * 2)
 		),
-		"OES switch preserves grading"
+		"Shader switch preserves grading"
 	)
 	var video := Video.new()
 	video.subtitle_distance = 1

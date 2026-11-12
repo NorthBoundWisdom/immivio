@@ -98,7 +98,6 @@ if (!godotApi.isPresent() || !file(godotApi.get()).isFile()) {
 dependencies {
     // The exported Godot APK supplies this library. Never package a second engine.
     compileOnly files(godotApi.get())
-    implementation libs.media3.exoplayer
     // Preserve SMB2/3, NTLM authentication, signing and encryption (LGPL-2.1).
     subtitleCharsetUpstream libs.icu.charset
     implementation files(subtitleCharsetJar)

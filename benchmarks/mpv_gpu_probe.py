@@ -9,7 +9,6 @@ from pathlib import Path
 import argparse
 import hashlib
 import json
-from pathlib import Path
 import subprocess
 
 import numpy as np

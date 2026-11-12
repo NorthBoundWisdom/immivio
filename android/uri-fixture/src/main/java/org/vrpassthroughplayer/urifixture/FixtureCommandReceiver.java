@@ -16,7 +16,7 @@ import java.util.UUID;
 /** Shell-only control of this test provider, restricted to one target package/URI. */
 public final class FixtureCommandReceiver extends BroadcastReceiver {
     private static final String PROCESS = UUID.randomUUID().toString();
-    private static final String TARGET = "com.wapok.thru3d";
+    private static final String TARGET = "com.northboundwisdom.immivio";
     private static final Uri URI =
             Uri.parse("content://org.vrpassthroughplayer.urifixture.documents/document/clip");
 

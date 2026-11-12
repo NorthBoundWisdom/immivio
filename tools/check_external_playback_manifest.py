@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from configs.android_manifest import ACTIVITY, verify, verify_xmltree
+from configs.android_manifest import ACTIVITY, verify, verify_xmltree  # noqa: F401 (ACTIVITY is re-exported for tests)
 
 if __name__ == "__main__":
     if len(sys.argv) == 3 and sys.argv[1] == "--xmltree":

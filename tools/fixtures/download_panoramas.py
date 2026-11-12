@@ -30,7 +30,6 @@ import hashlib
 import json
 import random
 import sys
-import time
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime

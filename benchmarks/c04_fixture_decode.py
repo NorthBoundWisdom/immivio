@@ -6,7 +6,6 @@ from pathlib import Path
 import argparse
 import hashlib
 import json
-from pathlib import Path
 import subprocess
 import cv2
 import numpy as np
