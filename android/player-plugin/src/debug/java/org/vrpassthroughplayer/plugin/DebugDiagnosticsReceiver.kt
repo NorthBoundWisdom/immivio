@@ -74,25 +74,25 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                             // QuestDlna.
                             val app = context.applicationContext
                             Thread {
-                                    DlnaClient.log = { android.util.Log.i("QuestDlna", it) }
-                                    val lock =
-                                        (app.getSystemService(android.content.Context.WIFI_SERVICE)
-                                                as android.net.wifi.WifiManager)
-                                            .createMulticastLock("QuestDlnaDebug")
-                                            .apply {
-                                                setReferenceCounted(false)
-                                                acquire()
-                                            }
-                                    try {
-                                        DlnaClient.discover().forEach {
-                                            android.util.Log.i("QuestDlna", "server ${it.json()}")
+                                DlnaClient.log = { android.util.Log.i("QuestDlna", it) }
+                                val lock =
+                                    (app.getSystemService(android.content.Context.WIFI_SERVICE)
+                                            as android.net.wifi.WifiManager)
+                                        .createMulticastLock("QuestDlnaDebug")
+                                        .apply {
+                                            setReferenceCounted(false)
+                                            acquire()
                                         }
-                                    } catch (error: Throwable) {
-                                        android.util.Log.e("QuestDlna", "discover failed", error)
-                                    } finally {
-                                        lock.release()
+                                try {
+                                    DlnaClient.discover().forEach {
+                                        android.util.Log.i("QuestDlna", "server ${it.json()}")
                                     }
+                                } catch (error: Throwable) {
+                                    android.util.Log.e("QuestDlna", "discover failed", error)
+                                } finally {
+                                    lock.release()
                                 }
+                            }
                                 .start()
                             1
                         } else if (intent.action == "${context.packageName}.DEBUG_MPV_AUDIO") {
