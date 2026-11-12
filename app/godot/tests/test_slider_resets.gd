@@ -96,7 +96,7 @@ func _run() -> void:
 	main.set_process(false)
 	main.report_timer.stop()
 	main.video.set_process(false)
-	main.recent_menu.dismiss()
+	main.library_menu.dismiss()
 	var video: Node3D = main.video
 	video.platform = Host.new()
 	video.mode_memory = Memory.new(directory.path_join("modes"))
@@ -218,12 +218,12 @@ func _run() -> void:
 		"Projected caption distance resets without moving its angle"
 	)
 	menu.dismiss()
-	main.recent_menu.section = main.recent_menu.Section.SETTINGS
-	main.recent_menu.tab = main.recent_menu.PLAYBACK_TAB
-	main.recent_menu.toggle()
-	tap(main.recent_menu, reset_target(main.recent_menu, "subtitle_position"))
+	main.library_menu.section = main.library_menu.Section.SETTINGS
+	main.library_menu.tab = main.library_menu.PLAYBACK_TAB
+	main.library_menu.toggle()
+	tap(main.library_menu, reset_target(main.library_menu, "subtitle_position"))
 	check(video.subtitle_position == 0, "Library subtitle settings use the same independent reset")
-	main.recent_menu.dismiss()
+	main.library_menu.dismiss()
 
 	main.queue_free()
 	await process_frame

@@ -104,7 +104,7 @@ func _run() -> void:
 	main.video._waiting_first = false
 	main.video.panel.visible = true
 	main.video._apply_geometry()
-	main.recent_menu.dismiss()
+	main.library_menu.dismiss()
 	main._show_player_menu()
 	check(
 		not main.video_menu._buttons.any(func(button): return button.target == 224),
@@ -136,9 +136,9 @@ func _run() -> void:
 		is_equal_approx(main.video_menu.controls_opacity, 0.25),
 		"Opacity updates the active control bar"
 	)
-	main.recent_menu.section = main.recent_menu.Section.SETTINGS
-	main._show_recent_menu(true)
-	var browser: Node3D = main.recent_menu
+	main.library_menu.section = main.library_menu.Section.SETTINGS
+	main._show_library_menu(true)
+	var browser: Node3D = main.library_menu
 	var bar: Node3D = main.video_menu
 	check(main.video_menu.visible and browser.visible, "Browsing retains playback controls")
 	check(
@@ -198,7 +198,7 @@ func _run() -> void:
 	main._update_menu_pointer("right_hand", true)
 	check(bar._quick_open == "speed", "The control bar accepts ray input while the browser is open")
 	bar._toggle_popup("")
-	main._show_recent_menu(true)
+	main._show_library_menu(true)
 	main._on_menu_action("stop")
 	check(
 		(
@@ -219,7 +219,7 @@ func _run() -> void:
 	main.video._waiting_first = false
 	main.video.panel.visible = true
 	main.video._apply_geometry()
-	main.recent_menu.dismiss()
+	main.library_menu.dismiss()
 	main._show_player_menu()
 	main.video_menu._toggle_popup("screen")
 	check(
@@ -262,7 +262,7 @@ func _run() -> void:
 		"details": {"paused_for_cache": "yes", "read_bytes_per_second": "2097152"}
 	}
 	main.video_menu.dismiss()
-	main.recent_menu.dismiss()
+	main.library_menu.dismiss()
 	main.playback_feedback.tick()
 	check(
 		(

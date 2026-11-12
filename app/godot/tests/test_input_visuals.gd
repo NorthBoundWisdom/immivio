@@ -242,7 +242,7 @@ func playback_checks() -> void:
 	app.video.local_uri = "file:///movie.mp4"
 	app.video.panel.visible = true
 	app.video.media.state = "playing"
-	app.recent_menu.dismiss()
+	app.library_menu.dismiss()
 	app.player_menu.dismiss()
 	await process_frame
 	app._update_hand_input(0.0)

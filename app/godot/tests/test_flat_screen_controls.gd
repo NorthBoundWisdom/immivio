@@ -43,8 +43,8 @@ func _run() -> void:
 	root.add_child(menu)
 	menu.set_process(false)
 	main.player_menu = menu
-	main.recent_menu = Node3D.new()
-	main.recent_menu.visible = false
+	main.library_menu = Node3D.new()
+	main.library_menu.visible = false
 	# Verify the visible per-eye aspect, including anamorphic PAR without double correction.
 	for case in [
 		[1920, 1080, 1.0, 1, 8.0 / 9.0],
@@ -254,7 +254,7 @@ func _run() -> void:
 	)
 	main._on_pointer_release("grip_click", "right_hand")
 	menu.free()
-	main.recent_menu.free()
+	main.library_menu.free()
 	main.free()
 	video.free()
 	for failure in failures:

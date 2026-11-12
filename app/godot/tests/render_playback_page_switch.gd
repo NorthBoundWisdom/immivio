@@ -32,7 +32,7 @@ func _run() -> void:
 	var host := Main.new()
 	host.settings_path = "user://playback-page-render.cfg"
 	target.add_child(host)
-	for node in [host, host.video, host.player_menu, host.recent_menu, host.menu_compositor]:
+	for node in [host, host.video, host.player_menu, host.library_menu, host.menu_compositor]:
 		node.set_process(false)
 	host.report_timer.stop()
 	var head: Camera3D = host.xr_camera
@@ -86,7 +86,7 @@ func _run() -> void:
 			"library":
 				menu._activate(Menu.BROWSE)
 			"playback":
-				host.recent_menu._activate(host.recent_menu.PLAYER)
+				host.library_menu._activate(host.library_menu.PLAYER)
 			"info":
 				menu._activate(12)
 		surface._bounds_due = 0

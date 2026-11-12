@@ -30,7 +30,7 @@ func _run() -> void:
 		is_equal_approx(presentation.window_height, -.12),
 		"Fresh windows default slightly below the previous height"
 	)
-	var library: Node3D = host.recent_menu
+	var library: Node3D = host.library_menu
 	var centre: Vector2 = library.capture_envelope().get_center()
 	check(
 		is_equal_approx(library.to_global(Vector3(centre.x, centre.y, 0)).y, host._eye().y - .12),
@@ -100,8 +100,8 @@ func _run() -> void:
 					% [geometry, reclining]
 				)
 			)
-			host.recent_menu.compact = true
-			host._show_recent_menu()
+			host.library_menu.compact = true
+			host._show_library_menu()
 			var compact: Transform3D = library.global_transform
 			host._place_menu(library)
 			check(

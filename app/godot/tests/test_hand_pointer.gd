@@ -228,7 +228,7 @@ func _run() -> void:
 	player.cancel_pointer("right_hand")
 	check(seeks.size() == before and player._seek_hand.is_empty(), "Loss cancels pending seek")
 	var main := Main.new()
-	main.recent_menu = library
+	main.library_menu = library
 	main.player_menu = player
 	main.video_menu = player
 	main.hand_pointers["right_hand"] = other

@@ -93,11 +93,11 @@ func check_first_browser_open(host: Node3D, geometry: int, follow: bool) -> void
 			"Immersive toolbar follows translation while the browser is open"
 		)
 	check(
-		host.recent_menu.global_transform.is_equal_approx(Menu.switcher_pose(menu)),
+		host.library_menu.global_transform.is_equal_approx(Menu.switcher_pose(menu)),
 		"Browser remains attached to the toolbar with follow=%s" % follow
 	)
 	var before_return: Transform3D = menu.global_transform
-	host.recent_menu._activate(host.recent_menu.PLAYER)
+	host.library_menu._activate(host.library_menu.PLAYER)
 	surface._process(0)
 	check(
 		menu.global_transform.is_equal_approx(before_return),
@@ -161,12 +161,12 @@ func _run() -> void:
 		Menu.QUEUE_SETTINGS,
 		12
 	]:
-		host._show_recent_menu()
-		host.recent_menu.compact = true
-		host._place_menu(host.recent_menu)
+		host._show_library_menu()
+		host.library_menu.compact = true
+		host._place_menu(host.library_menu)
 		check(
 			(
-				host.recent_menu.visible
+				host.library_menu.visible
 				and menu._quick_open.is_empty()
 				and not menu._mode_open
 				and not menu._subtitle_open
@@ -186,7 +186,7 @@ func _run() -> void:
 			"Toolbar page remains ray-selectable beside the compact browser: %d" % target
 		)
 		check(
-			menu._popup_is_open(Menu.POPUP_TARGETS[target]) and not host.recent_menu.visible,
+			menu._popup_is_open(Menu.POPUP_TARGETS[target]) and not host.library_menu.visible,
 			"Browser and playback page are mutually exclusive: %d" % target
 		)
 		check(
@@ -211,13 +211,13 @@ func _run() -> void:
 			is_equal_approx(menu.curve_radius, distance),
 			"Playback curvature matches its placed viewing distance"
 		)
-	host._show_recent_menu()
+	host._show_library_menu()
 	check(tap(host, Menu.BookmarkMenu.LIST), "Bookmark list remains selectable beside the browser")
 	check(
-		menu.bookmarks.opened and not host.recent_menu.visible,
+		menu.bookmarks.opened and not host.library_menu.visible,
 		"Bookmark list also replaces the browser"
 	)
-	host._show_recent_menu()
+	host._show_library_menu()
 	check(not menu.bookmarks.opened, "Browsing closes bookmark pages")
 	# Bending the timeline must not move a stationary drag's preview.
 	host._show_player_menu()

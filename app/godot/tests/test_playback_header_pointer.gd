@@ -113,8 +113,8 @@ func _run() -> void:
 	)
 	menu.device_status.visible = true
 	# A compact browser must not steal feedback from the visible playback header.
-	host.recent_menu.compact = true
-	host._show_recent_menu()
+	host.library_menu.compact = true
+	host._show_library_menu()
 	host.menu_compositor._process(0)
 	ray = ray_to(host, menu._title_pill.global_position, true)
 	host.test_ray = ray
@@ -122,7 +122,7 @@ func _run() -> void:
 	check(
 		(
 			menu._pointers.right_hand.dot.visible
-			and not host.recent_menu._pointers.right_hand.dot.visible
+			and not host.library_menu._pointers.right_hand.dot.visible
 		),
 		"Controller routes informational header feedback beside the browser"
 	)

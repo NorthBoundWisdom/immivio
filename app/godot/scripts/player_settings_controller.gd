@@ -97,7 +97,7 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 			):
 				host.video.platform.save_diagnostic_log()
 			else:
-				host.recent_menu.status = "Diagnostic log could not be saved"
+				host.library_menu.status = "Diagnostic log could not be saved"
 		"pinch_hand":
 			if (
 				not value is String
@@ -113,8 +113,8 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 		"controls_opacity":
 			_on_playback_adjustment(key, value)
 		"browse_memory":
-			host.recent_menu.browse_memory.configure(bool(value), host.video.history_enabled)
-			host.recent_menu._browse_restore = {}
+			host.library_menu.browse_memory.configure(bool(value), host.video.history_enabled)
+			host.library_menu._browse_restore = {}
 			host.settings.set_value("library", "browse_memory", bool(value))
 			host.settings.save(host.settings_path)
 		"library_list_view":
@@ -125,7 +125,7 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 			host.settings.set_value("ui", "reclining_mode", host.reclining_mode)
 			host.settings.save(host.settings_path)
 		"file_editing":
-			host.recent_menu.file_actions.set_enabled(bool(value))
+			host.library_menu.file_actions.set_enabled(bool(value))
 			host.settings.set_value("library", "file_editing", bool(value))
 			host.settings.save(host.settings_path)
 		"library_orders":
@@ -139,7 +139,7 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 				return
 			host.settings.set_value("display", "refresh_rate", host.display.preferred_refresh_rate)
 			host.settings.save(host.settings_path)
-			host.recent_menu.refresh()
+			host.library_menu.refresh()
 		"display_quality":
 			host.display_quality = clampi(int(value), Quality.AUTO, Quality.SCALES.size() - 1)
 			# Apply at next startup: live OpenXR resizing fails to free GLES3 targets on Quest.
@@ -188,15 +188,15 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 			host._capture_last_video_mode()
 			host.settings.save(host.settings_path)
 		"history":
-			host.recent_menu.remember_browse()
-			host.recent_menu.browse_memory.configure(
-				host.recent_menu.browse_memory.enabled, bool(value)
+			host.library_menu.remember_browse()
+			host.library_menu.browse_memory.configure(
+				host.library_menu.browse_memory.enabled, bool(value)
 			)
 			host.video.history_enabled = bool(value)
 			host.settings.set_value("library", "history", bool(value))
 			host.settings.save(host.settings_path)
 		"clear_history":
-			host.recent_menu.browse_memory.clear()
+			host.library_menu.browse_memory.clear()
 			host.video.clear_history()
 		"language":
 			host.settings.set_value("ui", "language", str(value))
@@ -204,7 +204,7 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 			I18n.use(str(value))
 			if PlatformMethods.supports(host.platform_plugin, "set_ui_language"):
 				host.platform_plugin.set_ui_language(I18n.choice)
-			for menu in [host.recent_menu, host.player_menu]:
+			for menu in [host.library_menu, host.player_menu]:
 				if menu.visible:
 					menu.refresh()
 		"subtitle_distance":

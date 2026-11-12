@@ -20,7 +20,7 @@ func _initialize() -> void:
 
 
 func opening(host: Node3D, id: int) -> void:
-	host.recent_menu.dismiss()
+	host.library_menu.dismiss()
 	host.player_menu.dismiss()
 	host.video.media.begin(id)
 	host.video.local_uri = "file:///startup-%d.mp4" % id
@@ -102,10 +102,10 @@ func _run() -> void:
 	check(host.player_menu.visible, "The replacement file reveals controls at its own first frame")
 	opening(host, 20)
 	host._show_player_menu()
-	host._show_recent_menu()
+	host._show_library_menu()
 	ready(host, Geometry.Geometry.FISHEYE)
 	check(
-		host.recent_menu.visible and not host.player_menu.visible,
+		host.library_menu.visible and not host.player_menu.visible,
 		"Returning to the library cancels the pending control reveal"
 	)
 	opening(host, 21)

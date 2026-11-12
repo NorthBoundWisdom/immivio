@@ -113,13 +113,13 @@ func _run() -> void:
 	)
 	var app := Main.new()
 	app.video = Reader.new()
-	app.recent_menu = Library.new()
+	app.library_menu = Library.new()
 	app.video.local_uri = "file:///storage/1234-5678/movie.mp4"
 	app.video_queue.assign([{"uri": app.video.local_uri}, {"uri": "smb://server/movie.mp4"}])
 	app._on_storage_eject_requested(external)
 	check(app.video.closes == 1, "Release closes target video")
 	check(
-		app.recent_menu.finished == external.id and app.video_queue.size() == 1,
+		app.library_menu.finished == external.id and app.video_queue.size() == 1,
 		"Release completes after pruning playback references"
 	)
 	app.video.local_uri = "smb://server/movie.mp4"
@@ -138,7 +138,7 @@ func _run() -> void:
 		"Related opaque descriptor lease closes through the production release route"
 	)
 	app.video.free()
-	app.recent_menu.free()
+	app.library_menu.free()
 	app.free()
 	var platform := Fixture.FakePlatform.new()
 	var menu := Menu.new()

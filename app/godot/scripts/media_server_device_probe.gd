@@ -9,7 +9,7 @@ var reauth_result := ""
 
 func start(owner: Node, request: Dictionary) -> void:
 	main = owner
-	menu = owner.recent_menu
+	menu = owner.library_menu
 	command = request
 	main.platform_plugin.connect("media_list", _observe)
 	_run.call_deferred()
@@ -40,7 +40,7 @@ func _idle() -> void:
 
 
 func _run() -> void:
-	main._show_recent_menu()
+	main._show_library_menu()
 	menu.account_panel.close()
 	menu.section = menu.Section.MEDIA_SERVER
 	var b: RefCounted = menu.server_browser

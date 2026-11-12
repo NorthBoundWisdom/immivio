@@ -91,13 +91,13 @@ func _run() -> void:
 		main.get_viewport().msaa_3d == Viewport.MSAA_2X,
 		"Immersive playback restores the lighter default MSAA"
 	)
-	main.recent_menu.section = main.recent_menu.Section.SETTINGS
-	main.recent_menu.tab = main.recent_menu.DISPLAY_TAB
-	main.recent_menu.refresh()
-	var quality_rows: Array = main.recent_menu.rows.filter(
+	main.library_menu.section = main.library_menu.Section.SETTINGS
+	main.library_menu.tab = main.library_menu.DISPLAY_TAB
+	main.library_menu.refresh()
+	var quality_rows: Array = main.library_menu.rows.filter(
 		func(row): return row.get("key") == "display_quality"
 	)
-	var sharpness_rows: Array = main.recent_menu.rows.filter(
+	var sharpness_rows: Array = main.library_menu.rows.filter(
 		func(row): return row.get("key") == "sharpness"
 	)
 	check(
@@ -107,7 +107,7 @@ func _run() -> void:
 			and quality_rows[0].choices.size() == 4
 			and quality_rows[0].choices[0].value == Quality.AUTO
 			and sharpness_rows[0].choices.size() == 4
-			and not main.recent_menu.rows.any(func(row): return row.get("key") == "show_fps")
+			and not main.library_menu.rows.any(func(row): return row.get("key") == "show_fps")
 		),
 		"Quality and sharpness each occupy one field; the FPS overlay lives under Appearance"
 	)
@@ -193,10 +193,10 @@ func _run() -> void:
 		),
 		"Menu shows auto output and sharpness off"
 	)
-	main.recent_menu.section = main.recent_menu.Section.SETTINGS
-	main.recent_menu.tab = main.recent_menu.PLAYBACK_TAB
-	main.recent_menu.refresh()
-	var resolution: Array = main.recent_menu.rows.filter(
+	main.library_menu.section = main.library_menu.Section.SETTINGS
+	main.library_menu.tab = main.library_menu.PLAYBACK_TAB
+	main.library_menu.refresh()
+	var resolution: Array = main.library_menu.rows.filter(
 		func(row): return row.get("key", "") == "output_width"
 	)
 	check(

@@ -447,7 +447,7 @@ func _run() -> void:
 	check(
 		(
 			main.video.local_uri.is_empty()
-			and main.recent_menu.visible
+			and main.library_menu.visible
 			and not main.video_menu.visible
 		),
 		"Final queue EOF closes playback and returns to files without repeating"

@@ -67,4 +67,4 @@ func tick() -> void:
 	label.text = message
 	if previous != message and host.player_menu.visible:
 		host.player_menu.refresh_values()
-	visible = not host.player_menu.visible and not host.recent_menu.visible
+	visible = not host.player_menu.visible and not host.library_menu.visible

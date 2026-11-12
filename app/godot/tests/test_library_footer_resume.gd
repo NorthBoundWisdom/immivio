@@ -41,7 +41,7 @@ func _run() -> void:
 	main.video.set_process(false)
 	main.menu_compositor.set_process(false)
 	main.report_timer.stop()
-	var menu: Node3D = main.recent_menu
+	var menu: Node3D = main.library_menu
 	menu.session_controls_provider = func():
 		return {"follow": false, "passthrough_visible": true, "passthrough": false, "alpha": false}
 	menu.refresh()

@@ -20,7 +20,7 @@ func _run() -> void:
 	root.add_child(main)
 	await process_frame
 	var failures: Array[String] = []
-	if not main.recent_menu.visible or main.player_menu.visible:
+	if not main.library_menu.visible or main.player_menu.visible:
 		failures.append("Real startup must show the library only")
 	if main.status_label.visible or main.calibration_board.visible:
 		failures.append("Diagnostics must be hidden during normal startup")
@@ -30,7 +30,7 @@ func _run() -> void:
 		failures.append("Startup screenshot failed")
 	main._show_player_menu()
 	await process_frame
-	if not main.player_menu.visible or main.recent_menu.visible:
+	if not main.player_menu.visible or main.library_menu.visible:
 		failures.append("Player and library must remain mutually exclusive")
 	if main.player_menu.text_snapshot().contains("Press trigger"):
 		failures.append("Instruction wall must be absent")

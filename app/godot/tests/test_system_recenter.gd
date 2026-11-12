@@ -48,7 +48,7 @@ func _run() -> void:
 	main.display.preview = false
 	main.display.session_state = "session_focussed"
 	main._head_placed = true
-	var menu: Node3D = main.recent_menu
+	var menu: Node3D = main.library_menu
 	for pico in [false, true]:
 		main._presentation._runtime_is_pico = pico
 		for follow in [false, true]:

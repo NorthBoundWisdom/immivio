@@ -141,7 +141,7 @@ func close_menu_check(main: Node3D, menu: Node3D, name: String) -> void:
 	var alpha: bool = main.video.alpha_wanted()
 	var video_state: String = main.video.media.state
 	main._on_pointer_button("by_button", "right_hand")
-	if menu == main.recent_menu:
+	if menu == main.library_menu:
 		check(
 			menu.visible and main._active_menu() == menu,
 			name + " cannot dismiss library with a controller button"
@@ -200,13 +200,13 @@ func _run() -> void:
 		"Reclining mode is off by default in settings and video placement"
 	)
 	check(
-		button(main.recent_menu, Menu.FOLLOW).base_color == Menu.TILE,
+		button(main.library_menu, Menu.FOLLOW).base_color == Menu.TILE,
 		"Initial follow button is off"
 	)
-	footer_check(main.recent_menu, "Empty library")
+	footer_check(main.library_menu, "Empty library")
 	check(
 		(
-			click(main.recent_menu, Menu.TEMP_PASSTHROUGH)
+			click(main.library_menu, Menu.TEMP_PASSTHROUGH)
 			and main.temporary_passthrough
 			and main.display.applied_passthrough
 		),
@@ -219,27 +219,27 @@ func _run() -> void:
 		),
 		"Temporary passthrough does not save background"
 	)
-	click(main.recent_menu, Menu.TEMP_PASSTHROUGH)
+	click(main.library_menu, Menu.TEMP_PASSTHROUGH)
 	check(
 		not main.temporary_passthrough and not main.display.applied_passthrough,
 		"Temporary passthrough disables independently"
 	)
-	click(main.recent_menu, Menu.FOLLOW)
+	click(main.library_menu, Menu.FOLLOW)
 	check(
 		main.view_follow.enabled and not main.temporary_passthrough,
 		"Follow can enable without media/background coupling"
 	)
-	var upright_library := main.recent_menu.global_transform
+	var upright_library := main.library_menu.global_transform
 	main.xr_camera.rotation.x += .8
 	main.xr_camera.rotation.z += .4
 	main._update_view_follow()
 	check(
-		main.recent_menu.global_transform.is_equal_approx(upright_library),
+		main.library_menu.global_transform.is_equal_approx(upright_library),
 		"Pitch and roll cannot move or tilt a following library"
 	)
 	var menu_local: Transform3D = (
 		Main._upright_pose(main.xr_camera.global_transform).affine_inverse()
-		* main.recent_menu.global_transform
+		* main.library_menu.global_transform
 	)
 	main.xr_camera.transform = Transform3D(
 		Basis.from_euler(Vector3(1.55, .4, .6)), Vector3(1, .4, 2)
@@ -249,7 +249,7 @@ func _run() -> void:
 		(
 			(
 				Main._upright_pose(main.xr_camera.global_transform).affine_inverse()
-				* main.recent_menu.global_transform
+				* main.library_menu.global_transform
 			)
 			. is_equal_approx(menu_local)
 		),
@@ -318,7 +318,7 @@ func _run() -> void:
 			),
 			"Head movement preserves size/curve/content rotation"
 		)
-	main._show_recent_menu()
+	main._show_library_menu()
 	var before := placement(main, main.video)
 	main._show_player_menu()
 	check(placement(main, main.video).is_equal_approx(before), "Menu summons do not move screen")
@@ -425,21 +425,21 @@ func _run() -> void:
 	)
 	main._on_session_control("temporary_passthrough")
 	main._on_menu_action("stop")
-	main._show_recent_menu()
+	main._show_library_menu()
 	check(
 		main.view_follow.enabled and main.temporary_passthrough,
 		"Stopping and browsing retain both session choices"
 	)
-	for section in range(main.recent_menu.NAV.size()):
-		main.recent_menu.section = section
-		main.recent_menu.refresh()
-		footer_check(main.recent_menu, "Library section " + str(section))
-	main.recent_menu.file_actions.modal = "delete"
-	main.recent_menu.file_actions.target = {"title": "Example.mp4", "uri": "file:///Example.mp4"}
-	main.recent_menu.refresh()
-	footer_check(main.recent_menu, "File confirmation")
-	main.recent_menu.file_actions.modal = ""
-	main.recent_menu.refresh()
+	for section in range(main.library_menu.NAV.size()):
+		main.library_menu.section = section
+		main.library_menu.refresh()
+		footer_check(main.library_menu, "Library section " + str(section))
+	main.library_menu.file_actions.modal = "delete"
+	main.library_menu.file_actions.target = {"title": "Example.mp4", "uri": "file:///Example.mp4"}
+	main.library_menu.refresh()
+	footer_check(main.library_menu, "File confirmation")
+	main.library_menu.file_actions.modal = ""
+	main.library_menu.refresh()
 	main._on_library_chosen(
 		"file:///follow/clip_LR_180_FISHEYE_F180_alpha.mp4", "clip_LR_180_FISHEYE_F180_alpha.mp4"
 	)
@@ -450,30 +450,30 @@ func _run() -> void:
 			main._person_passthrough() and main.display.applied_passthrough,
 			"Person passthrough forces actual transparent state"
 		)
-		main._show_recent_menu()
-		main.recent_menu.refresh()
-		var item := button(main.recent_menu, Menu.TEMP_PASSTHROUGH)
+		main._show_library_menu()
+		main.library_menu.refresh()
+		var item := button(main.library_menu, Menu.TEMP_PASSTHROUGH)
 		check(
 			not item.enabled and not item.node.visible,
 			"Person mode hides the unavailable temporary passthrough button"
 		)
 		var origin: Vector3 = item.node.global_position + item.node.global_basis.z * .25
-		main.recent_menu.update_pointer("right_hand", origin, -item.node.global_basis.z, true)
+		main.library_menu.update_pointer("right_hand", origin, -item.node.global_basis.z, true)
 		check(
 			(
-				main.recent_menu._hover.right_hand == Menu.NONE
-				and (not main.recent_menu._tooltip or not main.recent_menu._tooltip.visible)
+				main.library_menu._hover.right_hand == Menu.NONE
+				and (not main.library_menu._tooltip or not main.library_menu._tooltip.visible)
 			),
 			"Hidden unavailable button has no ray hover or tooltip"
 		)
-		click(main.recent_menu, Menu.TEMP_PASSTHROUGH)
+		click(main.library_menu, Menu.TEMP_PASSTHROUGH)
 		main._on_session_control("temporary_passthrough")
 		check(
 			main.temporary_passthrough == original and main.video.alpha_wanted(),
 			"Neither click nor direct action changes temporary request or Alpha"
 		)
 		var follow: bool = main.view_follow.enabled
-		click(main.recent_menu, Menu.FOLLOW)
+		click(main.library_menu, Menu.FOLLOW)
 		check(
 			main.view_follow.enabled != follow, "Follow remains operable during person passthrough"
 		)
@@ -482,7 +482,7 @@ func _run() -> void:
 			(
 				main.temporary_passthrough == original
 				and main.display.applied_passthrough == original
-				and button(main.recent_menu, Menu.TEMP_PASSTHROUGH).enabled
+				and button(main.library_menu, Menu.TEMP_PASSTHROUGH).enabled
 			),
 			"Leaving person mode restores original temporary choice and operability"
 		)
@@ -507,8 +507,8 @@ func _run() -> void:
 	main._on_setting_changed("background", "passthrough")
 	check(
 		(
-			button(main.recent_menu, Menu.TEMP_PASSTHROUGH).is_empty()
-			and not button(main.recent_menu, Menu.FOLLOW).is_empty()
+			button(main.library_menu, Menu.TEMP_PASSTHROUGH).is_empty()
+			and not button(main.library_menu, Menu.FOLLOW).is_empty()
 		),
 		"Saved passthrough hides only temporary control"
 	)
@@ -516,7 +516,7 @@ func _run() -> void:
 	main.display.supported = false
 	main._update_background()
 	check(
-		button(main.recent_menu, Menu.TEMP_PASSTHROUGH).is_empty(),
+		button(main.library_menu, Menu.TEMP_PASSTHROUGH).is_empty(),
 		"Unsupported platforms hide passthrough control"
 	)
 	main.display.supported = true
@@ -525,12 +525,12 @@ func _run() -> void:
 		main._on_session_control("follow")
 	main.display.preview = false
 	main.tracked = false
-	var frozen: Transform3D = main.recent_menu.global_transform
+	var frozen: Transform3D = main.library_menu.global_transform
 	main.xr_camera.position += Vector3(4, 0, 0)
 	main._update_view_follow()
 	main._recenter()
 	check(
-		main.recent_menu.global_transform.is_equal_approx(frozen),
+		main.library_menu.global_transform.is_equal_approx(frozen),
 		"Invalid head tracking does not recapture or move panels"
 	)
 	main.tracked = true
@@ -541,7 +541,7 @@ func _run() -> void:
 	check(
 		(
 			not main._system_recenter_pending
-			and not main.recent_menu.global_transform.is_equal_approx(frozen)
+			and not main.library_menu.global_transform.is_equal_approx(frozen)
 		),
 		"System reset uses the already-updated tracked pose in the same frame"
 	)
@@ -560,41 +560,41 @@ func _run() -> void:
 		main.video.flat_pose.basis.y.is_equal_approx(Vector3.UP),
 		"Standard recenter returns upright theater screen"
 	)
-	main._show_recent_menu()
+	main._show_library_menu()
 	check(
-		main.recent_menu.global_basis.y.is_equal_approx(Vector3.UP),
+		main.library_menu.global_basis.y.is_equal_approx(Vector3.UP),
 		"Standard menus summon upright with horizontal head direction"
 	)
-	main.recent_menu.refresh()
-	var control_position: Vector3 = button(main.recent_menu, Menu.FOLLOW).node.position
-	main.recent_menu.device_status.status_provider = func():
+	main.library_menu.refresh()
+	var control_position: Vector3 = button(main.library_menu, Menu.FOLLOW).node.position
+	main.library_menu.device_status.status_provider = func():
 		return {"level": 100, "charging": true, "clock24": false}
-	main.recent_menu.device_status.clock_provider = func(): return {"hour": 23, "minute": 59}
-	main.recent_menu.device_status.refresh(true)
+	main.library_menu.device_status.clock_provider = func(): return {"hour": 23, "minute": 59}
+	main.library_menu.device_status.refresh(true)
 	check(
-		button(main.recent_menu, Menu.FOLLOW).node.position == control_position,
+		button(main.library_menu, Menu.FOLLOW).node.position == control_position,
 		"Changing battery/time cannot shift ray controls"
 	)
 	# Without active video, the library and its confirmations must remain open.
 	main.video.close_video()
 	I18n.use("zh")
 	main._on_session_control("temporary_passthrough")
-	main._show_recent_menu()
-	close_menu_check(main, main.recent_menu, "Library")
-	main._show_recent_menu()
-	main.recent_menu.section = main.recent_menu.Section.SETTINGS
-	main.recent_menu.refresh()
-	close_menu_check(main, main.recent_menu, "Settings")
-	main._show_recent_menu()
-	main.recent_menu.file_actions.modal = "delete"
-	main.recent_menu.file_actions.target = {"title": "Example.mp4", "uri": "file:///Example.mp4"}
-	main.recent_menu.refresh()
-	close_menu_check(main, main.recent_menu, "File confirmation")
+	main._show_library_menu()
+	close_menu_check(main, main.library_menu, "Library")
+	main._show_library_menu()
+	main.library_menu.section = main.library_menu.Section.SETTINGS
+	main.library_menu.refresh()
+	close_menu_check(main, main.library_menu, "Settings")
+	main._show_library_menu()
+	main.library_menu.file_actions.modal = "delete"
+	main.library_menu.file_actions.target = {"title": "Example.mp4", "uri": "file:///Example.mp4"}
+	main.library_menu.refresh()
+	close_menu_check(main, main.library_menu, "File confirmation")
 	check(
-		not main.recent_menu.file_actions.modal.is_empty(),
+		not main.library_menu.file_actions.modal.is_empty(),
 		"Dismissal cannot hide a file confirmation; its own cancel action remains available"
 	)
-	main.recent_menu.file_actions.reset()
+	main.library_menu.file_actions.reset()
 	main._on_library_chosen("file:///follow/popup_2D.mp4", "popup_2D.mp4")
 	main.video._waiting_first = false
 	main.video.panel.visible = true
@@ -666,9 +666,9 @@ func _check_reclining(main: Node3D) -> void:
 	main.xr_camera.transform = Transform3D(
 		Basis.from_euler(Vector3(1.45, .3, .2)), Vector3(0, 1.6, 0)
 	)
-	main._show_recent_menu()
+	main._show_library_menu()
 	check(
-		not main.recent_menu.nav_order().has(main.recent_menu.Section.SETTINGS),
+		not main.library_menu.nav_order().has(main.library_menu.Section.SETTINGS),
 		"Settings stay out of the video switcher during playback"
 	)
 	_choose_reclining(main, true)
@@ -684,7 +684,7 @@ func _check_reclining(main: Node3D) -> void:
 	check(
 		(
 			not main.video_menu.visible
-			or main.recent_menu.global_basis.orthonormalized().is_equal_approx(
+			or main.library_menu.global_basis.orthonormalized().is_equal_approx(
 				main.video_menu.global_basis.orthonormalized()
 			)
 		),
@@ -732,7 +732,7 @@ func _check_reclining(main: Node3D) -> void:
 			),
 			"Reclining controls follow full head pose at pitch " + str(pitch)
 		)
-	main._show_recent_menu()
+	main._show_library_menu()
 	_choose_reclining(main, false)
 	check(
 		not main.reclining_mode and not main.video.reclining_mode and main.view_follow.enabled,
@@ -741,7 +741,7 @@ func _check_reclining(main: Node3D) -> void:
 	check(
 		(
 			absf(main.video.panel.global_basis.z.y) < .00001
-			and main.recent_menu.global_basis.y.normalized().is_equal_approx(Vector3.UP)
+			and main.library_menu.global_basis.y.normalized().is_equal_approx(Vector3.UP)
 		),
 		"Disabling reclining restores upright video and menus immediately"
 	)

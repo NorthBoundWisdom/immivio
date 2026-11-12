@@ -47,8 +47,8 @@ func _run() -> void:
 	main.video.mode_memory = preload("res://scripts/file_mode_memory.gd").new(
 		directory.path_join("modes")
 	)
-	main.recent_menu.catalog = main.video.recent_files
-	var library: Node3D = main.recent_menu
+	main.library_menu.catalog = main.video.recent_files
+	var library: Node3D = main.library_menu
 	library.section = library.Section.LOCAL
 	library._local_stack = [{"id": "/storage/emulated/0/Movies", "title": "Movies"}]
 	for i in 60:

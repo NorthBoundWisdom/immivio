@@ -49,7 +49,7 @@ func _run() -> void:
 	host.menu_compositor.set_process(false)
 	host.video.set_process(false)
 	host.report_timer.stop()
-	var menu: Node3D = host.recent_menu
+	var menu: Node3D = host.library_menu
 	menu.set_process(false)
 	menu._activate(menu.NAV_BASE + menu.Section.SETTINGS)
 	var at := position(host, menu, target(menu, "open", "language"))

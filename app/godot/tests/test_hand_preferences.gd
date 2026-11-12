@@ -27,7 +27,7 @@ func _run() -> void:
 	var host := preload("res://scripts/main.gd").new()
 	root.add_child(host)
 	host.set_process(false)
-	host.recent_menu.dismiss()
+	host.library_menu.dismiss()
 	host.video_menu.dismiss()
 	host.video.set_process(false)
 	host.video.local_uri = "file:///video.mp4"
@@ -56,12 +56,12 @@ func _run() -> void:
 	host._on_pointer_button("trigger_click", "left_hand")
 	host._on_pointer_release("trigger_click", "left_hand")
 	assert(host.video_menu._mode_open)
-	host._show_recent_menu(true)
-	host.recent_menu.section = host.recent_menu.Section.SETTINGS
-	host.recent_menu.tab = host.recent_menu.GENERAL_TAB
-	host.recent_menu.refresh()
+	host._show_library_menu(true)
+	host.library_menu.section = host.library_menu.Section.SETTINGS
+	host.library_menu.tab = host.library_menu.GENERAL_TAB
+	host.library_menu.refresh()
 	var probe := preload("res://scripts/selected_features_device_probe.gd").new()
-	assert(await probe.choose(host.recent_menu, "pinch_hand", "both"))
+	assert(await probe.choose(host.library_menu, "pinch_hand", "both"))
 	assert(host.pinch_hand == "both")
 	assert(host.settings.get_value("controls", "pinch_hand") == "both")
 	for hand in host.hand_pointers:

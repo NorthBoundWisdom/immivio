@@ -64,14 +64,14 @@ func check_fresh_default() -> void:
 	check(host.background.choice == "starry_night", "A fresh installation selects Starry night")
 	await settle(host.background)
 	check(host.background.ready_sky() != null, "The default starry sky completes its first bake")
-	host.recent_menu.section = host.recent_menu.Section.SETTINGS
-	host.recent_menu.tab = host.recent_menu.APPEARANCE_TAB
-	host.recent_menu.refresh()
+	host.library_menu.section = host.library_menu.Section.SETTINGS
+	host.library_menu.tab = host.library_menu.APPEARANCE_TAB
+	host.library_menu.refresh()
 	check(
 		(
 			(
 				host
-				. recent_menu
+				. library_menu
 				. rows
 				. filter(func(row): return row.get("key", "") == "background")[0]
 				. value
@@ -224,17 +224,21 @@ func _run() -> void:
 		if rendered_cache:
 			var image: Image = main.background._cached_night.get_image()
 			check(
-				image.get_size() == Vector2i(8192, 4096)
-				and image.get_format() == Image.FORMAT_RGBE9995
-				and image.has_mipmaps(),
+				(
+					image.get_size() == Vector2i(8192, 4096)
+					and image.get_format() == Image.FORMAT_RGBE9995
+					and image.has_mipmaps()
+				),
 				"Night cache retains 8K linear HDR with minification mipmaps"
 			)
 			var texture: RID = main.background._cached_night.get_rid()
 			main.background.set_yaw(45)
 			main.background.set_brightness(.75)
 			check(
-				main.background._cached_night.get_rid() == texture
-				and main.background._bake == null,
+				(
+					main.background._cached_night.get_rid() == texture
+					and main.background._bake == null
+				),
 				"Rotation and brightness reuse the completed star cache without rendering it again"
 			)
 			main.background.set_yaw(0)
@@ -247,37 +251,39 @@ func _run() -> void:
 	main._on_setting_changed("background_brightness", 1.0)
 	main._on_setting_changed("background", "dark")
 	check(
-		main.background._bake == null
-		and main.background._cached_night == null
-		and main.background.ready_sky() == null,
+		(
+			main.background._bake == null
+			and main.background._cached_night == null
+			and main.background.ready_sky() == null
+		),
 		"Leaving procedural scenery releases its bake texture"
 	)
 	main._on_setting_changed("background", "belfast")
 	await settle(main.background)
-	main.recent_menu.section = main.recent_menu.Section.SETTINGS
-	main.recent_menu.tab = main.recent_menu.APPEARANCE_TAB
-	main.recent_menu.refresh()
+	main.library_menu.section = main.library_menu.Section.SETTINGS
+	main.library_menu.tab = main.library_menu.APPEARANCE_TAB
+	main.library_menu.refresh()
 	check(
 		(
-			main.recent_menu.rows[0].get("group", false)
-			and main.recent_menu.rows[1].key == "background"
-			and main.recent_menu.rows[1].value == "belfast"
+			main.library_menu.rows[0].get("group", false)
+			and main.library_menu.rows[1].key == "background"
+			and main.library_menu.rows[1].value == "belfast"
 		),
 		"Background selection is shown in one settings field"
 	)
-	main.recent_menu.stick_scroll(-1, .25)
+	main.library_menu.stick_scroll(-1, .25)
 	check(
 		main.background.choice == "belfast", "Menu stick scroll never changes background selection"
 	)
-	for target in main.recent_menu.choices.targets:
-		var item: Dictionary = main.recent_menu.choices.targets[target]
+	for target in main.library_menu.choices.targets:
+		var item: Dictionary = main.library_menu.choices.targets[target]
 		if item.kind == "open" and item.key == "background":
-			field_tap(main.recent_menu, target)
+			field_tap(main.library_menu, target)
 			break
-	for target in main.recent_menu.choices.targets:
-		var item: Dictionary = main.recent_menu.choices.targets[target]
+	for target in main.library_menu.choices.targets:
+		var item: Dictionary = main.library_menu.choices.targets[target]
 		if item.kind == "choose" and item.key == "background" and item.value == "dark":
-			field_tap(main.recent_menu, target)
+			field_tap(main.library_menu, target)
 			break
 	check(main.background.choice == "dark", "Same-hand ray/trigger switches background")
 	main._on_setting_changed("background", "belfast")
@@ -303,7 +309,7 @@ func _run() -> void:
 			sky_color.r + sky_color.g + sky_color.b > .3,
 			"Panorama renders behind the current settings panel"
 		)
-		main.recent_menu.dismiss()
+		main.library_menu.dismiss()
 		await frame(viewport, "belfast")
 	main._on_setting_changed("background", "passthrough")
 	check(

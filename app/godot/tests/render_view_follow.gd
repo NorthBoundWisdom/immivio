@@ -81,40 +81,40 @@ func _run() -> void:
 	main.video.set_process(false)
 	main.report_timer.stop()
 	main.xr_camera.fov = 70
-	await capture(viewport, main.xr_camera, main.recent_menu, "library-off")
+	await capture(viewport, main.xr_camera, main.library_menu, "library-off")
 	main._on_session_control("follow")
 	main.xr_camera.transform = Transform3D(
 		Basis.from_euler(Vector3(PI / 2, .4, .6)), Vector3(2, .4, 1)
 	)
 	main._update_view_follow()
-	await capture(viewport, main.xr_camera, main.recent_menu, "library-lying-follow")
+	await capture(viewport, main.xr_camera, main.library_menu, "library-lying-follow")
 	main._show_player_menu()
 	await capture(viewport, main.xr_camera, main.video_menu, "video-follow")
 	main.video_menu.section = 1
 	main.video_menu.refresh()
 	await capture(viewport, main.xr_camera, main.video_menu, "video-settings")
-	main._show_recent_menu()
-	main.recent_menu.file_actions.modal = "delete"
-	main.recent_menu.file_actions.target = {"title": "旅行记录.mp4", "uri": "file:///example.mp4"}
-	main.recent_menu.refresh()
-	await capture(viewport, main.xr_camera, main.recent_menu, "file-confirmation")
-	main.recent_menu.file_actions.modal = ""
+	main._show_library_menu()
+	main.library_menu.file_actions.modal = "delete"
+	main.library_menu.file_actions.target = {"title": "旅行记录.mp4", "uri": "file:///example.mp4"}
+	main.library_menu.refresh()
+	await capture(viewport, main.xr_camera, main.library_menu, "file-confirmation")
+	main.library_menu.file_actions.modal = ""
 	# Real menu rendering with a simulated active packed-Alpha/XR state.
 	main.video.platform = Tests.HostTest.Host.new()
 	main._on_library_chosen(
 		"file:///render/clip_LR_180_FISHEYE_F180_alpha.mp4", "clip_LR_180_FISHEYE_F180_alpha.mp4"
 	)
 	main.video.set_alpha(true)
-	main._show_recent_menu()
-	main.recent_menu.refresh()
-	var item := button(main.recent_menu, Menu.TEMP_PASSTHROUGH)
-	main.recent_menu.update_pointer(
+	main._show_library_menu()
+	main.library_menu.refresh()
+	var item := button(main.library_menu, Menu.TEMP_PASSTHROUGH)
+	main.library_menu.update_pointer(
 		"right_hand",
 		item.node.global_position + item.node.global_basis.z * .3,
 		-item.node.global_basis.z,
 		true
 	)
-	await capture(viewport, main.xr_camera, main.recent_menu, "alpha-disabled-tooltip")
+	await capture(viewport, main.xr_camera, main.library_menu, "alpha-disabled-tooltip")
 	main.video.close_video()
 	viewport.queue_free()
 	await process_frame

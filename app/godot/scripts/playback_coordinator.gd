@@ -23,7 +23,7 @@ func open_external(value: Dictionary) -> void:
 	var uri := str(value.get("uri", ""))
 	if not uri.begins_with("externalvideo://"):
 		return
-	host.recent_menu.dismiss()
+	host.library_menu.dismiss()
 	host.player_menu.dismiss()
 	host._grab = {}
 	host.stick_controls.suspend()
@@ -42,21 +42,21 @@ func _on_library_chosen(uri: String, title: String) -> void:
 		return
 	if _queue_add_mode:
 		var metadata: Dictionary = (
-			host.recent_menu.server_browser.selection.duplicate(true)
+			host.library_menu.server_browser.selection.duplicate(true)
 			if uri.begins_with("medialib://")
 			else {}
 		)
-		for item in host.recent_menu.video_queue():
+		for item in host.library_menu.video_queue():
 			if item.uri == uri:
 				metadata = item.get("metadata", {})
 				break
 		host.playback_queue.custom = true
 		host.playback_queue.append([{"uri": uri, "title": title, "metadata": metadata}])
 		_save_queue()
-		host.recent_menu.status = "Added to playback queue"
-		host.recent_menu.refresh()
+		host.library_menu.status = "Added to playback queue"
+		host.library_menu.refresh()
 		return
-	host.recent_menu.dismiss()
+	host.library_menu.dismiss()
 	if host.player_menu:
 		host.player_menu.dismiss()
 	host._grab = {}
@@ -64,20 +64,20 @@ func _on_library_chosen(uri: String, title: String) -> void:
 	host.player_menu = host.video_menu
 	host.playback_queue.anchor = uri
 	if not host.playback_queue.custom:
-		host.video_queue = host.recent_menu.video_queue()
+		host.video_queue = host.library_menu.video_queue()
 	if host.playback_queue.find(uri).is_empty():
 		host.playback_queue.append([{"uri": uri, "title": title}])
 	var metadata: Dictionary = (
-		host.recent_menu.server_browser.selection.duplicate(true)
+		host.library_menu.server_browser.selection.duplicate(true)
 		if uri.begins_with("medialib://")
 		else {}
 	)
 	if not uri.begins_with("medialib://"):
-		for row in host.recent_menu.rows:
+		for row in host.library_menu.rows:
 			if str(row.get("uri", "")) == uri:
 				metadata = row.duplicate(true)
 				break
-	host.recent_menu.server_browser.selection = {}
+	host.library_menu.server_browser.selection = {}
 	if metadata.get("uri", "") != uri:
 		metadata = {}
 	if not host.playback_queue.find(uri).is_empty():
@@ -120,12 +120,12 @@ func _queue_action(operation: String) -> void:
 	host.playback_queue.anchor = host.video.local_uri
 	if operation == "queue_add":
 		_queue_add_mode = true
-		host.recent_menu.queue_add_mode = true
-		host._show_recent_menu()
+		host.library_menu.queue_add_mode = true
+		host._show_library_menu()
 		return
 	if operation == "queue_done":
 		_queue_add_mode = false
-		host.recent_menu.queue_add_mode = false
+		host.library_menu.queue_add_mode = false
 		host._show_player_menu()
 		host.video_menu._adjustment = ""
 		host.video_menu.section = 0
@@ -134,7 +134,7 @@ func _queue_action(operation: String) -> void:
 		return
 	if operation == "queue_add_list":
 		host.playback_queue.custom = true
-		host.playback_queue.append(host.recent_menu.video_queue())
+		host.playback_queue.append(host.library_menu.video_queue())
 	elif operation == "queue_clear":
 		host.playback_queue.clear()
 		host.playback_queue.custom = false
@@ -228,7 +228,7 @@ func _on_video_changed() -> void:
 	host._update_background()
 	host._update_status()
 	if host.player_menu and host.player_menu.visible:
-		if not host.recent_menu.visible and host.get("_presentation")._defer_video_controls():
+		if not host.library_menu.visible and host.get("_presentation")._defer_video_controls():
 			return
 		host.player_menu.refresh_values()
 
@@ -237,8 +237,8 @@ func _on_video_thumbnail_ready(_uri: String) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
-	if host.recent_menu and host.recent_menu.visible:
-		host.recent_menu.refresh()
+	if host.library_menu and host.library_menu.visible:
+		host.library_menu.refresh()
 
 
 func _update_thumbnail_protection() -> void:
@@ -261,8 +261,8 @@ func _on_menu_action(operation: String) -> void:
 		_queue_action(operation)
 		return
 	if operation == "load_subtitle":
-		host._show_recent_menu(true)
-		host.recent_menu.subtitle_picker.open(
+		host._show_library_menu(true)
+		host.library_menu.subtitle_picker.open(
 			host.video.local_uri,
 			host.video.display_name,
 			host.video.subtitle_tracks(),
@@ -274,7 +274,7 @@ func _on_menu_action(operation: String) -> void:
 		return
 	match operation:
 		"open_file":
-			host._show_recent_menu()
+			host._show_library_menu()
 		"play":
 			host.video.toggle_play()
 		"alpha":
@@ -294,7 +294,7 @@ func _on_menu_action(operation: String) -> void:
 			host._trigger_taps.clear()
 			host.stick_controls.suspend()
 			host.video.close_video()
-			host._show_recent_menu(true)
+			host._show_library_menu(true)
 		"stereo":
 			host.video.toggle_stereo()
 		"eyes":

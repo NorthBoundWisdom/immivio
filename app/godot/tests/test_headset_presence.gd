@@ -45,18 +45,18 @@ func _run() -> void:
 	check(not main._wearer_present, "XR presence cannot override confirmed native absence")
 	main._on_native_presence_changed(true, "proximity")
 	check(
-		not main.recent_menu.local_thumbnails._suspended,
+		not main.library_menu.local_thumbnails._suspended,
 		"Wearer return enables idle-library previews"
 	)
 	main._on_android_lifecycle("pause")
 	check(
-		main.recent_menu.local_thumbnails._suspended,
+		main.library_menu.local_thumbnails._suspended,
 		"Activity pause also suspends library previews"
 	)
 	main._on_native_presence_changed(false, "proximity")
 	main._on_android_lifecycle("resume")
 	check(
-		main.recent_menu.local_thumbnails._suspended,
+		main.library_menu.local_thumbnails._suspended,
 		"Activity resume cannot generate previews while the wearer is absent"
 	)
 	main._on_native_presence_changed(true, "proximity")

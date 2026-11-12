@@ -24,7 +24,7 @@ func _preview_menu_input(event: InputEvent) -> bool:
 	if not is_instance_valid(host) or not host.display.preview or not event is InputEventMouse:
 		return false
 	var menu: Node3D = host._active_menu()
-	for candidate in [host.recent_menu, host.player_menu]:
+	for candidate in [host.library_menu, host.player_menu]:
 		if (
 			is_instance_valid(candidate)
 			and candidate.visible
@@ -38,7 +38,7 @@ func _preview_menu_input(event: InputEvent) -> bool:
 	var origin: Vector3 = host.xr_camera.project_ray_origin(event.position)
 	var direction: Vector3 = host.xr_camera.project_ray_normal(event.position)
 	if (
-		menu == host.recent_menu
+		menu == host.library_menu
 		and host.player_menu
 		and host.player_menu.visible
 		and not menu.has_pointer_capture()
@@ -52,7 +52,7 @@ func _preview_menu_input(event: InputEvent) -> bool:
 			and (library.is_empty() or float(controls.distance) < float(library.distance))
 		):
 			menu = host.player_menu
-	for other in [host.recent_menu, host.player_menu]:
+	for other in [host.library_menu, host.player_menu]:
 		if is_instance_valid(other) and other != menu:
 			other.update_pointer("desktop", origin, direction, false)
 	if event is InputEventMouseMotion:
@@ -114,14 +114,14 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			if event.keycode == KEY_ESCAPE:
 				if menu.get("allow_user_dismiss") != false:
 					menu.dismiss()
-			elif menu == host.recent_menu:
+			elif menu == host.library_menu:
 				match event.keycode:
 					KEY_UP:
-						host.recent_menu.move_focus(-1)
+						host.library_menu.move_focus(-1)
 					KEY_DOWN:
-						host.recent_menu.move_focus(1)
+						host.library_menu.move_focus(1)
 					KEY_ENTER:
-						host.recent_menu.activate_desktop()
+						host.library_menu.activate_desktop()
 			return
 		match event.keycode:
 			KEY_T:
@@ -131,7 +131,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			KEY_D:
 				host.request_capabilities()
 			KEY_O:
-				host._show_recent_menu()
+				host._show_library_menu()
 			KEY_SPACE:
 				host.video.toggle_play()
 			KEY_S:
@@ -251,7 +251,7 @@ func _on_pointer_button(action: String, hand: String) -> void:
 		return
 	var menu = host._active_menu()
 	if action == "grip_click":
-		if menu == host.recent_menu and menu is LibraryMenu:
+		if menu == host.library_menu and menu is LibraryMenu:
 			_begin_library_grab(hand)
 			return
 		if (
@@ -299,11 +299,11 @@ func _on_pointer_button(action: String, hand: String) -> void:
 	match action:
 		"trigger_click":
 			if host._viewer().local_uri.is_empty():
-				host._show_recent_menu()
+				host._show_library_menu()
 			else:
 				_begin_picture_press(hand)
 		"ax_button":
-			host._show_recent_menu()
+			host._show_library_menu()
 		"primary_click":
 			if hand == "left_hand":
 				host.video.cycle_projection()
@@ -636,7 +636,7 @@ func _cancel_pointer(hand: String) -> void:
 		_grab = {}
 		host._viewer().set_corner_hover(-1)
 	# Cancellation never becomes a tap, row selection, or fling.
-	for menu in [host.recent_menu, host.video_menu]:
+	for menu in [host.library_menu, host.video_menu]:
 		if is_instance_valid(menu) and menu.has_method("cancel_pointer"):
 			menu.cancel_pointer(hand)
 
@@ -682,21 +682,21 @@ func _begin_library_grab(hand: String) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
-	if not _library_grab.is_empty() or host.recent_menu.has_pointer_capture():
+	if not _library_grab.is_empty() or host.library_menu.has_pointer_capture():
 		return
 	var ray: Variant = host._ray(hand)
 	if ray == null:
 		return
-	var point: Variant = host.recent_menu._plane_point(ray[0], ray[1])
+	var point: Variant = host.library_menu._plane_point(ray[0], ray[1])
 	if point == null or not Rect2(-1.1, -0.85, 2.05, 1.5).has_point(Vector2(point.x, point.y)):
 		return
-	var offset: Vector3 = host.recent_menu.global_position - host._eye()
+	var offset: Vector3 = host.library_menu.global_position - host._eye()
 	if offset.length() < .1:
 		return
 	host._trigger_taps.clear()
 	host.stick_controls.suspend()
-	host.recent_menu._fling = 0.0
-	var ray_length: float = ray[0].distance_to(host.recent_menu.to_global(point))
+	host.library_menu._fling = 0.0
+	var ray_length: float = ray[0].distance_to(host.library_menu.to_global(point))
 	var direction: Vector3 = (ray[0] + ray[1] * ray_length - host._eye()).normalized()
 	_library_grab = {
 		"hand": hand,
@@ -715,10 +715,10 @@ func _update_library_grab() -> void:
 	if _library_grab.is_empty():
 		return
 	var ray: Variant = host._ray(_library_grab.hand)
-	if ray == null or not host.recent_menu.visible:
+	if ray == null or not host.library_menu.visible:
 		_library_grab.clear()
 		return
-	host.recent_menu._stick_ms = Time.get_ticks_msec()
+	host.library_menu._stick_ms = Time.get_ticks_msec()
 	var direction: Vector3 = (
 		(ray[0] + ray[1] * float(_library_grab.ray_length) - host._eye()).normalized()
 	)
@@ -740,7 +740,7 @@ func _update_library_grab() -> void:
 	var previous = host._ray_angles(frame.inverse() * _library_grab.last_direction)
 	_library_grab.last_direction = direction
 	_library_grab.moved = true
-	var pose = Transform3D(frame, host._eye()).affine_inverse() * host.recent_menu.global_transform
+	var pose = Transform3D(frame, host._eye()).affine_inverse() * host.library_menu.global_transform
 	var offset = pose.origin
 	var placement = (
 		host._ray_angles(offset)
@@ -762,8 +762,8 @@ func _update_library_grab() -> void:
 			pose.basis * Vector3(0, 0, -Vector2(offset.x, offset.z).length())
 			+ Vector3.UP * offset.y
 		)
-	host.recent_menu.global_transform = Transform3D(frame, host._eye()) * pose
-	host._on_menu_placement_changed(host.recent_menu)
+	host.library_menu.global_transform = Transform3D(frame, host._eye()) * pose
+	host._on_menu_placement_changed(host.library_menu)
 
 
 func _update_library_grab_stick(left: Vector2, right: Vector2, delta: float) -> void:
@@ -772,7 +772,7 @@ func _update_library_grab_stick(left: Vector2, right: Vector2, delta: float) -> 
 		return
 	if (
 		_library_grab.is_empty()
-		or not host.recent_menu.visible
+		or not host.library_menu.visible
 		or host._ray(_library_grab.hand) == null
 	):
 		return
@@ -791,17 +791,17 @@ func _update_library_grab_stick(left: Vector2, right: Vector2, delta: float) -> 
 		host.LIBRARY_DISTANCE_LIMITS.x,
 		host.LIBRARY_DISTANCE_LIMITS.y
 	)
-	var offset = host.recent_menu.global_position - host._eye()
+	var offset = host.library_menu.global_position - host._eye()
 	if host.reclining_mode:
-		host.recent_menu.global_position = host._eye() + offset.normalized() * distance
+		host.library_menu.global_position = host._eye() + offset.normalized() * distance
 	else:
 		var horizontal = Vector3(offset.x, 0, offset.z).normalized()
-		host.recent_menu.global_position = (
+		host.library_menu.global_position = (
 			host._eye() + horizontal * distance + Vector3.UP * offset.y
 		)
 	host.library_distance = distance
 	_library_grab.moved = true
-	host._on_menu_placement_changed(host.recent_menu)
+	host._on_menu_placement_changed(host.library_menu)
 
 
 func _begin_picture_press(hand: String) -> void:
@@ -866,7 +866,7 @@ func _update_corner_hover() -> void:
 		corner = int(_grab.resize.corner)
 	elif (
 		_grab.is_empty()
-		and (not host.recent_menu.visible)
+		and (not host.library_menu.visible)
 		and (not host._viewer().local_uri.is_empty())
 	):
 		for hand in ["right_hand", "left_hand"]:
@@ -966,7 +966,7 @@ func _update_grab() -> void:
 		ray == null
 		or not host.video
 		or host._viewer().local_uri.is_empty()
-		or host.recent_menu.visible
+		or host.library_menu.visible
 	):
 		_grab = {}
 		return

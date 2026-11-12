@@ -61,7 +61,7 @@ func _run() -> void:
 	main.player_menu = menu
 	var library := RayMenu.new()
 	root.add_child(library)
-	main.recent_menu = library
+	main.library_menu = library
 	main.test_ray = [
 		camera.global_position, (video.panel.global_position - camera.global_position).normalized()
 	]

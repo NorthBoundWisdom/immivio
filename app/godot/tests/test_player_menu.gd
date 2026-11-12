@@ -296,7 +296,7 @@ func _run() -> void:
 	menu.setting_requested.connect(main._on_player_setting)
 	menu.adjustment_requested.connect(main._on_playback_adjustment)
 	menu.adjustment_committed.connect(main._save_playback_adjustments)
-	menu.recent_requested.connect(main._show_recent_menu)
+	menu.recent_requested.connect(main._show_library_menu)
 	menu.seek_requested.connect(main._on_menu_seek)
 	menu.subtitle_requested.connect(video.set_subtitle_track)
 	root.add_child(menu)
@@ -308,7 +308,7 @@ func _run() -> void:
 	recent.catalog = video.recent_files
 	recent.player_requested.connect(main._show_player_menu)
 	root.add_child(recent)
-	main.recent_menu = recent
+	main.library_menu = recent
 	menu.toggle()
 	check(
 		(
@@ -326,7 +326,7 @@ func _run() -> void:
 	video.open_local("file:///menu.mp4", "测试电影 😀", 0, false)
 	video._waiting_first = false
 	recent.dismiss()
-	main._show_recent_menu(true)
+	main._show_library_menu(true)
 	check(
 		click(recent, Library.PLAYER) and menu.visible and not recent.visible,
 		"Production library back-to-video button returns to controls"
@@ -1312,7 +1312,7 @@ func _check_control_sticks(main: Node3D, video: Node3D, menu: Node3D, host: RefC
 	check(host.calls.size() == calls, "Projection popup cannot seek")
 	menu._mode_open = false
 	menu.refresh()
-	var original_recent: Node3D = main.recent_menu
+	var original_recent: Node3D = main.library_menu
 	var library := Library.new()
 	library.section = Library.Section.LOCAL
 	for index in 30:
@@ -1320,7 +1320,7 @@ func _check_control_sticks(main: Node3D, video: Node3D, menu: Node3D, host: RefC
 			{"uri": "file:///item%d.mp4" % index, "title": "Video %d" % index}
 		)
 	root.add_child(library)
-	main.recent_menu = library
+	main.library_menu = library
 	library.toggle()
 	main._process_sticks(Vector2(0, -.99), Vector2(.99, 0), 0.3)
 	check(
@@ -1328,7 +1328,7 @@ func _check_control_sticks(main: Node3D, video: Node3D, menu: Node3D, host: RefC
 		"Media library scrolls without controlling the current video"
 	)
 	library.dismiss()
-	main.recent_menu = original_recent
+	main.library_menu = original_recent
 	library.free()
 	# Actual ray timeline capture remains exclusive, including the other hand's stick.
 	main._process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)

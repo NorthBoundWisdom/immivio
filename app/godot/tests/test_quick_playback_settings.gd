@@ -74,7 +74,7 @@ func _run() -> void:
 	main.report_timer.stop()
 	main.menu_compositor.set_process(false)
 	main.video.set_process(false)
-	main.recent_menu.dismiss()
+	main.library_menu.dismiss()
 	var host := Host.new()
 	main.video.platform = host
 	main.video.local_uri = "file:///quick-settings-synthetic.mp4"

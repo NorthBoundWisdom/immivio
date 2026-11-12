@@ -208,7 +208,7 @@ func _run() -> void:
 	menu.position = Vector3(0, -0.03, -1.55)
 	menu.toggle()
 	var main := Main.new()  # Keep outside tree to avoid starting the actual player.
-	main.recent_menu = menu
+	main.library_menu = menu
 	var origin := XROrigin3D.new()
 	root.add_child(origin)
 	var trackers: Array[XRControllerTracker] = []

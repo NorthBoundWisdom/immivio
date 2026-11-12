@@ -81,7 +81,7 @@ var xr_origin: XROrigin3D
 var xr_camera: XRCamera3D
 var fps_overlay: Label3D
 var stick_controls := StickControls.new()
-var recent_menu: Node3D
+var library_menu: Node3D
 var player_menu: Node3D
 var menu_compositor: Node3D
 const LIBRARY_DISTANCE_LIMITS := Vector2(0.8, 4.0)
@@ -292,36 +292,38 @@ func _ready() -> void:
 	video.sharpness = Quality.load_sharpness(settings, low_end_gpu)
 	video.view_camera = camera
 	display.set_foveation(int(settings.get_value("video", "foveation", 0)))
-	recent_menu = LibraryMenu.new()
-	recent_menu.catalog = video.recent_files
-	recent_menu.list_view = bool(settings.get_value("library", "list_view", false))
-	recent_menu.browse_memory.configure(
+	library_menu = LibraryMenu.new()
+	library_menu.catalog = video.recent_files
+	library_menu.list_view = bool(settings.get_value("library", "list_view", false))
+	library_menu.browse_memory.configure(
 		bool(settings.get_value("library", "browse_memory", true)), video.history_enabled
 	)
-	recent_menu.layout_changed.connect(func(): _place_menu(recent_menu))
-	recent_menu.file_actions.load(settings.get_value("library", "orders", {}))
-	recent_menu.file_actions.set_enabled(bool(settings.get_value("library", "file_editing", false)))
-	recent_menu.file_renamed.connect(_on_file_renamed)
-	recent_menu.current_file_provider = func(): return _viewer().local_uri
-	recent_menu.file_delete_preparing.connect(_prepare_file_delete)
-	recent_menu.file_deleted.connect(_forget_deleted_file)
-	recent_menu.settings_provider = _library_settings
+	library_menu.layout_changed.connect(func(): _place_menu(library_menu))
+	library_menu.file_actions.load(settings.get_value("library", "orders", {}))
+	library_menu.file_actions.set_enabled(
+		bool(settings.get_value("library", "file_editing", false))
+	)
+	library_menu.file_renamed.connect(_on_file_renamed)
+	library_menu.current_file_provider = func(): return _viewer().local_uri
+	library_menu.file_delete_preparing.connect(_prepare_file_delete)
+	library_menu.file_deleted.connect(_forget_deleted_file)
+	library_menu.settings_provider = _library_settings
 	if video.platform and video.platform.has_signal("diagnostic_log_saved"):
 		video.platform.connect(
 			"diagnostic_log_saved",
 			func(_id, raw):
 				var result: Variant = JSON.parse_string(raw)
 				if result is Dictionary:
-					recent_menu.status = (
+					library_menu.status = (
 						"Log saved to Downloads"
 						if result.get("ok", false)
 						else "Diagnostic log could not be saved"
 					)
-					recent_menu.refresh()
+					library_menu.refresh()
 		)
-	recent_menu.chosen.connect(_on_library_chosen)
-	recent_menu.subtitle_system_requested.connect(video.pick_external_subtitle)
-	recent_menu.subtitle_chosen.connect(
+	library_menu.chosen.connect(_on_library_chosen)
+	library_menu.subtitle_system_requested.connect(video.pick_external_subtitle)
+	library_menu.subtitle_chosen.connect(
 		func(selection):
 			if (
 				selection.source_uri != video.local_uri
@@ -333,24 +335,24 @@ func _ready() -> void:
 			else:
 				video._pending_external_uri = str(selection.get("subtitle_uri", ""))
 	)
-	recent_menu.storage_eject_requested.connect(_on_storage_eject_requested)
-	recent_menu.storage_removed.connect(_release_storage_readers)
-	recent_menu.player_requested.connect(
+	library_menu.storage_eject_requested.connect(_on_storage_eject_requested)
+	library_menu.storage_removed.connect(_release_storage_readers)
+	library_menu.player_requested.connect(
 		func():
 			if _queue_add_mode:
 				_queue_action("queue_done")
 			else:
 				_presentation._show_player_menu(false)
 	)
-	recent_menu.queue_requested.connect(_queue_action)
-	recent_menu.setting_changed.connect(_on_setting_changed)
-	recent_menu.setting_previewed.connect(_on_playback_adjustment)
-	recent_menu.recenter_requested.connect(_recenter)
-	_connect_session_controls(recent_menu)
-	add_child(recent_menu)
+	library_menu.queue_requested.connect(_queue_action)
+	library_menu.setting_changed.connect(_on_setting_changed)
+	library_menu.setting_previewed.connect(_on_playback_adjustment)
+	library_menu.recenter_requested.connect(_recenter)
+	_connect_session_controls(library_menu)
+	add_child(library_menu)
 	if Engine.has_singleton("QuestPlayer"):
 		var plugin := Engine.get_singleton("QuestPlayer")
-		recent_menu.attach_platform(plugin)
+		library_menu.attach_platform(plugin)
 		plugin.connect("mpv_debug_command", _on_display_debug_command)
 		plugin.set_mpv_output_width(
 			Quality.output_width(Quality.load_output_choice(settings), low_end_gpu)
@@ -367,10 +369,10 @@ func _ready() -> void:
 	# The compact browser and playback popups share one content area.
 	player_menu.popup_opened.connect(
 		func():
-			if recent_menu.visible and recent_menu.playback_browser:
+			if library_menu.visible and library_menu.playback_browser:
 				_presentation._show_player_menu(false)
 	)
-	player_menu.recent_requested.connect(func(): _show_recent_menu())
+	player_menu.recent_requested.connect(func(): _show_library_menu())
 	player_menu.seek_requested.connect(_on_menu_seek)
 	player_menu.bookmark_requested.connect(_on_bookmark_request)
 	player_menu.setting_requested.connect(_on_player_setting)
@@ -384,7 +386,7 @@ func _ready() -> void:
 	menu_compositor = preload("res://scripts/xr_menu_compositor.gd").new()
 	add_child(menu_compositor)
 	menu_compositor.configure(
-		[recent_menu, video_menu],
+		[library_menu, video_menu],
 		camera,
 		not display.preview and display.xr != null and display.xr.is_initialized(),
 		func(): return display.session_state
@@ -422,11 +424,11 @@ func _ready() -> void:
 	report_timer.start()
 	_update_status()
 	if not OS.get_cmdline_user_args().has("--mpv-diagnostic-2d"):
-		_show_recent_menu()
+		_show_library_menu()
 	Log.record(
 		"ui_ready",
 		{
-			"library_visible": recent_menu.visible,
+			"library_visible": library_menu.visible,
 			"player_visible": player_menu.visible,
 			"diagnostics_visible": status_label.visible,
 			"calibration_visible": calibration_board.visible,
@@ -442,8 +444,8 @@ func _ready() -> void:
 	recent_scan.changed.connect(
 		func():
 			_update_thumbnail_protection()
-			if recent_menu.section == recent_menu.Section.RECENT:
-				recent_menu.refresh()
+			if library_menu.section == library_menu.Section.RECENT:
+				library_menu.refresh()
 	)
 	recent_scan.start(video.recent_files, platform_plugin)
 	# Source distribution: private capture automation is excluded.
@@ -757,10 +759,10 @@ func _on_library_chosen(uri: String, title: String) -> void:
 func _on_file_renamed(old_uri: String, new_uri: String, title: String) -> void:
 	video.recent_files.relocate(old_uri, new_uri, title)
 	if not video.recent_files.save():
-		recent_menu.file_actions.rename.migration_failed = true
+		library_menu.file_actions.rename.migration_failed = true
 	video.mode_memory.relocate(old_uri, new_uri)
 	if not video.mode_memory.save():
-		recent_menu.file_actions.rename.migration_failed = true
+		library_menu.file_actions.rename.migration_failed = true
 	LibraryMenu.Thumbnails.relocate(old_uri, new_uri)
 	playback_queue.relocate(old_uri, new_uri, title)
 	_save_queue()
@@ -792,7 +794,7 @@ func _forget_deleted_file(uri: String) -> void:
 
 func _on_storage_eject_requested(volume: Dictionary) -> void:
 	_release_storage_readers(volume)
-	recent_menu.finish_storage_release(str(volume.get("id", "")))
+	library_menu.finish_storage_release(str(volume.get("id", "")))
 
 
 func _release_storage_readers(volume: Dictionary) -> void:
@@ -909,8 +911,8 @@ func _show_player_menu() -> void:
 	_presentation._show_player_menu()
 
 
-func _show_recent_menu(preserve_navigation: bool = false) -> void:
-	_presentation._show_recent_menu(preserve_navigation)
+func _show_library_menu(preserve_navigation: bool = false) -> void:
+	_presentation._show_library_menu(preserve_navigation)
 
 
 func _canvas_controls_snapshot() -> Dictionary:
@@ -1111,9 +1113,9 @@ func _apply_wearer_presence() -> void:
 
 
 func _update_local_thumbnail_activity() -> void:
-	if recent_menu:
-		recent_menu.local_thumbnails.set_suspended(
-			recent_menu, not (_wearer_present and _thumbnail_foreground)
+	if library_menu:
+		library_menu.local_thumbnails.set_suspended(
+			library_menu, not (_wearer_present and _thumbnail_foreground)
 		)
 
 
@@ -1263,10 +1265,10 @@ func _on_display_debug_command(_id: int, payload: String) -> void:
 		add_child(probe)
 		probe.start(self, command)
 	elif operation == "display_menu":
-		_show_recent_menu()
-		recent_menu.section = recent_menu.Section.SETTINGS
-		recent_menu.tab = recent_menu.DISPLAY_TAB
-		recent_menu.refresh()
+		_show_library_menu()
+		library_menu.section = library_menu.Section.SETTINGS
+		library_menu.tab = library_menu.DISPLAY_TAB
+		library_menu.refresh()
 	elif operation == "player_menu":
 		_show_player_menu()
 
