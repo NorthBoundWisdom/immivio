@@ -18,7 +18,6 @@ IMMERSIVE = "org.khronos.openxr.intent.category.IMMERSIVE_HMD"
 DEBUG_COMPONENTS = {
     "org.vrpassthroughplayer.plugin.DebugDiagnosticsReceiver",
     "org.vrpassthroughplayer.plugin.MpvDiagnosticActivity",
-    "org.vrpassthroughplayer.plugin.LocalAccessTestProvider",
 }
 
 
