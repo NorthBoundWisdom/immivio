@@ -734,7 +734,7 @@ func _menu_state() -> Dictionary:
 	var audio_options: Array = [{"value": -1, "label": "Auto"}]
 	for track in details.get("audio_tracks", []):
 		if track is Dictionary and int(track.get("id", 0)) > 0:
-			var label = host._audio_option_label(track)
+			var label = host.playback_coordinator._audio_option_label(track)
 			var option = {"value": int(track.id), "label": label, "hint": label}
 			if track.get("external", false) and str(track.get("title", "")) == "Clone voice":
 				audio_options.insert(1, option)
@@ -748,8 +748,8 @@ func _menu_state() -> Dictionary:
 			not host.video.local_uri.is_empty()
 			and host.video.media.accepts(host.video.media.session_id)
 		),
-		"has_previous_video": not host._adjacent_video(-1).is_empty(),
-		"has_next_video": not host._adjacent_video(1).is_empty(),
+		"has_previous_video": not host.playback_coordinator._adjacent_video(-1).is_empty(),
+		"has_next_video": not host.playback_coordinator._adjacent_video(1).is_empty(),
 		"playing": host.video.requested_play,
 		"playback_state": host.video.media.state,
 		"ai_enabled": false,
@@ -781,7 +781,7 @@ func _menu_state() -> Dictionary:
 		"queue_shuffle": host.playback_queue.shuffle,
 		"queue_loop": host.playback_queue.loop,
 		"audio_tracks": details.get("audio_tracks", []).size(),
-		"audio_track": host._audio_track_name(details),
+		"audio_track": host.playback_coordinator._audio_track_name(details),
 		"clone_voice": host.video.clone_voice_track() > 0,
 		"clone_voice_active": host.video.clone_voice_active(),
 		"screen_preset": host.video.screen_preset,
@@ -830,7 +830,7 @@ func _menu_state() -> Dictionary:
 		"loading_message":
 		host.playback_feedback.message if is_instance_valid(host.playback_feedback) else "",
 		"error_detail": host.video.playback_error_detail,
-		"error": host._menu_error()
+		"error": host.playback_coordinator._menu_error()
 	}
 	result.merge(host.video.bookmarks_snapshot())
 	return result
@@ -844,7 +844,7 @@ func _toggle_display() -> void:
 		host.video.set_alpha(not host.video.alpha_wanted())
 	else:
 		host.background.select("dark" if host.background.choice == "passthrough" else "passthrough")
-		host._save_background()
+		host.settings_controller._save_background()
 	host._save_report()
 
 
@@ -895,9 +895,11 @@ func _connect_session_controls(menu: Node3D) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
-	menu.session_controls_provider = host._session_controls_state
-	menu.session_control_requested.connect(host._on_session_control)
-	menu.placement_changed.connect(host._on_menu_placement_changed.bind(menu))
+	menu.session_controls_provider = host.presentation_coordinator._session_controls_state
+	menu.session_control_requested.connect(host.presentation_coordinator._on_session_control)
+	menu.placement_changed.connect(
+		host.presentation_coordinator._on_menu_placement_changed.bind(menu)
+	)
 
 
 func _on_menu_placement_changed(menu: Node3D) -> void:
@@ -1027,7 +1029,7 @@ func _recenter() -> void:
 	_system_recenter_pending = false
 	host._library_grab.clear()
 	host._grab.clear()
-	host.get("_input").immersive.suspend()
+	host.input_coordinator.immersive.suspend()
 	if not host._viewer().local_uri.is_empty():
 		_place_screen(true)
 		if host._viewer().geometry != Geometry.Geometry.FLAT:

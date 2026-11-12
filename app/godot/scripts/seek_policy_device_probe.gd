@@ -44,7 +44,7 @@ func run(host: Node, step: String, marker_id: String) -> Dictionary:
 		host.menu_compositor.reset_metrics()
 		result.accepted = true
 	elif step in ["player_settings", "player_playback", "player_screen", "player_bar"]:
-		host._show_player_menu()
+		host.presentation_coordinator._show_player_menu()
 		var target: int = {
 			"player_settings": 11,
 			"player_playback": host.player_menu.PLAYBACK_SETTINGS,
@@ -53,12 +53,12 @@ func run(host: Node, step: String, marker_id: String) -> Dictionary:
 		}[step]
 		result.accepted = await tap(host.player_menu, target)
 	elif step == "recenter":
-		host._show_player_menu()
+		host.presentation_coordinator._show_player_menu()
 		host.player_menu.section = 0
 		host.player_menu.refresh()
 		result.accepted = await tap(host.player_menu, 108)
 	elif step in ["bookmark_seek", "bookmark_delete"]:
-		host._show_player_menu()
+		host.presentation_coordinator._show_player_menu()
 		var menu: Node3D = host.player_menu
 		menu.section = 0
 		menu.bookmarks.opened = true

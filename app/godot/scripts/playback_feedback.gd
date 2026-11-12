@@ -40,7 +40,7 @@ func tick() -> void:
 	var failure: String = video.media.error
 	if not failure.is_empty() and error_seen != failure:
 		error_seen = failure
-		host._show_player_menu()
+		host.presentation_coordinator._show_player_menu()
 		host.video_menu._quick_open = "info"
 		host.video_menu.refresh()
 	if stage.is_empty():
@@ -50,7 +50,7 @@ func tick() -> void:
 		return
 	if since == 0:
 		since = Time.get_ticks_msec()
-		var pose: Variant = host._view_pose(1.4, 0.30)
+		var pose: Variant = host.presentation_coordinator._view_pose(1.4, 0.30)
 		global_transform = (
 			pose if pose != null else Transform3D(Basis.IDENTITY, Vector3(0, 1.3, -1.4))
 		)

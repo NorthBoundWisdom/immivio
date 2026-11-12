@@ -63,12 +63,12 @@ func adjust(key: String, value: Variant) -> bool:
 		host.video.screen_eye_level = preset.eye_level
 		host.video.set_screen_distance(preset.distance)
 		host.video._apply_geometry()
-		host.view_follow._poses.erase(host._surface_key(host.video))
-		host._place_screen()
+		host.view_follow._poses.erase(host.presentation_coordinator._surface_key(host.video))
+		host.presentation_coordinator._place_screen()
 	elif key == "screen_eye_level":
 		host.video.screen_eye_level = clampf(float(value), 0, 1)
-		host.view_follow._poses.erase(host._surface_key(host.video))
-		host._place_screen()
+		host.view_follow._poses.erase(host.presentation_coordinator._surface_key(host.video))
+		host.presentation_coordinator._place_screen()
 	elif key == "screen_curve":
 		host.video.set_screen_curve(float(value))
 	elif key == "screen_grid":
@@ -83,7 +83,7 @@ func adjust(key: String, value: Variant) -> bool:
 
 func show_guide() -> void:
 	var host: Node3D = host_ref.get_ref()
-	var head: Variant = host._head_pose()
+	var head: Variant = host.presentation_coordinator._head_pose()
 	if head == null or host.video.geometry != 0:
 		return
 	if not is_instance_valid(guide):

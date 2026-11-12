@@ -29,7 +29,7 @@ func open_external(value: Dictionary) -> void:
 	host.stick_controls.suspend()
 	host.player_menu = host.video_menu
 	if host.video.open_library(uri, str(value.get("title", "Video"))):
-		host._show_player_menu()
+		host.presentation_coordinator._show_player_menu()
 	elif preload("res://scripts/platform_methods.gd").supports(
 		host.video.platform, "external_playback_release"
 	):
@@ -86,7 +86,7 @@ func _on_library_chosen(uri: String, title: String) -> void:
 		host.playback_queue.configure("queue_shuffle", true, uri)
 	_save_queue()
 	if host.video.open_library(uri, title, metadata):
-		host._show_player_menu()
+		host.presentation_coordinator._show_player_menu()
 
 
 func _adjacent_video(direction: int) -> Dictionary:
@@ -121,12 +121,12 @@ func _queue_action(operation: String) -> void:
 	if operation == "queue_add":
 		_queue_add_mode = true
 		host.library_menu.queue_add_mode = true
-		host._show_library_menu()
+		host.presentation_coordinator._show_library_menu()
 		return
 	if operation == "queue_done":
 		_queue_add_mode = false
 		host.library_menu.queue_add_mode = false
-		host._show_player_menu()
+		host.presentation_coordinator._show_player_menu()
 		host.video_menu._adjustment = ""
 		host.video_menu.section = 0
 		host.video_menu._quick_open = "queue"
@@ -223,12 +223,14 @@ func _on_video_changed() -> void:
 		)
 		if key != _queue_end_key:
 			_queue_end_key = key
-			host._advance_queue.call_deferred(host.video.media.session_id, host.video.local_uri)
+			host.playback_coordinator._advance_queue.call_deferred(
+				host.video.media.session_id, host.video.local_uri
+			)
 	_update_thumbnail_protection()
-	host._update_background()
+	host.presentation_coordinator._update_background()
 	host._update_status()
 	if host.player_menu and host.player_menu.visible:
-		if not host.library_menu.visible and host.get("_presentation")._defer_video_controls():
+		if not host.library_menu.visible and host.presentation_coordinator._defer_video_controls():
 			return
 		host.player_menu.refresh_values()
 
@@ -261,7 +263,7 @@ func _on_menu_action(operation: String) -> void:
 		_queue_action(operation)
 		return
 	if operation == "load_subtitle":
-		host._show_library_menu(true)
+		host.presentation_coordinator._show_library_menu(true)
 		host.library_menu.subtitle_picker.open(
 			host.video.local_uri,
 			host.video.display_name,
@@ -274,7 +276,7 @@ func _on_menu_action(operation: String) -> void:
 		return
 	match operation:
 		"open_file":
-			host._show_library_menu()
+			host.presentation_coordinator._show_library_menu()
 		"play":
 			host.video.toggle_play()
 		"alpha":
@@ -294,7 +296,7 @@ func _on_menu_action(operation: String) -> void:
 			host._trigger_taps.clear()
 			host.stick_controls.suspend()
 			host.video.close_video()
-			host._show_library_menu(true)
+			host.presentation_coordinator._show_library_menu(true)
 		"stereo":
 			host.video.toggle_stereo()
 		"eyes":
@@ -323,7 +325,7 @@ func _on_menu_action(operation: String) -> void:
 			host._recenter()
 		"screen_curve":
 			host.video.cycle_screen_curve()
-			host._save_screen()
+			host.presentation_coordinator._save_screen()
 		"calibration":
 			host.video.play_calibration_clip()
 		"audio":
@@ -356,17 +358,17 @@ func _on_player_setting(key: String, value: Variant) -> void:
 		"dual_subtitles":
 			host.video.dual_subtitles.set_enabled(bool(value))
 		"subtitle_distance", "subtitle_position", "subtitle_direction":
-			host._on_setting_changed(key, value)
+			host.settings_controller._on_setting_changed(key, value)
 		"viewing_eye":
 			host.video.set_viewing_eye(int(value))
 		"subtitle_size", "subtitle_flat_position", "subtitle_palette":
-			host._on_playback_adjustment(key, value)
-			host._save_playback_adjustments()
+			host.settings_controller._on_playback_adjustment(key, value)
+			host.settings_controller._save_playback_adjustments()
 		"show_fps":
-			host._on_setting_changed(key, value)
+			host.settings_controller._on_setting_changed(key, value)
 		"screen_curve":
 			host.video.set_screen_curve(float(value))
-			host._save_screen()
+			host.presentation_coordinator._save_screen()
 			host.video.changed.emit()
 		"audio_track":
 			if host.video.select_audio_track(int(value)):

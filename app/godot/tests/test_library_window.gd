@@ -105,7 +105,7 @@ func _run() -> void:
 	)
 	library.choices.capture.clear()
 	main.menu_compositor._process(0)
-	var lowered_distance := Vector2(2.5, main._presentation.window_height).length()
+	var lowered_distance := Vector2(2.5, main.presentation_coordinator.window_height).length()
 	check(
 		is_equal_approx(library.curve_radius, lowered_distance),
 		"Release applies the new viewing distance"
@@ -184,7 +184,7 @@ func _run() -> void:
 	check(
 		is_equal_approx(
 			library.to_global(Vector3(ring_centre.x, ring_centre.y, 0)).distance_to(main._eye()),
-			Vector2(1.5, main._presentation.window_height).length()
+			Vector2(1.5, main.presentation_coordinator.window_height).length()
 		),
 		"Reopened library visual centre uses remembered ring distance"
 	)

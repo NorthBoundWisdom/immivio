@@ -29,7 +29,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var main := InputMain.new()
-	var height: float = main._presentation.window_height
+	var height: float = main.presentation_coordinator.window_height
 	main.settings_path = "user://controller-canvas-%d.cfg" % Time.get_ticks_usec()
 	var video := Video.new()
 	root.add_child(video)

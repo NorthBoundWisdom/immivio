@@ -41,23 +41,23 @@ func _run() -> void:
 	var host := Host.new()
 	host.video = video
 	host.stick_controls = preload("res://scripts/player_stick_controls.gd").new()
-	host._input.immersive_grips = {"left_hand": true, "right_hand": true}
-	host._input._process_immersive(Vector2.ZERO, Vector2.ZERO, 0.1)
-	assert(host._input._process_immersive(Vector2.RIGHT, Vector2.ZERO, 0.1))
+	host.input_coordinator.immersive_grips = {"left_hand": true, "right_hand": true}
+	host.input_coordinator._process_immersive(Vector2.ZERO, Vector2.ZERO, 0.1)
+	assert(host.input_coordinator._process_immersive(Vector2.RIGHT, Vector2.ZERO, 0.1))
 	assert(video.view_horizontal > 0 and video.view_vertical == 0)
 	assert(video.panel.global_position.x > 0)
 	var before := video.view_horizontal
 	var menu := preload("res://scripts/library_menu.gd").new()
 	root.add_child(menu)
 	host.active = menu
-	host._input._process_immersive(Vector2.RIGHT, Vector2.ZERO, 0.1)
+	host.input_coordinator._process_immersive(Vector2.RIGHT, Vector2.ZERO, 0.1)
 	assert(video.view_horizontal == before)
 	host.active = null
-	host._input._process_immersive(Vector2.RIGHT, Vector2.ZERO, 0.1)
+	host.input_coordinator._process_immersive(Vector2.RIGHT, Vector2.ZERO, 0.1)
 	assert(video.view_horizontal == before)
-	host._input._process_immersive(Vector2.ZERO, Vector2.ZERO, 0.1)
+	host.input_coordinator._process_immersive(Vector2.ZERO, Vector2.ZERO, 0.1)
 	for i in 120:
-		host._input._process_immersive(Vector2.ZERO, Vector2.RIGHT, 1.0 / 120.0)
+		host.input_coordinator._process_immersive(Vector2.ZERO, Vector2.RIGHT, 1.0 / 120.0)
 	assert(is_equal_approx(video.stereo_horizontal, 2.0))
 	video.commit_immersive_adjustments()
 	var saved := video.mode_memory.lookup(video.local_uri)

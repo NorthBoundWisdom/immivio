@@ -25,7 +25,7 @@ func _run() -> void:
 	host.menu_compositor.set_process(false)
 	host.video.set_process(false)
 	host.report_timer.stop()
-	var presentation = host._presentation
+	var presentation = host.presentation_coordinator
 	check(
 		is_equal_approx(presentation.window_height, -.12),
 		"Fresh windows default slightly below the previous height"
@@ -121,7 +121,7 @@ func _run() -> void:
 	restored.settings_path = "user://height.cfg"
 	root.add_child(restored)
 	check(
-		is_equal_approx(restored._presentation.window_height, -.6),
+		is_equal_approx(restored.presentation_coordinator.window_height, -.6),
 		"Restart restores the saved height"
 	)
 	restored.queue_free()

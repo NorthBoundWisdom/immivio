@@ -26,16 +26,16 @@ const Background := preload("res://scripts/app_background.gd")
 const ViewFollow := preload("res://scripts/view_follow.gd")
 
 const InputCoordinator := preload("res://scripts/input_coordinator.gd")
-var _input := InputCoordinator.new(self)
+var input_coordinator := InputCoordinator.new(self)
 
 const PlaybackCoordinator := preload("res://scripts/playback_coordinator.gd")
-var _playback := PlaybackCoordinator.new(self)
+var playback_coordinator := PlaybackCoordinator.new(self)
 
 const PlayerSettingsController := preload("res://scripts/player_settings_controller.gd")
-var _preferences := PlayerSettingsController.new(self)
+var settings_controller := PlayerSettingsController.new(self)
 
 const XrPresentationCoordinator := preload("res://scripts/xr_presentation_coordinator.gd")
-var _presentation := XrPresentationCoordinator.new(self)
+var presentation_coordinator := XrPresentationCoordinator.new(self)
 
 var display := DisplayController.new()
 var display_quality := Quality.DEFAULT
@@ -62,14 +62,14 @@ var video_queue: Array[Dictionary]:
 		playback_queue.replace(value)
 var _queue_add_mode: bool:
 	get:
-		return _playback._queue_add_mode
+		return playback_coordinator._queue_add_mode
 	set(value):
-		_playback._queue_add_mode = value
+		playback_coordinator._queue_add_mode = value
 var _queue_end_key: String:
 	get:
-		return _playback._queue_end_key
+		return playback_coordinator._queue_end_key
 	set(value):
-		_playback._queue_end_key = value
+		playback_coordinator._queue_end_key = value
 var calibration_board: Node3D
 var right_controller: XRController3D
 var left_controller: XRController3D
@@ -87,45 +87,45 @@ var menu_compositor: Node3D
 const LIBRARY_DISTANCE_LIMITS := Vector2(0.8, 4.0)
 var library_distance: float:
 	get:
-		return _presentation.library_distance
+		return presentation_coordinator.library_distance
 	set(value):
-		_presentation.library_distance = value
+		presentation_coordinator.library_distance = value
 var _library_grab: Dictionary:
 	get:
-		return _input._library_grab
+		return input_coordinator._library_grab
 	set(value):
-		_input._library_grab = value
+		input_coordinator._library_grab = value
 var _system_recenter_pending: bool:
 	get:
-		return _presentation._system_recenter_pending
+		return presentation_coordinator._system_recenter_pending
 	set(value):
-		_presentation._system_recenter_pending = value
+		presentation_coordinator._system_recenter_pending = value
 var settings: ConfigFile:
 	get:
-		return _preferences.settings
+		return settings_controller.settings
 	set(value):
-		_preferences.settings = value
+		settings_controller.settings = value
 var settings_path: String:
 	get:
-		return _preferences.settings_path
+		return settings_controller.settings_path
 	set(value):
-		_preferences.settings_path = value
+		settings_controller.settings_path = value
 var background: Node
 var view_follow: ViewFollow:
 	get:
-		return _presentation.view_follow
+		return presentation_coordinator.view_follow
 	set(value):
-		_presentation.view_follow = value
+		presentation_coordinator.view_follow = value
 var temporary_passthrough: bool:
 	get:
-		return _presentation.temporary_passthrough
+		return presentation_coordinator.temporary_passthrough
 	set(value):
-		_presentation.temporary_passthrough = value
+		presentation_coordinator.temporary_passthrough = value
 var reclining_mode: bool:
 	get:
-		return _presentation.reclining_mode
+		return presentation_coordinator.reclining_mode
 	set(value):
-		_presentation.reclining_mode = value
+		presentation_coordinator.reclining_mode = value
 
 
 func _ready() -> void:
@@ -184,11 +184,11 @@ func _ready() -> void:
 	display.status_changed.connect(_update_status)
 	display.status_changed.connect(_on_input_session_changed)
 	display.presence_changed.connect(_on_openxr_presence_changed)
-	_preferences.load_preferences()
+	settings_controller.load_preferences()
 	var saved_window_height := float(
 		settings.get_value("ui", "window_height", XrPresentationCoordinator.WINDOW_HEIGHT_DEFAULT)
 	)
-	_presentation.window_height = (
+	presentation_coordinator.window_height = (
 		clampf(
 			saved_window_height,
 			XrPresentationCoordinator.WINDOW_HEIGHT_LIMITS.x,
@@ -236,7 +236,7 @@ func _ready() -> void:
 	display.configure(get_viewport(), world.environment, XRServer.find_interface("OpenXR"), desktop)
 	immersive_overlay = preload("res://scripts/immersive_adjustment_overlay.gd").new()
 	immersive_overlay.source = func():
-		return _input.immersive.feedback_snapshot(video.local_uri) if video else []
+		return input_coordinator.immersive.feedback_snapshot(video.local_uri) if video else []
 	camera.add_child(immersive_overlay)
 	picture_center_guide = preload("res://scripts/picture_center_guide.gd").new()
 	picture_center_guide.source = _picture_center_sample
@@ -342,7 +342,7 @@ func _ready() -> void:
 			if _queue_add_mode:
 				_queue_action("queue_done")
 			else:
-				_presentation._show_player_menu(false)
+				presentation_coordinator._show_player_menu(false)
 	)
 	library_menu.queue_requested.connect(_queue_action)
 	library_menu.setting_changed.connect(_on_setting_changed)
@@ -370,7 +370,7 @@ func _ready() -> void:
 	player_menu.popup_opened.connect(
 		func():
 			if library_menu.visible and library_menu.playback_browser:
-				_presentation._show_player_menu(false)
+				presentation_coordinator._show_player_menu(false)
 	)
 	player_menu.recent_requested.connect(func(): _show_library_menu())
 	player_menu.seek_requested.connect(_on_menu_seek)
@@ -453,51 +453,51 @@ func _ready() -> void:
 
 ## Desktop preview: dragging with the mouse moves the picture, the wheel zooms immersive views.
 func _unhandled_input(event: InputEvent) -> void:
-	_input._unhandled_input(event)
+	input_coordinator._unhandled_input(event)
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
-	_input._unhandled_key_input(event)
+	input_coordinator._unhandled_key_input(event)
 
 
 # Menus are ray + trigger only. A list row clicks on release unless the ray dragged to scroll.
 # Controller grip drags placement; grip plus the same hand's stick adjusts distance.
 # Optical-hand pinches retain their existing content gestures.
 func _on_controller_release(action: String, hand: String = "") -> void:
-	_input._on_controller_release(action, hand)
+	input_coordinator._on_controller_release(action, hand)
 
 
 func _on_pointer_release(action: String, hand: String) -> void:
-	_input._on_pointer_release(action, hand)
+	input_coordinator._on_pointer_release(action, hand)
 
 
 func _on_controller_button(action: String, hand: String = "") -> void:
-	_input._on_controller_button(action, hand)
+	input_coordinator._on_controller_button(action, hand)
 
 
 func _on_pointer_button(action: String, hand: String) -> void:
-	_input._on_pointer_button(action, hand)
+	input_coordinator._on_pointer_button(action, hand)
 
 
 ## Menus shown at launch are placed before the headset reports a pose (the camera is still at
 ## the floor origin): once the head is first tracked, recenter and place everything again.
 var _head_placed: bool:
 	get:
-		return _presentation._head_placed
+		return presentation_coordinator._head_placed
 	set(value):
-		_presentation._head_placed = value
+		presentation_coordinator._head_placed = value
 
 
 func _head_tracked() -> bool:
-	return _presentation._head_tracked()
+	return presentation_coordinator._head_tracked()
 
 
 func _on_system_recentered() -> void:
-	_presentation._on_system_recentered()
+	presentation_coordinator._on_system_recentered()
 
 
 func _apply_system_recenter() -> void:
-	_presentation._apply_system_recenter()
+	presentation_coordinator._apply_system_recenter()
 
 
 var picture_center_guide: Node3D
@@ -516,7 +516,7 @@ func _process(delta: float) -> void:
 		_external_poll_ms = Time.get_ticks_msec() + 250
 		var external: Variant = JSON.parse_string(video.platform.external_playback_poll())
 		if external is Dictionary and str(external.get("uri", "")).begins_with("externalvideo://"):
-			_playback.open_external(external)
+			playback_coordinator.open_external(external)
 	screen_layout.tick()
 	if is_instance_valid(playback_feedback):
 		playback_feedback.tick()
@@ -580,43 +580,31 @@ func _picture_center_sample() -> Dictionary:
 
 
 func _process_sticks(left: Vector2, right: Vector2, delta: float) -> void:
-	_input._process_sticks(left, right, delta)
+	input_coordinator._process_sticks(left, right, delta)
 
 
 func _update_controls_visibility(menu: Node3D) -> void:
-	_input._update_controls_visibility(menu)
+	input_coordinator._update_controls_visibility(menu)
 
 
 func _stick(controller: XRController3D) -> Vector2:
-	return _input._stick(controller)
-
-
-func _hand_tracker(hand: String) -> XRHandTracker:
-	return _input._hand_tracker(hand)
-
-
-func _hand_action_tracker(hand: String) -> XRPositionalTracker:
-	return _input._hand_action_tracker(hand)
-
-
-func _meta_aim_tracker(hand: String) -> XRPositionalTracker:
-	return _input._meta_aim_tracker(hand)
+	return input_coordinator._stick(controller)
 
 
 func _input_focused() -> bool:
-	return _input._input_focused()
+	return input_coordinator._input_focused()
 
 
 func _controller_allowed(hand: String) -> bool:
-	return _input._controller_allowed(hand)
+	return input_coordinator._controller_allowed(hand)
 
 
 func _controller_ray(hand: String) -> Variant:
-	return _input._controller_ray(hand)
+	return input_coordinator._controller_ray(hand)
 
 
 func _update_hand_input(delta: float) -> void:
-	_input._update_hand_input(delta)
+	input_coordinator._update_hand_input(delta)
 
 
 func _picture_pinch_allowed(hand: String) -> bool:
@@ -627,19 +615,19 @@ func _picture_pinch_allowed(hand: String) -> bool:
 
 
 func _dispatch_hand_input(inputs: Dictionary, _delta: float = 1.0 / 72.0) -> void:
-	_input._dispatch_hand_input(inputs, _delta)
+	input_coordinator._dispatch_hand_input(inputs, _delta)
 
 
 func _cancel_pointer(hand: String) -> void:
-	_input._cancel_pointer(hand)
+	input_coordinator._cancel_pointer(hand)
 
 
 func _on_input_session_changed() -> void:
-	_input._on_input_session_changed()
+	input_coordinator._on_input_session_changed()
 
 
 func _hand_input_report() -> Dictionary:
-	return _input._hand_input_report()
+	return input_coordinator._hand_input_report()
 
 
 static func _input_pose_tracked(tracker: XRPositionalTracker, pose_name: String) -> bool:
@@ -660,30 +648,22 @@ const STICK_DEADZONE := 0.2
 ## flat screen corner adds resize = {corner, start_length, start_scale}.
 var _grab: Dictionary:
 	get:
-		return _input._grab
+		return input_coordinator._grab
 	set(value):
-		_input._grab = value
+		input_coordinator._grab = value
 var _trigger_taps := {}
 
 
-func _begin_library_grab(hand: String) -> void:
-	_input._begin_library_grab(hand)
-
-
 func _update_library_grab() -> void:
-	_input._update_library_grab()
+	input_coordinator._update_library_grab()
 
 
 func _update_library_grab_stick(left: Vector2, right: Vector2, delta: float) -> void:
-	_input._update_library_grab_stick(left, right, delta)
-
-
-func _begin_picture_press(hand: String) -> void:
-	_input._begin_picture_press(hand)
+	input_coordinator._update_library_grab_stick(left, right, delta)
 
 
 func _update_flat_grab_stick(left: Vector2, right: Vector2, delta: float) -> void:
-	_input._update_flat_grab_stick(left, right, delta)
+	input_coordinator._update_flat_grab_stick(left, right, delta)
 
 
 func _eye() -> Vector3:
@@ -693,20 +673,20 @@ func _eye() -> Vector3:
 
 
 func _ray(hand: String) -> Variant:
-	return _input._ray(hand)
+	return input_coordinator._ray(hand)
 
 
 ## A ray near a flat screen corner shows its bracket: pressing there resizes.
 func _update_corner_hover() -> void:
-	_input._update_corner_hover()
+	input_coordinator._update_corner_hover()
 
 
 func _begin_grab(hand: String, action: String = "grip_click") -> void:
-	_input._begin_grab(hand, action)
+	input_coordinator._begin_grab(hand, action)
 
 
 func _update_grab() -> void:
-	_input._update_grab()
+	input_coordinator._update_grab()
 
 
 ## Yaw (positive left) and pitch (positive up) of a direction.
@@ -718,34 +698,34 @@ static func _ray_angles(direction: Vector3) -> Vector2:
 ## The picture follows the pointer: immersive views turn, the flat screen moves around the head
 ## at its distance and keeps facing the eyes.
 func _turn_picture(yaw: float, pitch: float) -> void:
-	_presentation._turn_picture(yaw, pitch)
+	presentation_coordinator._turn_picture(yaw, pitch)
 
 
 ## The flat screen nearer (negative) or farther along the line from the eyes, still facing them.
 func _push_screen(amount: float) -> void:
-	_presentation._push_screen(amount)
+	presentation_coordinator._push_screen(amount)
 
 
 func _save_screen() -> void:
-	_presentation._save_screen()
+	presentation_coordinator._save_screen()
 
 
 ## Right stick press: the picture back at its natural size and distance (the curve stays). It stays
 ## where it is: only the menu's recenter button brings the screen in front of the head again.
 func _reset_picture() -> void:
-	_presentation._reset_picture()
+	presentation_coordinator._reset_picture()
 
 
 func _update_menu_pointer(hand: String, pressed: bool = false) -> bool:
-	return _presentation._update_menu_pointer(hand, pressed)
+	return presentation_coordinator._update_menu_pointer(hand, pressed)
 
 
 const CONTROLS_HIDE_MS := 5000
 var _menu_touched_ms: int:
 	get:
-		return _presentation._menu_touched_ms
+		return presentation_coordinator._menu_touched_ms
 	set(value):
-		_presentation._menu_touched_ms = value
+		presentation_coordinator._menu_touched_ms = value
 
 
 func _viewer() -> Node3D:
@@ -753,7 +733,7 @@ func _viewer() -> Node3D:
 
 
 func _on_library_chosen(uri: String, title: String) -> void:
-	_playback._on_library_chosen(uri, title)
+	playback_coordinator._on_library_chosen(uri, title)
 
 
 func _on_file_renamed(old_uri: String, new_uri: String, title: String) -> void:
@@ -814,24 +794,16 @@ func _release_storage_readers(volume: Dictionary) -> void:
 	stick_controls.suspend()
 
 
-func _adjacent_video(direction: int) -> Dictionary:
-	return _playback._adjacent_video(direction)
-
-
-func _navigate_video(direction: int) -> void:
-	_playback._navigate_video(direction)
-
-
 func _queue_action(operation: String) -> void:
-	_playback._queue_action(operation)
+	playback_coordinator._queue_action(operation)
 
 
 func _save_queue() -> void:
-	_playback._save_queue()
+	playback_coordinator._save_queue()
 
 
 func _advance_queue(session_id: int, uri: String) -> void:
-	_playback._advance_queue(session_id, uri)
+	playback_coordinator._advance_queue(session_id, uri)
 
 
 var _screen_uri := ""
@@ -839,13 +811,9 @@ var _player_menu_anchor_key: Array = []
 var _player_menu_anchor_eye := Vector3.ZERO
 
 
-func _canvas_menu_anchor_key() -> Array:
-	return _presentation._canvas_menu_anchor_key()
-
-
 ## Full tracked pose is retained for media follow; reclining menus also use it.
 func _head_pose() -> Variant:
-	return _presentation._head_pose()
+	return presentation_coordinator._head_pose()
 
 
 ## Menus use world up and the horizontal head direction. Looking straight up or
@@ -855,125 +823,95 @@ static func _upright_pose(head: Transform3D) -> Transform3D:
 
 
 func _menu_head_pose(head: Transform3D) -> Transform3D:
-	return _presentation._menu_head_pose(head)
+	return presentation_coordinator._menu_head_pose(head)
 
 
 ## Reclining placement uses the full gaze; ordinary placement stays upright.
-func _view_pose(distance: float, drop: float) -> Variant:
-	return _presentation._view_pose(distance, drop)
 
 
 func _place_screen(recenter: bool = false) -> void:
-	_presentation._place_screen(recenter)
-
-
-func _flat_followable(surface: Node3D) -> bool:
-	return _presentation._flat_followable(surface)
-
-
-func _surface_key(surface: Node3D) -> StringName:
-	return _presentation._surface_key(surface)
+	presentation_coordinator._place_screen(recenter)
 
 
 func _menu_key(menu: Node3D) -> StringName:
-	return _presentation._menu_key(menu)
-
-
-func _follow_screen_pose(surface: Node3D, head: Transform3D, recenter: bool = false) -> Transform3D:
-	return _presentation._follow_screen_pose(surface, head, recenter)
-
-
-func _capture_follow_screen(surface: Node3D, head: Variant) -> void:
-	_presentation._capture_follow_screen(surface, head)
+	return presentation_coordinator._menu_key(menu)
 
 
 func _update_view_follow() -> void:
-	_presentation._update_view_follow()
+	presentation_coordinator._update_view_follow()
 
 
 func _place_menu(menu: Node3D) -> void:
-	_presentation._place_menu(menu)
+	presentation_coordinator._place_menu(menu)
 
 
 func _active_menu() -> Node3D:
-	return _presentation._active_menu()
+	return presentation_coordinator._active_menu()
 
 
 func _update_player_menu_anchor() -> void:
-	_presentation._update_player_menu_anchor()
+	presentation_coordinator._update_player_menu_anchor()
 
 
 func _toggle_player_menu() -> void:
-	_presentation._toggle_player_menu()
+	presentation_coordinator._toggle_player_menu()
 
 
 func _show_player_menu() -> void:
-	_presentation._show_player_menu()
+	presentation_coordinator._show_player_menu()
 
 
 func _show_library_menu(preserve_navigation: bool = false) -> void:
-	_presentation._show_library_menu(preserve_navigation)
+	presentation_coordinator._show_library_menu(preserve_navigation)
 
 
 func _canvas_controls_snapshot() -> Dictionary:
-	return _presentation._canvas_controls_snapshot()
+	return presentation_coordinator._canvas_controls_snapshot()
 
 
 func _restore_seek_settings() -> void:
-	_preferences._restore_seek_settings()
+	settings_controller._restore_seek_settings()
 
 
 func _library_settings() -> Dictionary:
-	return _preferences._library_settings()
+	return settings_controller._library_settings()
 
 
 func _on_setting_changed(key: String, value: Variant) -> void:
-	_preferences._on_setting_changed(key, value)
+	settings_controller._on_setting_changed(key, value)
 
 
 func _on_menu_action(operation: String) -> void:
-	_playback._on_menu_action(operation)
+	playback_coordinator._on_menu_action(operation)
 
 
 func _on_menu_seek(position_ms: int) -> void:
-	_playback._on_menu_seek(position_ms)
+	playback_coordinator._on_menu_seek(position_ms)
 
 
 func _on_player_setting(key: String, value: Variant) -> void:
-	_playback._on_player_setting(key, value)
+	playback_coordinator._on_player_setting(key, value)
 
 
 func _on_bookmark_request(operation: String, marker_id: String, scope: String) -> void:
-	_playback._on_bookmark_request(operation, marker_id, scope)
+	playback_coordinator._on_bookmark_request(operation, marker_id, scope)
 
 
 func _on_mode_lock_changed(lock: Dictionary, media_kind: String) -> void:
-	_preferences._on_mode_lock_changed(lock, media_kind)
+	settings_controller._on_mode_lock_changed(lock, media_kind)
 
 
 func _menu_state() -> Dictionary:
-	return _presentation._menu_state()
+	return presentation_coordinator._menu_state()
 
 
 ## Preserve native titles/IDs for sidecar recognition; localize their presentation only.
 func _audio_option_label(track: Dictionary) -> String:
-	return _playback._audio_option_label(track)
-
-
-func _audio_track_name(details: Dictionary) -> String:
-	return _playback._audio_track_name(details)
-
-
-func _menu_error() -> String:
-	return _playback._menu_error()
+	return playback_coordinator._audio_option_label(track)
 
 
 func _apply_stick_actions(actions: Array[Dictionary], delta: float = 1.0 / 72.0) -> void:
-	_input._apply_stick_actions(actions, delta)
-
-
-func _toggle_display() -> void:
-	_presentation._toggle_display()
+	input_coordinator._apply_stick_actions(actions, delta)
 
 
 func _capture_last_video_mode() -> void:
@@ -999,62 +937,46 @@ func _capture_last_video_mode() -> void:
 
 func _on_video_changed() -> void:
 	_capture_last_video_mode()
-	_playback._on_video_changed()
+	playback_coordinator._on_video_changed()
 
 
 func _on_video_thumbnail_ready(_uri: String) -> void:
-	_playback._on_video_thumbnail_ready(_uri)
+	playback_coordinator._on_video_thumbnail_ready(_uri)
 
 
 var _thumbnail_history_sequence := -1
 
 
 func _update_thumbnail_protection() -> void:
-	_playback._update_thumbnail_protection()
+	playback_coordinator._update_thumbnail_protection()
 
 
 func _on_background_changed() -> void:
-	_presentation._on_background_changed()
+	presentation_coordinator._on_background_changed()
 
 
 func _update_background() -> void:
-	_presentation._update_background()
+	presentation_coordinator._update_background()
 
 
 func _connect_session_controls(menu: Node3D) -> void:
-	_presentation._connect_session_controls(menu)
-
-
-func _on_menu_placement_changed(menu: Node3D) -> void:
-	_presentation._on_menu_placement_changed(menu)
-
-
-func _set_reclining_mode(enabled: bool) -> void:
-	_presentation._set_reclining_mode(enabled)
+	presentation_coordinator._connect_session_controls(menu)
 
 
 func _person_passthrough() -> bool:
-	return _presentation._person_passthrough()
-
-
-func _session_controls_state() -> Dictionary:
-	return _presentation._session_controls_state()
+	return presentation_coordinator._person_passthrough()
 
 
 func _refresh_session_controls() -> void:
-	_presentation._refresh_session_controls()
+	presentation_coordinator._refresh_session_controls()
 
 
 func _on_session_control(operation: String) -> void:
-	_presentation._on_session_control(operation)
-
-
-func _save_background() -> void:
-	_preferences._save_background()
+	presentation_coordinator._on_session_control(operation)
 
 
 func _recenter() -> void:
-	_presentation._recenter()
+	presentation_coordinator._recenter()
 
 
 func request_capabilities() -> void:
@@ -1219,11 +1141,11 @@ func _update_status() -> void:
 
 
 func _on_playback_adjustment(key: String, value: Variant) -> void:
-	_preferences._on_playback_adjustment(key, value)
+	settings_controller._on_playback_adjustment(key, value)
 
 
 func _save_playback_adjustments() -> void:
-	_preferences._save_playback_adjustments()
+	settings_controller._save_playback_adjustments()
 
 
 func _fps_sample() -> Dictionary:

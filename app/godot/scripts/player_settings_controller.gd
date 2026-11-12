@@ -64,7 +64,7 @@ func _library_settings() -> Dictionary:
 		"reuse_last_mode": host.video.reuse_last_mode,
 		"browse_memory": bool(host.settings.get_value("library", "browse_memory", true)),
 		"controls_opacity": float(host.settings.get_value("ui", "controls_opacity", 0.86)),
-		"window_height": host._presentation.window_height * 100.0,
+		"window_height": host.presentation_coordinator.window_height * 100.0,
 		"reclining_mode": host.reclining_mode,
 		"subtitle_distance": host.video.subtitle_distance,
 		"subtitle_position": host.video.subtitle_position,
@@ -86,8 +86,10 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 		"window_height":
 			if not (value is int or value is float) or not is_finite(float(value)):
 				return
-			host._presentation.set_window_height(float(value) / 100.0)
-			host.settings.set_value("ui", "window_height", host._presentation.window_height)
+			host.presentation_coordinator.set_window_height(float(value) / 100.0)
+			host.settings.set_value(
+				"ui", "window_height", host.presentation_coordinator.window_height
+			)
 			host.settings.save(host.settings_path)
 		"save_diagnostic_log":
 			if (
@@ -107,7 +109,7 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 			host.pinch_hand = value
 			for hand in host.hand_pointers:
 				host.hand_pointers[hand].update({}, 0)
-				host._cancel_pointer(hand)
+				host.input_coordinator._cancel_pointer(hand)
 			host.settings.set_value("controls", "pinch_hand", value)
 			host.settings.save(host.settings_path)
 		"controls_opacity":
@@ -121,7 +123,7 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 			host.settings.set_value("library", "list_view", bool(value))
 			host.settings.save(host.settings_path)
 		"reclining_mode":
-			host._set_reclining_mode(bool(value))
+			host.presentation_coordinator._set_reclining_mode(bool(value))
 			host.settings.set_value("ui", "reclining_mode", host.reclining_mode)
 			host.settings.save(host.settings_path)
 		"file_editing":
@@ -267,7 +269,7 @@ func _on_playback_adjustment(key: String, value: Variant) -> void:
 	elif key == "screen_distance":
 		if host.video.geometry != Geometry.Geometry.FLAT or not is_finite(float(value)):
 			return
-		host._push_screen(
+		host.presentation_coordinator._push_screen(
 			(
 				clampf(float(value), host.video.DISTANCE_LIMITS.x, host.video.DISTANCE_LIMITS.y)
 				- host.video.panel.global_position.distance_to(host._eye())

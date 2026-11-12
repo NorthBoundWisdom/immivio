@@ -534,8 +534,8 @@ func _run() -> void:
 		"Invalid head tracking does not recapture or move panels"
 	)
 	main.tracked = true
-	main._presentation._system_recenter_last_notification_ms = -(
-		main._presentation.SYSTEM_RECENTER_REPEAT_MS
+	main.presentation_coordinator._system_recenter_last_notification_ms = -(
+		main.presentation_coordinator.SYSTEM_RECENTER_REPEAT_MS
 	)
 	main._on_system_recentered()
 	check(

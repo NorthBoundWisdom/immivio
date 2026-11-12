@@ -25,8 +25,8 @@ func check(value: bool, message: String) -> void:
 
 func home(main: Node3D) -> void:
 	# A new gesture occurs after the duplicate-notification window.
-	main._presentation._system_recenter_last_notification_ms = -(
-		main._presentation.SYSTEM_RECENTER_REPEAT_MS
+	main.presentation_coordinator._system_recenter_last_notification_ms = -(
+		main.presentation_coordinator.SYSTEM_RECENTER_REPEAT_MS
 	)
 	main._on_system_recentered()
 
@@ -50,7 +50,7 @@ func _run() -> void:
 	main._head_placed = true
 	var menu: Node3D = main.library_menu
 	for pico in [false, true]:
-		main._presentation._runtime_is_pico = pico
+		main.presentation_coordinator._runtime_is_pico = pico
 		for follow in [false, true]:
 			main.view_follow.set_enabled(follow)
 			for reclining in [false, true]:
@@ -66,7 +66,10 @@ func _run() -> void:
 					var offset: Vector3 = (
 						menu.to_global(Vector3(centre.x, centre.y, 0)) - pose.origin
 					)
-					offset -= menu.global_basis.y.normalized() * main._presentation.window_height
+					offset -= (
+						menu.global_basis.y.normalized()
+						* main.presentation_coordinator.window_height
+					)
 					check(
 						main.centres == before + 1 and not main._system_recenter_pending,
 						"Updated tracking is used synchronously for Home"
@@ -124,7 +127,10 @@ func _run() -> void:
 				(
 					(
 						menu.to_global(Vector3(centre.x, centre.y, 0))
-						- menu.global_basis.y.normalized() * main._presentation.window_height
+						- (
+							menu.global_basis.y.normalized()
+							* main.presentation_coordinator.window_height
+						)
 					)
 					. distance_to(main.xr_camera.global_position)
 				),

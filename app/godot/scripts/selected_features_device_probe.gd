@@ -145,7 +145,7 @@ func slide(menu: Node3D, key: String, fraction: float) -> bool:
 
 func open_folder(host: Node) -> void:
 	var menu: Node3D = host.library_menu
-	host._show_library_menu(true)
+	host.presentation_coordinator._show_library_menu(true)
 	menu.section = menu.Section.LOCAL
 	menu._local_stack = [
 		{"id": "/storage/emulated/0", "title": "Internal storage"},
@@ -210,9 +210,9 @@ func run(host: Node, step: String, request: String) -> Dictionary:
 			[menu.list_view, menu._first_line()]
 		)
 	elif step == "controls":
-		host._show_player_menu()
+		host.presentation_coordinator._show_player_menu()
 		await settle(host)
-		host._show_library_menu()
+		host.presentation_coordinator._show_library_menu()
 		menu.section = menu.Section.SETTINGS
 		menu.tab = menu.APPEARANCE_TAB
 		menu.refresh()
@@ -223,8 +223,8 @@ func run(host: Node, step: String, request: String) -> Dictionary:
 			bar.controls_opacity
 		)
 	elif step == "cinema":
-		host._on_playback_adjustment("screen_fixed", false)
-		host._show_player_menu()
+		host.settings_controller._on_playback_adjustment("screen_fixed", false)
+		host.presentation_coordinator._show_player_menu()
 		check(await tap(bar, bar.QUICK_SCREEN), "Ray opens screen layout")
 		check(await choose(bar, "screen_preset", "home150"), "Ray selects 150-inch preset")
 		await settle(host)
@@ -245,7 +245,7 @@ func run(host: Node, step: String, request: String) -> Dictionary:
 			"Distance slider uses logarithmic scale",
 			video.screen_distance
 		)
-		host._save_playback_adjustments()
+		host.settings_controller._save_playback_adjustments()
 		check(
 			is_equal_approx(float(host.settings.get_value("screen", "distance")), 4.6),
 			"Temporary adjustment preserves fixed default"
@@ -253,7 +253,7 @@ func run(host: Node, step: String, request: String) -> Dictionary:
 		host._recenter()
 		check(is_equal_approx(video.screen_distance, 4.6), "Recenter restores fixed default")
 	elif step == "library":
-		host._show_player_menu()
+		host.presentation_coordinator._show_player_menu()
 		check(await tap(bar, bar.BROWSE), "Ray opens compact library")
 		await settle(host)
 		check(
@@ -269,7 +269,7 @@ func run(host: Node, step: String, request: String) -> Dictionary:
 		check(await tap(bar, bar.BROWSE), "Playback controls remain ray-selectable beside library")
 		check(await tap(menu, menu.PLAYER), "Ray returns from library to video")
 	elif step == "menus":
-		host._show_library_menu(true)
+		host.presentation_coordinator._show_library_menu(true)
 		menu.section = menu.Section.SETTINGS
 		menu.tab = menu.GENERAL_TAB
 		menu.scroll = 0
@@ -377,9 +377,9 @@ func run(host: Node, step: String, request: String) -> Dictionary:
 		)
 		check(bar.visible and bar._quick_open == "info", "Failure opens readable Info panel")
 		check(
-			not host._menu_error().contains("MPV_"),
+			not host.playback_coordinator._menu_error().contains("MPV_"),
 			"Failure message is user-readable",
-			host._menu_error()
+			host.playback_coordinator._menu_error()
 		)
 	await settle(host)
 	var compositor: Node3D = host.menu_compositor

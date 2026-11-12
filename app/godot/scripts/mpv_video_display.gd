@@ -2298,7 +2298,7 @@ func _write_debug_report() -> void:
 		),
 		"canvas_controls":
 		(
-			host._canvas_controls_snapshot()
+			host.presentation_coordinator._canvas_controls_snapshot()
 			if host and host.has_method("_canvas_controls_snapshot")
 			else {}
 		),
