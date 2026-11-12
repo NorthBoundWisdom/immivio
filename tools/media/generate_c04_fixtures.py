@@ -135,11 +135,6 @@ def main() -> None:
 
 def encode(ffmpeg: str, media: Path, independent: Path, items: list) -> None:
     for name in ["c04_alpha_f180", "c04_independent_alpha"]:
-        image_name = (
-            "c04_alpha_f180_rgb.png"
-            if name == "c04_alpha_f180"
-            else "c04_independent_rgb.png"
-        )
         path = media / (name + ".mp4")
         command = [
             ffmpeg,
@@ -152,7 +147,11 @@ def encode(ffmpeg: str, media: Path, independent: Path, items: list) -> None:
             "-framerate",
             "30",
             "-i",
-            str(media / image_name) if name == "c04_alpha_f180" else str(independent),
+            (
+                str(media / "c04_alpha_f180_rgb.png")
+                if name == "c04_alpha_f180"
+                else str(independent)
+            ),
             "-f",
             "lavfi",
             "-i",
