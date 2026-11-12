@@ -3070,3 +3070,128 @@ func move_focus(direction: int) -> void:
 func activate_desktop() -> void:
 	if visible and focus_index < rows.size():
 		_choose(rows[focus_index])
+
+
+var source_dlna_entries: Array:
+	get:
+		return _dlna_entries
+	set(value):
+		_dlna_entries = value
+
+var source_dlna_server: Variant:
+	get:
+		return _dlna_server
+	set(value):
+		_dlna_server = value
+
+var source_dlna_servers: Array:
+	get:
+		return _dlna_servers
+	set(value):
+		_dlna_servers = value
+
+var source_dlna_stack: Array:
+	get:
+		return _dlna_stack
+	set(value):
+		_dlna_stack = value
+
+var source_editor: Variant:
+	get:
+		return _editor
+	set(value):
+		_editor = value
+
+var source_local_all_files: Variant:
+	get:
+		return _local_all_files
+	set(value):
+		_local_all_files = value
+
+var source_local_eject_pending: Variant:
+	get:
+		return _local_eject_pending
+	set(value):
+		_local_eject_pending = value
+
+var source_local_entries: Array:
+	get:
+		return _local_entries
+	set(value):
+		_local_entries = value
+
+var source_local_grant_pending: Variant:
+	get:
+		return _local_grant_pending
+	set(value):
+		_local_grant_pending = value
+
+var source_local_release_notice: Variant:
+	get:
+		return _local_release_notice
+	set(value):
+		_local_release_notice = value
+
+var source_local_stack: Array:
+	get:
+		return _local_stack
+	set(value):
+		_local_stack = value
+
+var source_local_volumes: Array:
+	get:
+		return _local_volumes
+	set(value):
+		_local_volumes = value
+
+var source_pending: Dictionary:
+	get:
+		return _pending
+	set(value):
+		_pending = value
+
+var source_smb_entries: Array:
+	get:
+		return _smb_entries
+	set(value):
+		_smb_entries = value
+
+var source_smb_found: Array:
+	get:
+		return _smb_found
+	set(value):
+		_smb_found = value
+
+var source_smb_path: Variant:
+	get:
+		return _smb_path
+	set(value):
+		_smb_path = value
+
+var source_smb_server: Variant:
+	get:
+		return _smb_server
+	set(value):
+		_smb_server = value
+
+var source_smb_servers: Array:
+	get:
+		return _smb_servers
+	set(value):
+		_smb_servers = value
+
+
+func source_external_volumes() -> Array:
+	return _external_volumes()
+
+
+func source_load_section() -> void:
+	_load_section()
+
+
+func source_local_path() -> String:
+	return _local_path()
+
+
+func source_request(kind: String, id: Variant) -> void:
+	_request(kind, id)

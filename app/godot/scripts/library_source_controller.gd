@@ -21,16 +21,16 @@ func _request(kind: String, id: Variant) -> void:
 		return
 	if id is int and id > 0:
 		if kind.begins_with("dlna") and kind not in ["dlna_save", "dlna_remove"]:
-			for previous in host._pending.keys():
-				if host._pending[previous] == kind:
-					host._pending.erase(previous)
+			for previous in host.source_pending.keys():
+				if host.source_pending[previous] == kind:
+					host.source_pending.erase(previous)
 					_request_sections.erase(previous)
-		host._pending[id] = kind
+		host.source_pending[id] = kind
 		_request_sections[id] = host.section
 		if kind == "local":
-			for previous in host._pending.keys():
-				if previous != id and host._pending[previous] == "local":
-					host._pending.erase(previous)
+			for previous in host.source_pending.keys():
+				if previous != id and host.source_pending[previous] == "local":
+					host.source_pending.erase(previous)
 					_request_sections.erase(previous)
 		host.status = "Loading…"
 	else:
@@ -55,43 +55,43 @@ func _on_media_list(id: int, payload: String) -> void:
 					host.refresh()
 				return
 			var volumes: Array = event.get("volumes", [])
-			if volumes == host._local_volumes:
+			if volumes == host.source_local_volumes:
 				return
-			var removed = host._external_volumes().filter(
+			var removed = host.source_external_volumes().filter(
 				func(volume):
 					return not volumes.any(func(current): return str(current.id) == str(volume.id))
 			)
-			host._local_volumes = volumes
+			host.source_local_volumes = volumes
 			for volume in removed:
 				host.storage_removed.emit(volume.duplicate(true))
 			if (
-				not host._local_eject_pending.is_empty()
-				and not host._local_volumes.any(
-					func(volume): return str(volume.id) == host._local_eject_pending
+				not host.source_local_eject_pending.is_empty()
+				and not host.source_local_volumes.any(
+					func(volume): return str(volume.id) == host.source_local_eject_pending
 				)
 			):
-				host._local_eject_pending = ""
+				host.source_local_eject_pending = ""
 			if (
-				not host._local_stack.is_empty()
-				and not host._local_volumes.any(
-					func(volume): return str(volume.id) == str(host._local_stack[0].id)
+				not host.source_local_stack.is_empty()
+				and not host.source_local_volumes.any(
+					func(volume): return str(volume.id) == str(host.source_local_stack[0].id)
 				)
 			):
-				host._local_stack.clear()
-				host._local_entries = []
-				host._local_eject_pending = ""
+				host.source_local_stack.clear()
+				host.source_local_entries = []
+				host.source_local_eject_pending = ""
 			if host.section == Section.LOCAL and not host.account_panel.active():
-				host._load_section()
+				host.source_load_section()
 				if host.visible:
 					host.refresh()
 			return
 		if event is Dictionary and event.get("source") == "local_access":
 			var access_state = str(event.get("state", "error"))
-			host._local_grant_pending = access_state in ["requested", "settings_opened"]
+			host.source_local_grant_pending = access_state in ["requested", "settings_opened"]
 			if host.section != Section.LOCAL or host.account_panel.active():
 				return
 			if access_state == "granted":
-				host._load_section()
+				host.source_load_section()
 			elif access_state == "settings_opened":
 				host.status = "Allow access in system settings"
 			elif access_state == "requested":
@@ -118,10 +118,10 @@ func _on_media_list(id: int, payload: String) -> void:
 			return
 	if host.server_browser.receive(id, payload):
 		return
-	if not host._pending.has(id):
+	if not host.source_pending.has(id):
 		return
-	var kind: String = host._pending[id]
-	host._pending.erase(id)
+	var kind: String = host.source_pending[id]
+	host.source_pending.erase(id)
 	var requested_section: int = _request_sections.get(id, host.section)
 	_request_sections.erase(id)
 	if requested_section != host.section:
@@ -136,8 +136,8 @@ func _on_media_list(id: int, payload: String) -> void:
 		kind == "smb_browse"
 		and result.has("server_id")
 		and (
-			str(result.get("server_id")) != host._smb_server
-			or str(result.get("path")) != host._smb_path
+			str(result.get("server_id")) != host.source_smb_server
+			or str(result.get("path")) != host.source_smb_path
 		)
 	):
 		return
@@ -145,15 +145,19 @@ func _on_media_list(id: int, payload: String) -> void:
 		kind == "dlna_browse"
 		and result.has("object_id")
 		and (
-			str(result.get("server_id")) != host._dlna_server
+			str(result.get("server_id")) != host.source_dlna_server
 			or (
 				str(result.object_id)
-				!= (str(host._dlna_stack.back().id) if not host._dlna_stack.is_empty() else "0")
+				!= (
+					str(host.source_dlna_stack.back().id)
+					if not host.source_dlna_stack.is_empty()
+					else "0"
+				)
 			)
 		)
 	):
 		return
-	if kind == "local" and result.has("path") and str(result.path) != host._local_path():
+	if kind == "local" and result.has("path") and str(result.path) != host.source_local_path():
 		return
 	host.status = ""
 	var state = str(result.get("state", "error"))
@@ -168,58 +172,60 @@ func _on_media_list(id: int, payload: String) -> void:
 	else:
 		match kind:
 			"local":
-				if str(result.get("path", "")) == host._local_path():
-					host._local_entries = result.get("entries", [])
-					host._local_volumes = result.get(
+				if str(result.get("path", "")) == host.source_local_path():
+					host.source_local_entries = result.get("entries", [])
+					host.source_local_volumes = result.get(
 						"volumes",
 						(
-							host._local_entries.filter(
+							host.source_local_entries.filter(
 								func(entry): return entry.get("volume", false)
 							)
-							if host._local_path().is_empty()
-							else host._local_volumes
+							if host.source_local_path().is_empty()
+							else host.source_local_volumes
 						)
 					)
-					host._local_all_files = bool(result.get("all_files", true))
-					if host._local_release_notice:
-						host._local_release_notice = false
+					host.source_local_all_files = bool(result.get("all_files", true))
+					if host.source_local_release_notice:
+						host.source_local_release_notice = false
 						if host.section == Section.LOCAL:
 							host.status = "App access stopped. Use system settings before unplugging."
 			"smb_servers":
-				host._smb_servers = result.get("servers", [])
+				host.source_smb_servers = result.get("servers", [])
 			"smb_found":
-				host._smb_found = result.get("discovered", [])
+				host.source_smb_found = result.get("discovered", [])
 			"smb_browse":
 				if (
-					str(result.get("server_id")) == host._smb_server
-					and str(result.get("path")) == host._smb_path
+					str(result.get("server_id")) == host.source_smb_server
+					and str(result.get("path")) == host.source_smb_path
 				):
-					host._smb_entries = result.get("entries", [])
+					host.source_smb_entries = result.get("entries", [])
 			"dlna_servers", "dlna_discover", "dlna_save", "dlna_remove":
-				host._dlna_servers = result.get("servers", [])
+				host.source_dlna_servers = result.get("servers", [])
 				if (
 					kind in ["dlna_save", "dlna_remove"]
-					and int(host._editor.get("request_id", -1)) == id
+					and int(host.source_editor.get("request_id", -1)) == id
 				):
-					host._editor = {}
-					host._dlna_server = ""
-					host._dlna_stack.clear()
-					host._dlna_entries.clear()
+					host.source_editor = {}
+					host.source_dlna_server = ""
+					host.source_dlna_stack.clear()
+					host.source_dlna_entries.clear()
 					host.scroll = 0.0
 			"dlna_browse":
 				var current_object = (
-					str(host._dlna_stack.back().id) if not host._dlna_stack.is_empty() else "0"
+					str(host.source_dlna_stack.back().id)
+					if not host.source_dlna_stack.is_empty()
+					else "0"
 				)
 				if (
-					str(result.get("server_id")) == host._dlna_server
+					str(result.get("server_id")) == host.source_dlna_server
 					and str(result.get("object_id", current_object)) == current_object
 				):
-					host._dlna_entries = result.get("entries", [])
+					host.source_dlna_entries = result.get("entries", [])
 	if (
 		state == "ready"
 		and host.network.mode == "add"
 		and id == host.network.save_request
-		and host._editor.is_empty()
+		and host.source_editor.is_empty()
 		and kind in ["smb_servers", "dlna_save"]
 	):
 		host.network.open()
@@ -246,23 +252,23 @@ func _load_section() -> void:
 	match host.section:
 		Section.LOCAL:
 			# Always read again: files change, and access may have just been granted in settings.
-			host._request("local", host.platform.media_local_browse(host._local_path()))
+			host.source_request("local", host.platform.media_local_browse(host.source_local_path()))
 		Section.SMB:
-			if host._smb_server.is_empty():
-				host._request("smb_servers", host.platform.media_smb_servers())
+			if host.source_smb_server.is_empty():
+				host.source_request("smb_servers", host.platform.media_smb_servers())
 		Section.DLNA:
-			if host._dlna_server.is_empty():
+			if host.source_dlna_server.is_empty():
 				if PlatformMethods.supports(host.platform, "media_dlna_servers"):
-					host._request("dlna_servers", host.platform.media_dlna_servers())
-				if host._dlna_servers.is_empty():
-					host._request("dlna_discover", host.platform.media_dlna_discover())
+					host.source_request("dlna_servers", host.platform.media_dlna_servers())
+				if host.source_dlna_servers.is_empty():
+					host.source_request("dlna_discover", host.platform.media_dlna_discover())
 
 
 func _local_path() -> String:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return ""
-	return "" if host._local_stack.is_empty() else str(host._local_stack.back().id)
+	return "" if host.source_local_stack.is_empty() else str(host.source_local_stack.back().id)
 
 
 func _refresh_source() -> void:
@@ -277,27 +283,32 @@ func _refresh_source() -> void:
 		return
 	match host.section:
 		Section.LOCAL:
-			host._local_grant_pending = false  # Also recovers when a VR settings overlay sends no resume.
-			host._local_eject_pending = ""
+			host.source_local_grant_pending = false  # Also recovers when a VR settings overlay sends no resume.
+			host.source_local_eject_pending = ""
 		Section.SMB:
-			if host._smb_server.is_empty():
-				host._request("smb_found", host.platform.media_smb_discover())
+			if host.source_smb_server.is_empty():
+				host.source_request("smb_found", host.platform.media_smb_discover())
 			else:
-				host._request(
-					"smb_browse", host.platform.media_smb_browse(host._smb_server, host._smb_path)
+				host.source_request(
+					"smb_browse",
+					host.platform.media_smb_browse(host.source_smb_server, host.source_smb_path)
 				)
 		Section.DLNA:
-			if host._dlna_server.is_empty():
-				host._request("dlna_discover", host.platform.media_dlna_discover())
+			if host.source_dlna_server.is_empty():
+				host.source_request("dlna_discover", host.platform.media_dlna_discover())
 			else:
-				host._request(
+				host.source_request(
 					"dlna_browse",
 					host.platform.media_dlna_browse(
-						host._dlna_server,
-						str(host._dlna_stack.back().id) if host._dlna_stack.size() > 0 else "0"
+						host.source_dlna_server,
+						(
+							str(host.source_dlna_stack.back().id)
+							if host.source_dlna_stack.size() > 0
+							else "0"
+						)
 					)
 				)
 			host.refresh()
 			return
-	host._load_section()
+	host.source_load_section()
 	host.refresh()
