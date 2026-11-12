@@ -7,7 +7,6 @@
 __pycache__/
 build/
 artifacts/
-external-model-assets/
 local.properties
 .env
 .env.*
@@ -20,27 +19,15 @@ local.properties
 *.apk
 *.aar
 *.so
-*.onnx
-*.mnn
-*.pt
-*.pth
-*.ckpt
-*.safetensors
 *.bin
 !/app/godot/models/hands/LeftHandHumanoid.bin
 !/app/godot/models/hands/RightHandHumanoid.bin
-*.param
 *.hdr
 /app/godot/android/
 /app/godot/addons/godotopenxrvendors/
 /app/godot/addons/quest_player/bin/
-/android/player-plugin/src/main/assets/rvm/
-/android/player-plugin/src/main/assets/rvm-mnn/
-/android/player-plugin/src/main/assets/depth-mnn/
-/android/player-plugin/src/main/assets/ai-models/
 /android/player-plugin/src/main/jniLibs/
 /android/player-plugin/src/debug/jniLibs/
-/models/source/
 
 tmp/
 keystore/

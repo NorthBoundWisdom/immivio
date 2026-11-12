@@ -151,19 +151,19 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 			host.settings.save(host.settings_path)
 		"background":
 			if host.background.select(str(value)):
-				host._save_background()
+				_save_background()
 		"background_yaw":
 			if value is bool:
 				host.background.rotate_sky()
 			else:
 				host.background.set_yaw(float(value))
-			host._save_background()
+			_save_background()
 		"background_brightness":
 			if value is bool:
 				host.background.cycle_brightness()
 			else:
 				host.background.set_brightness(float(value))
-			host._save_background()
+			_save_background()
 		"show_fps":
 			if host.fps_overlay:
 				host.fps_overlay.set_shown(bool(value))

@@ -57,18 +57,6 @@ func run(host: Node, step: String, marker_id: String) -> Dictionary:
 		host.player_menu.section = 0
 		host.player_menu.refresh()
 		result.accepted = await tap(host.player_menu, 108)
-	elif (
-		step
-		in [
-			"global_speed",
-			"global_exact",
-			"bookmark_global",
-			"bookmark_speed",
-			"bookmark_exact",
-			"bookmark_add"
-		]
-	):
-		result["error"] = "Control removed"
 	elif step in ["bookmark_seek", "bookmark_delete"]:
 		host._show_player_menu()
 		var menu: Node3D = host.player_menu

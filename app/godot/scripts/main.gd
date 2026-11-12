@@ -1145,9 +1145,6 @@ func _save_report() -> void:
 		"hand_input": _hand_input_report(),
 		"input_visuals": input_visuals.snapshot() if input_visuals else {},
 		"background": background.choice if background else "",
-		"rvm_implemented": true,
-		"rvm_video_integrated": true,
-		"mpv_rvm_device_validation": "pending",
 	}
 	var encoded := JSON.stringify(report, "\t")
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("user://diagnostics"))

@@ -40,7 +40,7 @@ func _on_library_chosen(uri: String, title: String) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host) or not MediaFiles.is_video(uri, title):
 		return
-	if host._queue_add_mode:
+	if _queue_add_mode:
 		var metadata: Dictionary = (
 			host.recent_menu.server_browser.selection.duplicate(true)
 			if uri.begins_with("medialib://")
@@ -52,7 +52,7 @@ func _on_library_chosen(uri: String, title: String) -> void:
 				break
 		host.playback_queue.custom = true
 		host.playback_queue.append([{"uri": uri, "title": title, "metadata": metadata}])
-		host._save_queue()
+		_save_queue()
 		host.recent_menu.status = "Added to playback queue"
 		host.recent_menu.refresh()
 		return
@@ -84,7 +84,7 @@ func _on_library_chosen(uri: String, title: String) -> void:
 		host.playback_queue.find(uri).metadata = metadata.duplicate(true)
 	if host.playback_queue.shuffle:
 		host.playback_queue.configure("queue_shuffle", true, uri)
-	host._save_queue()
+	_save_queue()
 	if host.video.open_library(uri, title, metadata):
 		host._show_player_menu()
 
@@ -102,7 +102,7 @@ func _navigate_video(direction: int) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
-	var item = host._adjacent_video(direction)
+	var item = _adjacent_video(direction)
 	if item.is_empty():
 		return
 	host._grab = {}
@@ -119,12 +119,12 @@ func _queue_action(operation: String) -> void:
 		return
 	host.playback_queue.anchor = host.video.local_uri
 	if operation == "queue_add":
-		host._queue_add_mode = true
+		_queue_add_mode = true
 		host.recent_menu.queue_add_mode = true
 		host._show_recent_menu()
 		return
 	if operation == "queue_done":
-		host._queue_add_mode = false
+		_queue_add_mode = false
 		host.recent_menu.queue_add_mode = false
 		host._show_player_menu()
 		host.video_menu._adjustment = ""
@@ -161,7 +161,7 @@ func _queue_action(operation: String) -> void:
 				host.playback_queue.move(index, -1)
 			"down":
 				host.playback_queue.move(index, 1)
-	host._save_queue()
+	_save_queue()
 	if host.video_menu and host.video_menu.visible:
 		host.video_menu.refresh()
 
@@ -190,7 +190,7 @@ func _advance_queue(session_id: int, uri: String) -> void:
 		return
 	var item = host.playback_queue.adjacent(uri, 1, host.playback_queue.loop)
 	if item.is_empty():
-		host._on_menu_action("stop")
+		_on_menu_action("stop")
 		return
 	# An automatic next entry starts at zero; manual navigation retains its resume policy.
 	host.video.requested_play = true
@@ -209,7 +209,7 @@ func _on_video_changed() -> void:
 	):
 		return
 	if host.video.media.state != "ended":
-		host._queue_end_key = ""
+		_queue_end_key = ""
 	elif (
 		host._wearer_present and not host.video.loop_enabled and host.video.completed_presentation()
 	):
@@ -221,10 +221,10 @@ func _on_video_changed() -> void:
 				host.video.media.last_pair.get("source_epoch", 0)
 			]
 		)
-		if key != host._queue_end_key:
-			host._queue_end_key = key
+		if key != _queue_end_key:
+			_queue_end_key = key
 			host._advance_queue.call_deferred(host.video.media.session_id, host.video.local_uri)
-	host._update_thumbnail_protection()
+	_update_thumbnail_protection()
 	host._update_background()
 	host._update_status()
 	if host.player_menu and host.player_menu.visible:
@@ -258,7 +258,7 @@ func _on_menu_action(operation: String) -> void:
 	if not is_instance_valid(host):
 		return
 	if operation.begins_with("queue_"):
-		host._queue_action(operation)
+		_queue_action(operation)
 		return
 	if operation == "load_subtitle":
 		host._show_recent_menu(true)
@@ -286,9 +286,9 @@ func _on_menu_action(operation: String) -> void:
 				)
 				host.settings.save(host.settings_path)
 		"previous_video":
-			host._navigate_video(-1)
+			_navigate_video(-1)
 		"next_video":
-			host._navigate_video(1)
+			_navigate_video(1)
 		"stop":
 			host._grab.clear()
 			host._trigger_taps.clear()
@@ -434,7 +434,7 @@ func _audio_track_name(details: Dictionary) -> String:
 	var current = str(details.get("audio_track_id", ""))
 	for track in details.get("audio_tracks", []):
 		if track is Dictionary and str(track.get("id", "")) == current:
-			return host._audio_option_label(track)
+			return _audio_option_label(track)
 	return current if not current.is_empty() else "Auto"
 
 

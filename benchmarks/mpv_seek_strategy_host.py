@@ -464,9 +464,12 @@ def main():
         "os_file_cache": "not flushed; matched interleaved strategy order",
         "files": [],
     }
-    write = lambda: (args.output / "result.json").write_text(
-        json.dumps(result, indent=2), encoding="utf-8"
-    )
+
+    def write():
+        return (args.output / "result.json").write_text(
+            json.dumps(result, indent=2), encoding="utf-8"
+        )
+
     write()
     try:
         for index, path in enumerate(videos, 1):

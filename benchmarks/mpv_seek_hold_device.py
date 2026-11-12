@@ -90,10 +90,13 @@ def audit(directory):
             and target["layout"]["frame_hold"]["visible"],
             "Target did not replace hold",
         )
-        indices = lambda r: {
-            (e["rotation"], e["eye"], e["alpha_enabled"]): e
-            for e in r["pixel_probe"]["images"]
-        }
+
+        def indices(r):
+            return {
+                (e["rotation"], e["eye"], e["alpha_enabled"]): e
+                for e in r["pixel_probe"]["images"]
+            }
+
         refs, copies = indices(before), indices(during)
         require(
             refs.keys() == copies.keys() and len(refs) == 16,

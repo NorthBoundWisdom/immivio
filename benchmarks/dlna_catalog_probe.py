@@ -52,9 +52,10 @@ def main():
         raise RuntimeError("Unexpected DLNA host")
     description = urllib.request.urlopen(location, timeout=8).read()
     doc = ET.fromstring(description)
-    child = lambda node, name: next(
-        (n.text for n in node if n.tag.split("}")[-1] == name), ""
-    )
+
+    def child(node, name):
+        return next((n.text for n in node if n.tag.split("}")[-1] == name), "")
+
     control = next(
         child(s, "controlURL")
         for s in doc.iter()

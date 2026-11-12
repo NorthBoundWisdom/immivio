@@ -618,22 +618,6 @@ def _inspect_package(path, env, sdk, native):
         if not required <= names:
             raise RuntimeError(f"Missing packaged libraries: {required - names}")
         if any(
-            n.endswith("/libgojni.so")
-            or n.startswith(("assets/openlist/", "assets/p115rsacipher/"))
-            for n in names
-        ):
-            raise RuntimeError("Immivio APK contains removed cloud dependencies")
-        if any(
-            re.match(
-                r"assets/(rvm|rvm-mnn|depth-mnn|ai-models)/|lib/[^/]+/lib(quest_rvm|MNN[^/]*|ncnn)\.so$",
-                n,
-            )
-            for n in names
-        ):
-            raise RuntimeError(
-                "Immivio APK contains removed inference libraries/models"
-            )
-        if any(
             n.startswith("lib/") and not n.startswith("lib/arm64-v8a/") for n in names
         ):
             raise RuntimeError("Unexpected APK architecture")
@@ -720,11 +704,15 @@ def _inspect_package(path, env, sdk, native):
             raise RuntimeError(f"Unresolved ELF symbols: {library.name}: {missing}")
         closure.append({"library": library.name, "needed": needed})
     (native / "elf-closure.json").write_text(json.dumps(closure, indent=2) + "\n")
-    tools = sdk / "build-tools" / installed_sdk_component(
-        sdk,
-        "build-tools",
-        "source.properties",
-        preferred=env.get("IMMIVIO_BUILD_TOOLS_VERSION", ""),
+    tools = (
+        sdk
+        / "build-tools"
+        / installed_sdk_component(
+            sdk,
+            "build-tools",
+            "source.properties",
+            preferred=env.get("IMMIVIO_BUILD_TOOLS_VERSION", ""),
+        )
     )
     run(
         [

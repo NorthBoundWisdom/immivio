@@ -206,9 +206,11 @@ def measure(args):
     result["warmup_seconds"] = args.warmup_seconds
     result["stress_pin"] = args.stress_pin
     result["gpu_frames"] = args.gpu_frames
-    save = lambda: (args.output / "result.json").write_text(
-        json.dumps(result, indent=2), encoding="utf-8"
-    )
+
+    def save():
+        return (args.output / "result.json").write_text(
+            json.dumps(result, indent=2), encoding="utf-8"
+        )
 
     def scene_marker():
         # XR startup emits more than eight events immediately after app_started.

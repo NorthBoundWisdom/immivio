@@ -217,9 +217,12 @@ def main():
         "scope": "Normal Quest VR production decode, GPU freeze and libmpv/Godot binding; not physical-controller feel or compositor timing",
         "rows": [],
     }
-    save = lambda: (args.output / "result.json").write_text(
-        json.dumps(result, indent=2), encoding="utf-8"
-    )
+
+    def save():
+        return (args.output / "result.json").write_text(
+            json.dumps(result, indent=2), encoding="utf-8"
+        )
+
     save()
     try:
         source = {"fixture": args.fixture}

@@ -153,8 +153,7 @@ func frame_identity() -> Dictionary:
 		"frame_id": frame_counter,
 		"pts_us": null,
 		"source_pts_verified": false,
-		"immutable_color_frame": false,
-		"rvm_pairable": false
+		"immutable_color_frame": false
 	}
 
 

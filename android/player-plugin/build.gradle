@@ -3,23 +3,14 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
-def playerAssets = layout.buildDirectory.dir('playerAssets')
-def stagePlayerAssets = tasks.register('stagePlayerAssets', Sync) {
-    from('src/main/assets')
-    into(playerAssets)
-    exclude 'rvm/**', 'rvm-mnn/**', 'depth-mnn/**', 'ai-models/**'
-}
-
 android {
     namespace 'org.vrpassthroughplayer.plugin'
     compileSdk androidCompileSdk.toInteger()
     buildToolsVersion androidBuildToolsVersion
     ndkVersion androidNdkVersion
     buildFeatures { buildConfig true }
-    sourceSets.main.assets.setSrcDirs([playerAssets])
-    sourceSets.main.assets.srcDir '../../third_party'
+    sourceSets.main.assets.setSrcDirs(['../../third_party'])
     sourceSets.main.assets.srcDir '../../app/godot/i18n'
-    sourceSets.main.assets.exclude 'rvm/**', 'rvm-mnn/**', 'depth-mnn/**', 'ai-models/**'
     defaultConfig {
         minSdk androidMinSdk.toInteger()
         consumerProguardFiles 'consumer-rules.pro'
@@ -37,16 +28,6 @@ android {
     }
     // The Godot APK provides the matching NDK C++ shared runtime.
     packagingOptions { jniLibs { excludes += ['**/libc++_shared.so'] } }
-    // A stale prior build must not reintroduce removed runtime libraries.
-    packagingOptions {
-        jniLibs {
-            excludes += [
-                '**/libquest_rvm.so',
-                '**/libMNN*.so',
-                '**/libncnn.so'
-            ]
-        }
-    }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -56,7 +37,6 @@ android {
     }
 }
 
-tasks.named('preBuild').configure { dependsOn stagePlayerAssets }
 
 // Only SMB is used by the player. jcifs also ships deprecated HTTP NTLM wrappers
 // that copy a caller-supplied TLS verifier when reconnecting. Bundle a filtered

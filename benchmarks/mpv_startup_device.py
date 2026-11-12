@@ -135,9 +135,12 @@ def main():
     }
     server = None
     options = device.run("shell", "getprop", "debug.vrpp.mpv.opts").strip()
-    save = lambda: (directory / "result.json").write_text(
-        json.dumps(result, indent=2), encoding="utf-8"
-    )
+
+    def save():
+        return (directory / "result.json").write_text(
+            json.dumps(result, indent=2), encoding="utf-8"
+        )
+
     try:
         if args.mpv_options is not None:
             device.run("shell", "setprop", "debug.vrpp.mpv.opts", args.mpv_options)

@@ -19,31 +19,18 @@ def inspect(path):
         for entry in entries:
             parts = entry.filename.split("/")
             group = "/".join(parts[:2]) if parts[0] == "assets" else parts[0]
-            if entry.filename.startswith("assets/rvm/reference/"):
-                group = "assets/rvm/reference"
             groups[group]["stored_bytes"] += entry.compress_size
             groups[group]["uncompressed_bytes"] += entry.file_size
             groups[group]["entries"] += 1
         diagnostics = [
-            e.filename
-            for e in entries
-            if e.filename.startswith(("assets/media/", "assets/rvm/reference/"))
+            e.filename for e in entries if e.filename.startswith("assets/media/")
         ]
         runtime = {}
         for entry in entries:
             name = entry.filename
-            if (
-                (name.startswith("lib/") and name.endswith(".so"))
-                or (
-                    name.startswith(
-                        ("assets/rvm/", "assets/rvm-mnn/", "assets/depth-mnn/")
-                    )
-                    and name.endswith((".bin", ".param", ".mnn"))
-                )
-                or (
-                    name.startswith("assets/.godot/imported/belfast_sunset_puresky")
-                    and name.endswith(".ctex")
-                )
+            if (name.startswith("lib/") and name.endswith(".so")) or (
+                name.startswith("assets/.godot/imported/belfast_sunset_puresky")
+                and name.endswith(".ctex")
             ):
                 with archive.open(entry) as source:
                     runtime[name] = hashlib.file_digest(source, "sha256").hexdigest()

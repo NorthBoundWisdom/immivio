@@ -182,18 +182,9 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                                 intent.getBooleanExtra("normal_fast", true),
                                             )
                                             .put("frame_cap", intent.getIntExtra("frame_cap", -1))
-                                            .put("roi", intent.getBooleanExtra("roi", true))
-                                            .put(
-                                                "zero_copy",
-                                                intent.getBooleanExtra("zero_copy", true),
-                                            )
                                             .put(
                                                 "borrow_color",
                                                 intent.getBooleanExtra("borrow_color", true),
-                                            )
-                                            .put(
-                                                "direct_yuv",
-                                                intent.getBooleanExtra("direct_yuv", true),
                                             )
                                             .put(
                                                 "enabled",
@@ -269,18 +260,12 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                         require(
                                             step in
                                                 setOf(
-                                                    "global_speed",
-                                                    "global_exact",
                                                     "recenter",
                                                     "ui_reset_stats",
                                                     "player_settings",
                                                     "player_playback",
                                                     "player_screen",
                                                     "player_bar",
-                                                    "bookmark_global",
-                                                    "bookmark_speed",
-                                                    "bookmark_exact",
-                                                    "bookmark_add",
                                                     "bookmark_seek",
                                                     "bookmark_delete",
                                                 ),

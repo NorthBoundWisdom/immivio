@@ -76,7 +76,10 @@ def verify(data):
 
 def main():
     directory = Path(sys.argv[1])
-    read = lambda name: json.loads((directory / name).read_text(encoding="utf-8-sig"))
+
+    def read(name):
+        return json.loads((directory / name).read_text(encoding="utf-8-sig"))
+
     data = [
         read("result.json"),
         read("build_manifest.json"),
