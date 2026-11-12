@@ -6,13 +6,13 @@
 JPG 保留官方尺寸，不缩放；许多资源为 8192x4096，但以实际文件为准。
 --resolution 仅适用于 HDR/EXR，不改变 JPG 尺寸。
 
-Windows PowerShell 示例：
-  python download_panoramas.py --limit 100 --out D:/Panoramas
-  python download_panoramas.py --limit 300 --category indoor --out D:/IndoorPanos
-  python download_panoramas.py --limit 0 --out D:/AllPanoramas
-  python download_panoramas.py --limit 10 --format hdr --resolution 16k --out D:/Panos16K
-  python download_panoramas.py --ids venice_sunset --out D:/PanoSample
-  python download_panoramas.py --limit 100 --dry-run --out D:/PanoPlan
+Shell 示例：
+  python3 download_panoramas.py --limit 100 --out ./Panoramas
+  python3 download_panoramas.py --limit 300 --category indoor --out ./IndoorPanos
+  python3 download_panoramas.py --limit 0 --out ./AllPanoramas
+  python3 download_panoramas.py --limit 10 --format hdr --resolution 16k --out ./Panos16K
+  python3 download_panoramas.py --ids venice_sunset --out ./PanoSample
+  python3 download_panoramas.py --limit 100 --dry-run --out ./PanoPlan
 
 --limit 0 表示全部；如果匹配资源少于指定数量，只下载匹配到的资源。
 --category 按分类、标签、属性关键词筛选，例如 indoor、outdoor、forest。

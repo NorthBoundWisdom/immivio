@@ -120,3 +120,51 @@ Playback popup continuity: `test_playback_popup_continuity.gd` checks transport 
 `tests/workflow/test_pico_store.py` checks compiled store manifest/ZIP rules, real OpenXR metadata, package and version drift, ABI/channel/debug guards, signer mismatch, size, launcher duplication, optional app-ID validation and the same-track uploaded baseline. Store signing tests ensure a missing identity cannot silently generate a replacement key, artifact cleanup cannot remove a persistent identity, and legacy migration cannot overwrite a different key. A packaged PICO Release/appstore APK must also produce a passing `.store-report.json`; platform review remains separate.
 
 `test_output_paths.py` verifies move-only migration, package/receipt pairing, collision preservation, cleanup boundaries, private-key and symlink rejection, nested CI summaries and automatic removal of temporary native inspection files. Release tests exercise the nested CI download layout and flattened publication bundle. Host-test temporary inputs live under `build/tests/godot/`; saved render evidence lives under `artifacts/captures/ui/`.
+
+## Device probes and local media
+
+Device automation is Python-only. `tools/Test-SelectedFeaturesDevice.py` drives the
+normal VR launcher and the retained `DEBUG_PLAYER_MPV` receiver. It uses the
+bundled `mp03_frame_identity` fixture. `benchmarks/mpv_playback_device.py` accepts
+local media and uploads it as `mpv_performance`, or uses an explicitly supplied
+network source. `benchmarks/mpv_seek_strategy_device.py` and
+`benchmarks/mpv_startup_device.py` default to `mp08_8k_high_30`: this is private,
+locally prepared media, with no checked-in generator or manifest. Prepare a
+readable MP4 on the device at `files/fixtures/mp08_8k_high_30.mp4` using
+`adb exec-in run-as com.northboundwisdom.immivio sh -c 'mkdir -p files/fixtures; cat > files/fixtures/mp08_8k_high_30.mp4' < /path/to/sample.mp4`
+after installing the matching Debug APK. The seek probe additionally requires
+`--packets` from FFprobe for that exact file. Use each probe's `--help` for APK,
+serial, output and network options. Missing local media is rejected by the debug
+receiver; it is never downloaded automatically.
+
+The receiver also still accepts `mp05_person_still`, `mp07_motion_4k`,
+`mp08_8k_low`, `mp08_8k_high`, `mp08_8k_long`, `mp08_4k` and `depth_2d`; there are
+no remaining probe callers for these names. Only `mp07_motion_4k` has a generator:
+`python3 tools/media/generate_mp07_motion_fixture.py --source /path/to/owned.mp4`.
+The others have no repository preparation recipe. Their removal awaits review
+of the fixture inventory investigation.
+
+`benchmarks/mpv_audio_probe.py`, `mpv_gpu_probe.py` and `c04_fixture_decode.py`
+audit supplied diagnostic JSON or decode bundled/generated fixtures; they do not
+launch a device run. `dlna_catalog_probe.py` reads an explicitly supplied LAN DLNA
+catalog; the background and host seek probes run on the host. The former local
+access, selection, external-URI and seek-hold report auditors and their dedicated
+provider APK/debug requests have been removed with their sole report producers.
+No JVM or workflow test cases were removed.
+
+Generate the bundled C03 grid with
+`python3 tools/media/generate_c03_fixtures.py --font /path/to/Arial.ttf` using
+FFmpeg with the `drawtext` filter. The geometry, timing and encoding arguments
+match the original recipe; font and FFmpeg/libx264 versions can change bytes.
+
+For diagnostic report auditors, generate audio via
+`python3 tools/media/generate_mp06_audio_fixture.py` (uses the bundled MP03 video)
+and subtitles via `python3 tools/media/generate_mp06_subtitle_fixture.py`; push
+the generated subtitle MKV to `files/fixtures/mp06_text_subtitles.mkv` when opening
+it through the player receiver. GPU/core requests accept the bundled
+`c03_sbs_grid`, `c04_alpha_f180` and `c04_independent_alpha` files; audio requests
+use bundled `mp06_audio_clock`. Capture reports with the retained
+`DEBUG_MPV_GPU`, `DEBUG_MPV_CORE` or `DEBUG_MPV_AUDIO` broadcasts, including a
+unique `request` string, then pull the resulting JSON from `files/diagnostics`
+using `run-as` before running the matching auditor. There is no replacement
+end-to-end driver for these report auditors.

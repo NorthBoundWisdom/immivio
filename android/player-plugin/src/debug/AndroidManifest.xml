@@ -3,11 +3,6 @@
     <!-- Hand tracking declarations come from the selected OpenXR vendor export
          preset in both Debug and Release; this shared AAR is platform neutral. -->
     <application>
-        <provider
-            android:name="org.vrpassthroughplayer.plugin.LocalAccessTestProvider"
-            android:authorities="${applicationId}.accessfixture"
-            android:exported="false"
-        />
         <activity
             android:name="org.vrpassthroughplayer.plugin.MpvDiagnosticActivity"
             android:exported="true"
@@ -31,9 +26,6 @@
                 <action android:name="${applicationId}.DEBUG_MPV_AUDIO" />
                 <action android:name="${applicationId}.DEBUG_LAUNCH" />
                 <action android:name="${applicationId}.DEBUG_LAUNCH_2D" />
-                <action android:name="${applicationId}.DEBUG_LOCAL_ACCESS" />
-                <action android:name="${applicationId}.DEBUG_LOCAL_SELECTION" />
-                <action android:name="${applicationId}.DEBUG_MPV_URI" />
             </intent-filter>
         </receiver>
     </application>

@@ -14,7 +14,3 @@ dependencyResolutionManagement {
 }
 rootProject.name = 'VRPassthroughPlayerAndroid'
 include ':player-plugin'
-// Test-only APK in a different UID; never included in a normal player build.
-if (providers.gradleProperty('includeUriFixture').orNull == 'true') {
-    include ':uri-fixture'
-}

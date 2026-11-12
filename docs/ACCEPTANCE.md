@@ -169,3 +169,15 @@ Windows/cross-platform execution is delegated to CI per the owner's updated scop
 | Sustained operation | Memory/handle growth, thermal state, decoded/presented/XR cadence measured separately; no claim from emulator images or engine FPS alone |
 
 The old inference-mode/motion/Alpha-owner verification matrices have been retired. Remaining seek, storage, URI, audio and native format probes are supporting tools; inspect their fixture/receipt requirements before running them. Port any old diagnostic payload assumptions to [FRAME_CONTRACT.md](FRAME_CONTRACT.md). A device probe result only establishes its explicitly recorded scope.
+
+## Cleanup follow-up (2026-11-12)
+
+- On Chinese, Traditional Chinese and Japanese interfaces, trigger a DLNA folder
+  too large to sort and confirm the translated error appears; browse the library
+  and settings after translation cleanup to check for unintended English text.
+- Confirm normal and packed-alpha playback after removal of unused calibration
+  images, including the retained independent-alpha diagnostic video.
+- Confirm the remaining Python selected-feature/playback/seek/startup device
+  probes can enter through the retained debug receiver after test-only URI and
+  local-access facilities are removed. External URI grants and revocation now
+  require manual headset acceptance; no automated device coverage is claimed.

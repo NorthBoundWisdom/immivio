@@ -1,7 +1,6 @@
 package org.vrpassthroughplayer.plugin
 
 import android.content.Context
-import android.net.Uri
 import java.io.File
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.ThreadPoolExecutor
@@ -41,77 +40,6 @@ internal object MpvDiagnostics {
             { task -> Thread(task, "QuestMpvCoreProbe") },
             ThreadPoolExecutor.AbortPolicy(),
         )
-
-    fun requestExternal(context: Context): Int {
-        if (!busy.compareAndSet(false, true)) return -1
-        val id = sequence.incrementAndGet()
-        val uri = "content://org.vrpassthroughplayer.urifixture.documents/document/clip"
-        try {
-            worker.execute {
-                var report = JSONObject()
-                try {
-                    context.contentResolver.openFileDescriptor(Uri.parse(uri), "r")?.use {
-                        descriptor ->
-                        // Real libmpv path, with the FD owned until native teardown.
-                        report =
-                            JSONObject(
-                                MpvNative.probeGpu(
-                                    context,
-                                    "fd://${descriptor.fd}",
-                                    true,
-                                    1280,
-                                    640,
-                                )
-                            )
-                        report.put("descriptor_bytes", descriptor.statSize)
-                    } ?: error("External document descriptor unavailable")
-                } catch (error: Throwable) {
-                    report.put("state", "failed").put("detail", error.toString())
-                } finally {
-                    report
-                        .put("request_id", id)
-                        .put("diagnostic_process", DiagnosticRequests.processId)
-                        .put("uri", uri)
-                        .put("fixture", "mp03_frame_identity")
-                        .put("probe_kind", "gpu")
-                        .put("requested_hardware", true)
-                        .put("client_uid", android.os.Process.myUid())
-                        .put(
-                            "scope",
-                            "Actual external granted document FD consumed by native libmpv/EGL; Godot catalog/resume UI and XR not exercised",
-                        )
-                    try {
-                        val directory =
-                            File(
-                                    context.filesDir,
-                                    "diagnostics",
-                                )
-                                .apply { check(mkdirs() || isDirectory) }
-                        val tmp = File.createTempFile("mpv-uri-", ".tmp", directory)
-                        try {
-                            tmp.writeText(report.toString())
-                            check(
-                                tmp.renameTo(
-                                    File(
-                                        directory,
-                                        "mpv_uri_$id.json",
-                                    )
-                                )
-                            )
-                        } finally {
-                            tmp.delete()
-                        }
-                    } finally {
-                        busy.set(false)
-                    }
-                }
-            }
-        } catch (_: Exception) {
-            busy.set(false)
-            return -1
-        }
-        return id
-    }
 
     fun request(
         context: Context,
@@ -153,30 +81,18 @@ internal object MpvDiagnostics {
                         .put("request_id", id)
                         .put("diagnostic_process", DiagnosticRequests.processId)
                         .put("fixture", fixture)
-                        .put(
-                            "probe_kind",
-                            if (gpu) "gpu" else "core",
-                        )
+                        .put("probe_kind", if (gpu) "gpu" else "core")
                         .put("requested_hardware", hardware)
                     try {
                         val directory =
-                            File(
-                                    context.filesDir,
-                                    "diagnostics",
-                                )
-                                .apply { check(mkdirs() || isDirectory) }
+                            File(context.filesDir, "diagnostics").apply {
+                                check(mkdirs() || isDirectory)
+                            }
                         val tmp = File.createTempFile("mpv-core-", ".tmp", directory)
                         val kind = if (gpu) "gpu" else "core"
                         try {
                             tmp.writeText(report.toString())
-                            check(
-                                tmp.renameTo(
-                                    File(
-                                        directory,
-                                        "mpv_" + kind + "_$id.json",
-                                    )
-                                )
-                            )
+                            check(tmp.renameTo(File(directory, "mpv_" + kind + "_$id.json")))
                         } finally {
                             tmp.delete()
                         }

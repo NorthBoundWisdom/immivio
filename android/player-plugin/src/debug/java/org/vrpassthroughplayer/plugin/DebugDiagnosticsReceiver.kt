@@ -48,7 +48,7 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                             "com.godot.game.GodotAppLauncher",
                                         )
                                         .addCategory(
-                                            "org.khronos.openxr.intent.category.IMMERSIVE_HMD",
+                                            "org.khronos.openxr.intent.category.IMMERSIVE_HMD"
                                         )
                                 }
                             context.startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -74,44 +74,27 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                             // QuestDlna.
                             val app = context.applicationContext
                             Thread {
-                                DlnaClient.log = { android.util.Log.i("QuestDlna", it) }
-                                val lock =
-                                    (app.getSystemService(android.content.Context.WIFI_SERVICE)
-                                            as android.net.wifi.WifiManager)
-                                        .createMulticastLock("QuestDlnaDebug")
-                                        .apply {
-                                            setReferenceCounted(false)
-                                            acquire()
+                                    DlnaClient.log = { android.util.Log.i("QuestDlna", it) }
+                                    val lock =
+                                        (app.getSystemService(android.content.Context.WIFI_SERVICE)
+                                                as android.net.wifi.WifiManager)
+                                            .createMulticastLock("QuestDlnaDebug")
+                                            .apply {
+                                                setReferenceCounted(false)
+                                                acquire()
+                                            }
+                                    try {
+                                        DlnaClient.discover().forEach {
+                                            android.util.Log.i("QuestDlna", "server ${it.json()}")
                                         }
-                                try {
-                                    DlnaClient.discover().forEach {
-                                        android.util.Log.i(
-                                            "QuestDlna",
-                                            "server ${it.json()}",
-                                        )
+                                    } catch (error: Throwable) {
+                                        android.util.Log.e("QuestDlna", "discover failed", error)
+                                    } finally {
+                                        lock.release()
                                     }
-                                } catch (error: Throwable) {
-                                    android.util.Log.e("QuestDlna", "discover failed", error)
-                                } finally {
-                                    lock.release()
                                 }
-                            }
                                 .start()
                             1
-                        } else if (intent.action == "${context.packageName}.DEBUG_LOCAL_ACCESS") {
-                            LocalAccessProbe.request(
-                                context.applicationContext,
-                                intent.getStringExtra("case") ?: "file_present",
-                            )
-                        } else if (
-                            intent.action == "${context.packageName}.DEBUG_LOCAL_SELECTION"
-                        ) {
-                            LocalSelectionProbe.request(
-                                context.applicationContext,
-                                intent.getStringExtra("case") ?: "unicode",
-                            )
-                        } else if (intent.action == "${context.packageName}.DEBUG_MPV_URI") {
-                            MpvDiagnostics.requestExternal(context.applicationContext)
                         } else if (intent.action == "${context.packageName}.DEBUG_MPV_AUDIO") {
                             MpvAudioDiagnostics.request(
                                 context.applicationContext,
@@ -159,7 +142,7 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                                 "seek_policy_ui",
                                                 "media_library_ui",
                                                 "selected_features_ui",
-                                            ),
+                                            )
                                     )
                                     val command =
                                         JSONObject()
@@ -225,7 +208,7 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                                     "menus",
                                                     "snapshot",
                                                     "error",
-                                                ),
+                                                )
                                         )
                                         command.put("step", step)
                                     }
@@ -247,11 +230,11 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                                     "retry",
                                                     "snapshot",
                                                     "reauth",
-                                                ),
+                                                )
                                         )
                                         val provider = intent.getStringExtra("provider") ?: "emby"
                                         require(
-                                            provider in setOf("emby", "jellyfin", "stash", "xbvr"),
+                                            provider in setOf("emby", "jellyfin", "stash", "xbvr")
                                         )
                                         command.put("step", step).put("provider", provider)
                                     }
@@ -268,12 +251,12 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                                     "player_bar",
                                                     "bookmark_seek",
                                                     "bookmark_delete",
-                                                ),
+                                                )
                                         )
                                         val marker = intent.getStringExtra("marker_id").orEmpty()
                                         require(
                                             marker.isEmpty() ||
-                                                marker.matches(Regex("[a-f0-9]{32}")),
+                                                marker.matches(Regex("[a-f0-9]{32}"))
                                         )
                                         command.put("step", step).put("marker_id", marker)
                                     }
@@ -295,8 +278,8 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                             val target = File(localPath).canonicalFile
                                             require(
                                                 target.path.startsWith(
-                                                    root.path + File.separator,
-                                                ) && target.isFile && target.canRead(),
+                                                    root.path + File.separator
+                                                ) && target.isFile && target.canRead()
                                             )
                                             command
                                                 .put(
@@ -310,7 +293,7 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                             require(
                                                 network.startsWith("http://") ||
                                                     network.startsWith("https://") ||
-                                                    network.startsWith("smb://"),
+                                                    network.startsWith("smb://")
                                             )
                                             command
                                                 .put("uri", network)
@@ -336,7 +319,7 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                                         "mp08_4k",
                                                         "depth_2d",
                                                         "mpv_performance",
-                                                    ),
+                                                    )
                                             )
                                             val directory =
                                                 File(context.filesDir, "fixtures").apply {
@@ -372,8 +355,10 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                                         else -> 20_000_000L
                                                     }
                                                 require(
-                                                    target.isFile && target.length() in 1..limit,
-                                                )
+                                                    target.isFile && target.length() in 1..limit
+                                                ) {
+                                                    "Prepare local fixture ${target.absolutePath} (1..$limit bytes) before running the probe"
+                                                }
                                             }
                                             command
                                                 .put("uri", "file://${target.absolutePath}")
@@ -401,12 +386,7 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                         try {
                             temporary.writeText(report.toString())
                             check(
-                                temporary.renameTo(
-                                    File(
-                                        directory,
-                                        "debug_request_$request.json",
-                                    ),
-                                ),
+                                temporary.renameTo(File(directory, "debug_request_$request.json"))
                             )
                         } finally {
                             temporary.delete()
