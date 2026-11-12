@@ -137,12 +137,12 @@ after installing the matching Debug APK. The seek probe additionally requires
 serial, output and network options. Missing local media is rejected by the debug
 receiver; it is never downloaded automatically.
 
-The receiver also still accepts `mp05_person_still`, `mp07_motion_4k`,
-`mp08_8k_low`, `mp08_8k_high`, `mp08_8k_long`, `mp08_4k` and `depth_2d`; there are
-no remaining probe callers for these names. Only `mp07_motion_4k` has a generator:
-`python3 tools/media/generate_mp07_motion_fixture.py --source /path/to/owned.mp4`.
-The others have no repository preparation recipe. Their removal awaits review
-of the fixture inventory investigation.
+The player receiver accepts only `mp03_frame_identity`, `mp06_text_subtitles`,
+`mp08_8k_high_30` and `mpv_performance`. The default MP03 fixture is bundled;
+the other three require explicit local preparation/upload. Missing, empty or
+oversized files fail with `Prepare local fixture … before running the probe`,
+including the app-private target path and permitted byte range. Unused legacy
+fixture names and the private-source MP07 generator have been removed.
 
 `benchmarks/mpv_audio_probe.py`, `mpv_gpu_probe.py` and `c04_fixture_decode.py`
 audit supplied diagnostic JSON or decode bundled/generated fixtures; they do not

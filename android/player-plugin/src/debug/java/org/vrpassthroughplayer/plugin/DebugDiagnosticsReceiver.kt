@@ -309,15 +309,8 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                                 fixture in
                                                     setOf(
                                                         "mp03_frame_identity",
-                                                        "mp05_person_still",
                                                         "mp06_text_subtitles",
-                                                        "mp07_motion_4k",
-                                                        "mp08_8k_low",
-                                                        "mp08_8k_high",
                                                         "mp08_8k_high_30",
-                                                        "mp08_8k_long",
-                                                        "mp08_4k",
-                                                        "depth_2d",
                                                         "mpv_performance",
                                                     )
                                             )
@@ -346,17 +339,14 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                                                 1024 *
                                                                 1024 // Original local high-bitrate
                                                         // samples; debug/DUMP only.
-                                                        fixture == "mp08_8k_long" ->
-                                                            1_500_000_000L // 4 min 8K, for windows
-                                                        // of 60 s and more
-                                                        fixture.startsWith("mp08_") -> 500_000_000L
-                                                        fixture == "mp07_motion_4k" ||
-                                                            fixture == "depth_2d" -> 50_000_000L
+                                                        fixture == "mp08_8k_high_30" -> 500_000_000L
                                                         else -> 20_000_000L
                                                     }
                                                 require(
                                                     target.isFile && target.length() in 1..limit
-                                                )
+                                                ) {
+                                                    "Prepare local fixture ${target.absolutePath} (1..$limit bytes) before running the probe"
+                                                }
                                             }
                                             command
                                                 .put("uri", "file://${target.absolutePath}")
