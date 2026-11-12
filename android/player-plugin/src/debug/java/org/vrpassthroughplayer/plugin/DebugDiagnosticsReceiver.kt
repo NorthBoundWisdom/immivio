@@ -356,9 +356,7 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                                     }
                                                 require(
                                                     target.isFile && target.length() in 1..limit
-                                                ) {
-                                                    "Prepare local fixture ${target.absolutePath} (1..$limit bytes) before running the probe"
-                                                }
+                                                )
                                             }
                                             command
                                                 .put("uri", "file://${target.absolutePath}")
