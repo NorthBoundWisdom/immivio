@@ -79,7 +79,7 @@ jobs:
       matrix:
         include:
           - os: macOS
-            runner: macos-15
+            runner: macos-15-intel
     defaults:
       run:
         shell: bash

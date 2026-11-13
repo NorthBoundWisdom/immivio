@@ -87,10 +87,13 @@ func _run() -> void:
 	menu.set_process(false)
 	menu.toggle()
 	check(
-		not menu.controls_snapshot().any(
-			func(item): return item.target in [104, Menu.TEMP_PASSTHROUGH]
+		(
+			not button(menu, 104).is_empty()
+			and button(menu, 104).node.visible
+			and not button(menu, 104).enabled
+			and button(menu, Menu.TEMP_PASSTHROUGH).is_empty()
 		),
-		"Video toolbar has no passthrough controls"
+		"Packed-alpha toggle stays visible without adding a temporary scene passthrough action"
 	)
 	var right := [Menu.MODE, Menu.QUICK_SPEED, Menu.QUICK_COLOR, Menu.QUEUE_SETTINGS, 12]
 	for target in right:

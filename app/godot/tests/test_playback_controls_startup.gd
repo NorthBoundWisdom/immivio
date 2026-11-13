@@ -91,6 +91,29 @@ func _run() -> void:
 		host.video.test_set_waiting_for_frame(true)
 		host.test_show_player_menu()
 		check(host.player_menu.visible, "Seeking an existing presentation cannot hide controls")
+	# Decoder layout revisions can temporarily have no presented frame for the same file.
+	host.player_menu.test_activate(Menu.MODE)
+	host.video.media.frame_counter = 0
+	host.video.panel.visible = false
+	host.video.test_set_waiting_for_frame(true)
+	host._on_video_changed()
+	check(
+		host.player_menu.visible and host.player_menu._mode_open,
+		"Same-video revision keeps the projection picker open"
+	)
+	for projection in [1, 2, 1, 2]:
+		host.player_menu.test_activate(Menu.MODE_PROJECTION + projection)
+		check(
+			(
+				host.video.geometry == projection
+				and host.player_menu.visible
+				and host.player_menu._mode_open
+				and host.player_menu._lit_modes.has(Menu.MODE_PROJECTION + projection)
+			),
+			"Projection applies immediately and remains highlighted: %d" % projection
+		)
+	host.player_menu.test_activate(Menu.QUICK_CLOSE)
+	check(not host.player_menu._mode_open, "Back closes the mode picker explicitly")
 	# Queue/manual-next opens can replace a file while its toolbar is already visible.
 	host.video.media.begin(19)
 	host.video.local_uri = "file:///next.mp4"

@@ -10,11 +10,15 @@ Newest first, with the main changes that affect everyday use. Unreleased items a
 
 **中文**
 
+- 切换投影时保持视频模式菜单打开并高亮当前选择，方便比较鱼眼与 180°。
+- 播放时保留透视开关；兼容的封装 alpha 鱼眼 SBS 视频即使缺少文件名标签，也可手动开启或关闭遮罩，暂停时同样生效。
 - 清理停用的播放依赖与调试内容，减少安装包内的冗余，并更新基础依赖。
 - 保存格式升级时保留已有的逐视频画面、立体、字幕和时序偏好，清除废弃字段。
 
 **English**
 
+- Keep the video-mode menu open and highlight the active projection while switching between modes such as Fisheye and 180°.
+- Keep Passthrough visible during playback and allow manual packed-alpha masking for compatible fisheye SBS video without filename tags, including while paused.
 - Remove inactive playback dependencies and diagnostic content to reduce redundant package contents, and update core libraries.
 - Preserve existing per-video picture, stereo, subtitle and timing preferences while migrating saved records and removing retired fields.
 

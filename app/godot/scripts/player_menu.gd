@@ -671,6 +671,7 @@ func _draw_bar() -> void:
 		{"target": BROWSE, "icon": "folder", "tip": "Library", "enabled": has_video},
 	]
 	var picture := [
+		{"target": 104, "icon": "passthrough", "tip": "Passthrough", "enabled": _enabled("alpha")},
 		{"target": 110, "icon": "subtitle", "tip": "Subtitles", "enabled": _enabled("subtitles")},
 		{"target": MODE, "icon": "view_mode", "tip": "Video mode", "enabled": has_video},
 		{
@@ -690,15 +691,19 @@ func _draw_bar() -> void:
 		},
 	]
 	for side in [-1, 1]:
-		var group: Array = (watch if side < 0 else picture).filter(func(item): return item.enabled)
+		var group: Array = (watch if side < 0 else picture).filter(
+			func(item): return item.enabled or (has_video and item.target == 104)
+		)
 		if group.is_empty():
 			continue
-		var width := 0.058
+		var width := minf(0.058, 0.408 / group.size())
 		var gap := minf(0.02, (0.408 - group.size() * width) / maxi(1, group.size() - 1))
 		var span := group.size() * width + (group.size() - 1) * gap
 		var x := -0.132 - span + width / 2 if side < 0 else 0.132 + width / 2
 		for item in group:
-			_glyph(item.target, item.icon, Vector2(x, 0.025), width, true, I18n.t(item.tip))
+			_glyph(item.target, item.icon, Vector2(x, 0.025), width, item.enabled, I18n.t(item.tip))
+			if item.target == 104:
+				_buttons.back()["keep_visible"] = true
 			_buttons.back()["tip_below"] = true
 			x += width + gap
 	if has_video:
@@ -1254,9 +1259,8 @@ func _enabled(operation: String) -> bool:
 			return has_video and _state.get("has_" + operation, false)
 		"alpha":
 			return (
-				(false or _state.get("packed_file", false))
-				and has_video
-				and int(_state.get("geometry", 0)) in [1, 2]
+				has_video
+				and (_state.get("alpha_available", false) or _state.get("packed_alpha", false))
 			)
 		"eyes", "stereo_view":
 			return has_video and _state.get("stereo", false)

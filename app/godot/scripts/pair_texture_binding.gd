@@ -53,6 +53,19 @@ func bind(target: ShaderMaterial, pair: Dictionary) -> bool:
 	return true
 
 
+## Paused manual mask changes reuse the existing wrappers and native display lease.
+func set_opaque(enabled: bool) -> void:
+	opaque = enabled
+	if not material:
+		return
+	var shader := OPAQUE_SHADER if opaque and ticket.mask_kind == "opaque" else PAIR_SHADER
+	if material.shader == shader:
+		return
+	_use_shader(material, shader)
+	RenderingServer.material_set_param(material.get_rid(), "color_texture", color_rid)
+	RenderingServer.material_set_param(material.get_rid(), "alpha_texture", alpha_rid)
+
+
 ## The borrowed source color wrapper. Its native lease is owned by the caller.
 func color_texture() -> RID:
 	return color_rid

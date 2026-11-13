@@ -308,7 +308,7 @@ func _run() -> void:
 	check(
 		(
 			not click(menu, 102)
-			and not click(menu, 104)
+			and not menu._enabled("alpha")
 			and not click(menu, 112)
 			and host.calls.is_empty()
 		),
@@ -373,7 +373,12 @@ func _run() -> void:
 	var shown := func(target: int) -> bool:
 		return menu.controls_snapshot().any(func(b): return b.target == target and b.node.visible)
 	check(
-		not shown.call(112) and not shown.call(104) and not click(menu, 112),
+		(
+			not shown.call(112)
+			and shown.call(104)
+			and not menu._enabled("alpha")
+			and not click(menu, 112)
+		),
 		"No live conversion or matting controls are shown"
 	)
 	video.set_projection(1)
@@ -381,25 +386,25 @@ func _run() -> void:
 	var before_disabled_depth := host.calls.size()
 	check(
 		(
-			not shown.call(104)
+			shown.call(104)
 			and not shown.call(112)
-			and not click(menu, 104)
+			and not menu._enabled("alpha")
 			and not click(menu, 112)
 			and host.calls.size() == before_disabled_depth
 		),
-		"VR180 toolbar omits passthrough and unavailable depth without issuing a backend command"
+		"VR180 keeps manual passthrough visible but disabled for an incompatible projection"
 	)
 	video.set_projection(3)
 	menu.refresh()
 	check(
 		(
-			not shown.call(104)
+			shown.call(104)
 			and not shown.call(112)
-			and not click(menu, 104)
+			and not menu._enabled("alpha")
 			and not click(menu, 112)
 			and not video.alpha_wanted()
 		),
-		"360 hides both unavailable effects and stops the previous Alpha effect"
+		"360 keeps passthrough visible but disabled and omits removed conversion controls"
 	)
 	check(
 		(

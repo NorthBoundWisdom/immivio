@@ -172,6 +172,16 @@ Playback popup continuity: `test_playback_popup_continuity.gd` checks transport 
 
 `test_output_paths.py` verifies move-only migration, package/receipt pairing, collision preservation, cleanup boundaries, private-key and symlink rejection, nested CI summaries and automatic removal of temporary native inspection files. Release tests exercise the nested CI download layout and flattened publication bundle. Host-test temporary inputs live under `build/tests/godot/`; saved render evidence lives under `artifacts/captures/ui/`.
 
+Packed-alpha manual controls: `test_manual_packed_alpha.gd` opens an untagged
+DLNA-style URI, enables/disables its compatible fisheye SBS mask while paused,
+rejects incompatible manual layouts and checks that the next untagged file does
+not inherit the switch. `render_packed_alpha_pair.gd` checks mask pixels and
+switches a bound material between opaque and packed shaders while retaining
+texture RIDs, the display ticket and picture settings. These host checks do
+not certify the headset compositor. `test_playback_controls_startup.gd` also
+keeps the mode picker visible and highlights successive projection choices
+during same-video layout revisions, while still deferring a different file.
+
 ## Device probes and local media
 
 ### macOS headset discovery when only an emulator appears

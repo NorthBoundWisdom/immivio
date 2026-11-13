@@ -48,8 +48,7 @@ var alpha_encoding := 1
 var alpha_enabled := false
 ## Pick the clone-voice track (an extra M4A beside the video) whenever a video has one.
 var prefer_clone_voice := false
-## The file is an alpha-packed fisheye output (its name says so): the mask is in the frame and
-## the Alpha switch controls this embedded mask.
+## Naming supplies the initial packed-mask preference; users can override it for untagged media.
 var packed_file := false
 var packed_alpha := false
 var reclining_mode := false
@@ -874,7 +873,7 @@ func _try_revision() -> void:
 
 ## Alpha is the precomputed mask packed in this file.
 func alpha_wanted() -> bool:
-	return packed_file and packed_alpha
+	return packed_alpha
 
 
 ## The URI/effect preferences survive close for history; they are not playback state.
@@ -889,9 +888,18 @@ func has_active_presentation() -> bool:
 	)
 
 
+func alpha_available() -> bool:
+	return (
+		media.accepts(media.session_id)
+		and not top_bottom
+		and not stereo_half
+		and Geometry.legacy_compatible(media.format, stereo_sbs, geometry)
+	)
+
+
 func set_alpha(enabled: bool) -> bool:
 	# Precomputed alpha is media data; there is no live matting pipeline.
-	if not packed_file:
+	if enabled and not packed_file and not alpha_available():
 		return false
 	packed_alpha = enabled
 	_apply_packed()
@@ -1866,13 +1874,13 @@ func _complete_layout() -> void:
 ## Packed masks show only on the layout they were made for (fisheye side by side).
 func _apply_packed() -> void:
 	var shown := (
-		packed_file
-		and packed_alpha
+		packed_alpha
 		and not media.last_pair.is_empty()
 		and not top_bottom
 		and not stereo_half
 		and Geometry.legacy_compatible(media.format, stereo_sbs, geometry)
 	)
+	_binding.set_opaque(not shown)
 	material.set_shader_parameter("packed_alpha", shown)
 	if shown:
 		material.set_shader_parameter(
@@ -1942,7 +1950,7 @@ func _present_pending() -> void:
 	if not claimed is Dictionary:
 		return
 	_unbind()
-	_binding.opaque = not packed_file and claimed.get("mask_kind") == "opaque"
+	_binding.opaque = not alpha_wanted() and claimed.get("mask_kind") == "opaque"
 	if not _binding.bind(material, claimed):
 		platform.detach_mpv_pair(media.session_id, int(claimed.slot_token))
 		picker_error = "Complete video frame could not be bound"

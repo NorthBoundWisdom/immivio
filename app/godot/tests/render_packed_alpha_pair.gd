@@ -122,6 +122,37 @@ func _run() -> void:
 	await RenderingServer.frame_post_draw
 	if viewport.get_texture().get_image().get_pixel(32, 32).a < 0.99:
 		failures.append("Packed alpha off must be opaque")
+	# A paused manual toggle switches the live material without replacing its texture lease.
+	var Binding := preload("res://scripts/pair_texture_binding.gd")
+	var binding := Binding.new()
+	var color := ImageTexture.create_from_image(packed)
+	var alpha := ImageTexture.create_from_image(mask)
+	binding.material = material
+	binding.ticket = {"mask_kind": "opaque", "slot_token": 17}
+	binding.color_rid = color.get_rid()
+	binding.alpha_rid = alpha.get_rid()
+	material.set_shader_parameter("grade_gain", Vector3(1.1, 0.9, 1.0))
+	for opaque in [true, false, true, false]:
+		binding.set_opaque(opaque)
+		if material.shader != (Binding.OPAQUE_SHADER if opaque else Binding.PAIR_SHADER):
+			failures.append("Paused toggle must choose the matching shader")
+		if (
+			(
+				RenderingServer.material_get_param(material.get_rid(), "color_texture")
+				!= color.get_rid()
+			)
+			or (
+				RenderingServer.material_get_param(material.get_rid(), "alpha_texture")
+				!= alpha.get_rid()
+			)
+			or binding.ticket.slot_token != 17
+			or material.get_shader_parameter("grade_gain") != Vector3(1.1, 0.9, 1.0)
+		):
+			failures.append("Paused toggle must retain textures, ticket and picture settings")
+	# These test RIDs belong to ImageTexture, rather than native-handle wrappers.
+	binding.material = null
+	binding.color_rid = RID()
+	binding.alpha_rid = RID()
 	for failure in failures:
 		push_error(failure)
 	print(

@@ -582,6 +582,12 @@ func _defer_video_controls() -> bool:
 		or video.media.frame_counter > 0
 	):
 		return false
+	# A layout revision of the same video must keep the active mode picker usable.
+	if (
+		host.player_menu._mode_open
+		and str(host.player_menu._state.get("source_uri", "")) == video.local_uri
+	):
+		return false
 	_pending_video_controls_session = video.media.session_id
 	host.player_menu.dismiss()
 	return true
@@ -732,6 +738,7 @@ func _menu_state() -> Dictionary:
 		"playback_state": host.video.media.state,
 		"ai_enabled": false,
 		"packed_file": host.video.packed_file,
+		"alpha_available": host.video.alpha_available(),
 		"packed_alpha": host.video.alpha_wanted(),
 		"alpha_enabled": host.video.alpha_enabled,
 		"loop": host.video.loop_enabled,
