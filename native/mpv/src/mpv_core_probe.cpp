@@ -98,7 +98,7 @@ std::string probe(JNIEnv *env, jobject context, jstring path) {
       throw std::runtime_error("mpv_wait_event failed");
     if (event->event_id == MPV_EVENT_LOG_MESSAGE) {
       const auto *log = static_cast<const mpv_event_log_message *>(event->data);
-      __android_log_print(ANDROID_LOG_INFO, "QuestMpv", "[%s] %s", log->prefix, log->text);
+      __android_log_print(ANDROID_LOG_INFO, "ImmivioMpv", "[%s] %s", log->prefix, log->text);
     } else if (event->event_id == MPV_EVENT_FILE_LOADED)
       loaded = true;
     else if (event->event_id == MPV_EVENT_VIDEO_RECONFIG) {

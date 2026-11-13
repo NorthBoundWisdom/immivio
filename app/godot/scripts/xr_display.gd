@@ -154,7 +154,7 @@ func _on_session_event(event: String) -> void:
 
 
 # High-resolution video sampling keeps the GPU busy continuously. Without a request
-# the Quest runtime chooses lower CPU/GPU/memory levels for this app.
+# the OpenXR runtime chooses lower CPU/GPU/memory levels for this app.
 var performance_levels := "default"
 # Fixed foveated rendering for the eye buffers (0 off .. 3 high); the 8K video is sampled
 # for every eye pixel at the display rate, so the periphery is a large bandwidth cost.

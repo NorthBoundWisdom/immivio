@@ -175,13 +175,13 @@ def main():
                 "title": entry.get("title", "network_startup_test"),
             }
             result["source"] = {
-                "transport": "Quest actual network HTTP/DLNA",
+                "transport": "Android actual network HTTP/DLNA",
                 "uri": source["uri"],
             }
         else:
             source = {"fixture": args.fixture}
             result["source"] = {
-                "transport": "Quest local storage",
+                "transport": "Android local storage",
                 "fixture": source["fixture"],
             }
         cases = [(True, 0, "speed"), (False, 0, "speed")]

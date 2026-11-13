@@ -115,7 +115,7 @@ def main():
         "apk_sha256": installed_sha,
         "serial": args.serial,
         "cases": cases,
-        "scope": "Normal Quest VR production decode, GPU freeze and libmpv/Godot binding; not physical-controller feel or compositor timing",
+        "scope": "Normal headset VR production decode, GPU freeze and libmpv/Godot binding; not physical-controller feel or compositor timing",
         "rows": [],
     }
 

@@ -1009,7 +1009,7 @@ internal class MpvVideoBridge(
                             report.put("state", "failed").put("error", failure.message)
                             if (BuildConfig.DEBUG)
                                 android.util.Log.w(
-                                    "QuestMpvFreeze",
+                                    "ImmivioMpvFreeze",
                                     "Frame freeze failed",
                                     failure,
                                 )

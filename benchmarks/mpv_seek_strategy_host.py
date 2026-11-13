@@ -2,7 +2,7 @@
 
 Uses MPV's JSON named-pipe IPC, not FFmpeg decoding timings. Playback is paused,
 audio and sidecar discovery are disabled. The endpoint is playback-restart plus
-MPV time-pos, not the Quest compositor or this application's frame bridge.
+MPV time-pos, not the XR compositor or this application's frame bridge.
 """
 
 import argparse

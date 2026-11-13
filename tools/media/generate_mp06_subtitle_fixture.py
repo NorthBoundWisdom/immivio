@@ -110,7 +110,7 @@ def main():
         stream_indexes=[s["index"] for s in data["streams"]],
         stream_indexes_are_not_mpv_track_ids=True,
         rights="Project-generated graphics, synthesized tones and original subtitle text",
-        scope="FFmpeg mux and FFprobe packet times verified; native MPV text decoding/track ids/Quest rendering pending",
+        scope="FFmpeg mux and FFprobe packet times verified; native MPV text decoding/track ids/headset rendering pending",
         bundled_in_apk=False,
         repeated_mux_identical_bytes_verified=True,
     )

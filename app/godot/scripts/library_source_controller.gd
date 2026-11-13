@@ -59,7 +59,7 @@ func receive(id: int, payload: String) -> void:
 		return
 	if host.file_actions.receive(id, payload):
 		return
-	# Unsolicited store notifications also work when Quest does not pause/resume VR.
+	# Unsolicited store notifications also work when the headset runtime does not pause/resume VR.
 	if id == 0:
 		var event: Variant = JSON.parse_string(payload)
 		if event is Dictionary and event.get("source") == "local_storage":

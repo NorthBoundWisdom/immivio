@@ -558,7 +558,7 @@ struct Source final {
           const auto eq = item.find('=');
           if (eq != std::string::npos) {
             option(item.substr(0, eq).c_str(), item.substr(eq + 1).c_str());
-            __android_log_print(ANDROID_LOG_WARN, "QuestMpv", "debug option %s", item.c_str());
+            __android_log_print(ANDROID_LOG_WARN, "ImmivioMpv", "debug option %s", item.c_str());
           }
           start = end + 1;
         }
@@ -788,7 +788,7 @@ struct Source final {
           playback_pts_us.store(seek * 1000);
 
           __android_log_print(
-              ANDROID_LOG_INFO, "QuestMpvSource",
+              ANDROID_LOG_INFO, "ImmivioMpvSource",
               "Seek request %lld ms; epoch=%llu floor=%llu mode=%s", static_cast<long long>(seek),
               static_cast<unsigned long long>(last_epoch.load()),
               static_cast<unsigned long long>(epoch_floor.load()), seek_exact ? "exact" : "speed");
@@ -829,7 +829,7 @@ struct Source final {
             // In this opt-in mode raw MPV messages never reach logcat.
           } else
 #endif
-            __android_log_print(ANDROID_LOG_INFO, "QuestMpvSource", "[%s] %s", log->prefix,
+            __android_log_print(ANDROID_LOG_INFO, "ImmivioMpvSource", "[%s] %s", log->prefix,
                                 log->text);
         } else if (event->event_id == MPV_EVENT_PROPERTY_CHANGE && event->reply_userdata == 41) {
           next_snapshot = std::chrono::steady_clock::now();
@@ -845,7 +845,7 @@ struct Source final {
               // own audio.
               const char *add[] = {"audio-add", location.c_str(), "auto", title.c_str(), nullptr};
               const int added = mpv_command(core, add);
-              __android_log_print(added < 0 ? ANDROID_LOG_WARN : ANDROID_LOG_INFO, "QuestMpvSource",
+              __android_log_print(added < 0 ? ANDROID_LOG_WARN : ANDROID_LOG_INFO, "ImmivioMpvSource",
                                   "Extra audio track '%s': %s", title.c_str(),
                                   mpv_error_string(added));
             }
@@ -856,7 +856,7 @@ struct Source final {
               // burn it into the video.
               const char *add[] = {"sub-add", location.c_str(), "auto", title.c_str(), nullptr};
               const int added = mpv_command(core, add);
-              __android_log_print(added < 0 ? ANDROID_LOG_WARN : ANDROID_LOG_INFO, "QuestMpvSource",
+              __android_log_print(added < 0 ? ANDROID_LOG_WARN : ANDROID_LOG_INFO, "ImmivioMpvSource",
                                   "Extra subtitle track '%s': %s", title.c_str(),
                                   mpv_error_string(added));
             }

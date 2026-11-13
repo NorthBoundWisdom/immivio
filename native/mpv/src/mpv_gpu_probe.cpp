@@ -240,7 +240,7 @@ struct RenderWorker {
       }
     } catch (const std::exception &exception) {
       error = exception.what();
-      __android_log_print(ANDROID_LOG_ERROR, "QuestMpv", "Isolated GLES worker: %s", error.c_str());
+      __android_log_print(ANDROID_LOG_ERROR, "ImmivioMpv", "Isolated GLES worker: %s", error.c_str());
       failed.store(true);
       ready.store(true);
     }
@@ -309,7 +309,7 @@ std::string quest_mpv_gpu_probe(const std::string &path, bool hardware, int widt
     require(event != nullptr, "GPU mpv_wait_event");
     if (event->event_id == MPV_EVENT_LOG_MESSAGE) {
       const auto *log = static_cast<const mpv_event_log_message *>(event->data);
-      __android_log_print(ANDROID_LOG_INFO, "QuestMpv", "[GPU %s] %s", log->prefix, log->text);
+      __android_log_print(ANDROID_LOG_INFO, "ImmivioMpv", "[GPU %s] %s", log->prefix, log->text);
     } else if (event->event_id == MPV_EVENT_FILE_LOADED)
       loaded = true;
     else if (event->event_id == MPV_EVENT_END_FILE) {

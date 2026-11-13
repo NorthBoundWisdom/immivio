@@ -71,10 +71,10 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                             1
                         } else if (intent.action == "${context.packageName}.DEBUG_DLNA") {
                             // Same discovery as the library menu; results go to logcat tag
-                            // QuestDlna.
+                            // ImmivioDlna.
                             val app = context.applicationContext
                             Thread {
-                                DlnaClient.log = { android.util.Log.i("QuestDlna", it) }
+                                DlnaClient.log = { android.util.Log.i("ImmivioDlna", it) }
                                 val lock =
                                     (app.getSystemService(android.content.Context.WIFI_SERVICE)
                                             as android.net.wifi.WifiManager)
@@ -85,10 +85,10 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                         }
                                 try {
                                     DlnaClient.discover().forEach {
-                                        android.util.Log.i("QuestDlna", "server ${it.json()}")
+                                        android.util.Log.i("ImmivioDlna", "server ${it.json()}")
                                     }
                                 } catch (error: Throwable) {
-                                    android.util.Log.e("QuestDlna", "discover failed", error)
+                                    android.util.Log.e("ImmivioDlna", "discover failed", error)
                                 } finally {
                                     lock.release()
                                 }

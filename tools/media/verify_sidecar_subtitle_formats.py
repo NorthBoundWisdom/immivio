@@ -105,7 +105,7 @@ def main():
     report = {
         "state": "passed",
         "cases": results,
-        "scope": "Desktop FFmpeg demux/decode; Android MPV, SMB network, ASS styling and Quest composition not exercised",
+        "scope": "Desktop FFmpeg demux/decode; Android MPV, SMB network, ASS styling and XR composition not exercised",
     }
     (OUT / "verification.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"

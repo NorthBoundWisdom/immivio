@@ -56,21 +56,21 @@ internal class HeadsetPresenceMonitor(
                     else context.registerReceiver(receiver, filter)
                     true
                 }
-                .onFailure { Log.w("QuestPlayer", "Screen presence fallback unavailable", it) }
+                .onFailure { Log.w("ImmivioPlayer", "Screen presence fallback unavailable", it) }
                 .getOrDefault(false)
         // Snapshot after registration: an already-off display need not emit another broadcast.
         val interactive =
             (context.getSystemService(Context.POWER_SERVICE) as? PowerManager)?.isInteractive
         if (interactive != null) publish(state.screen(interactive), "screen_initial")
         Log.i(
-            "QuestPlayer",
+            "ImmivioPlayer",
             "Headset presence: proximity=${sensor != null}; screen_off_fallback=$registered",
         )
     }
 
     private fun publish(present: Boolean?, source: String) {
         if (closed || present == null) return
-        Log.i("QuestPlayer", "Headset presence=$present source=$source")
+        Log.i("ImmivioPlayer", "Headset presence=$present source=$source")
         changed(present, source)
     }
 

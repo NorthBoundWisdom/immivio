@@ -80,7 +80,7 @@ internal class MediaSources(
     @Volatile private var stopped = false
 
     init {
-        DlnaClient.log = { android.util.Log.i("QuestDlna", it) }
+        DlnaClient.log = { android.util.Log.i("ImmivioDlna", it) }
     }
 
     fun dlnaDiscover(): Int =
@@ -358,7 +358,7 @@ internal class MediaSources(
             }
         } catch (error: Throwable) {
             android.util.Log.w(
-                "QuestSidecarAudio",
+                "ImmivioSidecarAudio",
                 "Sidecar audio lookup failed: ${error.javaClass.simpleName}",
             )
             emptyList()
@@ -430,7 +430,7 @@ internal class MediaSources(
             }
         } catch (error: Exception) {
             android.util.Log.w(
-                "QuestSubtitles",
+                "ImmivioSubtitles",
                 "Network subtitle lookup failed: ${error.javaClass.simpleName}",
             )
             emptyList()

@@ -489,7 +489,7 @@ internal class MediaServerLibrary(
                     .keys
                     .toList()
                     .forEach(instance::release)
-                // Quest can keep the player resumed behind the native account window.
+                // A headset runtime can keep the player resumed behind the native account window.
                 // Notify after persistence instead of relying on another onMainResume.
                 if (!instance.closed)
                     instance.emit(

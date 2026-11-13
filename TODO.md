@@ -25,10 +25,3 @@
 
 - [ ] **`docs/ACCEPTANCE.md`**：顶部只放“当前待验收”，历史记录按日期归档到文件后半部分或单独文件。
 - [ ] **`README.md`**：发布前复查，确认没有再提到已删除的重构计划和 PowerShell 脚本。
-
-## 5. 命名整理
-
-以下三项一个提交改一个名字。应用 ID、Kotlin/Java 包名、Godot 插件目录、插件类和单例名保持不变。
-
-- [ ] **日志标签**：将 `Quest*`（如 `QuestDlna`、`QuestCapabilityProbe`）改为 `Immivio*`。只改 `Log.x(TAG, …)` 的标签字符串，不改类名；同步 `benchmarks/` 和文档里按标签过滤 logcat 的位置。
-- [ ] **文档与注释**：遇到把三个平台统称为 Quest 的地方时，改成准确的平台表述。

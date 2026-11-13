@@ -277,6 +277,27 @@ native seek trace for a newly opened source. The playback/startup device probes
 save and restore the properties they modify. Release builds do not read these
 Debug overrides.
 
+### Android log labels
+
+The renamed shared playback/library labels use `Immivio*` on PICO, Quest and
+OpenXR targets. Select labels by subsystem when collecting logcat evidence:
+
+| Subsystem | Labels |
+| --- | --- |
+| Playback and native probes | `ImmivioMpv`, `ImmivioMpvSource` |
+| GL ownership and frozen frames | `ImmivioGlOwner`, `ImmivioMpvFreeze` |
+| Library, sidecars and captions | `ImmivioDlna`, `ImmivioSidecarAudio`, `ImmivioSubtitles` |
+| Presence/session feedback | `ImmivioPlayer` |
+
+For example:
+
+```sh
+adb logcat ImmivioMpvSource:I ImmivioMpv:V ImmivioPlayer:I ImmivioDlna:I '*:S'
+```
+
+Plugin identifiers remain as documented in [ARCHITECTURE.md](ARCHITECTURE.md#retained-internal-names).
+Thread and multicast-lock names are separate from logcat labels.
+
 ### External URI grant automation
 
 The URI fixture is excluded from the default Gradle graph and every ordinary

@@ -35,7 +35,7 @@ inline void isolate_owner_errors() {
     owner_gl_last_error = error;
 #ifndef NDEBUG
     if (owner_gl_errors <= 4 || (owner_gl_errors & (owner_gl_errors - 1)) == 0)
-      __android_log_print(ANDROID_LOG_WARN, "QuestGlOwner",
+      __android_log_print(ANDROID_LOG_WARN, "ImmivioGlOwner",
                           "Inherited owner GL error 0x%04x (count=%llu)", error,
                           static_cast<unsigned long long>(owner_gl_errors));
 #endif
