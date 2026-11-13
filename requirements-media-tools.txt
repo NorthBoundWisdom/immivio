@@ -1,4 +1,4 @@
 # Optional media/fixture tools; install in the development environment.
 numpy==2.5.3
 opencv-python-headless==5.0.0.93
-pillow==12.3.0
+pillow==13.0.0

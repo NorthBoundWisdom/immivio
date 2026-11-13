@@ -1,5 +1,19 @@
 # Device and build acceptance
 
+## Dependency refresh — 2026-11-13 (pending)
+
+- On Quest, PICO and generic OpenXR headsets, verify startup, session creation,
+  suspend/resume, recentering, controller/hand input and ordinary/packed-alpha
+  playback with Khronos OpenXR loader 1.1.65 and OpenXR Vendors 5.1.0. Record
+  the APK hash and runtime version; host builds cannot certify runtime behavior.
+- With bcprov 1.87 and SLF4J 2.0.20, verify SMB authentication, share enumeration,
+  random reads/seeks, reconnects, signing and SMB 3 encryption against a prepared
+  test server. Host crypto/packaging tests do not replace device/server checks.
+- After an authorized push, observe Windows/macOS Android builds, Source checks
+  and the website workflow using the updated full-SHA Actions pins. Exercise
+  artifact upload/download and the existing release-receipt checks when the next
+  authorized release occurs; no release is required merely to test these edits.
+
 ## Cached night sky follow-up — 2026-11-10
 
 The owner reported drops to about 60 FPS while looking around after the stationary home result below. The final night renderer now generates the static star field and Milky Way once at 8192×4096 in linear HDR, stores RGB9E5 mipmaps, and keeps only the hill silhouette analytic. Rotation and brightness reuse the texture; leaving the scene releases it. The cache occupies 178,956,972 bytes (about 171 MiB) including mipmaps, trading additional memory and startup work for lower steady rendering cost.

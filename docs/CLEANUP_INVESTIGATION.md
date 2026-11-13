@@ -162,3 +162,62 @@ first 9.8.2 verification failure, and cannot establish that a fresh CI resolver
 will not need the POM. Keep the Gradle-generated descriptor coverage; distinguish
 selected runtime versions from descriptor-verification inputs. No claim is made
 that every repeated warm-cache task will re-check every descriptor.
+
+## Dependency refresh — 2026-11-13
+
+The runtime/tooling refresh is limited to the dependencies below. Application
+identity, release version, Godot, Gradle, AGP and jcifs remain unchanged.
+
+| Dependency | Previous | Selected release | Source |
+| --- | --- | --- | --- |
+| Khronos Android OpenXR loader | 1.1.54 | 1.1.65 | [Khronos release](https://github.com/KhronosGroup/OpenXR-SDK-Source/releases/tag/release-1.1.65) |
+| Pillow | 12.3.0 | 13.0.0 | [Release notes](https://pillow.readthedocs.io/en/stable/releasenotes/13.0.0.html) |
+| bcprov-jdk18on | 1.85 | 1.87 | [Maven Central metadata](https://repo.maven.apache.org/maven2/org/bouncycastle/bcprov-jdk18on/maven-metadata.xml), [upstream tag](https://github.com/bcgit/bc-java/tree/r1rv87) |
+| SLF4J API | 1.7.36 | 2.0.20 | [Release notes](https://www.slf4j.org/news.html) |
+
+SLF4J 2.1.0 alpha releases were excluded. Bouncy Castle 1.87 is published as an
+unqualified version in Maven Central and has the upstream `r1rv87` tag; the
+website's older 1.86 announcement is not used as the package-version authority.
+
+OpenXR Vendors 5.1.0 remains the latest stable addon. Its
+[configuration](https://github.com/GodotVR/godot_openxr_vendors/blob/5.1.0-stable/config.gradle)
+uses OpenXR headers 1.1.49, and its packaged Android vendor AARs do not embed an
+OpenXR loader. The application supplies the separately pinned Khronos AAR.
+Successful host packaging does not establish headset runtime compatibility.
+
+Gradle 9.8.2 generated the locks and SHA-256 records for each Android dependency
+separately, including the conditional URI fixture and generated Godot export.
+Strict offline `prepareDependencyCache` passed after each update. Root-project,
+root-settings, URI-fixture and asset-pack locks are unchanged. The generated
+export settings lock records only the empty `incomingCatalogForLibs0`
+configuration. Plugin/export locks
+change only the three intended runtime versions, with no new runtime module.
+Additional verification records cover the new releases, SLF4J's parent/BOM, and
+previously unrecorded descriptors for core 1.7.0, lifecycle-common 2.3.1 and
+error_prone_parent 2.30.0. Those descriptor records do not change selected
+dependency versions. Existing verification hashes are preserved.
+
+Pillow was installed in the existing local media-tools environment. C04's four
+assets and manifest, plus the five stereo clips, five PNGs and their manifest,
+are byte-identical before/after the upgrade (16 files total). C04 itself uses
+OpenCV; the stereo generator exercises Pillow drawing, font loading, blending
+and PNG output. `pip check` passed. Comparison evidence is under ignored
+`artifacts/reports/dependency-upgrade-20261113/`.
+
+Actions pins resolve to official release commits: checkout 7.0.1, setup-python
+7.1.0, setup-java 6.2.0, upload-artifact 7.0.2 and download-artifact 8.0.2.
+configure-pages 6.0.0, upload-pages-artifact 5.0.0, deploy-pages 5.0.1 and
+setup-android 4.0.4 already point at the latest release commits. All 16 external
+action references match the upstream release SHAs and accept their configured
+inputs; `actionlint` passed. The existing archive upload behavior remains the
+default, and download-artifact's default digest-mismatch failure is retained.
+Hosted workflow execution and headset/server acceptance remain pending in
+[ACCEPTANCE.md](ACCEPTANCE.md#dependency-refresh--2026-11-13-pending).
+
+Local validation passed: 124 workflow tests, 4 website tests, 17 release
+preparation tests, 195 JVM tests (10 additional tests skipped) and 102 Godot
+scripts, including the render-script loading checks. Source-boundary, website,
+translation/resource consistency, Ruff and diff checks passed. Quest, PICO and
+OpenXR Debug builds and packaging passed the normal APK verification. Each APK
+contains exactly one ARM64 OpenXR loader, byte-identical to the library in the
+official 1.1.65 AAR. No device installation, push, tag or release was performed.

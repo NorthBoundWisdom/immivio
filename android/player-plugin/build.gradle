@@ -83,7 +83,7 @@ dependencies {
     implementation files(subtitleCharsetJar)
     smbUpstream libs.jcifs
     implementation files(smbClientJar)
-    // Match jcifs 3.0.4's upstream runtime dependencies; exported by Godot too.
+    // Pin SMB runtime dependencies explicitly; exported by Godot too.
     implementation libs.slf4j.api
     implementation libs.bcprov
     testImplementation libs.junit
