@@ -154,19 +154,19 @@ func _run() -> void:
 		"Editor omits credentials, name and description path"
 	)
 	menu._activate(Menu.KEY_BASE)
-	check(menu._editor.host == "1", "Ray keyboard enters the IP field")
+	check(menu.editor.host == "1", "Ray keyboard enters the IP field")
 	menu._activate(Menu.BACKSPACE)
-	menu._editor.host = "10.2.0.5"
+	menu.editor.host = "10.2.0.5"
 	menu._activate(Menu.FIELD_BASE + 1)
 	check(menu._field == 1, "Port can be selected independently")
-	menu._editor.port = ""
+	menu.editor.port = ""
 	var before := platform.saved.size()
 	menu._activate(Menu.SAVE)
 	check(
 		platform.saved.size() == before and menu._field == 1,
 		"Empty port keeps focus without sending a request"
 	)
-	menu._editor.port = "8200"
+	menu.editor.port = "8200"
 	menu._activate(Menu.SAVE)
 	await settle()
 	check(
@@ -186,7 +186,7 @@ func _run() -> void:
 		"Server name is read automatically"
 	)
 	check(
-		menu._editor.is_empty() and menu.rows[0].title == "PT server",
+		menu.editor.is_empty() and menu.rows[0].title == "PT server",
 		"Successful save uses the server name"
 	)
 	menu._activate(Menu.ROW_BASE)
@@ -195,18 +195,18 @@ func _run() -> void:
 	menu._activate(Menu.EDIT)
 	check(
 		(
-			menu._editor.host == "10.2.0.5"
-			and menu._editor.port == "8200"
-			and menu._editor.id == "uuid:remote"
+			menu.editor.host == "10.2.0.5"
+			and menu.editor.port == "8200"
+			and menu.editor.id == "uuid:remote"
 		),
 		"Edit restores IP, port and identity"
 	)
 	platform.fail_save = true
-	menu._editor.host = "bad address"
+	menu.editor.host = "bad address"
 	menu._activate(Menu.SAVE)
 	await settle()
 	check(
-		not menu._editor.is_empty() and menu._editor.host == "bad address",
+		not menu.editor.is_empty() and menu.editor.host == "bad address",
 		"Failed save keeps input for correction"
 	)
 	check(
@@ -215,7 +215,7 @@ func _run() -> void:
 	)
 	platform.fail_save = false
 	platform.automatic = false
-	menu._editor.host = "10.2.0.6"
+	menu.editor.host = "10.2.0.6"
 	menu._activate(Menu.SAVE)
 	var request := platform.next
 	check(menu._editor_busy(), "Connection validation leaves editor busy")
@@ -223,13 +223,13 @@ func _run() -> void:
 	check(platform.next == request, "Busy editor ignores duplicate saves")
 	menu._activate(Menu.CANCEL)
 	menu._activate(Menu.ADD)
-	menu._editor.host = "10.3.0.7"
+	menu.editor.host = "10.3.0.7"
 	platform.send(request)
 	await settle()
-	check(menu._editor.host == "10.3.0.7", "Late save response cannot close a new editor")
+	check(menu.editor.host == "10.3.0.7", "Late save response cannot close a new editor")
 	menu._activate(Menu.CANCEL)
 	platform.automatic = true
-	menu._dlna_server = ""
+	menu.sources.dlna_server = ""
 	menu.sources.load_section()
 	await settle()
 	menu._activate(Menu.ROW_BASE)
@@ -238,7 +238,7 @@ func _run() -> void:
 	menu._activate(Menu.DELETE)
 	await settle()
 	check(
-		menu._editor.is_empty() and menu._dlna_server.is_empty() and menu.rows.is_empty(),
+		menu.editor.is_empty() and menu.sources.dlna_server.is_empty() and menu.rows.is_empty(),
 		"Delete returns to the empty server list"
 	)
 	check(
@@ -251,7 +251,7 @@ func _run() -> void:
 	menu._activate(Menu.ROW_BASE)
 	await settle()
 	check(button(menu, Menu.EDIT).is_empty(), "Unpersisted discovery has no misleading edit action")
-	menu._dlna_entries = []
+	menu.sources.dlna_entries = []
 	menu.sources.request("dlna_browse", 999)
 	menu._on_media_list(
 		999,
@@ -264,9 +264,11 @@ func _run() -> void:
 			}
 		)
 	)
-	check(menu._dlna_entries.is_empty(), "Stale container reply cannot replace current folder")
+	check(
+		menu.sources.dlna_entries.is_empty(), "Stale container reply cannot replace current folder"
+	)
 	platform.automatic = false
-	menu._dlna_server = ""
+	menu.sources.dlna_server = ""
 	menu.sources.load_section()
 	request = platform.next
 	menu._activate(Menu.NAV_BASE + Menu.Section.RECENT)
@@ -283,8 +285,8 @@ func _run() -> void:
 	)
 	check(
 		(
-			menu._editor.host == "nas.example"
-			and menu._editor.port == "443"
+			menu.editor.host == "nas.example"
+			and menu.editor.port == "443"
 			and not menu.text_snapshot().contains("device.xml")
 		),
 		"Edit presents only IP/host and port for custom endpoints"
@@ -296,7 +298,7 @@ func _run() -> void:
 		"Saving an unchanged address preserves a custom endpoint"
 	)
 	menu._open_editor({"id": "proxy", "location": "https://nas.example/custom/device.xml"})
-	menu._editor.port = "8443"
+	menu.editor.port = "8443"
 	menu._activate(Menu.SAVE)
 	await settle()
 	check(
@@ -309,7 +311,7 @@ func _run() -> void:
 	)
 	menu._open_editor({"id": "ipv6", "location": "http://[2001:db8::1]:8200/description.xml"})
 	check(
-		menu._editor.host == "2001:db8::1" and menu._editor.port == "8200",
+		menu.editor.host == "2001:db8::1" and menu.editor.port == "8200",
 		"IPv6 host and port split correctly"
 	)
 	menu.free()

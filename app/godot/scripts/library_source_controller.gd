@@ -1,5 +1,5 @@
 extends RefCounted
-## Owns asynchronous library requests and cancellation.
+## Owns local/SMB/DLNA source state, asynchronous requests and cancellation.
 
 var _host_ref: WeakRef
 const PlatformMethods := preload("res://scripts/platform_methods.gd")
@@ -19,6 +19,10 @@ var smb_found: Array = []
 var smb_server: String = ""
 var smb_path: String = ""
 var smb_entries: Array = []
+var dlna_servers: Array = []
+var dlna_stack: Array = []
+var dlna_server: String = ""
+var dlna_entries: Array = []
 
 
 func _init(host: Node3D) -> void:
@@ -152,14 +156,10 @@ func receive(id: int, payload: String) -> void:
 		kind == "dlna_browse"
 		and result.has("object_id")
 		and (
-			str(result.get("server_id")) != host.source_dlna_server
+			str(result.get("server_id")) != dlna_server
 			or (
 				str(result.object_id)
-				!= (
-					str(host.source_dlna_stack.back().id)
-					if not host.source_dlna_stack.is_empty()
-					else "0"
-				)
+				!= (str(dlna_stack.back().id) if not dlna_stack.is_empty() else "0")
 			)
 		)
 	):
@@ -205,32 +205,28 @@ func receive(id: int, payload: String) -> void:
 				):
 					smb_entries = result.get("entries", [])
 			"dlna_servers", "dlna_discover", "dlna_save", "dlna_remove":
-				host.source_dlna_servers = result.get("servers", [])
+				dlna_servers = result.get("servers", [])
 				if (
 					kind in ["dlna_save", "dlna_remove"]
-					and int(host.source_editor.get("request_id", -1)) == id
+					and int(host.editor.get("request_id", -1)) == id
 				):
-					host.source_editor = {}
-					host.source_dlna_server = ""
-					host.source_dlna_stack.clear()
-					host.source_dlna_entries.clear()
+					host.editor = {}
+					dlna_server = ""
+					dlna_stack.clear()
+					dlna_entries.clear()
 					host.scroll = 0.0
 			"dlna_browse":
-				var current_object = (
-					str(host.source_dlna_stack.back().id)
-					if not host.source_dlna_stack.is_empty()
-					else "0"
-				)
+				var current_object = str(dlna_stack.back().id) if not dlna_stack.is_empty() else "0"
 				if (
-					str(result.get("server_id")) == host.source_dlna_server
+					str(result.get("server_id")) == dlna_server
 					and str(result.get("object_id", current_object)) == current_object
 				):
-					host.source_dlna_entries = result.get("entries", [])
+					dlna_entries = result.get("entries", [])
 	if (
 		state == "ready"
 		and host.network.mode == "add"
 		and id == host.network.save_request
-		and host.source_editor.is_empty()
+		and host.editor.is_empty()
 		and kind in ["smb_servers", "dlna_save"]
 	):
 		host.network.open()
@@ -262,10 +258,10 @@ func load_section() -> void:
 			if smb_server.is_empty():
 				request("smb_servers", host.platform.media_smb_servers())
 		Section.DLNA:
-			if host.source_dlna_server.is_empty():
+			if dlna_server.is_empty():
 				if PlatformMethods.supports(host.platform, "media_dlna_servers"):
 					request("dlna_servers", host.platform.media_dlna_servers())
-				if host.source_dlna_servers.is_empty():
+				if dlna_servers.is_empty():
 					request("dlna_discover", host.platform.media_dlna_discover())
 
 
@@ -297,18 +293,13 @@ func refresh_source() -> void:
 			else:
 				request("smb_browse", host.platform.media_smb_browse(smb_server, smb_path))
 		Section.DLNA:
-			if host.source_dlna_server.is_empty():
+			if dlna_server.is_empty():
 				request("dlna_discover", host.platform.media_dlna_discover())
 			else:
 				request(
 					"dlna_browse",
 					host.platform.media_dlna_browse(
-						host.source_dlna_server,
-						(
-							str(host.source_dlna_stack.back().id)
-							if host.source_dlna_stack.size() > 0
-							else "0"
-						)
+						dlna_server, str(dlna_stack.back().id) if dlna_stack.size() > 0 else "0"
 					)
 				)
 			host.refresh()

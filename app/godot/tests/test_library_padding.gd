@@ -120,9 +120,9 @@ func _run() -> void:
 	menu.sources.smb_server = "test"
 	menu.sources.smb_path = "Movies"
 	menu.sources.smb_entries = entries(40)
-	menu._dlna_server = "test"
-	menu._dlna_stack = [{"id": "movies", "title": "Movies"}]
-	menu._dlna_entries = entries(40)
+	menu.sources.dlna_server = "test"
+	menu.sources.dlna_stack = [{"id": "movies", "title": "Movies"}]
+	menu.sources.dlna_entries = entries(40)
 	for section in [Library.Section.LOCAL, Library.Section.SMB, Library.Section.DLNA]:
 		for list_mode in [false, true]:
 			menu.section = section

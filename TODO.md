@@ -18,14 +18,6 @@
 
 S1 → S2 → S3 排在下一次发布之后，避免在发布验收前再次改动输入和资料库调用路径。S4、S5 在这三项之后推进；每步单独提交。
 
-### S1：资料库来源状态移进 controller
-
-- 现状：`de4c244` 在 `library_menu.gd` 上加了 18 个 `source_*` 属性和 4 个 `source_*` 函数，逐个转发到菜单的私有变量；`library_source_controller.gd` 改为访问这些入口。耦合换了名字，状态仍在菜单里。
-- 副作用：多个入口声明为 `Variant`，而底层是 `String`、`bool`、`Dictionary`，丢了类型。
-- 目标：SMB、DLNA、本地卷这三组来源状态由 `library_source_controller.gd` 持有，菜单通过 controller 读取。完成后删除全部 `source_*` 转发。
-- 步骤：先按来源分三次迁移（本地卷 → SMB → DLNA），每次迁移后菜单里对应的私有变量清零。
-- 约束：菜单的绘制和交互行为不变；直接读这些私有变量的测试（约 8 个文件）同步改为读 controller。
-
 ### S2：测试注入入口改成显式接口
 
 - 现状：7 个入口（`_ray`、`_active_menu`、`_input_focused`、`_controller_allowed`、`_controller_ray`、`_head_tracked`、`_recenter`）靠测试继承 `main.gd` 覆写来注入假输入，所以 coordinator 必须继续走 `host._xxx`。

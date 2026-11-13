@@ -29,7 +29,7 @@ func directory_scope() -> String:
 		return ""
 	if subtitle_picker.active:
 		return ""
-	if account_panel.active() or not _editor.is_empty():
+	if account_panel.active() or not editor.is_empty():
 		return ""
 	match section:
 		Section.NETWORK:
@@ -42,8 +42,8 @@ func directory_scope() -> String:
 			return JSON.stringify(
 				[
 					section,
-					_dlna_server,
-					_dlna_stack.back().id if not _dlna_stack.is_empty() else "0",
+					sources.dlna_server,
+					sources.dlna_stack.back().id if not sources.dlna_stack.is_empty() else "0",
 					0
 				]
 			)
@@ -247,14 +247,10 @@ var _bar_thumb: MeshInstance3D
 var focus_index := 0  # Desktop keyboard preview only.
 var rows: Array[Dictionary] = []
 var status := ""  # English; shown through I18n
-var _dlna_servers: Array = []
-var _dlna_stack: Array = []  # [{id, title}] containers from the server root
-var _dlna_server := ""
-var _dlna_entries: Array = []
 var _recent_page := 0
 var _recent_count := 0
 var _recent_all_rows: Array[Dictionary] = []
-var _editor := {}  # SMB or DLNA server; empty when not editing
+var editor: Dictionary = {}  # SMB or DLNA server; empty when not editing
 var _field := 1
 var _shift := false
 var _symbols := false
@@ -410,7 +406,7 @@ func _in_list(point: Vector3) -> bool:
 	var span := _bar_span()
 	return (
 		file_actions.modal.is_empty()
-		and _editor.is_empty()
+		and editor.is_empty()
 		and not rows.is_empty()
 		and point.x > CONTENT_LEFT
 		and point.x < CONTENT_RIGHT
@@ -528,7 +524,7 @@ func stick_scroll(y: float, delta: float) -> void:
 	if (
 		not visible
 		or not _drag.is_empty()
-		or not _editor.is_empty()
+		or not editor.is_empty()
 		or not is_finite(y)
 		or absf(y) < STICK_DEADZONE
 	):
@@ -870,8 +866,8 @@ func _rebuild_rows() -> void:
 				for entry in sources.smb_entries:
 					rows.append(_entry_row(entry))
 		Section.DLNA:
-			if _dlna_server.is_empty():
-				for server in _dlna_servers:
+			if sources.dlna_server.is_empty():
+				for server in sources.dlna_servers:
 					rows.append(
 						{
 							"title": str(server.name),
@@ -881,7 +877,7 @@ func _rebuild_rows() -> void:
 						}
 					)
 			else:
-				for entry in _dlna_entries:
+				for entry in sources.dlna_entries:
 					rows.append(_entry_row(entry))
 		Section.SETTINGS:
 			rows.assign(_settings_rows())
@@ -1474,7 +1470,7 @@ func _activate(target: int) -> void:
 		tab = GENERAL_TAB if section == Section.SETTINGS else 0
 		scroll = 0.0
 		status = ""
-		_editor = {}
+		editor = {}
 		if section == Section.SETTINGS and Time.get_ticks_msec() >= _cache_due_ms:
 			_request_cache_usage()
 		sources.load_section()
@@ -1500,7 +1496,7 @@ func _activate(target: int) -> void:
 		_open_editor({})
 	elif target == EDIT:
 		var current: Array = (
-			_dlna_servers.filter(func(s): return str(s.id) == _dlna_server)
+			sources.dlna_servers.filter(func(s): return str(s.id) == sources.dlna_server)
 			if section == Section.DLNA
 			else sources.smb_servers.filter(func(s): return str(s.id) == sources.smb_server)
 		)
@@ -1526,7 +1522,7 @@ func _activate(target: int) -> void:
 		var index := _first_line() * _cols() + target - ROW_BASE
 		if index < rows.size():
 			_choose(rows[index])
-	elif not _editor.is_empty():
+	elif not editor.is_empty():
 		_editor_input(target)
 
 
@@ -1608,10 +1604,10 @@ func _choose(row: Dictionary) -> void:
 	elif row.has("smb_found"):
 		_open_editor({"name": str(row.smb_found.name), "host": str(row.smb_found.host)})
 	elif row.has("dlna_server"):
-		_dlna_server = str(row.dlna_server)
-		_dlna_stack = []
-		_dlna_entries = []
-		sources.request("dlna_browse", platform.media_dlna_browse(_dlna_server, "0"))
+		sources.dlna_server = str(row.dlna_server)
+		sources.dlna_stack = []
+		sources.dlna_entries = []
+		sources.request("dlna_browse", platform.media_dlna_browse(sources.dlna_server, "0"))
 		scroll = 0.0
 		refresh()
 	elif row.has("container"):
@@ -1628,10 +1624,10 @@ func _choose(row: Dictionary) -> void:
 				"smb_browse", platform.media_smb_browse(sources.smb_server, sources.smb_path)
 			)
 		else:
-			_dlna_stack.append({"id": str(container.id), "title": str(container.title)})
-			_dlna_entries = []
+			sources.dlna_stack.append({"id": str(container.id), "title": str(container.title)})
+			sources.dlna_entries = []
 			sources.request(
-				"dlna_browse", platform.media_dlna_browse(_dlna_server, str(container.id))
+				"dlna_browse", platform.media_dlna_browse(sources.dlna_server, str(container.id))
 			)
 		refresh()
 	elif row.has("clear_cache"):
@@ -1663,8 +1659,8 @@ func _go_back() -> void:
 	file_actions.reset()
 	scroll = 0.0
 	status = ""
-	if not _editor.is_empty():
-		_editor = {}
+	if not editor.is_empty():
+		editor = {}
 		if network.mode == "add":
 			network.open()
 			return
@@ -1685,16 +1681,17 @@ func _go_back() -> void:
 				"smb_browse", platform.media_smb_browse(sources.smb_server, sources.smb_path)
 			)
 	elif section == Section.DLNA:
-		if _dlna_stack.is_empty():
+		if sources.dlna_stack.is_empty():
 			network.open()
 			return
 		else:
-			_dlna_stack.pop_back()
-			_dlna_entries = []
+			sources.dlna_stack.pop_back()
+			sources.dlna_entries = []
 			sources.request(
 				"dlna_browse",
 				platform.media_dlna_browse(
-					_dlna_server, str(_dlna_stack.back().id) if _dlna_stack.size() > 0 else "0"
+					sources.dlna_server,
+					str(sources.dlna_stack.back().id) if sources.dlna_stack.size() > 0 else "0"
 				)
 			)
 	elif section == Section.MEDIA_SERVER:
@@ -1729,15 +1726,16 @@ func _crumbs() -> Array:
 				parts.append(part)
 			return parts
 		Section.DLNA:
-			if _dlna_server.is_empty():
+			if sources.dlna_server.is_empty():
 				return []
 			var names: Array = (
-				_dlna_servers
-				. filter(func(s): return str(s.id) == _dlna_server)
+				sources
+				. dlna_servers
+				. filter(func(s): return str(s.id) == sources.dlna_server)
 				. map(func(s): return str(s.name))
 			)
 			var parts: Array = [str(names[0]) if names.size() > 0 else "DLNA"]
-			for container in _dlna_stack:
+			for container in sources.dlna_stack:
 				parts.append(str(container.title))
 			return parts
 	return []
@@ -1764,12 +1762,13 @@ func _go_to(level: int) -> void:
 				"smb_browse", platform.media_smb_browse(sources.smb_server, sources.smb_path)
 			)
 		Section.DLNA:
-			_dlna_stack.resize(level)
-			_dlna_entries = []
+			sources.dlna_stack.resize(level)
+			sources.dlna_entries = []
 			sources.request(
 				"dlna_browse",
 				platform.media_dlna_browse(
-					_dlna_server, str(_dlna_stack.back().id) if _dlna_stack.size() > 0 else "0"
+					sources.dlna_server,
+					str(sources.dlna_stack.back().id) if sources.dlna_stack.size() > 0 else "0"
 				)
 			)
 	refresh()
@@ -1784,7 +1783,7 @@ func _refresh_source() -> void:
 
 func _open_editor(server: Dictionary) -> void:
 	file_actions.reset()
-	_editor = {
+	editor = {
 		"id": str(server.get("id", "")),
 		"name": str(server.get("name", "")),
 		"host": str(server.get("host", "")),
@@ -1810,7 +1809,7 @@ func _open_editor(server: Dictionary) -> void:
 			port = authority.get_slice(":", 1)
 		if location.is_empty():
 			port = "8200"
-		_editor = {
+		editor = {
 			"id": str(server.get("id", "")),
 			"location": location,
 			"host": host,
@@ -1821,7 +1820,7 @@ func _open_editor(server: Dictionary) -> void:
 		}
 		_field = 0
 	else:
-		_field = 1 if str(_editor.host).is_empty() else 2
+		_field = 1 if str(editor.host).is_empty() else 2
 	status = ""
 	_shift = false
 	_symbols = false
@@ -1833,7 +1832,7 @@ func _editor_fields() -> Array:
 
 
 func _editor_busy() -> bool:
-	return sources.pending.has(int(_editor.get("request_id", -1)))
+	return sources.pending.has(int(editor.get("request_id", -1)))
 
 
 func _editor_input(target: int) -> void:
@@ -1846,73 +1845,70 @@ func _editor_input(target: int) -> void:
 	elif target >= KEY_BASE and target < KEY_BASE + 40:
 		var layer: Array = SYMBOLS if _symbols else KEYS
 		var character: String = layer[(target - KEY_BASE) / 10][(target - KEY_BASE) % 10]
-		_editor[key] = str(_editor[key]) + (character.to_upper() if _shift else character)
+		editor[key] = str(editor[key]) + (character.to_upper() if _shift else character)
 		_shift = false
 	elif target == SHIFT:
 		_shift = not _shift
 	elif target == SYMBOL_LAYER:
 		_symbols = not _symbols
 	elif target == SPACE:
-		_editor[key] = str(_editor[key]) + " "
+		editor[key] = str(editor[key]) + " "
 	elif target == BACKSPACE:
-		_editor[key] = str(_editor[key]).left(-1)
+		editor[key] = str(editor[key]).left(-1)
 	elif target == CANCEL:
-		_editor = {}
+		editor = {}
 		if network.mode == "add":
 			network.open()
 			return
 	elif target == DELETE and section == Section.DLNA:
 		if (
 			PlatformMethods.supports(platform, "media_dlna_remove")
-			and not str(_editor.id).is_empty()
+			and not str(editor.id).is_empty()
 		):
-			var id: int = platform.media_dlna_remove(str(_editor.id))
+			var id: int = platform.media_dlna_remove(str(editor.id))
 			sources.request("dlna_remove", id)
-			_editor.request_id = id
+			editor.request_id = id
 	elif target == SAVE and section == Section.DLNA:
-		if str(_editor.host).strip_edges().is_empty() or str(_editor.port).strip_edges().is_empty():
-			_field = 0 if str(_editor.host).strip_edges().is_empty() else 1
+		if str(editor.host).strip_edges().is_empty() or str(editor.port).strip_edges().is_empty():
+			_field = 0 if str(editor.host).strip_edges().is_empty() else 1
 		elif PlatformMethods.supports(platform, "media_dlna_save"):
 			var request := {
-				"id": _editor.id,
-				"host": _editor.host,
-				"port": _editor.port,
-				"scheme": _editor.scheme
+				"id": editor.id, "host": editor.host, "port": editor.port, "scheme": editor.scheme
 			}
 			if (
-				_editor.host == _editor.initial_host
-				and _editor.port == _editor.initial_port
-				and not str(_editor.location).is_empty()
+				editor.host == editor.initial_host
+				and editor.port == editor.initial_port
+				and not str(editor.location).is_empty()
 			):
-				request.location = _editor.location
+				request.location = editor.location
 			var id: int = platform.media_dlna_save(JSON.stringify(request))
 			sources.request("dlna_save", id)
-			_editor.request_id = id
+			editor.request_id = id
 			if network.mode == "add":
 				network.save_request = id
 	elif target == DELETE:
-		if platform and not str(_editor.id).is_empty():
-			sources.request("smb_servers", platform.media_smb_remove(str(_editor.id)))
-			if sources.smb_server == str(_editor.id):
+		if platform and not str(editor.id).is_empty():
+			sources.request("smb_servers", platform.media_smb_remove(str(editor.id)))
+			if sources.smb_server == str(editor.id):
 				sources.smb_server = ""
-		_editor = {}
+		editor = {}
 	elif target == SAVE:
-		if str(_editor.host).strip_edges().is_empty():
+		if str(editor.host).strip_edges().is_empty():
 			_field = 1
 		elif platform:
 			var request := {
-				"id": _editor.id,
-				"name": _editor.name,
-				"host": _editor.host,
-				"user": _editor.user,
-				"password": _editor.password
+				"id": editor.id,
+				"name": editor.name,
+				"host": editor.host,
+				"user": editor.user,
+				"password": editor.password
 			}
 			var id: int = platform.media_smb_save(JSON.stringify(request))
 			sources.request("smb_servers", id)
 			if network.mode == "add":
 				network.save_request = id
 			sources.smb_server = ""
-			_editor = {}
+			editor = {}
 	refresh()
 
 
@@ -1985,7 +1981,7 @@ func _draw() -> void:
 	if account_panel.active():
 		account_panel.draw()
 		return
-	if not _editor.is_empty():
+	if not editor.is_empty():
 		_draw_editor()
 		return
 	if section not in [Section.SETTINGS, Section.NETWORK] and not file_actions.editing:
@@ -2094,7 +2090,7 @@ func _draw() -> void:
 		)
 		_tips[CLEAR_HISTORY] = I18n.t("Clear history")
 	if section == Section.DLNA:
-		if _dlna_server.is_empty():
+		if sources.dlna_server.is_empty():
 			_button(
 				ADD,
 				"",
@@ -2104,9 +2100,9 @@ func _draw() -> void:
 				"plus"
 			)
 			_tips[ADD] = I18n.t("Add server")
-		elif _dlna_servers.any(
+		elif sources.dlna_servers.any(
 			func(server):
-				return str(server.id) == _dlna_server and bool(server.get("manual", false))
+				return str(server.id) == sources.dlna_server and bool(server.get("manual", false))
 		):
 			_button(
 				EDIT, "", Vector2(CONTENT_RIGHT - .155, HEADER_Y), Vector2(0.09, 0.07), true, "edit"
@@ -2243,14 +2239,15 @@ func _header_title() -> String:
 				+ ("" if sources.smb_path.is_empty() else " / " + sources.smb_path)
 			)
 		Section.DLNA:
-			if _dlna_server.is_empty():
+			if sources.dlna_server.is_empty():
 				return ""
 			var names: Array = (
-				_dlna_servers
-				. filter(func(s): return str(s.id) == _dlna_server)
+				sources
+				. dlna_servers
+				. filter(func(s): return str(s.id) == sources.dlna_server)
 				. map(func(s): return str(s.name))
 			)
-			var path := " / ".join(_dlna_stack.map(func(c): return str(c.title)))
+			var path := " / ".join(sources.dlna_stack.map(func(c): return str(c.title)))
 			return (
 				(str(names[0]) if names.size() > 0 else "DLNA")
 				+ ("" if path.is_empty() else " / " + path)
@@ -2923,12 +2920,12 @@ func _draw_editor() -> void:
 	var fields := _editor_fields()
 	_heading("DLNA" if dlna_editor else "SMB", Vector3(-0.42, 0.46, 0.004))
 	for i in fields.size():
-		var value := str(_editor[fields[i]])
+		var value := str(editor[fields[i]])
 		if fields[i] == "password":
 			value = (
 				"•".repeat(value.length())
 				if not value.is_empty()
-				else ("••••" if bool(_editor.has_password) else "")
+				else ("••••" if bool(editor.has_password) else "")
 			)
 		var centre := (
 			Vector2(0.025 if i == 0 else 0.665, 0.30)
@@ -2997,14 +2994,14 @@ func _draw_editor() -> void:
 		Vector2(0.18, 0.08),
 		(
 			not _editor_busy()
-			and not str(_editor.get("host", "")).strip_edges().is_empty()
-			and (not dlna_editor or not str(_editor.port).strip_edges().is_empty())
+			and not str(editor.get("host", "")).strip_edges().is_empty()
+			and (not dlna_editor or not str(editor.port).strip_edges().is_empty())
 		),
 		"check",
 		true
 	)
 	_button(CANCEL, "", Vector2(0.52, actions), Vector2(0.18, 0.08), true, "close")
-	if not str(_editor.id).is_empty():
+	if not str(editor.id).is_empty():
 		_button(
 			DELETE,
 			I18n.t("Delete"),
@@ -3046,34 +3043,3 @@ func move_focus(direction: int) -> void:
 func activate_desktop() -> void:
 	if visible and focus_index < rows.size():
 		_choose(rows[focus_index])
-
-
-var source_dlna_entries: Array:
-	get:
-		return _dlna_entries
-	set(value):
-		_dlna_entries = value
-
-var source_dlna_server: Variant:
-	get:
-		return _dlna_server
-	set(value):
-		_dlna_server = value
-
-var source_dlna_servers: Array:
-	get:
-		return _dlna_servers
-	set(value):
-		_dlna_servers = value
-
-var source_dlna_stack: Array:
-	get:
-		return _dlna_stack
-	set(value):
-		_dlna_stack = value
-
-var source_editor: Variant:
-	get:
-		return _editor
-	set(value):
-		_editor = value

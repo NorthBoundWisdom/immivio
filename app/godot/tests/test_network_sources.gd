@@ -158,7 +158,7 @@ func _run() -> void:
 	menu._choose(menu.rows[0])
 	await settle()
 	check(
-		menu._dlna_stack.size() == 1 and menu.rows[0].title == "Show",
+		menu.sources.dlna_stack.size() == 1 and menu.rows[0].title == "Show",
 		"DLNA containers remain browsable from the unified entry"
 	)
 	menu.network.open()
@@ -166,7 +166,7 @@ func _run() -> void:
 	menu._choose(find(menu, "dlna_server"))
 	await settle()
 	check(
-		menu._dlna_stack.size() == 1 and menu.rows[0].title == "Show",
+		menu.sources.dlna_stack.size() == 1 and menu.rows[0].title == "Show",
 		"Reopening DLNA retains its folder stack"
 	)
 	menu.network.open()
@@ -215,7 +215,7 @@ func _run() -> void:
 				and (
 					menu.account_panel.active()
 					if type == Library.Section.MEDIA_SERVER
-					else not menu._editor.is_empty()
+					else not menu.editor.is_empty()
 				)
 			),
 			"Each source type opens its existing setup flow"
@@ -227,7 +227,7 @@ func _run() -> void:
 			(
 				menu.section == Library.Section.NETWORK
 				and not menu.account_panel.active()
-				and menu._editor.is_empty()
+				and menu.editor.is_empty()
 			),
 			"Cancelling source setup returns to the unified list"
 		)
@@ -304,11 +304,11 @@ func _run() -> void:
 		menu.network.open()
 		menu._activate(menu.network.ADD)
 		menu._choose(menu.rows.filter(func(row): return row.network_type == type)[0])
-		menu._editor.host = "192.168.1.30"
+		menu.editor.host = "192.168.1.30"
 		menu._activate(Library.SAVE)
 		await settle()
 		check(
-			menu.section == Library.Section.NETWORK and menu._editor.is_empty(),
+			menu.section == Library.Section.NETWORK and menu.editor.is_empty(),
 			"Saving a network source returns to the unified list"
 		)
 	menu.network.open()
@@ -350,7 +350,7 @@ func _run() -> void:
 		(
 			menu.section == Library.Section.SETTINGS
 			and menu.status == "current"
-			and not menu._dlna_servers.any(func(server): return server.id == "late")
+			and not menu.sources.dlna_servers.any(func(server): return server.id == "late")
 		),
 		"Late network results cannot redraw another section"
 	)

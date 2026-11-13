@@ -117,9 +117,9 @@ func _run() -> void:
 		"SMB share list remains outside file-directory sorting"
 	)
 	menu.section = Menu.Section.DLNA
-	menu._dlna_server = "uuid:test"
-	menu._dlna_stack = []
-	menu._dlna_entries = [
+	menu.sources.dlna_server = "uuid:test"
+	menu.sources.dlna_stack = []
+	menu.sources.dlna_entries = [
 		{"title": "Movie10", "uri": "http://nas/10.mp4"},
 		{"id": "10", "title": "Folder10", "container": true},
 		{"title": "Movie2", "uri": "http://nas/2.mp4"},
@@ -167,7 +167,7 @@ func _run() -> void:
 		menu.file_actions.order() == "name_desc" and titles(menu.rows)[0] == "Folder10",
 		"Unsupported DLNA order cannot change saved selection"
 	)
-	menu._dlna_stack = [{"id": "nested", "title": "Nested"}]
+	menu.sources.dlna_stack = [{"id": "nested", "title": "Nested"}]
 	menu.refresh()
 	check(titles(menu.rows)[0] == "Folder2", "DLNA nested containers have independent sorting")
 	var filename_cases := [
@@ -185,7 +185,7 @@ func _run() -> void:
 		)
 	for source in [Menu.Section.DLNA]:
 		menu.section = source
-		menu._dlna_entries = filename_entries
+		menu.sources.dlna_entries = filename_entries
 		for direction in ["name_asc", "name_desc"]:
 			menu.file_actions.load({str(source): direction})
 			menu.refresh()
@@ -199,18 +199,18 @@ func _run() -> void:
 					"Half-width/full-width parentheses and original filename survive UI sorting"
 				)
 	menu.section = Menu.Section.DLNA
-	menu._dlna_entries = [
+	menu.sources.dlna_entries = [
 		{"title": "Movie10", "uri": "http://nas/10.mp4"},
 		{"id": "10", "title": "Folder10", "container": true}
 	]
-	menu._dlna_stack = []
+	menu.sources.dlna_stack = []
 	menu.file_actions.load(saved_orders)
 	menu.refresh()
 	check(menu.file_actions.order() == "name_desc", "Reloaded settings restore the DLNA choice")
 	menu.file_actions.load({str(Menu.Section.DLNA): "size_desc"})
 	menu.refresh()
 	check(menu.file_actions.order() == "name_asc", "Invalid DLNA stored mode falls back to names")
-	menu._dlna_server = ""
+	menu.sources.dlna_server = ""
 	menu.refresh()
 	check(
 		not menu._buttons.any(func(button): return button.target == Actions.SORT),

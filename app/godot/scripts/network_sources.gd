@@ -30,7 +30,7 @@ func open() -> void:
 	menu.section = menu.Section.NETWORK
 	mode = ""
 	save_request = 0
-	menu._editor = {}
+	menu.editor = {}
 	menu.status = ""
 	menu._reset_navigation()
 	load_sources()
@@ -47,7 +47,7 @@ func load_sources(discover: bool = false) -> void:
 	if discover or menu.sources.smb_found.is_empty():
 		if Methods.supports(menu.platform, "media_smb_discover"):
 			menu.sources.request("smb_found", menu.platform.media_smb_discover())
-	if discover or menu._dlna_servers.is_empty():
+	if discover or menu.sources.dlna_servers.is_empty():
 		if Methods.supports(menu.platform, "media_dlna_discover"):
 			menu.sources.request("dlna_discover", menu.platform.media_dlna_discover())
 
@@ -111,7 +111,7 @@ func rows() -> Array[Dictionary]:
 				"server_account": server
 			}
 		)
-	for server in menu._dlna_servers:
+	for server in menu.sources.dlna_servers:
 		(saved if bool(server.get("manual", false)) else found).append(
 			{
 				"id": "dlna:" + str(server.id),
@@ -185,7 +185,7 @@ func choose(row: Dictionary) -> bool:
 			if menu.section == menu.Section.SMB:
 				menu.sources.smb_server = ""
 			elif menu.section == menu.Section.DLNA:
-				menu._dlna_server = ""
+				menu.sources.dlna_server = ""
 			menu.sources.load_section()
 		menu.refresh()
 	else:
@@ -197,12 +197,16 @@ func choose(row: Dictionary) -> bool:
 				menu.platform.media_smb_browse(menu.sources.smb_server, menu.sources.smb_path)
 			)
 			menu.refresh()
-		elif source.has("dlna_server") and menu._dlna_server == str(source.dlna_server):
+		elif source.has("dlna_server") and menu.sources.dlna_server == str(source.dlna_server):
 			menu.sources.request(
 				"dlna_browse",
 				menu.platform.media_dlna_browse(
-					menu._dlna_server,
-					str(menu._dlna_stack.back().id) if not menu._dlna_stack.is_empty() else "0"
+					menu.sources.dlna_server,
+					(
+						str(menu.sources.dlna_stack.back().id)
+						if not menu.sources.dlna_stack.is_empty()
+						else "0"
+					)
 				)
 			)
 			menu.refresh()

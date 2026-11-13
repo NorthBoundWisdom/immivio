@@ -51,7 +51,9 @@ func order() -> String:
 
 
 func sortable() -> bool:
-	return folder() or (menu.section == menu.Section.DLNA and not menu._dlna_server.is_empty())
+	return (
+		folder() or (menu.section == menu.Section.DLNA and not menu.sources.dlna_server.is_empty())
+	)
 
 
 func supports_order(value: String) -> bool:

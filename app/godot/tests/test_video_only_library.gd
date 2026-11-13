@@ -49,8 +49,8 @@ func _run() -> void:
 		menu.sources.local_entries = mixed
 		menu.sources.smb_server = "saved"
 		menu.sources.smb_entries = mixed
-		menu._dlna_server = "saved"
-		menu._dlna_entries = mixed
+		menu.sources.dlna_server = "saved"
+		menu.sources.dlna_entries = mixed
 		menu.refresh()
 		check(
 			menu.rows.map(func(row): return row.title) == ["Folder", "Clip.mp4"],

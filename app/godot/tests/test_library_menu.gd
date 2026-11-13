@@ -468,18 +468,16 @@ func _run() -> void:
 	await settle()
 	menu._activate(menu.network.ADD)
 	menu._activate(Menu.ROW_BASE)
-	check(
-		not menu._editor.is_empty() and menu._field == 1, "Add opens the editor on the host field"
-	)
+	check(not menu.editor.is_empty() and menu._field == 1, "Add opens the editor on the host field")
 	for key in [Menu.KEY_BASE + 0, Menu.KEY_BASE + 9, Menu.KEY_BASE + 28]:  # "1", "0", "."
 		menu._activate(key)
 	menu._activate(Menu.BACKSPACE)
-	check(menu._editor.host == "10", "Keyboard types and deletes: %s" % menu._editor.host)
+	check(menu.editor.host == "10", "Keyboard types and deletes: %s" % menu.editor.host)
 	menu._activate(Menu.FIELD_BASE + 2)
 	menu._activate(Menu.SHIFT)
 	menu._activate(Menu.KEY_BASE + 10)  # "q" -> "Q"
 	menu._activate(Menu.KEY_BASE + 11)
-	check(menu._editor.user == "Qw", "Shift applies to one key")
+	check(menu.editor.user == "Qw", "Shift applies to one key")
 	menu._activate(Menu.FIELD_BASE + 3)
 	menu._activate(Menu.KEY_BASE + 20)
 	check(
@@ -498,7 +496,7 @@ func _run() -> void:
 	)
 	check(
 		(
-			menu._editor.is_empty()
+			menu.editor.is_empty()
 			and menu.section == Menu.Section.NETWORK
 			and titles(menu).has("NAS")
 			and titles(menu).has("Other")
