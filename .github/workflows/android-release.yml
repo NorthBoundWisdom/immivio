@@ -59,7 +59,7 @@ jobs:
           section = re.search(r'^## ' + re.escape(version) + r'[^\n]*\n(.*?)(?=^## |\Z)', changelog, re.M | re.S)
           notes = section.group(1).strip() if section else f'Source release for `{tag}`.'
           notes += '\n\n[English release notes](https://northboundwisdom.github.io/immivio/updates/) · [中文更新说明](https://northboundwisdom.github.io/immivio/zh/updates/)\n'
-          notes += '\nAndroid APKs are attached automatically after both Windows and macOS builds pass. Until APK assets appear, this release contains source archives only.\n'
+          notes += '\nAndroid APKs are attached automatically after the macOS build passes. Until APK assets appear, this release contains source archives only.\n'
           Path('tag-release-notes.md').write_text(notes, encoding='utf-8')
           PY
       - name: Create Release without waiting for Android runners
@@ -80,8 +80,6 @@ jobs:
         include:
           - os: macOS
             runner: macos-15
-          - os: Windows
-            runner: windows-2025
     defaults:
       run:
         shell: bash

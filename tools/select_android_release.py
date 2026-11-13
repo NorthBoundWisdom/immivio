@@ -8,8 +8,8 @@ from pathlib import Path
 import subprocess
 from urllib.parse import quote
 
-BUILD_JOBS = {"Release / Windows", "Release / macOS"}
-LEGACY_BUILD_JOBS = {"Release / windows-2025", "Release / macos-15"}
+BUILD_JOBS = {"Release / macOS"}
+LEGACY_BUILD_JOBS = {"Release / macos-15"}
 
 
 def validate(repository, tag, run, commit, jobs, current_run_id=""):
@@ -35,7 +35,7 @@ def validate(repository, tag, run, commit, jobs, current_run_id=""):
         all(results.get(name) == "success" for name in group)
         for group in (BUILD_JOBS, LEGACY_BUILD_JOBS)
     ):
-        raise ValueError("Both Windows/macOS Release builds must succeed")
+        raise ValueError("The macOS Release build must succeed")
     return commit
 
 

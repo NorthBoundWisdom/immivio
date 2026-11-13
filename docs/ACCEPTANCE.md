@@ -9,10 +9,10 @@
 - With bcprov 1.87 and SLF4J 2.0.20, verify SMB authentication, share enumeration,
   random reads/seeks, reconnects, signing and SMB 3 encryption against a prepared
   test server. Host crypto/packaging tests do not replace device/server checks.
-- After an authorized push, observe Windows/macOS Android builds, Source checks
-  and the website workflow using the updated full-SHA Actions pins. Exercise
-  artifact upload/download and the existing release-receipt checks when the next
-  authorized release occurs; no release is required merely to test these edits.
+- After an authorized push, confirm the Android workflow runs one macOS build
+  and no Windows build; observe Source checks and the website workflow using
+  the updated full-SHA Actions pins. Exercise artifact upload/download and the
+  existing release-receipt checks during the next authorized release.
 
 ## Cached night sky follow-up — 2026-11-10
 

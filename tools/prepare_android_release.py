@@ -140,7 +140,7 @@ def prepare(packages, output, tag, commit):
             "",
             "Choose the PICO, QUEST or OpenXR APK matching your headset. Immivio has one playback edition.",
             "",
-            "APK hashes and build receipts are included. Both Windows and macOS CI builds passed; release assets use the macOS packages.",
+            "APK hashes and build receipts are included. The macOS CI build passed; release assets use the macOS packages.",
             "",
         ]
         changelog = Path(__file__).resolve().parents[1] / "CHANGELOG.md"

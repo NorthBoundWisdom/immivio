@@ -39,7 +39,7 @@ jobs:
       SOURCE_RUN_ID: ${{ inputs.run_id }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Check tag source and both build results
+      - name: Check tag source and macOS build result
         id: source
         run: >-
           python3 tools/select_android_release.py

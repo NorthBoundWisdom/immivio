@@ -92,6 +92,10 @@ class ReleaseAssets(unittest.TestCase):
                 digest, name = line.split("  ")
                 self.assertEqual(release.sha256(output / name), digest)
             self.assertIn("different key", (output / "release-notes.md").read_text())
+            self.assertIn(
+                "The macOS CI build passed", (output / "release-notes.md").read_text()
+            )
+            self.assertNotIn("Windows", (output / "release-notes.md").read_text())
             self.assertEqual(
                 json.loads((output / "release-manifest.json").read_text()), manifest
             )
@@ -100,7 +104,7 @@ class ReleaseAssets(unittest.TestCase):
         for key, value in [
             ("source_commit", "c" * 40),
             ("ci_ref", "refs/heads/main"),
-            ("ci_host", "Windows"),
+            ("ci_host", "Linux"),
             ("product", "Other"),
             ("build_type", "Debug"),
             ("channel", "appstore"),
@@ -261,14 +265,22 @@ class ReleaseSource(unittest.TestCase):
             selection.validate("owner/player", TAG, run, COMMIT, jobs), COMMIT
         )
 
-    def test_mixed_old_and_new_host_names_cannot_replace_a_complete_matrix(self):
+    def test_successful_macos_build_does_not_require_another_host(self):
         run, _ = self.fixture()
-        jobs = [
-            {"name": "Release / Windows", "conclusion": "success"},
-            {"name": "Release / macos-15", "conclusion": "success"},
-        ]
-        with self.assertRaises(ValueError):
-            selection.validate("owner/player", TAG, run, COMMIT, jobs)
+        for name in ("Release / macOS", "Release / macos-15"):
+            with self.subTest(name=name):
+                jobs = [{"name": name, "conclusion": "success"}]
+                self.assertEqual(
+                    selection.validate("owner/player", TAG, run, COMMIT, jobs), COMMIT
+                )
+
+    def test_other_hosts_and_debug_jobs_cannot_replace_the_macos_release(self):
+        run, _ = self.fixture()
+        for name in ("Release / Linux", "Release / ubuntu-latest", "Debug / macOS"):
+            with self.subTest(name=name):
+                jobs = [{"name": name, "conclusion": "success"}]
+                with self.assertRaisesRegex(ValueError, "macOS Release"):
+                    selection.validate("owner/player", TAG, run, COMMIT, jobs)
 
     def test_automatic_publisher_requires_passed_builds_in_its_current_run(self):
         run, jobs = self.fixture()
@@ -280,12 +292,16 @@ class ReleaseSource(unittest.TestCase):
             selection.validate("owner/player", TAG, run, COMMIT, jobs, "456")
 
     def test_failed_skipped_or_missing_builds_cannot_publish(self):
-        for result in ["failure", "skipped", None]:
-            with self.subTest(result=result):
-                run, jobs = self.fixture()
-                jobs[0]["conclusion"] = result
-                with self.assertRaises(ValueError):
-                    selection.validate("owner/player", TAG, run, COMMIT, jobs)
+        for name in ("Release / macOS", "Release / macos-15"):
+            for result in ("failure", "skipped", "cancelled", "timed_out", None):
+                with self.subTest(name=name, result=result):
+                    run, _ = self.fixture()
+                    jobs = [
+                        {"name": name, "conclusion": result},
+                        {"name": "Release / Linux", "conclusion": "success"},
+                    ]
+                    with self.assertRaisesRegex(ValueError, "macOS Release"):
+                        selection.validate("owner/player", TAG, run, COMMIT, jobs)
         run, jobs = self.fixture()
         with self.assertRaises(ValueError):
             selection.validate("owner/player", TAG, run, COMMIT, jobs[:-1])

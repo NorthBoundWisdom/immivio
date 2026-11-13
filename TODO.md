@@ -10,7 +10,7 @@
   - `docs/ACCEPTANCE.md` 中的其余待验收项。
 - [ ] **D1：统一设备探针的真机验收**。验证设备选择、APK 一致性校验、发送请求、等待带 request key 的报告、保存证据，以及 GPU、core、audio 三类报告的驱动；确认输出位于 `artifacts/captures/device/`。实现已具备，目前只用假 ADB 验证过。
 - [ ] **D2：外部 URI 授权自动化的真机验收**。验证独立 UID fixture APK 的安装、授权、播放器经 FD 解码、撤销后访问失败，以及重启进程后不残留授权。实现已具备，目前只用假 ADB 验证过。
-- [ ] **推送后复验 CI**。发布前 Windows、macOS 和 Source checks 均须通过；重点复验 Gradle 缓存夹具的 Unix/Windows 入口修正。推送需要所有者当次授权。
+- [ ] **推送后复验 CI**。确认 Android workflow 仅触发 macOS 一条构建线且成功，Source checks 通过。推送需要所有者当次授权。
 - [ ] **CHANGELOG**。发布时决定是否单列安装包变小、移除无用依赖等变化。
 - [ ] **发布**。所有者完成头显验收、目标构建和 CI 确认后执行；此前不改版本号、不打 tag、不发布。
 
@@ -22,30 +22,6 @@
 - [ ] 删除 `PROFILES` 列表、按文件保存的 `profile` 字段及调试接收器的 profile 参数。
 - [ ] 为 `file_mode_memory.gd` 做版本化迁移，保留既有几何、立体、字幕和时序偏好，不能因缺字段而丢弃旧记录。
 - [ ] 下一次发布之后单独提交并验证；发布前不修改运行路径和保存格式。
-
-### T6：移除 Windows CI（已决定，2026-11-12）
-
-决定：去掉 Windows 构建线，只保留 macOS。依据：
-
-- 发布包只取 macOS 构建。`tools/prepare_android_release.py:53` 拒绝非 macOS 的回执，`publish-android-release.yml` 只下载 `Immivio-Android-Release-macOS`。
-- Windows 那条线是对同一份源码的重复构建和测试，每次 push 都跑（`on.push.branches: ["**"]`），最长 90 分钟。
-- 所有者只在 macOS 上开发，Windows 设备脚本已全部移除。
-
-**排在下一次发布之后做**：发布流程目前要求两条线都成功，不要在下一次发布前改动它。
-
-范围：
-
-- `.github/workflows/android-release.yml`：`matrix.include` 只留 macOS。
-- `tools/select_android_release.py:11` 的 `BUILD_JOBS` 和第 38 行的报错改成只要求 macOS；`tools/test_prepare_android_release.py` 里涉及 `Release / Windows` 和 `ci_host == "Windows"` 的用例同步更新（"非 macOS 回执被拒绝"这条断言保留，换一个非 macOS 的值）。
-- `tools/prepare_android_release.py:143` 发布说明里 "Both Windows and macOS CI builds passed" 的措辞。
-- `configs/setup_hosted_ci.py` 的 Windows 分支、`configs/ci_toolchain.json` 的 `GodotWindows` 资产和对应测试保留；不再由 CI 执行，仍可供手动准备 Windows 环境。
-- `docs/BUILD.md:54` 的 PowerShell 说明和第 146 行的 runner 描述；`docs/TESTING.md:28` 保持不动（原生测试本身仍可在三个平台构建）。
-
-不要动：
-
-- `configs/player_build.py`、`check_environment.py` 里的 `os.name == "nt"` 分支和 `android/gradlew.bat`。它们让脚本在 Windows 上仍然可以手动运行，删除它们没有收益，只有风险。文档里把 Windows 从"CI 验证过"降级为"未经验证，可能可用"。
-
-验收：workflow 和发布脚本测试全过；推送后只触发 macOS 一条构建线且成功。
 
 ## 3. 架构整理
 
@@ -89,7 +65,7 @@ S1 → S2 → S3 排在下一次发布之后，避免在发布验收前再次改
 依赖升级一次只动一个，锁文件和校验元数据一律由 Gradle 生成；升级后检查 `verification-metadata.xml` 的 diff，确认没有意外的传递依赖。
 
 - [ ] **头显验收**：验证 OpenXR loader 1.1.65 的启动、会话恢复、输入与播放；验证 bcprov 1.87 / SLF4J 2.0.20 下的 SMB 登录、浏览、随机读取、签名及加密。详细范围见 `docs/ACCEPTANCE.md`。
-- [ ] **GitHub Actions**：推送后观察升级后的固定 commit，确认 Windows、macOS、Source checks 及网站发布流程成功。
+- [ ] **GitHub Actions**：推送后观察升级后的固定 commit，确认 macOS Android 构建、Source checks 及网站发布流程成功。
 
 ## 5. 文档
 
