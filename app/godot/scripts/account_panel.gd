@@ -20,7 +20,7 @@ var symbols := false
 var poll_time := 0.0
 var revision := -1
 var paused := false
-var license_lines: Array[String] = []
+var license_reader := preload("res://scripts/library_license_reader.gd").new()
 var title := ""
 var provider_filter := ""
 
@@ -46,7 +46,7 @@ func close() -> void:
 	items = []
 	fields.clear()
 	field = ""
-	license_lines.clear()
+	license_reader.clear()
 	menu.scroll = 0.0
 	revision = -1
 	paused = false
@@ -209,15 +209,7 @@ func rows() -> Array[Dictionary]:
 		for item in items:
 			result.append({"title": str(item.name), "icon": "server", "plex_server": str(item.id)})
 	elif view == "license":
-		for i in range(0, license_lines.size(), 2):
-			result.append(
-				{
-					"title": license_lines[i],
-					"detail": license_lines[i + 1] if i + 1 < license_lines.size() else "",
-					"icon": "info",
-					"about_info": true
-				}
-			)
+		result.assign(license_reader.rows())
 	return result
 
 
@@ -485,19 +477,6 @@ func show_license(name: String, text: String) -> void:
 	close()
 	view = "license"
 	title = name
-	for original in text.split("\n"):
-		var line := ""
-		for c in original:
-			if (
-				(
-					menu.ui_font().get_string_size(line + c, HORIZONTAL_ALIGNMENT_LEFT, -1, 19).x
-					* 0.0012
-				)
-				> 1.12
-			):
-				license_lines.append(line)
-				line = ""
-			line += c
-		license_lines.append(line)
+	license_reader.load_text(text, menu.ui_font())
 	menu._reset_navigation()
 	menu.refresh()

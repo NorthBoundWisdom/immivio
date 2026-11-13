@@ -130,6 +130,8 @@ const StorageVolume := preload("res://scripts/storage_volume.gd")
 var server_browser: RefCounted = ServerBrowser.new(self)
 const AccountPanel := preload("res://scripts/account_panel.gd")
 var account_panel: RefCounted = AccountPanel.new(self)
+const LibraryAbout := preload("res://scripts/library_about.gd")
+var about := LibraryAbout.new(self)
 const Quality := preload("res://scripts/display_quality.gd")
 const ChoiceFields := preload("res://scripts/choice_fields.gd")
 var choices := ChoiceFields.new(self, above_card)
@@ -1108,7 +1110,7 @@ func _settings_rows() -> Array[Dictionary]:
 				else str(settings.get("background_error", ""))
 			)
 		ABOUT_TAB:
-			out.append_array(_about_rows(settings))
+			out.append_array(about.rows(settings))
 	return out
 
 
@@ -1129,119 +1131,7 @@ func _subtitle_rows(settings: Dictionary) -> Array[Dictionary]:
 	return [distance, direction, position]
 
 
-## Everything the app ships, grouped by role: [heading, [[name, license · authors], ...]].
-## Native libraries are those statically linked into the bundled mpv-android build.
-const CREDITS := [
-	[
-		"Engine & XR",
-		[
-			["Godot Engine 4.7.2", "MIT"],
-			["Godot OpenXR Vendors 5.1.0", "MIT · vendor license notices"],
-			["Khronos OpenXR Loader 1.1.54", "Apache-2.0"],
-			["Godot OpenXR hand demo assets", "MIT"],
-		]
-	],
-	[
-		"Playback & decoding",
-		[
-			["mpv (mpv-android 2026-09-17)", "GPL-2.0-or-later"],
-			["FFmpeg", "GPL-3.0-or-later"],
-			["libplacebo", "LGPL-2.1-or-later"],
-			["shaderc · glslang · SPIRV-Tools", "Apache-2.0 · BSD-3-Clause"],
-			["dav1d", "BSD-2-Clause"],
-		]
-	],
-	[
-		"Subtitles & text",
-		[
-			["libass", "ISC"],
-			["FreeType", "FreeType License"],
-			["HarfBuzz", "MIT"],
-			["GNU FriBidi", "LGPL-2.1-or-later"],
-			["libunibreak", "zlib"],
-			["ICU4J charset detector 79.1", "Unicode-3.0"],
-		]
-	],
-	[
-		"Network & storage",
-		[
-			["CodeLibs JCIFS 3.0.4", "LGPL-2.1"],
-			["Bouncy Castle 1.85", "MIT"],
-			["SLF4J API 1.7.36", "MIT"],
-			["Mbed TLS 3.6.7", "Apache-2.0"],
-			["libxml2", "MIT"],
-		]
-	],
-	[
-		"Runtime",
-		[
-			["Lua 5.2", "MIT"],
-			["Kotlin standard library 2.4.21", "Apache-2.0"],
-			["kotlinx.coroutines 1.6.4", "Apache-2.0"],
-			["AndroidX Activity · Core · Fragment · Lifecycle", "Apache-2.0"],
-			["Guava 33.3.1", "Apache-2.0"],
-			["JSpecify 1.0.0 · JetBrains annotations 13.0", "Apache-2.0"],
-		]
-	],
-	[
-		"Background panorama",
-		[
-			[
-				"Belfast Sunset (Pure Sky)",
-				"Poly Haven · CC0 1.0 · Dimitrios Savva / Greg Zaal / Jarod Guest"
-			],
-			["Blouberg Sunrise 2", "Poly Haven · CC0 1.0 · Greg Zaal"],
-		]
-	],
-]
-
-
-func _about_rows(settings: Dictionary) -> Array[Dictionary]:
-	var out: Array[Dictionary] = []
-	if _about_page == 3:
-		var licenses: Variant = JSON.parse_string(
-			FileAccess.get_file_as_string("res://i18n/licenses.json")
-		)
-		if licenses is Array:
-			for license in licenses:
-				out.append(
-					{
-						"title": str(license.name),
-						"detail": str(license.license),
-						"icon": "info",
-						"license_id": str(license.id)
-					}
-				)
-	elif _about_page == 2:
-		for group in CREDITS:
-			out.append(_group(group[0]))
-			for credit in group[1]:
-				out.append(_about_info(str(credit[0]), str(credit[1])))
-	else:
-		out.append(_about_info("Immivio", str(settings.get("version", ""))))
-		out.append_array(update_check.rows())
-		out.append(
-			_about_info(I18n.t("Official website"), "https://northboundwisdom.github.io/immivio/")
-		)
-		out.append(
-			_about_info(I18n.t("Source code"), "https://github.com/NorthBoundWisdom/immivio")
-		)
-		out.append({"title": I18n.t("Credits"), "icon": "info", "about_page": 2})
-		out.append({"title": I18n.t("Open source licenses"), "icon": "info", "open_licenses": true})
-		out.append(
-			{
-				"title": I18n.t("Save diagnostic log"),
-				"icon": "info",
-				"save_diagnostic_log": true,
-				"detail":
-				(
-					I18n.t("Previous session log available")
-					if settings.get("diagnostic_previous", false)
-					else ""
-				)
-			}
-		)
-	return out
+const CREDITS := LibraryAbout.CREDITS
 
 
 ## Thumbnails and fetched film covers; the size shows under the title, the button arms then clears.
@@ -1564,24 +1454,10 @@ func _choose(row: Dictionary) -> void:
 		refresh()
 		return
 	if row.has("open_licenses"):
-		_open_licenses()
+		about.open_licenses()
 		return
 	if row.has("license_id"):
-		var id := str(row.license_id)
-		var text := ""
-		if id == "godot":
-			text = Engine.get_license_text()
-		elif id == "godot-third-party":
-			text = _engine_notices()
-		else:
-			text = (
-				str(platform.license_text(id))
-				if PlatformMethods.supports(platform, "license_text")
-				else _desktop_license_text(id)
-			)
-		account_panel.show_license(
-			str(row.title), text if not text.is_empty() else I18n.t("License unavailable")
-		)
+		about.show_license(row)
 		return
 	if row.has("about_page"):
 		_about_page = int(row.about_page)
@@ -2128,7 +2004,7 @@ func _draw() -> void:
 	)
 	_draw_rows()
 	if section == Section.SETTINGS and tab == ABOUT_TAB:
-		_draw_about()
+		about.draw()
 	if queue_add_mode:
 		_button(
 			QUEUE_ADD_LIST,
@@ -2860,59 +2736,6 @@ func _update_navigation_selection() -> void:
 		icon.material_override.albedo_color = ACCENT if selected else NAV_IDLE
 		if button.node.get_child_count() > 2:
 			button.node.get_child(2).visible = selected
-
-
-func _draw_about() -> void:
-	if _about_page != 0:
-		_control_button(
-			ABOUT_HOME,
-			"",
-			Vector2(CONTENT_RIGHT - CONTROL_HEIGHT * .5, HEADER_Y),
-			CONTROL_HEIGHT,
-			true,
-			"up"
-		)
-
-
-func _about_info(title: String, detail: String) -> Dictionary:
-	return {"title": title, "detail": detail, "icon": "info", "about_info": true}
-
-
-func _open_licenses() -> void:
-	_about_page = 3
-	scroll = 0.0
-	refresh()
-
-
-func _desktop_license_text(id: String) -> String:
-	var index: Variant = JSON.parse_string(
-		FileAccess.get_file_as_string("res://i18n/licenses.json")
-	)
-	if not index is Array:
-		return ""
-	for item in index:
-		if item.id == id:
-			var text := ""
-			for asset in item.get("assets", []):
-				var path := ProjectSettings.globalize_path("res://../../third_party/" + str(asset))
-				if FileAccess.file_exists(path):
-					text += FileAccess.get_file_as_string(path) + "\n\n"
-			return text
-	return ""
-
-
-func _engine_notices() -> String:
-	var text := ""
-	for component in Engine.get_copyright_info():
-		text += str(component.get("name", "")) + "\n"
-		for part in component.get("parts", []):
-			text += (
-				"\n".join(part.get("copyright", [])) + "\n" + str(part.get("license", "")) + "\n\n"
-			)
-	var licenses := Engine.get_license_info()
-	for name in licenses:
-		text += str(name) + "\n\n" + str(licenses[name]) + "\n\n"
-	return text
 
 
 func _draw_editor() -> void:

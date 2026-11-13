@@ -57,7 +57,7 @@ func _run() -> void:
 	menu.section = Menu.Section.SETTINGS
 	menu.tab = Menu.ABOUT_TAB
 	menu.refresh()
-	menu._open_licenses()
+	menu.about.open_licenses()
 	check(
 		not menu.rows.any(
 			func(row): return row.license_id in ["115", "openlist", "openlist-dependencies"]
@@ -65,12 +65,12 @@ func _run() -> void:
 		"Removed cloud components are absent from About"
 	)
 	check(
-		menu._engine_notices().contains("Permission is hereby granted"),
+		menu.about.engine_notices().contains("Permission is hereby granted"),
 		"engine third-party notices include full license texts"
 	)
 	menu.test_choose(menu.rows[0])
 	check(
-		panel.view == "license" and panel.license_lines.size() > 10,
+		panel.view == "license" and panel.license_reader.lines.size() > 10,
 		"full engine license has scrollable text"
 	)
 	check(not menu._grid() and menu._max_scroll() > 0, "license is a scrolling reader")

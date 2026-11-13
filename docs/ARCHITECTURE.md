@@ -48,7 +48,7 @@ Frame descriptors use [contract version 2](FRAME_CONTRACT.md), with source ident
 
 ## Libraries
 
-`library_menu` renders and handles library interactions. Its `sources` (`library_source_controller.gd`) owns typed local-volume/access/navigation state, SMB saved/discovered servers and browsing state, DLNA servers/container navigation, and asynchronous request correlation. Menu, network aggregation, thumbnails and file actions read the controller directly; no `source_*` forwarding properties remain. Server-editor drafts stay with the menu.
+`library_menu` renders and handles library interactions. `library_about.gd` contains About/credits rows and license resolution; `library_license_reader.gd` owns the existing license wrapping and row format while the account panel retains view/navigation state. Its `sources` (`library_source_controller.gd`) owns typed local-volume/access/navigation state, SMB saved/discovered servers and browsing state, DLNA servers/container navigation, and asynchronous request correlation. Menu, network aggregation, thumbnails and file actions read the controller directly; no `source_*` forwarding properties remain. Server-editor drafts stay with the menu.
 
 The Android plugin owns local grants, SMB, DLNA, media-server adapters. Credentials remain in application-private storage. DLNA subtitle refresh matches server-scoped object IDs and uses a complete directory listing to confirm removal when item metadata is incomplete.
 
