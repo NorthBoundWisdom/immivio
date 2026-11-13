@@ -108,6 +108,7 @@ var file_actions := FileActions.new(self)
 
 const LibrarySourceController := preload("res://scripts/library_source_controller.gd")
 var sources := LibrarySourceController.new(self)
+var source_rows := preload("res://scripts/library_source_rows.gd").new(self)
 
 const Section := LibrarySourceController.Section
 const NAV := [
@@ -720,7 +721,7 @@ func refresh() -> void:
 			and not file_actions.orders.has(file_actions.scope())
 		):
 			file_actions.orders[file_actions.scope()] = _browse_restore.get("order", "name_asc")
-	_rebuild_rows()
+	source_rows.rebuild()
 	_restore_browse()
 	_draw()
 	_update_highlights()
@@ -793,137 +794,6 @@ func finish_storage_release(path: String) -> void:
 
 
 # --- rows -----------------------------------------------------------------------------------
-
-
-func _rebuild_rows() -> void:
-	rows.clear()
-	if diagnostic_confirmation:
-		rows.assign(
-			[
-				{
-					"title": I18n.t("Save diagnostic log to Downloads?"),
-					"detail": "",
-					"about_info": true
-				},
-				{"title": I18n.t("Save"), "confirm_diagnostic_save": true},
-				{"title": I18n.t("Cancel"), "cancel_diagnostic_save": true}
-			]
-		)
-		return
-	if subtitle_picker.active:
-		rows.assign(subtitle_picker.rows())
-		scroll = clampf(scroll, 0, _max_scroll())
-		return
-	if account_panel.active():
-		rows.assign(account_panel.rows())
-		scroll = clampf(scroll, 0.0, _max_scroll())
-		return
-	match section:
-		Section.NETWORK:
-			rows.assign(network.rows())
-		Section.RECENT:
-			for entry in catalog.list_recent() if catalog else []:
-				var seconds := int(entry.position_ms) / 1000
-				rows.append(
-					{
-						"title": str(entry.title),
-						"detail": "%02d:%02d" % [seconds / 60, seconds % 60] if seconds > 0 else "",
-						"kind": "video",
-						"icon": "video",
-						"uri": str(entry.uri)
-					}
-				)
-				if not str(entry.get("cover", "")).is_empty():
-					rows.back()["cover"] = entry.cover
-				_add_progress(rows.back(), entry)
-		Section.LOCAL:
-			for entry in sources.local_entries:
-				var row := _entry_row(entry)
-				if bool(entry.get("volume", false)):
-					row.icon = "usb" if bool(entry.get("removable", false)) else "device"
-				rows.append(row)
-		Section.SMB:
-			if sources.smb_server.is_empty():
-				for server in sources.smb_servers:
-					rows.append(
-						{
-							"title": str(server.name),
-							"detail": str(server.host),
-							"icon": "server",
-							"smb_server": str(server.id)
-						}
-					)
-				for found in sources.smb_found:
-					if sources.smb_servers.any(func(s): return str(s.host) == str(found.host)):
-						continue
-					rows.append(
-						{
-							"title": str(found.name),
-							"detail": str(found.host),
-							"icon": "plus",
-							"smb_found": found
-						}
-					)
-			else:
-				for entry in sources.smb_entries:
-					rows.append(_entry_row(entry))
-		Section.DLNA:
-			if sources.dlna_server.is_empty():
-				for server in sources.dlna_servers:
-					rows.append(
-						{
-							"title": str(server.name),
-							"detail": "",
-							"icon": "cast",
-							"dlna_server": str(server.id)
-						}
-					)
-			else:
-				for entry in sources.dlna_entries:
-					rows.append(_entry_row(entry))
-		Section.SETTINGS:
-			rows.assign(_settings_rows())
-	if section == Section.MEDIA_SERVER:
-		rows = server_browser.rows()
-	rows.assign(
-		rows.filter(
-			func(row):
-				return (
-					not row.has("uri")
-					or MediaFiles.is_video(
-						str(row.uri), str(row.get("title", "")), str(row.get("kind", "video"))
-					)
-				),
-		)
-	)
-	for row in rows:
-		if row.has("uri"):
-			var parts: Array[String] = []
-			if int(row.get("size", -1)) > 0:
-				parts.append(_size(row))
-			if int(row.get("modified", 0)) > 0:
-				parts.append(Time.get_date_string_from_unix_time(int(row.modified) / 1000))
-			var recent: Dictionary = (
-				catalog.lookup(str(row.uri)) if catalog and catalog.has_method("lookup") else {}
-			)
-			if int(recent.get("position_ms", 0)) > 0:
-				var seconds := int(recent.position_ms) / 1000
-				parts.append("%02d:%02d" % [seconds / 60, seconds % 60])
-				_add_progress(row, recent)
-			if not parts.is_empty():
-				row.detail = " · ".join(parts)
-	file_actions.sort_rows()
-	if section == Section.RECENT:
-		_recent_all_rows.assign(rows)
-		_recent_count = rows.size()
-		_recent_page = clampi(_recent_page, 0, _recent_page_count() - 1)
-		rows.assign(
-			_recent_all_rows.slice(
-				_recent_page * RECENT_PAGE_SIZE, (_recent_page + 1) * RECENT_PAGE_SIZE
-			)
-		)
-	focus_index = clampi(focus_index, 0, maxi(0, rows.size() - 1))
-	scroll = clampf(scroll, 0.0, _max_scroll())
 
 
 ## Rows of the open settings page: group headings followed by their controls.
@@ -1168,39 +1038,6 @@ func _switch_row(title: String, key: String, value: Variant, hint: String = "") 
 	)
 
 
-## The open local folder's path ("" lists the storage volumes).
-func _entry_row(entry: Dictionary) -> Dictionary:
-	if bool(entry.get("container", false)):
-		var folder_row := {
-			"title": str(entry.title),
-			"detail": "",
-			"icon": "folder",
-			"container": entry,
-			"folder": true,
-			"delete_uri": str(entry.get("delete_uri", "")),
-			"can_delete": bool(entry.get("can_delete", false)),
-			"delete_reason":
-			str(entry.get("delete_reason", "File deletion unavailable for this source"))
-		}
-		for field in ["size", "modified"]:
-			if entry.has(field):
-				folder_row[field] = entry[field]
-		return folder_row
-	var row := {
-		"title": str(entry.title),
-		"detail": _size(entry),
-		"kind": "video",
-		"icon": "video",
-		"uri": str(entry.get("uri", ""))
-	}
-	for field in ["size", "modified", "can_delete", "delete_reason", "id"]:
-		if entry.has(field):
-			row[field] = entry[field]
-	if not str(entry.get("cover", "")).is_empty():
-		row["cover"] = str(entry.cover)
-	return row
-
-
 func video_queue() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	var source: Array = (
@@ -1232,17 +1069,6 @@ static func _bytes(bytes: int) -> String:
 	if bytes >= 1048576:
 		return "%.1f MB" % (bytes / 1048576.0)
 	return "%d KB" % maxi(1, bytes / 1024)
-
-
-static func _size(entry: Dictionary) -> String:
-	var bytes := float(entry.get("size", 0))
-	if bytes <= 0:
-		return ""
-	return (
-		"%.1f GB" % (bytes / 1073741824.0)
-		if bytes >= 1073741824.0
-		else "%d MB" % int(bytes / 1048576.0)
-	)
 
 
 # --- activation -----------------------------------------------------------------------------
@@ -2496,14 +2322,6 @@ func _tab_button(target: int, text: String, centre: Vector2, width: float, curre
 		button.base_color = Color(TILE, 0.0)
 		button.foreground = NAV_IDLE
 		label.modulate = NAV_IDLE
-
-
-## How far a started video got, when its length is known: tiles show it as a bar.
-static func _add_progress(row: Dictionary, entry: Dictionary) -> void:
-	var duration := int(entry.get("duration_ms", -1))
-	var position := int(entry.get("position_ms", 0))
-	if duration > 0 and position > 0:
-		row["progress"] = clampf(float(position) / duration, 0.0, 1.0)
 
 
 ## Draws [texture] inside [area]'s rounded shape instead of a square-cornered material.

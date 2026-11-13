@@ -39,7 +39,7 @@ func _initialize() -> void:
 	menu.section = menu.Section.SETTINGS
 	menu.tab = menu.DISPLAY_TAB
 	menu.settings_provider = func(): return {"refresh_rates": [72.0, 90.0], "refresh_rate": 72.0}
-	menu._rebuild_rows()
+	menu.source_rows.rebuild()
 	var row: Dictionary = menu.rows.filter(func(r): return r.get("key", "") == "refresh_rate")[0]
 	assert(row.choices.size() == 2 and row.choices[1].value == 90.0)
 	menu.free()
