@@ -6,7 +6,7 @@
 
 Newest first, with the main changes that affect everyday use. Unreleased items are not yet part of a public release. Versions 0.6.0 and earlier belong to the original project. Photo viewing, cloud drives and AI 3D conversion appear only as historical features and were removed later; see the [README](README.md) for current capabilities.
 
-## 待发布 / Unreleased
+## 1.0.0 — 2026-11-14
 
 **中文**
 
