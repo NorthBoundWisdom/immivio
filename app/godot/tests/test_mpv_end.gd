@@ -60,13 +60,13 @@ func _initialize() -> void:
 	var replay := ReplayProbe.new()
 	replay.requested_play = true
 	replay.media.state = "ended"
-	replay._on_debug_command(1, '{"operation":"playing","enabled":true}')
+	replay.diagnostics.handle_command(1, '{"operation":"playing","enabled":true}')
 	_check(
 		replay.play_actions == 1,
 		"Play at EOF must invoke replay even when play intent remains true"
 	)
 	replay.media.state = "playing"
-	replay._on_debug_command(2, '{"operation":"playing","enabled":true}')
+	replay.diagnostics.handle_command(2, '{"operation":"playing","enabled":true}')
 	_check(replay.play_actions == 1, "Repeated play during playback must not toggle pause")
 	replay.free()
 	if failures.is_empty():

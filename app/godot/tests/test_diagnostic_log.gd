@@ -4,6 +4,8 @@ const Log := preload("res://scripts/diagnostic_log.gd")
 
 class ReportPlatform:
 	extends RefCounted
+	signal mpv_debug_command(id: int, payload: String)
+	signal mpv_pixel_mask(id: int, payload: String)
 	var reports: Array[Dictionary] = []
 
 	func save_mpv_player_report(id: int, payload: String) -> void:
@@ -17,6 +19,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	_check_report_provider()
+	_check_without_diagnostics()
 	_check_shutdown_guard()
 	var cleaned: Dictionary = Log.clean(
 		{
@@ -64,8 +67,9 @@ func _check_report_provider() -> void:
 	video.set_process(false)
 	var platform := ReportPlatform.new()
 	video.platform = platform
-	video._debug_request = 42
-	video._write_debug_report()
+	video.diagnostics.connect_platform(platform)
+	video.diagnostics.request = 42
+	video.diagnostics.write_report()
 	assert(platform.reports.back().data.canvas_controls.is_empty())
 	var menu := preload("res://scripts/player_menu.gd").new()
 	menu.state_provider = func(): return {"position_ms": 12000, "duration_ms": 60000}
@@ -77,7 +81,7 @@ func _check_report_provider() -> void:
 	host.player_menu = menu
 	host.selected_features_probe_result = {"state": "fixture"}
 	video.diagnostic_ui_provider = host.presentation_coordinator.diagnostic_ui_snapshot
-	video._write_debug_report()
+	video.diagnostics.write_report()
 	var report: Dictionary = platform.reports.back().data
 	assert(report.player_menu_progress.position_ms == 12000)
 	assert(report.player_menu_progress.duration_ms == 60000)
@@ -88,10 +92,14 @@ func _check_report_provider() -> void:
 	menu.visible = false
 	assert(menu.progress_snapshot().is_empty())
 	host.free()
-	video._write_debug_report()
+	video.diagnostics.write_report()
 	assert(platform.reports.back().data.canvas_controls.is_empty())
+	platform.mpv_debug_command.emit(43, '{"operation":"observe"}')
+	assert(platform.reports.back().id == 43)
 	menu.free()
 	video.free()
+	assert(platform.get_signal_connection_list("mpv_debug_command").is_empty())
+	assert(platform.get_signal_connection_list("mpv_pixel_mask").is_empty())
 
 
 func _check_shutdown_guard() -> void:
@@ -109,3 +117,15 @@ func _check_shutdown_guard() -> void:
 	host.free()
 	coordinator._on_video_changed()
 	assert(queried == [true])
+
+
+func _check_without_diagnostics() -> void:
+	var video := preload("res://scripts/mpv_video_display.gd").new(false)
+	root.add_child(video)
+	video.set_process(false)
+	assert(video.diagnostics == null)
+	video.platform = preload("res://tests/test_file_mode_memory.gd").Host.new()
+	assert(video.open_local("file:///diagnostic-disabled.mp4", "Disabled", 0, false))
+	video.close_video()
+	assert(video.media.state == "closed")
+	video.free()

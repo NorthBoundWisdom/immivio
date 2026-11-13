@@ -28,12 +28,12 @@ func _run() -> void:
 	video.media.last_pair = {"pts_us": 0, "session_id": 1, "slot_token": 1}
 	video._binding.material = ShaderMaterial.new()
 	video._thumb_after_ms = 0
-	video._debug_benchmark = true
+	video.diagnostics.benchmark = true
 	video._maybe_capture_thumbnail()
 	var guarded: bool = (
 		host.pins == 0 and not video._thumbnail_busy and video._thumbnail_result.is_empty()
 	)
-	video._debug_benchmark = false
+	video.diagnostics.benchmark = false
 	video._maybe_capture_thumbnail()
 	var ordinary: bool = host.pins == 1  # Refused before any capture; proves other gates were ready.
 	video.queue_free()

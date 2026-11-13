@@ -13,7 +13,6 @@ var seek_mode := SeekPolicy.DEFAULT
 var bookmark_seek_mode := SeekPolicy.GLOBAL
 var _last_seek_mode := SeekPolicy.DEFAULT
 const Log := preload("res://scripts/diagnostic_log.gd")
-const PixelProbe := preload("res://scripts/mpv_pixel_probe.gd")
 const SubtitleState := preload("res://scripts/mpv_subtitle_state.gd")
 const ModeMemory := preload("res://scripts/file_mode_memory.gd")
 const StereoView := preload("res://scripts/stereo_view.gd")
@@ -42,6 +41,7 @@ var _stereo_capture_binding: RefCounted
 
 var media := State.new()
 var control := PlaybackControl.new()
+var diagnostics: Node
 var diagnostic_ui_provider: Callable
 var platform: Object
 var alpha_encoding := 1
@@ -146,19 +146,13 @@ var _thumbnail_result: Dictionary = {}
 var _library_cover := ""
 var _freeze_sequence := 0
 var _freeze_request := 0
-var _seek_trace: Array[Dictionary] = []
-var _open_trace: Array[Dictionary] = []
-var _debug_seek_delay_until_ms := 0
-var _debug_request := 0
-var _debug_commands: Array = []
-var _debug_pairs: Array = []
-var _debug_status: Dictionary = {}
-var _debug_pixels: Dictionary = {}
-var _debug_benchmark := false
-var _debug_next_report_us := 0
-var _pixel_request := 0
-var _pixel_request_key := ""
-var _pixel_busy := false
+
+
+func _init(enable_diagnostics: bool = true) -> void:
+	if OS.is_debug_build() and enable_diagnostics:
+		diagnostics = load("res://scripts/mpv_video_debug.gd").new(self)
+		diagnostics.name = "PlaybackDiagnostics"
+		add_child(diagnostics)
 
 
 func _ready() -> void:
@@ -199,8 +193,8 @@ func _ready() -> void:
 		platform.connect("mpv_error", _on_error)
 		platform.connect("mpv_detach", _on_detach)
 		platform.connect("mpv_released", _on_released)
-		platform.connect("mpv_debug_command", _on_debug_command)
-		platform.connect("mpv_pixel_mask", _on_pixel_mask)
+		if diagnostics:
+			diagnostics.connect_platform(platform)
 		platform.connect("mpv_frozen_pair", _on_frozen_pair)
 	_apply_geometry()
 
@@ -216,11 +210,11 @@ static func _thumbnail_source(uri: String) -> bool:
 
 func _maybe_capture_thumbnail() -> void:
 	if (
-		_debug_benchmark
+		(diagnostics != null and diagnostics.benchmark)
 		or _thumb_after_ms < 0
 		or _thumbnail_busy
 		or _stereo_capture_busy
-		or _pixel_busy
+		or (diagnostics != null and diagnostics.pixel_busy)
 		or _waiting_first
 		or not _pending_revision.is_empty()
 		or media.state not in ["playing", "paused", "ended"]
@@ -290,7 +284,8 @@ func _maybe_capture_thumbnail() -> void:
 	}
 	if stored:
 		thumbnail_ready.emit(uri)
-	_write_debug_report()
+	if diagnostics:
+		diagnostics.write_report()
 
 
 func pick_file() -> void:
@@ -467,7 +462,8 @@ func open_local(
 	basename: String = "",
 	metadata: Dictionary = {}
 ) -> bool:
-	_open_trace = [{"stage": "requested", "time_ms": Time.get_ticks_msec(), "start_ms": start_ms}]
+	if diagnostics:
+		diagnostics.open_requested(start_ms)
 	if not platform or not platform.mpv_supported():
 		picker_error = "MPV playback backend unavailable"
 		changed.emit()
@@ -557,7 +553,7 @@ func open_local(
 	_thumbnail_result = {}
 	_thumb_after_ms = -1
 	if (
-		not _debug_benchmark
+		not (diagnostics != null and diagnostics.benchmark)
 		and _thumbnail_source(uri)
 		and (Thumbnails.is_preview(uri) or Thumbnails.texture(uri) == null)
 	):
@@ -598,7 +594,8 @@ func open_local(
 	screen_rotation = 0.0
 	if PlatformMethods.supports(platform, "set_mpv_speed"):
 		platform.set_mpv_speed(id, playback_speed)
-	_open_trace.append({"stage": "dispatched", "time_ms": Time.get_ticks_msec(), "session_id": id})
+	if diagnostics:
+		diagnostics.open_dispatched(id)
 	_remember_file = restore_mode and id > 0
 	_history_started = false
 	_file_permission_persisted = false
@@ -676,7 +673,8 @@ func close_video() -> void:
 	_pending_pair = {}
 	_pending_revision = {}
 	_freeze_request = 0
-	_debug_seek_delay_until_ms = 0
+	if diagnostics:
+		diagnostics.seek_delay_until_ms = 0
 	_waiting_first = false
 	_audio_pending = false
 	control.close()
@@ -756,7 +754,8 @@ func _request_revision(position_ms: int = -1, mode: String = "") -> void:
 	if caption:
 		caption.visible = false
 	if position_ms >= 0:
-		_seek_event("requested")
+		if diagnostics:
+			diagnostics.record_seek("requested")
 	_try_revision()
 
 
@@ -779,25 +778,6 @@ func _is_frozen() -> bool:
 	return int(_binding.ticket.get("frozen_frame_id", 0)) > 0
 
 
-func _seek_event(stage: String) -> void:
-	_seek_trace.append(
-		{
-			"stage": stage,
-			"time_ms": Time.get_ticks_msec(),
-			"visible": panel != null and panel.visible,
-			"frozen": _is_frozen(),
-			"capture_pending": _freeze_request > 0,
-			"session_id": media.session_id,
-			"target_ms": control.target_ms,
-			"displayed_pts_us": int(_binding.ticket.get("pts_us", -1)),
-			"freeze_copy_us": int(_binding.ticket.get("freeze_copy_us", 0))
-		}
-	)
-	if _seek_trace.size() > 64:
-		_seek_trace.pop_front()
-	_write_debug_report()
-
-
 func _abort_frozen_seek(reason: String) -> void:
 	_freeze_request = 0
 	_pending_revision = {}
@@ -805,7 +785,8 @@ func _abort_frozen_seek(reason: String) -> void:
 	control.reject()
 	picker_error = reason
 	platform.set_mpv_playing(media.session_id, requested_play)
-	_seek_event("capture_failed")
+	if diagnostics:
+		diagnostics.record_seek("capture_failed")
 	changed.emit()
 
 
@@ -837,7 +818,8 @@ func _on_frozen_pair(id: int, payload: String) -> void:
 		return
 	platform.detach_mpv_pair(int(previous.session_id), int(previous.slot_token))
 	_freeze_request = 0
-	_seek_event("frozen")
+	if diagnostics:
+		diagnostics.record_seek("frozen")
 	_try_revision()
 
 
@@ -845,7 +827,7 @@ func _try_revision() -> void:
 	if (
 		_pending_revision.is_empty()
 		or _freeze_request > 0
-		or _pixel_busy
+		or (diagnostics != null and diagnostics.pixel_busy)
 		or _thumbnail_busy
 		or _stereo_capture_busy
 	):
@@ -854,7 +836,8 @@ func _try_revision() -> void:
 		return
 	if (
 		int(_pending_revision.position_ms) >= 0
-		and Time.get_ticks_msec() < _debug_seek_delay_until_ms
+		and diagnostics != null
+		and Time.get_ticks_msec() < diagnostics.seek_delay_until_ms
 	):
 		return
 	var request := _pending_revision
@@ -882,8 +865,10 @@ func _try_revision() -> void:
 	if int(request.position_ms) >= 0:
 		_last_seek_mode = request.seek_mode
 		control.take_pending()
-		_debug_seek_delay_until_ms = 0
-		_seek_event("seek_started")
+		if diagnostics:
+			diagnostics.seek_delay_until_ms = 0
+		if diagnostics:
+			diagnostics.record_seek("seek_started")
 	changed.emit()
 
 
@@ -1752,7 +1737,11 @@ func _accept_stereo_detection(request: int, result: Dictionary) -> void:
 ## A tiny full-frame GPU sample; pin ownership and independent wrappers match thumbnail capture.
 ## CPU matching runs off the render/main thread, and stale/manual requests cannot apply results.
 func _maybe_detect_stereo() -> void:
-	if not _auto_stereo or not _stereo_detection.pending or _debug_benchmark:
+	if (
+		not _auto_stereo
+		or not _stereo_detection.pending
+		or (diagnostics != null and diagnostics.benchmark)
+	):
 		return
 	if Naming.has_layout_marker(_layout_basename):
 		_stereo_detection.cancel()
@@ -1760,7 +1749,7 @@ func _maybe_detect_stereo() -> void:
 	if (
 		_stereo_detection_busy
 		or _thumbnail_busy
-		or _pixel_busy
+		or (diagnostics != null and diagnostics.pixel_busy)
 		or _waiting_first
 		or not _pending_revision.is_empty()
 		or media.state not in ["playing", "paused", "ended"]
@@ -1938,7 +1927,7 @@ func _on_pair(id: int, payload: String) -> void:
 
 func _present_pending() -> void:
 	if (
-		_pixel_busy
+		(diagnostics != null and diagnostics.pixel_busy)
 		or _thumbnail_busy
 		or _stereo_capture_busy
 		or _pending_pair.is_empty()
@@ -1982,7 +1971,8 @@ func _present_pending() -> void:
 		return
 	if _waiting_first:
 		if control.in_flight > 0:
-			_seek_event("target_presented")
+			if diagnostics:
+				diagnostics.record_seek("target_presented")
 		_waiting_first = false
 		var actual_position_ms := int(int(claimed.pts_us) / 1000)
 		if control.in_flight > 0:
@@ -1993,20 +1983,14 @@ func _present_pending() -> void:
 	else:
 		control.observe(int(int(claimed.pts_us) / 1000), control.duration_ms)
 	if media.frame_counter == 1:
-		_open_trace.append(
-			{
-				"stage": "first_pair_bound",
-				"time_ms": Time.get_ticks_msec(),
-				"pts_us": int(claimed.pts_us)
-			}
-		)
+		if diagnostics:
+			diagnostics.first_pair_bound(claimed)
 		_complete_layout()
 		_remember_mode()
 		Log.record("mpv_pair_bound", media.frame_identity())
 	_record_history()
-	if _debug_request > 0 and not _debug_benchmark and _debug_pairs.size() < 128:
-		_debug_pairs.append(claimed.duplicate(true))
-		_write_debug_report()
+	if diagnostics:
+		diagnostics.record_pair(claimed)
 	changed.emit()
 
 
@@ -2062,9 +2046,8 @@ func _on_state(id: int, payload: String) -> void:
 	media.state = str(report.get("state", "opening"))
 	if media.state == "ended":
 		_record_history(true)
-	if _debug_request > 0:
-		_debug_status = report.duplicate(true)
-		_write_debug_report()
+	if diagnostics:
+		diagnostics.record_state(report)
 	changed.emit()
 
 
@@ -2089,8 +2072,8 @@ func _on_error(id: int, payload: String) -> void:
 	_recover_ms = control.observed_position_ms
 	_unbind()
 	Log.record("mpv_error", {"session_id": id, "report": report})
-	_debug_next_report_us = 0
-	_write_debug_report()
+	if diagnostics:
+		diagnostics.flush_report()
 	changed.emit()
 
 
@@ -2105,7 +2088,8 @@ func _on_released(id: int, _payload: String) -> void:
 		call_deferred(
 			"_reopen_after_context_loss", local_uri, display_name, _recover_ms, _remember_file
 		)
-	_write_debug_report()
+	if diagnostics:
+		diagnostics.write_report()
 
 
 func _reopen_after_context_loss(
@@ -2129,169 +2113,6 @@ func _reopen_after_context_loss(
 		_apply_stereo_view()
 		if geometry != Geometry.Geometry.FLAT:
 			_center_on_view()
-
-
-func _on_debug_command(id: int, payload: String) -> void:
-	var command: Variant = JSON.parse_string(payload)
-	if (
-		command is Dictionary
-		and command.get("operation", "") in ["open", "seek"]
-		and command.get("seek_mode", "") in [SeekPolicy.SPEED, SeekPolicy.EXACT]
-	):
-		seek_mode = command.seek_mode
-	if not command is Dictionary:
-		return
-	_debug_request = id
-	if command.operation == "open":
-		_debug_benchmark = bool(command.get("benchmark", false))
-		loop_enabled = bool(command.get("loop", false))  # long thermal runs replay a short fixture
-		_debug_next_report_us = 0
-		if _debug_benchmark:
-			geometry = int(command.get("projection", 0))
-		_debug_commands = []
-		_debug_pairs = []
-		stereo_sbs = bool(command.get("stereo", true))
-		if bool(command.get("auto_stereo", false)):
-			geometry = Geometry.Geometry.FLAT
-			stereo_sbs = false
-		requested_play = true
-		open_local(str(command.uri), str(command.title), maxi(int(command.position_ms), 0), false)
-		if bool(command.get("auto_stereo", false)):
-			enable_auto_stereo()
-	elif command.operation == "alpha":
-		set_alpha(bool(command.enabled))
-	elif command.operation == "audio":
-		command["accepted"] = _apply_audio_track(int(command.track_id))
-	elif command.operation == "subtitle":
-		command["accepted"] = set_subtitle_track(int(command.track_id))
-	elif command.operation == "playing":
-		if (
-			requested_play != bool(command.enabled)
-			or (bool(command.enabled) and media.state == "ended")
-		):
-			toggle_play()
-	elif command.operation == "seek":
-		_debug_seek_delay_until_ms = (
-			Time.get_ticks_msec() + clampi(int(command.get("hold_seek_ms", 0)), 0, 30000)
-		)
-		seek_absolute(int(command.position_ms))
-	elif command.operation == "hold_pixels":
-		if _is_frozen() and not _pixel_busy:
-			var held: Dictionary = _binding.ticket.duplicate(true)
-			if false:
-				held.stereo_sbs = false
-			var pinned: bool = platform.retain_mpv_frozen_frame(int(held.frozen_frame_id))
-			if not pinned:
-				return
-			_pixel_busy = true
-			_debug_pixels = await PixelProbe.capture(self, held, id)
-			_debug_pixels["request_key"] = str(command.request_key)
-			platform.release_mpv_frozen_frame(int(held.frozen_frame_id))
-			_pixel_busy = false
-	elif command.operation == "observe":
-		pass
-	elif command.operation == "stereo":
-		if stereo_sbs != bool(command.enabled):
-			toggle_stereo()
-	elif command.operation == "close":
-		close_video()
-	elif command.operation == "pixels":
-		_debug_pixels = {
-			"state": "failed", "request_id": id, "request_key": str(command.request_key)
-		}
-		if (
-			not _pixel_busy
-			and not requested_play
-			and not _binding.ticket.is_empty()
-			and _pending_revision.is_empty()
-		):
-			_pixel_busy = true
-			_pixel_request = id
-			_pixel_request_key = str(command.request_key)
-			if platform.request_mpv_pixel_mask(
-				id, int(_binding.ticket.session_id), int(_binding.ticket.slot_token)
-			):
-				_debug_pixels["state"] = "waiting_mask"
-			else:
-				_pixel_busy = false
-				_debug_pixels["error"] = "Native pinned mask request rejected"
-		else:
-			_debug_pixels["error"] = "Paused immutable binding required"
-	command["request_id"] = id
-	_debug_commands.append(command)
-	if _debug_commands.size() > 32:
-		_debug_commands.pop_front()
-	# Commands need an immediate receipt even if benchmark telemetry was just written.
-	# Closing stops periodic playback updates, so throttling here loses its final report.
-	_debug_next_report_us = 0
-	_write_debug_report()
-
-
-func _on_pixel_mask(id: int, payload: String) -> void:
-	if id != _pixel_request:
-		return
-	var mask: Variant = JSON.parse_string(payload)
-	if not mask is Dictionary or mask.get("state") != "ready":
-		_debug_pixels = {
-			"state": "failed",
-			"request_id": id,
-			"error": "Native mask readback failed",
-			"native": mask
-		}
-		_pixel_busy = false
-		_write_debug_report()
-		return
-	var pair: Dictionary = mask.pair
-	_debug_pixels = await PixelProbe.capture(self, pair, id)
-	_debug_pixels["request_key"] = _pixel_request_key
-	_debug_pixels["mask_reference"] = mask
-	_debug_pixels["native_pin_released"] = platform.release_mpv_pixel_pin(
-		int(pair.session_id), int(pair.slot_token)
-	)
-	_pixel_busy = false
-	_write_debug_report()
-
-
-func _write_debug_report() -> void:
-	if _debug_request <= 0 or not platform:
-		return
-	var now := Time.get_ticks_usec()
-	if _debug_benchmark and now < _debug_next_report_us:
-		return
-	_debug_next_report_us = now + 250000
-	var ui: Dictionary = diagnostic_ui_provider.call() if diagnostic_ui_provider.is_valid() else {}
-	var report := {
-		"schema_version": 1,
-		"request_id": _debug_request,
-		"commands": _debug_commands,
-		"picker_error": picker_error,
-		"loading_feedback": ui.get("loading_feedback", {}),
-		"canvas_controls": ui.get("canvas_controls", {}),
-		"selected_features_ui": ui.get("selected_features_ui", {}),
-		"seek_policy_ui": ui.get("seek_policy_ui", {}),
-		"open_trace": _open_trace.duplicate(true),
-		"media": media.snapshot(),
-		"layout": layout_snapshot(),
-		"pairs": _debug_pairs,
-		"native_status": _debug_status,
-		"engine_fps": Engine.get_frames_per_second(),
-		"sample_monotonic_us": now,
-		"engine_drawn_frames": Engine.get_frames_drawn(),
-		"benchmark": _debug_benchmark,
-		"pixel_probe": _debug_pixels,
-		"seek_trace": _seek_trace,
-		"player_menu_progress": ui.get("player_menu_progress", {}),
-		"thumbnail":
-		{
-			"available": Thumbnails.has(local_uri),
-			"capture": _thumbnail_result,
-			"busy": _thumbnail_busy
-		},
-		"diagnostic_2d": OS.get_cmdline_user_args().has("--mpv-diagnostic-2d"),
-		"scope":
-		"Production MPV/Godot ownership trace; independent pixel, audio and performance validation pending"
-	}
-	platform.save_mpv_player_report(_debug_request, JSON.stringify(report))
 
 
 func _source_size() -> Vector2:

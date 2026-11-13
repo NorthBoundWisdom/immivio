@@ -22,6 +22,8 @@ The native menu texture contains the hit reticle, while `pointer_ray.gd` draws t
 
 Deterministic host tests observe frozen control/pointer/popup snapshots and use explicit `test_*` commands for actions, input and frame stepping. Snapshots retain value data and node/texture identities without exposing live nodes/resources. The generated private-access inventory and CI boundary are documented in [TESTING.md](TESTING.md#private-member-test-boundary).
 
+`mpv_video_debug.gd` owns debug commands, pixel readback and open/seek/frame telemetry. `mpv_video_display.gd` loads it dynamically only when `OS.is_debug_build()` is true; its child-node lifetime owns the platform signal connections. Playback remains in the display script and uses neutral diagnostics gates when the module is absent.
+
 Video diagnostics receive `presentation_coordinator.diagnostic_ui_snapshot` as an explicit callable; the player menu owns its public progress snapshot. Playback coordination receives the main scene's `is_finishing_app` callable. Menu paint-state keys and disabled-field layering are explicit public interfaces/callables, so these paths do not reflect on private member names.
 
 `xr_menu_compositor.gd` owns the Android-Surface menu presenter, its acknowledged presentation queue and curved mapping. Native layers are selected by runtime support; frame rate does not switch off native UI composition. Unsupported layers use the scene fallback. Menu pose and ray targets use the same presented layout.
