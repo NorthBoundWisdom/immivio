@@ -30,7 +30,6 @@
 
 以下三项一个提交改一个名字。应用 ID、Kotlin/Java 包名、Godot 插件目录、插件类和单例名保持不变。
 
-- [ ] **Gradle 根工程名**：将 `VRPassthroughPlayerAndroid` 改为 `ImmivioAndroid`。用 `git grep -n VRPassthroughPlayerAndroid` 确认没有脚本按工程名定位构建产物。
 - [ ] **调试属性前缀**：将 `debug.vrpp.*` 改为 `debug.immivio.*`；同步 `benchmarks/` 脚本、`docs/TESTING.md` 和 Kotlin 侧读取位置，用 `git grep -n 'debug\.vrpp'` 确认旧前缀清零。
 - [ ] **日志标签**：将 `Quest*`（如 `QuestDlna`、`QuestCapabilityProbe`）改为 `Immivio*`。只改 `Log.x(TAG, …)` 的标签字符串，不改类名；同步 `benchmarks/` 和文档里按标签过滤 logcat 的位置。
 - [ ] **文档与注释**：遇到把三个平台统称为 Quest 的地方时，改成准确的平台表述。
