@@ -6,6 +6,18 @@
 
 Newest first, with the main changes that affect everyday use. Unreleased items are not yet part of a public release. Versions 0.6.0 and earlier belong to the original project. Photo viewing, cloud drives and AI 3D conversion appear only as historical features and were removed later; see the [README](README.md) for current capabilities.
 
+## 待发布 / Unreleased
+
+**中文**
+
+- 清理停用的播放依赖与调试内容，减少安装包内的冗余，并更新基础依赖。
+- 保存格式升级时保留已有的逐视频画面、立体、字幕和时序偏好，清除废弃字段。
+
+**English**
+
+- Remove inactive playback dependencies and diagnostic content to reduce redundant package contents, and update core libraries.
+- Preserve existing per-video picture, stereo, subtitle and timing preferences while migrating saved records and removing retired fields.
+
 ## 0.9.11 — 2026-11-10
 
 **中文**

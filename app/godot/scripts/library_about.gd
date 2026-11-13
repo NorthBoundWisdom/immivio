@@ -17,7 +17,7 @@ const CREDITS := [
 		[
 			["Godot Engine 4.7.2", "MIT"],
 			["Godot OpenXR Vendors 5.1.0", "MIT · vendor license notices"],
-			["Khronos OpenXR Loader 1.1.54", "Apache-2.0"],
+			["Khronos OpenXR Loader 1.1.65", "Apache-2.0"],
 			["Godot OpenXR hand demo assets", "MIT"],
 		]
 	],
@@ -46,8 +46,8 @@ const CREDITS := [
 		"Network & storage",
 		[
 			["CodeLibs JCIFS 3.0.4", "LGPL-2.1"],
-			["Bouncy Castle 1.85", "MIT"],
-			["SLF4J API 1.7.36", "MIT"],
+			["Bouncy Castle 1.87", "MIT"],
+			["SLF4J API 2.0.20", "MIT"],
 			["Mbed TLS 3.6.7", "Apache-2.0"],
 			["libxml2", "MIT"],
 		]

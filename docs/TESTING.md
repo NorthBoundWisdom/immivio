@@ -125,7 +125,7 @@ This probe uses explicit offscreen draws to keep running when its host window is
 
 Host-environment tests verify SDK selection, actual downloads through a local HTTP fixture, checksum failures, failed responses and archive extraction boundaries. No external network or account is needed for these checks.
 
-Use [ACCEPTANCE.md](ACCEPTANCE.md) for recorded local checks and the remaining device verification sequence, and [FRAME_CONTRACT.md](FRAME_CONTRACT.md) when adapting device reports. Historical results do not certify later source changes.
+Use [current device acceptance](ACCEPTANCE.md#current-device-acceptance) for the physical verification sequence, the [dated evidence archive](history/ACCEPTANCE-2026-11-13.md) for earlier local results, and [FRAME_CONTRACT.md](FRAME_CONTRACT.md) when adapting device reports. Historical results do not certify later source changes.
 
 ## Test responsibilities
 

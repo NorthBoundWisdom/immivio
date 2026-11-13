@@ -141,7 +141,7 @@ Open an issue in [Issues](https://github.com/NorthBoundWisdom/immivio/issues) wi
 ## Development
 
 - [Build from source](docs/BUILD.md): environment, build commands, PICO store packaging and signing
-- [Architecture](docs/ARCHITECTURE.md) · [Testing](docs/TESTING.md) · [Acceptance](docs/ACCEPTANCE.md) · [Upstream ports](docs/SELECTED_UPSTREAM_PORTS.md)
+- [Architecture](docs/ARCHITECTURE.md) · [Testing](docs/TESTING.md) · [Device acceptance](docs/ACCEPTANCE.md#current-device-acceptance) · [Upstream ports](docs/SELECTED_UPSTREAM_PORTS.md)
 - [Contributing](CONTRIBUTING.md)
 
 ## Origin and license

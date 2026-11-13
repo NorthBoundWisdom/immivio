@@ -66,4 +66,4 @@ Each module under `native/` owns its CMake target and keeps implementation files
 
 ## Refactoring status
 
-The native renderer has separate GL state, slot, frozen-frame and JNI modules; it only captures RGBA source color and opaque R8 masks. It preserves borrowed producer ownership and seven slots pending device measurement. Runtime/cross-platform/package acceptance is deferred by the owner; see [ACCEPTANCE.md](ACCEPTANCE.md).
+The native renderer has separate GL state, slot, frozen-frame and JNI modules; it only captures RGBA source color and opaque R8 masks. It preserves borrowed producer ownership and seven slots pending device measurement. Package integrity follows the checks in [BUILD.md](BUILD.md#outputs-signing-and-ci); physical runtime/cross-headset verification is maintained in [ACCEPTANCE.md](ACCEPTANCE.md#current-device-acceptance).

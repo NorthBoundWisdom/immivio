@@ -1,8 +1,11 @@
 # Cleanup investigation (2026-11-12)
 
-This records the B1–B4 investigation requested by TODO.md. Evidence below refers
-to `ad9f142`, before the follow-up removals, so the references remain reviewable
-with `git show ad9f142:<path>`. Follow-up decisions are separate commits.
+This records the historical B1–B4 cleanup investigation. Initial evidence
+refers to `ad9f142`, before the follow-up removals, and remains reviewable with
+`git show ad9f142:<path>`. Later sections record their own follow-up scope.
+These investigations and their implementation follow-ups are complete; current
+behavior is described in [ARCHITECTURE.md](ARCHITECTURE.md), and physical checks
+are maintained in [ACCEPTANCE.md](ACCEPTANCE.md#current-device-acceptance).
 No headset behavior was verified by this investigation.
 
 ## B1: debug fixture inventory
@@ -72,7 +75,7 @@ sets playback/decoder/state (`:2021–2070`), and `_on_error` sets failure (`:20
 Follow-up: merge the retained state into `mpv_media_state.gd`, delete the base and
 its UID, keep frame-contract assertions intact, and rerun the full Godot suite.
 
-## B4: profile (owner decided: fix dimensions after release)
+## B4: profile (historical investigation; implemented)
 
 `session.dims` comes from the profile string (`MpvVideoBridge.kt:115`) and is
 passed to renderer creation and completed frame contracts (`:869–870`, `:976–977`).
@@ -90,9 +93,11 @@ no ordinary UI profile control; Debug open/profile commands can change it
 The per-file value is redundant for ordinary restoration. Removing it requires a
 versioned migration so existing geometry/stereo preferences are not rejected.
 The owner chose fixed dimensions and removal of the saved field on 2026-11-13.
-Implement the constant and versioned migration after the next release, preserving
-existing geometry/stereo/subtitle preferences. Keep current constants, storage,
-validation and Debug commands unchanged until that stage.
+That decision was implemented in `28f656d`: the opaque mask is fixed at 320×320,
+schema 3 migrates schema-1/2 records without requiring `profile`, and the runtime
+and Debug profile parameters are removed. Geometry, stereo, subtitle, track,
+encoding and timing preferences are retained. The description above records
+the investigative baseline, rather than the current implementation.
 
 ## Review follow-up evidence
 
@@ -211,8 +216,9 @@ setup-android 4.0.4 already point at the latest release commits. All 16 external
 action references match the upstream release SHAs and accept their configured
 inputs; `actionlint` passed. The existing archive upload behavior remains the
 default, and download-artifact's default digest-mismatch failure is retained.
-Hosted workflow execution and headset/server acceptance remain pending in
-[ACCEPTANCE.md](ACCEPTANCE.md#dependency-refresh--2026-11-13-pending).
+Hosted workflow execution follows the normal [publishing procedure](BUILD.md#outputs-signing-and-ci).
+Physical headset/server verification is maintained in
+[ACCEPTANCE.md](ACCEPTANCE.md#current-device-acceptance).
 
 Local validation passed: 124 workflow tests, 4 website tests, 17 release
 preparation tests, 195 JVM tests (10 additional tests skipped) and 102 Godot
