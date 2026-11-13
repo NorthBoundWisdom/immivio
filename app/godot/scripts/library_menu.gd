@@ -234,7 +234,7 @@ const KEY_BASE := 300
 var catalog: RefCounted  # recent files
 var platform: Object  # QuestPlayer singleton or a test double
 var local_thumbnails := preload("res://scripts/local_thumbnail_controller.gd").new()
-var settings_provider: Callable  # -> {"profile", "profiles", "output_width", "version"}
+var settings_provider: Callable  # -> current application/display settings
 
 var section := Section.RECENT
 var tab := 0

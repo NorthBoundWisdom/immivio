@@ -478,7 +478,6 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         uri: String,
         startMs: Int,
         stereo: Boolean,
-        profile: String,
         vulkan: Boolean,
         topBottom: Boolean,
         exactSeek: Boolean,
@@ -490,7 +489,6 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
                 uri,
                 startMs,
                 stereo,
-                profile,
                 vulkan,
                 topBottom = topBottom,
                 exactSeek = exactSeek,
@@ -501,7 +499,6 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     fun revise_mpv_video(
         id: Int,
         stereo: Boolean,
-        profile: String,
         positionMs: Int,
         topBottom: Boolean,
         exactSeek: Boolean,
@@ -511,7 +508,6 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
             mpv.revise(
                 id,
                 stereo,
-                profile,
                 positionMs,
                 topBottom,
                 exactSeek,

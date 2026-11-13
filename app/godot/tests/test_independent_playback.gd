@@ -14,15 +14,9 @@ class Host:
 	var serial := 20
 
 	func open_mpv_video(
-		uri: String,
-		start: int,
-		stereo: bool,
-		profile: String,
-		vulkan: bool,
-		tb: bool = false,
-		exact: bool = false
+		uri: String, start: int, stereo: bool, vulkan: bool, tb: bool = false, exact: bool = false
 	) -> int:
-		super.open_mpv_video(uri, start, stereo, profile, vulkan, tb, exact)
+		super.open_mpv_video(uri, start, stereo, vulkan, tb, exact)
 		serial += 1
 		return serial
 
@@ -37,12 +31,7 @@ class Host:
 		return super.set_mpv_subtitle(id, track)
 
 	func revise_mpv_video(
-		_id: int,
-		_stereo: bool,
-		_profile: String,
-		_position: int,
-		_tb: bool = false,
-		_exact: bool = false
+		_id: int, _stereo: bool, _position: int, _tb: bool = false, _exact: bool = false
 	) -> int:
 		serial += 1
 		return serial

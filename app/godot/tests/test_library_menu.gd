@@ -301,14 +301,7 @@ func _run() -> void:
 	var platform := FakePlatform.new()
 	var menu := Menu.new()
 	menu.catalog = Catalog.new()
-	menu.settings_provider = func():
-		return {
-			"profile": "320x320",
-			"profiles": ["320x320", "512x512"],
-			"output_width": 0,
-			"rvm_model": "fast",
-			"version": "t"
-		}
+	menu.settings_provider = func(): return {"output_width": 0, "rvm_model": "fast", "version": "t"}
 	menu.chosen.connect(func(uri: String, title: String): chosen.append([uri, title]))
 	menu.setting_changed.connect(
 		func(key: String, value: Variant): settings_events.append([key, value])

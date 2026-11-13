@@ -23,7 +23,6 @@ class Host:
 		uri: String,
 		start: int,
 		_stereo: bool,
-		_profile: String,
 		_vulkan: bool,
 		_top_bottom: bool = false,
 		_exact: bool = false

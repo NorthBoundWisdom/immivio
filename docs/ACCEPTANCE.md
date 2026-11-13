@@ -14,6 +14,20 @@
   the updated full-SHA Actions pins. Exercise artifact upload/download and the
   existing release-receipt checks during the next authorized release.
 
+## Fixed opaque mask and saved modes — 2026-11-13 (pending)
+
+- Upgrade an existing installation with schema-1/2 per-file modes. Verify saved
+  projection, SBS/TB/half packing, eye order/alignment, immersive adjustments,
+  fisheye FOV, primary/secondary subtitles, caption placement/encoding, track
+  choices and audio/subtitle delays survive reopening and restarting. The new
+  schema-3 bank must omit `profile`, including when the legacy record lacked it
+  or contained an obsolete value.
+- On Quest, PICO and generic OpenXR, verify normal and packed-alpha playback,
+  pause/seek, stereo revisions, suspend/resume and context recovery with the
+  fixed 320×320 opaque mask. Pair evidence should retain the source/color
+  dimensions selected by the existing output-width setting; no decoder or
+  video-size change is intended.
+
 ## Cached night sky follow-up — 2026-11-10
 
 The owner reported drops to about 60 FPS while looking around after the stationary home result below. The final night renderer now generates the static star field and Milky Way once at 8192×4096 in linear HDR, stores RGB9E5 mipmaps, and keeps only the hill silhouette analytic. Rotation and brightness reuse the texture; leaving the scene releases it. The cache occupies 178,956,972 bytes (about 171 MiB) including mipmaps, trading additional memory and startup work for lower steady rendering cost.

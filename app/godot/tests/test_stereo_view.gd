@@ -24,7 +24,7 @@ func _run() -> void:
 		"res://../../build/tests/godot/stereo-view/memory-" + str(Time.get_ticks_usec())
 	)
 	var memory := Memory.new(path)
-	var base := {"geometry": 0, "stereo_sbs": true, "swap_eyes": false, "profile": "320x320"}
+	var base := {"geometry": 0, "stereo_sbs": true, "swap_eyes": false}
 	check(Memory.valid_mode(base), "Old saved modes without new fields remain readable")
 	for bad in [
 		{"viewing_eye": 3},

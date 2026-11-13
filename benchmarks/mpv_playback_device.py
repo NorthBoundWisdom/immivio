@@ -276,7 +276,6 @@ def measure(args):
             benchmark=True,
             enabled=False,
             stereo=args.stereo,
-            profile="320x320",
             projection=args.projection,
             position_ms=args.start_ms,
         )

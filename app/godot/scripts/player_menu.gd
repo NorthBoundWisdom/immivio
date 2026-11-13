@@ -1716,8 +1716,6 @@ func _caption_text(operation: String) -> String:
 			return "R / L" if _state.get("swap_eyes", false) else "L / R"
 		"projection":
 			return str(_state.get("projection", "Flat"))
-		"quality":
-			return str(_state.get("profile", "320x320"))
 		"recenter":
 			return "Recenter"
 		"audio":

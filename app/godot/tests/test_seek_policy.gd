@@ -29,20 +29,12 @@ class Host:
 		return true
 
 	func open_mpv_video(
-		uri: String,
-		start: int,
-		_stereo: bool,
-		_profile: String,
-		_vulkan: bool,
-		_tb: bool,
-		exact: bool
+		uri: String, start: int, _stereo: bool, _vulkan: bool, _tb: bool, exact: bool
 	) -> int:
 		opens.append([uri, start, exact])
 		return 7
 
-	func revise_mpv_video(
-		id: int, _stereo: bool, _profile: String, target: int, _tb: bool, exact: bool
-	) -> int:
+	func revise_mpv_video(id: int, _stereo: bool, target: int, _tb: bool, exact: bool) -> int:
 		revisions.append([id, target, exact])
 		return 0  # Keep the request queued to exercise busy retries.
 

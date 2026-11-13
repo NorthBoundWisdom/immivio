@@ -57,7 +57,6 @@ func _initialize() -> void:
 		. remember(
 			old,
 			{
-				"profile": "320x320",
 				"geometry": 1,
 				"stereo_sbs": true,
 				"swap_eyes": false,

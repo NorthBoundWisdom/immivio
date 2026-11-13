@@ -133,7 +133,6 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                                 "hold_pixels",
                                                 "observe",
                                                 "stereo",
-                                                "profile",
                                                 "close",
                                                 "pixels",
                                                 "subtitle",
@@ -177,10 +176,6 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                                 intent
                                                     .getIntExtra("hold_seek_ms", 0)
                                                     .coerceIn(0, 30000),
-                                            )
-                                            .put(
-                                                "profile",
-                                                intent.getStringExtra("profile") ?: "384x216",
                                             )
                                             .put("loop", intent.getBooleanExtra("loop", false))
                                             .put("stereo", intent.getBooleanExtra("stereo", true))

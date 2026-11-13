@@ -29,12 +29,11 @@ class Host:
 		uri: String,
 		start: int,
 		stereo: bool,
-		profile: String,
 		vulkan: bool,
 		_top_bottom: bool = false,
 		_exact: bool = false
 	) -> int:
-		calls.append([uri, start, stereo, profile, vulkan])
+		calls.append([uri, start, stereo, vulkan])
 		return next_id
 
 	func set_mpv_playing(_id: int, _playing: bool) -> void:
@@ -44,12 +43,7 @@ class Host:
 		pass
 
 	func revise_mpv_video(
-		_id: int,
-		_stereo: bool,
-		_profile: String,
-		_position: int,
-		_top_bottom: bool = false,
-		_exact: bool = false
+		_id: int, _stereo: bool, _position: int, _top_bottom: bool = false, _exact: bool = false
 	) -> int:
 		return 0
 
@@ -80,7 +74,6 @@ func check_retired_mode_migration() -> void:
 		"geometry": 2,
 		"stereo_sbs": true,
 		"swap_eyes": false,
-		"profile": "320x320",
 		"subtitle_delay_ms": 250.0,
 		"audio_delay_ms": -100.0,
 		"view_zoom": .2
@@ -88,6 +81,7 @@ func check_retired_mode_migration() -> void:
 	var legacy := clean.duplicate(true)
 	legacy.merge(
 		{
+			"profile": "320x320",
 			"alpha_requested": true,
 			"depth_requested": true,
 			"auto_depth": true,
@@ -138,6 +132,133 @@ func check_retired_mode_migration() -> void:
 	)
 
 
+func check_profile_migration() -> void:
+	var expected := {
+		"layout_auto": false,
+		"geometry": 2,
+		"stereo_sbs": true,
+		"swap_eyes": true,
+		"top_bottom": true,
+		"stereo_half": true,
+		"fisheye_fov": 200,
+		"viewing_eye": 2,
+		"stereo_horizontal": 1.25,
+		"stereo_vertical": -0.5,
+		"view_horizontal": 0.1,
+		"view_vertical": -0.1,
+		"view_zoom": 0.2,
+		"subtitle_below_screen": true,
+		"subtitle_delay_ms": 275,
+		"audio_delay_ms": -150,
+		"external_subtitle_uri": "content://captions/document/字幕.srt",
+		"subtitle_encodings": {"file:///captions.srt".sha256_text(): "Big5"},
+		"track_choices":
+		{
+			"audio": {"id": 2, "language": "ja", "codec": "aac"},
+			"subtitle": {"id": 3, "language": "zh", "title": "中文字幕"},
+			"secondary_subtitle": {"id": 4, "language": "en", "codec": "subrip"}
+		}
+	}
+	# JSON numbers reload as floats, including nested track IDs. Compare stored values.
+	var expected_stored: Dictionary = JSON.parse_string(JSON.stringify(expected))
+	check(Memory.valid_mode(expected), "Current modes need no profile field")
+	for version in [1, 2]:
+		var path := test_path.path_join("profile-migration-v%d" % version)
+		DirAccess.make_dir_recursive_absolute(path)
+		var entries := {}
+		var uris: Array[String] = []
+		var profiles: Array = [null, "512x288", "retired-shape", null, {"obsolete": true}]
+		for index in profiles.size():
+			var uri := "file:///migration/v%d/movie-%d.mp4" % [version, index]
+			uris.append(uri)
+			var legacy := expected.duplicate(true)
+			if index > 0:
+				legacy["profile"] = profiles[index]
+			entries[Memory.key_for(uri)] = {"mode": legacy, "updated": index + 3}
+		var invalid := expected.duplicate(true)
+		invalid.geometry = 9
+		entries[Memory.key_for("file:///invalid.mp4")] = {"mode": invalid, "updated": 7}
+		var encoded := JSON.stringify({"sequence": 7, "entries": entries})
+		var original := JSON.stringify(
+			{
+				"schema_version": version,
+				"sequence": 7,
+				"payload_json": encoded,
+				"payload_sha256": encoded.sha256_text()
+			}
+		)
+		var bank0 := path.path_join("file_modes_0.json")
+		var bank1 := path.path_join("file_modes_1.json")
+		write(bank0, original)
+		var memory := Memory.new(path)
+		memory.load_saved()
+		check(
+			memory.entries.size() == uris.size() and memory.dirty and memory.sequence == 7,
+			"V%d migration retains missing/retired profiles and rejects invalid geometry" % version
+		)
+		for uri in uris:
+			check(
+				JSON.parse_string(JSON.stringify(memory.lookup(uri))) == expected_stored,
+				(
+					"V%d migration preserves geometry, stereo, captions, tracks and timing: %s"
+					% [version, uri]
+				)
+			)
+		var interrupted := Interrupted.new(path)
+		interrupted.load_saved()
+		check(
+			not interrupted.save() and interrupted.dirty and interrupted.sequence == 7,
+			"Interrupted v%d migration remains retryable" % version
+		)
+		var retry := Memory.new(path)
+		retry.load_saved()
+		var saved_ok := retry.save()
+		check(
+			(
+				JSON.parse_string(JSON.stringify(retry.lookup(uris[0]))) == expected_stored
+				and saved_ok
+				and retry.sequence == 8
+			),
+			"V%d migration retries from the intact legacy bank" % version
+		)
+		check(
+			FileAccess.get_file_as_string(bank0) == original,
+			"V%d migration preserves the previous checksummed generation" % version
+		)
+		if not saved_ok:
+			continue
+		var saved: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(bank1))
+		check(saved.schema_version == 3, "V%d migration writes schema 3" % version)
+		var payload: Dictionary = JSON.parse_string(saved.payload_json)
+		check(
+			payload.entries.values().all(func(entry): return entry.mode == expected_stored),
+			"V%d migration never writes a retired profile back" % version
+		)
+		var reloaded := Memory.new(path)
+		reloaded.load_saved()
+		var committed := FileAccess.get_file_as_string(bank1)
+		check(
+			(
+				not reloaded.dirty
+				and reloaded.sequence == 8
+				and reloaded.save()
+				and FileAccess.get_file_as_string(bank1) == committed
+			),
+			"V%d migration is idempotent after reload" % version
+		)
+		write(bank1, "{interrupted")
+		var fallback := Memory.new(path)
+		fallback.load_saved()
+		check(
+			(
+				JSON.parse_string(JSON.stringify(fallback.lookup(uris[0]))) == expected_stored
+				and fallback.sequence == 7
+				and fallback.dirty
+			),
+			"Corrupt v3 bank falls back to v%d without losing preferences" % version
+		)
+
+
 func _initialize() -> void:
 	if not preload("res://tests/support/test_result.gd").prepare(self):
 		return
@@ -150,8 +271,9 @@ func _run() -> void:
 	)
 	DirAccess.make_dir_recursive_absolute(test_path)
 	check_retired_mode_migration()
+	check_profile_migration()
 	var uri := "content://local.documents/document/字幕%20VideoA"
-	var mode := {"geometry": 1, "stereo_sbs": true, "swap_eyes": true, "profile": "512x288"}
+	var mode := {"geometry": 1, "stereo_sbs": true, "swap_eyes": true}
 	var memory := Memory.new(test_path)
 	memory.load_saved()
 	check(
@@ -185,13 +307,7 @@ func _run() -> void:
 		not memory.remember(uri, {}) and not memory.remember("http://127.0.0.1:4242/t/v.mp4", mode),
 		"Invalid modes/proxy source cannot enter memory"
 	)
-	for mutation in [
-		{"geometry": 4},
-		{"geometry": 0.5},
-		{"geometry": NAN},
-		{"stereo_sbs": "true"},
-		{"profile": "wrong"}
-	]:
+	for mutation in [{"geometry": 4}, {"geometry": 0.5}, {"geometry": NAN}, {"stereo_sbs": "true"}]:
 		var invalid := mode.duplicate(true)
 		invalid.merge(mutation, true)
 		check(not memory.remember(uri, invalid), "Reject invalid saved mode " + str(mutation))
@@ -293,12 +409,12 @@ func _run() -> void:
 	# Projection, stereo and eye order are restored; Alpha always starts off (player controls switch it on).
 	check(
 		(
-			host.calls.back() == [uri, 0, true, Video.AUTOMATIC_PROFILE, true]
+			host.calls.back() == [uri, 0, true, true]
 			and video.geometry == 2
 			and video.swap_eyes
 			and not video.alpha_wanted()
 		),
-		"Projection and eye order restore while legacy model resolution is replaced automatically"
+		"Projection and eye order restore without a buffer-size argument"
 	)
 	check(
 		not video.alpha_enabled and not video.panel.visible,
@@ -335,7 +451,7 @@ func _run() -> void:
 	check(
 		(
 			video.open_local(uri, "Calibration", 1234, false)
-			and host.calls.back()[4]
+			and host.calls.back()[3]
 			and video.geometry == 0
 		),
 		"Explicit diagnostic open bypasses per-file settings"
@@ -425,7 +541,7 @@ func _run() -> void:
 	check(
 		(
 			video.open_local("file:///v/clip_alpha.mp4", "clip_alpha.mp4")
-			and host.calls.back().size() == 5
+			and host.calls.back().size() == 4
 			and not video.packed_file
 		),
 		"An old live-matting filename cannot request inference"
@@ -434,7 +550,7 @@ func _run() -> void:
 	check(
 		(
 			video.open_local(packed_uri, "clip_LR_180_FISHEYE_F180_alpha.mp4")
-			and host.calls.back().size() == 5
+			and host.calls.back().size() == 4
 			and video.packed_file
 			and video.alpha_wanted()
 			and video.geometry == 2
@@ -447,9 +563,7 @@ func _run() -> void:
 		video.set_alpha(false) and not video.alpha_wanted() and host.calls.size() == opens,
 		"Alpha switch toggles the packed mask in place"
 	)
-	video.mode_memory.remember(
-		packed_uri, {"geometry": 0, "stereo_sbs": false, "swap_eyes": false, "profile": "320x320"}
-	)
+	video.mode_memory.remember(packed_uri, {"geometry": 0, "stereo_sbs": false, "swap_eyes": false})
 	check(
 		(
 			video.open_local(packed_uri, "clip_LR_180_FISHEYE_F180_alpha.mp4")
@@ -481,7 +595,7 @@ func _run() -> void:
 		"state": "passed" if failures.is_empty() else "failed",
 		"checks": checks,
 		"scope":
-		"Actual Windows files and Godot player with mocked MPV; Android storage/power loss/URI permission not exercised",
+		"Actual host files and Godot player with mocked MPV; Android storage/power loss/URI permission not exercised",
 		"failures": failures
 	}
 	write(test_path.path_join("verification.json"), JSON.stringify(report, "\t"))

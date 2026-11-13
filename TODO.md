@@ -14,16 +14,7 @@
 - [ ] **CHANGELOG**。发布时决定是否单列安装包变小、移除无用依赖等变化。
 - [ ] **发布**。所有者完成头显验收、目标构建和 CI 确认后执行；此前不改版本号、不打 tag、不发布。
 
-## 2. 发布后调整
-
-### B4：`profile` 参数常量化与保存记录迁移
-
-- [ ] 固定遮罩缓冲尺寸为 `320x320` 常量；不改变视频解码或颜色输出尺寸。
-- [ ] 删除 `PROFILES` 列表、按文件保存的 `profile` 字段及调试接收器的 profile 参数。
-- [ ] 为 `file_mode_memory.gd` 做版本化迁移，保留既有几何、立体、字幕和时序偏好，不能因缺字段而丢弃旧记录。
-- [ ] 下一次发布之后单独提交并验证；发布前不修改运行路径和保存格式。
-
-## 3. 架构整理
+## 2. 架构整理
 
 S1 → S2 → S3 排在下一次发布之后，避免在发布验收前再次改动输入和资料库调用路径。S4、S5 在这三项之后推进；每步单独提交。
 
@@ -60,20 +51,20 @@ S1 → S2 → S3 排在下一次发布之后，避免在发布验收前再次改
 - `player_menu.gd`：字幕、音轨、画面调整三组弹层已有 `playback_popups.gd`，把仍留在主文件里的绘制函数迁过去。
 - 每次拆分只移动代码，不改行为；以 Godot 测试数量和结果不变为准。
 
-## 4. 依赖升级后验收
+## 3. 依赖升级后验收
 
 依赖升级一次只动一个，锁文件和校验元数据一律由 Gradle 生成；升级后检查 `verification-metadata.xml` 的 diff，确认没有意外的传递依赖。
 
 - [ ] **头显验收**：验证 OpenXR loader 1.1.65 的启动、会话恢复、输入与播放；验证 bcprov 1.87 / SLF4J 2.0.20 下的 SMB 登录、浏览、随机读取、签名及加密。详细范围见 `docs/ACCEPTANCE.md`。
 - [ ] **GitHub Actions**：推送后观察升级后的固定 commit，确认 macOS Android 构建、Source checks 及网站发布流程成功。
 
-## 5. 文档
+## 4. 文档
 
 - [ ] **`docs/ACCEPTANCE.md`**：顶部只放“当前待验收”，历史记录按日期归档到文件后半部分或单独文件。
 - [ ] **`docs/ARCHITECTURE.md`**：补充 coordinator 的公开名字（`input_coordinator`、`playback_coordinator`、`settings_controller`、`presentation_coordinator`）和 `library_menu`；S1、S2 完成后再更新一次。
 - [ ] **`README.md`**：发布前复查，确认没有再提到已删除的重构计划和 PowerShell 脚本。
 
-## 6. 命名整理
+## 5. 命名整理
 
 以下三项排在 S1 → S2 → S3 之后，一个提交改一个名字。应用 ID、Kotlin/Java 包名、Godot 插件目录、插件类和单例名保持不变。
 

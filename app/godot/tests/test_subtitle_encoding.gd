@@ -45,11 +45,7 @@ func _initialize() -> void:
 	video.free()
 	var store := Memory.new("user://encoding-test")
 	var mode := {
-		"profile": "320x320",
-		"geometry": 0,
-		"stereo_sbs": false,
-		"swap_eyes": false,
-		"subtitle_encodings": {key: "Big5"}
+		"geometry": 0, "stereo_sbs": false, "swap_eyes": false, "subtitle_encodings": {key: "Big5"}
 	}
 	assert(store.remember("file:///movie.mp4", mode))
 	assert(store.save())

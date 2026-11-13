@@ -19,12 +19,7 @@ class Host:
 		pass
 
 	func revise_mpv_video(
-		_id: int,
-		_stereo: bool,
-		_profile: String,
-		_position: int,
-		_top_bottom: bool = false,
-		_exact: bool = false
+		_id: int, _stereo: bool, _position: int, _top_bottom: bool = false, _exact: bool = false
 	) -> int:
 		return 0
 

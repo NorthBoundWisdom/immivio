@@ -29,12 +29,11 @@ class Host:
 		uri: String,
 		start: int,
 		stereo: bool,
-		profile: String,
 		_vulkan: bool,
 		_top_bottom: bool = false,
 		_exact: bool = false
 	) -> int:
-		calls.append(["open", uri, start, stereo, profile])
+		calls.append(["open", uri, start, stereo])
 		return 7
 
 	func close_mpv_video(id: int) -> void:
@@ -44,14 +43,9 @@ class Host:
 		calls.append(["play", id, playing])
 
 	func revise_mpv_video(
-		id: int,
-		stereo: bool,
-		profile: String,
-		position: int,
-		_top_bottom: bool = false,
-		_exact: bool = false
+		id: int, stereo: bool, position: int, _top_bottom: bool = false, _exact: bool = false
 	) -> int:
-		calls.append(["revise", id, stereo, profile, position])
+		calls.append(["revise", id, stereo, position])
 		return 0  # Busy native revision stays queued, just as production.
 
 	func set_mpv_audio(id: int, track: int, volume: float, muted: bool) -> bool:

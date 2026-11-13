@@ -1100,14 +1100,13 @@ func update_status() -> void:
 	)
 	if video:
 		status_label.text += (
-			"\n%s | %s | %s | %s\n%s | Buffer %s"
+			"\n%s | %s | %s | %s\n%s"
 			% [
 				video.display_name.left(42),
 				video.media.state,
 				"SBS" if video.stereo_sbs else "2D",
 				video.layout_snapshot().geometry,
-				"Alpha on" if video.alpha_enabled else "Normal playback",
-				video.profile
+				"Alpha on" if video.alpha_enabled else "Normal playback"
 			]
 		)
 		status_label.text += (

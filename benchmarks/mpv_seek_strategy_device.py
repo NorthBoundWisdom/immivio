@@ -140,7 +140,6 @@ def main():
             **source,
             enabled=False,
             stereo=True,
-            profile="320x320",
             seek_mode="speed",
         )
         device.wait(

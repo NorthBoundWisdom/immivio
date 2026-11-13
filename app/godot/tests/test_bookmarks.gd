@@ -26,7 +26,7 @@ class Host:
 		pass
 
 	func revise_mpv_video(
-		id: int, _stereo: bool, _profile: String, time: int, _top_bottom: bool, _exact: bool = false
+		id: int, _stereo: bool, time: int, _top_bottom: bool, _exact: bool = false
 	) -> int:
 		targets.append([id, time])
 		return 0

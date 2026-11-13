@@ -35,7 +35,6 @@ func _run() -> void:
 	assert(browser.selection.uri == selected and browser.selection.start_ms == -1)
 	var memory := preload("res://scripts/file_mode_memory.gd").new()
 	var mode := {
-		"profile": "320x320",
 		"geometry": 0,
 		"stereo_sbs": false,
 		"swap_eyes": false,

@@ -2,12 +2,13 @@ extends RefCounted
 
 # Two checksummed generations keep the previous valid configuration available
 # while the older bank is replaced. One writer, owned by the video controller.
-const VERSION := 2
-const RETIRED_FIELDS := ["alpha_requested", "depth_requested", "auto_depth", "depth_strength"]
+const VERSION := 3
+const RETIRED_FIELDS := [
+	"alpha_requested", "depth_requested", "auto_depth", "depth_strength", "profile"
+]
 const LIMIT := 128
 const MAX_BYTES := 262144
 const StereoView := preload("res://scripts/stereo_view.gd")
-const PROFILES := ["320x320", "384x216", "512x288", "384x384", "512x512", "256x144", "256x256"]
 var directory := "user://settings"
 var entries: Dictionary = {}
 var sequence := 0
@@ -48,7 +49,7 @@ static func clean_mode(value: Dictionary) -> Dictionary:
 
 
 static func valid_mode(value: Variant) -> bool:
-	if not value is Dictionary or not value.get("profile") in PROFILES:
+	if not value is Dictionary:
 		return false
 	if value.has("layout_auto") and not value.layout_auto is bool:
 		return false
@@ -131,7 +132,7 @@ func _read_bank(path: String) -> Dictionary:
 		and float(version) > VERSION
 	):
 		return {"unsupported_schema": true}
-	if version != 1 and version != VERSION:
+	if version != 1 and version != 2 and version != VERSION:
 		return {}
 	var serial: Variant = envelope.get("sequence")
 	if (

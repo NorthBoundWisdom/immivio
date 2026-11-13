@@ -30,7 +30,7 @@ class BridgeProbe:
 		return true
 
 	func revise_mpv_video(
-		id: int, _stereo: bool, _profile: String, target: int, _tb: bool, _exact: bool = false
+		id: int, _stereo: bool, target: int, _tb: bool, _exact: bool = false
 	) -> int:
 		revisions.append([id, target])
 		return -1 if busy else id + 1

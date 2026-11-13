@@ -51,8 +51,6 @@ func _run() -> void:
 	menu.catalog = Catalog.new()
 	menu.settings_provider = func():
 		return {
-			"profile": "320x320",
-			"profiles": ["320x320", "384x216", "512x512"],
 			"output_width": -1,
 			"version": ProjectSettings.get_setting("application/config/version"),
 			"display_quality_pending": true,

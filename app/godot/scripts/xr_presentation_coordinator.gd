@@ -767,7 +767,6 @@ func _menu_state() -> Dictionary:
 		"fisheye_fov": host.video.fisheye_fov,
 		"projection": ["Flat", "VR180", "Fisheye", "360"][host.video.geometry],
 		"geometry": host.video.geometry,
-		"profile": host.video.profile,
 		"mode_lock": host.video.mode_lock,
 		"audio_available": details.get("audio_tracks", []).size() > 0,
 		"audio_options": audio_options,

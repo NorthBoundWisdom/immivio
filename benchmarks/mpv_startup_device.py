@@ -229,7 +229,6 @@ def main():
                     **source,
                     enabled=False,
                     stereo=True,
-                    profile="320x320",
                     position_ms=start,
                     seek_mode=mode,
                 )

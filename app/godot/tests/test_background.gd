@@ -150,10 +150,7 @@ func _run() -> void:
 	main.settings_path = folder.path_join("settings.cfg")
 	viewport.add_child(main)
 	check(
-		(
-			not main.settings.has_section("alpha")
-			and main.video.profile == main.video.AUTOMATIC_PROFILE
-		),
+		not main.settings.has_section("alpha") and main.video.media.state == "closed",
 		"Legacy model choice is removed while ordinary playback remains configured"
 	)
 	check(

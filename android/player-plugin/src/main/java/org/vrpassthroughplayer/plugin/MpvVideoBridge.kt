@@ -56,7 +56,6 @@ internal class MpvVideoBridge(
         val scope: MediaSessionGate.Scope,
         val host: PlaybackHost,
         private val requestedStereo: Boolean,
-        val profile: String,
         val vulkan: Boolean,
         private val requestedTopBottom: Boolean = false,
     ) {
@@ -91,7 +90,6 @@ internal class MpvVideoBridge(
         var lastPostDrawFrame = -1L
         var lastPostDrawEpoch = -1L
         var drawnToken = 0L
-        val dims = profile.split('x').map { it.toInt() }
     }
 
     fun supported() = !stopped && MpvSourceNative.supported()
@@ -116,7 +114,6 @@ internal class MpvVideoBridge(
         uri: String,
         startMs: Int,
         stereo: Boolean,
-        profile: String,
         vulkan: Boolean,
         hardware: Boolean = true,
         audio: Boolean = true,
@@ -127,7 +124,6 @@ internal class MpvVideoBridge(
             !supported() ||
                 sessions.size >= 2 ||
                 startMs < 0 ||
-                profile !in BUFFER_SHAPES ||
                 Uri.parse(uri).scheme !in
                     setOf(
                         "content",
@@ -148,7 +144,6 @@ internal class MpvVideoBridge(
                 gate.current(id) ?: return -1,
                 host,
                 stereo,
-                profile,
                 vulkan,
                 stereo && topBottom,
             )
@@ -295,13 +290,12 @@ internal class MpvVideoBridge(
     fun revise(
         id: Int,
         stereo: Boolean,
-        profile: String,
         positionMs: Int = -1,
         topBottom: Boolean = false,
         exactSeek: Boolean = false,
     ): Int {
         val old = sessions[id] ?: return -1
-        if (!active(old) || sessions.size >= 2 || profile !in BUFFER_SHAPES) return -1
+        if (!active(old) || sessions.size >= 2) return -1
         val host = old.host
         if (
             positionMs >= 0 &&
@@ -320,7 +314,6 @@ internal class MpvVideoBridge(
                 gate.current(next) ?: return -1,
                 host,
                 stereo,
-                profile,
                 old.vulkan,
                 stereo && topBottom,
             )
@@ -834,8 +827,8 @@ internal class MpvVideoBridge(
                     RenderBridgeNative.create(
                         width,
                         height,
-                        session.dims[0],
-                        session.dims[1],
+                        OPAQUE_MASK_WIDTH,
+                        OPAQUE_MASK_HEIGHT,
                         session.stereo,
                         session.topBottom,
                     )
@@ -934,8 +927,8 @@ internal class MpvVideoBridge(
                     upload.pair,
                     upload.pair.getInt("color_texture_id"),
                     RenderBridgeNative.alphaTexture(session.output.renderer, token),
-                    session.dims[0],
-                    session.dims[1],
+                    OPAQUE_MASK_WIDTH,
+                    OPAQUE_MASK_HEIGHT,
                 )
             val obsolete = session.display.offer(identity(pair))
             if (obsolete == token) {
@@ -1372,8 +1365,8 @@ internal class MpvVideoBridge(
     }
 
     companion object {
-        private val BUFFER_SHAPES =
-            setOf("320x320", "384x216", "512x288", "384x384", "512x512", "256x144", "256x256")
+        private const val OPAQUE_MASK_WIDTH = 320
+        private const val OPAQUE_MASK_HEIGHT = 320
     }
 
     fun shutdown() {

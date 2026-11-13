@@ -39,8 +39,6 @@ var _stereo_capture_busy := false
 var _stereo_thread: Thread
 var _stereo_pin: Dictionary = {}
 var _stereo_capture_binding: RefCounted
-const AUTOMATIC_PROFILE := "320x320"
-const PROFILES := ["320x320", "384x216", "512x288", "384x384", "512x512", "256x144", "256x256"]
 
 var media := State.new()
 var control := PlaybackControl.new()
@@ -134,7 +132,6 @@ var display_name := ""
 var picker_error := ""
 var playback_error_detail := ""
 var _picker_request := 0
-var profile := AUTOMATIC_PROFILE  # ROI default: one square input for full-eye and zoom windows
 var _binding := Binding.new()
 var _pending_pair: Dictionary = {}
 var _pending_revision: Dictionary = {}
@@ -506,8 +503,6 @@ func open_local(
 	external_subtitle_uri = str(saved_sync.get("external_subtitle_uri", ""))
 	_pending_external_uri = external_subtitle_uri
 	if restore_mode:
-		# Ignore legacy per-file model choices; everyday playback uses one tested ROI profile.
-		profile = AUTOMATIC_PROFILE
 		var saved := mode_memory.lookup(uri)
 		if not saved.is_empty():
 			# The user's own choice for this file wins over its name and shape.
@@ -592,7 +587,6 @@ func open_local(
 		uri,
 		maxi(start_ms, 0),
 		stereo_sbs,
-		profile,
 		true,
 		stereo_sbs and top_bottom,
 		SeekPolicy.normalize(seek_mode) == SeekPolicy.EXACT
@@ -749,7 +743,6 @@ func _request_revision(position_ms: int = -1, mode: String = "") -> void:
 		return
 	_pending_revision = {
 		"stereo": stereo_sbs,
-		"profile": profile,
 		"position_ms": position_ms,
 		"top_bottom": stereo_sbs and top_bottom,
 		"seek_mode": SeekPolicy.normalize(seek_mode if mode.is_empty() else mode)
@@ -867,7 +860,6 @@ func _try_revision() -> void:
 	var id: int = platform.revise_mpv_video(
 		media.session_id,
 		request.stereo,
-		request.profile,
 		request.position_ms,
 		request.top_bottom,
 		request.seek_mode == SeekPolicy.EXACT
@@ -1914,7 +1906,6 @@ func _remember_mode() -> void:
 		"view_horizontal": view_horizontal,
 		"view_vertical": view_vertical,
 		"view_zoom": view_zoom,
-		"profile": profile,
 		"top_bottom": stereo_sbs and top_bottom,
 		"stereo_half": stereo_sbs and stereo_half,
 		"fisheye_fov": fisheye_fov,
@@ -2162,7 +2153,6 @@ func _on_debug_command(id: int, payload: String) -> void:
 		if bool(command.get("auto_stereo", false)):
 			geometry = Geometry.Geometry.FLAT
 			stereo_sbs = false
-		profile = str(command.profile)
 		requested_play = true
 		open_local(str(command.uri), str(command.title), maxi(int(command.position_ms), 0), false)
 		if bool(command.get("auto_stereo", false)):
@@ -2202,9 +2192,6 @@ func _on_debug_command(id: int, payload: String) -> void:
 	elif command.operation == "stereo":
 		if stereo_sbs != bool(command.enabled):
 			toggle_stereo()
-	elif command.operation == "profile":
-		profile = str(command.profile)
-		_request_revision()
 	elif command.operation == "close":
 		close_video()
 	elif command.operation == "pixels":
@@ -2419,7 +2406,6 @@ func layout_snapshot() -> Dictionary:
 		"stereo_half": stereo_sbs and stereo_half,
 		"fisheye_fov": fisheye_fov,
 		"alpha_enabled": alpha_enabled,
-		"profile": profile,
 		"screen_rotation": screen_rotation,
 		"playback_speed": playback_speed,
 		"alpha_ready": alpha_ready(),
