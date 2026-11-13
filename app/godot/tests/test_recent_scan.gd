@@ -84,7 +84,7 @@ func _run() -> void:
 	var before: Dictionary = catalog.lookup(live_uri)
 	var scan := scanner(catalog)
 	for i in 8:
-		scan._process(0.1)
+		scan.test_step(0.1)
 	check(catalog.lookup(missing_uri).is_empty(), "Startup scan removes a deleted local file")
 	check(
 		catalog.lookup(live_uri) == before and FileAccess.file_exists(existing),
@@ -105,7 +105,7 @@ func _run() -> void:
 	var local_host := Host.new()
 	add(catalog, missing_uri)
 	scan = scanner(catalog, local_host)
-	scan._process(0.1)
+	scan.test_step(0.1)
 	check(
 		local_host.calls == [missing_uri],
 		"Android checks one file at a time through asynchronous preflight"
@@ -128,7 +128,7 @@ func _run() -> void:
 		add(history, uri)
 		var host := Host.new()
 		scan = scanner(history, host)
-		scan._process(0.1)
+		scan.test_step(0.1)
 		host.reply(host.serial, uri, error)
 		check(
 			not history.lookup(uri).is_empty(),
@@ -140,7 +140,7 @@ func _run() -> void:
 	var history := Catalog.new(folder.path_join("confirmed"))
 	add(history, uri)
 	scan = scanner(history, host)
-	scan._process(0.1)
+	scan.test_step(0.1)
 	var id: int = host.serial
 	host.reply(id - 1, uri, "LOCAL_DOCUMENT_MISSING", true)
 	host.reply(id, uri + "wrong", "LOCAL_DOCUMENT_MISSING", true)
@@ -157,7 +157,7 @@ func _run() -> void:
 	scan.free()
 	add(history, uri)
 	scan = scanner(history, host)
-	scan._process(0.1)
+	scan.test_step(0.1)
 	add(history, uri)  # The user reopened it while its old startup check was pending.
 	host.reply(host.serial, uri, "LOCAL_DOCUMENT_MISSING", true)
 	check(
@@ -166,9 +166,9 @@ func _run() -> void:
 	)
 	scan.free()
 	scan = scanner(history, host)
-	scan._process(0.1)
+	scan.test_step(0.1)
 	id = host.serial
-	scan._process(13.0)
+	scan.test_step(13.0)
 	host.reply(id, uri, "LOCAL_DOCUMENT_MISSING", true)
 	check(
 		host.cancelled.has(id) and not history.lookup(uri).is_empty(),
@@ -178,7 +178,7 @@ func _run() -> void:
 	host.busy = true
 	scan = scanner(history, host)
 	for i in 5:
-		scan._process(0.3)
+		scan.test_step(0.3)
 	check(
 		scan._pending.is_empty() and not history.lookup(uri).is_empty(),
 		"Busy preflight retries are bounded without deleting history"
@@ -186,7 +186,7 @@ func _run() -> void:
 	scan.free()
 	host.busy = false
 	scan = scanner(history, host)
-	scan._process(0.1)
+	scan.test_step(0.1)
 	id = host.serial
 	scan.free()
 	check(

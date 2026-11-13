@@ -65,7 +65,7 @@ func _run() -> void:
 	library.refresh()
 	library._set_scroll(4)
 	library.remember_browse()
-	library._activate(Library.VIEW_MODE)
+	library.test_activate(Library.VIEW_MODE)
 	check(
 		library.list_view and library._first_line() == 16,
 		"Icon-to-list switch retains the first visible file"
@@ -102,13 +102,13 @@ func _run() -> void:
 	main.video.media.begin(7)
 	main.video.media.state = "playing"
 	main.video.media.format = {"width": 1920, "height": 1080, "pixel_aspect": 1.0}
-	main.video._waiting_first = false
+	main.video.test_set_waiting_for_frame(false)
 	main.video.panel.visible = true
-	main.video._apply_geometry()
+	main.video.test_apply_geometry()
 	main.library_menu.dismiss()
-	main._show_player_menu()
+	main.test_show_player_menu()
 	check(
-		not main.video_menu._buttons.any(func(button): return button.target == 224),
+		not main.video_menu.controls_snapshot().any(func(button): return button.target == 224),
 		"The control bar has no spatial lock; follow mode owns placement"
 	)
 	main._on_playback_adjustment("screen_preset", "giant22")
@@ -138,7 +138,7 @@ func _run() -> void:
 		"Opacity updates the active control bar"
 	)
 	main.library_menu.section = main.library_menu.Section.SETTINGS
-	main._show_library_menu(true)
+	main.test_show_library_menu(true)
 	var browser: Node3D = main.library_menu
 	var bar: Node3D = main.video_menu
 	check(main.video_menu.visible and browser.visible, "Browsing retains playback controls")
@@ -148,7 +148,7 @@ func _run() -> void:
 			and browser.compact
 			and browser.section == browser.Section.RECENT
 			and not browser.nav_order().has(browser.Section.SETTINGS)
-			and not browser._buttons.any(
+			and not browser.controls_snapshot().any(
 				func(button): return button.target == browser.NAV_BASE + browser.Section.SETTINGS
 			)
 		),
@@ -191,15 +191,18 @@ func _run() -> void:
 		),
 		"The bar's capture already reserves the switcher, so opening it cannot resize the layer"
 	)
-	var speed: Dictionary = bar._buttons.filter(func(button): return button.target == bar.QUICK_SPEED)[0]
+	var speed: Dictionary = bar.controls_snapshot().filter(func(button): return button.target == bar.QUICK_SPEED)[0]
 	var centre: Vector2 = speed.rect.get_center()
 	main.input_source.ray_override = [
 		bar.to_global(Vector3(centre.x, centre.y, 0.2)), -bar.global_basis.z.normalized()
 	]
 	main._update_menu_pointer("right_hand", true)
-	check(bar._quick_open == "speed", "The control bar accepts ray input while the browser is open")
+	check(
+		bar.popup_snapshot().quick_open == "speed",
+		"The control bar accepts ray input while the browser is open"
+	)
 	bar._toggle_popup("")
-	main._show_library_menu(true)
+	main.test_show_library_menu(true)
 	main._on_menu_action("stop")
 	check(
 		(
@@ -217,11 +220,11 @@ func _run() -> void:
 	main.video.media.begin(8)
 	main.video.media.state = "playing"
 	main.video.media.format = {"width": 1920, "height": 1080, "pixel_aspect": 1.0}
-	main.video._waiting_first = false
+	main.video.test_set_waiting_for_frame(false)
 	main.video.panel.visible = true
-	main.video._apply_geometry()
+	main.video.test_apply_geometry()
 	main.library_menu.dismiss()
-	main._show_player_menu()
+	main.test_show_player_menu()
 	main.video_menu._toggle_popup("screen")
 	check(
 		main.video_menu.choices.targets.values().any(
@@ -277,7 +280,7 @@ func _run() -> void:
 	main.video.media.error = "STRM_EMPTY"
 	main.playback_feedback.tick()
 	check(
-		main.video_menu.visible and main.video_menu._quick_open == "info",
+		main.video_menu.visible and main.video_menu.popup_snapshot().quick_open == "info",
 		"Playback failures automatically expose their reason"
 	)
 	main.video.local_uri = ""

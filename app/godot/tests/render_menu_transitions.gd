@@ -42,16 +42,16 @@ func _run() -> void:
 		target.add_child(menu)
 		menu.position = Vector3(0, 0, -1.6)
 		menu.curve_radius = 1.6
-	first._backdrop.material_override.set_shader_parameter("surface_color", Color.RED)
+	first.backdrop_snapshot().material_override.set_shader_parameter("surface_color", Color.RED)
 	second._set_backdrop(Vector2(.8, .7))
-	second._backdrop.material_override.set_shader_parameter("surface_color", Color.GREEN)
+	second.backdrop_snapshot().material_override.set_shader_parameter("surface_color", Color.GREEN)
 	first.visible = true
 	var surface := Surface.new()
 	target.add_child(surface)
 	surface.configure([first, second], head, false)
 	surface.set_process(false)
 	for i in 4:
-		surface._process(0)
+		surface.test_step(0)
 		await process_frame
 		await RenderingServer.frame_post_draw
 	var initial := target.get_texture().get_image()
@@ -60,7 +60,7 @@ func _run() -> void:
 	first.visible = false
 	second.visible = true
 	second.position.x = .2
-	surface._process(0)
+	surface.test_step(0)
 	if surface.curved_mesh.visible:
 		failures.append("Switching to the library must hide the preceding capture")
 	await RenderingServer.frame_post_draw
@@ -68,15 +68,15 @@ func _run() -> void:
 	if pixels(switched, 0) > 0:
 		failures.append("First library frame exposed the previous red page")
 	for i in 3:
-		surface._process(0)
+		surface.test_step(0)
 		await process_frame
 		await RenderingServer.frame_post_draw
 	if pixels(target.get_texture().get_image(), 1) < 100:
 		failures.append("New library page must reveal its own green capture")
 	second._clear_layout()
 	second._set_backdrop(Vector2(1.4, 1.1))
-	second._backdrop.material_override.set_shader_parameter("surface_color", Color.BLUE)
-	surface._process(0)
+	second.backdrop_snapshot().material_override.set_shader_parameter("surface_color", Color.BLUE)
+	surface.test_step(0)
 	if surface.curved_mesh.visible:
 		failures.append("Expanding subtitles must hide the previous capture")
 	await RenderingServer.frame_post_draw
@@ -84,7 +84,7 @@ func _run() -> void:
 	if pixels(expanded, 1) > 0:
 		failures.append("First expanded frame exposed the previous green page")
 	for i in 3:
-		surface._process(0)
+		surface.test_step(0)
 		await process_frame
 		await RenderingServer.frame_post_draw
 	if pixels(target.get_texture().get_image(), 2) < 100:

@@ -50,7 +50,7 @@ func _run() -> void:
 	var origin := Vector3(.15, -.2, 1.1)
 	var target := Vector3(0, .05, 0)
 	menu.update_pointer("right_hand", origin, target - origin, true)
-	var pointer: Dictionary = menu._pointers.right_hand
+	var pointer: Dictionary = menu.pointer_snapshot().right_hand
 	var surface := Surface.new()
 	main.add_child(surface)
 	surface.native_supported = true
@@ -115,10 +115,10 @@ func _run() -> void:
 	camera.environment.background_mode = Environment.BG_COLOR
 	camera.environment.background_color = Color.TRANSPARENT
 	camera.current = true
-	pointer.dot.visible = false
+	menu.test_set_pointer_visible("right_hand", false)
 	await frame()
 	var baseline := ui.get_texture().get_image()
-	pointer.dot.visible = true
+	menu.test_set_pointer_visible("right_hand", true)
 	await frame()
 	var reticle := ui.get_texture().get_image()
 	var centre := camera.unproject_position(menu.to_global(pointer.dot.position))

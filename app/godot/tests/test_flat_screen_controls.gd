@@ -62,7 +62,7 @@ func _run() -> void:
 	]:
 		video.media.format = {"width": case[0], "height": case[1], "pixel_aspect": case[2]}
 		video.set_stereo_layout(case[3])
-		video._apply_geometry()
+		video.test_apply_geometry()
 		check(
 			is_equal_approx(video._flat.size.x / video._flat.size.y, case[4]),
 			"Flat visible aspect " + str(case)
@@ -78,12 +78,12 @@ func _run() -> void:
 			video.screen_distance = 2.0
 			video.screen_scale = 1.0
 			video.flat_pose = Transform3D(Basis(), eye + Vector3(0, 0, -2))
-			video._apply_geometry()
+			video.test_apply_geometry()
 			video.panel.visible = true
 			var size: Vector2 = video._flat.size
 			menu.toggle() if not menu.visible else menu.refresh()
 			main.input_source.test_ray = [eye, Vector3.FORWARD]
-			main._on_pointer_button("grip_click", "right_hand")
+			main.test_pointer_button("grip_click", "right_hand")
 			check(
 				not menu.visible and main.grab.get("action", "") == "grip_click",
 				"%s grip closes controls" % mode
@@ -96,7 +96,7 @@ func _run() -> void:
 				"%s grip plus stick moves farther without scaling" % mode
 			)
 			var grown: float = video.screen_scale
-			video._apply_geometry()  # Next native frame must retain the new mesh and pose.
+			video.test_apply_geometry()  # Next native frame must retain the new mesh and pose.
 			check(
 				video._flat.size.is_equal_approx(size * grown),
 				"%s presented frame preserves size" % mode
@@ -106,7 +106,7 @@ func _run() -> void:
 				is_equal_approx(video.screen_distance, 2.0) and video.screen_scale == 1.0,
 				"%s grip plus stick down moves nearer symmetrically" % mode
 			)
-			main._on_pointer_release("grip_click", "right_hand")
+			main.test_pointer_release("grip_click", "right_hand")
 			check(
 				main.grab.is_empty() and not menu.visible,
 				"Release finishes without reopening controls"
@@ -143,7 +143,7 @@ func _run() -> void:
 					video.screen_scale > 1 and is_equal_approx(video.screen_distance, 2),
 					"%s corner grows without moving distance" % mode
 				)
-				main._on_pointer_release("grip_click", "right_hand")
+				main.test_pointer_release("grip_click", "right_hand")
 			video.set_screen_scale(1)
 			main.grab = {"hand": "right_hand", "moved": false}
 			menu.toggle()
@@ -151,7 +151,7 @@ func _run() -> void:
 			check(video.screen_scale == 1, "Open menu blocks held stick playback action")
 			main.grab = {}
 			check(
-				not menu._buttons.any(func(item): return item.target == 210),
+				not menu.controls_snapshot().any(func(item): return item.target == 210),
 				"Removed screen settings cannot be reopened"
 			)
 			main._push_screen(6.0)
@@ -214,7 +214,7 @@ func _run() -> void:
 	menu.toggle()
 	menu.section = 1
 	menu.refresh()
-	menu._activate(11)
+	menu.test_activate(11)
 	check(
 		(
 			menu._adjustment.is_empty()
@@ -234,7 +234,7 @@ func _run() -> void:
 	main._update_flat_grab_stick(Vector2.ZERO, Vector2(0, 1), .5)
 	check(video.view_zoom < 0, "Immersive grip plus stick up moves view farther")
 	var held_zoom: float = video.view_zoom
-	main._process_sticks(Vector2(1, 1), Vector2(0, 1), .5)
+	main.test_process_sticks(Vector2(1, 1), Vector2(0, 1), .5)
 	check(video.view_zoom == held_zoom, "Grip blocks ordinary playback stick shortcuts")
 	main._update_flat_grab_stick(Vector2.ZERO, Vector2(0, -1), .5)
 	check(is_zero_approx(video.view_zoom), "Immersive grip plus stick down reverses depth movement")
@@ -244,7 +244,7 @@ func _run() -> void:
 	video.screen_distance = 2.0
 	video.screen_scale = 1.0
 	video.flat_pose = Transform3D(Basis(Vector3.RIGHT, .6), eye + Vector3(0, .5, -1.93649))
-	video._apply_geometry()
+	video.test_apply_geometry()
 	main.input_source.test_ray = [eye, (video.panel.global_position - eye).normalized()]
 	main._begin_grab("right_hand")
 	var old_position: Vector3 = video.panel.global_position
@@ -254,7 +254,7 @@ func _run() -> void:
 		video.panel.global_position.y > old_position.y and is_equal_approx(video.screen_scale, 1),
 		"Physical grip translation moves reclining picture vertically without scaling"
 	)
-	main._on_pointer_release("grip_click", "right_hand")
+	main.test_pointer_release("grip_click", "right_hand")
 	menu.free()
 	main.library_menu.free()
 	main.free()

@@ -37,7 +37,7 @@ func _run() -> void:
 	video._screen_base = Vector2(1.6, 0.9)
 	video.set_screen_scale(1.0)
 	video.flat_pose = Transform3D(Basis(), Vector3(0, 1.6, -2))
-	video._apply_geometry()
+	video.test_apply_geometry()
 	video.panel.visible = true
 	var widths: Array[int] = []
 	for step in ["flat", "curved"]:

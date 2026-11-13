@@ -25,9 +25,9 @@ func target(menu: Node3D, key: String, value: Variant = null, kind: String = "ch
 
 
 func origin(menu: Node3D, id: int) -> Vector3:
-	for button in menu._buttons:
+	for button in menu.controls_snapshot():
 		if button.target == id:
-			return button.node.to_global(Vector3(0, 0, 1))
+			return button.node.global_transform * Vector3(0, 0, 1)
 	return Vector3.ZERO
 
 
@@ -107,7 +107,7 @@ func _run() -> void:
 	tap(menu, target(menu, "language", null, "open"))
 	point = origin(menu, target(menu, "language", "ja"))
 	menu.press_pointer("left_hand", point, -menu.global_basis.z, true)
-	menu._activate(Library.TAB_BASE + Library.PLAYBACK_TAB)
+	menu.test_activate(Library.TAB_BASE + Library.PLAYBACK_TAB)
 	menu.release_pointer("left_hand", point, -menu.global_basis.z, true)
 	check(
 		events.size() == 1 and menu.choices.capture.is_empty() and menu.choices.opened.is_empty(),
@@ -131,7 +131,7 @@ func _run() -> void:
 		"Radio selection chooses output resolution directly"
 	)
 	var selected := 0
-	for button in menu._buttons:
+	for button in menu.controls_snapshot():
 		if (
 			menu.choices.targets.has(button.target)
 			and menu.choices.targets[button.target].get("key") == "output_width"
@@ -139,7 +139,7 @@ func _run() -> void:
 		):
 			selected += 1
 	check(selected == 1, "Exactly one radio is visibly selected")
-	menu._activate(Library.TAB_BASE + Library.APPEARANCE_TAB)
+	menu.test_activate(Library.TAB_BASE + Library.APPEARANCE_TAB)
 	tap(menu, target(menu, "background_yaw", null, "open"))
 	check(
 		menu.choices.opened == "background_yaw" and menu.choices.popup.choices.size() == 8,

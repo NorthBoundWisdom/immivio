@@ -3047,3 +3047,11 @@ func activate_desktop() -> void:
 
 func paint_state_key() -> int:
 	return hash([status, scroll, editor])
+
+
+func test_choose(row: Dictionary) -> void:
+	_choose(row)
+
+
+func test_step(delta: float) -> void:
+	_process(delta)

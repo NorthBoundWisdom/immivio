@@ -102,7 +102,7 @@ func settle() -> void:
 
 
 func button(menu: Node, target: int) -> Dictionary:
-	for value in menu._buttons:
+	for value in menu.controls_snapshot():
 		if value.target == target:
 			return value
 	return {}
@@ -121,14 +121,14 @@ func _run() -> void:
 	root.add_child(menu)
 	menu.attach_platform(platform)
 	menu.toggle()
-	menu._activate(Menu.NAV_BASE + Menu.Section.DLNA)
+	menu.test_activate(Menu.NAV_BASE + Menu.Section.DLNA)
 	await settle()
 	check(
 		menu.rows.size() == 1 and menu.rows[0].title == "Remote NAS",
 		"Saved server loads without a UDP reply"
 	)
 	check(not button(menu, Menu.ADD).is_empty(), "Server list has the manual add button")
-	menu._activate(Menu.ADD)
+	menu.test_activate(Menu.ADD)
 	check(
 		menu._editor_fields() == ["host", "port"] and menu._field == 0,
 		"DLNA editor separates IP and port"
@@ -136,11 +136,11 @@ func _run() -> void:
 	check(
 		(
 			menu.text_snapshot().contains("192.168.1.10")
-			and button(menu, Menu.FIELD_BASE).node.get_children().any(
-				func(node): return node is Label3D and node.text == "IP address"
+			and button(menu, Menu.FIELD_BASE).node.children.any(
+				func(node): return node.kind == "Label3D" and node.text == "IP address"
 			)
-			and button(menu, Menu.FIELD_BASE + 1).node.get_children().any(
-				func(node): return node is Label3D and node.text == "Port"
+			and button(menu, Menu.FIELD_BASE + 1).node.children.any(
+				func(node): return node.kind == "Label3D" and node.text == "Port"
 			)
 		),
 		"IP and port are explicitly labeled"
@@ -153,21 +153,21 @@ func _run() -> void:
 		),
 		"Editor omits credentials, name and description path"
 	)
-	menu._activate(Menu.KEY_BASE)
+	menu.test_activate(Menu.KEY_BASE)
 	check(menu.editor.host == "1", "Ray keyboard enters the IP field")
-	menu._activate(Menu.BACKSPACE)
+	menu.test_activate(Menu.BACKSPACE)
 	menu.editor.host = "10.2.0.5"
-	menu._activate(Menu.FIELD_BASE + 1)
+	menu.test_activate(Menu.FIELD_BASE + 1)
 	check(menu._field == 1, "Port can be selected independently")
 	menu.editor.port = ""
 	var before := platform.saved.size()
-	menu._activate(Menu.SAVE)
+	menu.test_activate(Menu.SAVE)
 	check(
 		platform.saved.size() == before and menu._field == 1,
 		"Empty port keeps focus without sending a request"
 	)
 	menu.editor.port = "8200"
-	menu._activate(Menu.SAVE)
+	menu.test_activate(Menu.SAVE)
 	await settle()
 	check(
 		(
@@ -189,10 +189,10 @@ func _run() -> void:
 		menu.editor.is_empty() and menu.rows[0].title == "PT server",
 		"Successful save uses the server name"
 	)
-	menu._activate(Menu.ROW_BASE)
+	menu.test_activate(Menu.ROW_BASE)
 	await settle()
 	check(not button(menu, Menu.EDIT).is_empty(), "Saved server offers edit while browsing")
-	menu._activate(Menu.EDIT)
+	menu.test_activate(Menu.EDIT)
 	check(
 		(
 			menu.editor.host == "10.2.0.5"
@@ -203,7 +203,7 @@ func _run() -> void:
 	)
 	platform.fail_save = true
 	menu.editor.host = "bad address"
-	menu._activate(Menu.SAVE)
+	menu.test_activate(Menu.SAVE)
 	await settle()
 	check(
 		not menu.editor.is_empty() and menu.editor.host == "bad address",
@@ -216,26 +216,26 @@ func _run() -> void:
 	platform.fail_save = false
 	platform.automatic = false
 	menu.editor.host = "10.2.0.6"
-	menu._activate(Menu.SAVE)
+	menu.test_activate(Menu.SAVE)
 	var request := platform.next
 	check(menu._editor_busy(), "Connection validation leaves editor busy")
-	menu._activate(Menu.SAVE)
+	menu.test_activate(Menu.SAVE)
 	check(platform.next == request, "Busy editor ignores duplicate saves")
-	menu._activate(Menu.CANCEL)
-	menu._activate(Menu.ADD)
+	menu.test_activate(Menu.CANCEL)
+	menu.test_activate(Menu.ADD)
 	menu.editor.host = "10.3.0.7"
 	platform.send(request)
 	await settle()
 	check(menu.editor.host == "10.3.0.7", "Late save response cannot close a new editor")
-	menu._activate(Menu.CANCEL)
+	menu.test_activate(Menu.CANCEL)
 	platform.automatic = true
 	menu.sources.dlna_server = ""
 	menu.sources.load_section()
 	await settle()
-	menu._activate(Menu.ROW_BASE)
+	menu.test_activate(Menu.ROW_BASE)
 	await settle()
-	menu._activate(Menu.EDIT)
-	menu._activate(Menu.DELETE)
+	menu.test_activate(Menu.EDIT)
+	menu.test_activate(Menu.DELETE)
 	await settle()
 	check(
 		menu.editor.is_empty() and menu.sources.dlna_server.is_empty() and menu.rows.is_empty(),
@@ -248,7 +248,7 @@ func _run() -> void:
 	platform.servers = [{"id": "auto", "name": "Auto", "manual": false}]
 	menu.sources.load_section()
 	await settle()
-	menu._activate(Menu.ROW_BASE)
+	menu.test_activate(Menu.ROW_BASE)
 	await settle()
 	check(button(menu, Menu.EDIT).is_empty(), "Unpersisted discovery has no misleading edit action")
 	menu.sources.dlna_entries = []
@@ -271,7 +271,7 @@ func _run() -> void:
 	menu.sources.dlna_server = ""
 	menu.sources.load_section()
 	request = platform.next
-	menu._activate(Menu.NAV_BASE + Menu.Section.RECENT)
+	menu.test_activate(Menu.NAV_BASE + Menu.Section.RECENT)
 	platform.send(request)
 	await settle()
 	check(
@@ -291,7 +291,7 @@ func _run() -> void:
 		),
 		"Edit presents only IP/host and port for custom endpoints"
 	)
-	menu._activate(Menu.SAVE)
+	menu.test_activate(Menu.SAVE)
 	await settle()
 	check(
 		platform.saved.back().location == "https://nas.example/custom/device.xml?token=public",
@@ -299,7 +299,7 @@ func _run() -> void:
 	)
 	menu._open_editor({"id": "proxy", "location": "https://nas.example/custom/device.xml"})
 	menu.editor.port = "8443"
-	menu._activate(Menu.SAVE)
+	menu.test_activate(Menu.SAVE)
 	await settle()
 	check(
 		(

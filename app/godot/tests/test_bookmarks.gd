@@ -39,7 +39,7 @@ func check(ok: bool, text: String) -> void:
 
 
 func origin(menu: Node3D, target: int) -> Vector3:
-	for button in menu._buttons:
+	for button in menu.controls_snapshot():
 		if button.target == target:
 			return menu.to_global(
 				Vector3(button.rect.get_center().x, button.rect.get_center().y, 1)
@@ -221,7 +221,7 @@ func _run() -> void:
 	menu.toggle()
 	menu.set_process(false)
 	check(
-		not menu._buttons.any(func(button): return button.target == 2000),
+		not menu.controls_snapshot().any(func(button): return button.target == 2000),
 		"Bookmark addition has no toolbar action"
 	)
 	var start := origin(menu, menu.BookmarkMenu.LIST)

@@ -412,3 +412,7 @@ func reset_view() -> void:
 		_view_basis = Basis.IDENTITY
 	if geometry != Geometry.Geometry.FLAT:
 		_center_on_view()
+
+
+func test_apply_geometry() -> void:
+	_apply_geometry()

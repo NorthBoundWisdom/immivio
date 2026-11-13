@@ -28,7 +28,7 @@ func _run() -> void:
 	await RenderingServer.frame_post_draw
 	if root.get_texture().get_image().save_png(output.path_join("startup.png")) != OK:
 		failures.append("Startup screenshot failed")
-	main._show_player_menu()
+	main.test_show_player_menu()
 	await process_frame
 	if not main.player_menu.visible or main.library_menu.visible:
 		failures.append("Player and library must remain mutually exclusive")

@@ -186,7 +186,7 @@ func _run() -> void:
 		)
 	)
 	main.video.media.state = "paused"
-	main.video._process(0)
+	main.video.test_step(0)
 	check(
 		(
 			main.video._subtitle_loading
@@ -292,12 +292,15 @@ func _run() -> void:
 		snapshot.position_seconds = str(2.1 + delay)
 		cue_state.observe(snapshot, 7, pair)
 		check(cue_state.text.is_empty(), "Shifted cue expires at its adjusted end time")
-	main.video_menu._activate(Menu.SYNC_SETTINGS)
+	main.video_menu.test_activate(Menu.SYNC_SETTINGS)
 	check(
-		main.video_menu._quick_open == "sync" and main.video_menu.choices.sliders.size() == 2,
+		(
+			main.video_menu.popup_snapshot().quick_open == "sync"
+			and main.video_menu.choices.sliders.size() == 2
+		),
 		"Synchronization menu exposes separate timing sliders"
 	)
-	main.video_menu._activate(Menu.SUBTITLE_DELAY_RESET)
+	main.video_menu.test_activate(Menu.SUBTITLE_DELAY_RESET)
 	check(
 		main.video.subtitle_delay_ms == 0 and main.video.audio_delay_ms == -250,
 		"Subtitle reset leaves audio offset intact"
@@ -305,15 +308,15 @@ func _run() -> void:
 	main.video_queue = [
 		{"uri": "file:///timing-a.mp4", "title": "A"}, {"uri": "file:///next.mp4", "title": "Next"}
 	]
-	main.video_menu._activate(Menu.QUEUE_SETTINGS)
+	main.video_menu.test_activate(Menu.QUEUE_SETTINGS)
 	check(
 		(
-			main.video_menu._quick_open == "queue"
+			main.video_menu.popup_snapshot().quick_open == "queue"
 			and main.video_menu.queue_menu.actions.values().has("queue_play_1")
 		),
 		"Queue panel renders editable entries"
 	)
-	main.video._waiting_first = false
+	main.video.test_set_waiting_for_frame(false)
 	main.video.media.state = "ended"
 	main.video.media.last_pair = {
 		"contract_version": 2,
@@ -385,7 +388,7 @@ func _run() -> void:
 		),
 		"Edited queue persists separately from playback session"
 	)
-	var buttons: Array = main.video_menu._buttons.filter(
+	var buttons: Array = main.video_menu.controls_snapshot().filter(
 		func(button): return button.enabled and button.node.visible
 	)
 	for i in buttons.size():
@@ -395,7 +398,7 @@ func _run() -> void:
 				"Queue controls have distinct ray targets"
 			)
 	main.video.open_local("file:///next.mp4", "Next")
-	main.video._waiting_first = false
+	main.video.test_set_waiting_for_frame(false)
 	main.video.requested_play = true
 	main.video.media.state = "ended"
 	main.video.media.last_pair = {
@@ -425,7 +428,7 @@ func _run() -> void:
 		"A completed one-item queue repeats from zero"
 	)
 	main._on_player_setting("queue_loop", false)
-	main.video._waiting_first = false
+	main.video.test_set_waiting_for_frame(false)
 	main.video.media.state = "ended"
 	main.video.media.last_pair = {
 		"contract_version": 2,

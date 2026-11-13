@@ -47,7 +47,7 @@ func _run() -> void:
 	var host := preload("res://scripts/main.gd").new()
 	host.video = video
 	video.last_video_mode = {}
-	video._waiting_first = false
+	video.test_set_waiting_for_frame(false)
 	host.capture_last_video_mode()
 	assert(host.settings.get_value("video", "last_mode").geometry == 1)
 	assert(not host.settings.get_value("video", "last_mode").has("depth"))

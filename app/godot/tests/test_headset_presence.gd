@@ -28,7 +28,7 @@ func _run() -> void:
 	var host := Host.new()
 	main.video.platform = host
 	main.video.open_local("file:///presence.mp4", "Presence")
-	main.video._waiting_first = false
+	main.video.test_set_waiting_for_frame(false)
 	main.video.requested_play = true
 	var opens: int = host.calls.filter(func(call): return call[0] == "open").size()
 	main.display._on_presence_changed(false)
@@ -90,7 +90,7 @@ func _run() -> void:
 	main.platform_plugin = native
 	main.video.platform = native
 	main.video.open_local("file:///native-presence.mp4", "Native presence")
-	main.video._waiting_first = false
+	main.video.test_set_waiting_for_frame(false)
 	main.video.requested_play = true
 	count = native.calls.filter(func(call): return call[0] == "play").size()
 	main._on_native_presence_changed(false, "proximity")

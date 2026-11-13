@@ -39,6 +39,57 @@ Workflow tests cover corrupt assets, offline acquisition boundaries, configurati
 
 Use the Android workflow for host tests and package verification. Rendering fixtures remain under `app/godot/tests/render_*.gd` for focused visual checks. Build and package each target before device verification. Existing device probes and media benchmarks remain available. Host/APK checks do not establish media or rendering correctness on a headset.
 
+## Private-member test boundary
+
+The [baseline inventory](audits/godot-private-access-before.json) records each
+member, access count and every affected test file at `eead9b5`. It counts direct
+dot-member accesses across all `app/godot/tests/**/*.gd`, including render
+fixtures; comments and strings are excluded. The [current inventory](audits/godot-private-access-after.json)
+retains the remaining work outside the first 20 members.
+
+Tests observe frozen snapshots containing geometry, text, materials and stable
+node/texture IDs as values. Snapshots do not expose live nodes or resources.
+Explicit `test_*` commands drive deterministic input, ticks and fixture state;
+render fixtures may request detached control copies. Snapshot immutability and
+node/resource isolation are checked by `test_panel_pointer.gd`.
+
+| Private member | Baseline accesses | Affected scripts | Public snapshot / test command |
+| --- | --- | --- | --- |
+| `_activate` | 183 | 35 | `test_activate` |
+| `_buttons` | 136 | 56 | `controls_snapshot` |
+| `_process` | 50 | 13 | `test_step` |
+| `_choose` | 48 | 10 | `test_choose` |
+| `_process_sticks` | 38 | 3 | `test_process_sticks` |
+| `_apply_geometry` | 36 | 18 | `test_apply_geometry` |
+| `_show_player_menu` | 36 | 15 | `test_show_player_menu` |
+| `_quick_open` | 30 | 10 | `popup_snapshot` / `test_set_popup` |
+| `_waiting_first` | 29 | 19 | `waiting_for_first_frame` / `test_set_waiting_for_frame` |
+| `_on_setting_changed` | 26 | 8 | `test_setting_changed` |
+| `_hover` | 23 | 12 | `hover_snapshot` / `test_set_hover` |
+| `_show_library_menu` | 22 | 9 | `test_show_library_menu` |
+| `_on_pointer_button` | 20 | 7 | `test_pointer_button` |
+| `_on_pointer_release` | 20 | 6 | `test_pointer_release` |
+| `_pointers` | 20 | 10 | `pointer_snapshot` / pointer test commands |
+| `_update_hand_input` | 20 | 2 | `test_update_hand_input` |
+| `_place_caption` | 16 | 6 | `test_place_caption` |
+| `_place_menu` | 16 | 6 | `test_place_menu` |
+| `_update_bounds` | 16 | 8 | `test_update_bounds` |
+| `_backdrop` | 15 | 6 | `backdrop_snapshot` / `test_tag_menu` |
+
+All 800 accesses to these 20 members were migrated. Other private accesses are
+listed in the current inventory for later work. Source checks enforce that the
+baseline's first 20 members stay at zero:
+
+```sh
+python3 tools/audit_godot_test_access.py --check-baseline docs/audits/godot-private-access-before.json
+```
+
+Regenerate the current inventory with `--output docs/audits/godot-private-access-after.json`.
+The lexical audit has workflow fixtures for comments, quoted/triple-quoted text,
+escaped quotes, chained access, aggregation and deterministic ordering.
+
+## Rendering and visual checks
+
 `render_background_performance.gd` compares the production cached starry sky with a dark clear, the legacy analytic sky without its star layers, and its 4K base-texture lookup. It warms each case for 60 frames, samples 180 frames, repeats the production sky, and checks looking down at the hills. Two independent 1440²/2048² viewports with 2× MSAA approximate stereo pixel load; they do not emulate headset hardware, OpenXR multiview or its compositor. Run with a real GPU and no frame cap:
 
 ```sh

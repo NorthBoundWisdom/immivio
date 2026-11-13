@@ -113,11 +113,11 @@ func _run() -> void:
 	await wait_for_cache(menu)
 	var index := menu.rows.find_custom(func(r): return r.has("clear_cache"))
 	check(index >= 0 and str(menu.rows[index].detail) != "", "Clear cache row shows the size")
-	menu._choose(menu.rows[index])
+	menu.test_choose(menu.rows[index])
 	check(
 		Thumbnails.has("file:///v.mp4") and menu._confirm == "clear_cache", "First press only arms"
 	)
-	menu._choose(menu.rows[menu.rows.find_custom(func(r): return r.has("clear_cache"))])
+	menu.test_choose(menu.rows[menu.rows.find_custom(func(r): return r.has("clear_cache"))])
 	check(
 		not Thumbnails.has("file:///v.mp4") and Thumbnails.usage().x == 0,
 		"Second press clears the cache"
@@ -179,12 +179,12 @@ func _run() -> void:
 		"Unavailable DLNA cover falls back to the played frame immediately"
 	)
 	menu.refresh()
-	var recent_tile: Dictionary = menu._buttons.filter(func(b): return b.target == menu.ROW_BASE)[0]
-	var recent_area: MeshInstance3D = recent_tile.node.get_child(1)
+	var recent_tile: Dictionary = menu.controls_snapshot().filter(func(b): return b.target == menu.ROW_BASE)[0]
+	var recent_area: Dictionary = recent_tile.node.children[1]
 	check(
 		(
-			recent_area.material_override.get_shader_parameter("surface_texture")
-			== Thumbnails.texture(uri)
+			recent_area.material_override.surface_texture_id
+			== Thumbnails.texture(uri).get_instance_id()
 		),
 		"Actual recent card binds the screenshot when its DLNA cover is absent"
 	)

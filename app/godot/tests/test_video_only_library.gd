@@ -57,7 +57,7 @@ func _run() -> void:
 			"Every file source retains folders and videos while excluding still images"
 		)
 		check(
-			not menu._buttons.any(func(button): return button.target in [70, 71, 72]),
+			not menu.controls_snapshot().any(func(button): return button.target in [70, 71, 72]),
 			"The retired All/Video/Images filter has no visible or clickable targets"
 		)
 		check(menu.video_queue().size() == 1, "File-source playback queues contain videos only")
@@ -67,9 +67,9 @@ func _run() -> void:
 		menu.rows.size() == 1 and menu.rows[0].title == "Clip.mp4",
 		"Legacy still-image history is excluded from Recent"
 	)
-	menu._choose(mixed[2])
+	menu.test_choose(mixed[2])
 	check(selections == 0, "A stale image selection cannot emit a playback request")
-	menu._choose(mixed[1])
+	menu.test_choose(mixed[1])
 	check(selections == 1, "Ordinary video selection still works")
 	menu.free()
 	var history := Recent.new("user://video-only-history")

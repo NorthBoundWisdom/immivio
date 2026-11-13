@@ -31,7 +31,7 @@ func check(value: bool, message: String) -> void:
 
 
 func button(menu: Node3D, target: int) -> Dictionary:
-	for item in menu._buttons:
+	for item in menu.controls_snapshot():
 		if item.target == target:
 			return item
 	return {}
@@ -81,13 +81,15 @@ func _run() -> void:
 	main.video.media.begin(1)
 	main.video.media.state = "playing"
 	main.video.control.duration_ms = 60000
-	main.video._waiting_first = false
+	main.video.test_set_waiting_for_frame(false)
 	main.video.requested_play = true
 	var menu: Node3D = main.video_menu
 	menu.set_process(false)
 	menu.toggle()
 	check(
-		not menu._buttons.any(func(item): return item.target in [104, Menu.TEMP_PASSTHROUGH]),
+		not menu.controls_snapshot().any(
+			func(item): return item.target in [104, Menu.TEMP_PASSTHROUGH]
+		),
 		"Video toolbar has no passthrough controls"
 	)
 	var right := [Menu.MODE, Menu.QUICK_SPEED, Menu.QUICK_COLOR, Menu.QUEUE_SETTINGS, 12]
@@ -111,12 +113,12 @@ func _run() -> void:
 		(
 			click(menu, Menu.QUICK_SPEED)
 			and menu.section == 0
-			and menu._quick_open == "speed"
+			and menu.popup_snapshot().quick_open == "speed"
 			and not menu.allows_playback_sticks()
 		),
 		"Speed opens a small popup on the playback page and suspends stick shortcuts"
 	)
-	menu._hover.clear()
+	menu.test_set_hover("", menu.NONE)
 	main.menu_touched_ms = Time.get_ticks_msec() - main.CONTROLS_HIDE_MS - 1
 	main._update_controls_visibility(menu)
 	check(menu.visible, "Quick settings remain visible after the ordinary playback idle timeout")
@@ -165,11 +167,15 @@ func _run() -> void:
 		"Quick speed matches the actual playback state after release"
 	)
 	check(
-		click(menu, Menu.QUICK_COLOR) and menu._quick_open == "color" and menu.section == 0,
+		(
+			click(menu, Menu.QUICK_COLOR)
+			and menu.popup_snapshot().quick_open == "color"
+			and menu.section == 0
+		),
 		"Color popup replaces speed without switching pages"
 	)
 	check(
-		click(menu, Menu.QUEUE_SETTINGS) and menu._quick_open == "queue",
+		click(menu, Menu.QUEUE_SETTINGS) and menu.popup_snapshot().quick_open == "queue",
 		"Queue replaces color in the same toolbar plane"
 	)
 	check(
@@ -180,17 +186,21 @@ func _run() -> void:
 		"Playback exposes no loop control"
 	)
 	check(
-		click(menu, Menu.MODE) and menu._quick_open.is_empty() and menu._mode_open,
+		click(menu, Menu.MODE) and menu.popup_snapshot().quick_open.is_empty() and menu._mode_open,
 		"Mode picker replaces quick settings"
 	)
 	check(
-		click(menu, Menu.QUICK_SPEED) and not menu._mode_open and menu._quick_open == "speed",
+		(
+			click(menu, Menu.QUICK_SPEED)
+			and not menu._mode_open
+			and menu.popup_snapshot().quick_open == "speed"
+		),
 		"Quick settings replace the mode picker"
 	)
 	check(
 		(
 			click(menu, Menu.QUICK_CLOSE)
-			and menu._quick_open.is_empty()
+			and menu.popup_snapshot().quick_open.is_empty()
 			and menu.visible
 			and menu.allows_playback_sticks()
 		),
@@ -200,7 +210,7 @@ func _run() -> void:
 	click(menu, 102)
 	check(
 		(
-			menu._quick_open.is_empty()
+			menu.popup_snapshot().quick_open.is_empty()
 			and not main.video.requested_play
 			and menu.choices.targets.is_empty()
 		),
@@ -210,7 +220,7 @@ func _run() -> void:
 	menu.refresh()
 	check(
 		(
-			not menu._buttons.any(func(item): return item.target == 210)
+			not menu.controls_snapshot().any(func(item): return item.target == 210)
 			and not button(menu, Menu.QUICK_SPEED).is_empty()
 		),
 		"Immersive playback hides flat-screen settings and retains speed"
@@ -218,7 +228,10 @@ func _run() -> void:
 	click(menu, Menu.QUICK_SPEED)
 	menu.dismiss()
 	menu.toggle()
-	check(menu._quick_open.is_empty(), "Reopening playback never retains a stale popup")
+	check(
+		menu.popup_snapshot().quick_open.is_empty(),
+		"Reopening playback never retains a stale popup"
+	)
 	main.queue_free()
 	await process_frame
 	for failure in failures:

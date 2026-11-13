@@ -19,14 +19,14 @@ func check(ok: bool, message: String) -> void:
 
 func locks(menu: Node3D) -> int:
 	var count := 0
-	for button in menu._buttons:
-		for child in button.node.get_children():
+	for button in menu.controls_snapshot():
+		for child in button.node.children:
 			if (
-				child is MeshInstance3D
-				and child.material_override is StandardMaterial3D
+				child.kind == "MeshInstance3D"
+				and child.material_override.kind == "StandardMaterial3D"
 				and (
-					child.material_override.albedo_texture
-					== preload("res://scripts/menu_icons.gd").texture("lock")
+					child.material_override.albedo_texture_id
+					== preload("res://scripts/menu_icons.gd").texture("lock").get_instance_id()
 				)
 			):
 				count += 1
@@ -50,37 +50,37 @@ func _run() -> void:
 		viewer.stereo_sbs = true
 		viewer.top_bottom = false
 		viewer.stereo_half = false
-		viewer._apply_geometry()
+		viewer.test_apply_geometry()
 		viewer.toggle_mode_lock()
 		var saved := ConfigFile.new()
 		saved.load(main.settings_path)
 		check(saved.get_value(kind, "mode_lock") == viewer.current_lock(), kind + " lock persisted")
 		# Opening/detecting a named file can override a default lock without discarding it.
 		viewer.geometry = 2
-		viewer._apply_geometry()
+		viewer.test_apply_geometry()
 		check(
 			not viewer.mode_lock.is_empty(),
 			kind + " automatic projection override keeps default lock"
 		)
 		viewer.geometry = 1
-		viewer._apply_geometry()
+		viewer.test_apply_geometry()
 		menu.visible = true
 		menu._mode_open = true
 		menu.refresh()
 		check(locks(menu) == 2, kind + " both locked tiles visible")
-		menu._activate(Menu.MODE_PROJECTION + 3)
+		menu.test_activate(Menu.MODE_PROJECTION + 3)
 		check(
 			viewer.geometry == 3 and viewer.mode_lock.is_empty() and locks(menu) == 0,
 			kind + " other projection removes both locks"
 		)
 		saved.load(main.settings_path)
 		check(saved.get_value(kind, "mode_lock").is_empty(), kind + " projection unlock persisted")
-		menu._activate(Menu.MODE_PROJECTION + 3)
+		menu.test_activate(Menu.MODE_PROJECTION + 3)
 		check(not viewer.mode_lock.is_empty(), kind + " selected projection can lock again")
-		menu._activate(Menu.MODE_STEREO + 1)
+		menu.test_activate(Menu.MODE_STEREO + 1)
 		# 360 video defaults to mono. Ensure an actual different layout next.
 		if not viewer.mode_lock.is_empty():
-			menu._activate(Menu.MODE_STEREO)
+			menu.test_activate(Menu.MODE_STEREO)
 		check(viewer.mode_lock.is_empty() and locks(menu) == 0, kind + " layout choice unlocks")
 		for layout in [0, 1, 2, 3, 4] if kind == "video" else [0, 1, 2]:
 			viewer.set_stereo_layout(layout)

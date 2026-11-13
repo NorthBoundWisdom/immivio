@@ -247,22 +247,22 @@ func playback_checks() -> void:
 	app.library_menu.dismiss()
 	app.player_menu.dismiss()
 	await process_frame
-	app._update_hand_input(0.0)
-	app._update_hand_input(3.1)
+	app.test_update_hand_input(0.0)
+	app.test_update_hand_input(3.1)
 	check(
 		not app.input_visuals.hands.left_hand.controller_gate.visible,
 		"Video state drives automatic hiding through the production input coordinator"
 	)
 	check(app.input_source.ray("left_hand") != null, "Hidden controller retains its aim ray")
-	app._process_sticks(Vector2.ZERO, Vector2(0, 0.5), 0.016)
-	app._update_hand_input(0.1)
+	app.test_process_sticks(Vector2.ZERO, Vector2(0, 0.5), 0.016)
+	app.test_update_hand_input(0.1)
 	check(
 		app.input_visuals.hands.right_hand.controller_gate.visible,
 		"Stick deflection wakes its model"
 	)
-	app._update_hand_input(3.1)
+	app.test_update_hand_input(3.1)
 	app._on_controller_button("trigger_click", "left_hand")
-	app._update_hand_input(0.1)
+	app.test_update_hand_input(0.1)
 	check(
 		(
 			app.input_visuals.hands.left_hand.controller_gate.visible
@@ -271,19 +271,19 @@ func playback_checks() -> void:
 		"Trigger wakes a hidden controller and still reaches picture input"
 	)
 	app._on_controller_release("trigger_click", "left_hand")
-	app._update_hand_input(10.0)
+	app.test_update_hand_input(10.0)
 	check(
 		app.player_menu.visible and app.input_visuals.hands.left_hand.controller_gate.visible,
 		"Trigger release opens controls and keeps models visible"
 	)
 	app.player_menu.dismiss()
-	app._update_hand_input(3.1)
+	app.test_update_hand_input(3.1)
 	check(
 		not app.input_visuals.hands.left_hand.controller_gate.visible,
 		"Hiding resumes after controls close"
 	)
 	app.video.local_uri = ""
-	app._update_hand_input(10.0)
+	app.test_update_hand_input(10.0)
 	check(
 		app.input_visuals.hands.left_hand.controller_gate.visible,
 		"Leaving video restores the controller"

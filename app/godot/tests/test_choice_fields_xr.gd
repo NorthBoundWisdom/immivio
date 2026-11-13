@@ -24,7 +24,7 @@ func find_target(menu: Node3D, kind: String, key: String, value: Variant = null)
 
 
 func acknowledge(surface: Node3D, menu: Node3D) -> void:
-	surface._update_bounds()
+	surface.test_update_bounds()
 	surface.presented = {
 		"visible": true,
 		"menu_id": menu.get_instance_id(),
@@ -37,7 +37,7 @@ func acknowledge(surface: Node3D, menu: Node3D) -> void:
 
 
 func ray_for(menu: Node3D, surface: Node3D, target: int) -> Array:
-	for button in menu._buttons:
+	for button in menu.controls_snapshot():
 		if button.target != target:
 			continue
 		var pose := Surface.capture_pose(menu)

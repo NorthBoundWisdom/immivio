@@ -34,7 +34,7 @@ func _run() -> void:
 	host.video.media.begin(1)
 	host.video.media.state = "paused"
 	host.video.media.frame_counter = 1
-	host.video._waiting_first = false
+	host.video.test_set_waiting_for_frame(false)
 	host.video.panel.visible = true
 	host._place_screen()
 	for hand in host.hand_pointers:
@@ -49,14 +49,14 @@ func _run() -> void:
 	host._dispatch_hand_input({"right_hand": sample(origin, true, true)})
 	host._dispatch_hand_input({"right_hand": sample(origin, false, false, true)})
 	assert(host.video_menu.visible)
-	var button: Dictionary = host.video_menu._buttons.filter(func(item): return item.target == host.video_menu.MODE)[0]
+	var button: Dictionary = host.video_menu.controls_snapshot().filter(func(item): return item.target == host.video_menu.MODE)[0]
 	host.hand_pointers.left_hand.ray = [
 		button.node.global_position + button.node.global_basis.z, -button.node.global_basis.z
 	]
-	host._on_pointer_button("trigger_click", "left_hand")
-	host._on_pointer_release("trigger_click", "left_hand")
+	host.test_pointer_button("trigger_click", "left_hand")
+	host.test_pointer_release("trigger_click", "left_hand")
 	assert(host.video_menu._mode_open)
-	host._show_library_menu(true)
+	host.test_show_library_menu(true)
 	host.library_menu.section = host.library_menu.Section.SETTINGS
 	host.library_menu.tab = host.library_menu.GENERAL_TAB
 	host.library_menu.refresh()
@@ -66,7 +66,7 @@ func _run() -> void:
 	assert(host.settings.get_value("controls", "pinch_hand") == "both")
 	for hand in host.hand_pointers:
 		assert(not host.hand_pointers[hand].armed and not host.hand_pointers[hand].down)
-	host._on_setting_changed("pinch_hand", "retired-value")
+	host.test_setting_changed("pinch_hand", "retired-value")
 	assert(host.pinch_hand == "both")
 	var settings := ConfigFile.new()
 	settings.set_value("controls", "pinch_hand", "invalid")

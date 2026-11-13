@@ -75,7 +75,7 @@ func _run() -> void:
 		video.set_stereo_alignment("stereo_horizontal", 100.0) and video.stereo_horizontal == 10.0
 	)
 	video.geometry = 0
-	video._apply_geometry()
+	video.test_apply_geometry()
 	assert(video.stereo_horizontal == 5.0)
 	assert(not video.set_immersive_adjustment("view_horizontal", 0.5))
 	var guide := preload("res://scripts/picture_center_guide.gd").new()

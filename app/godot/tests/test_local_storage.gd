@@ -153,19 +153,19 @@ func _run() -> void:
 			menu.finish_storage_release.call_deferred(volume.id)
 	)
 	menu.storage_removed.connect(func(volume): removals.append(volume))
-	menu._activate(Menu.NAV_BASE + Menu.Section.LOCAL)
+	menu.test_activate(Menu.NAV_BASE + Menu.Section.LOCAL)
 	await settle()
 	check(
-		menu._buttons.any(func(button): return button.target == Menu.USB_STORAGE),
+		menu.controls_snapshot().any(func(button): return button.target == Menu.USB_STORAGE),
 		"Connected volume exposes a quick entry"
 	)
-	menu._activate(Menu.ROW_BASE)
+	menu.test_activate(Menu.ROW_BASE)
 	await settle()
 	check(
-		not menu._buttons.any(func(button): return button.target == Menu.EJECT_STORAGE),
+		not menu.controls_snapshot().any(func(button): return button.target == Menu.EJECT_STORAGE),
 		"Internal storage has no release action"
 	)
-	menu._activate(Menu.USB_STORAGE)
+	menu.test_activate(Menu.USB_STORAGE)
 	await settle()
 	check(
 		menu.sources.local_path() == external.id and menu.sources.local_stack.size() == 1,
@@ -175,8 +175,8 @@ func _run() -> void:
 		menu._tips[Menu.EJECT_STORAGE] == "Stop app access",
 		"Release tooltip describes the software action"
 	)
-	menu._activate(Menu.EJECT_STORAGE)
-	menu._activate(Menu.EJECT_STORAGE)
+	menu.test_activate(Menu.EJECT_STORAGE)
+	menu.test_activate(Menu.EJECT_STORAGE)
 	await settle()
 	check(
 		releases.size() == 1 and platform.storage_settings.is_empty(),
@@ -194,7 +194,7 @@ func _run() -> void:
 		menu.sources.external_volumes().size() == 1,
 		"Software release keeps the physically connected volume mounted"
 	)
-	menu._activate(Menu.USB_STORAGE)
+	menu.test_activate(Menu.USB_STORAGE)
 	await settle()
 	platform.usb_connected = false
 	platform.media_list.emit(
@@ -207,7 +207,9 @@ func _run() -> void:
 	check(
 		(
 			menu.sources.local_stack.is_empty()
-			and not menu._buttons.any(func(button): return button.target == Menu.USB_STORAGE)
+			and not menu.controls_snapshot().any(
+				func(button): return button.target == Menu.USB_STORAGE
+			)
 			and removals.size() == 1
 		),
 		"Removal updates the path and shortcut and signals reader cleanup"
@@ -266,17 +268,17 @@ func _run() -> void:
 	check(
 		(
 			menu.sources.external_volumes().size() == 2
-			and menu._buttons.any(func(button): return button.target == Menu.USB_STORAGE)
+			and menu.controls_snapshot().any(func(button): return button.target == Menu.USB_STORAGE)
 		),
 		"Insertion updates entries and the shortcut without manual refresh"
 	)
-	menu._activate(Menu.USB_STORAGE)
+	menu.test_activate(Menu.USB_STORAGE)
 	await settle()
 	check(
 		menu.sources.local_path().is_empty() and menu._eject_volume().is_empty(),
 		"Multiple devices require an explicit target"
 	)
-	menu._activate(Menu.ROW_BASE + 2)
+	menu.test_activate(Menu.ROW_BASE + 2)
 	await settle()
 	check(
 		menu._eject_volume().get("id") == "/storage/9876-ABCD",

@@ -18,8 +18,8 @@ func _initialize() -> void:
 
 
 func transport_ids(menu: Node3D) -> Array:
-	var seek: Dictionary = menu._buttons.filter(func(button): return button.target == Menu.SEEK)[0]
-	var play: Dictionary = menu._buttons.filter(func(button): return button.target == 102)[0]
+	var seek: Dictionary = menu.controls_snapshot().filter(func(button): return button.target == Menu.SEEK)[0]
+	var play: Dictionary = menu.controls_snapshot().filter(func(button): return button.target == 102)[0]
 	return [
 		menu._title_pill.get_instance_id(),
 		menu._title.get_instance_id(),
@@ -27,8 +27,8 @@ func transport_ids(menu: Node3D) -> Array:
 		menu._thumb.get_instance_id(),
 		menu._elapsed.get_instance_id(),
 		menu._duration.get_instance_id(),
-		seek.node.get_instance_id(),
-		play.node.get_instance_id()
+		seek.node.instance_id,
+		play.node.instance_id
 	]
 
 
@@ -83,7 +83,7 @@ func _run() -> void:
 		var original := transport_ids(menu)
 		state.position_ms = 10000
 		surface.content_bounds = Rect2()
-		surface._update_bounds()
+		surface.test_update_bounds()
 		var rect: Rect2 = surface.surface_rect
 		for target in [
 			Menu.QUICK_SCREEN,
@@ -99,13 +99,13 @@ func _run() -> void:
 			if target == Menu.QUICK_SCREEN and geometry != 0:
 				continue
 			var metadata: Dictionary = surface._capture_metadata(Surface.capture_pose(menu))
-			menu._activate(target)
+			menu.test_activate(target)
 			menu.position.x += .0007
 			check(
 				transport_ids(menu) == original,
 				"Opening a popup retains transport/header nodes for target %d" % target
 			)
-			surface._update_bounds()
+			surface.test_update_bounds()
 			check(
 				surface.surface_rect == rect,
 				"Popup target %d keeps the first transport capture projection" % target
@@ -121,10 +121,10 @@ func _run() -> void:
 				"New popup cannot consume input before its own capture acknowledgement"
 			)
 			menu.xr_surface = surface
-			menu._hover["right_hand"] = 110
+			menu.test_set_hover("right_hand", 110)
 			menu.update_pointer("right_hand", Vector3(0, 0, 1), Vector3.FORWARD, true)
 			check(
-				menu._hover.get("right_hand") == 110,
+				menu.hover_snapshot().get("right_hand") == 110,
 				"Acknowledgement wait keeps persistent toolbar hover from pulsing"
 			)
 			check(
@@ -133,7 +133,7 @@ func _run() -> void:
 			)
 			menu.update_pointer("right_hand", Vector3.ZERO, Vector3.ZERO, false)
 			check(
-				menu._hover.get("right_hand") == menu.NONE,
+				menu.hover_snapshot().get("right_hand") == menu.NONE,
 				"Tracking loss still clears retained hover"
 			)
 			menu.xr_surface = null
@@ -164,22 +164,22 @@ func _run() -> void:
 			)
 			surface.surface_rect = rect
 			surface.native_supported = false
-			menu._activate(Menu.QUICK_CLOSE)
+			menu.test_activate(Menu.QUICK_CLOSE)
 			check(transport_ids(menu) == original, "Closing a popup retains the transport nodes")
-		menu._activate(110)
-		var subtitle_count: int = menu._buttons.size()
-		menu._activate(menu.SUBTITLE_DOWN)
+		menu.test_activate(110)
+		var subtitle_count: int = menu.controls_snapshot().size()
+		menu.test_activate(menu.SUBTITLE_DOWN)
 		check(
-			menu._buttons.size() == subtitle_count and transport_ids(menu) == original,
+			menu.controls_snapshot().size() == subtitle_count and transport_ids(menu) == original,
 			"Subtitle scrolling replaces popup rows without accumulating nodes"
 		)
-		menu._activate(menu.QUICK_CLOSE)
-		menu.bookmarks._activate(menu.BookmarkMenu.LIST, {}, "synthetic")
+		menu.test_activate(menu.QUICK_CLOSE)
+		menu.bookmarks.test_activate(menu.BookmarkMenu.LIST, {}, "synthetic")
 		check(
 			transport_ids(menu) == original and menu.bookmarks.opened,
 			"Bookmark list uses the same persistent transport"
 		)
-		menu.bookmarks._activate(menu.BookmarkMenu.CLOSE, {}, "synthetic")
+		menu.bookmarks.test_activate(menu.BookmarkMenu.CLOSE, {}, "synthetic")
 		check(transport_ids(menu) == original, "Closing bookmarks retains transport nodes")
 		state.position_ms = 20000
 		menu.refresh_values()

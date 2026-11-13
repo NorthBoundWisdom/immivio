@@ -322,13 +322,13 @@ func _run() -> void:
 		menu.visible and menu.text_snapshot().contains("Saved A"),
 		"Actual menu lists private recent title"
 	)
-	var row: Dictionary = menu._buttons.filter(func(button): return button.target == Menu.ROW_BASE)[0]
+	var row: Dictionary = menu.controls_snapshot().filter(func(button): return button.target == Menu.ROW_BASE)[0]
 	var centre: Vector2 = row.rect.get_center()
 	var ray_origin := menu.to_global(Vector3(centre.x, centre.y, 1))
 	var ray_direction := -menu.global_basis.z
 	menu.update_pointer("right_hand", ray_origin, ray_direction, true)
 	check(
-		menu._hover.right_hand == Menu.ROW_BASE and selections.is_empty(),
+		menu.hover_snapshot().right_hand == Menu.ROW_BASE and selections.is_empty(),
 		"Ray hover targets saved row without opening it"
 	)
 	check(not menu.has_method("poll_axis"), "Menu has no thumbstick selection entry")

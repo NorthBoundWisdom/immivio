@@ -29,12 +29,12 @@ func _run() -> void:
 		return {"has_video": true, "duration_ms": 60000, "position_ms": 30000}
 	viewport.add_child(menu)
 	menu.toggle()
-	menu._hover.render = Menu.SEEK
+	menu.test_set_hover("render", Menu.SEEK)
 	menu._update_highlights()
 	var visual: MeshInstance3D
-	for button in menu._buttons:
+	for button in menu.controls_snapshot():
 		if button.target == Menu.SEEK:
-			visual = button.node.duplicate()
+			visual = menu.test_duplicate_control(button.target)
 	menu.visible = false
 	viewport.add_child(visual)
 	visual.position = Vector3.ZERO

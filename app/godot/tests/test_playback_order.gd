@@ -18,11 +18,11 @@ func _run() -> void:
 	host.video.local_uri = "file:///a.mp4"
 	menu.setting_requested.connect(host._on_player_setting)
 	menu._state = {"has_video": true, "queue_shuffle": false}
-	menu._activate(menu.PLAYBACK_ORDER)
+	menu.test_activate(menu.PLAYBACK_ORDER)
 	assert(host.playback_queue.shuffle)
 	assert(host.settings.get_value("playback", "queue_shuffle"))
 	menu._state.queue_shuffle = true
-	menu._activate(menu.PLAYBACK_ORDER)
+	menu.test_activate(menu.PLAYBACK_ORDER)
 	assert(not host.playback_queue.shuffle)
 	assert(host.playback_queue.adjacent("file:///b.mp4", 1).is_empty())
 	var migration := preload("res://scripts/player_settings_migration.gd")

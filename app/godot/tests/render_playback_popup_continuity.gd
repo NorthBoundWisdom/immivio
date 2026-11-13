@@ -24,7 +24,7 @@ func bar_pixels(picture: Image, region: Rect2i) -> int:
 
 
 func tap(menu: Node3D, surface: Node3D, target: int) -> Dictionary:
-	for button in menu._buttons:
+	for button in menu.controls_snapshot():
 		if button.target != target or not button.enabled:
 			continue
 		var pose: Transform3D = Surface.capture_pose(menu)
@@ -38,10 +38,10 @@ func tap(menu: Node3D, surface: Node3D, target: int) -> Dictionary:
 		var normal: Vector3 = pose.basis * Vector3(-sin(angle), 0, cos(angle))
 		var origin := point + normal * .5
 		menu.update_pointer("right_hand", origin, -normal, true)
-		surface._process(0)
+		surface.test_step(0)
 		await process_frame
 		await RenderingServer.frame_post_draw
-		surface._process(0)
+		surface.test_step(0)
 		await process_frame
 		await RenderingServer.frame_post_draw
 		var before: Image = menu.get_viewport().get_texture().get_image()
@@ -115,7 +115,7 @@ func _run() -> void:
 	surface.configure([menu], head, false)
 	surface.set_process(false)
 	for i in 5:
-		surface._process(0)
+		surface.test_step(0)
 		await process_frame
 		await RenderingServer.frame_post_draw
 	var first := head.unproject_position(menu.to_global(Vector3(-.54, .22, 0)))
@@ -166,7 +166,7 @@ func _run() -> void:
 			# waits for GPU acknowledgement. Static-camera coverage misses this gap.
 			menu.position.x += .0007
 			head.position.x += .0007
-			surface._process(0)
+			surface.test_step(0)
 			if surface.surface_rect != rect or not surface.curved_mesh.visible:
 				failures.append("Popup %d changed or hid the transport projection" % destination)
 			for frame in 3:
@@ -197,7 +197,7 @@ func _run() -> void:
 				if not output.is_empty():
 					picture.save_png(output.path_join("frame-%02d.png" % coverage.size()))
 				surface._bounds_due = 0
-				surface._process(0)
+				surface.test_step(0)
 	print(
 		(
 			JSON

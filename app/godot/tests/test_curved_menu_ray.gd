@@ -83,7 +83,7 @@ func _run() -> void:
 		)
 	menu.update_pointer("right_hand", origin, point - origin, true)
 	check(
-		menu._pointers.right_hand.dot.position.distance_to(Vector3(.8, .2, .008)) < .0001,
+		menu.pointer_snapshot().right_hand.dot.position.distance_to(Vector3(.8, .2, .008)) < .0001,
 		"Reticle is captured at the correct texture coordinate"
 	)
 	menu.xr_surface = null

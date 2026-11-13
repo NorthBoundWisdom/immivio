@@ -21,7 +21,7 @@ func target(menu: Node3D, kind: String, key: String) -> int:
 
 
 func position(host: Node3D, menu: Node3D, id: int) -> Vector2:
-	for button in menu._buttons:
+	for button in menu.controls_snapshot():
 		if button.target == id:
 			return host.xr_camera.unproject_position(button.node.global_position)
 	return Vector2.ZERO
@@ -51,7 +51,7 @@ func _run() -> void:
 	host.report_timer.stop()
 	var menu: Node3D = host.library_menu
 	menu.set_process(false)
-	menu._activate(menu.NAV_BASE + menu.Section.SETTINGS)
+	menu.test_activate(menu.NAV_BASE + menu.Section.SETTINGS)
 	var at := position(host, menu, target(menu, "open", "language"))
 	mouse(host, at, true)
 	check(
@@ -74,7 +74,7 @@ func _run() -> void:
 	host.video.requested_play = true
 	host.video.media.state = "playing"
 	host.menu_touched_ms = Time.get_ticks_msec() - host.CONTROLS_HIDE_MS - 100
-	host._show_player_menu()
+	host.test_show_player_menu()
 	host.input_coordinator._update_controls_visibility(host.player_menu)
 	check(
 		host.player_menu.visible, "Explicitly showing visible controls refreshes their idle timeout"

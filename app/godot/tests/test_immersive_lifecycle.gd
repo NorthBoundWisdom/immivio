@@ -43,11 +43,11 @@ func _run() -> void:
 			Basis(Vector3.UP, -0.65) * Basis(Vector3.RIGHT, 0.13) * Basis(Vector3.FORWARD, 0.18)
 		)
 		check(main.video.open_local("file:///alignment/" + name, name), "Open " + name)
-		main.video._apply_geometry()
+		main.video.test_apply_geometry()
 		check(aligned(main.video), "File open aligns current gaze " + name)
 		var orientation: Basis = main.video.panel.global_basis
 		head.rotate_y(0.3)
-		main.video._apply_geometry()
+		main.video.test_apply_geometry()
 		check(
 			main.video.panel.global_basis.is_equal_approx(orientation),
 			"Presented frame keeps orientation " + name

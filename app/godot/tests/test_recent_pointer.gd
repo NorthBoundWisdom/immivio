@@ -35,7 +35,7 @@ func target_origin(menu: Node3D, x: float, y: float, z: float = 1.0) -> Vector3:
 
 
 func button_origin(menu: Node3D, target: int) -> Vector3:
-	var button: Dictionary = menu._buttons.filter(func(item): return item.target == target)[0]
+	var button: Dictionary = menu.controls_snapshot().filter(func(item): return item.target == target)[0]
 	var centre: Vector2 = button.rect.get_center()
 	return target_origin(menu, centre.x, centre.y)
 
@@ -44,8 +44,8 @@ func check_row_geometry(menu: Node3D) -> void:
 	for list_mode in [false, true]:
 		menu.list_view = list_mode
 		menu.refresh()
-		var first: Dictionary = menu._buttons.filter(func(b): return b.target == Menu.ROW_BASE)[0]
-		var second: Dictionary = menu._buttons.filter(func(b): return b.target == Menu.ROW_BASE + 1)[0]
+		var first: Dictionary = menu.controls_snapshot().filter(func(b): return b.target == Menu.ROW_BASE)[0]
+		var second: Dictionary = menu.controls_snapshot().filter(func(b): return b.target == Menu.ROW_BASE + 1)[0]
 		var a: Rect2 = first.rect
 		var b: Rect2 = second.rect
 		var gap: Variant = null
@@ -61,7 +61,7 @@ func check_row_geometry(menu: Node3D) -> void:
 				"Adjacent production rows reject gap rays"
 			)
 		var half: Vector2 = a.size * .5
-		var corner: Vector3 = first.node.to_global(Vector3(half.x - .001, half.y - .001, 1))
+		var corner: Vector3 = first.node.global_transform * Vector3(half.x - .001, half.y - .001, 1)
 		var direction: Vector3 = -first.node.global_basis.z
 		check(
 			menu.ray_hit(corner, direction).is_empty(),
@@ -100,8 +100,8 @@ func _run() -> void:
 	check(
 		(
 			selected.is_empty()
-			and menu._hover.left_hand == Menu.ROW_BASE
-			and menu._pointers.left_hand.dot.visible
+			and menu.hover_snapshot().left_hand == Menu.ROW_BASE
+			and menu.pointer_snapshot().left_hand.dot.visible
 		),
 		"Hover displays dot without activating"
 	)
@@ -116,9 +116,9 @@ func _run() -> void:
 	menu.update_pointer("left_hand", row, direction, false)
 	check(
 		(
-			menu._hover.left_hand == Menu.NONE
-			and not menu._pointers.left_hand.line.visible
-			and not menu._pointers.left_hand.dot.visible
+			menu.hover_snapshot().left_hand == Menu.NONE
+			and not menu.pointer_snapshot().left_hand.line.visible
+			and not menu.pointer_snapshot().left_hand.dot.visible
 		),
 		"Tracking loss clears hover and visuals"
 	)
@@ -246,13 +246,13 @@ func _run() -> void:
 			XRPose.XR_TRACKING_CONFIDENCE_HIGH
 		)
 	for _frame in 100:
-		main._process(1.0 / 72.0)
+		main.test_step(1.0 / 72.0)
 	check(
 		(
 			menu._recent_page == 0
 			and menu.scroll == 0
-			and menu._hover.left_hand == Menu.ROW_BASE
-			and menu._hover.right_hand == Menu.ROW_BASE
+			and menu.hover_snapshot().left_hand == Menu.ROW_BASE
+			and menu.hover_snapshot().right_hand == Menu.ROW_BASE
 		),
 		"Held real tracker axes never navigate menu; both rays hover independently"
 	)

@@ -924,3 +924,176 @@ func text_snapshot() -> String:
 ## Fingerprint of subclass-owned paint state, used without member-name reflection.
 func paint_state_key() -> int:
 	return 0
+
+
+## Explicit deterministic action entry for host tests; runtime dispatch stays private.
+func test_activate(target: int) -> void:
+	_activate(target)
+
+
+static func _freeze_snapshot(value: Variant) -> Variant:
+	if value is Dictionary:
+		for key in value:
+			_freeze_snapshot(value[key])
+		value.make_read_only()
+	elif value is Array:
+		for item in value:
+			_freeze_snapshot(item)
+		value.make_read_only()
+	return value
+
+
+static func _visual_snapshot(node: Node3D) -> Dictionary:
+	if not is_instance_valid(node):
+		return {}
+	var ancestors: Array[int] = []
+	var parent := node.get_parent()
+	while parent:
+		ancestors.append(parent.get_instance_id())
+		parent = parent.get_parent()
+	var children: Array[Dictionary] = []
+	for child in node.get_children():
+		if child is Node3D:
+			children.append(_visual_snapshot(child))
+	var result := {
+		"instance_id": node.get_instance_id(),
+		"kind": node.get_class(),
+		"parent_id": node.get_parent().get_instance_id() if node.get_parent() else 0,
+		"material_override": {"kind": ""},
+		"position": node.position,
+		"transform": node.transform,
+		"scale": node.scale,
+		"global_position": node.global_position if node.is_inside_tree() else node.position,
+		"global_basis": node.global_basis if node.is_inside_tree() else node.basis,
+		"global_transform": node.global_transform if node.is_inside_tree() else node.transform,
+		"visible": node.visible,
+		"visible_in_tree": node.is_visible_in_tree(),
+		"ancestor_ids": ancestors,
+		"children": children
+	}
+	if node is GeometryInstance3D:
+		result["layers"] = node.layers
+		var material: Material = node.material_override
+		if material:
+			var style := {"kind": material.get_class(), "render_priority": material.render_priority}
+			if material is ShaderMaterial:
+				style["surface_color"] = material.get_shader_parameter("surface_color")
+				var texture: Variant = material.get_shader_parameter("surface_texture")
+				style["surface_texture_id"] = (
+					texture.get_instance_id() if texture is Texture2D else 0
+				)
+			elif material is StandardMaterial3D:
+				style["albedo_color"] = material.albedo_color
+				style["albedo_texture_id"] = (
+					material.albedo_texture.get_instance_id() if material.albedo_texture else 0
+				)
+			result["material_override"] = style
+	if node is MeshInstance3D and node.mesh:
+		result["mesh"] = {
+			"aabb": node.mesh.get_aabb(), "surface_count": node.mesh.get_surface_count()
+		}
+		if node.mesh is QuadMesh:
+			result.mesh["size"] = node.mesh.size
+	if node is Label3D:
+		result["text"] = node.text
+		result["font_size"] = node.font_size
+		result["pixel_size"] = node.pixel_size
+	return result
+
+
+## Detached geometry/value records; never exposes the live rendering nodes.
+func controls_snapshot() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for button in _buttons:
+		result.append(
+			{
+				"target": button.target,
+				"rect": button.rect,
+				"enabled": button.enabled,
+				"base_color": button.base_color,
+				"foreground": button.foreground,
+				"node": _visual_snapshot(button.node)
+			}
+		)
+	_freeze_snapshot(result)
+	return result
+
+
+func hover_snapshot() -> Dictionary:
+	return _freeze_snapshot(_hover.duplicate(true))
+
+
+func pointer_snapshot() -> Dictionary:
+	var result := {}
+	for hand in _pointers:
+		var pointer: Dictionary = _pointers[hand]
+		var material: ShaderMaterial = pointer.line.material_override
+		var start: Variant = material.get_shader_parameter("ray_start")
+		var end: Variant = material.get_shader_parameter("ray_end")
+		var initialized: bool = start is Vector3 and end is Vector3
+		if not start is Vector3:
+			start = Vector3.ZERO
+		if not end is Vector3:
+			end = Vector3.ZERO
+		var line := _visual_snapshot(pointer.line)
+		var pose: Transform3D = line.global_transform
+		result[hand] = {
+			"dot": _visual_snapshot(pointer.dot),
+			"line": line,
+			"endpoints_initialized": initialized,
+			"local_start": start,
+			"local_end": end,
+			"world_start": pose * start,
+			"world_end": pose * end
+		}
+	return _freeze_snapshot(result)
+
+
+func backdrop_snapshot() -> Dictionary:
+	return _freeze_snapshot(_visual_snapshot(_backdrop))
+
+
+func test_set_hover(hand: String, target: int) -> void:
+	if hand.is_empty():
+		_hover.clear()
+	else:
+		_hover[hand] = target
+
+
+func test_set_pointer_visible(hand: String, visible: bool) -> void:
+	if _pointers.has(hand):
+		_pointers[hand].dot.visible = visible
+
+
+func test_set_control_enabled(target: int, enabled: bool) -> void:
+	for button in _buttons:
+		if button.target == target:
+			button.enabled = enabled
+
+
+func test_duplicate_control(target: int) -> MeshInstance3D:
+	for button in _buttons:
+		if button.target == target:
+			var copy := button.node.duplicate() as MeshInstance3D
+			var nodes: Array = [copy]
+			nodes.append_array(copy.find_children("*", "GeometryInstance3D", true, false))
+			for node in nodes:
+				if node.material_override:
+					node.material_override = node.material_override.duplicate(true)
+				if node is MeshInstance3D and node.mesh:
+					node.mesh = node.mesh.duplicate(true)
+			return copy
+	return null
+
+
+func test_set_control_transform(target: int, transform: Transform3D) -> void:
+	for button in _buttons:
+		if button.target == target:
+			button.node.transform = transform
+
+
+func test_set_control_visibility(target: int, keep_visible: bool, layout_visible: bool) -> void:
+	for button in _buttons:
+		if button.target == target:
+			button["keep_visible"] = keep_visible
+			button["layout_visible"] = layout_visible

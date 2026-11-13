@@ -86,11 +86,11 @@ func _run():
 		video.subtitle_direction = direction
 		for geometry in [1, 2, 3]:
 			video.geometry = geometry
-			video._apply_geometry()
+			video.test_apply_geometry()
 			video.panel.visible = true
 			for distance in [0.1, 0.5, 2.0, 10.0]:
 				video.subtitle_distance = distance
-				video._place_caption()
+				video.test_place_caption()
 				var centers: Array[Vector2] = []
 				for index in 2:
 					eye.position.x = (index - 0.5) * 0.063
@@ -144,7 +144,7 @@ func _run():
 			video.material.set_shader_parameter("probe_eye", 0)
 			eye.position.x = -0.0315
 			head.transform = Transform3D(Basis(), Vector3(0, 1.6, 0))
-			video._place_caption()
+			video.test_place_caption()
 			await RenderingServer.frame_post_draw
 			await RenderingServer.frame_post_draw
 			var baseline := centroid(viewport.get_texture().get_image())
@@ -160,7 +160,7 @@ func _run():
 				head.rotation = pose * PI / 180.0
 				head.position = Vector3(0.2, 1.75, 0.1)
 				for frame in 12:
-					video._place_caption()
+					video.test_place_caption()
 					await process_frame
 				await RenderingServer.frame_post_draw
 				var shift := centroid(viewport.get_texture().get_image()).distance_to(baseline)
@@ -178,7 +178,7 @@ func _run():
 			# A video adjustment must carry its captions with it; the local anchor stays unchanged.
 			video.turn_view(0.1, 0.05)
 			video.zoom_view(0.1)
-			video._place_caption()
+			video.test_place_caption()
 			var adjusted: Basis = video.material.get_shader_parameter("subtitle_anchor_inverse")
 			if not adjusted.is_equal_approx(anchor):
 				failures.append("Video adjustment changes local caption anchor")
@@ -202,7 +202,7 @@ func _run():
 	video.material.set_shader_parameter("alpha_enabled", true)
 	for geometry in [1, 2, 3]:
 		video.geometry = geometry
-		video._apply_geometry()
+		video.test_apply_geometry()
 		for direction in [0, 1]:
 			video.subtitle_direction = direction
 			for index in 2:
@@ -212,7 +212,7 @@ func _run():
 				var baseline := Rect2i()
 				for angle in [0, -90, 90]:
 					video.set_screen_rotation(angle)
-					video._place_caption()
+					video.test_place_caption()
 					video._sync_subtitle_surface()
 					await process_frame
 					await RenderingServer.frame_post_draw

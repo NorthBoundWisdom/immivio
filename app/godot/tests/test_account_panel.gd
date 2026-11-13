@@ -68,17 +68,17 @@ func _run() -> void:
 		menu._engine_notices().contains("Permission is hereby granted"),
 		"engine third-party notices include full license texts"
 	)
-	menu._choose(menu.rows[0])
+	menu.test_choose(menu.rows[0])
 	check(
 		panel.view == "license" and panel.license_lines.size() > 10,
 		"full engine license has scrollable text"
 	)
 	check(not menu._grid() and menu._max_scroll() > 0, "license is a scrolling reader")
-	for button in menu._buttons:
+	for button in menu.controls_snapshot():
 		if button.target >= Menu.ROW_BASE and button.target < Menu.ROW_BASE + menu._drawn_slots():
 			var row: Dictionary = menu.rows[button.target - Menu.ROW_BASE]
 			check(
-				button.node.get_child(0).text == row.title,
+				button.node.children[0].text == row.title,
 				"license lines retain full text without ellipsis"
 			)
 	panel.action(Accounts.BASE)

@@ -56,7 +56,7 @@ func _run() -> void:
 		library.global_transform == before and is_equal_approx(presentation.window_height, -.12),
 		"Slider preview cannot move the captured rail"
 	)
-	host._on_setting_changed("window_height", -30.0)
+	host.test_setting_changed("window_height", -30.0)
 	check(
 		is_equal_approx(library.position.y, before.origin.y - .18),
 		"Release moves the current window immediately"
@@ -69,14 +69,14 @@ func _run() -> void:
 		),
 		"Height is persisted in metres"
 	)
-	host._place_menu(library)
+	host.test_place_menu(library)
 	check(
 		is_equal_approx(library.to_global(Vector3(centre.x, centre.y, 0)).y, host.eye().y - .3),
 		"Reopening applies the same height once"
 	)
 	host.video.local_uri = "file:///height.mp4"
 	host.video.panel.visible = true
-	host.video._waiting_first = false
+	host.video.test_set_waiting_for_frame(false)
 	for reclining in [false, true]:
 		host.reclining_mode = reclining
 		if reclining:
@@ -85,12 +85,12 @@ func _run() -> void:
 			Geometry.Geometry.FLAT, Geometry.Geometry.HALF_EQUIRECT, Geometry.Geometry.EQUIRECT_360
 		]:
 			host.video.geometry = geometry
-			host._show_player_menu()
+			host.test_show_player_menu()
 			presentation.window_height = 0
-			host._place_menu(host.video_menu)
+			host.test_place_menu(host.video_menu)
 			var zero: Transform3D = host.video_menu.global_transform
 			presentation.window_height = -.3
-			host._place_menu(host.video_menu)
+			host.test_place_menu(host.video_menu)
 			check(
 				host.video_menu.global_position.is_equal_approx(
 					zero.origin - zero.basis.y.normalized() * .3
@@ -101,19 +101,19 @@ func _run() -> void:
 				)
 			)
 			host.library_menu.compact = true
-			host._show_library_menu()
+			host.test_show_library_menu()
 			var compact: Transform3D = library.global_transform
-			host._place_menu(library)
+			host.test_place_menu(library)
 			check(
 				library.global_transform.is_equal_approx(compact),
 				"Compact library never accumulates the height offset"
 			)
 	for invalid in [NAN, INF, "bad", true]:
-		host._on_setting_changed("window_height", invalid)
+		host.test_setting_changed("window_height", invalid)
 		check(is_equal_approx(presentation.window_height, -.3), "Invalid height is rejected")
-	host._on_setting_changed("window_height", 200.0)
+	host.test_setting_changed("window_height", 200.0)
 	check(is_equal_approx(presentation.window_height, .3), "Height is bounded above")
-	host._on_setting_changed("window_height", -200.0)
+	host.test_setting_changed("window_height", -200.0)
 	check(is_equal_approx(presentation.window_height, -.6), "Height is bounded below")
 	host.queue_free()
 	await process_frame

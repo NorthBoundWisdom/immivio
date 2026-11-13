@@ -41,20 +41,20 @@ func _run() -> void:
 		12,
 		Menu.IPD_SETTINGS
 	]:
-		menu._activate(target)
+		menu.test_activate(target)
 		check(
 			menu.section == 0 and menu.global_transform.is_equal_approx(plane),
 			"Popup switches preserve the toolbar plane"
 		)
 		check(
-			menu._adjustment.is_empty() and not menu._quick_open.is_empty(),
+			menu._adjustment.is_empty() and not menu.popup_snapshot().quick_open.is_empty(),
 			"One popup replaces the standalone settings page"
 		)
-	menu._activate(Menu.QUICK_CLOSE)
+	menu.test_activate(Menu.QUICK_CLOSE)
 	state.stereo = false
 	menu.refresh()
 	check(
-		not menu._buttons.any(func(button): return button.target == Menu.IPD_SETTINGS),
+		not menu.controls_snapshot().any(func(button): return button.target == Menu.IPD_SETTINGS),
 		"Unavailable mono IPD button is omitted"
 	)
 	menu.free()
@@ -77,9 +77,9 @@ func _run() -> void:
 	video.stereo_sbs = true
 	video.geometry = 1
 	video.media.format = {"width": 3840, "height": 1920}
-	video._apply_geometry()
-	main._show_player_menu()
-	main.player_menu._activate(main.player_menu.IPD_SETTINGS)
+	video.test_apply_geometry()
+	main.test_show_player_menu()
+	main.player_menu.test_activate(main.player_menu.IPD_SETTINGS)
 	var before := host.calls.size()
 	var session: int = video.media.session_id
 	main._on_playback_adjustment("stereo_horizontal", 1.25)

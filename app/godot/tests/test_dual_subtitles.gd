@@ -79,7 +79,7 @@ func _run() -> void:
 		"mpv_source_handle": 55
 	}
 	video.media.last_pair = pair
-	video._waiting_first = false
+	video.test_set_waiting_for_frame(false)
 	video.panel.visible = true
 	var sample := {
 		"session_id": video.media.session_id,
@@ -234,13 +234,13 @@ func _run() -> void:
 	)
 	video.subtitle_size = 2
 	video.geometry = 0
-	video._place_caption()
+	video.test_place_caption()
 	check(
 		video.caption.get_aabb().size.y <= video._flat.size.y,
 		"Both flat text blocks fit inside the screen"
 	)
 	video.geometry = 1
-	video._place_caption()
+	video.test_place_caption()
 	var label: Label = video.projected_subtitles.label
 	check(
 		label.get_minimum_size().y * label.scale.y <= video.projected_subtitles.PATCH_SIZE - 80,
@@ -248,7 +248,7 @@ func _run() -> void:
 	)
 	for text in ["A".repeat(4000) + "\n第二字幕".repeat(20), "Line\n".repeat(1000)]:
 		video.caption.text = text
-		video._place_caption()
+		video.test_place_caption()
 		var rendered := label.get_minimum_size() * label.scale
 		var outline := label.get_theme_constant("outline_size") * label.scale.y
 		check(
@@ -279,7 +279,7 @@ func _run() -> void:
 	menu.secondary_subtitle_requested.connect(func(id): selected.append(id))
 	root.add_child(menu)
 	menu.toggle()
-	menu._activate(110)
+	menu.test_activate(110)
 	menu._on_choice_changed("subtitle_target", true)
 	var primary_row := -1
 	var second_row := -1
@@ -289,12 +289,14 @@ func _run() -> void:
 		if menu._subtitle_ids[target] == 8:
 			second_row = target
 	check(
-		menu._buttons.any(func(button): return button.target == primary_row and not button.enabled),
+		menu.controls_snapshot().any(
+			func(button): return button.target == primary_row and not button.enabled
+		),
 		"Primary row disabled for secondary target"
 	)
-	menu._activate(primary_row)
+	menu.test_activate(primary_row)
 	check(selected.is_empty(), "Disabled row cannot dispatch even through direct activation")
-	menu._activate(second_row)
+	menu.test_activate(second_row)
 	check(selected == [8], "Target switch dispatches the secondary channel")
 	menu.free()
 	video.free()

@@ -60,16 +60,16 @@ func _run() -> void:
 	var platform := Platform.new()
 	menu.attach_platform(platform)
 	menu.visible = true
-	menu._activate(Library.NAV_BASE + Library.Section.NETWORK)
-	menu._activate(menu.network.ADD)
+	menu.test_activate(Library.NAV_BASE + Library.Section.NETWORK)
+	menu.test_activate(menu.network.ADD)
 	await settle()
 	check(
 		menu.network.mode == "add" and menu.section == Library.Section.NETWORK,
 		"Late background source listings must not leave the add-source chooser"
 	)
-	menu._activate(Library.NAV_BASE + Library.Section.NETWORK)
+	menu.test_activate(Library.NAV_BASE + Library.Section.NETWORK)
 	await settle()
-	var navigation: Array = menu._buttons.filter(
+	var navigation: Array = menu.controls_snapshot().filter(
 		func(button):
 			return (
 				button.target >= Library.NAV_BASE
@@ -115,14 +115,14 @@ func _run() -> void:
 		menu.rows.filter(func(row): return not row.get("group", false)).size() == 4,
 		"Discovery does not duplicate a saved SMB host"
 	)
-	menu._choose(smb)
+	menu.test_choose(smb)
 	await settle()
 	check(
 		menu.section == Library.Section.SMB and menu.rows[0].title == "Video",
 		"Selecting a shared folder source opens its shares"
 	)
 	check(
-		menu._buttons.any(
+		menu.controls_snapshot().any(
 			func(button):
 				return (
 					button.target == Library.NAV_BASE + Library.Section.NETWORK
@@ -131,7 +131,7 @@ func _run() -> void:
 		),
 		"Network media stays selected inside a backend browser"
 	)
-	menu._choose(menu.rows[0])
+	menu.test_choose(menu.rows[0])
 	await settle()
 	check(
 		menu.sources.smb_path == "Video" and menu.rows[0].title == "8k.mp4",
@@ -139,23 +139,23 @@ func _run() -> void:
 	)
 	menu.network.open()
 	await settle()
-	menu._choose(find(menu, "smb_server"))
+	menu.test_choose(find(menu, "smb_server"))
 	await settle()
 	check(
 		menu.sources.smb_path == "Video" and menu.rows[0].title == "8k.mp4",
 		"Reopening a source restores its last folder"
 	)
-	menu._activate(Library.BACK)
+	menu.test_activate(Library.BACK)
 	await settle()
-	menu._activate(Library.BACK)
+	menu.test_activate(Library.BACK)
 	await settle()
 	check(
 		menu.section == Library.Section.NETWORK,
 		"Back from a source root returns to the unified list"
 	)
-	menu._choose(dlna)
+	menu.test_choose(dlna)
 	await settle()
-	menu._choose(menu.rows[0])
+	menu.test_choose(menu.rows[0])
 	await settle()
 	check(
 		menu.sources.dlna_stack.size() == 1 and menu.rows[0].title == "Show",
@@ -163,7 +163,7 @@ func _run() -> void:
 	)
 	menu.network.open()
 	await settle()
-	menu._choose(find(menu, "dlna_server"))
+	menu.test_choose(find(menu, "dlna_server"))
 	await settle()
 	check(
 		menu.sources.dlna_stack.size() == 1 and menu.rows[0].title == "Show",
@@ -171,7 +171,7 @@ func _run() -> void:
 	)
 	menu.network.open()
 	await settle()
-	menu._choose(account)
+	menu.test_choose(account)
 	await settle()
 	check(
 		(
@@ -189,7 +189,7 @@ func _run() -> void:
 		menu.server_browser.view == "scenes" and menu.server_browser.query.q == "remember",
 		"Refreshing the hub does not reset the account browser"
 	)
-	menu._choose(find(menu, "server_account"))
+	menu.test_choose(find(menu, "server_account"))
 	check(
 		menu.server_browser.view == "scenes" and menu.server_browser.query.q == "remember",
 		"Returning to the account source restores its browsing context"
@@ -203,12 +203,12 @@ func _run() -> void:
 	)
 	for type in [Library.Section.SMB, Library.Section.DLNA, Library.Section.MEDIA_SERVER]:
 		menu.network.open()
-		menu._activate(menu.network.ADD)
+		menu.test_activate(menu.network.ADD)
 		check(
 			menu.rows.size() == 7 and menu.network.mode == "add",
 			"Shared folders, DLNA and five server providers are sibling choices"
 		)
-		menu._choose(menu.rows.filter(func(row): return row.network_type == type)[0])
+		menu.test_choose(menu.rows.filter(func(row): return row.network_type == type)[0])
 		check(
 			(
 				menu.section == type
@@ -220,7 +220,7 @@ func _run() -> void:
 			),
 			"Each source type opens its existing setup flow"
 		)
-		menu._activate(
+		menu.test_activate(
 			menu.account_panel.BASE if type == Library.Section.MEDIA_SERVER else Library.CANCEL
 		)
 		check(
@@ -233,7 +233,7 @@ func _run() -> void:
 		)
 	for provider in menu.account_panel.PROVIDERS:
 		menu.network.open()
-		menu._activate(menu.network.ADD)
+		menu.test_activate(menu.network.ADD)
 		check(
 			not menu.rows.any(
 				func(row):
@@ -244,7 +244,9 @@ func _run() -> void:
 			),
 			"No media-server parent entry remains in the add-source chooser"
 		)
-		menu._choose(menu.rows.filter(func(row): return row.get("network_provider") == provider)[0])
+		menu.test_choose(
+			menu.rows.filter(func(row): return row.get("network_provider") == provider)[0]
+		)
 		check(
 			(
 				menu.account_panel.view == "form"
@@ -254,8 +256,10 @@ func _run() -> void:
 			"Each provider opens its own setup form directly"
 		)
 		menu.network.open()
-		menu._activate(menu.network.MANAGE)
-		menu._choose(menu.rows.filter(func(row): return row.get("network_provider") == provider)[0])
+		menu.test_activate(menu.network.MANAGE)
+		menu.test_choose(
+			menu.rows.filter(func(row): return row.get("network_provider") == provider)[0]
+		)
 		check(
 			(
 				menu.account_panel.view == "accounts"
@@ -263,19 +267,19 @@ func _run() -> void:
 			),
 			"Provider management lists only the chosen provider's accounts"
 		)
-		menu._activate(menu.account_panel.BASE + 22)
+		menu.test_activate(menu.account_panel.BASE + 22)
 		check(
 			menu.account_panel.view == "form" and menu.account_panel.provider == provider,
 			"Adding from provider management skips the removed chooser"
 		)
 	menu.network.open()
-	menu._activate(menu.network.ADD)
-	menu._activate(menu.network.DISCOVER)
+	menu.test_activate(menu.network.ADD)
+	menu.test_activate(menu.network.DISCOVER)
 	check(
 		menu.account_panel.view == "discover" and menu.account_panel.kind == "server",
 		"Network discovery remains available from the flat chooser"
 	)
-	menu._activate(menu.account_panel.BASE + 22)
+	menu.test_activate(menu.account_panel.BASE + 22)
 	check(
 		(
 			menu.section == Library.Section.NETWORK
@@ -288,13 +292,7 @@ func _run() -> void:
 		menu.I18n.use(language)
 		menu.refresh()
 		for index in 2:
-			var label: Label3D = (
-				menu
-				. _buttons
-				. filter(func(button): return button.target == Library.ROW_BASE + index)[0]
-				. node
-				. get_child(0)
-			)
+			var label: Dictionary = menu.controls_snapshot().filter(func(button): return button.target == Library.ROW_BASE + index)[0].node.children[0]
 			check(
 				label.text == menu.rows[index].title and label.text.ends_with(")"),
 				"Protocol titles retain complete parentheses in each language"
@@ -302,18 +300,18 @@ func _run() -> void:
 	menu.I18n.use("en")
 	for type in [Library.Section.SMB, Library.Section.DLNA]:
 		menu.network.open()
-		menu._activate(menu.network.ADD)
-		menu._choose(menu.rows.filter(func(row): return row.network_type == type)[0])
+		menu.test_activate(menu.network.ADD)
+		menu.test_choose(menu.rows.filter(func(row): return row.network_type == type)[0])
 		menu.editor.host = "192.168.1.30"
-		menu._activate(Library.SAVE)
+		menu.test_activate(Library.SAVE)
 		await settle()
 		check(
 			menu.section == Library.Section.NETWORK and menu.editor.is_empty(),
 			"Saving a network source returns to the unified list"
 		)
 	menu.network.open()
-	menu._activate(menu.network.ADD)
-	menu._choose(
+	menu.test_activate(menu.network.ADD)
+	menu.test_choose(
 		menu.rows.filter(func(row): return row.network_type == Library.Section.MEDIA_SERVER)[0]
 	)
 	menu.account_panel.start("server", "jellyfin")
@@ -325,23 +323,23 @@ func _run() -> void:
 		"Completed account setup returns to the unified list"
 	)
 	menu.network.open()
-	menu._activate(menu.network.MANAGE)
-	menu._choose(menu.rows[0])
+	menu.test_activate(menu.network.MANAGE)
+	menu.test_choose(menu.rows[0])
 	await settle()
 	check(
 		menu.section == Library.Section.SMB and menu.sources.smb_server.is_empty(),
 		"Managing shared folders opens the saved-source list"
 	)
 	menu.network.open()
-	menu._activate(menu.network.ADD)
-	menu._activate(Library.BACK)
+	menu.test_activate(menu.network.ADD)
+	menu.test_activate(Library.BACK)
 	check(
 		menu.section == Library.Section.NETWORK and menu.network.mode.is_empty(),
 		"Cancelling the type chooser restores the unified list"
 	)
 	# A late listing from the previous section cannot replace current rows/status.
 	menu.sources.request("dlna_discover", 9000)
-	menu._activate(Library.NAV_BASE + Library.Section.SETTINGS)
+	menu.test_activate(Library.NAV_BASE + Library.Section.SETTINGS)
 	menu.status = "current"
 	menu._on_media_list(
 		9000, JSON.stringify({"state": "ready", "servers": [{"id": "late", "name": "Late"}]})

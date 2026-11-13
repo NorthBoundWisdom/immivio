@@ -152,7 +152,7 @@ func _initialize() -> void:
 	check(
 		(
 			video.panel.visible
-			and not video._waiting_first
+			and not video.waiting_for_first_frame()
 			and video._pending_revision.is_empty()
 			and not video.requested_play
 		),

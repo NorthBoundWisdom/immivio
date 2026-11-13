@@ -54,19 +54,19 @@ func _run() -> void:
 	host.video.media.begin(1)
 	host.video.media.state = "paused"
 	host.video.media.frame_counter = 1
-	host.video._waiting_first = false
+	host.video.test_set_waiting_for_frame(false)
 	host.video.control.duration_ms = 60000
-	host.video._apply_geometry()
+	host.video.test_apply_geometry()
 	host.video.panel.visible = true
-	host._show_player_menu()
+	host.test_show_player_menu()
 	var menu: Node3D = host.player_menu
 	for curved in [false, true]:
 		if curved:
-			host.menu_compositor._process(0)
+			host.menu_compositor.test_step(0)
 		for name in ["title", "status"]:
-			host._show_player_menu()
+			host.test_show_player_menu()
 			if curved:
-				host.menu_compositor._process(0)
+				host.menu_compositor.test_step(0)
 			var panel: MeshInstance3D = (
 				menu._title_pill if name == "title" else menu.device_status._pill
 			)
@@ -80,7 +80,10 @@ func _run() -> void:
 			)
 			menu.update_pointer("right_hand", ray[0], ray[1], true)
 			check(
-				menu._pointers.right_hand.dot.visible and menu._hover.right_hand == menu.NONE,
+				(
+					menu.pointer_snapshot().right_hand.dot.visible
+					and menu.hover_snapshot().right_hand == menu.NONE
+				),
 				"Header shows a neutral reticle: " + name
 			)
 			if curved and not hit.is_empty():
@@ -89,15 +92,15 @@ func _run() -> void:
 					"Curved header laser ends on the visible cylinder"
 				)
 			host.input_source.test_ray = ray
-			host._on_pointer_button("trigger_click", "right_hand")
-			host._on_pointer_release("trigger_click", "right_hand")
+			host.test_pointer_button("trigger_click", "right_hand")
+			host.test_pointer_release("trigger_click", "right_hand")
 			check(
 				menu.visible and host.trigger_taps.is_empty() and host.grab.is_empty(),
 				"Header press does not click through or dismiss controls: " + name
 			)
 	# Rounded transparent corners and gaps outside the header remain non-surfaces.
-	host._show_player_menu()
-	host.menu_compositor._process(0)
+	host.test_show_player_menu()
+	host.menu_compositor.test_step(0)
 	var title: MeshInstance3D = menu._title_pill
 	var corner := title.to_global(
 		Vector3(title.mesh.size.x / 2 - .0005, title.mesh.size.y / 2 - .0005, 0)
@@ -115,15 +118,15 @@ func _run() -> void:
 	menu.device_status.visible = true
 	# A compact browser must not steal feedback from the visible playback header.
 	host.library_menu.compact = true
-	host._show_library_menu()
-	host.menu_compositor._process(0)
+	host.test_show_library_menu()
+	host.menu_compositor.test_step(0)
 	ray = ray_to(host, menu._title_pill.global_position, true)
 	host.input_source.test_ray = ray
 	host._update_menu_pointer("right_hand")
 	check(
 		(
-			menu._pointers.right_hand.dot.visible
-			and not host.library_menu._pointers.right_hand.dot.visible
+			menu.pointer_snapshot().right_hand.dot.visible
+			and not host.library_menu.pointer_snapshot().right_hand.dot.visible
 		),
 		"Controller routes informational header feedback beside the browser"
 	)
@@ -131,15 +134,18 @@ func _run() -> void:
 	event.position = host.xr_camera.unproject_position(ray[2])
 	host._unhandled_input(event)
 	check(
-		menu._pointers.get("desktop", {}).get("dot") != null and menu._pointers.desktop.dot.visible,
+		(
+			menu.pointer_snapshot().get("desktop", {}).get("dot") != null
+			and menu.pointer_snapshot().desktop.dot.visible
+		),
 		"Preview pointer also reaches the informational header"
 	)
 	# Outside taps retain their existing dismissal behavior.
-	host._show_player_menu()
-	host.menu_compositor._process(0)
+	host.test_show_player_menu()
+	host.menu_compositor.test_step(0)
 	host.input_source.test_ray = ray_to(host, menu.to_global(Vector3(.78, .38, 0)), true)
-	host._on_pointer_button("trigger_click", "right_hand")
-	host._on_pointer_release("trigger_click", "right_hand")
+	host.test_pointer_button("trigger_click", "right_hand")
+	host.test_pointer_release("trigger_click", "right_hand")
 	check(not menu.visible, "A tap outside all UI still dismisses controls")
 	host.queue_free()
 	await process_frame

@@ -2511,3 +2511,15 @@ func _exit_tree() -> void:
 
 func waiting_for_first_frame() -> bool:
 	return _waiting_first
+
+
+func test_place_caption() -> void:
+	_place_caption()
+
+
+func test_set_waiting_for_frame(pending: bool) -> void:
+	_waiting_first = pending
+
+
+func test_step(delta: float) -> void:
+	_process(delta)

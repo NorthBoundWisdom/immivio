@@ -28,7 +28,7 @@ func _initialize() -> void:
 
 
 func button(menu: Node3D, target: int) -> Dictionary:
-	for item in menu._buttons:
+	for item in menu.controls_snapshot():
 		if item.target == target:
 			return item
 	return {}
@@ -49,7 +49,7 @@ func tap(menu: Node3D, target: int) -> void:
 	)
 	if item.is_empty() or not item.enabled:
 		return
-	var origin: Vector3 = item.node.to_global(Vector3(0, 0, 1))
+	var origin: Vector3 = item.node.global_transform * Vector3(0, 0, 1)
 	check(
 		menu.ray_hit(origin, -menu.global_basis.z).get("target", -1) == target,
 		"Reset has a separate ray target"
@@ -103,16 +103,16 @@ func _run() -> void:
 	video.recent_files = preload("res://scripts/recent_files.gd").new(directory.path_join("recent"))
 	video.open_local("file:///slider-reset_SBS.mp4", "slider-reset_SBS.mp4")
 	video.stereo_sbs = true
-	video._apply_geometry()
+	video.test_apply_geometry()
 	# This UI test operates on a presented file, not the initial loading state.
 	video.media.frame_counter = 1
-	video._waiting_first = false
+	video.test_set_waiting_for_frame(false)
 	video.panel.visible = true
-	main._show_player_menu()
+	main.test_show_player_menu()
 	var menu: Node3D = main.player_menu
 	menu.set_process(false)
 	menu.adjustment_committed.connect(func(): commits += 1)
-	menu._activate(Menu.QUICK_COLOR)
+	menu.test_activate(Menu.QUICK_COLOR)
 	for page in menu.PlaybackPopups.GRADE_PAGES.size():
 		for key in Grade.DEFAULTS:
 			var span := Grade.limits(key)
@@ -166,7 +166,7 @@ func _run() -> void:
 	)
 	# Choice resets obey the same release ownership as presets, without previewing on press.
 	var item := button(menu, reset_target(menu, "exposure"))
-	var origin: Vector3 = item.node.to_global(Vector3(0, 0, 1))
+	var origin: Vector3 = item.node.global_transform * Vector3(0, 0, 1)
 	menu.press_pointer("right", origin, -menu.global_basis.z, true)
 	menu.release_pointer("left", origin, -menu.global_basis.z, true)
 	check(video.color_grade.values().exposure == 1.0, "Another hand cannot release a pending reset")
@@ -177,7 +177,7 @@ func _run() -> void:
 	video.set_stereo_alignment("stereo_horizontal", 1.25)
 	video.set_stereo_alignment("stereo_vertical", -0.5)
 	video.swap_eyes = true
-	menu._activate(Menu.IPD_SETTINGS)
+	menu.test_activate(Menu.IPD_SETTINGS)
 	tap(menu, reset_target(menu, "stereo_horizontal"))
 	check(
 		(
@@ -194,7 +194,7 @@ func _run() -> void:
 	)
 	video.set_sync_delay("audio_delay_ms", 500)
 	video.set_sync_delay("subtitle_delay_ms", -250)
-	menu._activate(Menu.SYNC_SETTINGS)
+	menu.test_activate(Menu.SYNC_SETTINGS)
 	tap(menu, reset_target(menu, "audio_delay_ms"))
 	check(
 		video.audio_delay_ms == 0 and video.subtitle_delay_ms == -250,
@@ -202,7 +202,7 @@ func _run() -> void:
 	)
 	video.subtitle_size = 1.5
 	video.subtitle_flat_position = 0.25
-	menu._activate(110)
+	menu.test_activate(110)
 	tap(menu, reset_target(menu, "subtitle_size"))
 	check(
 		video.subtitle_size == 1.0 and video.subtitle_flat_position == 0.25,

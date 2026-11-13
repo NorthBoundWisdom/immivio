@@ -1022,3 +1022,15 @@ func _exit_tree() -> void:
 		_bridge.setEnabled(false)
 		_bridge.attachSurface(null)
 		layer.queue_free()
+
+
+func test_update_bounds() -> void:
+	_update_bounds()
+
+
+func test_step(delta: float) -> void:
+	_process(delta)
+
+
+func test_tag_menu(menu: Node) -> void:
+	_tag_tree(menu)

@@ -1,0 +1,4389 @@
+{
+  "schema_version": 1,
+  "source_commit": "eead9b55c06b1525fc4d6223fd5f80dc4057fe70",
+  "scope": "All app/godot/tests/**/*.gd; direct dot-member accesses only; strings/comments excluded",
+  "scripts_scanned": 138,
+  "scripts_with_private_access": 105,
+  "total_accesses": 1722,
+  "members": [
+    {
+      "member": "_activate",
+      "accesses": 183,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_library_menu.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/render_library_page_switch.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/render_playback_page_switch.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/render_ui_warmup.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_choice_fields.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_color_grade.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_dlna_menu.gd",
+          "accesses": 22
+        },
+        {
+          "file": "app/godot/tests/test_dual_subtitles.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_flat_screen_controls.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_library_file_actions.gd",
+          "accesses": 21
+        },
+        {
+          "file": "app/godot/tests/test_library_footer_resume.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_library_menu.gd",
+          "accesses": 47
+        },
+        {
+          "file": "app/godot/tests/test_library_navigation_retention.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_library_page_presentation.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_library_settings_preparation.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_library_sort.gd",
+          "accesses": 4
+        },
+        {
+          "file": "app/godot/tests/test_local_storage.gd",
+          "accesses": 8
+        },
+        {
+          "file": "app/godot/tests/test_media_server_browser.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_media_servers.gd",
+          "accesses": 4
+        },
+        {
+          "file": "app/godot/tests/test_mode_unlock.gd",
+          "accesses": 4
+        },
+        {
+          "file": "app/godot/tests/test_network_sources.gd",
+          "accesses": 20
+        },
+        {
+          "file": "app/godot/tests/test_playback_order.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_playback_page_surfaces.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_popup_continuity.gd",
+          "accesses": 7
+        },
+        {
+          "file": "app/godot/tests/test_playback_toolbar.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_tools.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_pointer_redraw_continuity.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_preview_menu_input.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_selected_upstream_features.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_settings_cache_ipd.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_slider_resets.gd",
+          "accesses": 4
+        },
+        {
+          "file": "app/godot/tests/test_subtitle_below_screen.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_subtitle_sliders.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_buttons",
+      "accesses": 136,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_audio_popup.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/render_library_menu.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/render_playback_popup_continuity.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/render_seek_highlight.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/render_stereo_view.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/render_view_follow.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_account_panel.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_audio_popup.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_background.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_bookmarks.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_choice_fields.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_choice_fields_xr.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_dlna_menu.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_dual_subtitles.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_flat_screen_controls.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_hand_pointer.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_hand_preferences.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_immivio_features.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_independent_playback.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_library_file_actions.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_library_footer_resume.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_library_menu.gd",
+          "accesses": 10
+        },
+        {
+          "file": "app/godot/tests/test_library_navigation_retention.gd",
+          "accesses": 4
+        },
+        {
+          "file": "app/godot/tests/test_library_padding.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_library_progress.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_library_settings_preparation.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_library_sort.gd",
+          "accesses": 7
+        },
+        {
+          "file": "app/godot/tests/test_local_storage.gd",
+          "accesses": 4
+        },
+        {
+          "file": "app/godot/tests/test_media_server_management.gd",
+          "accesses": 5
+        },
+        {
+          "file": "app/godot/tests/test_media_servers.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_mode_unlock.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_network_sources.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_panel_pointer.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_page_surfaces.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_popup_continuity.gd",
+          "accesses": 4
+        },
+        {
+          "file": "app/godot/tests/test_playback_settings.gd",
+          "accesses": 5
+        },
+        {
+          "file": "app/godot/tests/test_playback_toolbar.gd",
+          "accesses": 8
+        },
+        {
+          "file": "app/godot/tests/test_playback_tools.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 14
+        },
+        {
+          "file": "app/godot/tests/test_plex_accounts.gd",
+          "accesses": 7
+        },
+        {
+          "file": "app/godot/tests/test_pointer_redraw_continuity.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_preview_menu_input.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_quick_playback_settings.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_recent_files.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_recent_pointer.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_seek_policy.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_selected_upstream_features.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_settings_cache_ipd.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_slider_resets.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_stereo_detection.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_subtitle_below_screen.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_thumbnails.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_ui_presentation.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_video_only_library.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_xr_menu_compositor.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_process",
+      "accesses": 50,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_library_page_switch.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/render_menu_transitions.gd",
+          "accesses": 5
+        },
+        {
+          "file": "app/godot/tests/render_playback_page_switch.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/render_playback_popup_continuity.gd",
+          "accesses": 5
+        },
+        {
+          "file": "app/godot/tests/test_library_menu.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_library_window.gd",
+          "accesses": 8
+        },
+        {
+          "file": "app/godot/tests/test_playback_header_pointer.gd",
+          "accesses": 5
+        },
+        {
+          "file": "app/godot/tests/test_playback_page_surfaces.gd",
+          "accesses": 7
+        },
+        {
+          "file": "app/godot/tests/test_playback_tools.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_recent_pointer.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_recent_scan.gd",
+          "accesses": 9
+        },
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_choose",
+      "accesses": 48,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_account_panel.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_diagnostic_log.gd",
+          "accesses": 5
+        },
+        {
+          "file": "app/godot/tests/test_library_file_actions.gd",
+          "accesses": 5
+        },
+        {
+          "file": "app/godot/tests/test_library_menu.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_media_server_browser.gd",
+          "accesses": 5
+        },
+        {
+          "file": "app/godot/tests/test_media_servers.gd",
+          "accesses": 4
+        },
+        {
+          "file": "app/godot/tests/test_network_sources.gd",
+          "accesses": 14
+        },
+        {
+          "file": "app/godot/tests/test_thumbnails.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_update_check.gd",
+          "accesses": 9
+        },
+        {
+          "file": "app/godot/tests/test_video_only_library.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_process_sticks",
+      "accesses": 38,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_flat_screen_controls.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_input_visuals.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 36
+        }
+      ]
+    },
+    {
+      "member": "_apply_geometry",
+      "accesses": 36,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_immersive_alignment.gd",
+          "accesses": 4
+        },
+        {
+          "file": "app/godot/tests/render_mpv_subtitles.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/render_playback_page_switch.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/render_projected_subtitles.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/render_screen_curve.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_controller_canvas.gd",
+          "accesses": 6
+        },
+        {
+          "file": "app/godot/tests/test_flat_screen_controls.gd",
+          "accesses": 4
+        },
+        {
+          "file": "app/godot/tests/test_immersive_adjustments.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_immersive_lifecycle.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_mode_unlock.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_playback_controls_startup.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_header_pointer.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_page_surfaces.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_playback_settings.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_selected_upstream_features.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_settings_cache_ipd.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_slider_resets.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_show_player_menu",
+      "accesses": 36,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_main_ui.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/render_playback_page_switch.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/render_view_follow.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_controller_canvas.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_library_window.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_playback_controls_startup.gd",
+          "accesses": 8
+        },
+        {
+          "file": "app/godot/tests/test_playback_header_pointer.gd",
+          "accesses": 4
+        },
+        {
+          "file": "app/godot/tests/test_playback_page_surfaces.gd",
+          "accesses": 4
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 4
+        },
+        {
+          "file": "app/godot/tests/test_preview_menu_input.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_selected_upstream_features.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_settings_cache_ipd.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_slider_resets.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 4
+        },
+        {
+          "file": "app/godot/tests/test_window_height.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_quick_open",
+      "accesses": 30,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_ui_warmup.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_playback_controls_startup.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_page_surfaces.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_settings.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_tools.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 10
+        },
+        {
+          "file": "app/godot/tests/test_quick_playback_settings.gd",
+          "accesses": 8
+        },
+        {
+          "file": "app/godot/tests/test_selected_upstream_features.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_settings_cache_ipd.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_ui_presentation.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_waiting_first",
+      "accesses": 29,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_playback_page_switch.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_dual_subtitles.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_file_mode_memory.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_hand_preferences.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_headset_presence.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_mpv_end.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_mpv_seek_hold.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_controls_startup.gd",
+          "accesses": 4
+        },
+        {
+          "file": "app/godot/tests/test_playback_header_pointer.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_page_surfaces.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_tools.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_quick_playback_settings.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_seek_policy.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_selected_upstream_features.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_slider_resets.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_video_mode_default.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_window_height.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_on_setting_changed",
+      "accesses": 26,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_background.gd",
+          "accesses": 12
+        },
+        {
+          "file": "app/godot/tests/test_display_quality.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_hand_preferences.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_immivio_features.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_seek_policy.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_window_height.gd",
+          "accesses": 4
+        }
+      ]
+    },
+    {
+      "member": "_hover",
+      "accesses": 23,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_seek_highlight.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_independent_playback.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_panel_pointer.gd",
+          "accesses": 5
+        },
+        {
+          "file": "app/godot/tests/test_playback_header_pointer.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_popup_continuity.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_pointer_feedback.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_quick_playback_settings.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_recent_files.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_recent_pointer.gd",
+          "accesses": 4
+        },
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_xr_menu_compositor.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_show_library_menu",
+      "accesses": 22,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_view_follow.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_hand_preferences.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_controls_startup.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_header_pointer.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_page_surfaces.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_selected_upstream_features.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 9
+        },
+        {
+          "file": "app/godot/tests/test_window_height.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_on_pointer_button",
+      "accesses": 20,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_controller_canvas.gd",
+          "accesses": 9
+        },
+        {
+          "file": "app/godot/tests/test_flat_screen_controls.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_hand_preferences.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_library_footer_resume.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_library_window.gd",
+          "accesses": 5
+        },
+        {
+          "file": "app/godot/tests/test_playback_header_pointer.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_on_pointer_release",
+      "accesses": 20,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_controller_canvas.gd",
+          "accesses": 10
+        },
+        {
+          "file": "app/godot/tests/test_flat_screen_controls.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_hand_pointer.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_hand_preferences.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_library_window.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_playback_header_pointer.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_pointers",
+      "accesses": 20,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_menu_depth.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/render_stereo_pointer.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_curved_menu_ray.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_panel_pointer.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_panel_ray_projection.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_header_pointer.gd",
+          "accesses": 5
+        },
+        {
+          "file": "app/godot/tests/test_pointer_feedback.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_pointer_redraw_continuity.gd",
+          "accesses": 4
+        },
+        {
+          "file": "app/godot/tests/test_recent_pointer.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_xr_menu_compositor.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_update_hand_input",
+      "accesses": 20,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_hand_pointer.gd",
+          "accesses": 12
+        },
+        {
+          "file": "app/godot/tests/test_input_visuals.gd",
+          "accesses": 8
+        }
+      ]
+    },
+    {
+      "member": "_place_caption",
+      "accesses": 16,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_mpv_subtitles.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/render_projected_subtitles.gd",
+          "accesses": 5
+        },
+        {
+          "file": "app/godot/tests/test_dual_subtitles.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_independent_playback.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_subtitle_below_screen.gd",
+          "accesses": 4
+        },
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_place_menu",
+      "accesses": 16,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_controller_canvas.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_library_window.gd",
+          "accesses": 7
+        },
+        {
+          "file": "app/godot/tests/test_playback_controls_startup.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_page_surfaces.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_settings.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_window_height.gd",
+          "accesses": 4
+        }
+      ]
+    },
+    {
+      "member": "_update_bounds",
+      "accesses": 16,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_choice_fields_xr.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_library_footer_resume.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_library_page_presentation.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_library_settings_preparation.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_playback_popup_continuity.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_pointer_redraw_continuity.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_ui_presentation.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_xr_menu_compositor.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_backdrop",
+      "accesses": 15,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_menu_transitions.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_controller_canvas.gd",
+          "accesses": 4
+        },
+        {
+          "file": "app/godot/tests/test_library_padding.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_playback_toolbar.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_ui_presentation.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 3
+        }
+      ]
+    },
+    {
+      "member": "_on_playback_adjustment",
+      "accesses": 14,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_flat_screen_controls.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_immivio_features.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_settings.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_selected_upstream_features.gd",
+          "accesses": 5
+        },
+        {
+          "file": "app/godot/tests/test_settings_cache_ipd.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_window_height.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_on_state",
+      "accesses": 14,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_dual_subtitles.gd",
+          "accesses": 4
+        },
+        {
+          "file": "app/godot/tests/test_independent_playback.gd",
+          "accesses": 5
+        },
+        {
+          "file": "app/godot/tests/test_mpv_audio.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_playback_tools.gd",
+          "accesses": 3
+        }
+      ]
+    },
+    {
+      "member": "_subtitle_open",
+      "accesses": 14,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_color_grade.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_page_surfaces.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 12
+        }
+      ]
+    },
+    {
+      "member": "_update_player_menu_anchor",
+      "accesses": 14,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_controller_canvas.gd",
+          "accesses": 9
+        },
+        {
+          "file": "app/godot/tests/test_playback_controls_startup.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_playback_page_surfaces.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_capture_metadata",
+      "accesses": 13,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_library_page_presentation.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_playback_page_surfaces.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_popup_continuity.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_pointer_redraw_continuity.gd",
+          "accesses": 4
+        },
+        {
+          "file": "app/godot/tests/test_ui_presentation.gd",
+          "accesses": 5
+        }
+      ]
+    },
+    {
+      "member": "_flat",
+      "accesses": 13,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_mpv_subtitles.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_dual_subtitles.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_flat_screen_controls.gd",
+          "accesses": 4
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_selected_upstream_features.gd",
+          "accesses": 3
+        }
+      ]
+    },
+    {
+      "member": "_update_background",
+      "accesses": 13,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_background.gd",
+          "accesses": 10
+        },
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 3
+        }
+      ]
+    },
+    {
+      "member": "_update_view_follow",
+      "accesses": 13,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_view_follow.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_page_surfaces.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 11
+        }
+      ]
+    },
+    {
+      "member": "_library_settings",
+      "accesses": 12,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_display_quality.gd",
+          "accesses": 6
+        },
+        {
+          "file": "app/godot/tests/test_immivio_features.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_seek_policy.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_menu_state",
+      "accesses": 12,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_audio_popup.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_controller_canvas.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_flat_screen_controls.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_immivio_features.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_playback_page_surfaces.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_settings.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 4
+        }
+      ]
+    },
+    {
+      "member": "_binding",
+      "accesses": 11,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_bookmarks.gd",
+          "accesses": 6
+        },
+        {
+          "file": "app/godot/tests/test_mpv_seek_hold.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_performance_privacy.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_seek_policy.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_on_media_list",
+      "accesses": 11,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_dlna_menu.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_library_menu.gd",
+          "accesses": 7
+        },
+        {
+          "file": "app/godot/tests/test_local_storage.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_network_sources.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_bolt",
+      "accesses": 10,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_menu_depth.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 8
+        }
+      ]
+    },
+    {
+      "member": "_cache_usage",
+      "accesses": 10,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_library_padding.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/render_library_page_switch.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_library_padding.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_library_page_presentation.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_library_settings_preparation.gd",
+          "accesses": 4
+        },
+        {
+          "file": "app/godot/tests/test_pointer_redraw_continuity.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_thumbnails.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_can_display_capture",
+      "accesses": 10,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_library_page_presentation.gd",
+          "accesses": 5
+        },
+        {
+          "file": "app/godot/tests/test_playback_page_surfaces.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_popup_continuity.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_pointer_redraw_continuity.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_complete_layout",
+      "accesses": 10,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_file_mode_memory.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_immersive_lifecycle.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_stereo_detection.gd",
+          "accesses": 5
+        },
+        {
+          "file": "app/godot/tests/test_video_mode_default.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_elapsed",
+      "accesses": 10,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_playback_popup_continuity.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 8
+        }
+      ]
+    },
+    {
+      "member": "_mode_open",
+      "accesses": 10,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_hand_preferences.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_immivio_features.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_mode_unlock.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_page_surfaces.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_quick_playback_settings.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_stereo_detection.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_on_session_control",
+      "accesses": 10,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_view_follow.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 9
+        }
+      ]
+    },
+    {
+      "member": "_can_loop",
+      "accesses": 9,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_mpv_end.gd",
+          "accesses": 9
+        }
+      ]
+    },
+    {
+      "member": "_max_scroll",
+      "accesses": 9,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_library_menu.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_account_panel.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_library_menu.gd",
+          "accesses": 4
+        },
+        {
+          "file": "app/godot/tests/test_library_padding.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_media_server_browser.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_pill",
+      "accesses": 9,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_playback_header_pointer.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_playback_toolbar.gd",
+          "accesses": 7
+        }
+      ]
+    },
+    {
+      "member": "_subtitle_ids",
+      "accesses": 9,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_dual_subtitles.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 6
+        }
+      ]
+    },
+    {
+      "member": "_update_flat_grab_stick",
+      "accesses": 9,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_flat_screen_controls.gd",
+          "accesses": 9
+        }
+      ]
+    },
+    {
+      "member": "_accept_stereo_detection",
+      "accesses": 8,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_stereo_detection.gd",
+          "accesses": 8
+        }
+      ]
+    },
+    {
+      "member": "_battery",
+      "accesses": 8,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 8
+        }
+      ]
+    },
+    {
+      "member": "_button",
+      "accesses": 8,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_menu_depth.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_curved_menu_ray.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_panel_pointer.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_pointer_feedback.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_xr_menu_compositor.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_on_native_presence_changed",
+      "accesses": 8,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_headset_presence.gd",
+          "accesses": 6
+        },
+        {
+          "file": "app/godot/tests/test_playback_tools.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_on_player_setting",
+      "accesses": 8,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_playback_order.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_settings.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_tools.gd",
+          "accesses": 5
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_picker_request",
+      "accesses": 8,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_recent_files.gd",
+          "accesses": 8
+        }
+      ]
+    },
+    {
+      "member": "_thumbnail_source",
+      "accesses": 8,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_thumbnails.gd",
+          "accesses": 8
+        }
+      ]
+    },
+    {
+      "member": "_update_menu_pointer",
+      "accesses": 8,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_hand_pointer.gd",
+          "accesses": 4
+        },
+        {
+          "file": "app/godot/tests/test_playback_header_pointer.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_selected_upstream_features.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_advance_queue",
+      "accesses": 7,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_playback_tools.gd",
+          "accesses": 7
+        }
+      ]
+    },
+    {
+      "member": "_apply_presented_layer",
+      "accesses": 7,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_library_page_presentation.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_popup_continuity.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_pointer_redraw_continuity.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_ui_presentation.gd",
+          "accesses": 4
+        }
+      ]
+    },
+    {
+      "member": "_apply_system_recenter",
+      "accesses": 7,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_library_footer_resume.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_system_recenter.gd",
+          "accesses": 5
+        }
+      ]
+    },
+    {
+      "member": "_layout_pending",
+      "accesses": 7,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_file_mode_memory.gd",
+          "accesses": 4
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_stereo_detection.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_video_mode_default.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_matches_capture",
+      "accesses": 7,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_library_page_presentation.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_ui_presentation.gd",
+          "accesses": 6
+        }
+      ]
+    },
+    {
+      "member": "_on_controller_button",
+      "accesses": 7,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_hand_pointer.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_input_visuals.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 4
+        },
+        {
+          "file": "app/godot/tests/test_recent_pointer.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_on_presence_changed",
+      "accesses": 7,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_headset_presence.gd",
+          "accesses": 7
+        }
+      ]
+    },
+    {
+      "member": "_pending_revision",
+      "accesses": 7,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_file_mode_memory.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_mpv_end.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_mpv_seek_hold.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_seek_policy.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_push_screen",
+      "accesses": 7,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_flat_screen_controls.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 4
+        },
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_recent_page",
+      "accesses": 7,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_library_menu.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_recent_pointer.gd",
+          "accesses": 4
+        }
+      ]
+    },
+    {
+      "member": "_title",
+      "accesses": 7,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_playback_page_surfaces.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_playback_popup_continuity.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_toolbar.gd",
+          "accesses": 4
+        }
+      ]
+    },
+    {
+      "member": "_tooltip",
+      "accesses": 7,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_independent_playback.gd",
+          "accesses": 4
+        },
+        {
+          "file": "app/godot/tests/test_library_footer_resume.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_apply_stick_actions",
+      "accesses": 6,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_player_sticks.gd",
+          "accesses": 4
+        }
+      ]
+    },
+    {
+      "member": "_bake",
+      "accesses": 6,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_background.gd",
+          "accesses": 6
+        }
+      ]
+    },
+    {
+      "member": "_cached_night",
+      "accesses": 6,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_background_performance.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_background.gd",
+          "accesses": 5
+        }
+      ]
+    },
+    {
+      "member": "_navigate",
+      "accesses": 6,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_media_server_browser.gd",
+          "accesses": 6
+        }
+      ]
+    },
+    {
+      "member": "_on_library_chosen",
+      "accesses": 6,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_view_follow.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_video_only_library.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 4
+        }
+      ]
+    },
+    {
+      "member": "_on_menu_action",
+      "accesses": 6,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_library_window.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_selected_upstream_features.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_on_video_changed",
+      "accesses": 6,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_diagnostic_log.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_playback_controls_startup.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_tools.gd",
+          "accesses": 3
+        }
+      ]
+    },
+    {
+      "member": "_picture",
+      "accesses": 6,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_local_thumbnails.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_thumbnails.gd",
+          "accesses": 5
+        }
+      ]
+    },
+    {
+      "member": "_process_immersive",
+      "accesses": 6,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_immersive_adjustments.gd",
+          "accesses": 6
+        }
+      ]
+    },
+    {
+      "member": "_reset_navigation",
+      "accesses": 6,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_audio_popup.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_library_menu.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_media_servers.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_page_surfaces.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_popup_continuity.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_stereo_detection",
+      "accesses": 6,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_stereo_detection.gd",
+          "accesses": 6
+        }
+      ]
+    },
+    {
+      "member": "_turn_picture",
+      "accesses": 6,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_flat_screen_controls.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_update_library_grab_stick",
+      "accesses": 6,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_library_window.gd",
+          "accesses": 6
+        }
+      ]
+    },
+    {
+      "member": "_auto_stereo",
+      "accesses": 5,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_stereo_detection.gd",
+          "accesses": 5
+        }
+      ]
+    },
+    {
+      "member": "_bookmark_metadata",
+      "accesses": 5,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_audio_popup.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_bookmarks.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_seek_policy.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_drag",
+      "accesses": 5,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_hand_pointer.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_library_window.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_first_line",
+      "accesses": 5,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_library_menu.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_library_navigation_retention.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_selected_upstream_features.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_header_title",
+      "accesses": 5,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_library_menu.gd",
+          "accesses": 5
+        }
+      ]
+    },
+    {
+      "member": "_on_local_access",
+      "accesses": 5,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_recent_files.gd",
+          "accesses": 5
+        }
+      ]
+    },
+    {
+      "member": "_on_selected",
+      "accesses": 5,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_recent_files.gd",
+          "accesses": 5
+        }
+      ]
+    },
+    {
+      "member": "_remember_file",
+      "accesses": 5,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_dual_subtitles.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_file_mode_memory.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_recent_files.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_subtitle_below_screen.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_save_playback_adjustments",
+      "accesses": 5,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_flat_screen_controls.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_settings.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_selected_upstream_features.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_settings_cache_ipd.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_seek_preview",
+      "accesses": 5,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_hand_pointer.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_page_surfaces.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_seek_policy.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_set_scroll",
+      "accesses": 5,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_library_menu.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_media_server_browser.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_media_servers.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_selected_upstream_features.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_state",
+      "accesses": 5,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_independent_playback.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_order.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_quick_playback_settings.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_ui_presentation.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_subtitle_loading",
+      "accesses": 5,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_playback_tools.gd",
+          "accesses": 5
+        }
+      ]
+    },
+    {
+      "member": "_tips",
+      "accesses": 5,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_local_storage.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_quick_playback_settings.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_title_pill",
+      "accesses": 5,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_playback_header_pointer.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_playback_popup_continuity.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_toolbar.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_update_grab",
+      "accesses": 5,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_controller_canvas.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_flat_screen_controls.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_hand_pointer.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_update_highlights",
+      "accesses": 5,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_seek_highlight.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_panel_pointer.gd",
+          "accesses": 4
+        }
+      ]
+    },
+    {
+      "member": "_update_library_grab",
+      "accesses": 5,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_library_window.gd",
+          "accesses": 5
+        }
+      ]
+    },
+    {
+      "member": "_apply_audio_track",
+      "accesses": 4,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_audio_popup.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_mpv_audio.gd",
+          "accesses": 3
+        }
+      ]
+    },
+    {
+      "member": "_apply_refresh_to",
+      "accesses": 4,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_refresh_rate.gd",
+          "accesses": 4
+        }
+      ]
+    },
+    {
+      "member": "_cache_due_ms",
+      "accesses": 4,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_library_page_switch.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_library_padding.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_library_page_presentation.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_pointer_redraw_continuity.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_cache_thread",
+      "accesses": 4,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_library_settings_preparation.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_thumbnails.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_caption",
+      "accesses": 4,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 4
+        }
+      ]
+    },
+    {
+      "member": "_dispatch_hand_input",
+      "accesses": 4,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_hand_preferences.gd",
+          "accesses": 4
+        }
+      ]
+    },
+    {
+      "member": "_field",
+      "accesses": 4,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_dlna_menu.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_library_menu.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_file_permission_persisted",
+      "accesses": 4,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_recent_files.gd",
+          "accesses": 4
+        }
+      ]
+    },
+    {
+      "member": "_fill",
+      "accesses": 4,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 4
+        }
+      ]
+    },
+    {
+      "member": "_grid",
+      "accesses": 4,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_account_panel.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_library_padding.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_media_servers.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_is_frozen",
+      "accesses": 4,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_mpv_seek_hold.gd",
+          "accesses": 4
+        }
+      ]
+    },
+    {
+      "member": "_next_request",
+      "accesses": 4,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_local_thumbnails.gd",
+          "accesses": 4
+        }
+      ]
+    },
+    {
+      "member": "_on_input_session_changed",
+      "accesses": 4,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_hand_pointer.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_library_footer_resume.gd",
+          "accesses": 3
+        }
+      ]
+    },
+    {
+      "member": "_place_screen",
+      "accesses": 4,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_hand_preferences.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_controls_startup.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_poll_subtitles",
+      "accesses": 4,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_mpv_subtitles.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_dual_subtitles.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_poses",
+      "accesses": 4,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_library_footer_resume.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_seek_hand",
+      "accesses": 4,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_hand_pointer.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_side",
+      "accesses": 4,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_library_menu.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_library_menu.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_library_padding.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_system_recenter_pending",
+      "accesses": 4,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_system_recenter.gd",
+          "accesses": 3
+        },
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_thumb",
+      "accesses": 4,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_playback_popup_continuity.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 3
+        }
+      ]
+    },
+    {
+      "member": "_toggle_player_menu",
+      "accesses": 4,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_library_footer_resume.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_controls_startup.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_track_choices",
+      "accesses": 4,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_independent_playback.gd",
+          "accesses": 4
+        }
+      ]
+    },
+    {
+      "member": "_about_page",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_account_panel.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_library_navigation_retention.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_access_request",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_recent_files.gd",
+          "accesses": 3
+        }
+      ]
+    },
+    {
+      "member": "_adjustment",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_stereo_view.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_flat_screen_controls.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_settings_cache_ipd.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_bookmark_resolve",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_audio_popup.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_bookmarks.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_seek_policy.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_bounds_due",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_playback_page_switch.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/render_playback_popup_continuity.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_cancel_covers",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_thumbnails.gd",
+          "accesses": 3
+        }
+      ]
+    },
+    {
+      "member": "_draw",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_library_menu.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_library_menu.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_finish_app",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_display_quality.gd",
+          "accesses": 3
+        }
+      ]
+    },
+    {
+      "member": "_handles",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_flat_screen_controls.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_labels",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_audio_popup.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_library_menu.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_navigation",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_media_server_browser.gd",
+          "accesses": 3
+        }
+      ]
+    },
+    {
+      "member": "_on_android_lifecycle",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_headset_presence.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_update_check.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_on_controller_release",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_hand_pointer.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_input_visuals.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_recent_pointer.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_on_frozen_pair",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_mpv_seek_hold.gd",
+          "accesses": 3
+        }
+      ]
+    },
+    {
+      "member": "_on_system_recentered",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_system_recenter.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_open_editor",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_dlna_menu.gd",
+          "accesses": 3
+        }
+      ]
+    },
+    {
+      "member": "_order",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_playback_tools.gd",
+          "accesses": 3
+        }
+      ]
+    },
+    {
+      "member": "_pending",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_local_thumbnails.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_recent_scan.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_pitch",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_library_menu.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_media_server_management.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_progress",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_playback_page_surfaces.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_playback_popup_continuity.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_quad",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_menu_pictures.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_panel_pointer.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_recent_page_count",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_library_menu.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_recent_pointer.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_reopen_after_context_loss",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_file_mode_memory.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_recent_files.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_stereo_view.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_set_backdrop",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_menu_depth.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/render_menu_transitions.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_subtitle_material",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_projected_subtitles.gd",
+          "accesses": 3
+        }
+      ]
+    },
+    {
+      "member": "_subtitle_offset",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 3
+        }
+      ]
+    },
+    {
+      "member": "_subtitle_poll_ms",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_mpv_subtitles.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_dual_subtitles.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_suspended",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_headset_presence.gd",
+          "accesses": 3
+        }
+      ]
+    },
+    {
+      "member": "_tag",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_ui_presentation.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_xr_menu_compositor.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_thumbnail_busy",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_mpv_seek_hold.gd",
+          "accesses": 2
+        },
+        {
+          "file": "app/godot/tests/test_performance_privacy.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_try_revision",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_independent_playback.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_mpv_seek_hold.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_update_controls_visibility",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_playback_controls_startup.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_preview_menu_input.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_quick_playback_settings.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_write_debug_report",
+      "accesses": 3,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_diagnostic_log.gd",
+          "accesses": 3
+        }
+      ]
+    },
+    {
+      "member": "_audio_option_label",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_audio_popup.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_bar_span",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_library_menu.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_begin_grab",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_flat_screen_controls.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_capture_revisions",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_choice_fields_xr.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_xr_menu_compositor.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_center_on_view",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_immersive_alignment.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/render_projected_subtitles.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_clear_layout",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_menu_transitions.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_pointer_redraw_continuity.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_confirm",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_library_menu.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_thumbnails.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_covers",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_thumbnails.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_debug_benchmark",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_performance_privacy.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_decorations",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_panel_pointer.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_eject_volume",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_local_storage.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_fling",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_hand_pointer.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_grade_page",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_slider_resets.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_has_mesh",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_input_visuals.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_head_placed",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_library_footer_resume.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_system_recenter.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_is_favorite",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_media_server_browser.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_maybe_capture_thumbnail",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_performance_privacy.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_on_debug_command",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_mpv_end.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_on_menu_seek",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_seek_policy.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_on_session_event",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_background.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_on_storage_eject_requested",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_local_storage.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_on_subtitle_import",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_playback_tools.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_on_subtitle_selected",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_playback_tools.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_panorama",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_background.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_path",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_bookmarks.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_poll_cache_usage",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_library_settings_preparation.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_thumbnails.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_polled_ms",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_popup_is_open",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_playback_popup_continuity.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_playback_page_surfaces.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_prepare_file_delete",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_file_editing_memory.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_queue_action",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_playback_tools.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_release_storage_readers",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_local_storage.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_remember_mode",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_subtitle_below_screen.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_video_mode_default.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_restore_seek_settings",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_seek_policy.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_row_identity",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_network_sources.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_row_target",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_library_menu.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_library_padding.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_set_native_capture",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_ui_presentation.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_set_native_ready",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_panel_ray_projection.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_ui_presentation.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_sync_subtitle_surface",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_projected_subtitles.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_system_recenter_last_notification_ms",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_system_recenter.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_tag_tree",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_stereo_pointer.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_panel_ray_projection.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_thumb_after_ms",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_local_thumbnails.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_performance_privacy.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_toggle_popup",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_selected_upstream_features.gd",
+          "accesses": 2
+        }
+      ]
+    },
+    {
+      "member": "_unhandled_input",
+      "accesses": 2,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_playback_header_pointer.gd",
+          "accesses": 1
+        },
+        {
+          "file": "app/godot/tests/test_preview_menu_input.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_activate_footer",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_library_footer_resume.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_adjust_rows",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_flat_screen_controls.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_append_unique",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_media_resume_versions.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_apply",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_background.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_apply_flat_pose",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_bank_path",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_recent_files.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_bookmark_media_id",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_bookmarks.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_cancel_pointer",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_library_window.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_controller_model",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_menu_depth.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_debug_request",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_diagnostic_log.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_drawn_slots",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_account_panel.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_duration",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_playback_popup_continuity.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_editor_busy",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_dlna_menu.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_editor_fields",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_dlna_menu.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_engine_notices",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_account_panel.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_find_skeleton",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_input_visuals.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_freeze_request",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_mpv_seek_hold.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_label",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_menu_depth.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_lines",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_media_server_management.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_list",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_library_menu.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_local_resume",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_media_resume_versions.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_material",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_menu_depth.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_menu_head_pose",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_library_footer_resume.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_menu_key",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_library_footer_resume.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_on_choice_changed",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_dual_subtitles.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_on_detach",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_mpv_seek_hold.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_on_mode_lock_changed",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_open_licenses",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_account_panel.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_panorama_path",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_background.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_pending_external_uri",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_playback_tools.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_person_passthrough",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_place_device_status",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_menu_depth.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_pointer",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_xr_menu_compositor.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_pose_tracked",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_input_visuals.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_queue_end_key",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_playback_tools.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_rebuild_rows",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_refresh_rate.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_request",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_recent_scan.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_request_revision",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_independent_playback.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_reset_picture",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_row_button",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_independent_playback.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_runtime_is_pico",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_system_recenter.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_save",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_bookmarks.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_save_queue",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_playback_tools.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_save_screen",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_flat_screen_controls.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_screen_base",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_screen_curve.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_seek_start",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_hand_pointer.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_show_picture",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/render_menu_pictures.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_stereo_detection_busy",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_stereo_detection.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_subtitle_anchor_direction",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_player_menu.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_subtitle_controls",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_subtitle_below_screen.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_subtitle_import_command",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_playback_tools.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_subtitle_import_floor",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_playback_tools.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_subtitle_label",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_subtitle_encoding.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_subtitle_received_ms",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_dual_subtitles.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_subtitle_requested_uri",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_playback_tools.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_subtitle_surface",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_view_follow.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_thumbnail_result",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_performance_privacy.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_tracks_pending",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_independent_playback.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_turn_recent_page",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_library_menu.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_unbind",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_mpv_seek_hold.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_unhandled_key_input",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_library_footer_resume.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_update_corner_hover",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_flat_screen_controls.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_update_tooltip",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_independent_playback.gd",
+          "accesses": 1
+        }
+      ]
+    },
+    {
+      "member": "_use_shader",
+      "accesses": 1,
+      "tests": [
+        {
+          "file": "app/godot/tests/test_color_grade.gd",
+          "accesses": 1
+        }
+      ]
+    }
+  ],
+  "source_dirty": false
+}

@@ -212,7 +212,7 @@ func _run() -> void:
 	)
 	var pointer := await capture(viewport, "pointer")
 	var dot: Vector2i = camera.unproject_position(
-		menu.to_global(menu._pointers.right_hand.dot.position)
+		menu.to_global(menu.pointer_snapshot().right_hand.dot.position)
 	)
 	check(
 		pointer.get_pixelv(dot).r > 0.8 and pointer.get_pixelv(dot).g > 0.4,

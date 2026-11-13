@@ -60,7 +60,7 @@ func _run() -> void:
 						video.set_screen_rotation(roll)
 						for text_size in [0.5, 2.0]:
 							video.subtitle_size = text_size
-							video._place_caption()
+							video.test_place_caption()
 							var pose := video.subtitle_transform()
 							var to_plane := pose.affine_inverse()
 							var lowest := INF
@@ -130,7 +130,7 @@ func _run() -> void:
 		"Placement never changes saved slider value"
 	)
 	video.set_subtitle_below_screen(false)
-	video._place_caption()
+	video.test_place_caption()
 	check(
 		(
 			is_equal_approx(video.subtitle_flat_position, 0.73)
@@ -177,10 +177,10 @@ func _run() -> void:
 		check(not video.set_subtitle_below_screen(true), "Non-flat toggle is ineffective")
 		video.subtitle_below_screen = false
 		video.caption.visible = true
-		video._place_caption()
+		video.test_place_caption()
 		var anchor: Variant = video.material.get_shader_parameter("subtitle_anchor_inverse")
 		video.subtitle_below_screen = true
-		video._place_caption()
+		video.test_place_caption()
 		check(
 			(
 				video.caption.layers == 0
@@ -199,7 +199,7 @@ func _run() -> void:
 	menu.state_provider = func(): return state
 	root.add_child(menu)
 	menu.toggle()
-	menu._activate(110)
+	menu.test_activate(110)
 	check(
 		not menu.choices.targets.values().any(
 			func(item): return item.get("key", "") == "subtitle_flat_position"
@@ -227,12 +227,9 @@ func _run() -> void:
 		state.subtitle_below_screen = true
 		menu.refresh()
 		check(
-			menu._buttons.any(
+			menu.controls_snapshot().any(
 				func(button):
-					return (
-						not button.enabled
-						and (button.node.get_child(0) as Label3D).text == active_text
-					),
+					return not button.enabled and button.node.children[0].text == active_text,
 			),
 			"Disabled percentage matches active slider: %.12f -> %s" % [value, active_text]
 		)

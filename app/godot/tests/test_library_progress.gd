@@ -33,19 +33,19 @@ func _initialize() -> void:
 	call_deferred("_run")
 
 
-func _progress_fill(menu: Node, target: int) -> MeshInstance3D:
-	for button in menu._buttons:
+func _progress_fill(menu: Node, target: int) -> Dictionary:
+	for button in menu.controls_snapshot():
 		if button.target != target:
 			continue
-		for child in button.node.get_children():
+		for child in button.node.children:
 			if (
-				child is MeshInstance3D
-				and child.material_override is ShaderMaterial
+				child.kind == "MeshInstance3D"
+				and child.material_override.kind == "ShaderMaterial"
 				and child.material_override.render_priority == 14
-				and child.material_override.get_shader_parameter("surface_color") == Menu.ACCENT
+				and child.material_override.surface_color == Menu.ACCENT
 			):
 				return child
-	return null
+	return {}
 
 
 func _run() -> void:
@@ -61,10 +61,10 @@ func _run() -> void:
 	var fill := _progress_fill(menu, Menu.ROW_BASE)
 	var track_width: float = Menu.TILE_SIZE.x - 0.02 - 0.03
 	check(
-		fill != null and is_equal_approx(fill.mesh.size.x, track_width * 0.25),
+		not fill.is_empty() and is_equal_approx(fill.mesh.size.x, track_width * 0.25),
 		"Started tile draws a quarter-length accent bar"
 	)
-	check(_progress_fill(menu, Menu.ROW_BASE + 1) == null, "Unknown length tile has no bar")
+	check(_progress_fill(menu, Menu.ROW_BASE + 1).is_empty(), "Unknown length tile has no bar")
 	menu.queue_free()
 	await process_frame
 	print("library progress checks=%d failures=%d" % [checks, failures.size()])

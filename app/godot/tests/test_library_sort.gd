@@ -87,20 +87,20 @@ func _run() -> void:
 	for section in [Menu.Section.LOCAL, Menu.Section.SMB]:
 		menu.section = section
 		menu.refresh()
-		menu._activate(Actions.SORT)
+		menu.test_activate(Actions.SORT)
 		check(
-			menu._buttons.any(
+			menu.controls_snapshot().any(
 				func(button): return button.target == Actions.ORDER_BASE + 2 and button.enabled
 			),
 			"Folder-only directory enables modified sorting"
 		)
 		check(
-			not menu._buttons.any(
+			not menu.controls_snapshot().any(
 				func(button): return button.target == Actions.ORDER_BASE + 4 and button.enabled
 			),
 			"Folder-only directory keeps size sorting unavailable"
 		)
-		menu._activate(Actions.ORDER_BASE + 2)
+		menu.test_activate(Actions.ORDER_BASE + 2)
 		check(
 			titles(menu.rows) == ["B", "A2", "A10", "Unknown"],
 			"Actual directory rows retain folder metadata through newest sort"
@@ -113,7 +113,7 @@ func _run() -> void:
 	menu.sources.smb_path = ""
 	menu.refresh()
 	check(
-		not menu._buttons.any(func(button): return button.target == Actions.SORT),
+		not menu.controls_snapshot().any(func(button): return button.target == Actions.SORT),
 		"SMB share list remains outside file-directory sorting"
 	)
 	menu.section = Menu.Section.DLNA
@@ -133,13 +133,15 @@ func _run() -> void:
 	)
 	check(
 		(
-			menu._buttons.any(func(button): return button.target == Actions.SORT)
-			and not menu._buttons.any(func(button): return button.target == Actions.EDIT_MODE)
+			menu.controls_snapshot().any(func(button): return button.target == Actions.SORT)
+			and not menu.controls_snapshot().any(
+				func(button): return button.target == Actions.EDIT_MODE
+			)
 		),
 		"DLNA gets sorting without file editing even after global management opt-in"
 	)
-	menu._activate(Actions.SORT)
-	var options := menu._buttons.filter(
+	menu.test_activate(Actions.SORT)
+	var options := menu.controls_snapshot().filter(
 		func(button):
 			return (
 				button.target >= Actions.ORDER_BASE
@@ -150,7 +152,7 @@ func _run() -> void:
 		options.size() == 2 and options.all(func(button): return button.enabled),
 		"DLNA shows only two supported name options"
 	)
-	menu._activate(Actions.ORDER_BASE + 1)
+	menu.test_activate(Actions.ORDER_BASE + 1)
 	check(
 		titles(menu.rows) == ["Folder10", "Folder2", "Movie10", "Movie2"],
 		"DLNA descending names sort both groups"
@@ -213,7 +215,7 @@ func _run() -> void:
 	menu.sources.dlna_server = ""
 	menu.refresh()
 	check(
-		not menu._buttons.any(func(button): return button.target == Actions.SORT),
+		not menu.controls_snapshot().any(func(button): return button.target == Actions.SORT),
 		"DLNA server list has no directory sort entry"
 	)
 	menu.section = Menu.Section.MEDIA_SERVER

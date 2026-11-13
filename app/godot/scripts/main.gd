@@ -1194,3 +1194,40 @@ func _finish_app(restart: bool) -> void:
 		if restart:
 			OS.set_restart_on_exit(true)
 		get_tree().quit()
+
+
+## Explicit simulation commands for deterministic host tests.
+func test_process_sticks(left: Vector2, right: Vector2, delta: float) -> void:
+	_process_sticks(left, right, delta)
+
+
+func test_show_player_menu() -> void:
+	_show_player_menu()
+
+
+func test_show_library_menu(preserve_navigation: bool = false) -> void:
+	_show_library_menu(preserve_navigation)
+
+
+func test_setting_changed(key: String, value: Variant) -> void:
+	_on_setting_changed(key, value)
+
+
+func test_update_hand_input(delta: float) -> void:
+	_update_hand_input(delta)
+
+
+func test_pointer_button(action: String, hand: String) -> void:
+	_on_pointer_button(action, hand)
+
+
+func test_pointer_release(action: String, hand: String) -> void:
+	_on_pointer_release(action, hand)
+
+
+func test_place_menu(menu: Node3D) -> void:
+	_place_menu(menu)
+
+
+func test_step(delta: float) -> void:
+	_process(delta)

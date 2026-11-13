@@ -20,6 +20,8 @@ later isolated changes after release acceptance.
 
 The native menu texture contains the hit reticle, while `pointer_ray.gd` draws the world-space beam in the main scene through the main XR projection, without per-eye pointer viewports or composition layers. The UI uses an `XrUiSurfacePresenter` with generation-scoped frames and Android Surface GPU copies; ordinary GLES viewport textures retain Godot ownership. Beam edges use pixel-aware coverage and longitudinal fading. The playback browser is a compact switcher anchored above the control bar; closing playback restores the full library and Settings.
 
+Deterministic host tests observe frozen control/pointer/popup snapshots and use explicit `test_*` commands for actions, input and frame stepping. Snapshots retain value data and node/texture identities without exposing live nodes/resources. The generated private-access inventory and CI boundary are documented in [TESTING.md](TESTING.md#private-member-test-boundary).
+
 Video diagnostics receive `presentation_coordinator.diagnostic_ui_snapshot` as an explicit callable; the player menu owns its public progress snapshot. Playback coordination receives the main scene's `is_finishing_app` callable. Menu paint-state keys and disabled-field layering are explicit public interfaces/callables, so these paths do not reflect on private member names.
 
 `xr_menu_compositor.gd` owns the Android-Surface menu presenter, its acknowledged presentation queue and curved mapping. Native layers are selected by runtime support; frame rate does not switch off native UI composition. Unsupported layers use the scene fallback. Menu pose and ray targets use the same presented layout.

@@ -18,7 +18,7 @@ func check(ok: bool, message: String) -> void:
 
 
 func button(menu: Node3D, target: int) -> Dictionary:
-	for item in menu._buttons:
+	for item in menu.controls_snapshot():
 		if item.target == target:
 			return item
 	return {}
@@ -41,7 +41,9 @@ func capture(viewport: SubViewport, camera: Camera3D, menu: Node3D, name: String
 		var centre := camera.unproject_position(item.node.global_position)
 		var half := (
 			camera
-			. unproject_position(item.node.to_global(Vector3(Menu.FOOTER_DIAMETER / 2, 0, 0)))
+			. unproject_position(
+				item.node.global_transform * Vector3(Menu.FOOTER_DIAMETER / 2, 0, 0)
+			)
 			. distance_to(centre)
 		)
 		check(
@@ -88,12 +90,12 @@ func _run() -> void:
 	)
 	main._update_view_follow()
 	await capture(viewport, main.xr_camera, main.library_menu, "library-lying-follow")
-	main._show_player_menu()
+	main.test_show_player_menu()
 	await capture(viewport, main.xr_camera, main.video_menu, "video-follow")
 	main.video_menu.section = 1
 	main.video_menu.refresh()
 	await capture(viewport, main.xr_camera, main.video_menu, "video-settings")
-	main._show_library_menu()
+	main.test_show_library_menu()
 	main.library_menu.file_actions.modal = "delete"
 	main.library_menu.file_actions.target = {"title": "旅行记录.mp4", "uri": "file:///example.mp4"}
 	main.library_menu.refresh()
@@ -105,7 +107,7 @@ func _run() -> void:
 		"file:///render/clip_LR_180_FISHEYE_F180_alpha.mp4", "clip_LR_180_FISHEYE_F180_alpha.mp4"
 	)
 	main.video.set_alpha(true)
-	main._show_library_menu()
+	main.test_show_library_menu()
 	main.library_menu.refresh()
 	var item := button(main.library_menu, Menu.TEMP_PASSTHROUGH)
 	main.library_menu.update_pointer(

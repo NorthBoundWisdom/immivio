@@ -53,7 +53,7 @@ func check_closed_companion() -> void:
 	surface.native_supported = true
 	player.xr_surface = surface
 	library.xr_surface = surface
-	surface._update_bounds()
+	surface.test_update_bounds()
 	surface.presented = surface._capture_metadata(Surface.capture_pose(player))
 	var point := physical_point(surface, library.to_global(Vector3(.3, .2, 0)))
 	var origin := player.to_global(Vector3(.1, 0, 1))
@@ -76,56 +76,30 @@ func check_closed_companion() -> void:
 	)
 	point = physical_point(surface, player.to_global(Vector3(.2, Player.BAR_SEEK_Y, 0)))
 	player.update_pointer("right_hand", origin, point - origin, true)
-	player._activate(12)
+	player.test_activate(12)
 	check(surface.retains_toolbar(player), "A playback popup retains the displayed toolbar")
 	player.position.x += .05
 	origin.x += .02
 	point = physical_point(surface, player.to_global(Vector3(.2, Player.BAR_SEEK_Y, 0)))
 	player.update_pointer("right_hand", origin, point - origin, true)
-	var pointer: Dictionary = player._pointers.right_hand
+	var pointer: Dictionary = player.pointer_snapshot().right_hand
 	check(
 		(
 			pointer.dot.visible
-			and (
-				(
-					pointer
-					. line
-					. to_global(pointer.line.material_override.get_shader_parameter("ray_end"))
-					. distance_to(point)
-				)
-				< .02
-			)
-			and (
-				(
-					pointer
-					. line
-					. to_global(pointer.line.material_override.get_shader_parameter("ray_start"))
-					. distance_to(origin)
-				)
-				< .0001
-			)
+			and ((pointer.world_end.distance_to(point)) < .02)
+			and ((pointer.world_start.distance_to(origin)) < .0001)
 		),
 		"A pending playback popup updates both beam endpoints with the hand and displayed toolbar"
 	)
-	var close: Dictionary = player._buttons.filter(func(item): return item.target == 107)[0]
+	var close: Dictionary = player.controls_snapshot().filter(func(item): return item.target == 107)[0]
 	point = physical_point(surface, close.node.global_position)
 	player.update_pointer("right_hand", origin, point - origin, true)
+	pointer = player.pointer_snapshot().right_hand
 	check(
-		(
-			pointer.dot.visible
-			and (
-				(
-					pointer
-					. line
-					. to_global(pointer.line.material_override.get_shader_parameter("ray_end"))
-					. distance_to(point)
-				)
-				< .02
-			)
-		),
+		pointer.dot.visible and ((pointer.world_end.distance_to(point)) < .02),
 		"A floating button outside the backdrop still stops the beam during redraw"
 	)
-	var corner := physical_point(surface, close.node.to_global(Vector3(.034, .034, 0)))
+	var corner := physical_point(surface, close.node.global_transform * Vector3(.034, .034, 0))
 	check(
 		player.ray_panel_hit(origin, corner - origin).is_empty(),
 		"Transparent corners of floating round buttons do not block the beam"
@@ -163,11 +137,11 @@ func _run() -> void:
 		surface.cylinder_layer = OpenXRCompositionLayerCylinder.new()
 		surface.add_child(surface.cylinder_layer)
 		menu.xr_surface = surface
-		surface._update_bounds()
+		surface.test_update_bounds()
 		surface.presented = surface._capture_metadata(Surface.capture_pose(menu))
 		surface._apply_presented_layer()
 		var destination := Library.NAV_BASE + Library.Section.NETWORK
-		var button: Dictionary = menu._buttons.filter(func(item): return item.target == destination)[0]
+		var button: Dictionary = menu.controls_snapshot().filter(func(item): return item.target == destination)[0]
 		var point := physical_point(surface, button.node.global_position)
 		var origin := menu.to_global(Vector3(.1, 0, 1))
 		check(
@@ -187,10 +161,8 @@ func _run() -> void:
 		for frame in 3:
 			origin += menu.global_basis.x.normalized() * .01
 			menu.update_pointer("right_hand", origin, point - origin, true)
-			var pointer: Dictionary = menu._pointers.right_hand
-			var endpoint: Vector3 = pointer.line.to_global(
-				pointer.line.material_override.get_shader_parameter("ray_end")
-			)
+			var pointer: Dictionary = menu.pointer_snapshot().right_hand
+			var endpoint: Vector3 = pointer.world_end
 			check(
 				pointer.dot.visible and endpoint.distance_to(point) < .02,
 				(
@@ -206,17 +178,7 @@ func _run() -> void:
 				"Panel feedback cannot enable a pending button"
 			)
 			check(
-				(
-					(
-						pointer
-						. line
-						. to_global(
-							pointer.line.material_override.get_shader_parameter("ray_start")
-						)
-						. distance_to(origin)
-					)
-					< .0001
-				),
+				(pointer.world_start.distance_to(origin)) < .0001,
 				"A pending redraw still tracks the moving hand"
 			)
 		surface.presented = surface._capture_metadata(Surface.capture_pose(menu))
@@ -237,8 +199,8 @@ func _run() -> void:
 		menu.cancel_pointer("right_hand")
 		check(
 			(
-				not menu._pointers.right_hand.dot.visible
-				and not menu._pointers.right_hand.line.visible
+				not menu.pointer_snapshot().right_hand.dot.visible
+				and not menu.pointer_snapshot().right_hand.line.visible
 			),
 			"Tracking loss clears feedback during a redraw"
 		)

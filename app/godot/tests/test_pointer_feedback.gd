@@ -14,25 +14,27 @@ func _run() -> void:
 	menu.position = Vector3(0, 0, -2)
 	menu._button(42, "Action", Vector2.ZERO, Vector2(0.2, 0.2))
 	menu.update_pointer("right_hand", Vector3.ZERO, Vector3.FORWARD, true)
-	assert(menu._hover.right_hand == 42)
-	var pointer: Dictionary = menu._pointers.right_hand
+	assert(menu.hover_snapshot().right_hand == 42)
+	var pointer: Dictionary = menu.pointer_snapshot().right_hand
 	assert(pointer.dot.scale.x > 1.0)
-	assert(pointer.line.mesh.get_surface_count() == 1)
+	assert(pointer.line.mesh.surface_count == 1)
 	assert(
-		pointer.line.material_override.get_shader_parameter("ray_start").is_equal_approx(
-			pointer.line.to_local(Vector3.ZERO)
+		pointer.local_start.is_equal_approx(
+			pointer.line.global_transform.affine_inverse() * Vector3.ZERO
 		)
 	)
 	var blank := menu.to_global(Vector3(0.4, 0.2, 0))
 	menu.update_pointer("right_hand", Vector3.ZERO, blank, true)
+	pointer = menu.pointer_snapshot().right_hand
 	assert(
 		(
-			menu._hover.right_hand == menu.NONE
+			menu.hover_snapshot().right_hand == menu.NONE
 			and pointer.dot.visible
 			and pointer.dot.scale == Vector3.ONE
 		)
 	)
 	menu.update_pointer("right_hand", Vector3.ZERO, Vector3.ZERO, false)
+	pointer = menu.pointer_snapshot().right_hand
 	assert(not pointer.line.visible and not pointer.dot.visible)
 	var schedule := UiSurface.PaintSchedule.new()
 	assert(schedule.poll(1, false, 0))

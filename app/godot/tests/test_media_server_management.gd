@@ -41,7 +41,7 @@ func _run() -> void:
 		is_equal_approx(menu._pitch(), menu.ROW_PITCH) and menu._lines() == menu.VISIBLE_ROWS,
 		"account views use account list geometry, not home-grid spacing"
 	)
-	var choices: Array = menu._buttons.filter(
+	var choices: Array = menu.controls_snapshot().filter(
 		func(button):
 			return button.target >= Menu.ROW_BASE + 1 and button.target <= Menu.ROW_BASE + 5
 	)
@@ -64,7 +64,7 @@ func _run() -> void:
 		"chooser rows are not sparse"
 	)
 	check(
-		not menu._buttons.any(
+		not menu.controls_snapshot().any(
 			func(button):
 				return (
 					button.target >= Browser.ACTION + 100 and button.target < Browser.ACTION + 110
@@ -89,7 +89,7 @@ func _run() -> void:
 		"deletion rows distinguish same-name server types"
 	)
 	check(
-		not menu._buttons.any(
+		not menu.controls_snapshot().any(
 			func(button):
 				return (
 					button.target >= Browser.ACTION + 100 and button.target < Browser.ACTION + 110
@@ -103,7 +103,7 @@ func _run() -> void:
 		"confirmation keeps server type"
 	)
 	check(
-		not menu._buttons.any(
+		not menu.controls_snapshot().any(
 			func(button):
 				return (
 					button.target >= Browser.ACTION + 100 and button.target < Browser.ACTION + 110
@@ -118,7 +118,7 @@ func _run() -> void:
 	menu.status = "Server authentication required"
 	menu.refresh()
 	check(
-		menu._buttons.any(
+		menu.controls_snapshot().any(
 			func(button): return button.target == Browser.ACTION + 18 and button.enabled
 		),
 		"authentication failure offers a prominent login action"

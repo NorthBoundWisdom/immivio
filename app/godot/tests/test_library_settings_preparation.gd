@@ -48,7 +48,7 @@ func _run() -> void:
 	library.visible = true
 	var host := RefCounted.new()
 	library.platform = host
-	library._activate(Library.NAV_BASE + Library.Section.SETTINGS)
+	library.test_activate(Library.NAV_BASE + Library.Section.SETTINGS)
 	check(
 		(
 			library.section == Library.Section.SETTINGS
@@ -63,7 +63,7 @@ func _run() -> void:
 		"Pending statistics show a loading value without enabling deletion"
 	)
 	# The worker remains blocked while a different settings tab is usable.
-	library._activate(Library.TAB_BASE + Library.DISPLAY_TAB)
+	library.test_activate(Library.TAB_BASE + Library.DISPLAY_TAB)
 	check(
 		library.tab == Library.DISPLAY_TAB and not library.rows.is_empty(),
 		"Pending cache statistics do not block settings navigation"
@@ -74,7 +74,7 @@ func _run() -> void:
 	check(
 		library._cache_usage.y >= 0, "Worker publishes video thumbnail statistics after completion"
 	)
-	library._activate(Library.TAB_BASE + Library.GENERAL_TAB)
+	library.test_activate(Library.TAB_BASE + Library.GENERAL_TAB)
 	check(library._cache_thread == null, "Switching tabs reuses the completed count")
 	var usage: Vector2i = library._cache_usage
 	var warmer := Warmup.new()
@@ -84,14 +84,14 @@ func _run() -> void:
 	library.section = Library.Section.LOCAL
 	library._cache_usage = usage
 	library.refresh()
-	compositor._update_bounds()
+	compositor.test_update_bounds()
 	var rect := compositor.surface_rect
 	var events := []
 	library.setting_changed.connect(func(key, value): events.append([key, value]))
 	for tab in Warmup.LIBRARY_TABS:
 		warmer.prepare_library(library, tab)
-		compositor._update_bounds()
-		check(not library._buttons.is_empty(), "Warmup prepares real settings controls")
+		compositor.test_update_bounds()
+		check(not library.controls_snapshot().is_empty(), "Warmup prepares real settings controls")
 		check(
 			compositor.surface_rect == rect,
 			"Settings keep the browsing projection from first entry, tab %d" % tab
@@ -117,7 +117,7 @@ func _run() -> void:
 			var populated: bool = variant != "empty"
 			warmer.prepare_navigation(synthetic, destination, populated, variant == "list")
 			check(
-				synthetic.section == destination and not synthetic._buttons.is_empty(),
+				synthetic.section == destination and not synthetic.controls_snapshot().is_empty(),
 				"Every navigation entry has prepared controls"
 			)
 			if populated:

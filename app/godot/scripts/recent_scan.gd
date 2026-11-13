@@ -144,3 +144,7 @@ func _exit_tree() -> void:
 			platform.disconnect("local_video_access", _on_access)
 		if _request > 0:
 			platform.cancel_local_video_access(_request)
+
+
+func test_step(delta: float) -> void:
+	_process(delta)

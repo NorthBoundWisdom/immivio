@@ -323,14 +323,24 @@ func _run() -> void:
 	check(
 		(
 			(
-				menu._buttons.filter(func(b): return b.target == Menu.RECENT_PREVIOUS)[0].enabled
+				(
+					menu
+					. controls_snapshot()
+					. filter(func(b): return b.target == Menu.RECENT_PREVIOUS)[0]
+					. enabled
+				)
 				== false
 			)
-			and menu._buttons.filter(func(b): return b.target == Menu.RECENT_NEXT)[0].enabled
+			and (
+				menu
+				. controls_snapshot()
+				. filter(func(b): return b.target == Menu.RECENT_NEXT)[0]
+				. enabled
+			)
 		),
 		"First page disables previous and enables next"
 	)
-	var next_button: Dictionary = menu._buttons.filter(func(b): return b.target == Menu.RECENT_NEXT)[0]
+	var next_button: Dictionary = menu.controls_snapshot().filter(func(b): return b.target == Menu.RECENT_NEXT)[0]
 	var next_point: Vector2 = next_button.rect.get_center()
 	var next_origin := menu.to_global(Vector3(next_point.x, next_point.y, 1))
 	menu.press_pointer("right_hand", next_origin, -menu.global_basis.z, true)
@@ -353,7 +363,12 @@ func _run() -> void:
 		(
 			menu._recent_page == 2
 			and menu.rows.size() == 6
-			and not menu._buttons.filter(func(b): return b.target == Menu.RECENT_NEXT)[0].enabled
+			and not (
+				menu
+				. controls_snapshot()
+				. filter(func(b): return b.target == Menu.RECENT_NEXT)[0]
+				. enabled
+			)
 		),
 		"Final partial page disables next"
 	)
@@ -367,15 +382,15 @@ func _run() -> void:
 	menu._reset_navigation()
 	menu.refresh()
 	# Clearing history takes a second press on the same button.
-	menu._activate(Menu.CLEAR_HISTORY)
+	menu.test_activate(Menu.CLEAR_HISTORY)
 	check(
 		settings_events.is_empty() and menu._confirm == "clear_history",
 		"First press only arms clearing"
 	)
-	menu._activate(Menu.CLEAR_HISTORY)
+	menu.test_activate(Menu.CLEAR_HISTORY)
 	check(settings_events.back() == ["clear_history", true], "Second press clears the history")
 	# Local: the disk itself, volumes then folders and videos.
-	menu._activate(Menu.NAV_BASE + Menu.Section.LOCAL)
+	menu.test_activate(Menu.NAV_BASE + Menu.Section.LOCAL)
 	await settle()
 	check(
 		titles(menu) == ["Internal storage", "USB drive"] and menu.rows[1].icon == "usb",
@@ -384,13 +399,13 @@ func _run() -> void:
 	check(
 		(
 			menu.text_snapshot().is_empty() == false
-			and menu._buttons.any(func(b): return b.target == Menu.ALL_FILES)
+			and menu.controls_snapshot().any(func(b): return b.target == Menu.ALL_FILES)
 		),
 		"Without all-files access a button offers it"
 	)
-	menu._activate(Menu.ALL_FILES)
+	menu.test_activate(Menu.ALL_FILES)
 	check(platform.grants == 1, "The button opens the system access page")
-	menu._activate(Menu.ALL_FILES)
+	menu.test_activate(Menu.ALL_FILES)
 	check(platform.grants == 1, "Repeated grant presses cannot open concurrent permission pages")
 	await settle()
 	check(
@@ -408,7 +423,7 @@ func _run() -> void:
 		),
 		"Returning from permissions refreshes the current local listing"
 	)
-	menu._activate(Menu.ROW_BASE)
+	menu.test_activate(Menu.ROW_BASE)
 	await settle()
 	check(
 		(
@@ -418,73 +433,73 @@ func _run() -> void:
 		),
 		"Volume lists folders first, then videos with size"
 	)
-	menu._activate(Menu.ROW_BASE)
+	menu.test_activate(Menu.ROW_BASE)
 	await settle()
 	check(
 		titles(menu) == ["b.mp4"] and menu._header_title() == "Internal storage / Movies",
 		"Folder opens"
 	)
-	menu._activate(Menu.ROW_BASE)
+	menu.test_activate(Menu.ROW_BASE)
 	check(
 		chosen.back() == ["file:///storage/emulated/0/Movies/b.mp4", "b.mp4"] and not menu.visible,
 		"Choosing a video emits its file URI and closes"
 	)
 	menu.toggle()
-	menu._activate(Menu.NAV_BASE + Menu.Section.LOCAL)
+	menu.test_activate(Menu.NAV_BASE + Menu.Section.LOCAL)
 	await settle()
 	check(titles(menu) == ["b.mp4"], "Reopening keeps the folder")
-	menu._activate(Menu.BACK)
+	menu.test_activate(Menu.BACK)
 	await settle()
 	check(titles(menu) == ["Movies", "舞台.mp4"], "Back returns to the parent folder")
 	# SMB: saved servers plus discovered hosts, shares, folders, file URI.
-	menu._activate(Menu.NAV_BASE + Menu.Section.SMB)
+	menu.test_activate(Menu.NAV_BASE + Menu.Section.SMB)
 	await settle()
 	check(titles(menu) == ["NAS"], "Saved SMB server listed")
-	menu._activate(Menu.REFRESH)
+	menu.test_activate(Menu.REFRESH)
 	await settle()
 	check(
 		titles(menu) == ["NAS", "Other"] and menu.rows[1].icon == "plus",
 		"Discovered host offered to add"
 	)
-	menu._activate(Menu.ROW_BASE)
+	menu.test_activate(Menu.ROW_BASE)
 	await settle()
 	check(titles(menu) == ["Video"] and menu._header_title() == "NAS", "Server lists shares")
-	menu._activate(Menu.ROW_BASE)
+	menu.test_activate(Menu.ROW_BASE)
 	await settle()
 	check(
 		menu._header_title() == "NAS / Video" and titles(menu) == ["8k.mp4"], "Share lists videos"
 	)
-	menu._activate(Menu.ROW_BASE)
+	menu.test_activate(Menu.ROW_BASE)
 	check(chosen.back()[0] == "smb://srv1/Video/8k.mp4", "SMB video emits a stable smb:// URI")
 	menu.toggle()
-	menu._activate(Menu.BACK)
+	menu.test_activate(Menu.BACK)
 	await settle()
 	check(
 		menu.sources.smb_path == "" and titles(menu) == ["Video"],
 		"Back from a share returns to the share list"
 	)
 	# Editor: typing with the ray keyboard, shift, backspace, save.
-	menu._activate(Menu.BACK)
+	menu.test_activate(Menu.BACK)
 	await settle()
-	menu._activate(menu.network.ADD)
-	menu._activate(Menu.ROW_BASE)
+	menu.test_activate(menu.network.ADD)
+	menu.test_activate(Menu.ROW_BASE)
 	check(not menu.editor.is_empty() and menu._field == 1, "Add opens the editor on the host field")
 	for key in [Menu.KEY_BASE + 0, Menu.KEY_BASE + 9, Menu.KEY_BASE + 28]:  # "1", "0", "."
-		menu._activate(key)
-	menu._activate(Menu.BACKSPACE)
+		menu.test_activate(key)
+	menu.test_activate(Menu.BACKSPACE)
 	check(menu.editor.host == "10", "Keyboard types and deletes: %s" % menu.editor.host)
-	menu._activate(Menu.FIELD_BASE + 2)
-	menu._activate(Menu.SHIFT)
-	menu._activate(Menu.KEY_BASE + 10)  # "q" -> "Q"
-	menu._activate(Menu.KEY_BASE + 11)
+	menu.test_activate(Menu.FIELD_BASE + 2)
+	menu.test_activate(Menu.SHIFT)
+	menu.test_activate(Menu.KEY_BASE + 10)  # "q" -> "Q"
+	menu.test_activate(Menu.KEY_BASE + 11)
 	check(menu.editor.user == "Qw", "Shift applies to one key")
-	menu._activate(Menu.FIELD_BASE + 3)
-	menu._activate(Menu.KEY_BASE + 20)
+	menu.test_activate(Menu.FIELD_BASE + 3)
+	menu.test_activate(Menu.KEY_BASE + 20)
 	check(
 		menu.text_snapshot().contains("•") and not menu.text_snapshot().contains("Qwa"),
 		"Password is masked"
 	)
-	menu._activate(Menu.SAVE)
+	menu.test_activate(Menu.SAVE)
 	await settle()
 	check(
 		(
@@ -504,25 +519,25 @@ func _run() -> void:
 		"Saving a source returns to the unified saved/discovered list"
 	)
 	# DLNA: discovery on entry, containers, items.
-	menu._activate(Menu.NAV_BASE + Menu.Section.DLNA)
+	menu.test_activate(Menu.NAV_BASE + Menu.Section.DLNA)
 	await settle()
 	check(titles(menu) == ["媒体服务器"], "DLNA servers discovered on entry")
-	menu._activate(Menu.ROW_BASE)
+	menu.test_activate(Menu.ROW_BASE)
 	await settle()
-	menu._activate(Menu.ROW_BASE)
+	menu.test_activate(Menu.ROW_BASE)
 	await settle()
 	check(
 		menu._header_title() == "媒体服务器 / VR" and titles(menu) == ["Show"],
 		"DLNA container lists items"
 	)
-	menu._activate(Menu.ROW_BASE)
+	menu.test_activate(Menu.ROW_BASE)
 	check(chosen.back()[0] == "http://192.168.1.5/1.mp4", "DLNA item emits its media URL")
 	menu.toggle()
-	menu._activate(Menu.BACK)
+	menu.test_activate(Menu.BACK)
 	await settle()
 	check(titles(menu) == ["VR"], "DLNA back to the root container")
 	# Settings sub-tabs.
-	menu._activate(Menu.NAV_BASE + Menu.Section.SETTINGS)
+	menu.test_activate(Menu.NAV_BASE + Menu.Section.SETTINGS)
 	check(
 		(
 			not Menu.SETTING_TABS.has("Alpha")
@@ -531,22 +546,22 @@ func _run() -> void:
 		),
 		"Settings omit model and input-resolution decisions"
 	)
-	menu._activate(Menu.TAB_BASE + Menu.PLAYBACK_TAB)
+	menu.test_activate(Menu.TAB_BASE + Menu.PLAYBACK_TAB)
 	choose_setting(menu, "output_width", 4096)
 	check(settings_events.back() == ["output_width", 4096], "Output cap setting")
-	menu._activate(Menu.TAB_BASE + Menu.GENERAL_TAB)
+	menu.test_activate(Menu.TAB_BASE + Menu.GENERAL_TAB)
 	check(
 		menu.rows.any(func(row): return row.get("key", "") == "history" and row.value == true),
 		"History is saved by default"
 	)
 	choose_setting(menu, "history", false)
 	check(settings_events.back() == ["history", false], "History can be switched off")
-	menu._activate(Menu.TAB_BASE + Menu.DISPLAY_TAB)
+	menu.test_activate(Menu.TAB_BASE + Menu.DISPLAY_TAB)
 	check(
 		menu.rows.any(func(row): return row.get("key", "") == "reclining_mode"),
 		"Display settings expose reclining mode in the Window group"
 	)
-	menu._activate(Menu.TAB_BASE + Menu.APPEARANCE_TAB)
+	menu.test_activate(Menu.TAB_BASE + Menu.APPEARANCE_TAB)
 	check(
 		menu.rows.any(func(row): return row.get("key", "") == "show_fps" and row.value == false),
 		"Appearance settings offer the FPS display, off by default"
@@ -556,7 +571,7 @@ func _run() -> void:
 		settings_events.back() == ["show_fps", true],
 		"FPS display can be switched on from Appearance settings"
 	)
-	menu._activate(Menu.TAB_BASE + Menu.PLAYBACK_TAB)
+	menu.test_activate(Menu.TAB_BASE + Menu.PLAYBACK_TAB)
 	var subtitle_group := menu.rows.find_custom(
 		func(row): return row.get("group", false) and row.title == "VR subtitles"
 	)
@@ -602,7 +617,7 @@ func _run() -> void:
 		),
 		"Distance slider reaches 0.1 m: %s" % str(settings_events.back())
 	)
-	menu._activate(Menu.TAB_BASE + Menu.ABOUT_TAB)
+	menu.test_activate(Menu.TAB_BASE + Menu.ABOUT_TAB)
 	var about_text := "\n".join(
 		menu.find_children("*", "Label3D", true, false).map(func(label): return label.text)
 	)
@@ -617,7 +632,7 @@ func _run() -> void:
 		),
 		"About brand and support"
 	)
-	menu._choose(menu.rows.filter(func(row): return row.get("about_page", -1) == 2)[0])
+	menu.test_choose(menu.rows.filter(func(row): return row.get("about_page", -1) == 2)[0])
 	var credit_titles: Array = menu.rows.map(func(row): return str(row.title))
 	var belfast: Array = menu.rows.filter(
 		func(row): return row.title == "Belfast Sunset (Pure Sky)"
@@ -647,13 +662,7 @@ func _run() -> void:
 		),
 		"Credits list every bundled component under its group"
 	)
-	var credit_detail: Label3D = (
-		menu
-		. _buttons
-		. filter(func(button): return button.target == Menu.ROW_BASE + 1)[0]
-		. node
-		. get_child(2)
-	)
+	var credit_detail: Dictionary = menu.controls_snapshot().filter(func(button): return button.target == Menu.ROW_BASE + 1)[0].node.children[2]
 	check(
 		credit_detail.text == menu.rows[1].detail,
 		"Credit attribution remains visible without truncation"
@@ -678,27 +687,38 @@ func _run() -> void:
 	menu.scroll = 0.0
 	menu._draw()
 	var revision: int = menu.layout_revision
-	var home: Node3D = (
-		menu._buttons.filter(func(button): return button.target == Menu.ABOUT_HOME)[0].node
+	var home_id: int = (
+		menu
+		. controls_snapshot()
+		. filter(func(button): return button.target == Menu.ABOUT_HOME)[0]
+		. node
+		. instance_id
 	)
 	var labels := menu._labels.size()
 	for step in 14:
 		menu._set_scroll(menu.scroll + 0.25)
-	var first_row: Array = menu._buttons.filter(
+	var first_row: Array = menu.controls_snapshot().filter(
 		func(button): return button.target == Menu.ROW_BASE + 1
 	)
 	check(
 		(
 			menu.layout_revision == revision
-			and is_instance_valid(home)
+			and menu.controls_snapshot().any(
+				func(button): return button.node.instance_id == home_id
+			)
 			and menu._labels.size() == labels
 			and menu._first_line() == 3
 			and (
-				menu._buttons.filter(func(button): return button.target == Menu.SCROLLBAR).size()
+				(
+					menu
+					. controls_snapshot()
+					. filter(func(button): return button.target == Menu.SCROLLBAR)
+					. size()
+				)
 				== 1
 			)
 			and first_row.size() == 1
-			and (first_row[0].node.get_child(0) as Label3D).text == str(menu.rows[4].title)
+			and first_row[0].node.children[0].text == str(menu.rows[4].title)
 		),
 		"Scrolling past lines redraws only the rows, never the page around them"
 	)
@@ -712,12 +732,12 @@ func _run() -> void:
 		menu.text_snapshot().contains("Blouberg Sunrise 2") and not retired,
 		"Credits end with the beach panorama and omit retired inference components"
 	)
-	menu._activate(Menu.ABOUT_HOME)
+	menu.test_activate(Menu.ABOUT_HOME)
 	check(
 		menu.rows[0].title == "Immivio" and menu.scroll == 0, "Return from credits resets scrolling"
 	)
 	# Long lists scroll with the stick (whole rows) and the scrollbar track; no pages.
-	menu._activate(Menu.NAV_BASE + Menu.Section.LOCAL)
+	menu.test_activate(Menu.NAV_BASE + Menu.Section.LOCAL)
 	await settle()
 	var many: Array = []
 	for i in 30:
@@ -795,7 +815,7 @@ func _run() -> void:
 	)
 	var hidden := (
 		menu
-		. _buttons
+		. controls_snapshot()
 		. filter(func(b): return menu._row_target(b.target) and not b.node.visible)
 		. size()
 	)
@@ -803,7 +823,7 @@ func _run() -> void:
 	menu.release_pointer("right_hand", gap_at.call(gap + 1.5 * Menu.GRID_PITCH.y), direction, true)
 	check(chosen.size() == picks + 1, "Releasing a drag from a gap selects nothing")
 	for _frame in 60:
-		menu._process(1.0 / 60.0)
+		menu.test_step(1.0 / 60.0)
 	check(
 		menu.scroll == roundf(menu.scroll),
 		"At rest the list settles on a whole line: %s" % menu.scroll
@@ -834,7 +854,7 @@ func _run() -> void:
 		"Ray selects an entry on the angled navigation column"
 	)
 	menu.attach_platform(platform)
-	menu._activate(Menu.NAV_BASE + Menu.Section.LOCAL)
+	menu.test_activate(Menu.NAV_BASE + Menu.Section.LOCAL)
 	check(not menu.text_snapshot().contains(" / "), "No page counter")
 	# Denied media permission offers a retry.
 	menu._on_media_list(-1, "{}")
@@ -845,7 +865,7 @@ func _run() -> void:
 	menu._on_media_list(
 		998, JSON.stringify({"state": "denied", "error": "ALL_FILES_ACCESS_NEEDED"})
 	)
-	menu._activate(Menu.GRANT)
+	menu.test_activate(Menu.GRANT)
 	check(
 		menu.sources.local_grant_pending and platform.grants == 2,
 		"An unreadable folder requests access"
@@ -870,7 +890,7 @@ func _run() -> void:
 	)
 	menu._on_media_list(0, JSON.stringify({"source": "local_access", "state": "settings_opened"}))
 	var before_manual_refresh := platform.calls.size()
-	menu._activate(Menu.REFRESH)
+	menu.test_activate(Menu.REFRESH)
 	await settle()
 	check(
 		not menu.sources.local_grant_pending and platform.calls.size() == before_manual_refresh + 1,
@@ -890,8 +910,8 @@ func _run() -> void:
 		),
 		"Chinese menu and status"
 	)
-	menu._activate(Menu.NAV_BASE + Menu.Section.SETTINGS)
-	menu._activate(Menu.TAB_BASE + Menu.GENERAL_TAB)
+	menu.test_activate(Menu.NAV_BASE + Menu.Section.SETTINGS)
+	menu.test_activate(Menu.TAB_BASE + Menu.GENERAL_TAB)
 	var language_index := menu.rows.find_custom(func(row): return row.get("key", "") == "language")
 	check(
 		(

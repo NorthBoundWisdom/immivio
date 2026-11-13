@@ -46,13 +46,13 @@ func _run() -> void:
 	menu.session_controls_provider = func():
 		return {"follow": false, "passthrough_visible": true, "passthrough": false, "alpha": false}
 	menu.refresh()
-	var footer: Array = menu._buttons.filter(
+	var footer: Array = menu.controls_snapshot().filter(
 		func(button): return int(button.target) in [menu.FOLLOW, menu.TEMP_PASSTHROUGH]
 	)
 	check(footer.size() == 2, "Footer retains exactly follow and temporary passthrough")
 	for target in [menu.CLOSE, menu.PLAYER, menu.RECENTER, menu.CLOSE_MENU]:
 		check(
-			not menu._buttons.any(func(button): return button.target == target),
+			not menu.controls_snapshot().any(func(button): return button.target == target),
 			"Retired floating actions have no ray targets"
 		)
 	for button in footer:
@@ -65,10 +65,10 @@ func _run() -> void:
 	var compositor := Surface.new()
 	root.add_child(compositor)
 	compositor.active_menu = menu
-	compositor._update_bounds()
+	compositor.test_update_bounds()
 	var original_rect := compositor.surface_rect
 	for target in [menu.FOLLOW, menu.TEMP_PASSTHROUGH]:
-		var button: Dictionary = menu._buttons.filter(func(b): return b.target == target)[0]
+		var button: Dictionary = menu.controls_snapshot().filter(func(b): return b.target == target)[0]
 		for repeat in 12:
 			menu.update_pointer(
 				"right_hand",
@@ -76,19 +76,19 @@ func _run() -> void:
 				-button.node.global_basis.z,
 				true
 			)
-			compositor._update_bounds()
+			compositor.test_update_bounds()
 			check(
 				menu._tooltip.visible and compositor.surface_rect == original_rect,
 				"Hover tooltip cannot grow or recenter the projection"
 			)
 			menu.cancel_pointer("right_hand")
-			compositor._update_bounds()
+			compositor.test_update_bounds()
 			check(compositor.surface_rect == original_rect, "Hover leave cannot change projection")
 	check(clicked.is_empty(), "Hover alone cannot activate temporary passthrough")
-	main._on_pointer_button("by_button", "right_hand")
+	main.test_pointer_button("by_button", "right_hand")
 	main._toggle_player_menu()
-	menu._activate(menu.CLOSE)
-	menu._activate(menu.PLAYER)
+	menu.test_activate(menu.CLOSE)
+	menu.test_activate(menu.PLAYER)
 	menu._activate_footer(menu.CLOSE_MENU)
 	var escape := InputEventKey.new()
 	escape.keycode = KEY_ESCAPE

@@ -28,54 +28,64 @@ func _run() -> void:
 	menu.scale = Vector3(.75, 2.0 / 3.0, 1)
 	menu._button(42, "Action", Vector2.ZERO, Vector2(.12, .12))
 	menu._button(43, "Unavailable", Vector2(.3, 0), Vector2(.12, .12), false)
-	var disabled: Dictionary = menu._buttons.back()
+	_check_snapshot(menu.controls_snapshot())
+	_check_snapshot(menu.hover_snapshot())
+	_check_snapshot(menu.backdrop_snapshot())
+	var disabled: Dictionary = menu.controls_snapshot().back()
 	var origin := menu.to_global(Vector3(0, 0, 1))
 	var blank := menu.to_global(Vector3(.3, .2, 0))
 	menu.update_pointer("right_hand", origin, blank - origin, true)
-	var pointer: Dictionary = menu._pointers.right_hand
+	menu.update_pointer("untracked", Vector3.ZERO, Vector3.ZERO, false)
+	_check_snapshot(menu.pointer_snapshot())
+	check(
+		not menu.pointer_snapshot().untracked.endpoints_initialized,
+		"Inactive pointers need no shader endpoints"
+	)
+	var pointer: Dictionary = menu.pointer_snapshot().right_hand
 	check(
 		pointer.dot.visible and pointer.dot.position.distance_to(Vector3(.3, .2, .008)) < .0001,
 		"Transformed/scaled panel blank space shows a surface reticle"
 	)
 	check(
 		(
-			menu._hover.right_hand == Menu.NONE
+			menu.hover_snapshot().right_hand == Menu.NONE
 			and not menu.press_pointer("right_hand", origin, blank - origin, true)
 		),
 		"Panel feedback cannot highlight or activate a button"
 	)
 	check(
-		(
-			pointer.line.mesh.get_aabb().end.z < 1.001
-			and pointer.line.mesh.get_aabb().position.z >= .005
-		),
+		pointer.line.mesh.aabb.end.z < 1.001 and pointer.line.mesh.aabb.position.z >= .005,
 		"Laser segment ends in front of the panel"
 	)
 	check(not disabled.node.visible, "Unavailable button is hidden on creation")
 	menu.update_pointer("right_hand", origin, menu.to_global(Vector3(.3, 0, 0)) - origin, true)
+	pointer = menu.pointer_snapshot().right_hand
+	disabled = menu.controls_snapshot().back()
 	check(
-		pointer.dot.visible and menu._hover.right_hand == Menu.NONE,
+		pointer.dot.visible and menu.hover_snapshot().right_hand == Menu.NONE,
 		"Hidden button leaves the panel blocking the ray"
 	)
-	disabled.enabled = true
+	menu.test_set_control_enabled(43, true)
 	menu._update_highlights()
+	disabled = menu.controls_snapshot().back()
 	check(disabled.node.visible, "Button reappears when it becomes available")
 	menu.update_pointer("right_hand", origin, disabled.node.global_position - origin, true)
+	pointer = menu.pointer_snapshot().right_hand
+	disabled = menu.controls_snapshot().back()
 	check(
 		(
-			menu._hover.right_hand == 43
-			and (
-				disabled.node.material_override.get_shader_parameter("surface_color")
-				!= disabled.base_color
-			)
+			menu.hover_snapshot().right_hand == 43
+			and (disabled.node.material_override.surface_color != disabled.base_color)
 		),
 		"Available button still highlights under the laser"
 	)
-	disabled.enabled = false
+	menu.test_set_control_enabled(43, false)
 	menu._update_highlights()
+	disabled = menu.controls_snapshot().back()
 	check(not disabled.node.visible, "Live availability change hides the button again")
-	disabled["keep_visible"] = true
+	menu.test_set_control_visibility(43, true, true)
 	menu._update_highlights()
+	disabled = menu.controls_snapshot().back()
 	check(
 		(
 			disabled.node.visible
@@ -83,9 +93,10 @@ func _run() -> void:
 		),
 		"Informational rows remain visible without accepting input"
 	)
-	disabled.enabled = true
-	disabled["layout_visible"] = false
+	menu.test_set_control_enabled(43, true)
+	menu.test_set_control_visibility(43, true, false)
 	menu._update_highlights()
+	disabled = menu.controls_snapshot().back()
 	check(
 		not disabled.node.visible,
 		"Availability does not unhide rows clipped by the scrolling layout"
@@ -102,6 +113,7 @@ func _run() -> void:
 			"Panel rejects parallel, rear, outside, far and invalid rays"
 		)
 	menu.cancel_pointer("right_hand")
+	pointer = menu.pointer_snapshot().right_hand
 	check(
 		not pointer.line.visible and not pointer.dot.visible, "Tracking loss clears panel feedback"
 	)
@@ -132,9 +144,11 @@ func _run() -> void:
 	menu._button(44, "Behind popup", Vector2(.4, .3), Vector2(.12, .12))
 	var popup_origin := popup.to_global(Vector3(0, 0, 1))
 	menu.update_pointer("right_hand", popup_origin, -popup.global_basis.z, true)
+	pointer = menu.pointer_snapshot().right_hand
+	disabled = menu.controls_snapshot().back()
 	check(
 		(
-			menu._hover.right_hand == Menu.NONE
+			menu.hover_snapshot().right_hand == Menu.NONE
 			and is_equal_approx(pointer.dot.position.z, .036)
 			and not menu.press_pointer("right_hand", popup_origin, -popup.global_basis.z, true)
 		),
@@ -161,11 +175,13 @@ func _run() -> void:
 		"Curved panel blank space maps physical and texture positions correctly"
 	)
 	menu.update_pointer("right_hand", origin, curved - origin, true)
+	pointer = menu.pointer_snapshot().right_hand
+	disabled = menu.controls_snapshot().back()
 	check(
 		(
 			pointer.dot.visible
 			and pointer.dot.position.distance_to(Vector3(.3, .2, .008)) < .0001
-			and menu._hover.right_hand == Menu.NONE
+			and menu.hover_snapshot().right_hand == Menu.NONE
 		),
 		"Curved blank space shows a reticle without highlighting a control"
 	)
@@ -176,3 +192,15 @@ func _run() -> void:
 		push_error(failure)
 	print("Panel pointer: %d checks, %d failures" % [checks, failures.size()])
 	preload("res://tests/support/test_result.gd").finish(self, 0 if failures.is_empty() else 1)
+
+
+func _check_snapshot(value: Variant) -> void:
+	check(not value is Object, "Snapshots never expose a live node or resource")
+	if value is Dictionary:
+		check(value.is_read_only(), "Snapshot dictionaries are read-only")
+		for key in value:
+			_check_snapshot(value[key])
+	elif value is Array:
+		check(value.is_read_only(), "Snapshot arrays are read-only")
+		for item in value:
+			_check_snapshot(item)

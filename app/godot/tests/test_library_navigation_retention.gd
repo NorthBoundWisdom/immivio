@@ -12,9 +12,9 @@ func check(ok: bool, message: String) -> void:
 
 func navigation_ids(menu: Node3D) -> Array:
 	var result: Array = []
-	for button in menu._buttons:
+	for button in menu.controls_snapshot():
 		if button.target >= menu.NAV_BASE and button.target < menu.NAV_BASE + menu.NAV.size():
-			result.append(button.node.get_instance_id())
+			result.append(button.node.instance_id)
 	return result
 
 
@@ -51,7 +51,7 @@ func _run() -> void:
 		menu.refresh()
 		check(navigation_ids(menu) == original, "Settings tabs retain unchanged left navigation")
 		check(
-			not menu._buttons.any(func(button): return button.target in [82, 83]),
+			not menu.controls_snapshot().any(func(button): return button.target in [82, 83]),
 			"Restart and Close controls are absent on every settings tab"
 		)
 	menu.section = Library.Section.LOCAL
@@ -60,7 +60,7 @@ func _run() -> void:
 		navigation_ids(menu) == original,
 		"Changing section reuses navigation and updates only selection"
 	)
-	var selected := menu._buttons.filter(
+	var selected := menu.controls_snapshot().filter(
 		func(button): return button.target == menu.NAV_BASE + menu.Section.LOCAL
 	)
 	check(
@@ -68,12 +68,12 @@ func _run() -> void:
 		"New section is visibly selected"
 	)
 	for destination in menu.NAV_ORDER:
-		menu._activate(menu.NAV_BASE + destination)
+		menu.test_activate(menu.NAV_BASE + destination)
 		check(
 			navigation_ids(menu) == original,
 			"All four entry switches preserve navigation instances"
 		)
-		var active := menu._buttons.filter(
+		var active := menu.controls_snapshot().filter(
 			func(button):
 				return (
 					button.target >= menu.NAV_BASE

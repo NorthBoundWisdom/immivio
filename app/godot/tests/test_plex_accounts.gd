@@ -35,7 +35,7 @@ func _run() -> void:
 		),
 		"Plex appears alongside existing server providers"
 	)
-	var choices: Array = menu._buttons.filter(
+	var choices: Array = menu.controls_snapshot().filter(
 		func(button):
 			return button.target >= Menu.ROW_BASE + 1 and button.target <= Menu.ROW_BASE + 5
 	)
@@ -49,7 +49,7 @@ func _run() -> void:
 		"Plex has an optional address and no password collection"
 	)
 	check(
-		menu._buttons.any(func(button): return button.target == Accounts.BASE + 27),
+		menu.controls_snapshot().any(func(button): return button.target == Accounts.BASE + 27),
 		"Plex offers official account authorization"
 	)
 	panel.action(Accounts.BASE + 27)
@@ -73,7 +73,7 @@ func _run() -> void:
 		"pairing shows official link and readable code"
 	)
 	check(
-		not menu._buttons.any(
+		not menu.controls_snapshot().any(
 			func(button): return button.target >= Accounts.KEY and button.target < Accounts.KEY + 40
 		),
 		"pairing hides the form keyboard"
@@ -107,7 +107,7 @@ func _run() -> void:
 		(
 			(
 				menu
-				. _buttons
+				. controls_snapshot()
 				. filter(
 					func(button): return button.target in [Accounts.BASE + 27, Accounts.BASE + 28]
 				)
@@ -126,13 +126,13 @@ func _run() -> void:
 		(
 			not (
 				menu
-				. _buttons
+				. controls_snapshot()
 				. filter(func(button): return button.target == Accounts.BASE + 28)[0]
 				. enabled
 			)
 			and (
 				menu
-				. _buttons
+				. controls_snapshot()
 				. filter(func(button): return button.target == Accounts.BASE + 27)[0]
 				. enabled
 			)
@@ -168,7 +168,7 @@ func _run() -> void:
 	)
 	panel.start("server", "plex", "existing")
 	check(
-		menu._buttons.any(func(button): return button.target == Accounts.BASE + 6),
+		menu.controls_snapshot().any(func(button): return button.target == Accounts.BASE + 6),
 		"existing Plex settings can be tested and saved without reauthorization"
 	)
 	panel.close()

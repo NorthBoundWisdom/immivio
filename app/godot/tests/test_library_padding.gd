@@ -49,15 +49,18 @@ func entries(count: int) -> Array:
 
 
 func verify(menu: Node3D, label: String) -> void:
-	var panel: Vector2 = menu._backdrop.mesh.size
-	var origin: Vector3 = menu._backdrop.position
+	var panel: Vector2 = menu.backdrop_snapshot().mesh.size
+	var origin: Vector3 = menu.backdrop_snapshot().position
 	var left: float = origin.x - panel.x * .5
 	var right: float = origin.x + panel.x * .5
 	var bottom: float = origin.y - panel.y * .5
 	var top: float = origin.y + panel.y * .5
 	var edge_gaps := [INF, INF, INF, INF]
-	for button in menu._buttons:
-		if menu._side.is_ancestor_of(button.node) or not button.node.is_visible_in_tree():
+	for button in menu.controls_snapshot():
+		if (
+			button.node.ancestor_ids.has(menu._side.get_instance_id())
+			or not button.node.visible_in_tree
+		):
 			continue
 		if button.target in [menu.FOLLOW, menu.TEMP_PASSTHROUGH, menu.CLOSE_MENU]:
 			continue
@@ -78,9 +81,8 @@ func verify(menu: Node3D, label: String) -> void:
 			label + " gives the complete file-browser controls equal padding on all four sides"
 		)
 	if menu._grid():
-		var cards: Array = menu._buttons.filter(
-			func(button):
-				return menu._row_target(button.target) and button.node.is_visible_in_tree()
+		var cards: Array = menu.controls_snapshot().filter(
+			func(button): return menu._row_target(button.target) and button.node.visible_in_tree
 		)
 		if cards.size() >= menu.COLS:
 			var first: Vector3 = menu.to_local(cards[0].node.global_position)
@@ -92,7 +94,7 @@ func verify(menu: Node3D, label: String) -> void:
 				label + " centres the four-column grid with equal horizontal margins"
 			)
 	if menu._max_scroll() > 0:
-		var track: Dictionary = menu._buttons.filter(func(button): return button.target == menu.SCROLLBAR)[0]
+		var track: Dictionary = menu.controls_snapshot().filter(func(button): return button.target == menu.SCROLLBAR)[0]
 		check(
 			is_equal_approx(track.rect.size.x, .04),
 			label + " preserves the scrollbar's generous ray hit area"

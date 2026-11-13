@@ -37,6 +37,13 @@
   and explicit/system recentering through the new input-source object on the
   supported headsets. Host input fixtures do not certify XR runtime delivery.
 
+Host evidence for the ownership/test-interface changes: 102 Godot scripts,
+126 workflow tests and the existing JVM suite passed. Desktop GPU checks
+covered seek-edge alpha, six library pages, 24 audio layouts and 122 stereo
+render assertions, with representative captures reviewed. These checks leave
+the headset cases above pending. Logs/captures are under ignored
+`artifacts/reports/architecture-20261113/`.
+
 ## Cached night sky follow-up — 2026-11-10
 
 The owner reported drops to about 60 FPS while looking around after the stationary home result below. The final night renderer now generates the static star field and Milky Way once at 8192×4096 in linear HDR, stores RGB9E5 mipmaps, and keeps only the hill silhouette analytic. Rotation and brightness reuse the texture; leaving the scene releases it. The cache occupies 178,956,972 bytes (about 171 MiB) including mipmaps, trading additional memory and startup work for lower steady rendering cost.

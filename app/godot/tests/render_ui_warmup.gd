@@ -20,12 +20,12 @@ func _run() -> void:
 	while not warmer.complete and Time.get_ticks_msec() - started < 30000:
 		await process_frame
 	await process_frame
-	menu._activate(menu.QUICK_COLOR)
-	var first_settings := menu._quick_open == "color"
+	menu.test_activate(menu.QUICK_COLOR)
+	var first_settings: bool = menu.popup_snapshot().quick_open == "color"
 	state["capabilities_available"] = true
-	menu._activate(12)
-	var first_info := menu._quick_open == "info"
-	var passed := (
+	menu.test_activate(12)
+	var first_info: bool = menu.popup_snapshot().quick_open == "info"
+	var passed: bool = (
 		warmer.complete
 		and warmer.pages_rendered == Warmup.PAGES.size()
 		and warmer.library_pages_rendered == Warmup.LIBRARY_TABS.size()

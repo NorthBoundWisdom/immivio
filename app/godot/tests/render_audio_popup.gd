@@ -72,10 +72,10 @@ func _run() -> void:
 			var image := viewport.get_texture().get_image()
 			if image.save_png(output.path_join(language + "-" + view + ".png")) != OK:
 				failures.append("Save failed")
-			for button in menu._buttons:
+			for button in menu.controls_snapshot():
 				if menu.choices.targets.has(button.target):
-					var label: Label3D = button.node.get_child(0)
-					var width := (
+					var label: Dictionary = button.node.children[0]
+					var width: float = (
 						(
 							menu
 							. FONT

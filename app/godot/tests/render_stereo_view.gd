@@ -232,11 +232,11 @@ func _menus() -> void:
 				),
 				"Save " + language + " stereo menu"
 			)
-			for button in menu._buttons:
+			for button in menu.controls_snapshot():
 				if button.target < Menu.VIEWING_EYE or button.target > Menu.ALIGNMENT_RESET:
 					continue
-				var label: Label3D = button.node.get_child(0)
-				var width := (
+				var label: Dictionary = button.node.children[0]
+				var width: float = (
 					(
 						menu
 						. ui_font()

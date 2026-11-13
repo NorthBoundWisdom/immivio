@@ -46,20 +46,20 @@ func _run() -> void:
 	menu.device_status.refresh(true)
 	menu.refresh_session_controls()
 	check(
-		not menu._buttons.any(
+		not menu.controls_snapshot().any(
 			func(button): return button.target in [menu.FOLLOW, menu.TEMP_PASSTHROUGH, 100]
 		),
 		"Video toolbar omits session toggles and duplicate library action"
 	)
 	check(
-		menu._buttons.any(func(button): return button.target == 107),
+		menu.controls_snapshot().any(func(button): return button.target == 107),
 		"Close video is the single return action"
 	)
 	var operations := []
 	menu.action_requested.connect(func(operation): operations.append(operation))
-	menu._activate(107)
+	menu.test_activate(107)
 	check(operations == ["stop"], "Single close action uses stop-and-return production route")
-	for button in menu._buttons:
+	for button in menu.controls_snapshot():
 		if button.target == menu.SEEK:
 			continue
 		check(
@@ -92,14 +92,14 @@ func _run() -> void:
 		),
 		status._pill.mesh.size
 	)
-	for button in menu._buttons:
+	for button in menu.controls_snapshot():
 		check(
 			not status_rect.intersects(button.rect),
 			"Long charging/12-hour status does not overlap action %d" % button.target
 		)
-	var play: Dictionary = menu._buttons.filter(func(button): return button.target == 102)[0]
-	var previous: Dictionary = menu._buttons.filter(func(button): return button.target == 101)[0]
-	var next: Dictionary = menu._buttons.filter(func(button): return button.target == 103)[0]
+	var play: Dictionary = menu.controls_snapshot().filter(func(button): return button.target == 102)[0]
+	var previous: Dictionary = menu.controls_snapshot().filter(func(button): return button.target == 101)[0]
+	var next: Dictionary = menu.controls_snapshot().filter(func(button): return button.target == 103)[0]
 	check(
 		(
 			is_zero_approx(play.rect.get_center().x)
@@ -124,7 +124,7 @@ func _run() -> void:
 			),
 			status._pill.mesh.size
 		)
-		var close: Dictionary = menu._buttons.filter(func(button): return button.target == 107)[0]
+		var close: Dictionary = menu.controls_snapshot().filter(func(button): return button.target == 107)[0]
 		check(
 			(
 				not title_rect.intersects(battery_rect)
@@ -156,7 +156,7 @@ func _run() -> void:
 			"Actual shaped title fits its capsule"
 		)
 	check(
-		is_equal_approx(menu._backdrop.mesh.size.y, .20),
+		is_equal_approx(menu.backdrop_snapshot().mesh.size.y, .20),
 		"The timeline backdrop has no retired title or settings-row padding"
 	)
 	menu.free()

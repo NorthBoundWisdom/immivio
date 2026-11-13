@@ -49,6 +49,7 @@ jobs:
           python3 tools/check_website.py
           python3 tools/check_translations.py
           python3 tools/check_godot_resources.py
+          python3 tools/audit_godot_test_access.py --check-baseline docs/audits/godot-private-access-before.json
       - name: Run workflow and website tests
         run: |
           python3 -m unittest discover -s tests/workflow

@@ -152,7 +152,7 @@ func _run() -> void:
 	menu.press_pointer("right", distance_origin(menu, 0.5), -menu.global_basis.z, true)
 	check(absf(distance - 5.05) < 0.06, "Slider midpoint maps linearly to metres")
 	menu.release_pointer("right", Vector3.ZERO, Vector3.ZERO, true)
-	menu._activate(Menu.QUICK_COLOR)
+	menu.test_activate(Menu.QUICK_COLOR)
 	for target in menu.choices.targets:
 		var item: Dictionary = menu.choices.targets[target]
 		if item.get("key") == "grade_preset" and item.get("value") == "Warm":
@@ -165,7 +165,7 @@ func _run() -> void:
 			exposure_target = target
 			break
 	var slider: Dictionary = menu.choices.sliders[exposure_target]
-	var at: Vector3 = slider.node.to_global(Vector3(slider.left + slider.width * .75, 0, 1))
+	var at: Vector3 = slider.node.global_transform * Vector3(slider.left + slider.width * .75, 0, 1)
 	menu.press_pointer("right", at, -menu.global_basis.z, true)
 	check(
 		grade.preset == "Custom" and is_equal_approx(grade.values().exposure, 1.0),

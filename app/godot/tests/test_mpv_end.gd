@@ -49,9 +49,9 @@ func _initialize() -> void:
 	video._pending_revision = {"position_ms": 2000}
 	_check(not video._can_loop(), "User seek wins over a stale EOF status")
 	video._pending_revision = {}
-	video._waiting_first = true
+	video.test_set_waiting_for_frame(true)
 	_check(not video._can_loop(), "Replacement generation cannot loop before its first frame")
-	video._waiting_first = false
+	video.test_set_waiting_for_frame(false)
 	video.media.last_pair["contract_version"] = 1
 	_check(not video._can_loop(), "A retired frame contract cannot authorize EOF completion")
 	video.media.last_pair["contract_version"] = 2

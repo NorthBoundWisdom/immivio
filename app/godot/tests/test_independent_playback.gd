@@ -138,7 +138,7 @@ func _run() -> void:
 	video.subtitle_palette = 2
 	video.caption.text = "Sample"
 	video.caption.visible = true
-	video._place_caption()
+	video.test_place_caption()
 	check(
 		video.caption.modulate == Palette.INK[2] and video.caption.outline_modulate == Color.BLACK,
 		"Flat captions use selected palette"
@@ -167,7 +167,7 @@ func _run() -> void:
 	menu.visible = true
 	menu.refresh()
 	check(
-		not menu._buttons.any(func(button): return button.target == 109),
+		not menu.controls_snapshot().any(func(button): return button.target == 109),
 		"System-volume playback exposes no application volume button"
 	)
 	var library := preload("res://scripts/library_menu.gd").new()
@@ -175,7 +175,7 @@ func _run() -> void:
 	library.visible = true
 	var title := "A long media filename with Chinese 字幕 and details ".repeat(5) + ".mp4"
 	library._row_button(9001, title, "", "video", Vector2.ZERO, false)
-	library._hover.right_hand = 9001
+	library.test_set_hover("right_hand", 9001)
 	library._update_tooltip()
 	check(
 		library._tooltip != null and library._tooltip.get_child(0).text == title,

@@ -54,7 +54,7 @@ func _run() -> void:
 		Basis(Vector3.UP, -.6) * Basis(Vector3.RIGHT, .2), Vector3(1.2, 2.1, -2.4)
 	)
 	video.screen_rotation = 20
-	video._apply_geometry()
+	video.test_apply_geometry()
 	video.panel.visible = true
 	var menu := Menu.new()
 	menu.state_provider = main._menu_state
@@ -68,14 +68,14 @@ func _run() -> void:
 		camera.global_position, (video.panel.global_position - camera.global_position).normalized()
 	]
 	var before := video.flat_pose
-	main._on_pointer_button("trigger_click", "right_hand")
+	main.test_pointer_button("trigger_click", "right_hand")
 	main.input_source.test_ray[1] = Vector3.RIGHT
 	main._update_grab()
 	check(
 		main.grab.is_empty() and video.flat_pose.is_equal_approx(before),
 		"Holding/moving trigger cannot drag canvas"
 	)
-	main._on_pointer_release("trigger_click", "right_hand")
+	main.test_pointer_release("trigger_click", "right_hand")
 	check(menu.visible, "Trigger tap opens controls on release")
 	var centre := video.subtitle_transform()
 	var timeline := menu.to_global(Vector3(0, Menu.BAR_SEEK_Y, 0))
@@ -103,10 +103,18 @@ func _run() -> void:
 	check(
 		(
 			is_equal_approx(
-				menu._backdrop.mesh.size.x * menu._backdrop.global_basis.x.length(), .87
+				(
+					menu.backdrop_snapshot().mesh.size.x
+					* menu.backdrop_snapshot().global_basis.x.length()
+				),
+				.87
 			)
 			and is_equal_approx(
-				menu._backdrop.mesh.size.y * menu._backdrop.global_basis.y.length(), .20 * 2.0 / 3.0
+				(
+					menu.backdrop_snapshot().mesh.size.y
+					* menu.backdrop_snapshot().global_basis.y.length()
+				),
+				.20 * 2.0 / 3.0
 			)
 		),
 		"Visible playback backdrop measures 3/4 width and 2/3 height"
@@ -146,7 +154,7 @@ func _run() -> void:
 	main.input_source.test_ray = [
 		camera.global_position, (video.panel.global_position - camera.global_position).normalized()
 	]
-	main._on_pointer_button("grip_click", "right_hand")
+	main.test_pointer_button("grip_click", "right_hand")
 	check(
 		not menu.visible and main.grab.get("action") == "grip_click",
 		"Grip dismisses controls and owns canvas movement"
@@ -154,45 +162,45 @@ func _run() -> void:
 	main.input_source.test_ray[1] = Basis(Vector3.UP, .25) * main.input_source.test_ray[1]
 	main._update_grab()
 	check(not video.flat_pose.is_equal_approx(before), "Grip motion moves the canvas")
-	main._on_pointer_release("trigger_click", "right_hand")
-	main._on_pointer_release("grip_click", "left_hand")
+	main.test_pointer_release("trigger_click", "right_hand")
+	main.test_pointer_release("grip_click", "left_hand")
 	check(
 		not main.grab.is_empty() and not menu.visible,
 		"Trigger or other-hand release cannot finish grip"
 	)
-	main._on_pointer_release("grip_click", "right_hand")
+	main.test_pointer_release("grip_click", "right_hand")
 	check(
 		main.grab.is_empty() and not menu.visible and video.requested_play,
 		"Grip release neither opens controls nor pauses playback"
 	)
-	main._on_pointer_button("grip_click", "right_hand")
-	main._on_pointer_release("grip_click", "right_hand")
+	main.test_pointer_button("grip_click", "right_hand")
+	main.test_pointer_release("grip_click", "right_hand")
 	check(
 		not menu.visible and video.requested_play,
 		"Stationary grip tap has no playback/menu side effect"
 	)
-	main._on_pointer_button("trigger_click", "right_hand")
-	main._on_pointer_button("grip_click", "right_hand")
-	main._on_pointer_release("trigger_click", "right_hand")
+	main.test_pointer_button("trigger_click", "right_hand")
+	main.test_pointer_button("grip_click", "right_hand")
+	main.test_pointer_release("trigger_click", "right_hand")
 	check(
 		not menu.visible and not main.grab.is_empty(),
 		"Starting a grip cancels a pending trigger tap"
 	)
-	main._on_pointer_release("grip_click", "right_hand")
-	main._on_pointer_button("trigger_click", "right_hand")
+	main.test_pointer_release("grip_click", "right_hand")
+	main.test_pointer_button("trigger_click", "right_hand")
 	main.input_source.test_ray = null
-	main._on_pointer_release("trigger_click", "right_hand")
+	main.test_pointer_release("trigger_click", "right_hand")
 	check(main.trigger_taps.is_empty() and not menu.visible, "Tracking loss cancels trigger tap")
 	main.input_source.test_ray = [camera.global_position, Vector3.FORWARD]
-	main._on_pointer_button("trigger_click", "right_hand")
+	main.test_pointer_button("trigger_click", "right_hand")
 	video.local_uri = "file:///other.mp4"
-	main._on_pointer_release("trigger_click", "right_hand")
+	main.test_pointer_release("trigger_click", "right_hand")
 	check(not menu.visible, "Content change cancels a pending trigger tap")
 	video.screen_rotation = 0
 	video.screen_distance = 8
 	video.flat_pose = Transform3D(Basis.IDENTITY, camera.global_position + Vector3(0, 0, -8))
-	video._apply_geometry()
-	main._show_player_menu()
+	video.test_apply_geometry()
+	main.test_show_player_menu()
 	var target := menu.to_global(Vector3(0, Menu.BAR_SEEK_Y, .01))
 	main.input_source.test_ray = [
 		camera.global_position, (target - camera.global_position).normalized()
@@ -206,20 +214,20 @@ func _run() -> void:
 		),
 		"Timeline remains selectable at maximum canvas distance"
 	)
-	main._on_pointer_button("trigger_click", "right_hand")
+	main.test_pointer_button("trigger_click", "right_hand")
 	check(menu.has_pointer_capture(), "Trigger still captures the timeline slider")
-	main._on_pointer_button("grip_click", "left_hand")
+	main.test_pointer_button("grip_click", "left_hand")
 	check(main.grab.is_empty() and menu.visible, "Grip cannot steal a captured slider")
 	var captured_pose := menu.global_transform
 	camera.rotation.x += .2
 	video.flat_pose.origin.x += .3
-	video._apply_geometry()
+	video.test_apply_geometry()
 	main._update_player_menu_anchor()
 	check(
 		menu.global_transform.is_equal_approx(captured_pose),
 		"Captured slider plane stays fixed when the canvas or gaze changes"
 	)
-	main._on_pointer_release("trigger_click", "right_hand")
+	main.test_pointer_release("trigger_click", "right_hand")
 	check(not menu.has_pointer_capture(), "Trigger release ends slider capture")
 	main._update_player_menu_anchor()
 	check(
@@ -237,7 +245,7 @@ func _run() -> void:
 	video.geometry = 1
 	video.view_yaw = .6
 	video.view_pitch = .1
-	video._apply_geometry()
+	video.test_apply_geometry()
 	main._update_player_menu_anchor()
 	var content := video.subtitle_transform().basis.orthonormalized()
 	var in_content := (
@@ -287,8 +295,8 @@ func _run() -> void:
 	)
 	video.geometry = 0
 	video.flat_pose = Transform3D(Basis.IDENTITY, camera.global_position + Vector3.UP * 2)
-	video._apply_geometry()
-	main._place_menu(menu)
+	video.test_apply_geometry()
+	main.test_place_menu(menu)
 	timeline = menu.to_global(Vector3(0, Menu.BAR_SEEK_Y, 0))
 	check(
 		(
@@ -298,8 +306,8 @@ func _run() -> void:
 		"An overhead canvas retains a finite upright control plane"
 	)
 	video.flat_pose.origin = camera.global_position
-	video._apply_geometry()
-	main._place_menu(menu)
+	video.test_apply_geometry()
+	main.test_place_menu(menu)
 	check(
 		menu.global_basis.y.normalized().is_equal_approx(Vector3.UP),
 		"Coincident eye/canvas cannot inherit tilted content axes"

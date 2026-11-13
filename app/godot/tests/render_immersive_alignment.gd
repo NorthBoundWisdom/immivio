@@ -124,7 +124,7 @@ func _run() -> void:
 							head.global_basis, head.global_position - head.global_basis.z * 2
 						)
 					)
-					surface._apply_geometry()
+					surface.test_apply_geometry()
 					surface.reset_view()
 					check(
 						(-surface.panel.global_basis.z).distance_to(-head.global_basis.z) < 0.00001,
@@ -132,7 +132,7 @@ func _run() -> void:
 					)
 					for swap in [false, true]:
 						surface.swap_eyes = swap
-						surface._apply_geometry()
+						surface.test_apply_geometry()
 						for eye in 2:
 							eye_camera.global_transform = (
 								head.global_transform
@@ -183,13 +183,13 @@ func _run() -> void:
 								)
 	# Capturing an orientation must not turn the media into a head-locked overlay.
 	surface.geometry = 1
-	surface._apply_geometry()
+	surface.test_apply_geometry()
 	surface.reset_view()
 	var fixed: Basis = surface.panel.global_basis
 	head.rotate_y(-0.4)
 	head.position += Vector3(0.2, 0.1, -0.3)
 	for repeat in 3:
-		surface._apply_geometry()
+		surface.test_apply_geometry()
 		surface._center_on_view()
 	check(
 		surface.panel.global_basis.is_equal_approx(fixed),

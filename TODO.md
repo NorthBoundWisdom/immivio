@@ -16,19 +16,14 @@
 
 ## 2. 架构整理
 
-剩余按 S4 → S5 推进；每步单独提交。
-
-### S4：测试对私有成员的访问
-
-- 更早的统计是 95 个测试里有 79 个直接访问私有成员。上一轮只同步了被改名的成员。
-- 做法：先出一份清单（成员名 · 访问次数 · 所在测试），按访问次数从高到低，给前 20 个成员提供公开的只读快照或测试专用入口。不要求一轮做完。
+以下拆分每步单独提交。
 
 ### S5：拆分过大的脚本
 
-按当前行数：`library_menu.gd` 约 3200 行、`mpv_video_display.gd` 约 2560 行、`player_menu.gd` 约 1940 行、`main.gd` 约 1210 行、两个 coordinator 各约 1000 行。
+按当前行数：`library_menu.gd` 约 3060 行、`mpv_video_display.gd` 约 2520 行、`player_menu.gd` 约 1970 行、`main.gd` 约 1230 行，两个 coordinator 各约 1000 行。
 
 - `mpv_video_display.gd`：把调试命令处理和调试报告（`_on_debug_command`、`_write_debug_report` 一带，约 400 行）拆到独立脚本，仅 Debug 构建加载。
-- `library_menu.gd`：关于页与许可阅读器、来源列表（S1 之后）各自独立。
+- `library_menu.gd`：关于页与许可阅读器、来源列表各自独立。
 - `player_menu.gd`：字幕、音轨、画面调整三组弹层已有 `playback_popups.gd`，把仍留在主文件里的绘制函数迁过去。
 - 每次拆分只移动代码，不改行为；以 Godot 测试数量和结果不变为准。
 
@@ -46,7 +41,7 @@
 
 ## 5. 命名整理
 
-以下三项排在 S1 → S2 → S3 之后，一个提交改一个名字。应用 ID、Kotlin/Java 包名、Godot 插件目录、插件类和单例名保持不变。
+以下三项一个提交改一个名字。应用 ID、Kotlin/Java 包名、Godot 插件目录、插件类和单例名保持不变。
 
 - [ ] **Gradle 根工程名**：将 `VRPassthroughPlayerAndroid` 改为 `ImmivioAndroid`。用 `git grep -n VRPassthroughPlayerAndroid` 确认没有脚本按工程名定位构建产物。
 - [ ] **调试属性前缀**：将 `debug.vrpp.*` 改为 `debug.immivio.*`；同步 `benchmarks/` 脚本、`docs/TESTING.md` 和 Kotlin 侧读取位置，用 `git grep -n 'debug\.vrpp'` 确认旧前缀清零。

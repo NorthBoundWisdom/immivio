@@ -41,10 +41,10 @@ func _run() -> void:
 				return row.get("check_updates", false) or row.get("open_update_release", false),
 		)
 	)
-	menu._choose({"check_updates": true})
+	menu.test_choose({"check_updates": true})
 	menu.update_check.state = "available"
 	menu.update_check.tag = "v9.9.9"
-	menu._choose({"open_update_release": true})
+	menu.test_choose({"open_update_release": true})
 	assert(
 		platform.requested.is_empty() and platform.opened.is_empty(),
 		"Appstore ignores stale update actions"
@@ -56,9 +56,9 @@ func _run() -> void:
 	menu.refresh()
 	assert(platform.requested.is_empty(), "Displaying About never checks automatically")
 	assert(menu.rows[0].title == "Immivio" and menu.rows[1].check_updates)
-	menu._choose(menu.rows[1])
+	menu.test_choose(menu.rows[1])
 	assert(platform.requested.size() == 1 and menu.update_check.state == "checking")
-	menu._choose(menu.rows[1])
+	menu.test_choose(menu.rows[1])
 	assert(platform.requested.size() == 1)
 	var version := str(ProjectSettings.get_setting("application/config/version"))
 	platform.update_check_ready.emit(
@@ -70,7 +70,7 @@ func _run() -> void:
 	)
 	assert(menu.rows[1].detail == "v9.9.9")
 	var release: Dictionary = menu.rows.filter(func(row): return row.get("open_update_release", false))[0]
-	menu._choose(release)
+	menu.test_choose(release)
 	assert(platform.opened == ["v9.9.9"] and platform.requested.size() == 1)
 	platform.update_release_opened.emit(1, "v8.8.8", false)
 	assert(not menu.update_check.browser_error, "A different tag cannot overwrite this launch")
@@ -84,7 +84,7 @@ func _run() -> void:
 			. contains("Unable to open browser")
 		)
 	)
-	menu._choose(release)
+	menu.test_choose(release)
 	assert(platform.opened.size() == 2)
 	platform.update_release_opened.emit(1, "v9.9.9", false)
 	assert(
@@ -103,11 +103,11 @@ func _run() -> void:
 		)
 	)
 	platform.reject_open = true
-	menu._choose(release)
+	menu.test_choose(release)
 	assert(menu.update_check.browser_error, "A rejected dispatch also reports browser failure")
 	platform.reject_open = false
 	for state in ["latest", "rate_limited", "network_error", "invalid_response"]:
-		menu._choose(menu.rows[1])
+		menu.test_choose(menu.rows[1])
 		platform.update_release_opened.emit(1, "v9.9.9", false)
 		assert(not menu.update_check.browser_error)
 		platform.update_check_ready.emit(
@@ -117,7 +117,7 @@ func _run() -> void:
 		assert(menu.rows.filter(func(row): return row.get("open_update_release", false)).is_empty())
 		if state == "latest":
 			assert(menu.rows[1].detail.contains(version))
-	menu._choose(menu.rows[1])
+	menu.test_choose(menu.rows[1])
 	platform.update_check_ready.emit(
 		platform.requested.size(),
 		JSON.stringify({"state": "available", "version": version, "tag": "https://evil.example/"})

@@ -61,13 +61,13 @@ func _run() -> void:
 	root.add_child(menu)
 	menu.attach_platform(platform)
 	menu.toggle()
-	menu._activate(Menu.NAV_BASE + Menu.Section.MEDIA_SERVER)
+	menu.test_activate(Menu.NAV_BASE + Menu.Section.MEDIA_SERVER)
 	var b: RefCounted = menu.server_browser
 	platform.answer(
 		platform.next, {"servers": [{"id": "srv", "name": "Stash", "base": "http://test"}]}
 	)
 	check(menu.rows.size() == 1 and menu.rows[0].server_account.id == "srv", "server list")
-	menu._choose(menu.rows[0])
+	menu.test_choose(menu.rows[0])
 	var first: int = platform.next
 	check(platform.requests[first].action == "home", "server begins at common homepage")
 	b.capabilities = {
@@ -115,7 +115,7 @@ func _run() -> void:
 	platform.answer(candidate_request, {"entries": [{"id": "7", "name": "Sample"}], "total": 1})
 	check(b.view == "candidates" and menu.rows[0].candidate.id == "7", "candidate query")
 	b.action(Browser.ACTION + 7)
-	menu._choose(menu.rows[0])
+	menu.test_choose(menu.rows[0])
 	check("7" in b.query.exclude_tags, "exclude candidate")
 	b.action(Browser.ACTION + 8)
 	check(not b.query.all_tags, "ANY toggle")
@@ -152,7 +152,7 @@ func _run() -> void:
 	check(b.view == "detail" and menu.rows.size() == 3, "detail and marker rows")
 	var selected: Array = []
 	menu.chosen.connect(func(uri, title): selected.append([uri, title]))
-	menu._choose(menu.rows[2])
+	menu.test_choose(menu.rows[2])
 	check(
 		selected.size() == 1 and selected[0][0] == "medialib://srv/scene/1", "play stable identity"
 	)
@@ -177,7 +177,7 @@ func _run() -> void:
 	)
 	platform.android_lifecycle.emit("resume")
 	check(menu.account_panel.view == "choose" and not b.setup, "resume retains in-app setup")
-	menu._activate(Menu.NAV_BASE + Menu.Section.RECENT)
+	menu.test_activate(Menu.NAV_BASE + Menu.Section.RECENT)
 	check(b.pending.is_empty(), "leaving server cancels requests")
 	check(
 		Menu.NAV_ORDER.find(Menu.Section.NETWORK) + 1 == Menu.NAV_ORDER.find(Menu.Section.SETTINGS),
@@ -289,7 +289,7 @@ func _run() -> void:
 		"new Emby has a visible entry without reopening the menu"
 	)
 	check(
-		menu._buttons.any(
+		menu.controls_snapshot().any(
 			func(button): return button.target == Browser.ACTION + 14 and button.enabled
 		),
 		"server edit is visible beside add and delete"
@@ -301,7 +301,7 @@ func _run() -> void:
 	)
 	menu.account_panel.close()
 	menu.refresh()
-	menu._choose(menu.rows[0])
+	menu.test_choose(menu.rows[0])
 	check(
 		(
 			platform.requests[platform.next].action == "home"
@@ -329,7 +329,7 @@ func _run() -> void:
 	platform.answer(platform.next, {"servers": []})
 	check(menu.rows.is_empty(), "native removal clears the old entry without resume")
 	check(
-		menu._buttons.any(func(button): return button.target == Browser.ACTION + 12),
+		menu.controls_snapshot().any(func(button): return button.target == Browser.ACTION + 12),
 		"empty server list offers a refresh button"
 	)
 	b.action(Browser.ACTION + 12)
@@ -343,7 +343,7 @@ func _run() -> void:
 	platform.answer(refreshing, {"state": "error", "error": "Server unavailable"})
 	b.action(Browser.ACTION + 12)
 	check(platform.next == refreshing + 1, "failed list refresh can be retried")
-	menu._activate(Menu.NAV_BASE + Menu.Section.RECENT)
+	menu.test_activate(Menu.NAV_BASE + Menu.Section.RECENT)
 	var outside: int = platform.next
 	var outside_status: String = menu.status
 	platform.accounts_changed()
@@ -355,7 +355,7 @@ func _run() -> void:
 		),
 		"account notification leaves other sections alone"
 	)
-	menu._activate(Menu.NAV_BASE + Menu.Section.MEDIA_SERVER)
+	menu.test_activate(Menu.NAV_BASE + Menu.Section.MEDIA_SERVER)
 	check(
 		platform.requests[platform.next].action == "servers",
 		"returning to servers reads the latest accounts"

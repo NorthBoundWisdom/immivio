@@ -52,7 +52,7 @@ func _run() -> void:
 		not main._menu_state().has("volume") and not main._menu_state().has("muted"),
 		"Legacy application volume and mute cannot affect system-volume playback"
 	)
-	main._on_setting_changed("alpha_fps", 40)
+	main.test_setting_changed("alpha_fps", 40)
 	main._on_playback_adjustment("alpha_fps", 10)
 	check(
 		not main.settings.has_section_key("video", "alpha_fps"),
@@ -69,17 +69,19 @@ func _run() -> void:
 	menu.visible = true
 	menu.refresh()
 	check(
-		not menu._buttons.any(func(button): return button.target == 112),
+		not menu.controls_snapshot().any(func(button): return button.target == 112),
 		"Even stale capability data cannot expose conversion controls"
 	)
 	menu._mode_open = true
 	menu.refresh()
 	check(
-		not menu._buttons.any(func(button): return button.target == Menu.MODE_STEREO + 3),
+		not menu.controls_snapshot().any(
+			func(button): return button.target == Menu.MODE_STEREO + 3
+		),
 		"Mode picker has no generated-3D tile"
 	)
 	check(
-		menu._buttons.any(
+		menu.controls_snapshot().any(
 			func(button): return button.target == Menu.MODE_STEREO + 1 and button.enabled
 		),
 		"Native SBS remains selectable"

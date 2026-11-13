@@ -61,7 +61,7 @@ func check(value: bool, message: String) -> void:
 
 
 func origin(menu: Node3D, target: int) -> Vector3:
-	for button in menu._buttons:
+	for button in menu.controls_snapshot():
 		if button.target == target:
 			return menu.to_global(
 				Vector3(button.rect.get_center().x, button.rect.get_center().y, 1)
@@ -78,7 +78,7 @@ func tap(menu: Node3D, target: int) -> void:
 func clear_pending(video: Node3D) -> void:
 	video.control.reject()
 	video._pending_revision.clear()
-	video._waiting_first = false
+	video.test_set_waiting_for_frame(false)
 
 
 func drag_timeline(menu: Node3D, video: Node3D, bridge: Host, exact: bool) -> void:
@@ -193,7 +193,7 @@ func _run() -> void:
 		video.seek_mode == Policy.DEFAULT and video.bookmark_seek_mode == Policy.GLOBAL,
 		"Retired saved precision choices cannot change the default seek behavior"
 	)
-	main._on_setting_changed("seek_mode", Policy.EXACT)
+	main.test_setting_changed("seek_mode", Policy.EXACT)
 	check(
 		video.seek_mode == Policy.DEFAULT and not main._library_settings().has("seek_mode"),
 		"Stale UI precision commands have no effect"

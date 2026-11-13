@@ -1956,3 +1956,13 @@ func progress_snapshot() -> Dictionary:
 
 func paint_state_key() -> int:
 	return hash(_state)
+
+
+func popup_snapshot() -> Dictionary:
+	var result := {"quick_open": _quick_open}
+	result.make_read_only()
+	return result
+
+
+func test_set_popup(key: String) -> void:
+	_quick_open = key

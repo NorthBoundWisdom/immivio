@@ -60,7 +60,7 @@ func _run() -> void:
 	library.scroll = 3.0
 	library.refresh()
 	main.video.open_local("file:///Movies/12.mp4", "Video 12")
-	main._show_player_menu()
+	main.test_show_player_menu()
 	main._on_menu_action("stop")
 	check(
 		main.video.local_uri.is_empty() and not main.video.panel.visible,
@@ -79,15 +79,15 @@ func _run() -> void:
 		"Return preserves directory and list position"
 	)
 	check(library.curve_radius > 0.0, "Library requests a curved surface")
-	main.menu_compositor._process(0)
+	main.menu_compositor.test_step(0)
 	check(
 		main.menu_compositor.scene_curved and main.menu_compositor.curved_mesh == null,
 		"Scene fallback waits for its first rendered texture before revealing the curved mesh"
 	)
 	for distance in [0.8, 1.4, 2.5, 4.0]:
 		main.library_distance = distance
-		main._place_menu(library)
-		main.menu_compositor._process(0)
+		main.test_place_menu(library)
+		main.menu_compositor.test_step(0)
 		var centre: Vector2 = library.capture_envelope().get_center()
 		var viewing_distance := library.to_global(Vector3(centre.x, centre.y, 0)).distance_to(
 			main.eye()
@@ -97,18 +97,18 @@ func _run() -> void:
 			"Menu curvature follows the viewing ring at " + str(distance) + "m"
 		)
 	main.library_distance = 1.4
-	main._place_menu(library)
-	main.menu_compositor._process(0)
+	main.test_place_menu(library)
+	main.menu_compositor.test_step(0)
 	var held_radius: float = library.curve_radius
 	library.choices.capture = {"hand": "left_hand", "item": {"kind": "open", "key": "language"}}
 	main.library_distance = 2.5
-	main._place_menu(library)
-	main.menu_compositor._process(0)
+	main.test_place_menu(library)
+	main.menu_compositor.test_step(0)
 	check(
 		is_equal_approx(library.curve_radius, held_radius), "Pointer capture freezes menu curvature"
 	)
 	library.choices.capture.clear()
-	main.menu_compositor._process(0)
+	main.menu_compositor.test_step(0)
 	var lowered_distance := Vector2(2.5, main.presentation_coordinator.window_height).length()
 	check(
 		is_equal_approx(library.curve_radius, lowered_distance),
@@ -116,19 +116,19 @@ func _run() -> void:
 	)
 	var eye_before: Vector3 = main.xr_camera.global_position
 	main.xr_camera.global_position += Vector3(0.3, 0, 0.2)
-	main.menu_compositor._process(0)
+	main.menu_compositor.test_step(0)
 	check(
 		is_equal_approx(library.curve_radius, lowered_distance),
 		"Head motion alone does not deform a placed menu"
 	)
 	main.xr_camera.global_position = eye_before
 	main.library_distance = 1.4
-	main._place_menu(library)
-	main.menu_compositor._process(0)
+	main.test_place_menu(library)
+	main.menu_compositor.test_step(0)
 	var pose: Transform3D = library.global_transform
 	var origin: Vector3 = main.eye() + Vector3(.2, -.2, -.3)
 	main.input_source.test_ray = [origin, (library.global_position - origin).normalized()]
-	main._on_pointer_button("grip_click", "right_hand")
+	main.test_pointer_button("grip_click", "right_hand")
 	check(
 		not main.library_grab.is_empty() and main.grab.is_empty(),
 		"Grip can own the library without an open video"
@@ -154,7 +154,7 @@ func _run() -> void:
 		is_equal_approx(library.global_position.y, horizontal_position.y),
 		"Upright library ignores vertical grip movement"
 	)
-	main._on_pointer_release("grip_click", "left_hand")
+	main.test_pointer_release("grip_click", "left_hand")
 	check(not main.library_grab.is_empty(), "Other hand cannot release the library")
 	main._update_library_grab_stick(Vector2(0, 1), Vector2.ZERO, .2)
 	check(
@@ -173,7 +173,7 @@ func _run() -> void:
 		is_equal_approx(main.library_distance, 1.5),
 		"Stick can reverse immediately from a distance limit"
 	)
-	main._on_pointer_release("grip_click", "right_hand")
+	main.test_pointer_release("grip_click", "right_hand")
 	check(
 		main.library_grab.is_empty() and library.visible and not main.video_menu.visible,
 		"Release retains library without opening playback controls"
@@ -183,7 +183,7 @@ func _run() -> void:
 		is_equal_approx(float(settings.get_value("ui", "library_distance")), 1.5),
 		"Released distance is persisted"
 	)
-	main._place_menu(library)
+	main.test_place_menu(library)
 	var ring_centre: Vector2 = library.capture_envelope().get_center()
 	check(
 		is_equal_approx(
@@ -193,9 +193,9 @@ func _run() -> void:
 		"Reopened library visual centre uses remembered ring distance"
 	)
 	main.reclining_mode = true
-	main._place_menu(library)
+	main.test_place_menu(library)
 	main.input_source.test_ray = [main.eye(), (library.global_position - main.eye()).normalized()]
-	main._on_pointer_button("grip_click", "right_hand")
+	main.test_pointer_button("grip_click", "right_hand")
 	var reclining_position: Vector3 = library.global_position
 	main.input_source.test_ray[0] += Vector3.UP * .35
 	main._update_library_grab()
@@ -206,26 +206,26 @@ func _run() -> void:
 		),
 		"Reclining grip supports vertical/global placement without changing distance"
 	)
-	main._on_pointer_release("grip_click", "right_hand")
+	main.test_pointer_release("grip_click", "right_hand")
 	main.reclining_mode = false
-	main._place_menu(library)
+	main.test_place_menu(library)
 	origin = main.eye()
 	main.input_source.test_ray = [origin, (library.global_position - origin).normalized()]
-	main._on_pointer_button("grip_click", "left_hand")
+	main.test_pointer_button("grip_click", "left_hand")
 	main.input_source.test_ray = null
 	main._update_library_grab()
 	check(main.library_grab.is_empty(), "Tracking loss cancels library drag")
 	main.input_source.test_ray = [origin, (library.global_position - origin).normalized()]
 	library._drag = {"hand": "right_hand"}
-	main._on_pointer_button("grip_click", "left_hand")
+	main.test_pointer_button("grip_click", "left_hand")
 	check(main.library_grab.is_empty(), "Grip cannot steal a captured row/scroll drag")
 	library._drag.clear()
-	main._on_pointer_button("grip_click", "left_hand")
+	main.test_pointer_button("grip_click", "left_hand")
 	main._cancel_pointer("left_hand")
 	check(main.library_grab.is_empty(), "Input session cancellation releases library ownership")
 	main.video.open_local("file:///Movies/13.mp4", "Video 13")
-	main._show_player_menu()
-	main.menu_compositor._process(0)
+	main.test_show_player_menu()
+	main.menu_compositor.test_step(0)
 	check(
 		(
 			main.menu_compositor.active_menu != library

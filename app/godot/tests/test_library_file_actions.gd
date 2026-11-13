@@ -94,12 +94,14 @@ func _run() -> void:
 	check(
 		(
 			not menu.file_actions.enabled
-			and not menu._buttons.any(func(button): return button.target == Actions.EDIT_MODE)
+			and not menu.controls_snapshot().any(
+				func(button): return button.target == Actions.EDIT_MODE
+			)
 		),
 		"Editing defaults off and entry is absent"
 	)
 	check(platform.management == [false], "Plugin mutation gate starts disabled when attached")
-	menu._activate(Actions.EDIT_MODE)
+	menu.test_activate(Actions.EDIT_MODE)
 	check(not menu.file_actions.editing, "Disabled setting rejects edit action")
 	menu.file_actions.set_enabled(true)
 	menu.refresh()
@@ -125,26 +127,26 @@ func _run() -> void:
 	menu.chosen.connect(func(uri, _title): played.append(uri))
 	menu.file_delete_preparing.connect(func(uri): preparing.append(uri))
 	menu.file_deleted.connect(func(uri): deleted.append(uri))
-	menu._activate(Actions.EDIT_MODE)
-	menu._choose(menu.rows[0])
+	menu.test_activate(Actions.EDIT_MODE)
+	menu.test_choose(menu.rows[0])
 	check(menu.sources.local_stack.size() == 1, "Edit mode cannot enter folders")
-	menu._choose(menu.rows[1])
+	menu.test_choose(menu.rows[1])
 	check(
 		played.is_empty() and menu.file_actions.selected.ends_with("2.mp4"),
 		"Trigger selects without playback"
 	)
-	menu._activate(Actions.DELETE_FILE)
+	menu.test_activate(Actions.DELETE_FILE)
 	check(
 		platform.calls.is_empty() and preparing.is_empty(),
 		"Opening confirmation neither deletes nor stops playback"
 	)
-	menu._activate(Menu.NAV_BASE + Menu.Section.SMB)
+	menu.test_activate(Menu.NAV_BASE + Menu.Section.SMB)
 	check(menu.section == Menu.Section.LOCAL, "Modal blocks underlying navigation")
-	menu._activate(Actions.CANCEL)
+	menu.test_activate(Actions.CANCEL)
 	check(menu.sources.local_entries.size() == 4, "Cancel preserves file")
-	menu._activate(Actions.DELETE_FILE)
-	menu._activate(Actions.CONFIRM)
-	menu._activate(Actions.CONFIRM)
+	menu.test_activate(Actions.DELETE_FILE)
+	menu.test_activate(Actions.CONFIRM)
+	menu.test_activate(Actions.CONFIRM)
 	check(
 		platform.calls.size() == 1 and preparing.size() == 1,
 		"One confirmed delete; duplicate trigger ignored"
@@ -155,22 +157,22 @@ func _run() -> void:
 		menu.sources.local_entries.size() == 4 and deleted.is_empty(),
 		"Permission failure retains row"
 	)
-	menu._activate(Actions.CONFIRM)
+	menu.test_activate(Actions.CONFIRM)
 	platform.respond(2, "uncertain")
-	menu._activate(Actions.CONFIRM)
+	menu.test_activate(Actions.CONFIRM)
 	check(
 		platform.calls.size() == 2 and menu.file_actions.uncertain,
 		"Ambiguous result cannot reissue delete"
 	)
-	menu._activate(Actions.CHECK_STATUS)
+	menu.test_activate(Actions.CHECK_STATUS)
 	check(platform.calls.back().operation == "check", "Checking status only reads state")
 	platform.respond(3, "ready", {"exists": false})
 	check(
 		menu.sources.local_entries.size() == 3 and deleted.size() == 1,
 		"Verified absence removes file and emits cleanup"
 	)
-	menu._choose(menu.rows.back())
-	menu._activate(Actions.DELETE_FILE)
+	menu.test_choose(menu.rows.back())
+	menu.test_activate(Actions.DELETE_FILE)
 	check(
 		menu.file_actions.modal.is_empty() and platform.calls.size() == 3,
 		"Read-only selection cannot delete"
@@ -187,21 +189,21 @@ func _run() -> void:
 		}
 	]
 	menu.refresh()
-	menu._activate(Actions.EDIT_MODE)
-	menu._choose(menu.rows[0])
-	menu._activate(Actions.DELETE_FILE)
+	menu.test_activate(Actions.EDIT_MODE)
+	menu.test_choose(menu.rows[0])
+	menu.test_activate(Actions.DELETE_FILE)
 	check(
 		platform.calls.back().operation == "prepare" and preparing.size() == 2,
 		"Folder confirmation first reads complete tree; does not stop playback"
 	)
-	menu._activate(Actions.CONFIRM)
+	menu.test_activate(Actions.CONFIRM)
 	check(platform.calls.size() == 4, "Cannot confirm folder before content plan arrives")
 	platform.respond(4, "ready", {"preview": true, "plan": "tree-hash", "files": 3, "folders": 1})
 	check(
 		menu.file_actions.plan_ready and menu.text_snapshot().contains("3 files · 1 folders"),
 		"Folder confirmation includes all content counts"
 	)
-	menu._activate(Actions.CONFIRM)
+	menu.test_activate(Actions.CONFIRM)
 	check(
 		platform.calls.size() == 5 and platform.calls.back().target.plan == "tree-hash",
 		"Confirmed folder uses inspected tree plan"
@@ -219,7 +221,9 @@ func _run() -> void:
 		(
 			not menu.file_actions.editing
 			and menu.file_actions.modal.is_empty()
-			and not menu._buttons.any(func(button): return button.target == Actions.EDIT_MODE)
+			and not menu.controls_snapshot().any(
+				func(button): return button.target == Actions.EDIT_MODE
+			)
 		),
 		"Turning off editing removes entry and exits mode"
 	)
@@ -239,11 +243,11 @@ func _run() -> void:
 		}
 	]
 	menu.refresh()
-	menu._activate(Actions.EDIT_MODE)
-	menu._choose(menu.rows[0])
-	menu._activate(Actions.Rename.OPEN)
+	menu.test_activate(Actions.EDIT_MODE)
+	menu.test_choose(menu.rows[0])
+	menu.test_activate(Actions.Rename.OPEN)
 	menu.file_actions.rename.name = "new"
-	menu._activate(Actions.Rename.PREVIEW)
+	menu.test_activate(Actions.Rename.PREVIEW)
 	check(
 		platform.calls.back().operation == "rename_prepare" and preparing.size() == 3,
 		"Rename preview does not mutate or stop playback"
@@ -263,8 +267,8 @@ func _run() -> void:
 	)
 	var renamed: Array = []
 	menu.file_renamed.connect(func(old, new, title): renamed.append([old, new, title]))
-	menu._activate(Actions.Rename.APPLY)
-	menu._activate(Actions.Rename.APPLY)
+	menu.test_activate(Actions.Rename.APPLY)
+	menu.test_activate(Actions.Rename.APPLY)
 	check(
 		(
 			platform.calls.size() == 7

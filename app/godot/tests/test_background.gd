@@ -24,7 +24,7 @@ func check(value: bool, message: String) -> void:
 
 
 func field_tap(menu: Node3D, target: int) -> void:
-	for button in menu._buttons:
+	for button in menu.controls_snapshot():
 		if button.target == target:
 			var origin: Vector3 = button.node.global_position + button.node.global_basis.z
 			var direction: Vector3 = -button.node.global_basis.z
@@ -160,7 +160,7 @@ func _run() -> void:
 		),
 		"Saved dark background applies at startup"
 	)
-	main._on_setting_changed("background", "belfast")
+	main.test_setting_changed("background", "belfast")
 	await settle(main.background)
 	check(
 		(
@@ -173,7 +173,7 @@ func _run() -> void:
 		main.background._panorama.get_size() == Vector2(8192, 4096),
 		"Packaged sky retains full 8K dimensions"
 	)
-	main._on_setting_changed("background", "beach")
+	main.test_setting_changed("background", "beach")
 	await settle(main.background)
 	check(
 		(
@@ -186,7 +186,7 @@ func _run() -> void:
 		"The saved beach choice loads its full photographic panorama without a procedural bake"
 	)
 	for choice in main.background.PROCEDURAL:
-		main._on_setting_changed("background", choice)
+		main.test_setting_changed("background", choice)
 		check(main.background.loading, "Procedural %s scene bakes before it is shown" % choice)
 		await settle(main.background)
 		var night: bool = choice == "starry_night"
@@ -240,13 +240,13 @@ func _run() -> void:
 			)
 			main.background.set_yaw(0)
 			main.background.set_brightness(1.0)
-	main._on_setting_changed("background_brightness", 0.75)
+	main.test_setting_changed("background_brightness", 0.75)
 	check(
 		is_equal_approx(main.background.sky.sky_material.get_shader_parameter("energy"), 0.75),
 		"Brightness scales procedural scenery"
 	)
-	main._on_setting_changed("background_brightness", 1.0)
-	main._on_setting_changed("background", "dark")
+	main.test_setting_changed("background_brightness", 1.0)
+	main.test_setting_changed("background", "dark")
 	check(
 		(
 			main.background._bake == null
@@ -255,7 +255,7 @@ func _run() -> void:
 		),
 		"Leaving procedural scenery releases its bake texture"
 	)
-	main._on_setting_changed("background", "belfast")
+	main.test_setting_changed("background", "belfast")
 	await settle(main.background)
 	main.library_menu.section = main.library_menu.Section.SETTINGS
 	main.library_menu.tab = main.library_menu.APPEARANCE_TAB
@@ -283,12 +283,12 @@ func _run() -> void:
 			field_tap(main.library_menu, target)
 			break
 	check(main.background.choice == "dark", "Same-hand ray/trigger switches background")
-	main._on_setting_changed("background", "belfast")
+	main.test_setting_changed("background", "belfast")
 	await settle(main.background)
 	config.load(main.settings_path)
 	check(config.get_value("appearance", "background") == "belfast", "Background choice persists")
-	main._on_setting_changed("background_yaw", true)
-	main._on_setting_changed("background_brightness", true)
+	main.test_setting_changed("background_yaw", true)
+	main.test_setting_changed("background_brightness", true)
 	check(
 		(
 			is_equal_approx(main.display.environment.sky_rotation.y, PI + PI / 4)
@@ -308,7 +308,7 @@ func _run() -> void:
 		)
 		main.library_menu.dismiss()
 		await frame(viewport, "belfast")
-	main._on_setting_changed("background", "passthrough")
+	main.test_setting_changed("background", "passthrough")
 	check(
 		(
 			main.background.choice == "passthrough"
@@ -317,7 +317,7 @@ func _run() -> void:
 		),
 		"Unavailable desktop passthrough falls back to opaque dark"
 	)
-	main._on_setting_changed("background", "belfast")
+	main.test_setting_changed("background", "belfast")
 	await settle(main.background)
 	check(
 		main.display.environment.background_mode == Environment.BG_SKY,

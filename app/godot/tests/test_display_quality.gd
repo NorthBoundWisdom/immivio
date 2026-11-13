@@ -111,8 +111,8 @@ func _run() -> void:
 		),
 		"Quality and sharpness each occupy one field; the FPS overlay lives under Appearance"
 	)
-	main._on_setting_changed("display_quality", 2)
-	main._on_setting_changed("sharpness", 0.4)
+	main.test_setting_changed("display_quality", 2)
+	main.test_setting_changed("sharpness", 0.4)
 	check(
 		not bool(ProjectSettings.get_setting("xr/openxr/extensions/meta/dynamic_resolution", true)),
 		"Runtime cannot silently lower chosen video/menu render quality"
@@ -133,7 +133,7 @@ func _run() -> void:
 		Quality.load_quality(settings) == 2 and Quality.load_sharpness(settings) == 0.4,
 		"Settings persist"
 	)
-	main._on_setting_changed("sharpness", 0.0)
+	main.test_setting_changed("sharpness", 0.0)
 	check(
 		main.video.material.get_shader_parameter("sharpness") == 0.0, "Off restores neutral shader"
 	)

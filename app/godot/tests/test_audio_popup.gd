@@ -28,7 +28,7 @@ func check(ok: bool, text: String) -> void:
 
 
 func button(menu: Node3D, target: int) -> Dictionary:
-	for item in menu._buttons:
+	for item in menu.controls_snapshot():
 		if item.target == target:
 			return item
 	return {}
@@ -36,7 +36,7 @@ func button(menu: Node3D, target: int) -> Dictionary:
 
 func point(menu: Node3D, target: int) -> Vector3:
 	var item := button(menu, target)
-	return item.node.to_global(Vector3(0, 0, 1)) if not item.is_empty() else Vector3.ZERO
+	return (item.node.global_transform * Vector3(0, 0, 1)) if not item.is_empty() else Vector3.ZERO
 
 
 func tap(menu: Node3D, target: int) -> void:
@@ -93,7 +93,7 @@ func _run() -> void:
 	menu.toggle()
 	menu.set_process(false)
 	check(
-		not menu._buttons.any(func(item): return item.target in [109, 111, 160]),
+		not menu.controls_snapshot().any(func(item): return item.target in [109, 111, 160]),
 		"Audio-track and volume UI have no remaining buttons"
 	)
 	check(

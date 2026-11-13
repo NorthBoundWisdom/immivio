@@ -44,23 +44,23 @@ func _run() -> void:
 	host.video.local_uri = "file:///synthetic-SBS.mp4"
 	host.video.media.frame_counter = 1
 	host.video.media.state = "paused"
-	host.video._waiting_first = false
+	host.video.test_set_waiting_for_frame(false)
 	host.video.stereo_sbs = true
 	host.video.geometry = 1
 	host.video.media.format = {"width": 3840, "height": 1920}
 	host.video.control.duration_ms = 60000
 	host.video.control.observed_position_ms = 12000
-	host.video._apply_geometry()
+	host.video.test_apply_geometry()
 	host.video.panel.visible = true
 	host.video.panel.layers = 0
-	host._show_player_menu()
+	host.test_show_player_menu()
 	var menu: Node3D = host.player_menu
 	menu.device_status.clock_provider = func(): return {"hour": 12, "minute": 34}
 	menu.device_status.refresh(true)
 	menu.refresh()
 	var surface: Node3D = host.menu_compositor
 	for frame in 5:
-		surface._process(0)
+		surface.test_step(0)
 		await process_frame
 		await RenderingServer.frame_post_draw
 	var first := head.unproject_position(menu.to_global(Vector3(-.56, -.045, 0)))
@@ -84,13 +84,13 @@ func _run() -> void:
 	for destination in ["library", "playback", "info", "library", "info", "library", "playback"]:
 		match destination:
 			"library":
-				menu._activate(Menu.BROWSE)
+				menu.test_activate(Menu.BROWSE)
 			"playback":
-				host.library_menu._activate(host.library_menu.PLAYER)
+				host.library_menu.test_activate(host.library_menu.PLAYER)
 			"info":
-				menu._activate(12)
+				menu.test_activate(12)
 		surface._bounds_due = 0
-		surface._process(0)
+		surface.test_step(0)
 		if surface.surface_rect != rect or not surface.curved_mesh.visible:
 			failures.append("Page %s resized or hid the playback projection" % destination)
 		for frame in 3:
@@ -106,7 +106,7 @@ func _run() -> void:
 			if not output.is_empty():
 				picture.save_png(output.path_join("frame-%02d.png" % differences.size()))
 			surface._bounds_due = 0
-			surface._process(0)
+			surface.test_step(0)
 	print(
 		(
 			JSON

@@ -133,7 +133,7 @@ func _run() -> void:
 		]
 	for step in steps:
 		for target in step[1]:
-			menu._activate(target)
+			menu.test_activate(target)
 			await process_frame
 			await process_frame
 		if step[0] == "credits_end":
@@ -159,7 +159,7 @@ func _run() -> void:
 		var corners: Array[Vector3] = [
 			menu.to_global(Vector3(-0.6, 0.57, 0)), menu.to_global(Vector3(0.87, -0.76, 0))
 		]
-		for button in menu._buttons:
+		for button in menu.controls_snapshot():
 			if button.target not in [menu.CLOSE_MENU, menu.FOLLOW, menu.TEMP_PASSTHROUGH]:
 				continue
 			var rect: Rect2 = button.rect

@@ -107,7 +107,7 @@ func press_at(menu: Node3D, x: float, y: float, hand: String = "right_hand") -> 
 
 
 func click(menu: Node3D, target: int, hand: String = "right_hand") -> bool:
-	for button in menu._buttons:
+	for button in menu.controls_snapshot():
 		if button.target == target:
 			var centre: Vector2 = button.rect.get_center()
 			return menu.press_pointer(
@@ -215,7 +215,7 @@ func _check_device_status() -> void:
 
 
 static func setting_click(menu: Node3D, target: int) -> bool:
-	for button in menu._buttons:
+	for button in menu.controls_snapshot():
 		if button.target == target:
 			var centre: Vector2 = button.rect.get_center()
 			var point := menu.to_global(Vector3(centre.x, centre.y, 1))
@@ -291,7 +291,7 @@ func _run() -> void:
 	menu.setting_requested.connect(main._on_player_setting)
 	menu.adjustment_requested.connect(main._on_playback_adjustment)
 	menu.adjustment_committed.connect(main._save_playback_adjustments)
-	menu.recent_requested.connect(main._show_library_menu)
+	menu.recent_requested.connect(main.test_show_library_menu)
 	menu.seek_requested.connect(main._on_menu_seek)
 	menu.subtitle_requested.connect(video.set_subtitle_track)
 	root.add_child(menu)
@@ -301,7 +301,7 @@ func _run() -> void:
 	main.video_menu = menu
 	var recent := Library.new()
 	recent.catalog = video.recent_files
-	recent.player_requested.connect(main._show_player_menu)
+	recent.player_requested.connect(main.test_show_player_menu)
 	root.add_child(recent)
 	main.library_menu = recent
 	menu.toggle()
@@ -319,9 +319,9 @@ func _run() -> void:
 		"Pointer recent button opens one menu"
 	)
 	video.open_local("file:///menu.mp4", "测试电影 😀", 0, false)
-	video._waiting_first = false
+	video.test_set_waiting_for_frame(false)
 	recent.dismiss()
-	main._show_library_menu(true)
+	main.test_show_library_menu(true)
 	check(
 		click(recent, Library.PLAYER) and menu.visible and not recent.visible,
 		"Production library back-to-video button returns to controls"
@@ -332,7 +332,7 @@ func _run() -> void:
 	)
 	recent.dismiss()
 	main.video_menu = previous_video_menu
-	video._waiting_first = false
+	video.test_set_waiting_for_frame(false)
 	video.media.state = "playing"
 	video.media.format = {"width": 3840, "height": 1920}
 	video.media.playback = {
@@ -349,7 +349,7 @@ func _run() -> void:
 			]
 		}
 	}
-	main._show_player_menu()
+	main.test_show_player_menu()
 	check(
 		(
 			main._menu_state().source_size == "3840 x 1920"
@@ -371,7 +371,7 @@ func _run() -> void:
 		"Right pointer resumes actual player"
 	)
 	var shown := func(target: int) -> bool:
-		return menu._buttons.any(func(b): return b.target == target and b.node.visible)
+		return menu.controls_snapshot().any(func(b): return b.target == target and b.node.visible)
 	check(
 		not shown.call(112) and not shown.call(104) and not click(menu, 112),
 		"No live conversion or matting controls are shown"
@@ -422,7 +422,7 @@ func _run() -> void:
 		(
 			(
 				menu
-				. _buttons
+				. controls_snapshot()
 				. filter(
 					func(b):
 						return (
@@ -574,7 +574,7 @@ func _run() -> void:
 		"Product controls omit implementation and interaction instruction text"
 	)
 	check(
-		not menu._buttons.any(
+		not menu.controls_snapshot().any(
 			func(button): return button.target in [11, 109, 111, 108, 210, 215, 216]
 		),
 		"Toolbar omits retired settings, audio, recenter and FPS actions"
@@ -582,14 +582,14 @@ func _run() -> void:
 	check(
 		(
 			click(menu, Menu.QUICK_COLOR)
-			and menu._quick_open == "color"
+			and menu.popup_snapshot().quick_open == "color"
 			and menu.section == 0
 			and menu.visible
 		),
 		"Color settings open a popup over the unchanged toolbar"
 	)
 	check(
-		click(menu, Menu.QUICK_CLOSE) and menu._quick_open.is_empty(),
+		click(menu, Menu.QUICK_CLOSE) and menu.popup_snapshot().quick_open.is_empty(),
 		"Popup close returns to the same toolbar"
 	)
 	var eye_order_target := Menu.IPD_SETTINGS
@@ -626,18 +626,18 @@ func _run() -> void:
 		"Ray selects the actual nonconsecutive ASS track ID and closes picker"
 	)
 	menu.update_pointer("right_hand", Vector3.ZERO, Vector3.ZERO, false)
-	var cc: Dictionary = menu._buttons.filter(func(b): return b.target == 110)[0]
+	var cc: Dictionary = menu.controls_snapshot().filter(func(b): return b.target == 110)[0]
 	check(
 		(
-			cc.node.material_override.get_shader_parameter("surface_color") == Menu.SELECTED
-			and cc.node.get_child(1).material_override.albedo_color == Menu.ACCENT
+			cc.node.material_override.surface_color == Menu.SELECTED
+			and cc.node.children[1].material_override.albedo_color == Menu.ACCENT
 		),
 		"Enabled CC has both selected background and accent glyph"
 	)
 	check(click(menu, 110), "CC reopens to inspect current selection")
 	check(
 		(
-			not menu._buttons.any(func(b): return b.target == Menu.SUBTITLE_POSITION)
+			not menu.controls_snapshot().any(func(b): return b.target == Menu.SUBTITLE_POSITION)
 			and not menu.choices.targets.values().any(
 				func(item): return item.get("key") == "subtitle_distance"
 			)
@@ -648,19 +648,17 @@ func _run() -> void:
 		not shown.call(Menu.SUBTITLE_UP) and not shown.call(Menu.SUBTITLE_DOWN),
 		"Short subtitle lists hide scrolling arrows"
 	)
-	var selected: Dictionary = menu._buttons.filter(func(b): return b.target == Menu.SUBTITLE_ROW + 2)[0]
+	var selected: Dictionary = menu.controls_snapshot().filter(func(b): return b.target == Menu.SUBTITLE_ROW + 2)[0]
 	check(
-		selected.base_color == Menu.SELECTED and selected.node.get_child_count() == 2,
+		selected.base_color == Menu.SELECTED and selected.node.children.size() == 2,
 		"Current subtitle row is highlighted and checked"
 	)
 	check(
 		click(menu, Menu.SUBTITLE_ROW) and video.subtitles.requested_track == 0,
 		"Off explicitly disables subtitles"
 	)
-	cc = menu._buttons.filter(func(b): return b.target == 110)[0]
-	check(
-		cc.node.get_child(1).material_override.albedo_color != Menu.ACCENT, "Off resets CC accent"
-	)
+	cc = menu.controls_snapshot().filter(func(b): return b.target == 110)[0]
+	check(cc.node.children[1].material_override.albedo_color != Menu.ACCENT, "Off resets CC accent")
 	var saved_tracks: Array = video.media.playback.details.subtitle_tracks.duplicate(true)
 	video.media.playback.details.subtitle_tracks = []
 	menu.refresh_values()
@@ -679,8 +677,8 @@ func _run() -> void:
 			{"id": 10 + index, "codec": "webvtt", "title": "clip.language%d.vtt" % index}
 		)
 	menu.refresh_values()
-	var footer: Dictionary = menu._buttons.filter(func(b): return b.target == Menu.SUBTITLE_DOWN)[0]
-	var last_row: Dictionary = menu._buttons.filter(func(b): return b.target == Menu.SUBTITLE_ROW + Menu.SUBTITLE_ROWS)[0]
+	var footer: Dictionary = menu.controls_snapshot().filter(func(b): return b.target == Menu.SUBTITLE_DOWN)[0]
+	var last_row: Dictionary = menu.controls_snapshot().filter(func(b): return b.target == Menu.SUBTITLE_ROW + Menu.SUBTITLE_ROWS)[0]
 	check(
 		footer.rect.end.y < last_row.rect.position.y and footer.rect.position.y > 0.255,
 		"Long subtitle list scroll arrows sit below tracks and above floating actions"
@@ -709,7 +707,7 @@ func _run() -> void:
 		"Opening speed closes subtitle picker"
 	)
 	check(
-		click(menu, 110) and menu._subtitle_open and menu._quick_open.is_empty(),
+		click(menu, 110) and menu._subtitle_open and menu.popup_snapshot().quick_open.is_empty(),
 		"Opening subtitles closes speed"
 	)
 	check(
@@ -757,7 +755,7 @@ func _run() -> void:
 	check(
 		(
 			click(menu, eye_order_target)
-			and menu._quick_open == "ipd"
+			and menu.popup_snapshot().quick_open == "ipd"
 			and click(menu, Menu.EYE_SWAP)
 			and video.swap_eyes
 			and menu._caption("eyes") == "B / T"
@@ -888,7 +886,7 @@ func _run() -> void:
 		),
 		"CC and global settings share the VR angle"
 	)
-	main._on_setting_changed("subtitle_position", 0)
+	main.test_setting_changed("subtitle_position", 0)
 	menu.refresh_values()
 	for target in menu.choices.sliders:
 		if menu.choices.targets[target].key == "subtitle_position":
@@ -901,14 +899,14 @@ func _run() -> void:
 	# Lock: a lit tile pressed again locks projection and layout, both marked; again unlocks.
 	var locks := func() -> int:
 		var count := 0
-		for b in menu._buttons:
-			for child in b.node.get_children():
+		for b in menu.controls_snapshot():
+			for child in b.node.children:
 				if (
-					child is MeshInstance3D
-					and child.material_override is StandardMaterial3D
+					child.kind == "MeshInstance3D"
+					and child.material_override.kind == "StandardMaterial3D"
 					and (
-						child.material_override.albedo_texture
-						== preload("res://scripts/menu_icons.gd").texture("lock")
+						child.material_override.albedo_texture_id
+						== preload("res://scripts/menu_icons.gd").texture("lock").get_instance_id()
 					)
 				):
 					count += 1
@@ -942,7 +940,7 @@ func _run() -> void:
 	check(
 		(
 			click(menu, 12)
-			and menu._quick_open == "info"
+			and menu.popup_snapshot().quick_open == "info"
 			and menu.section == 0
 			and menu.text_snapshot().contains("3840 x 1920 | hevc")
 		),
@@ -969,9 +967,10 @@ func _run() -> void:
 		menu.visible and host.calls.back()[0] != "pick",
 		"Controller A cannot open a file through menu"
 	)
-	main._process(1.0 / 72.0)
+	main.test_step(1.0 / 72.0)
 	check(
-		menu.section == 0 and menu._quick_open == "info", "Menu ignores absent/zero tracking axes"
+		menu.section == 0 and menu.popup_snapshot().quick_open == "info",
+		"Menu ignores absent/zero tracking axes"
 	)
 	main._toggle_player_menu()
 	check(not menu.visible, "Menu toggle dismisses controls overlay")
@@ -982,7 +981,7 @@ func _run() -> void:
 	# Dragging the picture: the flat screen swings around the eyes at its distance, still facing them.
 	menu.dismiss()
 	video.geometry = video.Geometry.Geometry.FLAT
-	video._apply_geometry()
+	video.test_apply_geometry()
 	video.flat_pose = Transform3D(Basis(), Vector3(0, 1.6, -2))
 	video.panel.transform = video.flat_pose
 	main._turn_picture(PI / 2, 0.0)
@@ -1088,7 +1087,7 @@ func _run() -> void:
 		"Right stick press straightens the view"
 	)
 	video.set_projection(0)
-	main._show_player_menu()
+	main.test_show_player_menu()
 	check(
 		click(menu, 107) and video.media.state == "closed" and host.calls.back() == ["close", 7],
 		"Close video uses production close/cancel sequence"
@@ -1126,7 +1125,7 @@ func _run() -> void:
 	main.video_queue = [
 		{"uri": "file:///menu.mp4", "title": "测试电影 😀"}, {"uri": "file:///next.mp4", "title": "Next"}
 	]
-	main._show_player_menu()
+	main.test_show_player_menu()
 	menu.refresh()
 	check(not click(menu, 101), "First video disables previous")
 	check(
@@ -1144,14 +1143,14 @@ func _run() -> void:
 			and (
 				(
 					menu
-					. _buttons
+					. controls_snapshot()
 					. filter(func(button): return button.target == 101)[0]
 					. node
-					. get_child(1)
+					. children[1]
 					. material_override
-					. albedo_texture
+					. albedo_texture_id
 				)
-				== menu.Icons.texture("previous_video")
+				== menu.Icons.texture("previous_video").get_instance_id()
 			)
 		),
 		"Available previous uses the skip icon and tooltip"
@@ -1167,14 +1166,14 @@ func _run() -> void:
 			and (
 				(
 					menu
-					. _buttons
+					. controls_snapshot()
 					. filter(func(button): return button.target == 103)[0]
 					. node
-					. get_child(1)
+					. children[1]
 					. material_override
-					. albedo_texture
+					. albedo_texture_id
 				)
-				== menu.Icons.texture("next_video")
+				== menu.Icons.texture("next_video").get_instance_id()
 			)
 		),
 		"Unavailable previous is omitted and next retains its skip icon"
@@ -1210,7 +1209,7 @@ func _run() -> void:
 ## Feed the production per-frame routing with real menus/video state and a mocked Android backend.
 func _check_control_sticks(main: Node3D, video: Node3D, menu: Node3D, host: RefCounted) -> void:
 	video.geometry = 0
-	video._waiting_first = false
+	video.test_set_waiting_for_frame(false)
 	video.requested_play = true
 	video.media.state = "playing"
 	video.control.reject()
@@ -1222,65 +1221,65 @@ func _check_control_sticks(main: Node3D, video: Node3D, menu: Node3D, host: RefC
 	menu.visible = true
 	menu.refresh()
 	main.menu_touched_ms = Time.get_ticks_msec()
-	main._process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
-	main._process_sticks(Vector2(.99, 0), Vector2(-.99, 0), 0.1)
+	main.test_process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
+	main.test_process_sticks(Vector2(.99, 0), Vector2(-.99, 0), 0.1)
 	check(
 		video.control.target_ms == 50000 and menu._elapsed.text == "00:50",
 		"Visible transport bar dispatches left +20s and right -10s and immediately displays the target"
 	)
 	var calls: int = host.calls.size()
-	main._process_sticks(Vector2(.99, 0), Vector2(-.99, 0), 0.1)
+	main.test_process_sticks(Vector2(.99, 0), Vector2(-.99, 0), 0.1)
 	check(host.calls.size() == calls, "Holding visible-bar sticks does not repeat seeks")
-	main._process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
-	main._process_sticks(Vector2(-.99, 0), Vector2(.99, 0), 0.1)
+	main.test_process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
+	main.test_process_sticks(Vector2(-.99, 0), Vector2(.99, 0), 0.1)
 	check(
 		video.control.target_ms == 40000 and menu._elapsed.text == "00:40",
 		"Recentered sticks reverse direction with their original step sizes"
 	)
-	main._process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
+	main.test_process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
 	var volume_calls: int = host.calls.size()
-	main._process_sticks(Vector2(0, .99), Vector2.ZERO, 0.1)
+	main.test_process_sticks(Vector2(0, .99), Vector2.ZERO, 0.1)
 	check(host.calls.size() == volume_calls, "Vertical stick cannot change system-controlled audio")
-	main._process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
+	main.test_process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
 	video.geometry = 1
 	var zoom: float = video.view_zoom
-	main._process_sticks(Vector2.ZERO, Vector2(0, .9), 0.2)
-	main._process_sticks(Vector2.ZERO, Vector2(0, .9), 0.2)
+	main.test_process_sticks(Vector2.ZERO, Vector2(0, .9), 0.2)
+	main.test_process_sticks(Vector2.ZERO, Vector2(0, .9), 0.2)
 	check(
 		video.view_zoom > zoom and main.stick_controls.right_zooming,
 		"Visible immersive controls retain continuous right vertical zoom"
 	)
 	video.geometry = 0
-	main._process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
+	main.test_process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
 	# Lists and settings consume the same axes without playback side effects.
 	menu._subtitle_open = true
 	menu.refresh()
 	calls = host.calls.size()
-	main._process_sticks(Vector2(0, -.99), Vector2(.99, 0), 1.0)
+	main.test_process_sticks(Vector2(0, -.99), Vector2(.99, 0), 1.0)
 	check(
 		menu._subtitle_offset > 0 and host.calls.size() == calls,
 		"Subtitle popup scrolls without volume or seek commands"
 	)
 	menu._subtitle_open = false
 	menu.refresh()
-	main._process_sticks(Vector2.ZERO, Vector2(.99, 0), 0.1)
+	main.test_process_sticks(Vector2.ZERO, Vector2(.99, 0), 0.1)
 	check(host.calls.size() == calls, "Closing a list with a held stick cannot cause a seek")
-	main._process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
-	menu._activate(Menu.QUEUE_SETTINGS)
-	main._process_sticks(Vector2(0, -.99), Vector2(.99, 0), 0.5)
+	main.test_process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
+	menu.test_activate(Menu.QUEUE_SETTINGS)
+	main.test_process_sticks(Vector2(0, -.99), Vector2(.99, 0), 0.5)
 	check(
-		menu._quick_open == "queue" and host.calls.size() == calls,
+		menu.popup_snapshot().quick_open == "queue" and host.calls.size() == calls,
 		"Audio track popup owns sticks without selecting, seeking or changing volume"
 	)
-	menu._quick_open = ""
+	menu.test_set_popup("")
 	menu.choices.reset()
 	menu.refresh()
-	main._process_sticks(Vector2.ZERO, Vector2(.99, 0), 0.1)
+	main.test_process_sticks(Vector2.ZERO, Vector2(.99, 0), 0.1)
 	check(
 		host.calls.size() == calls,
 		"Audio popup exit also requires stick recenter before playback shortcuts"
 	)
-	main._process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
+	main.test_process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
 	video.bookmark_store.add(
 		video.local_uri,
 		str(video._bookmark_metadata.get("basename", "")),
@@ -1289,21 +1288,21 @@ func _check_control_sticks(main: Node3D, video: Node3D, menu: Node3D, host: RefC
 	)
 	menu.bookmarks.opened = true
 	menu.refresh()
-	main._process_sticks(Vector2(.99, 0), Vector2(0, .99), 0.2)
+	main.test_process_sticks(Vector2(.99, 0), Vector2(0, .99), 0.2)
 	check(
 		host.calls.size() == calls and not main.stick_controls.right_zooming,
 		"Bookmark list also owns the sticks"
 	)
 	menu.bookmarks.opened = false
-	menu._quick_open = "sync"
+	menu.test_set_popup("sync")
 	menu.refresh()
-	main._process_sticks(Vector2(.99, 0), Vector2(.99, 0), 0.1)
+	main.test_process_sticks(Vector2(.99, 0), Vector2(.99, 0), 0.1)
 	check(host.calls.size() == calls, "Expanded settings cannot seek")
-	menu._quick_open = ""
+	menu.test_set_popup("")
 	menu.section = 0
 	menu._mode_open = true
 	menu.refresh()
-	main._process_sticks(Vector2(.99, 0), Vector2(.99, 0), 0.1)
+	main.test_process_sticks(Vector2(.99, 0), Vector2(.99, 0), 0.1)
 	check(host.calls.size() == calls, "Projection popup cannot seek")
 	menu._mode_open = false
 	menu.refresh()
@@ -1317,7 +1316,7 @@ func _check_control_sticks(main: Node3D, video: Node3D, menu: Node3D, host: RefC
 	root.add_child(library)
 	main.library_menu = library
 	library.toggle()
-	main._process_sticks(Vector2(0, -.99), Vector2(.99, 0), 0.3)
+	main.test_process_sticks(Vector2(0, -.99), Vector2(.99, 0), 0.3)
 	check(
 		library.scroll > 0 and host.calls.size() == calls,
 		"Media library scrolls without controlling the current video"
@@ -1326,7 +1325,7 @@ func _check_control_sticks(main: Node3D, video: Node3D, menu: Node3D, host: RefC
 	main.library_menu = original_recent
 	library.free()
 	# Actual ray timeline capture remains exclusive, including the other hand's stick.
-	main._process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
+	main.test_process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
 	var origin: Vector3 = menu.to_global(Vector3(0, -0.08, 0.1))
 	var direction: Vector3 = -menu.global_basis.z
 	main.input_source.test_rays.left_hand = [origin, direction]
@@ -1343,7 +1342,7 @@ func _check_control_sticks(main: Node3D, video: Node3D, menu: Node3D, host: RefC
 		),
 		"Capture suspends sticks immediately before the next process frame"
 	)
-	main._process_sticks(Vector2.ZERO, Vector2(.99, 0), 0.1)
+	main.test_process_sticks(Vector2.ZERO, Vector2(.99, 0), 0.1)
 	check(
 		host.calls.size() == calls and not menu.allows_playback_sticks(),
 		"Timeline drag blocks the other stick without submitting the preview"
@@ -1351,7 +1350,7 @@ func _check_control_sticks(main: Node3D, video: Node3D, menu: Node3D, host: RefC
 	menu.release_pointer("left_hand", origin, direction, true)
 	main.input_source.test_rays.clear()
 	calls = host.calls.size()
-	main._process_sticks(Vector2.ZERO, Vector2(.99, 0), 0.1)
+	main.test_process_sticks(Vector2.ZERO, Vector2(.99, 0), 0.1)
 	check(
 		video.control.target_ms == 60000 and host.calls.size() == calls,
 		"Capture release submits its own target; held stick remains blocked until center"
@@ -1372,7 +1371,7 @@ func _check_control_sticks(main: Node3D, video: Node3D, menu: Node3D, host: RefC
 	main.input_source.test_rays.left_hand = [origin, direction]
 	main._update_menu_pointer("left_hand", true)
 	main.input_source.test_rays.clear()
-	main._process_sticks(Vector2.ZERO, Vector2(.99, 0), 0.1)
+	main.test_process_sticks(Vector2.ZERO, Vector2(.99, 0), 0.1)
 	check(
 		menu._seek_hand.is_empty() and host.calls.size() == calls,
 		"Tracking cancellation before the first capture frame cannot turn a held stick into a seek"
@@ -1380,13 +1379,13 @@ func _check_control_sticks(main: Node3D, video: Node3D, menu: Node3D, host: RefC
 	# Focus and hidden transport behavior share the same latch state.
 	main.display.preview = false
 	main.display.session_state = "session_visible"
-	main._process_sticks(Vector2.ZERO, Vector2(.99, 0), 0.1)
+	main.test_process_sticks(Vector2.ZERO, Vector2(.99, 0), 0.1)
 	main.display.preview = true
-	main._process_sticks(Vector2.ZERO, Vector2(.99, 0), 0.1)
+	main.test_process_sticks(Vector2.ZERO, Vector2(.99, 0), 0.1)
 	check(host.calls.size() == calls, "Focus recovery with a held stick waits for center")
-	main._process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
+	main.test_process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
 	main.menu_touched_ms = Time.get_ticks_msec() - main.CONTROLS_HIDE_MS - 1
-	main._process_sticks(Vector2.ZERO, Vector2(.99, 0), 0.1)
+	main.test_process_sticks(Vector2.ZERO, Vector2(.99, 0), 0.1)
 	check(
 		(
 			menu.visible
@@ -1396,8 +1395,8 @@ func _check_control_sticks(main: Node3D, video: Node3D, menu: Node3D, host: RefC
 		"A visible-bar seek refreshes feedback and resets its hide timer"
 	)
 	menu.dismiss()
-	main._process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
-	main._process_sticks(Vector2(-.99, 0), Vector2.ZERO, 0.1)
+	main.test_process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
+	main.test_process_sticks(Vector2(-.99, 0), Vector2.ZERO, 0.1)
 	check(video.control.target_ms == 50000, "Hidden transport retains the same left -20s seek")
 	# Hover misses are not interaction, paused/awaiting seeks keep their controls visible.
 	menu.toggle()
@@ -1405,26 +1404,26 @@ func _check_control_sticks(main: Node3D, video: Node3D, menu: Node3D, host: RefC
 	video.control.observe(50000, 120000)
 	video.requested_play = false
 	main.menu_touched_ms = Time.get_ticks_msec() - main.CONTROLS_HIDE_MS - 1
-	main._process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
+	main.test_process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
 	check(menu.visible, "Paused video does not hide controls")
 	video.requested_play = true
 	video.control.seek_absolute(55000)
-	main._process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
+	main.test_process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
 	check(menu.visible, "Queued seek keeps the target visible")
 	video.control.take_pending()
-	main._process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
+	main.test_process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
 	check(menu.visible, "Waiting for a new source frame keeps controls visible")
 	video.control.reject()
 	main.input_source.test_rays.right_hand = [menu.to_global(Vector3(0, 0.025, 0.1)), direction]
-	main._process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
+	main.test_process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
 	check(
 		menu.visible and Time.get_ticks_msec() - main.menu_touched_ms < 1000,
 		"A real button hover resets the idle timer"
 	)
 	main.input_source.test_rays.clear()
 	main.menu_touched_ms = Time.get_ticks_msec() - main.CONTROLS_HIDE_MS - 1
-	main._process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
+	main.test_process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
 	check(
-		not menu.visible and menu._hover.is_empty(),
+		not menu.visible and menu.hover_snapshot().is_empty(),
 		"Playing video hides after inactivity even when both rays recorded NONE"
 	)

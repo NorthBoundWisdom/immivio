@@ -19,7 +19,7 @@ func _initialize() -> void:
 
 
 func button_point(menu: Node3D, target: int) -> Vector3:
-	for button in menu._buttons:
+	for button in menu.controls_snapshot():
 		if button.target == target:
 			return button.node.global_position
 	return Vector3(INF, INF, INF)
@@ -42,7 +42,7 @@ func bent_ray(host: Node3D, flat: Vector3) -> Array:
 
 
 func tap(host: Node3D, target: int) -> bool:
-	host.menu_compositor._process(0)
+	host.menu_compositor.test_step(0)
 	var menu: Node3D = host.player_menu
 	var flat := button_point(menu, target)
 	if not flat.is_finite():
@@ -50,19 +50,19 @@ func tap(host: Node3D, target: int) -> bool:
 	var ray := bent_ray(host, flat)
 	var handled: bool = menu.press_pointer("right_hand", ray[0], ray[1], true)
 	menu.release_pointer("right_hand", ray[0], ray[1], true)
-	host.menu_compositor._process(0)
+	host.menu_compositor.test_step(0)
 	return handled
 
 
 func check_first_browser_open(host: Node3D, geometry: int, follow: bool) -> void:
 	host.view_follow.enabled = follow
 	host.video.geometry = geometry
-	host.video._apply_geometry()
-	host._show_player_menu()
+	host.video.test_apply_geometry()
+	host.test_show_player_menu()
 	var menu: Node3D = host.player_menu
 	menu.refresh()
 	var surface: Node3D = host.menu_compositor
-	surface._process(0)
+	surface.test_step(0)
 	var original_rect: Rect2 = surface.surface_rect
 	var original_pose: Transform3D = menu.global_transform
 	var original_progress: int = menu._progress.get_instance_id()
@@ -97,8 +97,8 @@ func check_first_browser_open(host: Node3D, geometry: int, follow: bool) -> void
 		"Browser remains attached to the toolbar with follow=%s" % follow
 	)
 	var before_return: Transform3D = menu.global_transform
-	host.library_menu._activate(host.library_menu.PLAYER)
-	surface._process(0)
+	host.library_menu.test_activate(host.library_menu.PLAYER)
+	surface.test_step(0)
 	check(
 		menu.global_transform.is_equal_approx(before_return),
 		"Returning from Library to Playback cannot reanchor the timeline: %d" % geometry
@@ -123,13 +123,13 @@ func _run() -> void:
 	host.video.local_uri = "file:///pages-SBS.mp4"
 	host.video.media.frame_counter = 1
 	host.video.media.state = "paused"
-	host.video._waiting_first = false
+	host.video.test_set_waiting_for_frame(false)
 	host.video.stereo_sbs = true
 	host.video.media.format = {"width": 3840, "height": 1080}
 	host.video.control.duration_ms = 60000
-	host.video._apply_geometry()
+	host.video.test_apply_geometry()
 	host.video.panel.visible = true
-	host._show_player_menu()
+	host.test_show_player_menu()
 	var menu: Node3D = host.player_menu
 	menu.state_provider = func():
 		var state: Dictionary = host._menu_state()
@@ -148,8 +148,8 @@ func _run() -> void:
 			check_first_browser_open(host, geometry, follow)
 	host.view_follow.enabled = false
 	host.video.geometry = 0
-	host.video._apply_geometry()
-	host._show_player_menu()
+	host.video.test_apply_geometry()
+	host.test_show_player_menu()
 	for target in [
 		Menu.QUICK_SCREEN,
 		Menu.MODE,
@@ -161,19 +161,19 @@ func _run() -> void:
 		Menu.QUEUE_SETTINGS,
 		12
 	]:
-		host._show_library_menu()
+		host.test_show_library_menu()
 		host.library_menu.compact = true
-		host._place_menu(host.library_menu)
+		host.test_place_menu(host.library_menu)
 		check(
 			(
 				host.library_menu.visible
-				and menu._quick_open.is_empty()
+				and menu.popup_snapshot().quick_open.is_empty()
 				and not menu._mode_open
 				and not menu._subtitle_open
 			),
 			"Browsing replaces the previous playback page"
 		)
-		host.menu_compositor._process(0)
+		host.menu_compositor.test_step(0)
 		var original_pose: Transform3D = menu.global_transform
 		var original_rect: Rect2 = host.menu_compositor.surface_rect
 		var original_title: int = menu._title.get_instance_id()
@@ -211,20 +211,20 @@ func _run() -> void:
 			is_equal_approx(menu.curve_radius, distance),
 			"Playback curvature matches its placed viewing distance"
 		)
-	host._show_library_menu()
+	host.test_show_library_menu()
 	check(tap(host, Menu.BookmarkMenu.LIST), "Bookmark list remains selectable beside the browser")
 	check(
 		menu.bookmarks.opened and not host.library_menu.visible,
 		"Bookmark list also replaces the browser"
 	)
-	host._show_library_menu()
+	host.test_show_library_menu()
 	check(not menu.bookmarks.opened, "Browsing closes bookmark pages")
 	# Bending the timeline must not move a stationary drag's preview.
-	host._show_player_menu()
+	host.test_show_player_menu()
 	menu._reset_navigation()
 	menu.refresh()
 	menu.curve_radius = 1.4
-	host.menu_compositor._process(0)
+	host.menu_compositor.test_step(0)
 	var flat := menu.to_global(Vector3(Menu.BAR_SEEK * .3, Menu.BAR_SEEK_Y, 0))
 	var ray := bent_ray(host, flat)
 	check(menu.press_pointer("left_hand", ray[0], ray[1], true), "Curved timeline starts a seek")
@@ -232,7 +232,7 @@ func _run() -> void:
 	var held_radius: float = menu.curve_radius
 	var eye_before: Vector3 = host.xr_camera.global_position
 	host.xr_camera.global_position += Vector3(.12, .02, .1)
-	host.menu_compositor._process(0)
+	host.menu_compositor.test_step(0)
 	check(
 		is_equal_approx(menu.curve_radius, held_radius),
 		"Pointer capture freezes the playback curve"

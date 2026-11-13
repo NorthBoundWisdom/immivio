@@ -420,7 +420,7 @@ func _run() -> void:
 		not video.alpha_enabled and not video.panel.visible,
 		"Remembered Alpha intent cannot expose passthrough before a complete pair"
 	)
-	video._waiting_first = false
+	video.test_set_waiting_for_frame(false)
 	video.media.generation = 4
 	check(
 		(

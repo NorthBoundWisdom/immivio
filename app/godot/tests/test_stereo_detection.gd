@@ -210,7 +210,7 @@ func _run() -> void:
 	menu.refresh()
 	var actions: Array = []
 	menu.action_requested.connect(func(action): actions.append(action))
-	var buttons: Array = menu._buttons.filter(
+	var buttons: Array = menu.controls_snapshot().filter(
 		func(button): return button.target == menu.MODE_STEREO + 7
 	)
 	check(buttons.size() == 1, "The video-mode popup exposes Auto detect")

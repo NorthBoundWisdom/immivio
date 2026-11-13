@@ -72,7 +72,7 @@ func _run() -> void:
 		compositor._matches_capture(metadata),
 		"Refreshing values on the same page must not blank the menu"
 	)
-	menu._quick_open = "info"
+	menu.test_set_popup("info")
 	menu.refresh()
 	check(
 		not compositor._matches_capture(metadata),
@@ -113,7 +113,7 @@ func _run() -> void:
 		compositor._matches_capture(compositor.presented),
 		"Ordinary redraws retain the current native page while copying"
 	)
-	menu._quick_open = ""
+	menu.test_set_popup("")
 	menu.refresh()
 	compositor._apply_presented_layer()
 	check(
@@ -146,11 +146,11 @@ func _run() -> void:
 		compositor.layer.quad_size == old_rect.size,
 		"Acknowledging the new page reveals its own projection"
 	)
-	compositor._tag(menu._backdrop)
+	compositor.test_tag_menu(menu)
 	compositor._set_native_capture(true)
 	compositor._set_native_ready(false)
 	check(
-		menu._backdrop.layers == Surface.UI_LAYER,
+		menu.backdrop_snapshot().layers == Surface.UI_LAYER,
 		"Waiting for the native surface never flashes flat scene geometry"
 	)
 	compositor.layer.free()
@@ -161,14 +161,17 @@ func _run() -> void:
 	for page in Warmup.PAGES:
 		warmer.prepare(menu, page)
 		if page in ["bar", "screen", "playback", "info"]:
-			compositor._update_bounds()
+			compositor.test_update_bounds()
 			if ordinary_rect == Rect2():
 				ordinary_rect = compositor.surface_rect
 			check(
 				compositor.surface_rect == ordinary_rect,
 				"First ordinary page opens inside a stable capture projection: " + page
 			)
-		check(not menu._buttons.is_empty(), "Synthetic warmup builds actual controls: " + page)
+		check(
+			not menu.controls_snapshot().is_empty(),
+			"Synthetic warmup builds actual controls: " + page
+		)
 	warmer.prepare(menu, "screen")
 	for i in 12:
 		menu.global_transform = Transform3D(
@@ -176,7 +179,7 @@ func _run() -> void:
 			Vector3(float(i) * .12, 1.6, -1.4)
 		)
 		compositor.content_bounds = Rect2()
-		compositor._update_bounds()
+		compositor.test_update_bounds()
 		check(
 			compositor.surface_rect == ordinary_rect,
 			"Head-follow floating-point noise cannot grow/recentre a first-open projection"

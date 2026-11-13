@@ -34,7 +34,7 @@ func _initialize() -> void:
 
 
 func click(menu: Node3D, target: int) -> bool:
-	for button in menu._buttons:
+	for button in menu.controls_snapshot():
 		if button.target == target and button.enabled:
 			var point: Vector2 = button.rect.get_center()
 			var origin: Vector3 = menu.to_global(Vector3(point.x, point.y, 1))
@@ -45,14 +45,14 @@ func click(menu: Node3D, target: int) -> bool:
 
 
 func drag(menu: Node3D, target: int, fraction: float) -> void:
-	var button: Dictionary = menu._buttons.filter(func(row): return row.target == target)[0]
+	var button: Dictionary = menu.controls_snapshot().filter(func(row): return row.target == target)[0]
 	var point := Vector3(0.03 + 0.6 * fraction, button.rect.get_center().y, 1)
 	menu.press_pointer("right", menu.to_global(point), -menu.global_basis.z, true)
 	menu.release_pointer("right", menu.to_global(point), -menu.global_basis.z, true)
 
 
 func button(menu: Node3D, target: int) -> Dictionary:
-	return menu._buttons.filter(func(row): return row.target == target)[0]
+	return menu.controls_snapshot().filter(func(row): return row.target == target)[0]
 
 
 func reset_shown(menu: Node3D, target: int) -> bool:
@@ -78,7 +78,7 @@ func _run() -> void:
 		{"subtitle_tracks": [{"id": 1, "codec": "subrip"}, {"id": 2, "codec": "hdmv_pgs_subtitle"}]}
 	}
 	video.flat_pose = Transform3D(Basis(), Vector3(0, 1.6, -2))
-	video._apply_geometry()
+	video.test_apply_geometry()
 	video.panel.visible = true
 	var menu := Menu.new()
 	menu.state_provider = main._menu_state
@@ -93,7 +93,7 @@ func _run() -> void:
 	camera.position = Vector3(0, 1.6, 0)
 	root.add_child(camera)
 	video.view_camera = camera
-	main._place_menu(menu)
+	main.test_place_menu(menu)
 	check(
 		menu.global_basis.orthonormalized().is_equal_approx(Basis.IDENTITY),
 		"Below-eye menu remains upright"
@@ -111,7 +111,9 @@ func _run() -> void:
 	)
 	menu.toggle()
 	check(
-		not menu._buttons.any(func(item): return item.target in [11, 109, 111, 108, 210, 215, 216]),
+		not menu.controls_snapshot().any(
+			func(item): return item.target in [11, 109, 111, 108, 210, 215, 216]
+		),
 		"Retired controls have no UI entry"
 	)
 	var fixed := menu.global_transform
@@ -155,7 +157,7 @@ func _run() -> void:
 	check(
 		(
 			click(menu, Menu.IPD_SETTINGS)
-			and menu._quick_open == "ipd"
+			and menu.popup_snapshot().quick_open == "ipd"
 			and menu.global_transform == fixed
 		),
 		"IPD replaces speed without moving the toolbar"
@@ -169,7 +171,7 @@ func _run() -> void:
 	video.stereo_sbs = false
 	menu.refresh()
 	check(
-		not menu._buttons.any(func(item): return item.target == Menu.IPD_SETTINGS),
+		not menu.controls_snapshot().any(func(item): return item.target == Menu.IPD_SETTINGS),
 		"Mono omits unavailable alignment"
 	)
 	click(menu, 110)

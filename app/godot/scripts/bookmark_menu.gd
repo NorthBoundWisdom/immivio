@@ -288,3 +288,7 @@ func key() -> Array:
 		menu._state.get("duration_ms", 0),
 		Time.get_ticks_msec() < notice_until
 	]
+
+
+func test_activate(target: int, item: Dictionary, media_scope: String) -> void:
+	_activate(target, item, media_scope)

@@ -51,7 +51,7 @@ func _run() -> void:
 	surface.configure([library], head, false)
 	surface.set_process(false)
 	for i in 4:
-		surface._process(0)
+		surface.test_step(0)
 		await process_frame
 		await RenderingServer.frame_post_draw
 	var initial := target.get_texture().get_image()
@@ -69,8 +69,8 @@ func _run() -> void:
 		Library.Section.NETWORK,
 		Library.Section.SETTINGS
 	]:
-		library._activate(Library.NAV_BASE + destination)
-		surface._process(0)
+		library.test_activate(Library.NAV_BASE + destination)
+		surface.test_step(0)
 		if surface.surface_rect != rect:
 			failures.append("Library pages must retain the common capture projection")
 		if not surface.curved_mesh.visible:
@@ -85,7 +85,7 @@ func _run() -> void:
 				failures.append("A navigation frame blanked the window: %d pixels" % visible)
 			if not output.is_empty():
 				picture.save_png(output.path_join("switch-%02d.png" % coverage.size()))
-			surface._process(0)
+			surface.test_step(0)
 	print(
 		(
 			JSON

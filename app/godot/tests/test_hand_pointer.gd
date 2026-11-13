@@ -28,6 +28,9 @@ class Viewer:
 	var view_camera: XRCamera3D
 	var turned := Vector2.ZERO
 
+	func waiting_for_first_frame() -> bool:
+		return false
+
 	func corner_at(_origin: Vector3, _direction: Vector3) -> int:
 		return -1
 
@@ -88,7 +91,7 @@ func move_hand(tracker: XRHandTracker, center: Vector3, ratio: float) -> void:
 func frames(main: Node3D, tracker: XRHandTracker, center: Vector3, ratio: float) -> void:
 	move_hand(tracker, center, ratio)
 	for frame in 8:
-		main._update_hand_input(1.0 / 72)
+		main.test_update_hand_input(1.0 / 72)
 		main._update_menu_pointer("right_hand")
 		main._update_grab()
 
@@ -208,7 +211,7 @@ func _run() -> void:
 	player.seek_requested.connect(func(value: int): seeks.append(value))
 	root.add_child(player)
 	player.toggle()
-	var seek_button: Dictionary = player._buttons.filter(func(b): return b.target == Player.SEEK)[0]
+	var seek_button: Dictionary = player.controls_snapshot().filter(func(b): return b.target == Player.SEEK)[0]
 	var seek_origin: Vector3 = seek_button.node.global_position + Vector3(0, 0, 1)
 	check(
 		player.press_pointer("right_hand", seek_origin, Vector3.FORWARD, true),
@@ -303,7 +306,7 @@ func _run() -> void:
 	for pinch in [false, true, false]:
 		aim.set_input("index_pinch", pinch)
 		for frame in 2:
-			main._update_hand_input(1.0 / 72)
+			main.test_update_hand_input(1.0 / 72)
 			main._update_menu_pointer("right_hand")
 	check(
 		picks == initial_picks + 1 and other.provider == "meta_aim",
@@ -325,7 +328,7 @@ func _run() -> void:
 	for pinch in [false, true, false]:
 		action_hand.set_input("trigger_click", pinch)
 		for frame in 2:
-			main._update_hand_input(1.0 / 72)
+			main.test_update_hand_input(1.0 / 72)
 			main._update_menu_pointer("right_hand")
 	check(
 		picks == initial_picks + 1 and other.provider == "hand_profile",
@@ -338,14 +341,14 @@ func _run() -> void:
 	for pinch in [false, true, false]:
 		action_hand.set_input("trigger_click", pinch)
 		for frame in 2:
-			main._update_hand_input(1.0 / 72)
+			main.test_update_hand_input(1.0 / 72)
 			main._update_menu_pointer("right_hand")
 	check(
 		picks == initial_picks + 1 and other.ray != null,
 		"Tracked runtime aim/select remains usable without skeletal tracking"
 	)
 	action_hand.invalidate_pose("aim")
-	main._update_hand_input(1.0 / 72)
+	main.test_update_hand_input(1.0 / 72)
 	check(
 		other.ray == null and not main.input_source.controller_allowed("right_hand"),
 		"Lost runtime aim cancels input without falling back to an emulated controller"
@@ -371,7 +374,7 @@ func _run() -> void:
 		)
 		XRServer.add_tracker(physical)
 		await process_frame
-		main._update_hand_input(1.0 / 72)
+		main.test_update_hand_input(1.0 / 72)
 		check(
 			(
 				main.input_source.controller_allowed("right_hand")
@@ -389,7 +392,7 @@ func _run() -> void:
 			"Physical controller trigger selects exactly once: " + profile
 		)
 		physical.invalidate_pose("aim")
-		main._update_hand_input(1.0 / 72)
+		main.test_update_hand_input(1.0 / 72)
 		check(
 			main.input_source.ray("right_hand") == null,
 			"Lost physical aim hides its ray: " + profile
@@ -409,28 +412,28 @@ func _run() -> void:
 	XRServer.add_tracker(left_optical)
 	XRServer.add_tracker(left_aim)
 	main.hand_pointers["left_hand"] = Hand.new()
-	main._update_hand_input(1.0 / 72)
+	main.test_update_hand_input(1.0 / 72)
 	left_aim.set_input("menu_gesture", true)
 	left_aim.set_input("menu_pressed", true)
 	left_aim.set_input("index_pinch", true)
-	main._update_hand_input(1.0 / 72)
+	main.test_update_hand_input(1.0 / 72)
 	check(
 		player.visible and main.grab.is_empty(),
 		"Left official palm menu pinch opens controls independently of pinch preference without a picture grab"
 	)
-	main._update_hand_input(1.0 / 72)
+	main.test_update_hand_input(1.0 / 72)
 	check(player.visible, "Holding left official menu pinch cannot toggle twice")
 	left_aim.set_input("menu_pressed", false)
-	main._update_hand_input(1.0 / 72)
+	main.test_update_hand_input(1.0 / 72)
 	left_aim.set_input("menu_pressed", true)
-	main._update_hand_input(1.0 / 72)
+	main.test_update_hand_input(1.0 / 72)
 	check(not player.visible, "Second official menu pinch closes controls")
 	XRServer.remove_tracker(left_aim)
 	XRServer.remove_tracker(left_optical)
 	main.hand_pointers.erase("left_hand")
 	main.grab = {"hand": "right_hand", "moved": false}
 	other.ray = null
-	main._on_pointer_release("trigger_click", "right_hand")
+	main.test_pointer_release("trigger_click", "right_hand")
 	check(
 		main.grab.is_empty() and not player.visible,
 		"Release arriving after tracking loss cancels instead of opening controls"

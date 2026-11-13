@@ -38,8 +38,8 @@ func _run() -> void:
 	surface.add_child(surface.cylinder_layer)
 	for radius in [0.0, 1.6]:
 		library.curve_radius = radius
-		library._activate(Library.NAV_BASE + Library.Section.SETTINGS)
-		surface._update_bounds()
+		library.test_activate(Library.NAV_BASE + Library.Section.SETTINGS)
+		surface.test_update_bounds()
 		var rect: Rect2 = surface.surface_rect
 		surface.presented = surface._capture_metadata(Surface.capture_pose(library))
 		for destination in [
@@ -48,8 +48,8 @@ func _run() -> void:
 			Library.Section.NETWORK,
 			Library.Section.SETTINGS
 		]:
-			library._activate(Library.NAV_BASE + destination)
-			surface._update_bounds()
+			library.test_activate(Library.NAV_BASE + destination)
+			surface.test_update_bounds()
 			check(
 				surface.surface_rect == rect,
 				"Settings and network sources share their physical projection"
@@ -80,7 +80,7 @@ func _run() -> void:
 				surface.is_layout_presented(library),
 				"Acknowledging the new capture enables its own controls"
 			)
-		library._activate(Library.NAV_BASE + Library.Section.NETWORK)
+		library.test_activate(Library.NAV_BASE + Library.Section.NETWORK)
 		var pose: Transform3D = library.global_transform
 		library.position.y += .1
 		check(

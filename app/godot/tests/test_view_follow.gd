@@ -52,7 +52,7 @@ func _initialize() -> void:
 
 
 func button(menu: Node3D, target: int) -> Dictionary:
-	for item in menu._buttons:
+	for item in menu.controls_snapshot():
 		if item.target == target:
 			return item
 	return {}
@@ -85,7 +85,7 @@ func footer_check(menu: Node3D, name: String) -> void:
 		check(
 			(
 				menu.device_status.position.y
-				> (menu.BAR_SEEK_Y if menu.section == 0 else menu._backdrop.position.y)
+				> (menu.BAR_SEEK_Y if menu.section == 0 else menu.backdrop_snapshot().position.y)
 			),
 			name + " status is above playback content"
 		)
@@ -112,14 +112,14 @@ func footer_check(menu: Node3D, name: String) -> void:
 	check(
 		(
 			follow.node.position.y + Menu.FOOTER_HIT_SIZE / 2
-			< menu._backdrop.position.y - menu._backdrop.mesh.size.y / 2
+			< menu.backdrop_snapshot().position.y - menu.backdrop_snapshot().mesh.size.y / 2
 		),
 		name + " controls clear the panel"
 	)
-	for other in menu._buttons:
+	for other in menu.controls_snapshot():
 		if (
 			other.target in [Menu.CLOSE_MENU, Menu.FOLLOW, Menu.TEMP_PASSTHROUGH]
-			or other.node.get_parent() != menu
+			or other.node.parent_id != menu.get_instance_id()
 		):
 			continue
 		check(
@@ -140,7 +140,7 @@ func close_menu_check(main: Node3D, menu: Node3D, name: String) -> void:
 	var passthrough: bool = main.temporary_passthrough
 	var alpha: bool = main.video.alpha_wanted()
 	var video_state: String = main.video.media.state
-	main._on_pointer_button("by_button", "right_hand")
+	main.test_pointer_button("by_button", "right_hand")
 	if menu == main.library_menu:
 		check(
 			menu.visible and main.input_source.active_menu() == menu,
@@ -150,7 +150,11 @@ func close_menu_check(main: Node3D, menu: Node3D, name: String) -> void:
 		check(menu.visible, name + " menu button cannot replace library with empty controls")
 	else:
 		check(
-			not menu.visible and main.input_source.active_menu() == null and menu._hover.is_empty(),
+			(
+				not menu.visible
+				and main.input_source.active_menu() == null
+				and menu.hover_snapshot().is_empty()
+			),
 			name + " playback controls still dismiss via controller"
 		)
 	check(main.grab.is_empty(), name + " dismissal cannot start a screen drag")
@@ -278,7 +282,7 @@ func _run() -> void:
 	main.video.subtitles.text = "Head-relative caption"
 	main.video.caption.text = main.video.subtitles.text
 	main.video.caption.visible = true
-	main.video._place_caption()
+	main.video.test_place_caption()
 	var caption_local: Transform3D = (
 		main.video.subtitle_transform().affine_inverse() * main.video.caption.global_transform
 	)
@@ -319,9 +323,9 @@ func _run() -> void:
 			),
 			"Head movement preserves size/curve/content rotation"
 		)
-	main._show_library_menu()
+	main.test_show_library_menu()
 	var before := placement(main, main.video)
-	main._show_player_menu()
+	main.test_show_player_menu()
 	check(placement(main, main.video).is_equal_approx(before), "Menu summons do not move screen")
 	check(
 		main.video_menu.global_basis.y.normalized().is_equal_approx(Vector3.UP),
@@ -339,7 +343,7 @@ func _run() -> void:
 		main.video_menu.QUEUE_SETTINGS,
 		12
 	]:
-		main.video_menu._activate(target)
+		main.video_menu.test_activate(target)
 		main._update_view_follow()
 		check(
 			(
@@ -352,7 +356,7 @@ func _run() -> void:
 			"Popup switching does not lift or move the toolbar"
 		)
 		footer_check(main.video_menu, "Player popup")
-	main.video_menu._activate(main.video_menu.QUICK_CLOSE)
+	main.video_menu.test_activate(main.video_menu.QUICK_CLOSE)
 	main.video_menu._seek_hand = "left_hand"
 	var captured_menu: Transform3D = (
 		Main.upright_pose(main.xr_camera.global_transform).affine_inverse()
@@ -410,7 +414,7 @@ func _run() -> void:
 	var sphere_basis: Basis = main.video.panel.global_basis
 	main.xr_camera.rotate_y(.4)
 	main._update_view_follow()
-	main.video._process(0)
+	main.video.test_step(0)
 	check(
 		main.view_follow.enabled and main.video.panel.global_basis.is_equal_approx(sphere_basis),
 		"Immersive media is not head-locked, mode stays on"
@@ -426,7 +430,7 @@ func _run() -> void:
 	)
 	main._on_session_control("temporary_passthrough")
 	main._on_menu_action("stop")
-	main._show_library_menu()
+	main.test_show_library_menu()
 	check(
 		main.view_follow.enabled and main.temporary_passthrough,
 		"Stopping and browsing retain both session choices"
@@ -451,7 +455,7 @@ func _run() -> void:
 			main._person_passthrough() and main.display.applied_passthrough,
 			"Person passthrough forces actual transparent state"
 		)
-		main._show_library_menu()
+		main.test_show_library_menu()
 		main.library_menu.refresh()
 		var item := button(main.library_menu, Menu.TEMP_PASSTHROUGH)
 		check(
@@ -462,7 +466,7 @@ func _run() -> void:
 		main.library_menu.update_pointer("right_hand", origin, -item.node.global_basis.z, true)
 		check(
 			(
-				main.library_menu._hover.right_hand == Menu.NONE
+				main.library_menu.hover_snapshot().right_hand == Menu.NONE
 				and (not main.library_menu._tooltip or not main.library_menu._tooltip.visible)
 			),
 			"Hidden unavailable button has no ray hover or tooltip"
@@ -505,7 +509,7 @@ func _run() -> void:
 		"Session resume cannot retry a rejected temporary request"
 	)
 	main.display.reject = false
-	main._on_setting_changed("background", "passthrough")
+	main.test_setting_changed("background", "passthrough")
 	check(
 		(
 			button(main.library_menu, Menu.TEMP_PASSTHROUGH).is_empty()
@@ -513,7 +517,7 @@ func _run() -> void:
 		),
 		"Saved passthrough hides only temporary control"
 	)
-	main._on_setting_changed("background", "dark")
+	main.test_setting_changed("background", "dark")
 	main.display.supported = false
 	main._update_background()
 	check(
@@ -561,7 +565,7 @@ func _run() -> void:
 		main.video.flat_pose.basis.y.is_equal_approx(Vector3.UP),
 		"Standard recenter returns upright theater screen"
 	)
-	main._show_library_menu()
+	main.test_show_library_menu()
 	check(
 		main.library_menu.global_basis.y.is_equal_approx(Vector3.UP),
 		"Standard menus summon upright with horizontal head direction"
@@ -580,13 +584,13 @@ func _run() -> void:
 	main.video.close_video()
 	I18n.use("zh")
 	main._on_session_control("temporary_passthrough")
-	main._show_library_menu()
+	main.test_show_library_menu()
 	close_menu_check(main, main.library_menu, "Library")
-	main._show_library_menu()
+	main.test_show_library_menu()
 	main.library_menu.section = main.library_menu.Section.SETTINGS
 	main.library_menu.refresh()
 	close_menu_check(main, main.library_menu, "Settings")
-	main._show_library_menu()
+	main.test_show_library_menu()
 	main.library_menu.file_actions.modal = "delete"
 	main.library_menu.file_actions.target = {"title": "Example.mp4", "uri": "file:///Example.mp4"}
 	main.library_menu.refresh()
@@ -597,14 +601,14 @@ func _run() -> void:
 	)
 	main.library_menu.file_actions.reset()
 	main._on_library_chosen("file:///follow/popup_2D.mp4", "popup_2D.mp4")
-	main.video._waiting_first = false
+	main.video.test_set_waiting_for_frame(false)
 	main.video.panel.visible = true
-	main._show_player_menu()
+	main.test_show_player_menu()
 	main.video_menu._mode_open = true
 	main.video_menu.refresh()
 	close_menu_check(main, main.video_menu, "Video popup")
 	main.video.set_alpha(true)
-	main._show_player_menu()
+	main.test_show_player_menu()
 	close_menu_check(main, main.video_menu, "Person passthrough")
 	main.video.set_alpha(false)
 	_check_reclining(main)
@@ -654,7 +658,7 @@ func _run() -> void:
 
 ## Settings are not offered over playing video; apply the choice the Display page emits.
 func _choose_reclining(main: Node3D, enabled: bool) -> void:
-	main._on_setting_changed("reclining_mode", enabled)
+	main.test_setting_changed("reclining_mode", enabled)
 
 
 func _check_reclining(main: Node3D) -> void:
@@ -668,7 +672,7 @@ func _check_reclining(main: Node3D) -> void:
 	main.xr_camera.transform = Transform3D(
 		Basis.from_euler(Vector3(1.45, .3, .2)), Vector3(0, 1.6, 0)
 	)
-	main._show_library_menu()
+	main.test_show_library_menu()
 	check(
 		not main.library_menu.nav_order().has(main.library_menu.Section.SETTINGS),
 		"Settings stay out of the video switcher during playback"
@@ -701,7 +705,7 @@ func _check_reclining(main: Node3D) -> void:
 	check(
 		absf(main.video.panel.global_basis.z.y) > .5, "Reclining drag permits a tilted video screen"
 	)
-	main._show_player_menu()
+	main.test_show_player_menu()
 	check(
 		main.video_menu.global_basis.orthonormalized().is_equal_approx(
 			main.video.subtitle_transform().basis
@@ -734,7 +738,7 @@ func _check_reclining(main: Node3D) -> void:
 			),
 			"Reclining controls follow full head pose at pitch " + str(pitch)
 		)
-	main._show_library_menu()
+	main.test_show_library_menu()
 	_choose_reclining(main, false)
 	check(
 		not main.reclining_mode and not main.video.reclining_mode and main.view_follow.enabled,

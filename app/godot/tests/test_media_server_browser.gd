@@ -56,13 +56,13 @@ func _run() -> void:
 	root.add_child(menu)
 	menu.attach_platform(platform)
 	menu.toggle()
-	menu._activate(Menu.NAV_BASE + Menu.Section.MEDIA_SERVER)
+	menu.test_activate(Menu.NAV_BASE + Menu.Section.MEDIA_SERVER)
 	var b: RefCounted = menu.server_browser
 	platform.answer(
 		request_id(b, "servers"),
 		{"servers": [{"id": "profile", "name": "NAS", "provider": "unknown"}]}
 	)
-	menu._choose(menu.rows[0])
+	menu.test_choose(menu.rows[0])
 	check(platform.requests[request_id(b, "home")].action == "home", "server opens home")
 	platform.answer(
 		request_id(b, "home"),
@@ -122,7 +122,7 @@ func _run() -> void:
 		"detail has clickable facets"
 	)
 	var detail_tag: Dictionary = menu.rows.filter(func(row): return row.has("detail_filter"))[0]
-	menu._choose(detail_tag)
+	menu.test_choose(detail_tag)
 	var tag_request := request_id(b, "browse")
 	check(
 		b.view == "scenes" and platform.requests[tag_request].tags == ["a"],
@@ -158,7 +158,7 @@ func _run() -> void:
 		"container is distinct from playable media"
 	)
 	check(menu.video_queue().size() == 1, "containers never enter video queue")
-	menu._choose(menu.rows[0])
+	menu.test_choose(menu.rows[0])
 	var child := request_id(b, "browse")
 	check(
 		(
@@ -175,7 +175,7 @@ func _run() -> void:
 		request_id(b, "candidates"), {"entries": [{"id": "Drama", "name": "Drama"}], "total": 1}
 	)
 	check(menu.rows[0].has("unclassified"), "unclassified entry remains accessible")
-	menu._choose(menu.rows[1])
+	menu.test_choose(menu.rows[1])
 	var facet := request_id(b, "browse")
 	check(
 		platform.requests[facet].genres == ["Drama"], "facet navigation translates to common query"
@@ -183,7 +183,7 @@ func _run() -> void:
 	platform.answer(facet, {"entries": page(1, 2), "total": 2})
 	b.back()
 	check(b.view == "facets" and b.candidates.size() == 1, "facet back restores categories")
-	menu._choose(menu.rows[0])
+	menu.test_choose(menu.rows[0])
 	check(platform.requests[request_id(b, "browse")].unclassified == "genres", "unclassified query")
 	var stale := request_id(b, "browse")
 	b._navigate("all")

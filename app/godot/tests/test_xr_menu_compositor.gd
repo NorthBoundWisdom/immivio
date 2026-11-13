@@ -34,9 +34,10 @@ func _run() -> void:
 	menu.visible = true
 	menu.global_transform = Transform3D(Basis(Vector3.UP, .2), Vector3(0, 1.6, -2))
 	menu._button(42, "Synthetic", Vector2(.3, 0), Vector2(.06, .12))
-	var button: MeshInstance3D = menu._buttons.back().node
-	button.position.z = .25
-	button.rotation.y = .4
+	var button_transform: Transform3D = menu.controls_snapshot().back().node.transform
+	button_transform.origin.z = .25
+	button_transform.basis = Basis(Vector3.UP, .4)
+	menu.test_set_control_transform(42, button_transform)
 	var mapping := Mapping.new()
 	mapping.active_menu = menu
 	mapping.pose = menu.global_transform
@@ -53,9 +54,12 @@ func _run() -> void:
 	menu.update_pointer("right_hand", origin, blank - origin, true)
 	check(
 		(
-			menu._pointers.right_hand.dot.visible
-			and menu._pointers.right_hand.dot.position.distance_to(Vector3(-.3, .2, .008)) < .0001
-			and menu._hover.right_hand == Menu.NONE
+			menu.pointer_snapshot().right_hand.dot.visible
+			and (
+				menu.pointer_snapshot().right_hand.dot.position.distance_to(Vector3(-.3, .2, .008))
+				< .0001
+			)
+			and menu.hover_snapshot().right_hand == Menu.NONE
 		),
 		"Native compositor blank panel pixels stop the laser without selecting a button"
 	)
@@ -122,7 +126,7 @@ func _run() -> void:
 	var compositor := Surface.new()
 	root.add_child(compositor)
 	compositor.active_menu = menu
-	compositor._update_bounds()
+	compositor.test_update_bounds()
 	check(
 		compositor.content_bounds.has_point(
 			Vector2(
@@ -140,7 +144,7 @@ func _run() -> void:
 	secondary._button(43, "Playback", Vector2.ZERO, Vector2(0.2, 0.1))
 	compositor.menus = [menu, secondary]
 	compositor.content_bounds = Rect2()
-	compositor._update_bounds()
+	compositor.test_update_bounds()
 	var secondary_point: Vector3 = (
 		Surface.capture_pose(menu).affine_inverse() * secondary.global_position
 	)

@@ -57,7 +57,7 @@ func _run() -> void:
 	)
 	root.add_child(menu)
 	menu.toggle()
-	menu._activate(110)
+	menu.test_activate(110)
 	check(
 		menu.choices.sliders.size() == 3 and menu.choices.opened.is_empty(),
 		"CC uses angle, distance and text-size sliders"
