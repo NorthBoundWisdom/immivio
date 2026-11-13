@@ -109,7 +109,7 @@ func _run() -> void:
 		menu._row_identity(smb) != menu._row_identity(account),
 		"Identically named sources retain distinct browse identities"
 	)
-	menu._smb_found.append({"name": "Duplicate NAS", "host": "192.168.1.9"})
+	menu.sources.smb_found.append({"name": "Duplicate NAS", "host": "192.168.1.9"})
 	menu.refresh()
 	check(
 		menu.rows.filter(func(row): return not row.get("group", false)).size() == 4,
@@ -134,7 +134,7 @@ func _run() -> void:
 	menu._choose(menu.rows[0])
 	await settle()
 	check(
-		menu._smb_path == "Video" and menu.rows[0].title == "8k.mp4",
+		menu.sources.smb_path == "Video" and menu.rows[0].title == "8k.mp4",
 		"Shared-folder browsing still resolves playable files"
 	)
 	menu.network.open()
@@ -142,7 +142,7 @@ func _run() -> void:
 	menu._choose(find(menu, "smb_server"))
 	await settle()
 	check(
-		menu._smb_path == "Video" and menu.rows[0].title == "8k.mp4",
+		menu.sources.smb_path == "Video" and menu.rows[0].title == "8k.mp4",
 		"Reopening a source restores its last folder"
 	)
 	menu._activate(Library.BACK)
@@ -329,7 +329,7 @@ func _run() -> void:
 	menu._choose(menu.rows[0])
 	await settle()
 	check(
-		menu.section == Library.Section.SMB and menu._smb_server.is_empty(),
+		menu.section == Library.Section.SMB and menu.sources.smb_server.is_empty(),
 		"Managing shared folders opens the saved-source list"
 	)
 	menu.network.open()

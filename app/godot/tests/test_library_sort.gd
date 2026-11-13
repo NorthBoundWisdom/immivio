@@ -81,9 +81,9 @@ func _run() -> void:
 	]
 	menu.sources.local_stack = [{"id": "/test", "title": "Local"}]
 	menu.sources.local_entries = folders
-	menu._smb_server = "nas"
-	menu._smb_path = "share/test"
-	menu._smb_entries = folders
+	menu.sources.smb_server = "nas"
+	menu.sources.smb_path = "share/test"
+	menu.sources.smb_entries = folders
 	for section in [Menu.Section.LOCAL, Menu.Section.SMB]:
 		menu.section = section
 		menu.refresh()
@@ -110,7 +110,7 @@ func _run() -> void:
 			titles(menu.rows) == ["A2", "A10", "B", "Unknown"],
 			"Actual directory oldest sort works with file management disabled"
 		)
-	menu._smb_path = ""
+	menu.sources.smb_path = ""
 	menu.refresh()
 	check(
 		not menu._buttons.any(func(button): return button.target == Actions.SORT),

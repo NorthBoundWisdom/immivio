@@ -116,10 +116,10 @@ func _run() -> void:
 	menu._cache_due_ms = Time.get_ticks_msec() + 600000
 	menu.sources.local_stack = [{"id": "/padding", "title": "Long folder name for padding"}]
 	menu.sources.local_entries = entries(40)
-	menu._smb_servers = [{"id": "test", "name": "NAS", "host": "padding.invalid"}]
-	menu._smb_server = "test"
-	menu._smb_path = "Movies"
-	menu._smb_entries = entries(40)
+	menu.sources.smb_servers = [{"id": "test", "name": "NAS", "host": "padding.invalid"}]
+	menu.sources.smb_server = "test"
+	menu.sources.smb_path = "Movies"
+	menu.sources.smb_entries = entries(40)
 	menu._dlna_server = "test"
 	menu._dlna_stack = [{"id": "movies", "title": "Movies"}]
 	menu._dlna_entries = entries(40)

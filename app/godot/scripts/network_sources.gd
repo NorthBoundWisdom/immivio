@@ -44,7 +44,7 @@ func load_sources(discover: bool = false) -> void:
 	for request in [["smb_servers", "media_smb_servers"], ["dlna_servers", "media_dlna_servers"]]:
 		if Methods.supports(menu.platform, request[1]):
 			menu.sources.request(request[0], menu.platform.call(request[1]))
-	if discover or menu._smb_found.is_empty():
+	if discover or menu.sources.smb_found.is_empty():
 		if Methods.supports(menu.platform, "media_smb_discover"):
 			menu.sources.request("smb_found", menu.platform.media_smb_discover())
 	if discover or menu._dlna_servers.is_empty():
@@ -88,7 +88,7 @@ func rows() -> Array[Dictionary]:
 	# Saved sources first, then what the local network announces; each list under its own heading.
 	var saved: Array[Dictionary] = []
 	var found: Array[Dictionary] = []
-	for server in menu._smb_servers:
+	for server in menu.sources.smb_servers:
 		saved.append(
 			{
 				"id": "smb:" + str(server.id),
@@ -122,8 +122,10 @@ func rows() -> Array[Dictionary]:
 				"dlna_server": str(server.id)
 			}
 		)
-	for candidate in menu._smb_found:
-		if not menu._smb_servers.any(func(server): return str(server.host) == str(candidate.host)):
+	for candidate in menu.sources.smb_found:
+		if not menu.sources.smb_servers.any(
+			func(server): return str(server.host) == str(candidate.host)
+		):
 			found.append(
 				{
 					"id": "smb-found:" + str(candidate.host),
@@ -181,7 +183,7 @@ func choose(row: Dictionary) -> bool:
 			menu._open_editor({})
 		else:
 			if menu.section == menu.Section.SMB:
-				menu._smb_server = ""
+				menu.sources.smb_server = ""
 			elif menu.section == menu.Section.DLNA:
 				menu._dlna_server = ""
 			menu.sources.load_section()
@@ -189,9 +191,10 @@ func choose(row: Dictionary) -> bool:
 	else:
 		var source := row.duplicate()
 		source.erase("network_section")
-		if source.has("smb_server") and menu._smb_server == str(source.smb_server):
+		if source.has("smb_server") and menu.sources.smb_server == str(source.smb_server):
 			menu.sources.request(
-				"smb_browse", menu.platform.media_smb_browse(menu._smb_server, menu._smb_path)
+				"smb_browse",
+				menu.platform.media_smb_browse(menu.sources.smb_server, menu.sources.smb_path)
 			)
 			menu.refresh()
 		elif source.has("dlna_server") and menu._dlna_server == str(source.dlna_server):

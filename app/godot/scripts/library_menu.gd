@@ -37,7 +37,7 @@ func directory_scope() -> String:
 		Section.LOCAL:
 			return JSON.stringify([section, sources.local_path(), 0])
 		Section.SMB:
-			return JSON.stringify([section, _smb_server, _smb_path, 0])
+			return JSON.stringify([section, sources.smb_server, sources.smb_path, 0])
 		Section.DLNA:
 			return JSON.stringify(
 				[
@@ -247,11 +247,6 @@ var _bar_thumb: MeshInstance3D
 var focus_index := 0  # Desktop keyboard preview only.
 var rows: Array[Dictionary] = []
 var status := ""  # English; shown through I18n
-var _smb_servers: Array = []
-var _smb_found: Array = []
-var _smb_server := ""
-var _smb_path := ""
-var _smb_entries: Array = []
 var _dlna_servers: Array = []
 var _dlna_stack: Array = []  # [{id, title}] containers from the server root
 var _dlna_server := ""
@@ -850,8 +845,8 @@ func _rebuild_rows() -> void:
 					row.icon = "usb" if bool(entry.get("removable", false)) else "device"
 				rows.append(row)
 		Section.SMB:
-			if _smb_server.is_empty():
-				for server in _smb_servers:
+			if sources.smb_server.is_empty():
+				for server in sources.smb_servers:
 					rows.append(
 						{
 							"title": str(server.name),
@@ -860,8 +855,8 @@ func _rebuild_rows() -> void:
 							"smb_server": str(server.id)
 						}
 					)
-				for found in _smb_found:
-					if _smb_servers.any(func(s): return str(s.host) == str(found.host)):
+				for found in sources.smb_found:
+					if sources.smb_servers.any(func(s): return str(s.host) == str(found.host)):
 						continue
 					rows.append(
 						{
@@ -872,7 +867,7 @@ func _rebuild_rows() -> void:
 						}
 					)
 			else:
-				for entry in _smb_entries:
+				for entry in sources.smb_entries:
 					rows.append(_entry_row(entry))
 		Section.DLNA:
 			if _dlna_server.is_empty():
@@ -1507,7 +1502,7 @@ func _activate(target: int) -> void:
 		var current: Array = (
 			_dlna_servers.filter(func(s): return str(s.id) == _dlna_server)
 			if section == Section.DLNA
-			else _smb_servers.filter(func(s): return str(s.id) == _smb_server)
+			else sources.smb_servers.filter(func(s): return str(s.id) == sources.smb_server)
 		)
 		_open_editor(current[0] if current.size() > 0 else {})
 	elif target == GRANT:
@@ -1604,10 +1599,10 @@ func _choose(row: Dictionary) -> void:
 		dismiss()
 		chosen.emit(str(row.uri), str(row.title))
 	elif row.has("smb_server"):
-		_smb_server = str(row.smb_server)
-		_smb_path = ""
-		_smb_entries = []
-		sources.request("smb_browse", platform.media_smb_browse(_smb_server, ""))
+		sources.smb_server = str(row.smb_server)
+		sources.smb_path = ""
+		sources.smb_entries = []
+		sources.request("smb_browse", platform.media_smb_browse(sources.smb_server, ""))
 		scroll = 0.0
 		refresh()
 	elif row.has("smb_found"):
@@ -1627,9 +1622,11 @@ func _choose(row: Dictionary) -> void:
 			sources.local_entries = []
 			sources.load_section()
 		elif section == Section.SMB:
-			_smb_path = str(container.id)
-			_smb_entries = []
-			sources.request("smb_browse", platform.media_smb_browse(_smb_server, _smb_path))
+			sources.smb_path = str(container.id)
+			sources.smb_entries = []
+			sources.request(
+				"smb_browse", platform.media_smb_browse(sources.smb_server, sources.smb_path)
+			)
 		else:
 			_dlna_stack.append({"id": str(container.id), "title": str(container.title)})
 			_dlna_entries = []
@@ -1676,13 +1673,17 @@ func _go_back() -> void:
 		sources.local_entries = []
 		sources.load_section()
 	elif section == Section.SMB:
-		if _smb_path.is_empty():
+		if sources.smb_path.is_empty():
 			network.open()
 			return
 		else:
-			_smb_path = _smb_path.get_base_dir() if _smb_path.contains("/") else ""
-			_smb_entries = []
-			sources.request("smb_browse", platform.media_smb_browse(_smb_server, _smb_path))
+			sources.smb_path = (
+				sources.smb_path.get_base_dir() if sources.smb_path.contains("/") else ""
+			)
+			sources.smb_entries = []
+			sources.request(
+				"smb_browse", platform.media_smb_browse(sources.smb_server, sources.smb_path)
+			)
 	elif section == Section.DLNA:
 		if _dlna_stack.is_empty():
 			network.open()
@@ -1715,15 +1716,16 @@ func _crumbs() -> Array:
 				)
 			)
 		Section.SMB:
-			if _smb_server.is_empty():
+			if sources.smb_server.is_empty():
 				return []
 			var names: Array = (
-				_smb_servers
-				. filter(func(s): return str(s.id) == _smb_server)
+				sources
+				. smb_servers
+				. filter(func(s): return str(s.id) == sources.smb_server)
 				. map(func(s): return str(s.name))
 			)
 			var parts: Array = [str(names[0]) if names.size() > 0 else "SMB"]
-			for part in _smb_path.split("/", false):
+			for part in sources.smb_path.split("/", false):
 				parts.append(part)
 			return parts
 		Section.DLNA:
@@ -1756,9 +1758,11 @@ func _go_to(level: int) -> void:
 			sources.local_entries = []
 			sources.load_section()
 		Section.SMB:
-			_smb_path = "/".join(_smb_path.split("/", false).slice(0, level))
-			_smb_entries = []
-			sources.request("smb_browse", platform.media_smb_browse(_smb_server, _smb_path))
+			sources.smb_path = "/".join(sources.smb_path.split("/", false).slice(0, level))
+			sources.smb_entries = []
+			sources.request(
+				"smb_browse", platform.media_smb_browse(sources.smb_server, sources.smb_path)
+			)
 		Section.DLNA:
 			_dlna_stack.resize(level)
 			_dlna_entries = []
@@ -1889,8 +1893,8 @@ func _editor_input(target: int) -> void:
 	elif target == DELETE:
 		if platform and not str(_editor.id).is_empty():
 			sources.request("smb_servers", platform.media_smb_remove(str(_editor.id)))
-			if _smb_server == str(_editor.id):
-				_smb_server = ""
+			if sources.smb_server == str(_editor.id):
+				sources.smb_server = ""
 		_editor = {}
 	elif target == SAVE:
 		if str(_editor.host).strip_edges().is_empty():
@@ -1907,7 +1911,7 @@ func _editor_input(target: int) -> void:
 			sources.request("smb_servers", id)
 			if network.mode == "add":
 				network.save_request = id
-			_smb_server = ""
+			sources.smb_server = ""
 			_editor = {}
 	refresh()
 
@@ -2107,7 +2111,7 @@ func _draw() -> void:
 			_button(
 				EDIT, "", Vector2(CONTENT_RIGHT - .155, HEADER_Y), Vector2(0.09, 0.07), true, "edit"
 			)
-	if section == Section.SMB and _smb_server.is_empty():
+	if section == Section.SMB and sources.smb_server.is_empty():
 		_button(
 			ADD,
 			"",
@@ -2116,7 +2120,7 @@ func _draw() -> void:
 			platform != null,
 			"plus"
 		)
-	if section == Section.SMB and not _smb_server.is_empty():
+	if section == Section.SMB and not sources.smb_server.is_empty():
 		_button(
 			EDIT, "", Vector2(CONTENT_RIGHT - .155, HEADER_Y), Vector2(0.09, 0.07), true, "edit"
 		)
@@ -2226,16 +2230,17 @@ func _header_title() -> String:
 		Section.LOCAL:
 			return " / ".join(sources.local_stack.map(func(c): return str(c.title)))
 		Section.SMB:
-			if _smb_server.is_empty():
+			if sources.smb_server.is_empty():
 				return ""
 			var names: Array = (
-				_smb_servers
-				. filter(func(s): return str(s.id) == _smb_server)
+				sources
+				. smb_servers
+				. filter(func(s): return str(s.id) == sources.smb_server)
 				. map(func(s): return str(s.name))
 			)
 			return (
 				(str(names[0]) if names.size() > 0 else "SMB")
-				+ ("" if _smb_path.is_empty() else " / " + _smb_path)
+				+ ("" if sources.smb_path.is_empty() else " / " + sources.smb_path)
 			)
 		Section.DLNA:
 			if _dlna_server.is_empty():
@@ -3072,33 +3077,3 @@ var source_editor: Variant:
 		return _editor
 	set(value):
 		_editor = value
-
-var source_smb_entries: Array:
-	get:
-		return _smb_entries
-	set(value):
-		_smb_entries = value
-
-var source_smb_found: Array:
-	get:
-		return _smb_found
-	set(value):
-		_smb_found = value
-
-var source_smb_path: Variant:
-	get:
-		return _smb_path
-	set(value):
-		_smb_path = value
-
-var source_smb_server: Variant:
-	get:
-		return _smb_server
-	set(value):
-		_smb_server = value
-
-var source_smb_servers: Array:
-	get:
-		return _smb_servers
-	set(value):
-		_smb_servers = value

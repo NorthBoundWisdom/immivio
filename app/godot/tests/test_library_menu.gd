@@ -460,7 +460,7 @@ func _run() -> void:
 	menu._activate(Menu.BACK)
 	await settle()
 	check(
-		menu._smb_path == "" and titles(menu) == ["Video"],
+		menu.sources.smb_path == "" and titles(menu) == ["Video"],
 		"Back from a share returns to the share list"
 	)
 	# Editor: typing with the ray keyboard, shift, backspace, save.

@@ -14,6 +14,11 @@ var local_grant_pending: bool = false
 var local_volumes: Array = []
 var local_eject_pending: String = ""
 var local_release_notice: bool = false
+var smb_servers: Array = []
+var smb_found: Array = []
+var smb_server: String = ""
+var smb_path: String = ""
+var smb_entries: Array = []
 
 
 func _init(host: Node3D) -> void:
@@ -140,10 +145,7 @@ func receive(id: int, payload: String) -> void:
 	if (
 		kind == "smb_browse"
 		and result.has("server_id")
-		and (
-			str(result.get("server_id")) != host.source_smb_server
-			or str(result.get("path")) != host.source_smb_path
-		)
+		and (str(result.get("server_id")) != smb_server or str(result.get("path")) != smb_path)
 	):
 		return
 	if (
@@ -193,15 +195,15 @@ func receive(id: int, payload: String) -> void:
 						if host.section == Section.LOCAL:
 							host.status = "App access stopped. Use system settings before unplugging."
 			"smb_servers":
-				host.source_smb_servers = result.get("servers", [])
+				smb_servers = result.get("servers", [])
 			"smb_found":
-				host.source_smb_found = result.get("discovered", [])
+				smb_found = result.get("discovered", [])
 			"smb_browse":
 				if (
-					str(result.get("server_id")) == host.source_smb_server
-					and str(result.get("path")) == host.source_smb_path
+					str(result.get("server_id")) == smb_server
+					and str(result.get("path")) == smb_path
 				):
-					host.source_smb_entries = result.get("entries", [])
+					smb_entries = result.get("entries", [])
 			"dlna_servers", "dlna_discover", "dlna_save", "dlna_remove":
 				host.source_dlna_servers = result.get("servers", [])
 				if (
@@ -257,7 +259,7 @@ func load_section() -> void:
 			# Always read again: files change, and access may have just been granted in settings.
 			request("local", host.platform.media_local_browse(local_path()))
 		Section.SMB:
-			if host.source_smb_server.is_empty():
+			if smb_server.is_empty():
 				request("smb_servers", host.platform.media_smb_servers())
 		Section.DLNA:
 			if host.source_dlna_server.is_empty():
@@ -290,13 +292,10 @@ func refresh_source() -> void:
 			local_grant_pending = false  # Also recovers when a VR settings overlay sends no resume.
 			local_eject_pending = ""
 		Section.SMB:
-			if host.source_smb_server.is_empty():
+			if smb_server.is_empty():
 				request("smb_found", host.platform.media_smb_discover())
 			else:
-				request(
-					"smb_browse",
-					host.platform.media_smb_browse(host.source_smb_server, host.source_smb_path)
-				)
+				request("smb_browse", host.platform.media_smb_browse(smb_server, smb_path))
 		Section.DLNA:
 			if host.source_dlna_server.is_empty():
 				request("dlna_discover", host.platform.media_dlna_discover())

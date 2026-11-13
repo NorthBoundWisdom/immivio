@@ -137,8 +137,8 @@ func prepare_navigation(
 		if populated
 		else []
 	)
-	menu._smb_server = ""
-	menu._smb_servers = (
+	menu.sources.smb_server = ""
+	menu.sources.smb_servers = (
 		[{"id": "warmup-smb", "name": "SMB", "host": "warmup.invalid"}] if populated else []
 	)
 	menu._dlna_server = ""
