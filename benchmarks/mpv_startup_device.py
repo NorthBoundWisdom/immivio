@@ -142,7 +142,7 @@ def main():
         "scope": "Normal VR libmpv/Godot binding, excluding process boot before the open request and compositor; USB HTTP excludes real Wi-Fi/NAS/auth latency",
     }
     server = None
-    options = device.run("shell", "getprop", "debug.vrpp.mpv.opts").strip()
+    options = device.run("shell", "getprop", "debug.immivio.mpv.opts").strip()
 
     def save():
         return (directory / "result.json").write_text(
@@ -151,7 +151,7 @@ def main():
 
     try:
         if args.mpv_options is not None:
-            device.run("shell", "setprop", "debug.vrpp.mpv.opts", args.mpv_options)
+            device.run("shell", "setprop", "debug.immivio.mpv.opts", args.mpv_options)
         if args.original:
             server = MediaServer(args.original, args.rate_mib)
             threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -302,7 +302,7 @@ def main():
             device.run(
                 "shell",
                 "setprop",
-                "debug.vrpp.mpv.opts",
+                "debug.immivio.mpv.opts",
                 options or '""',
                 optional=True,
             )

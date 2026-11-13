@@ -255,6 +255,28 @@ are no longer read. Debug and Release use the same opaque capture path,
 unlimited native cadence and borrowed producer color.
 
 
+### Debug system properties
+
+The native Debug playback core and render bridge read the `debug.immivio.*`
+namespace. These values are read during native core/renderer initialization;
+reopen the source to apply changes. Kotlin does not read these properties.
+
+| Property | Meaning / default |
+| --- | --- |
+| `debug.immivio.mpv.max_width` | Debug color-width cap; `0` keeps source width |
+| `debug.immivio.mpv.pool` | `expand` disables ready-slot reuse; reuse is the default |
+| `debug.immivio.mpv.gpu_frames` | GPU frame queue limit; default `2` |
+| `debug.immivio.mpv.seek_trace` | `1` enables native seek traces; off by default |
+| `debug.immivio.mpv.seek_tail_ms` | Seek-trace tail; default `250`, overrides clamped to 250–5000 ms |
+| `debug.immivio.mpv.opts` | Comma-separated libmpv `name=value` overrides; empty by default |
+| `debug.immivio.mpv.log` | `no`, `fatal`, `error`, `warn`, `info`, `v`, `debug` or `trace`; Debug defaults to `info` |
+| `debug.immivio.bridge.opaque_fast` | `no` disables the cached opaque-state fast path; on by default |
+
+For example, `adb shell setprop debug.immivio.mpv.seek_trace 1` enables the
+native seek trace for a newly opened source. The playback/startup device probes
+save and restore the properties they modify. Release builds do not read these
+Debug overrides.
+
 ### External URI grant automation
 
 The URI fixture is excluded from the default Gradle graph and every ordinary

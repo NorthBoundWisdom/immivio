@@ -156,13 +156,15 @@ def measure(args):
     server = MediaServer(args.original, 0)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     port = server.server_address[1]
-    previous_log = device.run("shell", "getprop", "debug.vrpp.mpv.log").strip()
-    previous_pool = device.run("shell", "getprop", "debug.vrpp.mpv.pool").strip()
-    previous_options = device.run("shell", "getprop", "debug.vrpp.mpv.opts").strip()
+    previous_log = device.run("shell", "getprop", "debug.immivio.mpv.log").strip()
+    previous_pool = device.run("shell", "getprop", "debug.immivio.mpv.pool").strip()
+    previous_options = device.run("shell", "getprop", "debug.immivio.mpv.opts").strip()
     previous_opaque = device.run(
-        "shell", "getprop", "debug.vrpp.bridge.opaque_fast"
+        "shell", "getprop", "debug.immivio.bridge.opaque_fast"
     ).strip()
-    previous_gpu = device.run("shell", "getprop", "debug.vrpp.mpv.gpu_frames").strip()
+    previous_gpu = device.run(
+        "shell", "getprop", "debug.immivio.mpv.gpu_frames"
+    ).strip()
     result["mpv_log_level"] = args.mpv_log_level or previous_log or "info"
     result["producer_pool"] = args.producer_pool
     result["mpv_options"] = (
@@ -200,13 +202,13 @@ def measure(args):
         )
 
     try:
-        set_property("debug.vrpp.mpv.pool", args.producer_pool)
-        set_property("debug.vrpp.bridge.opaque_fast", args.opaque_fast)
-        set_property("debug.vrpp.mpv.gpu_frames", str(args.gpu_frames))
+        set_property("debug.immivio.mpv.pool", args.producer_pool)
+        set_property("debug.immivio.bridge.opaque_fast", args.opaque_fast)
+        set_property("debug.immivio.mpv.gpu_frames", str(args.gpu_frames))
         if args.mpv_options is not None:
-            set_property("debug.vrpp.mpv.opts", args.mpv_options)
+            set_property("debug.immivio.mpv.opts", args.mpv_options)
         if args.mpv_log_level:
-            set_property("debug.vrpp.mpv.log", args.mpv_log_level)
+            set_property("debug.immivio.mpv.log", args.mpv_log_level)
         device.run("reverse", f"tcp:{port}", f"tcp:{port}")
         previous_scene = scene_marker()
         device.run("shell", "am", "force-stop", PACKAGE)
@@ -576,12 +578,12 @@ def measure(args):
                 result["state"] = "failed"
         device.run("reverse", "--remove", f"tcp:{port}", optional=True)
         if args.mpv_log_level:
-            set_property("debug.vrpp.mpv.log", previous_log, optional=True)
+            set_property("debug.immivio.mpv.log", previous_log, optional=True)
         if args.mpv_options is not None:
-            set_property("debug.vrpp.mpv.opts", previous_options, optional=True)
-        set_property("debug.vrpp.mpv.pool", previous_pool, optional=True)
-        set_property("debug.vrpp.bridge.opaque_fast", previous_opaque, optional=True)
-        set_property("debug.vrpp.mpv.gpu_frames", previous_gpu, optional=True)
+            set_property("debug.immivio.mpv.opts", previous_options, optional=True)
+        set_property("debug.immivio.mpv.pool", previous_pool, optional=True)
+        set_property("debug.immivio.bridge.opaque_fast", previous_opaque, optional=True)
+        set_property("debug.immivio.mpv.gpu_frames", previous_gpu, optional=True)
         server.shutdown()
         server.server_close()
         result["http_requests"] = server.requests

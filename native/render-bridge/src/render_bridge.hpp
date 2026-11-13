@@ -29,7 +29,7 @@ struct Bridge final {
     State state;
 #ifndef NDEBUG
     char fast[PROP_VALUE_MAX] = {};
-    if (__system_property_get("debug.vrpp.bridge.opaque_fast", fast) > 0)
+    if (__system_property_get("debug.immivio.bridge.opaque_fast", fast) > 0)
       opaque_state_fast = std::string(fast) != "no";
 #endif
     GLint maximum = 0;

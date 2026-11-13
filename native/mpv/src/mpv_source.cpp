@@ -534,22 +534,22 @@ struct Source final {
 #ifndef NDEBUG
       {
         char value[PROP_VALUE_MAX] = {};
-        if (__system_property_get("debug.vrpp.mpv.max_width", value) > 0)
+        if (__system_property_get("debug.immivio.mpv.max_width", value) > 0)
           max_output_width.store(std::max(0, atoi(value)));
-        if (__system_property_get("debug.vrpp.mpv.pool", value) > 0)
+        if (__system_property_get("debug.immivio.mpv.pool", value) > 0)
           reuse_ready_slots.store(std::string(value) != "expand");
-        if (__system_property_get("debug.vrpp.mpv.gpu_frames", value) > 0)
+        if (__system_property_get("debug.immivio.mpv.gpu_frames", value) > 0)
           max_gpu_frames.store(std::max(0, atoi(value)));
-        if (__system_property_get("debug.vrpp.mpv.seek_trace", value) > 0)
+        if (__system_property_get("debug.immivio.mpv.seek_trace", value) > 0)
           debug_seek_trace = std::string(value) == "1";
-        if (__system_property_get("debug.vrpp.mpv.seek_tail_ms", value) > 0)
+        if (__system_property_get("debug.immivio.mpv.seek_tail_ms", value) > 0)
           debug_seek_tail_us = static_cast<int64_t>(std::clamp(atoi(value), 250, 5000)) * 1000;
       }
       // Debug-only A/B of render options for GPU profiling, e.g.
-      // adb shell setprop debug.vrpp.mpv.opts
+      // adb shell setprop debug.immivio.mpv.opts
       // gpu-dumb-mode=yes,fbo-format=rgba8
       char overrides[PROP_VALUE_MAX] = {};
-      if (__system_property_get("debug.vrpp.mpv.opts", overrides) > 0) {
+      if (__system_property_get("debug.immivio.mpv.opts", overrides) > 0) {
         std::string list = overrides;
         size_t start = 0;
         while (start < list.size()) {
@@ -572,7 +572,7 @@ struct Source final {
 #ifndef NDEBUG
       char requested_log_level[PROP_VALUE_MAX] = {};
       log_level = "info"; // Retain decoder selection/fallback evidence in Debug builds.
-      if (__system_property_get("debug.vrpp.mpv.log", requested_log_level) > 0) {
+      if (__system_property_get("debug.immivio.mpv.log", requested_log_level) > 0) {
         const std::string requested = requested_log_level;
         if (requested == "no" || requested == "fatal" || requested == "error" ||
             requested == "warn" || requested == "info" || requested == "v" ||
