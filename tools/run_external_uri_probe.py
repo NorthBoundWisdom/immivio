@@ -187,7 +187,7 @@ def main():
     if args.timeout <= 0:
         parser.error("--timeout must be positive")
     output = output_directory(args.output, "external-uri")
-    device = Device(args.adb, args.serial, output)
+    device = Device(args.adb, args.serial, output, port=args.port)
     try:
         expected = json.loads(
             (ROOT / "tests/fixtures/mp03_frame_identity.json").read_text()

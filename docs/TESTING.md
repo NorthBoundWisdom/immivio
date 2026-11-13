@@ -174,6 +174,48 @@ Playback popup continuity: `test_playback_popup_continuity.gd` checks transport 
 
 ## Device probes and local media
 
+### macOS headset discovery when only an emulator appears
+
+Do not conclude that the cable is disconnected from `adb devices` or an empty
+`system_profiler SPUSBDataType` alone. On this host, System Profiler returned an
+empty USB tree while IORegistry still showed a connected PICO 4:
+
+```sh
+ioreg -p IOUSB -l -w0 | rg 'USB Product Name|USB Serial Number|UsbExclusiveOwner'
+lsof -nP -iTCP -sTCP:LISTEN | rg adb
+ps -axo pid,command | rg '[a]db'
+```
+
+Check each **observed** ADB server port with `adb -P PORT devices -l` and
+`adb -P PORT server-status`. An emulator and a headset can belong to different
+servers. Keep the selected port on every subsequent command; all current Python
+device probes accept `--port`. Do not reuse a historical port or serial without
+checking it in this run.
+
+If IORegistry sees the headset but ADB does not, inspect `UsbExclusiveOwner` and
+the server log path reported by `server-status`. `Could not open interface:
+e00002c5` or `LIBUSB_ERROR_ACCESS` indicates an interface access/ownership failure;
+it does not by itself mean USB debugging was denied. Additional servers can also
+compete for the same USB interface. Do not stop another task's server or emulator.
+Stop redundant servers created by your own diagnostic attempt before retrying.
+
+A dedicated libusb server was verified as a recovery path on 2026-11-13. Choose a
+free port and the serial actually reported by IORegistry, then run in a separate
+terminal (it stays in the foreground):
+
+```sh
+ADB_LIBUSB=1 adb -L tcp:5042 --one-device SERIAL server nodaemon
+# In another terminal:
+adb -P 5042 devices -l
+adb -P 5042 -s SERIAL shell getprop ro.product.model
+```
+
+The example port is not a project default. A server that has already failed to
+claim the interface may need a USB reconnect after competing ownership is
+released. Confirm the exact serial reaches `device` before installing or sending
+probes. An `unauthorized` result requires accepting USB debugging in the headset.
+After the run, stop only the dedicated server you started.
+
 All device probes use `tools/device_probe.py` for ADB selection/quoting, installed
 APK SHA-256 checks, unique request keys, process identity, bounded waits and JSON
 evidence. Choose the device with `--serial` and optionally `--port`. Supply the

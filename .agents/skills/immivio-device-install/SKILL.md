@@ -20,6 +20,7 @@ adb devices -l
 
 - 記下這次修改與新增素材。版本號相同不代表已安裝內容相同；不要拿上一次的 APK 當成本次最新版本。
 - 從本次 `adb devices -l` 選出實際目標，把序號存入 `DEVICE_SERIAL`，並 `export ANDROID_SERIAL="$DEVICE_SERIAL"`。後續直接操作 adb 時一律使用 `-s "$DEVICE_SERIAL"`，不沿用歷史序號。
+- macOS 上預設 ADB 只見模擬器時，先依 [ADB 裝置排查](../../../docs/TESTING.md#macos-headset-discovery-when-only-an-emulator-appears) 檢查 IORegistry、既有服務埠與 USB 介面占用；`system_profiler` 空清單不足以判定未插線。選定非預設埠後，每次 adb 都帶相同 `-P`，Python 探針帶 `--port`，不要停止其他工作的服務。
 - 只有一台已授權真機且符合使用者要求時直接使用；多台裝置而目標不明時再請使用者選擇。`unauthorized`、`offline` 或無裝置時，說明需要在頭顯允許 USB 偵錯或重新連線，等待恢復後繼續。
 - 依裝置設定 `DEVICE_VENDOR` 為 `Pico`、`Quest` 或 `OpenXR`。不明時以 `adb -s "$DEVICE_SERIAL" shell getprop ro.product.manufacturer` 等裝置資訊確認，避免把 Quest 預設建置裝到 PICO。
 - 一般本機驗證設定 `BUILD_TYPE=Debug`、`DIST_CHANNEL=appstore`；依使用者指定保留 Release、web 或既有開發包選擇。每個階段使用相同參數。`appstore` 是發行通道，不代表本次要上架；Debug 包不是商店提交包。

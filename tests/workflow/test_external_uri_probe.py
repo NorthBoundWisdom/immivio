@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 
 from tools import run_external_uri_probe as driver
@@ -178,3 +179,31 @@ class ExternalUriProbe(unittest.TestCase):
         self.assertEqual(result["state"], "failed")
         self.assertTrue(result["cleanup_revoked"])
         self.assertFalse(result["fixture_uninstalled"])
+
+
+class ExternalUriCli(unittest.TestCase):
+    def test_selected_adb_port_reaches_the_device(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            with (
+                patch.object(
+                    driver.sys,
+                    "argv",
+                    [
+                        "probe",
+                        "--serial",
+                        "pico",
+                        "--port",
+                        "5042",
+                        "--apk",
+                        "player.apk",
+                        "--fixture-apk",
+                        "fixture.apk",
+                    ],
+                ),
+                patch.object(driver, "output_directory", return_value=output),
+                patch.object(driver, "Device") as device,
+                patch.object(driver, "run_probe"),
+            ):
+                self.assertEqual(driver.main(), 0)
+                device.assert_called_once_with("adb", "pico", output, port=5042)

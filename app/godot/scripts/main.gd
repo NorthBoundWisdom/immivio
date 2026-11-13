@@ -1148,14 +1148,16 @@ func _on_display_debug_command(_id: int, payload: String) -> void:
 		selected_features_probe_result = await probe.run(
 			self, str(command.step), str(command.request_key)
 		)
-		video._write_debug_report()
+		if video.diagnostics:
+			video.diagnostics.write_report()
 	elif operation == "seek_policy_ui" and OS.is_debug_build():
 		var probe := preload("res://scripts/seek_policy_device_probe.gd").new()
 		seek_policy_probe_result = await probe.run(
 			self, str(command.step), str(command.get("marker_id", ""))
 		)
 		seek_policy_probe_result.request_key = str(command.request_key)
-		video._write_debug_report()
+		if video.diagnostics:
+			video.diagnostics.write_report()
 	elif operation in ["display_quality", "sharpness"]:
 		_on_setting_changed(operation, command.get("value", 0))
 	elif operation in ["restart_app", "quit_app"] and OS.is_debug_build():

@@ -11,6 +11,7 @@ android {
     buildFeatures { buildConfig true }
     sourceSets.main.assets.setSrcDirs(['../../third_party'])
     sourceSets.main.assets.srcDir '../../app/godot/i18n'
+    sourceSets.debug.assets.srcDir layout.buildDirectory.dir('generated/diagnostic-assets').get().asFile
     defaultConfig {
         minSdk androidMinSdk.toInteger()
         consumerProguardFiles 'consumer-rules.pro'
@@ -93,3 +94,15 @@ dependencies {
     // supplies Fragment 1.8.6; compile only, never package another host framework.
     debugCompileOnly libs.fragment
 }
+
+// Native diagnostics read Android assets directly; Godot excludes media from exports.
+// Keep the small project-owned clips in Debug only, at the paths used by the probes.
+def diagnosticAssets = tasks.register('diagnosticAssets', Sync) {
+    from('../../app/godot/media') {
+        include 'c03_sbs_grid.mp4', 'c04_alpha_f180.mp4', 'c04_independent_alpha.mp4'
+        include 'mp03_frame_identity.mp4', 'mp06_audio_clock.mp4'
+        into 'media'
+    }
+    into(layout.buildDirectory.dir('generated/diagnostic-assets'))
+}
+tasks.matching { it.name == 'preDebugBuild' }.configureEach { dependsOn diagnosticAssets }
