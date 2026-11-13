@@ -4,17 +4,17 @@ var failures: Array[String] = []
 var checks := 0
 
 
-class RecenterMain:
-	extends Main
+class TestInputSource:
+	extends "res://scripts/input_source.gd"
 	var tracked := true
 	var centres := 0
 
-	func _head_tracked() -> bool:
+	func head_tracked() -> bool:
 		return tracked
 
-	func _recenter() -> void:
+	func recenter() -> void:
 		centres += 1
-		super._recenter()
+		super.recenter()
 
 
 func check(value: bool, message: String) -> void:
@@ -38,7 +38,8 @@ func _initialize() -> void:
 
 
 func _run() -> void:
-	var main := RecenterMain.new()
+	var main := Main.new()
+	main.input_source = TestInputSource.new(main)
 	main.settings_path = "user://home-ring-%d.cfg" % Time.get_ticks_usec()
 	root.add_child(main)
 	main.set_process(false)
@@ -60,7 +61,7 @@ func _run() -> void:
 						Basis.from_euler(Vector3(pitch, .9, .2)), Vector3(.4, 1.7, -.3)
 					)
 					main.xr_camera.global_transform = pose
-					var before := main.centres
+					var before: int = main.input_source.centres
 					home(main)
 					var centre: Vector2 = menu.capture_envelope().get_center()
 					var offset: Vector3 = (
@@ -71,7 +72,10 @@ func _run() -> void:
 						* main.presentation_coordinator.window_height
 					)
 					check(
-						main.centres == before + 1 and not main._system_recenter_pending,
+						(
+							main.input_source.centres == before + 1
+							and not main._system_recenter_pending
+						),
 						"Updated tracking is used synchronously for Home"
 					)
 					check(
@@ -90,7 +94,7 @@ func _run() -> void:
 					main._apply_system_recenter()
 					check(
 						(
-							main.centres == before + 1
+							main.input_source.centres == before + 1
 							and menu.global_transform.is_equal_approx(fixed)
 							and menu.visible
 						),
@@ -98,31 +102,31 @@ func _run() -> void:
 					)
 	main.library_distance = 1.9
 	main.display.session_state = "session_visible"
-	var before := main.centres
+	var before: int = main.input_source.centres
 	var fixed := menu.global_transform
 	home(main)
 	main._apply_system_recenter()
 	check(
 		(
 			main._system_recenter_pending
-			and main.centres == before
+			and main.input_source.centres == before
 			and menu.global_transform.is_equal_approx(fixed)
 		),
 		"System focus loss defers one placement without moving content"
 	)
 	main.display.session_state = "session_focussed"
-	main.tracked = false
+	main.input_source.tracked = false
 	main._apply_system_recenter()
 	check(
-		main.centres == before and main._system_recenter_pending,
+		main.input_source.centres == before and main._system_recenter_pending,
 		"Tracking loss cannot use a world-origin fallback"
 	)
-	main.tracked = true
+	main.input_source.tracked = true
 	main._apply_system_recenter()
 	var centre: Vector2 = menu.capture_envelope().get_center()
 	check(
 		(
-			main.centres == before + 1
+			main.input_source.centres == before + 1
 			and is_equal_approx(
 				(
 					(
@@ -140,7 +144,7 @@ func _run() -> void:
 		"Recovered tracking applies once and retains manual distance"
 	)
 	main._apply_system_recenter()
-	check(main.centres == before + 1, "Subsequent frames do not repeat the placement")
+	check(main.input_source.centres == before + 1, "Subsequent frames do not repeat the placement")
 	main.queue_free()
 	await process_frame
 	for failure in failures:

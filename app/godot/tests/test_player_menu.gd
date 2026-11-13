@@ -10,11 +10,11 @@ var checks := 0
 var failures: Array[String] = []
 
 
-class InputMain:
-	extends "res://scripts/main.gd"
+class TestInputSource:
+	extends "res://scripts/input_source.gd"
 	var test_rays := {}
 
-	func _ray(hand: String) -> Variant:
+	func ray(hand: String) -> Variant:
 		return test_rays.get(hand)
 
 
@@ -280,7 +280,8 @@ func _run() -> void:
 	root.add_child(video)
 	video.set_process(false)
 	video.platform = host
-	var main := InputMain.new()
+	var main := Main.new()
+	main.input_source = TestInputSource.new(main)
 	main.settings_path = directory.path_join("settings.cfg")
 	main.video = video
 	video.mode_lock_changed.connect(main._on_mode_lock_changed.bind("video"))
@@ -835,7 +836,7 @@ func _run() -> void:
 		click(menu, Menu.MODE_PROJECTION + 1) and video.geometry == 1,
 		"Projection tile sets actual video geometry"
 	)
-	main._recenter()
+	main.input_source.recenter()
 	check(not shown.call(108), "Recenter is reserved for Home and no longer occupies the toolbar")
 	var layout_calls := host.calls.size()
 	check(
@@ -1328,7 +1329,7 @@ func _check_control_sticks(main: Node3D, video: Node3D, menu: Node3D, host: RefC
 	main._process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
 	var origin: Vector3 = menu.to_global(Vector3(0, -0.08, 0.1))
 	var direction: Vector3 = -menu.global_basis.z
-	main.test_rays.left_hand = [origin, direction]
+	main.input_source.test_rays.left_hand = [origin, direction]
 	main.stick_controls.right_zooming = true
 	check(
 		main._update_menu_pointer("left_hand", true),
@@ -1348,7 +1349,7 @@ func _check_control_sticks(main: Node3D, video: Node3D, menu: Node3D, host: RefC
 		"Timeline drag blocks the other stick without submitting the preview"
 	)
 	menu.release_pointer("left_hand", origin, direction, true)
-	main.test_rays.clear()
+	main.input_source.test_rays.clear()
 	calls = host.calls.size()
 	main._process_sticks(Vector2.ZERO, Vector2(.99, 0), 0.1)
 	check(
@@ -1368,9 +1369,9 @@ func _check_control_sticks(main: Node3D, video: Node3D, menu: Node3D, host: RefC
 		"Bookmark press also captures playback input"
 	)
 	menu.bookmarks.capture.clear()
-	main.test_rays.left_hand = [origin, direction]
+	main.input_source.test_rays.left_hand = [origin, direction]
 	main._update_menu_pointer("left_hand", true)
-	main.test_rays.clear()
+	main.input_source.test_rays.clear()
 	main._process_sticks(Vector2.ZERO, Vector2(.99, 0), 0.1)
 	check(
 		menu._seek_hand.is_empty() and host.calls.size() == calls,
@@ -1414,13 +1415,13 @@ func _check_control_sticks(main: Node3D, video: Node3D, menu: Node3D, host: RefC
 	main._process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
 	check(menu.visible, "Waiting for a new source frame keeps controls visible")
 	video.control.reject()
-	main.test_rays.right_hand = [menu.to_global(Vector3(0, 0.025, 0.1)), direction]
+	main.input_source.test_rays.right_hand = [menu.to_global(Vector3(0, 0.025, 0.1)), direction]
 	main._process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
 	check(
 		menu.visible and Time.get_ticks_msec() - main.menu_touched_ms < 1000,
 		"A real button hover resets the idle timer"
 	)
-	main.test_rays.clear()
+	main.input_source.test_rays.clear()
 	main.menu_touched_ms = Time.get_ticks_msec() - main.CONTROLS_HIDE_MS - 1
 	main._process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
 	check(

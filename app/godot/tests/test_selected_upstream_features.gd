@@ -6,11 +6,11 @@ const Presets := preload("res://scripts/screen_presets.gd")
 var failures: Array[String] = []
 
 
-class PreviewMain:
-	extends "res://scripts/main.gd"
+class TestInputSource:
+	extends "res://scripts/input_source.gd"
 	var ray_override: Variant = null
 
-	func _ray(_hand: String) -> Variant:
+	func ray(_hand: String) -> Variant:
 		return ray_override
 
 
@@ -94,7 +94,8 @@ func _run() -> void:
 	)
 	library.queue_free()
 	await process_frame
-	var main := PreviewMain.new()
+	var main := Main.new()
+	main.input_source = TestInputSource.new(main)
 	root.add_child(main)
 	main.set_process(false)
 	main.video.local_uri = "file:///synthetic.mp4"
@@ -192,7 +193,7 @@ func _run() -> void:
 	)
 	var speed: Dictionary = bar._buttons.filter(func(button): return button.target == bar.QUICK_SPEED)[0]
 	var centre: Vector2 = speed.rect.get_center()
-	main.ray_override = [
+	main.input_source.ray_override = [
 		bar.to_global(Vector3(centre.x, centre.y, 0.2)), -bar.global_basis.z.normalized()
 	]
 	main._update_menu_pointer("right_hand", true)

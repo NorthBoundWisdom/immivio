@@ -25,6 +25,9 @@ const FpsOverlay := preload("res://scripts/fps_overlay.gd")
 const Background := preload("res://scripts/app_background.gd")
 const ViewFollow := preload("res://scripts/view_follow.gd")
 
+const InputSource := preload("res://scripts/input_source.gd")
+var input_source := InputSource.new(self)
+
 const InputCoordinator := preload("res://scripts/input_coordinator.gd")
 var input_coordinator := InputCoordinator.new(self)
 
@@ -347,7 +350,7 @@ func _ready() -> void:
 	library_menu.queue_requested.connect(_queue_action)
 	library_menu.setting_changed.connect(_on_setting_changed)
 	library_menu.setting_previewed.connect(_on_playback_adjustment)
-	library_menu.recenter_requested.connect(_recenter)
+	library_menu.recenter_requested.connect(input_source.recenter)
 	_connect_session_controls(library_menu)
 	add_child(library_menu)
 	if Engine.has_singleton("QuestPlayer"):
@@ -488,10 +491,6 @@ var _head_placed: bool:
 		presentation_coordinator._head_placed = value
 
 
-func _head_tracked() -> bool:
-	return presentation_coordinator._head_tracked()
-
-
 func _on_system_recentered() -> void:
 	presentation_coordinator._on_system_recentered()
 
@@ -528,10 +527,10 @@ func _process(delta: float) -> void:
 		display.set_flat_surface_visible(
 			viewer().panel.visible and viewer().geometry == Geometry.Geometry.FLAT
 		)
-	if not _head_placed and _head_tracked():
+	if not _head_placed and input_source.head_tracked():
 		_head_placed = true
 		if not view_follow.enabled:
-			_recenter()
+			input_source.recenter()
 	if video and viewer().local_uri != _screen_uri:
 		_screen_uri = viewer().local_uri
 		if not _screen_uri.is_empty():
@@ -554,10 +553,13 @@ func _picture_center_sample() -> Dictionary:
 		or video.geometry == 0
 		or (not video.panel)
 		or (not video.panel.visible)
-		or (not _input_focused())
+		or (not input_source.input_focused())
 		or (
-			_active_menu()
-			and (_active_menu() != player_menu or not player_menu.allows_playback_sticks())
+			input_source.active_menu()
+			and (
+				input_source.active_menu() != player_menu
+				or not player_menu.allows_playback_sticks()
+			)
 		)
 	):
 		return {}
@@ -589,18 +591,6 @@ func _update_controls_visibility(menu: Node3D) -> void:
 
 func _stick(controller: XRController3D) -> Vector2:
 	return input_coordinator._stick(controller)
-
-
-func _input_focused() -> bool:
-	return input_coordinator._input_focused()
-
-
-func _controller_allowed(hand: String) -> bool:
-	return input_coordinator._controller_allowed(hand)
-
-
-func _controller_ray(hand: String) -> Variant:
-	return input_coordinator._controller_ray(hand)
 
 
 func _update_hand_input(delta: float) -> void:
@@ -670,10 +660,6 @@ func eye() -> Vector3:
 	if is_instance_valid(viewer().view_camera) and viewer().view_camera.is_inside_tree():
 		return viewer().view_camera.global_position
 	return Vector3(0, 1.6, 0)
-
-
-func _ray(hand: String) -> Variant:
-	return input_coordinator._ray(hand)
 
 
 ## A ray near a flat screen corner shows its bracket: pressing there resizes.
@@ -845,10 +831,6 @@ func _place_menu(menu: Node3D) -> void:
 	presentation_coordinator._place_menu(menu)
 
 
-func _active_menu() -> Node3D:
-	return presentation_coordinator._active_menu()
-
-
 func _update_player_menu_anchor() -> void:
 	presentation_coordinator._update_player_menu_anchor()
 
@@ -973,10 +955,6 @@ func _refresh_session_controls() -> void:
 
 func _on_session_control(operation: String) -> void:
 	presentation_coordinator._on_session_control(operation)
-
-
-func _recenter() -> void:
-	presentation_coordinator._recenter()
 
 
 func request_capabilities() -> void:

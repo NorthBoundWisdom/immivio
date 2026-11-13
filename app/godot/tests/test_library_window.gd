@@ -1,14 +1,15 @@
 extends SceneTree
+const Main := preload("res://scripts/main.gd")
 const Host := preload("res://tests/test_player_menu.gd").Host
 var failures: Array[String] = []
 var checks := 0
 
 
-class InputMain:
-	extends "res://scripts/main.gd"
+class TestInputSource:
+	extends "res://scripts/input_source.gd"
 	var test_ray: Variant
 
-	func _ray(_hand: String) -> Variant:
+	func ray(_hand: String) -> Variant:
 		return test_ray
 
 
@@ -25,7 +26,8 @@ func _initialize() -> void:
 
 
 func _run() -> void:
-	var main := InputMain.new()
+	var main := Main.new()
+	main.input_source = TestInputSource.new(main)
 	var directory := ProjectSettings.globalize_path(
 		"res://../../build/tests/godot/library-window-test"
 	)
@@ -125,18 +127,18 @@ func _run() -> void:
 	main.menu_compositor._process(0)
 	var pose: Transform3D = library.global_transform
 	var origin: Vector3 = main.eye() + Vector3(.2, -.2, -.3)
-	main.test_ray = [origin, (library.global_position - origin).normalized()]
+	main.input_source.test_ray = [origin, (library.global_position - origin).normalized()]
 	main._on_pointer_button("grip_click", "right_hand")
 	check(
 		not main.library_grab.is_empty() and main.grab.is_empty(),
 		"Grip can own the library without an open video"
 	)
-	main.test_ray[0] = origin + Vector3.FORWARD * .35
+	main.input_source.test_ray[0] = origin + Vector3.FORWARD * .35
 	main._update_library_grab()
 	check(
 		is_equal_approx(main.library_distance, 1.4), "Controller push alone cannot change distance"
 	)
-	main.test_ray[0] = origin + Vector3.RIGHT * .35
+	main.input_source.test_ray[0] = origin + Vector3.RIGHT * .35
 	main._update_library_grab()
 	check(
 		(
@@ -146,7 +148,7 @@ func _run() -> void:
 		"Ordinary grip moves library horizontally at the same height"
 	)
 	var horizontal_position: Vector3 = library.global_position
-	main.test_ray[0] += Vector3.UP * .3
+	main.input_source.test_ray[0] += Vector3.UP * .3
 	main._update_library_grab()
 	check(
 		is_equal_approx(library.global_position.y, horizontal_position.y),
@@ -192,10 +194,10 @@ func _run() -> void:
 	)
 	main.reclining_mode = true
 	main._place_menu(library)
-	main.test_ray = [main.eye(), (library.global_position - main.eye()).normalized()]
+	main.input_source.test_ray = [main.eye(), (library.global_position - main.eye()).normalized()]
 	main._on_pointer_button("grip_click", "right_hand")
 	var reclining_position: Vector3 = library.global_position
-	main.test_ray[0] += Vector3.UP * .35
+	main.input_source.test_ray[0] += Vector3.UP * .35
 	main._update_library_grab()
 	check(
 		(
@@ -208,12 +210,12 @@ func _run() -> void:
 	main.reclining_mode = false
 	main._place_menu(library)
 	origin = main.eye()
-	main.test_ray = [origin, (library.global_position - origin).normalized()]
+	main.input_source.test_ray = [origin, (library.global_position - origin).normalized()]
 	main._on_pointer_button("grip_click", "left_hand")
-	main.test_ray = null
+	main.input_source.test_ray = null
 	main._update_library_grab()
 	check(main.library_grab.is_empty(), "Tracking loss cancels library drag")
-	main.test_ray = [origin, (library.global_position - origin).normalized()]
+	main.input_source.test_ray = [origin, (library.global_position - origin).normalized()]
 	library._drag = {"hand": "right_hand"}
 	main._on_pointer_button("grip_click", "left_hand")
 	check(main.library_grab.is_empty(), "Grip cannot steal a captured row/scroll drag")

@@ -235,7 +235,7 @@ func _run() -> void:
 	tracker = make_tracker()
 	XRServer.add_tracker(tracker)
 	check(
-		not main._controller_allowed("right_hand"),
+		not main.input_source.controller_allowed("right_hand"),
 		"Optical tracker suppresses duplicate controller buttons"
 	)
 	# Feed real registered trackers through Main's frame sampler and production menu dispatch.
@@ -310,7 +310,7 @@ func _run() -> void:
 		"Official Quest aim and pinch dispatch select once without joint-distance recognition"
 	)
 	check(
-		not main._controller_allowed("right_hand"),
+		not main.input_source.controller_allowed("right_hand"),
 		"Official pinch cannot double-dispatch the emulated trigger"
 	)
 	XRServer.remove_tracker(aim)
@@ -347,7 +347,7 @@ func _run() -> void:
 	action_hand.invalidate_pose("aim")
 	main._update_hand_input(1.0 / 72)
 	check(
-		other.ray == null and not main._controller_allowed("right_hand"),
+		other.ray == null and not main.input_source.controller_allowed("right_hand"),
 		"Lost runtime aim cancels input without falling back to an emulated controller"
 	)
 	XRServer.remove_tracker(action_hand)
@@ -373,7 +373,10 @@ func _run() -> void:
 		await process_frame
 		main._update_hand_input(1.0 / 72)
 		check(
-			main._controller_allowed("right_hand") and main._ray("right_hand") != null,
+			(
+				main.input_source.controller_allowed("right_hand")
+				and main.input_source.ray("right_hand") != null
+			),
 			"Physical controller retains its aim ray: " + profile
 		)
 		if not library.visible:
@@ -387,7 +390,10 @@ func _run() -> void:
 		)
 		physical.invalidate_pose("aim")
 		main._update_hand_input(1.0 / 72)
-		check(main._ray("right_hand") == null, "Lost physical aim hides its ray: " + profile)
+		check(
+			main.input_source.ray("right_hand") == null,
+			"Lost physical aim hides its ray: " + profile
+		)
 		XRServer.remove_tracker(physical)
 	main.right_controller = null
 	controller_node.free()
@@ -442,7 +448,7 @@ func _run() -> void:
 		(
 			library._drag.is_empty()
 			and other.ray == null
-			and not main._controller_allowed("right_hand")
+			and not main.input_source.controller_allowed("right_hand")
 		),
 		"System UI focus loss cancels input"
 	)

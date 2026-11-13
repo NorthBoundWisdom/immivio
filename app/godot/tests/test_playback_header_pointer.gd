@@ -5,11 +5,11 @@ var checks := 0
 var failures: Array[String] = []
 
 
-class InputMain:
-	extends Main
+class TestInputSource:
+	extends "res://scripts/input_source.gd"
 	var test_ray: Variant
 
-	func _ray(_hand: String) -> Variant:
+	func ray(_hand: String) -> Variant:
 		return test_ray
 
 
@@ -42,7 +42,8 @@ func ray_to(host: Node3D, point: Vector3, curved: bool) -> Array:
 
 
 func _run() -> void:
-	var host := InputMain.new()
+	var host := Main.new()
+	host.input_source = TestInputSource.new(host)
 	host.settings_path = "user://header-pointer.cfg"
 	root.add_child(host)
 	host.set_process(false)
@@ -87,7 +88,7 @@ func _run() -> void:
 					hit.world_point.distance_to(ray[2]) < .0001,
 					"Curved header laser ends on the visible cylinder"
 				)
-			host.test_ray = ray
+			host.input_source.test_ray = ray
 			host._on_pointer_button("trigger_click", "right_hand")
 			host._on_pointer_release("trigger_click", "right_hand")
 			check(
@@ -117,7 +118,7 @@ func _run() -> void:
 	host._show_library_menu()
 	host.menu_compositor._process(0)
 	ray = ray_to(host, menu._title_pill.global_position, true)
-	host.test_ray = ray
+	host.input_source.test_ray = ray
 	host._update_menu_pointer("right_hand")
 	check(
 		(
@@ -136,7 +137,7 @@ func _run() -> void:
 	# Outside taps retain their existing dismissal behavior.
 	host._show_player_menu()
 	host.menu_compositor._process(0)
-	host.test_ray = ray_to(host, menu.to_global(Vector3(.78, .38, 0)), true)
+	host.input_source.test_ray = ray_to(host, menu.to_global(Vector3(.78, .38, 0)), true)
 	host._on_pointer_button("trigger_click", "right_hand")
 	host._on_pointer_release("trigger_click", "right_hand")
 	check(not menu.visible, "A tap outside all UI still dismisses controls")

@@ -26,17 +26,17 @@ class SupportedDisplay:
 		return super.set_passthrough(enabled)
 
 
-class FollowMain:
-	extends Main
+class TestInputSource:
+	extends "res://scripts/input_source.gd"
 	var tracked := true
 
-	func _head_tracked() -> bool:
+	func head_tracked() -> bool:
 		return tracked
 
 	var test_ray: Variant
 
-	func _ray(hand: String) -> Variant:
-		return test_ray if test_ray != null else super._ray(hand)
+	func ray(hand: String) -> Variant:
+		return test_ray if test_ray != null else super.ray(hand)
 
 
 func check(ok: bool, message: String) -> void:
@@ -143,14 +143,14 @@ func close_menu_check(main: Node3D, menu: Node3D, name: String) -> void:
 	main._on_pointer_button("by_button", "right_hand")
 	if menu == main.library_menu:
 		check(
-			menu.visible and main._active_menu() == menu,
+			menu.visible and main.input_source.active_menu() == menu,
 			name + " cannot dismiss library with a controller button"
 		)
 		main._toggle_player_menu()
 		check(menu.visible, name + " menu button cannot replace library with empty controls")
 	else:
 		check(
-			not menu.visible and main._active_menu() == null and menu._hover.is_empty(),
+			not menu.visible and main.input_source.active_menu() == null and menu._hover.is_empty(),
 			name + " playback controls still dismiss via controller"
 		)
 	check(main.grab.is_empty(), name + " dismissal cannot start a screen drag")
@@ -166,7 +166,7 @@ func close_menu_check(main: Node3D, menu: Node3D, name: String) -> void:
 		main.video.media.state == video_state and main.video.alpha_wanted() == alpha,
 		name + " does not close or change media"
 	)
-	main.test_ray = null
+	main.input_source.test_ray = null
 
 
 func _run() -> void:
@@ -176,7 +176,8 @@ func _run() -> void:
 	config.set_value("ui", "language", "en")
 	config.set_value("ui", "follow", true)  # Legacy/foreign state must never enable it at startup.
 	config.save(directory.path_join("settings.cfg"))
-	var main := FollowMain.new()
+	var main := Main.new()
+	main.input_source = TestInputSource.new(main)
 	main.settings_path = directory.path_join("settings.cfg")
 	main.display = SupportedDisplay.new()
 	root.add_child(main)
@@ -380,7 +381,7 @@ func _run() -> void:
 		"Follow cannot tilt a captured playback panel"
 	)
 	main.video_menu._seek_hand = ""
-	main._recenter()
+	main.input_source.recenter()
 	check(
 		(
 			placement(main, main.video).origin.is_equal_approx(
@@ -524,16 +525,16 @@ func _run() -> void:
 	if not main.view_follow.enabled:
 		main._on_session_control("follow")
 	main.display.preview = false
-	main.tracked = false
+	main.input_source.tracked = false
 	var frozen: Transform3D = main.library_menu.global_transform
 	main.xr_camera.position += Vector3(4, 0, 0)
 	main._update_view_follow()
-	main._recenter()
+	main.input_source.recenter()
 	check(
 		main.library_menu.global_transform.is_equal_approx(frozen),
 		"Invalid head tracking does not recapture or move panels"
 	)
-	main.tracked = true
+	main.input_source.tracked = true
 	main.presentation_coordinator._system_recenter_last_notification_ms = -(
 		main.presentation_coordinator.SYSTEM_RECENTER_REPEAT_MS
 	)
@@ -555,7 +556,7 @@ func _run() -> void:
 		(main.video.global_transform * main.video.flat_pose).is_equal_approx(world),
 		"Disabling follow leaves media in its current world pose"
 	)
-	main._recenter()
+	main.input_source.recenter()
 	check(
 		main.video.flat_pose.basis.y.is_equal_approx(Vector3.UP),
 		"Standard recenter returns upright theater screen"
@@ -608,7 +609,8 @@ func _run() -> void:
 	main.video.set_alpha(false)
 	_check_reclining(main)
 	main.settings.save(main.settings_path)
-	var restarted := FollowMain.new()
+	var restarted := Main.new()
+	restarted.input_source = TestInputSource.new(restarted)
 	restarted.settings_path = main.settings_path
 	restarted.display = SupportedDisplay.new()
 	root.add_child(restarted)
@@ -690,7 +692,7 @@ func _check_reclining(main: Node3D) -> void:
 		),
 		"The reclining video switcher shares the control bar's plane"
 	)
-	main._recenter()
+	main.input_source.recenter()
 	check(
 		main.video.flat_pose.basis.is_equal_approx(main.xr_camera.global_basis),
 		"Recenter preserves full reclining gaze without follow"
@@ -707,7 +709,7 @@ func _check_reclining(main: Node3D) -> void:
 		"Reclining playback controls share the screen placement plane"
 	)
 	main._on_session_control("follow")
-	main._recenter()
+	main.input_source.recenter()
 	var local := placement(main, main.video)
 	var menu_local: Transform3D = (
 		main.xr_camera.global_transform.affine_inverse() * main.video_menu.global_transform

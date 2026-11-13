@@ -1,4 +1,5 @@
 extends SceneTree
+const Main := preload("res://scripts/main.gd")
 
 const Video := preload("res://scripts/mpv_video_display.gd")
 const Menu := preload("res://scripts/player_menu.gd")
@@ -7,11 +8,11 @@ var failures: Array[String] = []
 var checks := 0
 
 
-class InputMain:
-	extends "res://scripts/main.gd"
+class TestInputSource:
+	extends "res://scripts/input_source.gd"
 	var test_ray: Variant
 
-	func _ray(_hand: String) -> Variant:
+	func ray(_hand: String) -> Variant:
 		return test_ray
 
 
@@ -28,7 +29,8 @@ func _initialize() -> void:
 
 
 func _run() -> void:
-	var main := InputMain.new()
+	var main := Main.new()
+	main.input_source = TestInputSource.new(main)
 	var height: float = main.presentation_coordinator.window_height
 	main.settings_path = "user://controller-canvas-%d.cfg" % Time.get_ticks_usec()
 	var video := Video.new()
@@ -62,12 +64,12 @@ func _run() -> void:
 	var library := RayMenu.new()
 	root.add_child(library)
 	main.library_menu = library
-	main.test_ray = [
+	main.input_source.test_ray = [
 		camera.global_position, (video.panel.global_position - camera.global_position).normalized()
 	]
 	var before := video.flat_pose
 	main._on_pointer_button("trigger_click", "right_hand")
-	main.test_ray[1] = Vector3.RIGHT
+	main.input_source.test_ray[1] = Vector3.RIGHT
 	main._update_grab()
 	check(
 		main.grab.is_empty() and video.flat_pose.is_equal_approx(before),
@@ -141,7 +143,7 @@ func _run() -> void:
 		clear = clear and (menu.to_global(corner) - centre.origin).dot(centre.basis.z) > 0.0
 	check(clear, "Oblique canvas cannot depth-clip the viewer-facing controls")
 	menu.section = 0
-	main.test_ray = [
+	main.input_source.test_ray = [
 		camera.global_position, (video.panel.global_position - camera.global_position).normalized()
 	]
 	main._on_pointer_button("grip_click", "right_hand")
@@ -149,7 +151,7 @@ func _run() -> void:
 		not menu.visible and main.grab.get("action") == "grip_click",
 		"Grip dismisses controls and owns canvas movement"
 	)
-	main.test_ray[1] = Basis(Vector3.UP, .25) * main.test_ray[1]
+	main.input_source.test_ray[1] = Basis(Vector3.UP, .25) * main.input_source.test_ray[1]
 	main._update_grab()
 	check(not video.flat_pose.is_equal_approx(before), "Grip motion moves the canvas")
 	main._on_pointer_release("trigger_click", "right_hand")
@@ -178,10 +180,10 @@ func _run() -> void:
 	)
 	main._on_pointer_release("grip_click", "right_hand")
 	main._on_pointer_button("trigger_click", "right_hand")
-	main.test_ray = null
+	main.input_source.test_ray = null
 	main._on_pointer_release("trigger_click", "right_hand")
 	check(main.trigger_taps.is_empty() and not menu.visible, "Tracking loss cancels trigger tap")
-	main.test_ray = [camera.global_position, Vector3.FORWARD]
+	main.input_source.test_ray = [camera.global_position, Vector3.FORWARD]
 	main._on_pointer_button("trigger_click", "right_hand")
 	video.local_uri = "file:///other.mp4"
 	main._on_pointer_release("trigger_click", "right_hand")
@@ -192,9 +194,16 @@ func _run() -> void:
 	video._apply_geometry()
 	main._show_player_menu()
 	var target := menu.to_global(Vector3(0, Menu.BAR_SEEK_Y, .01))
-	main.test_ray = [camera.global_position, (target - camera.global_position).normalized()]
+	main.input_source.test_ray = [
+		camera.global_position, (target - camera.global_position).normalized()
+	]
 	check(
-		menu.ray_hit(main.test_ray[0], main.test_ray[1]).get("target", -1) == Menu.SEEK,
+		(
+			menu.ray_hit(main.input_source.test_ray[0], main.input_source.test_ray[1]).get(
+				"target", -1
+			)
+			== Menu.SEEK
+		),
 		"Timeline remains selectable at maximum canvas distance"
 	)
 	main._on_pointer_button("trigger_click", "right_hand")
@@ -302,7 +311,7 @@ func _run() -> void:
 	for yaw in [-2.4, -.7, 0.0, 1.9]:
 		for pitch in [-1.2, .9]:
 			camera.rotation = Vector3(pitch, yaw, .65)
-			main._recenter()
+			main.input_source.recenter()
 			var delta := library.global_position - camera.global_position
 			check(
 				library.global_basis.y.is_equal_approx(Vector3.UP),
@@ -321,7 +330,7 @@ func _run() -> void:
 			)
 	for pitch in [-PI / 2, PI / 2]:
 		camera.rotation = Vector3(pitch, .7, .8)
-		main._recenter()
+		main.input_source.recenter()
 		check(
 			(
 				library.global_transform.is_finite()

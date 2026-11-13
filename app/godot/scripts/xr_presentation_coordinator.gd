@@ -53,17 +53,6 @@ func _window_pose(pose: Transform3D) -> Transform3D:
 	return pose
 
 
-func _head_tracked() -> bool:
-	var host := _host_ref.get_ref() as Node3D
-	if not is_instance_valid(host):
-		return false
-	var head = XRServer.get_tracker("head") as XRPositionalTracker
-	if not head or not head.has_pose("default"):
-		return false
-	var pose = head.get_pose("default")
-	return pose.has_tracking_data and pose.tracking_confidence != XRPose.XR_TRACKING_CONFIDENCE_NONE
-
-
 func _on_system_recentered() -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
@@ -90,11 +79,11 @@ func _apply_system_recenter(same_frame: bool = false) -> void:
 	if not _system_recenter_pending:
 		return
 	var head: Variant = _head_pose()
-	if not host._input_focused() or head == null:
+	if not host.input_source.input_focused() or head == null:
 		return
 	# Godot 4.7.2 publishes pose_recentered after updating the head tracker and
 	# XRCamera3D. Apply in that same frame, before the new space is rendered.
-	host._recenter()
+	host.input_source.recenter()
 	Log.record("system_recenter_applied", {"same_frame": same_frame})
 
 
@@ -186,10 +175,10 @@ func _update_menu_pointer(hand: String, pressed: bool = false) -> bool:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return false
-	var menu = host._active_menu()
+	var menu = host.input_source.active_menu()
 	if not menu or hand not in ["left_hand", "right_hand"]:
 		return false
-	var ray: Variant = host._ray(hand)
+	var ray: Variant = host.input_source.ray(hand)
 	var tracked = ray != null
 	var origin: Vector3 = ray[0] if tracked else Vector3.ZERO
 	var direction: Vector3 = ray[1] if tracked else Vector3.ZERO
@@ -261,7 +250,7 @@ func _head_pose() -> Variant:
 		camera = host.viewer().view_camera
 	if not is_instance_valid(camera) or not camera.is_inside_tree():
 		return null
-	if not host.display.preview and not host._head_tracked():
+	if not host.display.preview and not host.input_source.head_tracked():
 		return null
 	var pose = camera.global_transform
 	if not pose.is_finite():
@@ -502,17 +491,6 @@ func _place_menu(menu: Node3D) -> void:
 		pose = _window_pose(pose)
 		menu.global_transform = pose
 		host.view_follow.capture(_menu_key(menu), _menu_head_pose(head), pose)
-
-
-func _active_menu() -> Node3D:
-	var host := _host_ref.get_ref() as Node3D
-	if not is_instance_valid(host):
-		return null
-	if host.library_menu and host.library_menu.visible:
-		return host.library_menu
-	if host.player_menu and host.player_menu.visible:
-		return host.player_menu
-	return null
 
 
 func _update_player_menu_anchor() -> void:
@@ -1021,7 +999,7 @@ func _on_session_control(operation: String) -> void:
 	_refresh_session_controls()
 
 
-func _recenter() -> void:
+func recenter() -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return

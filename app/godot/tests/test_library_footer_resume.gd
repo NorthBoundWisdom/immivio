@@ -6,11 +6,11 @@ var failures: Array[String] = []
 var checks := 0
 
 
-class ResumeMain:
-	extends Main
+class TestInputSource:
+	extends "res://scripts/input_source.gd"
 	var tracked := true
 
-	func _head_tracked() -> bool:
+	func head_tracked() -> bool:
 		return tracked
 
 
@@ -34,7 +34,8 @@ func _run() -> void:
 	var settings := ConfigFile.new()
 	settings.set_value("appearance", "background", "dark")
 	settings.save(directory.path_join("settings.cfg"))
-	var main := ResumeMain.new()
+	var main := Main.new()
+	main.input_source = TestInputSource.new(main)
 	main.settings_path = directory.path_join("settings.cfg")
 	root.add_child(main)
 	main.set_process(false)
@@ -115,7 +116,7 @@ func _run() -> void:
 			main.notification(Main.NOTIFICATION_APPLICATION_PAUSED)
 			main.display.session_state = "session_visible"
 			main._on_input_session_changed()
-			main.tracked = false
+			main.input_source.tracked = false
 			main._apply_system_recenter()
 			check(
 				(
@@ -127,7 +128,7 @@ func _run() -> void:
 			main.xr_camera.global_transform = Transform3D(
 				Basis.from_euler(Vector3(.6, .9, .2)), Vector3(1, 1.7, -.3)
 			)
-			main.tracked = true
+			main.input_source.tracked = true
 			main.display.session_state = "session_focussed"
 			main._on_input_session_changed()
 			main.notification(Main.NOTIFICATION_APPLICATION_RESUMED)
@@ -142,7 +143,7 @@ func _run() -> void:
 			)
 			check(main.view_follow._poses == offsets, "Resume preserves saved follow offsets")
 	main.view_follow.set_enabled(false)
-	main._recenter()
+	main.input_source.recenter()
 	check(
 		not menu.global_position.is_equal_approx(Vector3(5, 3, 4)),
 		"Explicit in-app recenter remains available"

@@ -183,7 +183,10 @@ func run(host: Node, step: String, request: String) -> Dictionary:
 		menu.browse_memory.configure(true, true)
 		menu.list_view = bool(host.settings.get_value("library", "list_view", false))
 		host.screen_layout.restore()
-		check(not host.display.preview and host._head_tracked(), "Live OpenXR head tracking")
+		check(
+			not host.display.preview and host.input_source.head_tracked(),
+			"Live OpenXR head tracking"
+		)
 	elif step == "browse":
 		await open_folder(host)
 		check(menu.rows.size() >= 30, "Android directory contains STRM entries", menu.rows.size())
@@ -250,7 +253,7 @@ func run(host: Node, step: String, request: String) -> Dictionary:
 			is_equal_approx(float(host.settings.get_value("screen", "distance")), 4.6),
 			"Temporary adjustment preserves fixed default"
 		)
-		host._recenter()
+		host.input_source.recenter()
 		check(is_equal_approx(video.screen_distance, 4.6), "Recenter restores fixed default")
 	elif step == "library":
 		host.presentation_coordinator._show_player_menu()
@@ -368,7 +371,7 @@ func run(host: Node, step: String, request: String) -> Dictionary:
 			"Quality dropdown shows filled option rows"
 		)
 	elif step == "snapshot":
-		check(not host.display.preview and host._head_tracked(), "Live XR session")
+		check(not host.display.preview and host.input_source.head_tracked(), "Live XR session")
 	elif step == "error":
 		check(
 			video.media.state == "failed",

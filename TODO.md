@@ -16,13 +16,7 @@
 
 ## 2. 架构整理
 
-S1 → S2 → S3 排在下一次发布之后，避免在发布验收前再次改动输入和资料库调用路径。S4、S5 在这三项之后推进；每步单独提交。
-
-### S2：测试注入入口改成显式接口
-
-- 现状：7 个入口（`_ray`、`_active_menu`、`_input_focused`、`_controller_allowed`、`_controller_ray`、`_head_tracked`、`_recenter`）靠测试继承 `main.gd` 覆写来注入假输入，所以 coordinator 必须继续走 `host._xxx`。
-- 目标：把这 7 个入口收进一个可替换的输入来源对象（例如 `InputSource`，生产实现读 XR 控制器，测试实现返回固定值），`main.gd` 持有它，coordinator 直接调用。
-- 完成标准：`app/godot/scripts` 里 `host._` 清零；测试不再需要继承 `main.gd` 来改输入。
+剩余按 S3 → S4 → S5 推进；每步单独提交。
 
 ### S3：消除按字符串访问的私有成员
 
@@ -53,7 +47,6 @@ S1 → S2 → S3 排在下一次发布之后，避免在发布验收前再次改
 ## 4. 文档
 
 - [ ] **`docs/ACCEPTANCE.md`**：顶部只放“当前待验收”，历史记录按日期归档到文件后半部分或单独文件。
-- [ ] **`docs/ARCHITECTURE.md`**：补充 coordinator 的公开名字（`input_coordinator`、`playback_coordinator`、`settings_controller`、`presentation_coordinator`）和 `library_menu`；S1、S2 完成后再更新一次。
 - [ ] **`README.md`**：发布前复查，确认没有再提到已删除的重构计划和 PowerShell 脚本。
 
 ## 5. 命名整理

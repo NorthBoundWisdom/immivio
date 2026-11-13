@@ -23,7 +23,7 @@ func _preview_menu_input(event: InputEvent) -> bool:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host) or not host.display.preview or not event is InputEventMouse:
 		return false
-	var menu: Node3D = host._active_menu()
+	var menu: Node3D = host.input_source.active_menu()
 	for candidate in [host.library_menu, host.player_menu]:
 		if (
 			is_instance_valid(candidate)
@@ -82,7 +82,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if _preview_menu_input(event):
 		return
-	if host._active_menu() or not host.video or host.viewer().local_uri.is_empty():
+	if host.input_source.active_menu() or not host.video or host.viewer().local_uri.is_empty():
 		return
 	if event is InputEventMouseMotion and event.button_mask & MOUSE_BUTTON_MASK_LEFT:
 		host.presentation_coordinator._turn_picture(
@@ -109,7 +109,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		if event.keycode == KEY_TAB:
 			host.presentation_coordinator._toggle_player_menu()
 			return
-		var menu = host._active_menu()
+		var menu = host.input_source.active_menu()
 		if menu:
 			if OS.get_name() == "Android":
 				return
@@ -129,7 +129,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			KEY_T:
 				host.presentation_coordinator._toggle_display()
 			KEY_R:
-				host._recenter()
+				host.input_source.recenter()
 			KEY_D:
 				host.request_capabilities()
 			KEY_O:
@@ -166,7 +166,7 @@ func _on_controller_release(action: String, hand: String = "") -> void:
 		and host.video.has_method("commit_immersive_adjustments")
 	):
 		host.video.commit_immersive_adjustments()
-	if not host._controller_allowed(hand):
+	if not host.input_source.controller_allowed(hand):
 		return
 	if host.input_visuals:
 		host.input_visuals.controller_activity(hand)
@@ -183,14 +183,14 @@ func _on_pointer_release(action: String, hand: String) -> void:
 			host.settings.save(host.settings_path)
 		_library_grab.clear()
 		return
-	if action in ["trigger_click", "grip_click"] and host._ray(hand) == null:
+	if action in ["trigger_click", "grip_click"] and host.input_source.ray(hand) == null:
 		_cancel_pointer(hand)
 		return
 	if action == "trigger_click" and host.trigger_taps.has(hand):
 		var tap: Dictionary = host.trigger_taps[hand]
 		host.trigger_taps.erase(hand)
 		if tap.uri == host.viewer().local_uri:
-			if host._active_menu() or host.picture_pinch_allowed(hand):
+			if host.input_source.active_menu() or host.picture_pinch_allowed(hand):
 				host.presentation_coordinator._toggle_player_menu()
 		return
 	if (
@@ -211,12 +211,12 @@ func _on_pointer_release(action: String, hand: String) -> void:
 			elif not grab.get("hid_menu", false) and host.picture_pinch_allowed(hand):
 				host.presentation_coordinator._show_player_menu()
 		return
-	var menu = host._active_menu()
+	var menu = host.input_source.active_menu()
 	if host.player_menu and host.player_menu.visible and host.player_menu.has_pointer_capture():
 		menu = host.player_menu
 	if action != "trigger_click" or not menu or not menu.has_method("release_pointer"):
 		return
-	var ray: Variant = host._ray(hand)
+	var ray: Variant = host.input_source.ray(hand)
 	menu.release_pointer(
 		hand,
 		ray[0] if ray != null else Vector3.ZERO,
@@ -229,7 +229,7 @@ func _on_controller_button(action: String, hand: String = "") -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
-	if not host._controller_allowed(hand):
+	if not host.input_source.controller_allowed(hand):
 		return
 	if host.input_visuals:
 		host.input_visuals.controller_activity(hand)
@@ -245,20 +245,20 @@ func _on_pointer_button(action: String, hand: String) -> void:
 	if (
 		action == "trigger_click"
 		and not host.picture_pinch_allowed(hand)
-		and not host._active_menu()
+		and not host.input_source.active_menu()
 	):
 		return
 	if action == "menu_button":
 		host.presentation_coordinator._toggle_player_menu()
 		return
-	var menu = host._active_menu()
+	var menu = host.input_source.active_menu()
 	if action == "grip_click":
 		if menu == host.library_menu and menu is LibraryMenu:
 			_begin_library_grab(hand)
 			return
 		if (
 			not host.viewer().local_uri.is_empty()
-			and host._ray(hand) != null
+			and host.input_source.ray(hand) != null
 			and (
 				menu == null
 				or (
@@ -289,7 +289,7 @@ func _on_pointer_button(action: String, hand: String) -> void:
 					not host.presentation_coordinator._update_menu_pointer(hand, true)
 					and menu == host.player_menu
 				):
-					var ray: Variant = host._ray(hand)
+					var ray: Variant = host.input_source.ray(hand)
 					# A slider owned by the other hand rejects this press; it is not a screen drag.
 					if (
 						ray != null
@@ -320,7 +320,7 @@ func _process_sticks(left: Vector2, right: Vector2, delta: float) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
-	if host.input_visuals and host._input_focused():
+	if host.input_visuals and host.input_source.input_focused():
 		if left.length() >= 0.3:
 			host.input_visuals.controller_activity("left_hand")
 		if right.length() >= 0.3:
@@ -336,11 +336,11 @@ func _process_sticks(left: Vector2, right: Vector2, delta: float) -> void:
 	if _grab.get("action", "") == "grip_click":
 		host.stick_controls.suspend()
 		return
-	var menu = host._active_menu()
+	var menu = host.input_source.active_menu()
 	if menu:
 		host.presentation_coordinator._update_menu_pointer("left_hand")
 		host.presentation_coordinator._update_menu_pointer("right_hand")
-	if not host._input_focused():
+	if not host.input_source.input_focused():
 		host.stick_controls.suspend()
 		return
 	if menu and (menu != host.player_menu or not host.player_menu.allows_playback_sticks()):
@@ -378,16 +378,16 @@ func _process_immersive(left: Vector2, right: Vector2, delta: float) -> bool:
 		immersive.suspend()
 		immersive.clear_feedback()
 		return false
-	var menu: Node3D = host._active_menu()
+	var menu: Node3D = host.input_source.active_menu()
 	if (
-		not host._input_focused()
+		not host.input_source.input_focused()
 		or not _library_grab.is_empty()
 		or (menu and (menu != host.player_menu or not menu.allows_playback_sticks()))
 		or (not _grab.is_empty() and _grab.get("action") != "grip_click")
 	):
 		immersive.suspend()
 		immersive.clear_feedback()
-		if not host._input_focused():
+		if not host.input_source.input_focused():
 			immersive_grips.clear()
 		return false
 	var held := false
@@ -395,8 +395,8 @@ func _process_immersive(left: Vector2, right: Vector2, delta: float) -> bool:
 	for hand in ["left_hand", "right_hand"]:
 		var pressed: bool = (
 			immersive_grips.get(hand, false)
-			and host._controller_allowed(hand)
-			and host._ray(hand) != null
+			and host.input_source.controller_allowed(hand)
+			and host.input_source.ray(hand) != null
 		)
 		held = held or pressed
 		var axis: Vector2 = left if hand == "left_hand" else right
@@ -480,7 +480,7 @@ func _stick(controller: XRController3D) -> Vector2:
 		if (
 			controller
 			and controller.get_is_active()
-			and host._controller_allowed(str(controller.tracker))
+			and host.input_source.controller_allowed(str(controller.tracker))
 		)
 		else Vector2.ZERO
 	)
@@ -513,51 +513,17 @@ func _meta_aim_tracker(hand: String) -> XRPositionalTracker:
 	)
 
 
-func _input_focused() -> bool:
-	var host := _host_ref.get_ref() as Node3D
-	if not is_instance_valid(host):
-		return false
-	return host.display.preview or host.display.session_state == "session_focussed"
-
-
-func _controller_allowed(hand: String) -> bool:
-	var host := _host_ref.get_ref() as Node3D
-	if not is_instance_valid(host):
-		return false
-	if not host._input_focused():
-		return false
-	# Query current data too: XR input signals may arrive before our process callback.
-	return (
-		not HandPointer.is_optical(_hand_tracker(hand))
-		and not HandPointer.is_hand_profile(_hand_action_tracker(hand))
-		and not (host.hand_pointers.has(hand) and host.hand_pointers[hand].source == "hand")
-	)
-
-
-func _controller_ray(hand: String) -> Variant:
-	var host := _host_ref.get_ref() as Node3D
-	if not is_instance_valid(host):
-		return null
-	var controller = host.left_controller if hand == "left_hand" else host.right_controller
-	if not controller or not controller.get_is_active() or not controller.get_has_tracking_data():
-		return null
-	var pose = controller.get_pose()
-	if not pose or pose.tracking_confidence == XRPose.XR_TRACKING_CONFIDENCE_NONE:
-		return null
-	return [controller.global_position, -controller.global_basis.z]
-
-
 func _update_hand_input(delta: float) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
 	if host.input_visuals:
 		host.input_visuals.update_visibility(
-			host._input_focused() and host._head_tracked(),
+			host.input_source.input_focused() and host.input_source.head_tracked(),
 			delta,
 			host.video != null and not host.video.local_uri.is_empty(),
 			(
-				host._active_menu() != null
+				host.input_source.active_menu() != null
 				or not _grab.is_empty()
 				or not _library_grab.is_empty()
 				or not host.trigger_taps.is_empty()
@@ -566,13 +532,13 @@ func _update_hand_input(delta: float) -> void:
 	var inputs = {}
 	for hand in host.hand_pointers:
 		var sample = {}
-		if host._input_focused():
+		if host.input_source.input_focused():
 			var tracker = _hand_tracker(hand)
 			if (
 				HandPointer.is_optical(tracker)
 				and host.xr_camera
 				and host.xr_origin
-				and host._head_tracked()
+				and host.input_source.head_tracked()
 			):
 				sample = HandPointer.sample(
 					tracker,
@@ -594,7 +560,7 @@ func _update_hand_input(delta: float) -> void:
 						false
 					)
 			elif not HandPointer.is_optical(tracker):
-				var ray: Variant = host._controller_ray(hand)
+				var ray: Variant = host.input_source.controller_ray(hand)
 				if ray != null:
 					sample = {"source": "controller", "ray": ray}
 		var event: Dictionary = host.hand_pointers[hand].update(sample, delta)
@@ -609,7 +575,9 @@ func _update_hand_input(delta: float) -> void:
 		if host.hand_marks.has(hand):
 			var mark: MeshInstance3D = host.hand_marks[hand]
 			mark.visible = (
-				pointer.source == "hand" and pointer.ray != null and not host._active_menu()
+				pointer.source == "hand"
+				and pointer.ray != null
+				and not host.input_source.active_menu()
 			)
 			if mark.visible:
 				mark.global_position = pointer.ray[0]
@@ -650,7 +618,7 @@ func _on_input_session_changed() -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
-	if host._input_focused():
+	if host.input_source.input_focused():
 		return
 	host.trigger_taps.clear()
 	for hand in host.hand_pointers:
@@ -689,7 +657,7 @@ func _begin_library_grab(hand: String) -> void:
 		return
 	if not _library_grab.is_empty() or host.library_menu.has_pointer_capture():
 		return
-	var ray: Variant = host._ray(hand)
+	var ray: Variant = host.input_source.ray(hand)
 	if ray == null:
 		return
 	var point: Variant = host.library_menu._plane_point(ray[0], ray[1])
@@ -719,7 +687,7 @@ func _update_library_grab() -> void:
 		return
 	if _library_grab.is_empty():
 		return
-	var ray: Variant = host._ray(_library_grab.hand)
+	var ray: Variant = host.input_source.ray(_library_grab.hand)
 	if ray == null or not host.library_menu.visible:
 		_library_grab.clear()
 		return
@@ -778,7 +746,7 @@ func _update_library_grab_stick(left: Vector2, right: Vector2, delta: float) -> 
 	if (
 		_library_grab.is_empty()
 		or not host.library_menu.visible
-		or host._ray(_library_grab.hand) == null
+		or host.input_source.ray(_library_grab.hand) == null
 	):
 		return
 	var held = left if _library_grab.hand == "left_hand" else right
@@ -813,7 +781,7 @@ func _begin_picture_press(hand: String) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
-	if host._ray(hand) == null:
+	if host.input_source.ray(hand) == null:
 		return
 	if host.hand_pointers.has(hand) and host.hand_pointers[hand].source == "hand":
 		_begin_grab(hand, "trigger_click")
@@ -826,7 +794,7 @@ func _update_flat_grab_stick(left: Vector2, right: Vector2, delta: float) -> voi
 	if not is_instance_valid(host):
 		return
 	if (
-		host._active_menu()
+		host.input_source.active_menu()
 		or _grab.is_empty()
 		or _grab.has("resize")
 		or _grab.get("tap_only", false)
@@ -847,19 +815,6 @@ func _update_flat_grab_stick(left: Vector2, right: Vector2, delta: float) -> voi
 		host.video.set_screen_scale(host.video.screen_scale * exp(amount * 0.8))
 
 
-func _ray(hand: String) -> Variant:
-	var host := _host_ref.get_ref() as Node3D
-	if not is_instance_valid(host):
-		return null
-	if not host._input_focused():
-		return null
-	if host.hand_pointers.has(hand) and host.hand_pointers[hand].source == "hand":
-		return host.hand_pointers[hand].ray
-	if HandPointer.is_optical(_hand_tracker(hand)):
-		return null
-	return host._controller_ray(hand)
-
-
 func _update_corner_hover() -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
@@ -875,7 +830,7 @@ func _update_corner_hover() -> void:
 		and (not host.viewer().local_uri.is_empty())
 	):
 		for hand in ["right_hand", "left_hand"]:
-			var ray: Variant = host._ray(hand)
+			var ray: Variant = host.input_source.ray(hand)
 			if (
 				ray != null
 				and not (host.player_menu.visible and host.player_menu._hover.get(hand, -1) != -1)
@@ -896,7 +851,7 @@ func _begin_grab(hand: String, action: String = "grip_click") -> void:
 		return
 	if host.view_follow.enabled and host.presentation_coordinator._head_pose() == null:
 		return
-	var ray: Variant = host._ray(hand)
+	var ray: Variant = host.input_source.ray(hand)
 	if ray == null:
 		if host.player_menu.visible:
 			host.player_menu.dismiss()
@@ -966,7 +921,7 @@ func _update_grab() -> void:
 		return
 	if _grab.get("tap_only", false):
 		return
-	var ray: Variant = host._ray(_grab.hand)
+	var ray: Variant = host.input_source.ray(_grab.hand)
 	if (
 		ray == null
 		or not host.video

@@ -1,16 +1,17 @@
 extends SceneTree
+const Main := preload("res://scripts/main.gd")
 const Visuals := preload("res://scripts/input_visuals.gd")
 var failures: Array[String] = []
 var checks := 0
 
 
-class PlaybackMain:
-	extends "res://scripts/main.gd"
+class TestInputSource:
+	extends "res://scripts/input_source.gd"
 
-	func _head_tracked() -> bool:
+	func head_tracked() -> bool:
 		return true
 
-	func _controller_ray(hand: String) -> Variant:
+	func controller_ray(hand: String) -> Variant:
 		# Headless preview has no active runtime; use the synthetic tracked aim pose.
 		var tracker := XRServer.get_tracker(hand) as XRPositionalTracker
 		var pose := tracker.get_pose("aim") if tracker else null
@@ -233,7 +234,8 @@ func set_grip(tracker: XRControllerTracker, pose: Transform3D) -> void:
 
 
 func playback_checks() -> void:
-	var app := PlaybackMain.new()
+	var app := Main.new()
+	app.input_source = TestInputSource.new(app)
 	app.settings_path = "user://controller-visibility.cfg"
 	root.add_child(app)
 	app.set_process(false)
@@ -251,7 +253,7 @@ func playback_checks() -> void:
 		not app.input_visuals.hands.left_hand.controller_gate.visible,
 		"Video state drives automatic hiding through the production input coordinator"
 	)
-	check(app._ray("left_hand") != null, "Hidden controller retains its aim ray")
+	check(app.input_source.ray("left_hand") != null, "Hidden controller retains its aim ray")
 	app._process_sticks(Vector2.ZERO, Vector2(0, 0.5), 0.016)
 	app._update_hand_input(0.1)
 	check(

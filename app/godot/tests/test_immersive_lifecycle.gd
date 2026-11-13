@@ -54,7 +54,7 @@ func _run() -> void:
 		)
 		main.video.turn_view(0.2, -0.1)
 		main.video.zoom_view(0.3)
-		await main._recenter()
+		await main.input_source.recenter()
 		check(
 			(
 				aligned(main.video)

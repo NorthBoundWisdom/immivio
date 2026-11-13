@@ -1,22 +1,23 @@
 extends SceneTree
+const Main := preload("res://scripts/main.gd")
 const Policy := preload("res://scripts/immersive_adjustments.gd")
 const Video := preload("res://scripts/mpv_video_display.gd")
 
 
-class Host:
-	extends "res://scripts/main.gd"
+class TestInputSource:
+	extends "res://scripts/input_source.gd"
 	var active: Node3D
 
-	func _active_menu() -> Node3D:
+	func active_menu() -> Node3D:
 		return active
 
-	func _input_focused() -> bool:
+	func input_focused() -> bool:
 		return true
 
-	func _controller_allowed(_hand: String) -> bool:
+	func controller_allowed(_hand: String) -> bool:
 		return true
 
-	func _ray(_hand: String) -> Variant:
+	func ray(_hand: String) -> Variant:
 		return [Vector3.ZERO, Vector3.FORWARD]
 
 
@@ -38,7 +39,8 @@ func _run() -> void:
 	video.platform = preload("res://tests/test_file_mode_memory.gd").Host.new()
 	assert(video.open_local("file:///movie_180_LR.mp4", "movie_180_LR.mp4"))
 	video.set_process(false)
-	var host := Host.new()
+	var host := Main.new()
+	host.input_source = TestInputSource.new(host)
 	host.video = video
 	host.stick_controls = preload("res://scripts/player_stick_controls.gd").new()
 	host.input_coordinator.immersive_grips = {"left_hand": true, "right_hand": true}
@@ -49,10 +51,10 @@ func _run() -> void:
 	var before := video.view_horizontal
 	var menu := preload("res://scripts/library_menu.gd").new()
 	root.add_child(menu)
-	host.active = menu
+	host.input_source.active = menu
 	host.input_coordinator._process_immersive(Vector2.RIGHT, Vector2.ZERO, 0.1)
 	assert(video.view_horizontal == before)
-	host.active = null
+	host.input_source.active = null
 	host.input_coordinator._process_immersive(Vector2.RIGHT, Vector2.ZERO, 0.1)
 	assert(video.view_horizontal == before)
 	host.input_coordinator._process_immersive(Vector2.ZERO, Vector2.ZERO, 0.1)

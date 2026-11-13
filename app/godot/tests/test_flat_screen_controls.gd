@@ -1,4 +1,5 @@
 extends SceneTree
+const Main := preload("res://scripts/main.gd")
 
 const Video := preload("res://scripts/mpv_video_display.gd")
 const Menu := preload("res://scripts/player_menu.gd")
@@ -6,11 +7,11 @@ var checks := 0
 var failures: Array[String] = []
 
 
-class InputMain:
-	extends "res://scripts/main.gd"
+class TestInputSource:
+	extends "res://scripts/input_source.gd"
 	var test_ray: Variant
 
-	func _ray(_hand: String) -> Variant:
+	func ray(_hand: String) -> Variant:
 		return test_ray
 
 
@@ -27,7 +28,8 @@ func _initialize() -> void:
 
 
 func _run() -> void:
-	var main := InputMain.new()
+	var main := Main.new()
+	main.input_source = TestInputSource.new(main)
 	main.settings_path = "user://flat-screen-test.cfg"
 	var video := Video.new()
 	root.add_child(video)
@@ -80,7 +82,7 @@ func _run() -> void:
 			video.panel.visible = true
 			var size: Vector2 = video._flat.size
 			menu.toggle() if not menu.visible else menu.refresh()
-			main.test_ray = [eye, Vector3.FORWARD]
+			main.input_source.test_ray = [eye, Vector3.FORWARD]
 			main._on_pointer_button("grip_click", "right_hand")
 			check(
 				not menu.visible and main.grab.get("action", "") == "grip_click",
@@ -112,7 +114,7 @@ func _run() -> void:
 			for corner in [0, 1]:
 				video.set_screen_scale(1)
 				var hit: Vector3 = video.panel.to_global(video.screen_corner(corner))
-				main.test_ray = [eye, (hit - eye).normalized()]
+				main.input_source.test_ray = [eye, (hit - eye).normalized()]
 				main._begin_grab("right_hand")
 				check(
 					main.grab.has("resize"),
@@ -120,7 +122,7 @@ func _run() -> void:
 				)
 				main._update_corner_hover()
 				check(video._handles[corner].visible, "Active corner bracket is visible")
-				main.test_ray = [
+				main.input_source.test_ray = [
 					eye,
 					(
 						(
@@ -243,10 +245,10 @@ func _run() -> void:
 	video.screen_scale = 1.0
 	video.flat_pose = Transform3D(Basis(Vector3.RIGHT, .6), eye + Vector3(0, .5, -1.93649))
 	video._apply_geometry()
-	main.test_ray = [eye, (video.panel.global_position - eye).normalized()]
+	main.input_source.test_ray = [eye, (video.panel.global_position - eye).normalized()]
 	main._begin_grab("right_hand")
 	var old_position: Vector3 = video.panel.global_position
-	main.test_ray[0] += Vector3.UP * .3
+	main.input_source.test_ray[0] += Vector3.UP * .3
 	main._update_grab()
 	check(
 		video.panel.global_position.y > old_position.y and is_equal_approx(video.screen_scale, 1),
