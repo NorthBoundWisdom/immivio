@@ -14,19 +14,6 @@
 - [ ] **CHANGELOG**。发布时决定是否单列安装包变小、移除无用依赖等变化。
 - [ ] **发布**。所有者完成头显验收、目标构建和 CI 确认后执行；此前不改版本号、不打 tag、不发布。
 
-## 2. 架构整理
-
-以下拆分每步单独提交。
-
-### S5：拆分过大的脚本
-
-按当前行数：`library_menu.gd` 约 3060 行、`mpv_video_display.gd` 约 2520 行、`player_menu.gd` 约 1970 行、`main.gd` 约 1230 行，两个 coordinator 各约 1000 行。
-
-- `mpv_video_display.gd`：把调试命令处理和调试报告（`_on_debug_command`、`_write_debug_report` 一带，约 400 行）拆到独立脚本，仅 Debug 构建加载。
-- `library_menu.gd`：关于页与许可阅读器、来源列表各自独立。
-- `player_menu.gd`：字幕、音轨、画面调整三组弹层已有 `playback_popups.gd`，把仍留在主文件里的绘制函数迁过去。
-- 每次拆分只移动代码，不改行为；以 Godot 测试数量和结果不变为准。
-
 ## 3. 依赖升级后验收
 
 依赖升级一次只动一个，锁文件和校验元数据一律由 Gradle 生成；升级后检查 `verification-metadata.xml` 的 diff，确认没有意外的传递依赖。

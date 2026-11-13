@@ -1,4 +1,6 @@
 extends RefCounted
+const I18n := preload("res://scripts/i18n.gd")
+const SubtitleDepth := preload("res://scripts/subtitle_depth.gd")
 ## Small, mutually exclusive controls above the persistent playback timeline.
 const GRADE_PREVIOUS := 218
 const GRADE_NEXT := 219
@@ -419,3 +421,441 @@ func action(target: int) -> bool:
 		menu.adjustment_committed.emit()
 	menu.refresh()
 	return true
+
+
+func draw_active() -> void:
+	menu._reset_popup_fields()
+	menu.bookmarks.draw_popup()
+	if not menu._quick_open.is_empty():
+		draw_quick()
+	if menu._mode_open:
+		draw_modes()
+	if menu._subtitle_open:
+		draw_subtitles()
+	menu._bar_drawn = menu._bar_key()
+
+
+## Compact controls share the normal setting/adjustment signals and persistence.
+func draw_quick() -> void:
+	if not menu._state.get("has_video", false) and menu._quick_open != "info":
+		menu._quick_open = ""
+		return
+	if menu._quick_open == "queue":
+		menu.queue_menu.draw()
+	else:
+		menu.playback_popups.draw(menu._quick_open)
+
+
+func subtitle_tracks() -> Array:
+	return menu._state.get("subtitle_options", [])
+
+
+func subtitle_label(track: Dictionary) -> String:
+	var title := str(track.get("title", "")).strip_edges()
+	if title.is_empty():
+		title = str(track.get("language", "")).strip_edges()
+	if title.is_empty():
+		title = I18n.t("Subtitles") + " %d" % int(track.id)
+	var codec := str(track.get("codec", "")).to_upper().replace("SUBRIP", "SRT").replace(
+		"WEBVTT", "VTT"
+	)
+	return menu._fit_title(
+		title.replace("\n", " "),
+		" · " + (I18n.t("Encoding invalid") if track.get("encoding_invalid", false) else codec),
+		0.76,
+		20
+	)
+
+
+func subtitle_controls() -> Array:
+	var rows: Array = []
+	var encoding: Dictionary = menu._state.get(
+		"secondary_subtitle_encoding_row" if menu._subtitle_secondary else "subtitle_encoding_row",
+		{}
+	)
+	if not encoding.is_empty():
+		rows.append({"title": "Encoding (reopen video)", "field": encoding})
+	if immersive_subtitles():
+		rows.append(
+			{
+				"title": "Subtitle direction",
+				"field": SubtitleDepth.direction_row(int(menu._state.get("subtitle_direction", 0)))
+			}
+		)
+		rows.append(
+			{
+				"title":
+				(
+					"Horizontal position"
+					if int(menu._state.get("subtitle_direction", 0)) == 1
+					else "Subtitle position"
+				),
+				"field":
+				SubtitleDepth.slider_row(
+					"subtitle_position", float(menu._state.get("subtitle_position", 0.0))
+				)
+			}
+		)
+		rows.append(
+			{
+				"title": "Distance",
+				"field":
+				SubtitleDepth.slider_row(
+					"subtitle_distance", float(menu._state.get("subtitle_distance", 5.0))
+				)
+			}
+		)
+	else:
+		rows.append(
+			{
+				"title": "Vertical position",
+				"field":
+				{
+					"key": "subtitle_flat_position",
+					"enabled": not menu._state.get("subtitle_below_screen", false),
+					"display_value":
+					"%.0f%%" % float(menu._state.get("subtitle_flat_position", 0.0)),
+					"value": menu._state.get("subtitle_flat_position", 0.0),
+					"slider": true,
+					"span": Vector3(0, 100, 1),
+					"unit": "%",
+					"reset_value": 0.0
+				}
+			}
+		)
+	rows.append(
+		{
+			"title": "Text size",
+			"field":
+			{
+				"key": "subtitle_size",
+				"value": menu._state.get("subtitle_size", 100.0),
+				"slider": true,
+				"span": Vector3(50, 200, 5),
+				"unit": "%",
+				"reset_value": 100.0
+			}
+		}
+	)
+	rows.append(
+		{
+			"title": "Text color",
+			"field":
+			preload("res://scripts/caption_palette.gd").choices(
+				int(menu._state.get("subtitle_palette", 0))
+			)
+		}
+	)
+	rows.append(
+		{
+			"title": "Subtitles below screen",
+			"field":
+			{
+				"key": "subtitle_below_screen",
+				"value": menu._state.get("subtitle_below_screen", false),
+				"enabled": menu._state.get("has_video", false) and not immersive_subtitles(),
+				"hint": "Available for flat video only" if immersive_subtitles() else "",
+				"choices": [{"value": false, "label": "Off"}, {"value": true, "label": "On"}]
+			}
+		}
+	)
+	return rows
+
+
+func draw_subtitles() -> void:
+	var tracks := subtitle_tracks()
+	menu._subtitle_offset = clampi(
+		menu._subtitle_offset, 0, maxi(0, tracks.size() - menu.SUBTITLE_ROWS)
+	)
+	var rows := subtitle_controls()
+	var scrolling: bool = tracks.size() > menu.SUBTITLE_ROWS
+	var height := (
+		0.26
+		+ (1 + mini(tracks.size(), menu.SUBTITLE_ROWS)) * 0.075
+		+ rows.size() * 0.10
+		+ 0.18
+		+ (0.06 if scrolling else 0.0)
+	)
+	var top := 0.285 + height
+	var panel: MeshInstance3D = menu._quad(
+		Vector2(1.10, height), Vector3(0, 0.285 + height / 2, 0.001), Color(menu.PANEL, 0.96), 10
+	)
+	panel.material_override.set_shader_parameter("corner_radius", 0.025)
+	menu.add_child(panel)
+	menu._decorations.append(panel)
+	var heading: Label3D = menu._label(I18n.t("Subtitles"), Vector3(-0.48, top - 0.05, 0.004), 20)
+	heading.font = menu.ui_font_bold()
+	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	var y := top - 0.125
+	menu.choices.field(
+		null,
+		{
+			"key": "dual_subtitles",
+			"value": menu._state.get("dual_subtitles", false),
+			"enabled": menu._state.get("dual_subtitles_available", false),
+			"choices": [{"value": false, "label": "Off"}, {"value": true, "label": "On"}]
+		},
+		Vector2(0.14, y),
+		0.64
+	)
+	var dual_title: Label3D = menu._label(I18n.t("Dual subtitles"), Vector3(-0.48, y, 0.004), 17)
+	dual_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	y -= 0.09
+	menu.choices.field(
+		null,
+		{
+			"key": "subtitle_target",
+			"value": menu._subtitle_secondary,
+			"enabled": menu._state.get("dual_subtitles_available", false),
+			"choices":
+			[
+				{"value": false, "label": "Primary subtitle"},
+				{"value": true, "label": "Secondary subtitle"}
+			]
+		},
+		Vector2(0, y),
+		0.96
+	)
+	y -= 0.09
+	subtitle_row(menu.SUBTITLE_ROW, 0, I18n.t("Off"), y)
+	y -= 0.075
+	for index in range(
+		menu._subtitle_offset, mini(tracks.size(), menu._subtitle_offset + menu.SUBTITLE_ROWS)
+	):
+		var track: Dictionary = tracks[index]
+		subtitle_row(menu.SUBTITLE_ROW + index + 1, int(track.id), subtitle_label(track), y)
+		y -= 0.075
+	if scrolling:
+		menu._button(
+			menu.SUBTITLE_UP,
+			"↑",
+			Vector2(-0.07, y + 0.015),
+			Vector2(0.10, 0.05),
+			menu._subtitle_offset > 0
+		)
+		menu._button(
+			menu.SUBTITLE_DOWN,
+			"↓",
+			Vector2(0.07, y + 0.015),
+			Vector2(0.10, 0.05),
+			menu._subtitle_offset + menu.SUBTITLE_ROWS < tracks.size()
+		)
+		y -= 0.06
+	y -= 0.01
+	for row in rows:
+		var title: Label3D = menu._label(I18n.t(row.title), Vector3(-0.48, y, 0.004), 17)
+		if row.field.get("key", "") == "subtitle_below_screen" and immersive_subtitles():
+			var unavailable: Label3D = menu._label(
+				I18n.t("Available for flat video only"), Vector3(0.14, y - 0.032, 0.004), 12
+			)
+			unavailable.modulate = menu.MUTED
+		title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		menu.choices.field(null, row.field, Vector2(0.14, y), 0.64, 0.075)
+		y -= 0.10
+	menu._button(
+		menu.SUBTITLE_LOAD,
+		I18n.t("Load subtitle file"),
+		Vector2(-0.25, 0.365),
+		Vector2(0.47, 0.065),
+		not menu._state.get("subtitle_loading", false)
+	)
+	menu._button(
+		menu.SYNC_SETTINGS, I18n.t("Synchronization"), Vector2(0.25, 0.365), Vector2(0.47, 0.065)
+	)
+	var hint: Label3D = menu._label(
+		I18n.t("Matching subtitles load automatically; choose other files manually."),
+		Vector3(0, 0.31, 0.004),
+		13
+	)
+	hint.modulate = menu.MUTED
+	var example: Label3D = menu._label(I18n.t("movie.mp4 → movie.srt"), Vector3(0, 0.28, 0.004), 12)
+	example.modulate = menu.MUTED
+	menu.choices.bounds = Vector2(0.285, top - 0.08)
+	menu.choices.finish()
+
+
+func immersive_subtitles() -> bool:
+	return menu._state.get("has_video", false) and int(menu._state.get("geometry", 0)) != 0
+
+
+func subtitle_row(target: int, id: int, text: String, y: float) -> void:
+	menu._subtitle_ids[target] = id
+	var enabled: bool = (
+		not menu._subtitle_secondary
+		or (
+			menu._state.get("dual_subtitles", false)
+			and (id == 0 or id != int(menu._state.get("primary_subtitle_id", 0)))
+		)
+	)
+	menu._button(target, text, Vector2(0, y), Vector2(0.92, 0.065), enabled)
+	var button: Dictionary = menu._buttons.back()
+	var label: Label3D = button.node.get_child(0)
+	label.font_size = 20
+	label.position.x = -0.42
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	if (
+		id
+		== int(
+			menu._state.get(
+				"secondary_subtitle_track" if menu._subtitle_secondary else "subtitle_track", 0
+			)
+		)
+	):
+		button.base_color = menu.SELECTED
+		menu._icon("check", Vector3(0.414, 0, 0.004), 0.029, menu.ACCENT, button.node)
+
+
+func supports_half_layouts() -> bool:
+	return true
+
+
+## Video mode: every projection and stereo layout at once, the current ones lit (no cycling).
+## Pressing a lit tile again locks that projection and layout for unnamed new files (a lock on
+## the corner of both); pressing a locked one again unlocks.
+func draw_modes() -> void:
+	menu._lit_modes = {}
+	var half_choices := supports_half_layouts()
+	var lock: Dictionary = menu._state.get("mode_lock", {})
+	var locked := {}
+	if not lock.is_empty():
+		locked[menu.MODE_PROJECTION + int(lock.geometry)] = true
+		locked[menu.MODE_STEREO + [0, 1, 4, 5, 6][int(lock.layout)]] = true
+	var fisheye := int(menu._state.get("geometry", 0)) == 2
+	# The lens row sits under the layouts: the panel rises to clear the floating round buttons.
+	var top := 0.61 if fisheye else 0.47
+	if half_choices:
+		top = 0.465 if fisheye else 0.365
+	# Fisheye adds a row of lens angles under the layouts.
+	var height := (0.33 if fisheye else 0.24) if half_choices else (0.5 if fisheye else 0.36)
+	var centre_y := (
+		(0.44 if fisheye else 0.385) if half_choices else top - (0.07 if fisheye else 0.0)
+	)
+	if half_choices:
+		height += .1
+		centre_y += .05
+		top += .1
+	var panel: MeshInstance3D = menu._quad(
+		Vector2(1.06, height), Vector3(0, centre_y, 0.001), Color(menu.PANEL, 0.94), 10
+	)
+	panel.material_override.set_shader_parameter("corner_radius", 0.04)
+	menu.add_child(panel)
+	menu._decorations.append(panel)
+	var projection := int(menu._state.get("geometry", 0))
+	var names := ["Flat", "180°", "Fisheye", "360°"]
+	var icons := ["screen", "dome", "fisheye", "panorama"]
+	var projection_order := [0, 1, 3, 2]
+	for column in projection_order.size():
+		var g: int = projection_order[column]
+		mode_tile(
+			menu.MODE_PROJECTION + g,
+			I18n.t(names[g]),
+			icons[g],
+			Vector2(-0.3 + column * 0.2, top + 0.075),
+			projection == g,
+			true
+		)
+	var stereo: bool = menu._state.get("stereo", false)
+	var tb: bool = stereo and menu._state.get("top_bottom", false)
+	var half_layout: bool = stereo and menu._state.get("stereo_half", false)
+	var layouts_y := top - (0.04 if half_choices else 0.09)
+	mode_tile(menu.MODE_STEREO, "2D", "screen", Vector2(-0.4, layouts_y), not stereo, true)
+	mode_tile(
+		menu.MODE_STEREO + 1,
+		I18n.t("3D SBS"),
+		"stereo",
+		Vector2(-0.2, layouts_y),
+		stereo and not tb and not half_layout,
+		true
+	)
+	mode_tile(
+		menu.MODE_STEREO + 4,
+		I18n.t("3D TB"),
+		"stacked",
+		Vector2(0.2 if half_choices else 0, layouts_y),
+		tb and not half_layout,
+		true
+	)
+	if half_choices:
+		mode_tile(
+			menu.MODE_STEREO + 5,
+			I18n.t("Half SBS"),
+			"stereo",
+			Vector2(0, layouts_y),
+			stereo and not tb and half_layout,
+			true
+		)
+		mode_tile(
+			menu.MODE_STEREO + 6,
+			I18n.t("Half TB"),
+			"stacked",
+			Vector2(0.4, layouts_y),
+			tb and half_layout,
+			true
+		)
+	var controls_y := top - (0.15 if half_choices else 0.09)
+	if not half_choices:
+		mode_tile(
+			menu.MODE_STEREO + 2,
+			menu._caption("eyes"),
+			"eyes",
+			Vector2(0.4, controls_y),
+			false,
+			stereo
+		)
+	if fisheye:
+		for i in menu.LENS_FOVS.size():
+			menu._button(
+				menu.MODE_LENS + i,
+				"%d°" % menu.LENS_FOVS[i],
+				Vector2(-0.3 + i * 0.2, layouts_y - 0.11 if half_choices else controls_y - 0.145),
+				Vector2(0.18, 0.06 if half_choices else 0.08)
+			)
+			if int(menu._state.get("fisheye_fov", 180)) == menu.LENS_FOVS[i]:
+				menu._buttons.back().base_color = menu.SELECTED
+	if half_choices:
+		menu._control_button(
+			menu.MODE_STEREO + 7,
+			I18n.t("Auto detect"),
+			Vector2(0, controls_y - (.09 if fisheye else 0.0)),
+			.96,
+			true,
+			"refresh"
+		)
+	for button in menu._buttons:
+		if locked.has(button.target):
+			var half: Vector2 = button.rect.size / 2
+			menu._icon(
+				"lock",
+				Vector3(half.x - 0.022, half.y - 0.022, 0.005),
+				0.026,
+				menu.ACCENT,
+				button.node
+			)
+
+
+func mode_tile(
+	target: int, text: String, icon: String, centre: Vector2, current: bool, enabled: bool = true
+) -> void:
+	var height := (
+		(0.08 if target in [menu.MODE_STEREO + 2, menu.MODE_STEREO + 3] else 0.1)
+		if supports_half_layouts()
+		else 0.13
+	)
+	menu._button(target, text, centre, Vector2(0.18, height), enabled, icon)
+	if current:
+		menu._buttons.back().base_color = menu.SELECTED
+		if enabled:
+			menu._lit_modes[target] = true
+		else:
+			menu._buttons.back()["fixed_current"] = true
+			menu._buttons.back().node.get_child(0).modulate = menu._buttons.back().foreground
+			menu._buttons.back().node.get_child(1).material_override.albedo_color = menu.ACCENT
+
+
+func draw_adjustments() -> void:
+	menu._quick_open = {"sync": "sync", "stereo_view": "ipd", "color_grade": "color"}.get(
+		menu._adjustment, ""
+	)
+	menu._adjustment = ""
+	menu.section = 0
+	menu._draw_bar()

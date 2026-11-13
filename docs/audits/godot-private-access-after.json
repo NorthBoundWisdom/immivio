@@ -2,8 +2,8 @@
   "schema_version": 1,
   "scope": "All app/godot/tests/**/*.gd; direct dot-member accesses only; strings/comments excluded",
   "scripts_scanned": 138,
-  "scripts_with_private_access": 97,
-  "total_accesses": 921,
+  "scripts_with_private_access": 96,
+  "total_accesses": 908,
   "members": [
     {
       "member": "_on_playback_adjustment",
@@ -2066,16 +2066,6 @@
       ]
     },
     {
-      "member": "_write_debug_report",
-      "accesses": 3,
-      "tests": [
-        {
-          "file": "app/godot/tests/test_diagnostic_log.gd",
-          "accesses": 3
-        }
-      ]
-    },
-    {
       "member": "_audio_option_label",
       "accesses": 2,
       "tests": [
@@ -2172,16 +2162,6 @@
       ]
     },
     {
-      "member": "_debug_benchmark",
-      "accesses": 2,
-      "tests": [
-        {
-          "file": "app/godot/tests/test_performance_privacy.gd",
-          "accesses": 2
-        }
-      ]
-    },
-    {
       "member": "_decorations",
       "accesses": 2,
       "tests": [
@@ -2261,16 +2241,6 @@
       "tests": [
         {
           "file": "app/godot/tests/test_performance_privacy.gd",
-          "accesses": 2
-        }
-      ]
-    },
-    {
-      "member": "_on_debug_command",
-      "accesses": 2,
-      "tests": [
-        {
-          "file": "app/godot/tests/test_mpv_end.gd",
           "accesses": 2
         }
       ]
@@ -2674,16 +2644,6 @@
       ]
     },
     {
-      "member": "_debug_request",
-      "accesses": 1,
-      "tests": [
-        {
-          "file": "app/godot/tests/test_diagnostic_log.gd",
-          "accesses": 1
-        }
-      ]
-    },
-    {
       "member": "_drawn_slots",
       "accesses": 1,
       "tests": [
@@ -2719,16 +2679,6 @@
       "tests": [
         {
           "file": "app/godot/tests/test_dlna_menu.gd",
-          "accesses": 1
-        }
-      ]
-    },
-    {
-      "member": "_engine_notices",
-      "accesses": 1,
-      "tests": [
-        {
-          "file": "app/godot/tests/test_account_panel.gd",
           "accesses": 1
         }
       ]
@@ -2854,16 +2804,6 @@
       ]
     },
     {
-      "member": "_open_licenses",
-      "accesses": 1,
-      "tests": [
-        {
-          "file": "app/godot/tests/test_account_panel.gd",
-          "accesses": 1
-        }
-      ]
-    },
-    {
       "member": "_panorama_path",
       "accesses": 1,
       "tests": [
@@ -2929,16 +2869,6 @@
       "tests": [
         {
           "file": "app/godot/tests/test_playback_tools.gd",
-          "accesses": 1
-        }
-      ]
-    },
-    {
-      "member": "_rebuild_rows",
-      "accesses": 1,
-      "tests": [
-        {
-          "file": "app/godot/tests/test_refresh_rate.gd",
           "accesses": 1
         }
       ]
@@ -3074,16 +3004,6 @@
       ]
     },
     {
-      "member": "_subtitle_controls",
-      "accesses": 1,
-      "tests": [
-        {
-          "file": "app/godot/tests/test_subtitle_below_screen.gd",
-          "accesses": 1
-        }
-      ]
-    },
-    {
       "member": "_subtitle_import_command",
       "accesses": 1,
       "tests": [
@@ -3099,16 +3019,6 @@
       "tests": [
         {
           "file": "app/godot/tests/test_playback_tools.gd",
-          "accesses": 1
-        }
-      ]
-    },
-    {
-      "member": "_subtitle_label",
-      "accesses": 1,
-      "tests": [
-        {
-          "file": "app/godot/tests/test_subtitle_encoding.gd",
           "accesses": 1
         }
       ]
@@ -3224,6 +3134,6 @@
       ]
     }
   ],
-  "source_commit": "eead9b55c06b1525fc4d6223fd5f80dc4057fe70",
+  "source_commit": "afa374c81d10a0ff3ba64c5730fd09d4beda00c9",
   "source_dirty": true
 }

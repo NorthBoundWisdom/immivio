@@ -246,7 +246,10 @@ func _run() -> void:
 		"Immersive UI disables the toggle"
 	)
 	check(
-		menu._subtitle_controls().back().field.hint == "Available for flat video only",
+		(
+			menu.playback_popups.subtitle_controls().back().field.hint
+			== "Available for flat video only"
+		),
 		"Immersive control explains its scope"
 	)
 	menu.free()

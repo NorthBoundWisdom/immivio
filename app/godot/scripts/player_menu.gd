@@ -170,8 +170,8 @@ var _subtitle_ids: Dictionary = {}
 func capture_envelope() -> Rect2:
 	# Reserve every popup before its first frame, including either subtitle target.
 	# The unused space below the timeline is kept small to preserve texture detail.
-	var tracks := _subtitle_tracks().size()
-	var rows := 7 if _immersive_subtitles() else 5
+	var tracks := playback_popups.subtitle_tracks().size()
+	var rows := 7 if playback_popups.immersive_subtitles() else 5
 	var top := maxf(
 		1.20,
 		(
@@ -518,7 +518,7 @@ func _draw() -> void:
 	):
 		_clear_popups()
 		_begin_choices()
-		_draw_bar_popups()
+		playback_popups.draw_active()
 		_refresh_live_values()
 		return
 	_park_settings_layout()
@@ -602,14 +602,14 @@ func _draw_uncached() -> void:
 	_clear_layout()
 	_begin_choices()
 	_reset_draw_fields()
-	if not _immersive_subtitles():
+	if not playback_popups.immersive_subtitles():
 		if choices.opened == "subtitle_distance":
 			choices.reset()
 		if _adjustment == "subtitle_distance":
 			_finish_adjustment()
 			_adjustment = ""
 	if not _adjustment.is_empty():
-		_draw_adjustments()
+		playback_popups.draw_adjustments()
 		_update_highlights()
 		return
 	if not _state.get("has_video", false) or _subtitle_source != str(_state.get("source_uri", "")):
@@ -741,30 +741,7 @@ func _draw_bar() -> void:
 		"decorations": _decorations.size(),
 		"tips": _tips.duplicate()
 	}
-	_draw_bar_popups()
-
-
-func _draw_bar_popups() -> void:
-	_reset_popup_fields()
-	bookmarks.draw_popup()
-	if not _quick_open.is_empty():
-		_draw_quick_settings()
-	if _mode_open:
-		_draw_modes()
-	if _subtitle_open:
-		_draw_subtitles()
-	_bar_drawn = _bar_key()
-
-
-## Compact controls share the normal setting/adjustment signals and persistence.
-func _draw_quick_settings() -> void:
-	if not _state.get("has_video", false) and _quick_open != "info":
-		_quick_open = ""
-		return
-	if _quick_open == "queue":
-		queue_menu.draw()
-	else:
-		playback_popups.draw(_quick_open)
+	playback_popups.draw_active()
 
 
 func _popup_is_open(key: String) -> bool:
@@ -801,251 +778,6 @@ func _toggle_popup(key: String) -> void:
 		popup_opened.emit()
 
 
-func _subtitle_tracks() -> Array:
-	return _state.get("subtitle_options", [])
-
-
-func _subtitle_label(track: Dictionary) -> String:
-	var title := str(track.get("title", "")).strip_edges()
-	if title.is_empty():
-		title = str(track.get("language", "")).strip_edges()
-	if title.is_empty():
-		title = I18n.t("Subtitles") + " %d" % int(track.id)
-	var codec := str(track.get("codec", "")).to_upper().replace("SUBRIP", "SRT").replace(
-		"WEBVTT", "VTT"
-	)
-	return _fit_title(
-		title.replace("\n", " "),
-		" · " + (I18n.t("Encoding invalid") if track.get("encoding_invalid", false) else codec),
-		0.76,
-		20
-	)
-
-
-func _subtitle_controls() -> Array:
-	var rows: Array = []
-	var encoding: Dictionary = _state.get(
-		"secondary_subtitle_encoding_row" if _subtitle_secondary else "subtitle_encoding_row", {}
-	)
-	if not encoding.is_empty():
-		rows.append({"title": "Encoding (reopen video)", "field": encoding})
-	if _immersive_subtitles():
-		rows.append(
-			{
-				"title": "Subtitle direction",
-				"field": SubtitleDepth.direction_row(int(_state.get("subtitle_direction", 0)))
-			}
-		)
-		rows.append(
-			{
-				"title":
-				(
-					"Horizontal position"
-					if int(_state.get("subtitle_direction", 0)) == 1
-					else "Subtitle position"
-				),
-				"field":
-				SubtitleDepth.slider_row(
-					"subtitle_position", float(_state.get("subtitle_position", 0.0))
-				)
-			}
-		)
-		rows.append(
-			{
-				"title": "Distance",
-				"field":
-				SubtitleDepth.slider_row(
-					"subtitle_distance", float(_state.get("subtitle_distance", 5.0))
-				)
-			}
-		)
-	else:
-		rows.append(
-			{
-				"title": "Vertical position",
-				"field":
-				{
-					"key": "subtitle_flat_position",
-					"enabled": not _state.get("subtitle_below_screen", false),
-					"display_value": "%.0f%%" % float(_state.get("subtitle_flat_position", 0.0)),
-					"value": _state.get("subtitle_flat_position", 0.0),
-					"slider": true,
-					"span": Vector3(0, 100, 1),
-					"unit": "%",
-					"reset_value": 0.0
-				}
-			}
-		)
-	rows.append(
-		{
-			"title": "Text size",
-			"field":
-			{
-				"key": "subtitle_size",
-				"value": _state.get("subtitle_size", 100.0),
-				"slider": true,
-				"span": Vector3(50, 200, 5),
-				"unit": "%",
-				"reset_value": 100.0
-			}
-		}
-	)
-	rows.append(
-		{
-			"title": "Text color",
-			"field":
-			preload("res://scripts/caption_palette.gd").choices(
-				int(_state.get("subtitle_palette", 0))
-			)
-		}
-	)
-	rows.append(
-		{
-			"title": "Subtitles below screen",
-			"field":
-			{
-				"key": "subtitle_below_screen",
-				"value": _state.get("subtitle_below_screen", false),
-				"enabled": _state.get("has_video", false) and not _immersive_subtitles(),
-				"hint": "Available for flat video only" if _immersive_subtitles() else "",
-				"choices": [{"value": false, "label": "Off"}, {"value": true, "label": "On"}]
-			}
-		}
-	)
-	return rows
-
-
-func _draw_subtitles() -> void:
-	var tracks := _subtitle_tracks()
-	_subtitle_offset = clampi(_subtitle_offset, 0, maxi(0, tracks.size() - SUBTITLE_ROWS))
-	var rows := _subtitle_controls()
-	var scrolling := tracks.size() > SUBTITLE_ROWS
-	var height := (
-		0.26
-		+ (1 + mini(tracks.size(), SUBTITLE_ROWS)) * 0.075
-		+ rows.size() * 0.10
-		+ 0.18
-		+ (0.06 if scrolling else 0.0)
-	)
-	var top := 0.285 + height
-	var panel := _quad(
-		Vector2(1.10, height), Vector3(0, 0.285 + height / 2, 0.001), Color(PANEL, 0.96), 10
-	)
-	panel.material_override.set_shader_parameter("corner_radius", 0.025)
-	add_child(panel)
-	_decorations.append(panel)
-	var heading := _label(I18n.t("Subtitles"), Vector3(-0.48, top - 0.05, 0.004), 20)
-	heading.font = ui_font_bold()
-	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	var y := top - 0.125
-	choices.field(
-		null,
-		{
-			"key": "dual_subtitles",
-			"value": _state.get("dual_subtitles", false),
-			"enabled": _state.get("dual_subtitles_available", false),
-			"choices": [{"value": false, "label": "Off"}, {"value": true, "label": "On"}]
-		},
-		Vector2(0.14, y),
-		0.64
-	)
-	var dual_title := _label(I18n.t("Dual subtitles"), Vector3(-0.48, y, 0.004), 17)
-	dual_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	y -= 0.09
-	choices.field(
-		null,
-		{
-			"key": "subtitle_target",
-			"value": _subtitle_secondary,
-			"enabled": _state.get("dual_subtitles_available", false),
-			"choices":
-			[
-				{"value": false, "label": "Primary subtitle"},
-				{"value": true, "label": "Secondary subtitle"}
-			]
-		},
-		Vector2(0, y),
-		0.96
-	)
-	y -= 0.09
-	_subtitle_row(SUBTITLE_ROW, 0, I18n.t("Off"), y)
-	y -= 0.075
-	for index in range(_subtitle_offset, mini(tracks.size(), _subtitle_offset + SUBTITLE_ROWS)):
-		var track: Dictionary = tracks[index]
-		_subtitle_row(SUBTITLE_ROW + index + 1, int(track.id), _subtitle_label(track), y)
-		y -= 0.075
-	if scrolling:
-		_button(
-			SUBTITLE_UP, "↑", Vector2(-0.07, y + 0.015), Vector2(0.10, 0.05), _subtitle_offset > 0
-		)
-		_button(
-			SUBTITLE_DOWN,
-			"↓",
-			Vector2(0.07, y + 0.015),
-			Vector2(0.10, 0.05),
-			_subtitle_offset + SUBTITLE_ROWS < tracks.size()
-		)
-		y -= 0.06
-	y -= 0.01
-	for row in rows:
-		var title := _label(I18n.t(row.title), Vector3(-0.48, y, 0.004), 17)
-		if row.field.get("key", "") == "subtitle_below_screen" and _immersive_subtitles():
-			var unavailable := _label(
-				I18n.t("Available for flat video only"), Vector3(0.14, y - 0.032, 0.004), 12
-			)
-			unavailable.modulate = MUTED
-		title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-		choices.field(null, row.field, Vector2(0.14, y), 0.64, 0.075)
-		y -= 0.10
-	_button(
-		SUBTITLE_LOAD,
-		I18n.t("Load subtitle file"),
-		Vector2(-0.25, 0.365),
-		Vector2(0.47, 0.065),
-		not _state.get("subtitle_loading", false)
-	)
-	_button(SYNC_SETTINGS, I18n.t("Synchronization"), Vector2(0.25, 0.365), Vector2(0.47, 0.065))
-	var hint := _label(
-		I18n.t("Matching subtitles load automatically; choose other files manually."),
-		Vector3(0, 0.31, 0.004),
-		13
-	)
-	hint.modulate = MUTED
-	var example := _label(I18n.t("movie.mp4 → movie.srt"), Vector3(0, 0.28, 0.004), 12)
-	example.modulate = MUTED
-	choices.bounds = Vector2(0.285, top - 0.08)
-	choices.finish()
-
-
-func _immersive_subtitles() -> bool:
-	return _state.get("has_video", false) and int(_state.get("geometry", 0)) != 0
-
-
-func _subtitle_row(target: int, id: int, text: String, y: float) -> void:
-	_subtitle_ids[target] = id
-	var enabled: bool = (
-		not _subtitle_secondary
-		or (
-			_state.get("dual_subtitles", false)
-			and (id == 0 or id != int(_state.get("primary_subtitle_id", 0)))
-		)
-	)
-	_button(target, text, Vector2(0, y), Vector2(0.92, 0.065), enabled)
-	var button: Dictionary = _buttons.back()
-	var label: Label3D = button.node.get_child(0)
-	label.font_size = 20
-	label.position.x = -0.42
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	if (
-		id
-		== int(
-			_state.get("secondary_subtitle_track" if _subtitle_secondary else "subtitle_track", 0)
-		)
-	):
-		button.base_color = SELECTED
-		_icon("check", Vector3(0.414, 0, 0.004), 0.029, ACCENT, button.node)
-
-
 func stick_scroll(y: float, delta: float) -> void:
 	if choices.stick_scroll(y, delta):
 		return
@@ -1066,7 +798,9 @@ func stick_scroll(y: float, delta: float) -> void:
 
 func _scroll_subtitles(rows: int) -> void:
 	var offset := clampi(
-		_subtitle_offset + rows, 0, maxi(0, _subtitle_tracks().size() - SUBTITLE_ROWS)
+		_subtitle_offset + rows,
+		0,
+		maxi(0, playback_popups.subtitle_tracks().size() - SUBTITLE_ROWS)
 	)
 	if offset != _subtitle_offset:
 		_subtitle_offset = offset
@@ -1221,7 +955,7 @@ func _bar_key() -> String:
 			_state.get("stereo", false),
 			false,
 			_state.get("source_uri", ""),
-			_subtitle_tracks(),
+			playback_popups.subtitle_tracks(),
 			_state.get("subtitle_track", 0),
 			_subtitle_secondary,
 			_state.get("dual_subtitles", false),
@@ -1246,142 +980,6 @@ func _seek_at(x: float) -> int:
 	return roundi(
 		clampf((x + BAR_SEEK / 2) / BAR_SEEK, 0.0, 1.0) * int(_state.get("duration_ms", 0))
 	)
-
-
-func _supports_half_layouts() -> bool:
-	return true
-
-
-## Video mode: every projection and stereo layout at once, the current ones lit (no cycling).
-## Pressing a lit tile again locks that projection and layout for unnamed new files (a lock on
-## the corner of both); pressing a locked one again unlocks.
-func _draw_modes() -> void:
-	_lit_modes = {}
-	var half_choices := _supports_half_layouts()
-	var lock: Dictionary = _state.get("mode_lock", {})
-	var locked := {}
-	if not lock.is_empty():
-		locked[MODE_PROJECTION + int(lock.geometry)] = true
-		locked[MODE_STEREO + [0, 1, 4, 5, 6][int(lock.layout)]] = true
-	var fisheye := int(_state.get("geometry", 0)) == 2
-	# The lens row sits under the layouts: the panel rises to clear the floating round buttons.
-	var top := 0.61 if fisheye else 0.47
-	if half_choices:
-		top = 0.465 if fisheye else 0.365
-	# Fisheye adds a row of lens angles under the layouts.
-	var height := (0.33 if fisheye else 0.24) if half_choices else (0.5 if fisheye else 0.36)
-	var centre_y := (
-		(0.44 if fisheye else 0.385) if half_choices else top - (0.07 if fisheye else 0.0)
-	)
-	if half_choices:
-		height += .1
-		centre_y += .05
-		top += .1
-	var panel := _quad(Vector2(1.06, height), Vector3(0, centre_y, 0.001), Color(PANEL, 0.94), 10)
-	panel.material_override.set_shader_parameter("corner_radius", 0.04)
-	add_child(panel)
-	_decorations.append(panel)
-	var projection := int(_state.get("geometry", 0))
-	var names := ["Flat", "180°", "Fisheye", "360°"]
-	var icons := ["screen", "dome", "fisheye", "panorama"]
-	var projection_order := [0, 1, 3, 2]
-	for column in projection_order.size():
-		var g: int = projection_order[column]
-		_mode_tile(
-			MODE_PROJECTION + g,
-			I18n.t(names[g]),
-			icons[g],
-			Vector2(-0.3 + column * 0.2, top + 0.075),
-			projection == g,
-			true
-		)
-	var stereo: bool = _state.get("stereo", false)
-	var tb: bool = stereo and _state.get("top_bottom", false)
-	var half_layout: bool = stereo and _state.get("stereo_half", false)
-	var layouts_y := top - (0.04 if half_choices else 0.09)
-	_mode_tile(MODE_STEREO, "2D", "screen", Vector2(-0.4, layouts_y), not stereo, true)
-	_mode_tile(
-		MODE_STEREO + 1,
-		I18n.t("3D SBS"),
-		"stereo",
-		Vector2(-0.2, layouts_y),
-		stereo and not tb and not half_layout,
-		true
-	)
-	_mode_tile(
-		MODE_STEREO + 4,
-		I18n.t("3D TB"),
-		"stacked",
-		Vector2(0.2 if half_choices else 0, layouts_y),
-		tb and not half_layout,
-		true
-	)
-	if half_choices:
-		_mode_tile(
-			MODE_STEREO + 5,
-			I18n.t("Half SBS"),
-			"stereo",
-			Vector2(0, layouts_y),
-			stereo and not tb and half_layout,
-			true
-		)
-		_mode_tile(
-			MODE_STEREO + 6,
-			I18n.t("Half TB"),
-			"stacked",
-			Vector2(0.4, layouts_y),
-			tb and half_layout,
-			true
-		)
-	var controls_y := top - (0.15 if half_choices else 0.09)
-	if not half_choices:
-		_mode_tile(
-			MODE_STEREO + 2, _caption("eyes"), "eyes", Vector2(0.4, controls_y), false, stereo
-		)
-	if fisheye:
-		for i in LENS_FOVS.size():
-			_button(
-				MODE_LENS + i,
-				"%d°" % LENS_FOVS[i],
-				Vector2(-0.3 + i * 0.2, layouts_y - 0.11 if half_choices else controls_y - 0.145),
-				Vector2(0.18, 0.06 if half_choices else 0.08)
-			)
-			if int(_state.get("fisheye_fov", 180)) == LENS_FOVS[i]:
-				_buttons.back().base_color = SELECTED
-	if half_choices:
-		_control_button(
-			MODE_STEREO + 7,
-			I18n.t("Auto detect"),
-			Vector2(0, controls_y - (.09 if fisheye else 0.0)),
-			.96,
-			true,
-			"refresh"
-		)
-	for button in _buttons:
-		if locked.has(button.target):
-			var half: Vector2 = button.rect.size / 2
-			_icon(
-				"lock", Vector3(half.x - 0.022, half.y - 0.022, 0.005), 0.026, ACCENT, button.node
-			)
-
-
-func _mode_tile(
-	target: int, text: String, icon: String, centre: Vector2, current: bool, enabled: bool = true
-) -> void:
-	var height := (
-		(0.08 if target in [MODE_STEREO + 2, MODE_STEREO + 3] else 0.1)
-		if _supports_half_layouts()
-		else 0.13
-	)
-	_button(target, text, centre, Vector2(0.18, height), enabled, icon)
-	if current:
-		_buttons.back().base_color = SELECTED
-		if enabled:
-			_lit_modes[target] = true
-		else:
-			_buttons.back()["fixed_current"] = true
-			_buttons.back().node.get_child(0).modulate = _buttons.back().foreground
-			_buttons.back().node.get_child(1).material_override.albedo_color = ACCENT
 
 
 ## "More": picture, sound and info settings; the arrow returns to the bar.
@@ -1673,7 +1271,7 @@ func _enabled(operation: String) -> bool:
 		"screen_curve", "screen_distance":
 			return has_video and int(_state.get("geometry", 0)) == 0
 		"subtitle_distance":
-			return _immersive_subtitles()
+			return playback_popups.immersive_subtitles()
 	return true
 
 
@@ -1798,15 +1396,6 @@ func _finish_adjustment() -> void:
 	_adjust_hand = ""
 	_adjust_target = -1
 	adjustment_committed.emit()
-
-
-func _draw_adjustments() -> void:
-	_quick_open = {"sync": "sync", "stereo_view": "ipd", "color_grade": "color"}.get(
-		_adjustment, ""
-	)
-	_adjustment = ""
-	section = 0
-	_draw_bar()
 
 
 func _activate_slider_reset(target: int) -> bool:

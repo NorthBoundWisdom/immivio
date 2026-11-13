@@ -40,7 +40,7 @@ func _initialize() -> void:
 	var invalid := {
 		"id": 4, "title": "Caption", "external": true, "encoding_key": key, "encoding_invalid": true
 	}
-	assert(menu._subtitle_label(invalid).contains("Encoding invalid"))
+	assert(menu.playback_popups.subtitle_label(invalid).contains("Encoding invalid"))
 	menu.free()
 	video.free()
 	var store := Memory.new("user://encoding-test")
