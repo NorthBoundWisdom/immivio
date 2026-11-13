@@ -574,7 +574,7 @@ func _defer_video_controls() -> bool:
 	if not is_instance_valid(host) or host.player_menu != host.video_menu:
 		return false
 	var video: Node3D = host.video
-	if not is_instance_valid(video) or video.get("_waiting_first") != true or video.panel.visible:
+	if not is_instance_valid(video) or not video.waiting_for_first_frame() or video.panel.visible:
 		return false
 	if (
 		video.local_uri.is_empty()
@@ -650,7 +650,7 @@ func _show_library_menu(preserve_navigation: bool = false) -> void:
 		_place_menu(host.library_menu)
 
 
-func _canvas_controls_snapshot() -> Dictionary:
+func canvas_controls_snapshot() -> Dictionary:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return {}
@@ -1018,3 +1018,23 @@ func recenter() -> void:
 	if is_instance_valid(host.menu_compositor):
 		host.menu_compositor.refresh_placement()
 	Log.record("recenter_requested")
+
+
+## Supplied explicitly to the video report writer, which need not inspect its parent.
+func diagnostic_ui_snapshot() -> Dictionary:
+	var host := _host_ref.get_ref() as Node3D
+	if not is_instance_valid(host):
+		return {}
+	return {
+		"player_menu_progress":
+		host.player_menu.progress_snapshot() if is_instance_valid(host.player_menu) else {},
+		"loading_feedback":
+		(
+			{"message": host.playback_feedback.message, "visible": host.playback_feedback.visible}
+			if is_instance_valid(host.playback_feedback)
+			else {}
+		),
+		"canvas_controls": canvas_controls_snapshot(),
+		"selected_features_ui": host.selected_features_probe_result.duplicate(true),
+		"seek_policy_ui": host.seek_policy_probe_result.duplicate(true)
+	}

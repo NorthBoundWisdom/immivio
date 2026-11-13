@@ -42,6 +42,7 @@ var _stereo_capture_binding: RefCounted
 
 var media := State.new()
 var control := PlaybackControl.new()
+var diagnostic_ui_provider: Callable
 var platform: Object
 var alpha_encoding := 1
 var alpha_enabled := false
@@ -2258,49 +2259,16 @@ func _write_debug_report() -> void:
 	if _debug_benchmark and now < _debug_next_report_us:
 		return
 	_debug_next_report_us = now + 250000
-	var progress: Dictionary = {}
-	var host := get_parent()
-	if host and host.has_method("_menu_state"):
-		var menu: Node3D = host.player_menu
-		if menu and menu.visible and is_instance_valid(menu._thumb):
-			progress = {
-				"visible": true,
-				"position_ms": int(menu._state.get("position_ms", -1)),
-				"preview_ms": menu._seek_preview,
-				"elapsed": menu._elapsed.text,
-				"thumb_x": menu._thumb.position.x,
-				"bar_width": menu.BAR_SEEK,
-				"duration_ms": int(menu._state.get("duration_ms", -1))
-			}
+	var ui: Dictionary = diagnostic_ui_provider.call() if diagnostic_ui_provider.is_valid() else {}
 	var report := {
 		"schema_version": 1,
 		"request_id": _debug_request,
 		"commands": _debug_commands,
 		"picker_error": picker_error,
-		"loading_feedback":
-		(
-			{"message": host.playback_feedback.message, "visible": host.playback_feedback.visible}
-			if host and is_instance_valid(host.get("playback_feedback"))
-			else {}
-		),
-		"canvas_controls":
-		(
-			host.presentation_coordinator._canvas_controls_snapshot()
-			if host and host.has_method("_canvas_controls_snapshot")
-			else {}
-		),
-		"selected_features_ui":
-		(
-			host.selected_features_probe_result
-			if host and host.get("selected_features_probe_result") is Dictionary
-			else {}
-		),
-		"seek_policy_ui":
-		(
-			host.seek_policy_probe_result
-			if host and host.get("seek_policy_probe_result") is Dictionary
-			else {}
-		),
+		"loading_feedback": ui.get("loading_feedback", {}),
+		"canvas_controls": ui.get("canvas_controls", {}),
+		"selected_features_ui": ui.get("selected_features_ui", {}),
+		"seek_policy_ui": ui.get("seek_policy_ui", {}),
 		"open_trace": _open_trace.duplicate(true),
 		"media": media.snapshot(),
 		"layout": layout_snapshot(),
@@ -2312,7 +2280,7 @@ func _write_debug_report() -> void:
 		"benchmark": _debug_benchmark,
 		"pixel_probe": _debug_pixels,
 		"seek_trace": _seek_trace,
-		"player_menu_progress": progress,
+		"player_menu_progress": ui.get("player_menu_progress", {}),
 		"thumbnail":
 		{
 			"available": Thumbnails.has(local_uri),
@@ -2539,3 +2507,7 @@ func _exit_tree() -> void:
 	close_video()
 	if is_instance_valid(caption) and caption.get_parent() != self:
 		caption.queue_free()
+
+
+func waiting_for_first_frame() -> bool:
+	return _waiting_first

@@ -2,6 +2,7 @@ extends RefCounted
 ## Owns playback/queue actions and source selection.
 
 var _host_ref: WeakRef
+var _is_finishing: Callable
 const Log := preload("res://scripts/diagnostic_log.gd")
 const Video := preload("res://scripts/mpv_video_display.gd")
 const ThumbnailCache := preload("res://scripts/thumbnail_cache.gd")
@@ -12,8 +13,9 @@ var _queue_add_mode := false
 var _queue_end_key := ""
 
 
-func _init(host: Node3D) -> void:
+func _init(host: Node3D, is_finishing: Callable) -> void:
 	_host_ref = weakref(host)
+	_is_finishing = is_finishing
 
 
 func open_external(value: Dictionary) -> void:
@@ -205,7 +207,8 @@ func _on_video_changed() -> void:
 		not is_instance_valid(host)
 		or host.is_queued_for_deletion()
 		or not host.is_inside_tree()
-		or host.get("_finishing_app") == true
+		or not _is_finishing.is_valid()
+		or bool(_is_finishing.call())
 	):
 		return
 	if host.video.media.state != "ended":

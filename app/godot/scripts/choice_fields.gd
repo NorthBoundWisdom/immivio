@@ -10,6 +10,7 @@ const POPUP_PADDING := 0.012
 const OPTION_HEIGHT := 0.068
 const OPTION_FONT_SIZE := 20
 var menu: Node3D
+var _raise_control: Callable
 var targets: Dictionary = {}
 var capture: Dictionary = {}
 var scope := ""
@@ -21,8 +22,9 @@ var anchor := Vector2.ZERO
 var bounds := Vector2(-0.44, 0.35)
 
 
-func _init(owner: Node3D) -> void:
+func _init(owner: Node3D, raise_control: Callable = Callable()) -> void:
 	menu = owner
+	_raise_control = raise_control
 
 
 func reset() -> void:
@@ -93,8 +95,8 @@ func field(
 		var target := BASE + targets.size()
 		targets[target] = {"kind": "disabled"}
 		menu._control_button(target, value_label, centre, width, false, "", false, parent)
-		if menu.has_method("_above_card"):
-			menu._above_card(menu._buttons.back().node)
+		if _raise_control.is_valid():
+			_raise_control.call(menu._buttons.back().node)
 		menu._tips[target] = menu.I18n.t(str(row.get("hint", "")))
 		return
 	if row.get("slider", false):

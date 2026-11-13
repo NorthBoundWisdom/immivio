@@ -32,7 +32,7 @@ const InputCoordinator := preload("res://scripts/input_coordinator.gd")
 var input_coordinator := InputCoordinator.new(self)
 
 const PlaybackCoordinator := preload("res://scripts/playback_coordinator.gd")
-var playback_coordinator := PlaybackCoordinator.new(self)
+var playback_coordinator := PlaybackCoordinator.new(self, is_finishing_app)
 
 const PlayerSettingsController := preload("res://scripts/player_settings_controller.gd")
 var settings_controller := PlayerSettingsController.new(self)
@@ -253,6 +253,7 @@ func _ready() -> void:
 		openxr.connect("pose_recentered", _on_system_recentered)
 	_head_placed = desktop
 	video = Video.new()
+	video.diagnostic_ui_provider = presentation_coordinator.diagnostic_ui_snapshot
 	video.reclining_mode = reclining_mode
 	video.name = "VideoDisplay"
 	video.changed.connect(_on_video_changed)
@@ -847,8 +848,8 @@ func _show_library_menu(preserve_navigation: bool = false) -> void:
 	presentation_coordinator._show_library_menu(preserve_navigation)
 
 
-func _canvas_controls_snapshot() -> Dictionary:
-	return presentation_coordinator._canvas_controls_snapshot()
+func canvas_controls_snapshot() -> Dictionary:
+	return presentation_coordinator.canvas_controls_snapshot()
 
 
 func _restore_seek_settings() -> void:
@@ -1173,6 +1174,10 @@ func _on_display_debug_command(_id: int, payload: String) -> void:
 
 
 var _finishing_app := false
+
+
+func is_finishing_app() -> bool:
+	return _finishing_app
 
 
 func _finish_app(restart: bool) -> void:

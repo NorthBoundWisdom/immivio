@@ -456,10 +456,7 @@ func _paint_state(capture: Transform3D) -> int:
 				menu.get_instance_id(),
 				menu.layout_revision,
 				menu.global_transform,
-				menu.get("_state"),
-				menu.get("status"),
-				menu.get("scroll"),
-				menu.get("_editor"),
+				menu.paint_state_key(),
 				menu._hover
 			]
 		)

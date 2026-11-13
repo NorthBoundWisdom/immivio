@@ -20,6 +20,8 @@ later isolated changes after release acceptance.
 
 The native menu texture contains the hit reticle, while `pointer_ray.gd` draws the world-space beam in the main scene through the main XR projection, without per-eye pointer viewports or composition layers. The UI uses an `XrUiSurfacePresenter` with generation-scoped frames and Android Surface GPU copies; ordinary GLES viewport textures retain Godot ownership. Beam edges use pixel-aware coverage and longitudinal fading. The playback browser is a compact switcher anchored above the control bar; closing playback restores the full library and Settings.
 
+Video diagnostics receive `presentation_coordinator.diagnostic_ui_snapshot` as an explicit callable; the player menu owns its public progress snapshot. Playback coordination receives the main scene's `is_finishing_app` callable. Menu paint-state keys and disabled-field layering are explicit public interfaces/callables, so these paths do not reflect on private member names.
+
 `xr_menu_compositor.gd` owns the Android-Surface menu presenter, its acknowledged presentation queue and curved mapping. Native layers are selected by runtime support; frame rate does not switch off native UI composition. Unsupported layers use the scene fallback. Menu pose and ray targets use the same presented layout.
 
 PICO runtime space-reset notifications preserve existing menu/media placement: these notifications also occur automatically and do not expose user intent. Explicit in-app recenter still places content in front of the current gaze. Other runtimes retain deferred system recenter after tracked scene frames. Focus recovery alone never requests placement changes.

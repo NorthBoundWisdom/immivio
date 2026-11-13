@@ -16,12 +16,7 @@
 
 ## 2. 架构整理
 
-剩余按 S3 → S4 → S5 推进；每步单独提交。
-
-### S3：消除按字符串访问的私有成员
-
-- `mpv_video_display.gd:2276`、`:2302` 用 `host.has_method("_menu_state")`、`"_canvas_controls_snapshot"`，`playback_coordinator.gd:208` 用 `host.get("_finishing_app")`。这些引用改名时不会被任何工具发现。
-- 目标：改成公开方法，由持有者显式传入（Callable 或接口），不再按名字反射。
+剩余按 S4 → S5 推进；每步单独提交。
 
 ### S4：测试对私有成员的访问
 

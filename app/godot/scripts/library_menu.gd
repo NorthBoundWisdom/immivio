@@ -132,7 +132,7 @@ const AccountPanel := preload("res://scripts/account_panel.gd")
 var account_panel: RefCounted = AccountPanel.new(self)
 const Quality := preload("res://scripts/display_quality.gd")
 const ChoiceFields := preload("res://scripts/choice_fields.gd")
-var choices := ChoiceFields.new(self)
+var choices := ChoiceFields.new(self, above_card)
 ## Settings pages in tab order; each page lists titled groups of related controls.
 const SETTING_TABS := ["General", "Display", "Playback", "Appearance", "About"]
 const GENERAL_TAB := 0  # language, hands, library data
@@ -2448,12 +2448,12 @@ func _setting_action(target: int, row: Dictionary, centre: Vector2) -> void:
 	)
 	_buttons.back()["keep_visible"] = true  # An empty cache shows a dimmed button, not a gap.
 	_buttons.back().node.visible = true
-	_above_card(_buttons.back().node)
+	above_card(_buttons.back().node)
 	_lit(bool(row.get("selected", false)))
 
 
 ## Controls placed on a setting card draw over it regardless of transparent sort order.
-func _above_card(node: MeshInstance3D) -> void:
+func above_card(node: MeshInstance3D) -> void:
 	node.material_override.render_priority = 13
 	for child in node.get_children():
 		if child is Label3D:
@@ -3043,3 +3043,7 @@ func move_focus(direction: int) -> void:
 func activate_desktop() -> void:
 	if visible and focus_index < rows.size():
 		_choose(rows[focus_index])
+
+
+func paint_state_key() -> int:
+	return hash([status, scroll, editor])

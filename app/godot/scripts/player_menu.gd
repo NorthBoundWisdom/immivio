@@ -1937,3 +1937,22 @@ func _set_adjustment_at(x: float) -> void:
 		value = 1.0
 	adjustment_requested.emit(row.key, value)
 	refresh_values()
+
+
+## Detached playback progress data for diagnostics; UI node ownership stays here.
+func progress_snapshot() -> Dictionary:
+	if not visible or not is_instance_valid(_thumb):
+		return {}
+	return {
+		"visible": true,
+		"position_ms": int(_state.get("position_ms", -1)),
+		"preview_ms": _seek_preview,
+		"elapsed": _elapsed.text,
+		"thumb_x": _thumb.position.x,
+		"bar_width": BAR_SEEK,
+		"duration_ms": int(_state.get("duration_ms", -1))
+	}
+
+
+func paint_state_key() -> int:
+	return hash(_state)

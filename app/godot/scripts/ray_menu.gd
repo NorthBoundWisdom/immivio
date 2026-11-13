@@ -919,3 +919,8 @@ func text_snapshot() -> String:
 	for button in _buttons:
 		lines.append(button.node.get_child(0).text)
 	return "\n".join(lines)
+
+
+## Fingerprint of subclass-owned paint state, used without member-name reflection.
+func paint_state_key() -> int:
+	return 0
