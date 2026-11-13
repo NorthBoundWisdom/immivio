@@ -300,6 +300,8 @@ Thread and multicast-lock names are separate from logcat labels.
 
 ### External URI grant automation
 
+The driver and fixture target only `com.northboundwisdom.immivio` (Debug); the `.dev` package is unsupported and there is no `--package` override.
+
 The URI fixture is excluded from the default Gradle graph and every ordinary
 player package. After configuring the Debug player, build the test APK explicitly:
 

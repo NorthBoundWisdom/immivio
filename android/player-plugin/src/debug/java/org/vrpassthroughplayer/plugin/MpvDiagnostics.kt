@@ -90,7 +90,7 @@ internal object MpvDiagnostics {
                         .put("state", "failed")
                         .put("error_type", "permission_denied")
                         .put("detail", error.toString())
-                } catch (error: Exception) {
+                } catch (error: Throwable) {
                     report
                         .put("state", "failed")
                         .put("error_type", if (opened) "native_decode_failed" else "open_failed")
