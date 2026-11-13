@@ -136,7 +136,7 @@ func _run() -> void:
 	check(
 		(
 			sources.calls == 0
-			and synthetic._pending.is_empty()
+			and synthetic.sources.pending.is_empty()
 			and synthetic.server_browser.pending.is_empty()
 		),
 		"Preparing source UI never invokes local/network browsing or server discovery"

@@ -256,7 +256,7 @@ func action(target: int) -> bool:
 		if menu.network.mode in ["add", "manage"]:
 			menu.network.open()
 			return true
-		menu._load_section()
+		menu.sources.load_section()
 		menu.refresh()
 		return true
 	if target >= FIELD and target < FIELD + fields.size():

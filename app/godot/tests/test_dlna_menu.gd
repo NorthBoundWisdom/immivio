@@ -230,7 +230,7 @@ func _run() -> void:
 	menu._activate(Menu.CANCEL)
 	platform.automatic = true
 	menu._dlna_server = ""
-	menu._load_section()
+	menu.sources.load_section()
 	await settle()
 	menu._activate(Menu.ROW_BASE)
 	await settle()
@@ -246,13 +246,13 @@ func _run() -> void:
 		"Manual add remains reachable with no discovered servers"
 	)
 	platform.servers = [{"id": "auto", "name": "Auto", "manual": false}]
-	menu._load_section()
+	menu.sources.load_section()
 	await settle()
 	menu._activate(Menu.ROW_BASE)
 	await settle()
 	check(button(menu, Menu.EDIT).is_empty(), "Unpersisted discovery has no misleading edit action")
 	menu._dlna_entries = []
-	menu._request("dlna_browse", 999)
+	menu.sources.request("dlna_browse", 999)
 	menu._on_media_list(
 		999,
 		JSON.stringify(
@@ -267,7 +267,7 @@ func _run() -> void:
 	check(menu._dlna_entries.is_empty(), "Stale container reply cannot replace current folder")
 	platform.automatic = false
 	menu._dlna_server = ""
-	menu._load_section()
+	menu.sources.load_section()
 	request = platform.next
 	menu._activate(Menu.NAV_BASE + Menu.Section.RECENT)
 	platform.send(request)

@@ -54,13 +54,13 @@ func _run() -> void:
 	root.add_child(library)
 	library.set_process(false)
 	library.section = Library.Section.LOCAL
-	library._local_stack = [{"id": "/a", "title": "A"}]
+	library.sources.local_stack = [{"id": "/a", "title": "A"}]
 	var entries: Array = []
 	for i in 40:
 		entries.append(
 			{"title": "Video %02d.mp4" % i, "uri": "file:///a/%02d.mp4" % i, "size": 1048576}
 		)
-	library._local_entries = entries
+	library.sources.local_entries = entries
 	library.visible = true
 	library.refresh()
 	library._set_scroll(4)
@@ -70,20 +70,20 @@ func _run() -> void:
 		library.list_view and library._first_line() == 16,
 		"Icon-to-list switch retains the first visible file"
 	)
-	library._local_stack = [{"id": "/b", "title": "B"}]
+	library.sources.local_stack = [{"id": "/b", "title": "B"}]
 	library.scroll = 0
-	library._local_entries = []
+	library.sources.local_entries = []
 	library.status = "Loading…"
 	library.refresh()
-	library._local_stack = [{"id": "/a", "title": "A"}]
+	library.sources.local_stack = [{"id": "/a", "title": "A"}]
 	library.refresh()
 	library.status = ""
-	library._local_entries = entries
+	library.sources.local_entries = entries
 	library.refresh()
 	check(library._first_line() == 16, "Async directory completion restores the saved item")
 	library.file_actions.choose_order("name_desc")
 	var saved_scope := library.file_actions.scope()
-	library._local_stack = [{"id": "/b", "title": "B"}]
+	library.sources.local_stack = [{"id": "/b", "title": "B"}]
 	library.refresh()
 	check(
 		(

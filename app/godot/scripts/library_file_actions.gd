@@ -36,7 +36,7 @@ func scope() -> String:
 
 func folder() -> bool:
 	return (
-		(menu.section == menu.Section.LOCAL and not menu._local_stack.is_empty())
+		(menu.section == menu.Section.LOCAL and not menu.sources.local_stack.is_empty())
 		or (
 			menu.section == menu.Section.SMB
 			and not menu._smb_server.is_empty()
@@ -251,7 +251,7 @@ func receive(id: int, payload: String) -> bool:
 		modal = ""
 		selected = ""
 		target = {}
-		for entries in [menu._local_entries, menu._smb_entries]:
+		for entries in [menu.sources.local_entries, menu._smb_entries]:
 			for i in range(entries.size() - 1, -1, -1):
 				if str(entries[i].get("uri", entries[i].get("delete_uri", ""))) == uri:
 					entries.remove_at(i)

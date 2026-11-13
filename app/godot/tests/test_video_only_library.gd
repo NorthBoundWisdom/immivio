@@ -46,7 +46,7 @@ func _run() -> void:
 	]
 	for section in [Library.Section.LOCAL, Library.Section.SMB, Library.Section.DLNA]:
 		menu.section = section
-		menu._local_entries = mixed
+		menu.sources.local_entries = mixed
 		menu._smb_server = "saved"
 		menu._smb_entries = mixed
 		menu._dlna_server = "saved"

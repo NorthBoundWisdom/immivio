@@ -94,8 +94,8 @@ func _run() -> void:
 	menu.platform = host
 	menu.visible = true
 	menu.section = Menu.Section.LOCAL
-	menu._local_stack = [{"id": "/Movies", "title": "Movies"}]
-	menu._local_entries = [
+	menu.sources.local_stack = [{"id": "/Movies", "title": "Movies"}]
+	menu.sources.local_entries = [
 		{
 			"uri": "file:///Movies/demo_SBS.mp4",
 			"title": "demo_SBS.mp4",
@@ -117,7 +117,7 @@ func _run() -> void:
 	)
 	menu.local_thumbnails.tick(menu)
 	check(host.requests.size() == 1, "Only one decode is outstanding")
-	menu._sources._on_media_list(
+	menu.sources.receive(
 		101,
 		JSON.stringify(
 			{
@@ -168,7 +168,7 @@ func _run() -> void:
 	menu.playback_browser = true
 	menu.local_thumbnails.tick(menu)
 	check(host.cancels == 1, "Playback browsing cancels the background decoder")
-	menu._sources._on_media_list(
+	menu.sources.receive(
 		102,
 		JSON.stringify(
 			{
@@ -187,8 +187,8 @@ func _run() -> void:
 	menu.playback_browser = false
 	menu.local_thumbnails._next_request = 0
 	menu.local_thumbnails.tick(menu)
-	menu._local_stack = [{"id": "/Other", "title": "Other"}]
-	menu._sources._on_media_list(
+	menu.sources.local_stack = [{"id": "/Other", "title": "Other"}]
+	menu.sources.receive(
 		103,
 		JSON.stringify(
 			{
@@ -202,7 +202,7 @@ func _run() -> void:
 		)
 	)
 	check(not Cache.has(host.requests[1]), "A reply from a previous directory is discarded")
-	menu._local_stack = [{"id": "/Movies", "title": "Movies"}]
+	menu.sources.local_stack = [{"id": "/Movies", "title": "Movies"}]
 	menu.local_thumbnails.cancel(menu)
 	menu.local_thumbnails._next_request = 0
 	menu.local_thumbnails.tick(menu)
@@ -224,7 +224,7 @@ func _run() -> void:
 	)
 	var pending_id: int = menu.local_thumbnails._pending.id
 	menu.rows[1].size = 12345
-	menu._sources._on_media_list(
+	menu.sources.receive(
 		pending_id,
 		JSON.stringify(
 			{

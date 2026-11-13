@@ -147,13 +147,13 @@ func open_folder(host: Node) -> void:
 	var menu: Node3D = host.library_menu
 	host.presentation_coordinator._show_library_menu(true)
 	menu.section = menu.Section.LOCAL
-	menu._local_stack = [
+	menu.sources.local_stack = [
 		{"id": "/storage/emulated/0", "title": "Internal storage"},
 		{"id": "/storage/emulated/0/Movies", "title": "Movies"},
 		{"id": BASE, "title": "Immivio acceptance"}
 	]
-	menu._local_entries = []
-	menu._load_section()
+	menu.sources.local_entries = []
+	menu.sources.load_section()
 	menu.refresh()
 	for i in 100:
 		if menu.status != "Loading…" and menu.rows.size() > 0:

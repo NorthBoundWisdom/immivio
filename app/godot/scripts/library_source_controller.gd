@@ -5,39 +5,44 @@ var _host_ref: WeakRef
 const PlatformMethods := preload("res://scripts/platform_methods.gd")
 
 enum Section { RECENT, LOCAL, SMB, DLNA, SETTINGS, MEDIA_SERVER, NETWORK }
-var _pending := {}  # request id -> kind
+var pending: Dictionary = {}  # request id -> kind
 var _request_sections := {}
-var _local_stack: Array = []  # [{id, title}] from a storage volume down to the open folder
-var _local_entries: Array = []
+var local_stack: Array = []  # [{id, title}] from a storage volume down to the open folder
+var local_entries: Array = []
+var local_all_files: bool = true
+var local_grant_pending: bool = false
+var local_volumes: Array = []
+var local_eject_pending: String = ""
+var local_release_notice: bool = false
 
 
 func _init(host: Node3D) -> void:
 	_host_ref = weakref(host)
 
 
-func _request(kind: String, id: Variant) -> void:
+func request(kind: String, id: Variant) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
 	if id is int and id > 0:
 		if kind.begins_with("dlna") and kind not in ["dlna_save", "dlna_remove"]:
-			for previous in host.source_pending.keys():
-				if host.source_pending[previous] == kind:
-					host.source_pending.erase(previous)
+			for previous in pending.keys():
+				if pending[previous] == kind:
+					pending.erase(previous)
 					_request_sections.erase(previous)
-		host.source_pending[id] = kind
+		pending[id] = kind
 		_request_sections[id] = host.section
 		if kind == "local":
-			for previous in host.source_pending.keys():
-				if previous != id and host.source_pending[previous] == "local":
-					host.source_pending.erase(previous)
+			for previous in pending.keys():
+				if previous != id and pending[previous] == "local":
+					pending.erase(previous)
 					_request_sections.erase(previous)
 		host.status = "Loading…"
 	else:
 		host.status = "Unavailable"
 
 
-func _on_media_list(id: int, payload: String) -> void:
+func receive(id: int, payload: String) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
@@ -55,43 +60,43 @@ func _on_media_list(id: int, payload: String) -> void:
 					host.refresh()
 				return
 			var volumes: Array = event.get("volumes", [])
-			if volumes == host.source_local_volumes:
+			if volumes == local_volumes:
 				return
-			var removed = host.source_external_volumes().filter(
+			var removed = external_volumes().filter(
 				func(volume):
 					return not volumes.any(func(current): return str(current.id) == str(volume.id))
 			)
-			host.source_local_volumes = volumes
+			local_volumes = volumes
 			for volume in removed:
 				host.storage_removed.emit(volume.duplicate(true))
 			if (
-				not host.source_local_eject_pending.is_empty()
-				and not host.source_local_volumes.any(
-					func(volume): return str(volume.id) == host.source_local_eject_pending
+				not local_eject_pending.is_empty()
+				and not local_volumes.any(
+					func(volume): return str(volume.id) == local_eject_pending
 				)
 			):
-				host.source_local_eject_pending = ""
+				local_eject_pending = ""
 			if (
-				not host.source_local_stack.is_empty()
-				and not host.source_local_volumes.any(
-					func(volume): return str(volume.id) == str(host.source_local_stack[0].id)
+				not local_stack.is_empty()
+				and not local_volumes.any(
+					func(volume): return str(volume.id) == str(local_stack[0].id)
 				)
 			):
-				host.source_local_stack.clear()
-				host.source_local_entries = []
-				host.source_local_eject_pending = ""
+				local_stack.clear()
+				local_entries = []
+				local_eject_pending = ""
 			if host.section == Section.LOCAL and not host.account_panel.active():
-				host.source_load_section()
+				load_section()
 				if host.visible:
 					host.refresh()
 			return
 		if event is Dictionary and event.get("source") == "local_access":
 			var access_state = str(event.get("state", "error"))
-			host.source_local_grant_pending = access_state in ["requested", "settings_opened"]
+			local_grant_pending = access_state in ["requested", "settings_opened"]
 			if host.section != Section.LOCAL or host.account_panel.active():
 				return
 			if access_state == "granted":
-				host.source_load_section()
+				load_section()
 			elif access_state == "settings_opened":
 				host.status = "Allow access in system settings"
 			elif access_state == "requested":
@@ -118,10 +123,10 @@ func _on_media_list(id: int, payload: String) -> void:
 			return
 	if host.server_browser.receive(id, payload):
 		return
-	if not host.source_pending.has(id):
+	if not pending.has(id):
 		return
-	var kind: String = host.source_pending[id]
-	host.source_pending.erase(id)
+	var kind: String = pending[id]
+	pending.erase(id)
 	var requested_section: int = _request_sections.get(id, host.section)
 	_request_sections.erase(id)
 	if requested_section != host.section:
@@ -157,7 +162,7 @@ func _on_media_list(id: int, payload: String) -> void:
 		)
 	):
 		return
-	if kind == "local" and result.has("path") and str(result.path) != host.source_local_path():
+	if kind == "local" and result.has("path") and str(result.path) != local_path():
 		return
 	host.status = ""
 	var state = str(result.get("state", "error"))
@@ -172,21 +177,19 @@ func _on_media_list(id: int, payload: String) -> void:
 	else:
 		match kind:
 			"local":
-				if str(result.get("path", "")) == host.source_local_path():
-					host.source_local_entries = result.get("entries", [])
-					host.source_local_volumes = result.get(
+				if str(result.get("path", "")) == local_path():
+					local_entries = result.get("entries", [])
+					local_volumes = result.get(
 						"volumes",
 						(
-							host.source_local_entries.filter(
-								func(entry): return entry.get("volume", false)
-							)
-							if host.source_local_path().is_empty()
-							else host.source_local_volumes
+							local_entries.filter(func(entry): return entry.get("volume", false))
+							if local_path().is_empty()
+							else local_volumes
 						)
 					)
-					host.source_local_all_files = bool(result.get("all_files", true))
-					if host.source_local_release_notice:
-						host.source_local_release_notice = false
+					local_all_files = bool(result.get("all_files", true))
+					if local_release_notice:
+						local_release_notice = false
 						if host.section == Section.LOCAL:
 							host.status = "App access stopped. Use system settings before unplugging."
 			"smb_servers":
@@ -234,7 +237,7 @@ func _on_media_list(id: int, payload: String) -> void:
 		host.refresh()
 
 
-func _load_section() -> void:
+func load_section() -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
@@ -252,26 +255,27 @@ func _load_section() -> void:
 	match host.section:
 		Section.LOCAL:
 			# Always read again: files change, and access may have just been granted in settings.
-			host.source_request("local", host.platform.media_local_browse(host.source_local_path()))
+			request("local", host.platform.media_local_browse(local_path()))
 		Section.SMB:
 			if host.source_smb_server.is_empty():
-				host.source_request("smb_servers", host.platform.media_smb_servers())
+				request("smb_servers", host.platform.media_smb_servers())
 		Section.DLNA:
 			if host.source_dlna_server.is_empty():
 				if PlatformMethods.supports(host.platform, "media_dlna_servers"):
-					host.source_request("dlna_servers", host.platform.media_dlna_servers())
+					request("dlna_servers", host.platform.media_dlna_servers())
 				if host.source_dlna_servers.is_empty():
-					host.source_request("dlna_discover", host.platform.media_dlna_discover())
+					request("dlna_discover", host.platform.media_dlna_discover())
 
 
-func _local_path() -> String:
-	var host := _host_ref.get_ref() as Node3D
-	if not is_instance_valid(host):
-		return ""
-	return "" if host.source_local_stack.is_empty() else str(host.source_local_stack.back().id)
+func local_path() -> String:
+	return "" if local_stack.is_empty() else str(local_stack.back().id)
 
 
-func _refresh_source() -> void:
+func external_volumes() -> Array:
+	return local_volumes.filter(func(volume): return bool(volume.get("removable", false)))
+
+
+func refresh_source() -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
@@ -283,21 +287,21 @@ func _refresh_source() -> void:
 		return
 	match host.section:
 		Section.LOCAL:
-			host.source_local_grant_pending = false  # Also recovers when a VR settings overlay sends no resume.
-			host.source_local_eject_pending = ""
+			local_grant_pending = false  # Also recovers when a VR settings overlay sends no resume.
+			local_eject_pending = ""
 		Section.SMB:
 			if host.source_smb_server.is_empty():
-				host.source_request("smb_found", host.platform.media_smb_discover())
+				request("smb_found", host.platform.media_smb_discover())
 			else:
-				host.source_request(
+				request(
 					"smb_browse",
 					host.platform.media_smb_browse(host.source_smb_server, host.source_smb_path)
 				)
 		Section.DLNA:
 			if host.source_dlna_server.is_empty():
-				host.source_request("dlna_discover", host.platform.media_dlna_discover())
+				request("dlna_discover", host.platform.media_dlna_discover())
 			else:
-				host.source_request(
+				request(
 					"dlna_browse",
 					host.platform.media_dlna_browse(
 						host.source_dlna_server,
@@ -310,5 +314,5 @@ func _refresh_source() -> void:
 				)
 			host.refresh()
 			return
-	host.source_load_section()
+	load_section()
 	host.refresh()

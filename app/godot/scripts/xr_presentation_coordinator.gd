@@ -665,7 +665,7 @@ func _show_library_menu(preserve_navigation: bool = false) -> void:
 	if host.library_menu and not host.library_menu.visible:
 		host.library_menu.visible = true
 		if host.library_menu is LibraryMenu:
-			host.library_menu._load_section()
+			host.library_menu.sources.load_section()
 		host.library_menu.refresh()
 		_place_menu(host.library_menu)
 	elif leaves_switcher:

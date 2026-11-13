@@ -1310,7 +1310,7 @@ func _check_control_sticks(main: Node3D, video: Node3D, menu: Node3D, host: RefC
 	var library := Library.new()
 	library.section = Library.Section.LOCAL
 	for index in 30:
-		library._local_entries.append(
+		library.sources.local_entries.append(
 			{"uri": "file:///item%d.mp4" % index, "title": "Video %d" % index}
 		)
 	root.add_child(library)

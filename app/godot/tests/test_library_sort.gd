@@ -79,8 +79,8 @@ func _run() -> void:
 		{"title": "A2", "id": "/test/2", "container": true, "modified": 100},
 		{"title": "Unknown", "id": "/test/unknown", "container": true}
 	]
-	menu._local_stack = [{"id": "/test", "title": "Local"}]
-	menu._local_entries = folders
+	menu.sources.local_stack = [{"id": "/test", "title": "Local"}]
+	menu.sources.local_entries = folders
 	menu._smb_server = "nas"
 	menu._smb_path = "share/test"
 	menu._smb_entries = folders

@@ -340,7 +340,7 @@ func _run() -> void:
 		"Cancelling the type chooser restores the unified list"
 	)
 	# A late listing from the previous section cannot replace current rows/status.
-	menu._request("dlna_discover", 9000)
+	menu.sources.request("dlna_discover", 9000)
 	menu._activate(Library.NAV_BASE + Library.Section.SETTINGS)
 	menu.status = "current"
 	menu._on_media_list(

@@ -50,9 +50,11 @@ func _run() -> void:
 	main.library_menu.catalog = main.video.recent_files
 	var library: Node3D = main.library_menu
 	library.section = library.Section.LOCAL
-	library._local_stack = [{"id": "/storage/emulated/0/Movies", "title": "Movies"}]
+	library.sources.local_stack = [{"id": "/storage/emulated/0/Movies", "title": "Movies"}]
 	for i in 60:
-		library._local_entries.append({"uri": "file:///Movies/%d.mp4" % i, "title": "Video %d" % i})
+		library.sources.local_entries.append(
+			{"uri": "file:///Movies/%d.mp4" % i, "title": "Video %d" % i}
+		)
 	library.scroll = 3.0
 	library.refresh()
 	main.video.open_local("file:///Movies/12.mp4", "Video 12")
@@ -69,7 +71,7 @@ func _run() -> void:
 	check(
 		(
 			library.section == library.Section.LOCAL
-			and library._local_stack.back().title == "Movies"
+			and library.sources.local_stack.back().title == "Movies"
 			and library.scroll == 3.0
 		),
 		"Return preserves directory and list position"

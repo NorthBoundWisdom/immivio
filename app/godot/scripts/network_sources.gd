@@ -43,13 +43,13 @@ func load_sources(discover: bool = false) -> void:
 		menu.server_browser.request("servers")
 	for request in [["smb_servers", "media_smb_servers"], ["dlna_servers", "media_dlna_servers"]]:
 		if Methods.supports(menu.platform, request[1]):
-			menu._request(request[0], menu.platform.call(request[1]))
+			menu.sources.request(request[0], menu.platform.call(request[1]))
 	if discover or menu._smb_found.is_empty():
 		if Methods.supports(menu.platform, "media_smb_discover"):
-			menu._request("smb_found", menu.platform.media_smb_discover())
+			menu.sources.request("smb_found", menu.platform.media_smb_discover())
 	if discover or menu._dlna_servers.is_empty():
 		if Methods.supports(menu.platform, "media_dlna_discover"):
-			menu._request("dlna_discover", menu.platform.media_dlna_discover())
+			menu.sources.request("dlna_discover", menu.platform.media_dlna_discover())
 
 
 func rows() -> Array[Dictionary]:
@@ -184,18 +184,18 @@ func choose(row: Dictionary) -> bool:
 				menu._smb_server = ""
 			elif menu.section == menu.Section.DLNA:
 				menu._dlna_server = ""
-			menu._load_section()
+			menu.sources.load_section()
 		menu.refresh()
 	else:
 		var source := row.duplicate()
 		source.erase("network_section")
 		if source.has("smb_server") and menu._smb_server == str(source.smb_server):
-			menu._request(
+			menu.sources.request(
 				"smb_browse", menu.platform.media_smb_browse(menu._smb_server, menu._smb_path)
 			)
 			menu.refresh()
 		elif source.has("dlna_server") and menu._dlna_server == str(source.dlna_server):
-			menu._request(
+			menu.sources.request(
 				"dlna_browse",
 				menu.platform.media_dlna_browse(
 					menu._dlna_server,

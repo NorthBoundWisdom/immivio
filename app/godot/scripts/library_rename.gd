@@ -130,7 +130,7 @@ func receive(id: int, payload: String) -> bool:
 		var title := str(result.get("new_title", ""))
 		migration_failed = false
 		menu.file_renamed.emit(old_uri, new_uri, title)
-		for entries in [menu._local_entries, menu._smb_entries]:
+		for entries in [menu.sources.local_entries, menu._smb_entries]:
 			for entry in entries:
 				if str(entry.get("uri", "")) == old_uri:
 					entry.uri = new_uri

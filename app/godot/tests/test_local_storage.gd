@@ -168,7 +168,7 @@ func _run() -> void:
 	menu._activate(Menu.USB_STORAGE)
 	await settle()
 	check(
-		menu._local_path() == external.id and menu._local_stack.size() == 1,
+		menu.sources.local_path() == external.id and menu.sources.local_stack.size() == 1,
 		"USB quick entry opens the removable root"
 	)
 	check(
@@ -184,14 +184,14 @@ func _run() -> void:
 	)
 	check(
 		(
-			menu._local_eject_pending.is_empty()
-			and menu._local_path().is_empty()
+			menu.sources.local_eject_pending.is_empty()
+			and menu.sources.local_path().is_empty()
 			and menu.status == "App access stopped. Use system settings before unplugging."
 		),
 		"Completion returns to roots and shows the unplug message"
 	)
 	check(
-		menu._external_volumes().size() == 1,
+		menu.sources.external_volumes().size() == 1,
 		"Software release keeps the physically connected volume mounted"
 	)
 	menu._activate(Menu.USB_STORAGE)
@@ -206,7 +206,7 @@ func _run() -> void:
 	await settle()
 	check(
 		(
-			menu._local_stack.is_empty()
+			menu.sources.local_stack.is_empty()
 			and not menu._buttons.any(func(button): return button.target == Menu.USB_STORAGE)
 			and removals.size() == 1
 		),
@@ -224,13 +224,16 @@ func _run() -> void:
 		platform.calls.size() == calls and removals.size() == 1,
 		"Duplicate snapshots do not repeat cleanup or list reads"
 	)
-	menu._request("local", 201)
-	menu._request("local", 202)
+	menu.sources.request("local", 201)
+	menu.sources.request("local", 202)
 	menu._on_media_list(
 		201,
 		JSON.stringify({"state": "ready", "path": "", "entries": [external], "volumes": [external]})
 	)
-	check(menu._external_volumes().is_empty(), "Superseded responses cannot restore stale volumes")
+	check(
+		menu.sources.external_volumes().is_empty(),
+		"Superseded responses cannot restore stale volumes"
+	)
 	menu._on_media_list(
 		202,
 		JSON.stringify(
@@ -262,7 +265,7 @@ func _run() -> void:
 	await settle()
 	check(
 		(
-			menu._external_volumes().size() == 2
+			menu.sources.external_volumes().size() == 2
 			and menu._buttons.any(func(button): return button.target == Menu.USB_STORAGE)
 		),
 		"Insertion updates entries and the shortcut without manual refresh"
@@ -270,7 +273,7 @@ func _run() -> void:
 	menu._activate(Menu.USB_STORAGE)
 	await settle()
 	check(
-		menu._local_path().is_empty() and menu._eject_volume().is_empty(),
+		menu.sources.local_path().is_empty() and menu._eject_volume().is_empty(),
 		"Multiple devices require an explicit target"
 	)
 	menu._activate(Menu.ROW_BASE + 2)

@@ -50,14 +50,14 @@ func _run() -> void:
 	menu._cache_usage = Vector2i.ZERO
 	menu.visible = true
 	for i in 40:
-		menu._local_entries.append(
+		menu.sources.local_entries.append(
 			{
 				"uri": "file:///padding/%02d.mp4" % i,
 				"title": "舞台演出 第%d场 — video.mp4" % i,
 				"kind": "video"
 			}
 		)
-	menu._local_stack = [{"id": "/padding", "title": "电影"}]
+	menu.sources.local_stack = [{"id": "/padding", "title": "电影"}]
 	var pages := [
 		["recent", Library.Section.RECENT, false, "", -1],
 		["local-grid", Library.Section.LOCAL, false, "", -1],

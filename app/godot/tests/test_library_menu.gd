@@ -394,7 +394,7 @@ func _run() -> void:
 	check(platform.grants == 1, "Repeated grant presses cannot open concurrent permission pages")
 	await settle()
 	check(
-		menu.status == "Allow access in system settings" and menu._local_grant_pending,
+		menu.status == "Allow access in system settings" and menu.sources.local_grant_pending,
 		"Settings launch is visible in the menu"
 	)
 	var before_resume := platform.calls.size()
@@ -402,7 +402,7 @@ func _run() -> void:
 	await settle()
 	check(
 		(
-			not menu._local_grant_pending
+			not menu.sources.local_grant_pending
 			and platform.calls.size() == before_resume + 1
 			and not menu.rows.is_empty()
 		),
@@ -733,8 +733,8 @@ func _run() -> void:
 			}
 		)
 	menu.platform = null  # keep this listing; a reload would replace it
-	menu._local_stack = [{"id": "/big", "title": "Big"}]
-	menu._local_entries = many
+	menu.sources.local_stack = [{"id": "/big", "title": "Big"}]
+	menu.sources.local_entries = many
 	menu.scroll = 0.0
 	menu.refresh()
 	check(
@@ -763,7 +763,7 @@ func _run() -> void:
 	check(chosen.back()[1] == "v20", "Tap selects the visible tile at the scroll position")
 	menu.toggle()
 	check(
-		menu.visible and menu._local_path() == "/big" and menu.rows.size() == 30,
+		menu.visible and menu.sources.local_path() == "/big" and menu.rows.size() == 30,
 		"Reopening keeps the folder"
 	)
 	menu.press_pointer("right_hand", at.call(first_line), direction, true)
@@ -840,16 +840,17 @@ func _run() -> void:
 	check(not menu.text_snapshot().contains(" / "), "No page counter")
 	# Denied media permission offers a retry.
 	menu._on_media_list(-1, "{}")
-	menu._pending[999] = "local"
+	menu.sources.pending[999] = "local"
 	menu._on_media_list(999, JSON.stringify({"state": "denied"}))
 	check(menu.status == "Media access needed", "Denied permission shows a short status")
-	menu._pending[998] = "local"
+	menu.sources.pending[998] = "local"
 	menu._on_media_list(
 		998, JSON.stringify({"state": "denied", "error": "ALL_FILES_ACCESS_NEEDED"})
 	)
 	menu._activate(Menu.GRANT)
 	check(
-		menu._local_grant_pending and platform.grants == 2, "An unreadable folder requests access"
+		menu.sources.local_grant_pending and platform.grants == 2,
+		"An unreadable folder requests access"
 	)
 	await settle()
 	menu._on_media_list(
@@ -859,7 +860,7 @@ func _run() -> void:
 		)
 	)
 	check(
-		menu.status == "Permission settings unavailable" and not menu._local_grant_pending,
+		menu.status == "Permission settings unavailable" and not menu.sources.local_grant_pending,
 		"Unsupported settings show failure and release the retry guard"
 	)
 	var before_granted := platform.calls.size()
@@ -874,10 +875,10 @@ func _run() -> void:
 	menu._activate(Menu.REFRESH)
 	await settle()
 	check(
-		not menu._local_grant_pending and platform.calls.size() == before_manual_refresh + 1,
+		not menu.sources.local_grant_pending and platform.calls.size() == before_manual_refresh + 1,
 		"Manual refresh recovers a VR permission overlay without a resume event"
 	)
-	menu._pending[997] = "local"
+	menu.sources.pending[997] = "local"
 	menu._on_media_list(997, JSON.stringify({"state": "denied"}))
 	# Language: follows the choice, the same menu in Chinese and back in English.
 	var I18n := preload("res://scripts/i18n.gd")

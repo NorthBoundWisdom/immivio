@@ -117,8 +117,8 @@ func prepare_navigation(
 	var catalog := NavigationCatalog.new()
 	catalog.populated = populated
 	menu.catalog = catalog
-	menu._local_stack = []
-	menu._local_entries = (
+	menu.sources.local_stack = []
+	menu.sources.local_entries = (
 		[
 			{
 				"id": "warmup-volume",

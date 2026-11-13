@@ -114,8 +114,8 @@ func _run() -> void:
 	menu.platform = Platform.new()
 	menu._cache_usage = Vector2i.ZERO
 	menu._cache_due_ms = Time.get_ticks_msec() + 600000
-	menu._local_stack = [{"id": "/padding", "title": "Long folder name for padding"}]
-	menu._local_entries = entries(40)
+	menu.sources.local_stack = [{"id": "/padding", "title": "Long folder name for padding"}]
+	menu.sources.local_entries = entries(40)
 	menu._smb_servers = [{"id": "test", "name": "NAS", "host": "padding.invalid"}]
 	menu._smb_server = "test"
 	menu._smb_path = "Movies"

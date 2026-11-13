@@ -33,7 +33,7 @@ func cancel(menu: Node3D) -> void:
 
 func tick(menu: Node3D) -> void:
 	var context: String = (
-		menu._local_path()
+		menu.sources.local_path()
 		if (
 			menu.visible
 			and menu.section == menu.Section.LOCAL
@@ -100,7 +100,7 @@ func receive(menu: Node3D, id: int, payload: String) -> bool:
 		or _suspended
 		or menu.playback_browser
 		or menu.section != menu.Section.LOCAL
-		or menu._local_path() != _context
+		or menu.sources.local_path() != _context
 	):
 		return true
 	if not menu.rows.any(func(row): return signature(row) == request.signature):

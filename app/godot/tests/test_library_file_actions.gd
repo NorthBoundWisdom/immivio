@@ -64,8 +64,8 @@ func _run() -> void:
 	root.add_child(menu)
 	menu.attach_platform(platform)
 	menu.section = Menu.Section.LOCAL
-	menu._local_stack = [{"id": "/storage/test", "title": "Local"}]
-	menu._local_entries = [
+	menu.sources.local_stack = [{"id": "/storage/test", "title": "Local"}]
+	menu.sources.local_entries = [
 		{
 			"title": "10.mp4",
 			"uri": "file:///storage/test/10.mp4",
@@ -127,7 +127,7 @@ func _run() -> void:
 	menu.file_deleted.connect(func(uri): deleted.append(uri))
 	menu._activate(Actions.EDIT_MODE)
 	menu._choose(menu.rows[0])
-	check(menu._local_stack.size() == 1, "Edit mode cannot enter folders")
+	check(menu.sources.local_stack.size() == 1, "Edit mode cannot enter folders")
 	menu._choose(menu.rows[1])
 	check(
 		played.is_empty() and menu.file_actions.selected.ends_with("2.mp4"),
@@ -141,7 +141,7 @@ func _run() -> void:
 	menu._activate(Menu.NAV_BASE + Menu.Section.SMB)
 	check(menu.section == Menu.Section.LOCAL, "Modal blocks underlying navigation")
 	menu._activate(Actions.CANCEL)
-	check(menu._local_entries.size() == 4, "Cancel preserves file")
+	check(menu.sources.local_entries.size() == 4, "Cancel preserves file")
 	menu._activate(Actions.DELETE_FILE)
 	menu._activate(Actions.CONFIRM)
 	menu._activate(Actions.CONFIRM)
@@ -149,9 +149,12 @@ func _run() -> void:
 		platform.calls.size() == 1 and preparing.size() == 1,
 		"One confirmed delete; duplicate trigger ignored"
 	)
-	check(menu._local_entries.size() == 4, "Pending delete retains row")
+	check(menu.sources.local_entries.size() == 4, "Pending delete retains row")
 	platform.respond(1, "error")
-	check(menu._local_entries.size() == 4 and deleted.is_empty(), "Permission failure retains row")
+	check(
+		menu.sources.local_entries.size() == 4 and deleted.is_empty(),
+		"Permission failure retains row"
+	)
 	menu._activate(Actions.CONFIRM)
 	platform.respond(2, "uncertain")
 	menu._activate(Actions.CONFIRM)
@@ -163,7 +166,7 @@ func _run() -> void:
 	check(platform.calls.back().operation == "check", "Checking status only reads state")
 	platform.respond(3, "ready", {"exists": false})
 	check(
-		menu._local_entries.size() == 3 and deleted.size() == 1,
+		menu.sources.local_entries.size() == 3 and deleted.size() == 1,
 		"Verified absence removes file and emits cleanup"
 	)
 	menu._choose(menu.rows.back())
@@ -174,7 +177,7 @@ func _run() -> void:
 	)
 	menu.file_actions.reset()
 	menu.section = Menu.Section.LOCAL
-	menu._local_entries = [
+	menu.sources.local_entries = [
 		{
 			"id": "/storage/test/folder",
 			"title": "folder",
@@ -207,7 +210,7 @@ func _run() -> void:
 		5, "uncertain", {"partial": true, "error": "Some contents were deleted; check the folder"}
 	)
 	check(
-		menu._local_entries.size() == 1 and menu.status.contains("Some contents"),
+		menu.sources.local_entries.size() == 1 and menu.status.contains("Some contents"),
 		"Partial folder deletion retains folder and precise result"
 	)
 	menu.file_actions.set_enabled(false)
@@ -226,7 +229,7 @@ func _run() -> void:
 	)
 	menu.file_actions.uncertain = false
 	menu.file_actions.set_enabled(true)
-	menu._local_entries = [
+	menu.sources.local_entries = [
 		{
 			"title": "old.mp4",
 			"uri": "file:///storage/test/old.mp4",

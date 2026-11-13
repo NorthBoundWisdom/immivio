@@ -176,7 +176,7 @@ func _run() -> void:
 	library.toggle()
 	# Scrolling remains a library-list interaction; Recent now uses page buttons.
 	library.section = Library.Section.LOCAL
-	library._local_entries = library.catalog.list_recent()
+	library.sources.local_entries = library.catalog.list_recent()
 	library.refresh()
 	var direction := -library.global_basis.z
 	var row := library.to_global(Vector3(-0.36, Library.GRID_TOP - Library.TILE_SIZE.y * 0.5, 1))

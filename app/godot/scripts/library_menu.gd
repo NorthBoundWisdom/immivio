@@ -35,7 +35,7 @@ func directory_scope() -> String:
 		Section.NETWORK:
 			return JSON.stringify([section, "sources"]) if network.mode.is_empty() else ""
 		Section.LOCAL:
-			return JSON.stringify([section, _local_path(), 0])
+			return JSON.stringify([section, sources.local_path(), 0])
 		Section.SMB:
 			return JSON.stringify([section, _smb_server, _smb_path, 0])
 		Section.DLNA:
@@ -107,7 +107,7 @@ const FileActions := preload("res://scripts/library_file_actions.gd")
 var file_actions := FileActions.new(self)
 
 const LibrarySourceController := preload("res://scripts/library_source_controller.gd")
-var _sources := LibrarySourceController.new(self)
+var sources := LibrarySourceController.new(self)
 
 const Section := LibrarySourceController.Section
 const NAV := [
@@ -247,26 +247,6 @@ var _bar_thumb: MeshInstance3D
 var focus_index := 0  # Desktop keyboard preview only.
 var rows: Array[Dictionary] = []
 var status := ""  # English; shown through I18n
-var _pending: Dictionary:
-	get:
-		return _sources._pending
-	set(value):
-		_sources._pending = value
-var _local_entries: Array:
-	get:
-		return _sources._local_entries
-	set(value):
-		_sources._local_entries = value
-var _local_stack: Array:
-	get:
-		return _sources._local_stack
-	set(value):
-		_sources._local_stack = value
-var _local_all_files := true  # the last listing could read the whole disk
-var _local_grant_pending := false
-var _local_volumes: Array = []
-var _local_eject_pending := ""
-var _local_release_notice := false
 var _smb_servers: Array = []
 var _smb_found: Array = []
 var _smb_server := ""
@@ -373,10 +353,10 @@ func presentation_page() -> Variant:
 
 
 func _on_android_lifecycle(state: String) -> void:
-	if state == "resume" and _local_grant_pending:
-		_local_grant_pending = false
+	if state == "resume" and sources.local_grant_pending:
+		sources.local_grant_pending = false
 		if section == Section.LOCAL and not account_panel.active():
-			_load_section()
+			sources.load_section()
 			refresh()
 	if account_panel.active():
 		account_panel.lifecycle(state)
@@ -756,77 +736,67 @@ func refresh() -> void:
 # --- requests -------------------------------------------------------------------------------
 
 
-func _request(kind: String, id: Variant) -> void:
-	_sources._request(kind, id)
-
-
 func _on_media_list(id: int, payload: String) -> void:
 	if subtitle_picker.receive(id, payload):
 		return
-	_sources._on_media_list(id, payload)
+	sources.receive(id, payload)
 
 
 func _grant_local_access() -> void:
-	if _local_grant_pending:
+	if sources.local_grant_pending:
 		return
 	if not PlatformMethods.supports(platform, "media_local_grant_all_files"):
 		status = "Permission settings unavailable"
 	else:
-		_local_grant_pending = true
+		sources.local_grant_pending = true
 		status = "Loading…"
 		platform.media_local_grant_all_files()
 	refresh()
 
 
-func _external_volumes() -> Array:
-	return _local_volumes.filter(func(volume): return bool(volume.get("removable", false)))
-
-
 func _quick_usb_storage() -> void:
 	file_actions.reset()
-	var external := _external_volumes()
+	var external := sources.external_volumes()
 	if external.is_empty():
 		return
-	_local_stack.clear()
-	_local_entries = []
+	sources.local_stack.clear()
+	sources.local_entries = []
 	scroll = 0
 	if external.size() == 1:
-		_local_stack.append(external[0].duplicate(true))
-	_load_section()
+		sources.local_stack.append(external[0].duplicate(true))
+	sources.load_section()
 	refresh()
 
 
 func _eject_volume() -> Dictionary:
-	if not _local_stack.is_empty():
-		return _local_stack[0] if bool(_local_stack[0].get("removable", false)) else {}
-	var external := _external_volumes()
+	if not sources.local_stack.is_empty():
+		return (
+			sources.local_stack[0] if bool(sources.local_stack[0].get("removable", false)) else {}
+		)
+	var external := sources.external_volumes()
 	return external[0] if external.size() == 1 else {}
 
 
 func _request_storage_eject() -> void:
 	var volume := _eject_volume()
-	if volume.is_empty() or not _local_eject_pending.is_empty():
+	if volume.is_empty() or not sources.local_eject_pending.is_empty():
 		return
-	_local_eject_pending = str(volume.id)
+	sources.local_eject_pending = str(volume.id)
 	storage_eject_requested.emit(volume.duplicate(true))
 
 
 func finish_storage_release(path: String) -> void:
-	if path != _local_eject_pending:
+	if path != sources.local_eject_pending:
 		return
-	_local_eject_pending = ""
-	_local_release_notice = true
-	if not _local_stack.is_empty() and str(_local_stack[0].id) == path:
-		_local_stack.clear()
-		_local_entries = []
+	sources.local_eject_pending = ""
+	sources.local_release_notice = true
+	if not sources.local_stack.is_empty() and str(sources.local_stack[0].id) == path:
+		sources.local_stack.clear()
+		sources.local_entries = []
 		scroll = 0
 	if section == Section.LOCAL:
-		_load_section()
+		sources.load_section()
 	refresh()
-
-
-func _load_section() -> void:
-	_sources._load_section()
 
 
 # --- rows -----------------------------------------------------------------------------------
@@ -874,7 +844,7 @@ func _rebuild_rows() -> void:
 					rows.back()["cover"] = entry.cover
 				_add_progress(rows.back(), entry)
 		Section.LOCAL:
-			for entry in _local_entries:
+			for entry in sources.local_entries:
 				var row := _entry_row(entry)
 				if bool(entry.get("volume", false)):
 					row.icon = "usb" if bool(entry.get("removable", false)) else "device"
@@ -1318,10 +1288,6 @@ func _switch_row(title: String, key: String, value: Variant, hint: String = "") 
 
 
 ## The open local folder's path ("" lists the storage volumes).
-func _local_path() -> String:
-	return _sources._local_path()
-
-
 func _entry_row(entry: Dictionary) -> Dictionary:
 	if bool(entry.get("container", false)):
 		var folder_row := {
@@ -1516,12 +1482,12 @@ func _activate(target: int) -> void:
 		_editor = {}
 		if section == Section.SETTINGS and Time.get_ticks_msec() >= _cache_due_ms:
 			_request_cache_usage()
-		_load_section()
+		sources.load_section()
 		refresh()
 	elif target >= TAB_BASE and target < TAB_BASE + SETTING_TABS.size():
 		tab = target - TAB_BASE
 		scroll = 0.0
-		_load_section()
+		sources.load_section()
 		refresh()
 	elif target == BACK:
 		_go_back()
@@ -1641,7 +1607,7 @@ func _choose(row: Dictionary) -> void:
 		_smb_server = str(row.smb_server)
 		_smb_path = ""
 		_smb_entries = []
-		_request("smb_browse", platform.media_smb_browse(_smb_server, ""))
+		sources.request("smb_browse", platform.media_smb_browse(_smb_server, ""))
 		scroll = 0.0
 		refresh()
 	elif row.has("smb_found"):
@@ -1650,24 +1616,26 @@ func _choose(row: Dictionary) -> void:
 		_dlna_server = str(row.dlna_server)
 		_dlna_stack = []
 		_dlna_entries = []
-		_request("dlna_browse", platform.media_dlna_browse(_dlna_server, "0"))
+		sources.request("dlna_browse", platform.media_dlna_browse(_dlna_server, "0"))
 		scroll = 0.0
 		refresh()
 	elif row.has("container"):
 		var container: Dictionary = row.container
 		scroll = 0.0
 		if section == Section.LOCAL:
-			_local_stack.append(container.duplicate(true))
-			_local_entries = []
-			_load_section()
+			sources.local_stack.append(container.duplicate(true))
+			sources.local_entries = []
+			sources.load_section()
 		elif section == Section.SMB:
 			_smb_path = str(container.id)
 			_smb_entries = []
-			_request("smb_browse", platform.media_smb_browse(_smb_server, _smb_path))
+			sources.request("smb_browse", platform.media_smb_browse(_smb_server, _smb_path))
 		else:
 			_dlna_stack.append({"id": str(container.id), "title": str(container.title)})
 			_dlna_entries = []
-			_request("dlna_browse", platform.media_dlna_browse(_dlna_server, str(container.id)))
+			sources.request(
+				"dlna_browse", platform.media_dlna_browse(_dlna_server, str(container.id))
+			)
 		refresh()
 	elif row.has("clear_cache"):
 		if bool(row.get("empty", false)):
@@ -1704,9 +1672,9 @@ func _go_back() -> void:
 			network.open()
 			return
 	elif section == Section.LOCAL:
-		_local_stack.pop_back()
-		_local_entries = []
-		_load_section()
+		sources.local_stack.pop_back()
+		sources.local_entries = []
+		sources.load_section()
 	elif section == Section.SMB:
 		if _smb_path.is_empty():
 			network.open()
@@ -1714,7 +1682,7 @@ func _go_back() -> void:
 		else:
 			_smb_path = _smb_path.get_base_dir() if _smb_path.contains("/") else ""
 			_smb_entries = []
-			_request("smb_browse", platform.media_smb_browse(_smb_server, _smb_path))
+			sources.request("smb_browse", platform.media_smb_browse(_smb_server, _smb_path))
 	elif section == Section.DLNA:
 		if _dlna_stack.is_empty():
 			network.open()
@@ -1722,7 +1690,7 @@ func _go_back() -> void:
 		else:
 			_dlna_stack.pop_back()
 			_dlna_entries = []
-			_request(
+			sources.request(
 				"dlna_browse",
 				platform.media_dlna_browse(
 					_dlna_server, str(_dlna_stack.back().id) if _dlna_stack.size() > 0 else "0"
@@ -1740,8 +1708,11 @@ func _crumbs() -> Array:
 		Section.LOCAL:
 			return (
 				[]
-				if _local_stack.is_empty()
-				else [I18n.t(NAV[Section.LOCAL])] + _local_stack.map(func(c): return str(c.title))
+				if sources.local_stack.is_empty()
+				else (
+					[I18n.t(NAV[Section.LOCAL])]
+					+ sources.local_stack.map(func(c): return str(c.title))
+				)
 			)
 		Section.SMB:
 			if _smb_server.is_empty():
@@ -1781,17 +1752,17 @@ func _go_to(level: int) -> void:
 	status = ""
 	match section:
 		Section.LOCAL:
-			_local_stack.resize(level)
-			_local_entries = []
-			_load_section()
+			sources.local_stack.resize(level)
+			sources.local_entries = []
+			sources.load_section()
 		Section.SMB:
 			_smb_path = "/".join(_smb_path.split("/", false).slice(0, level))
 			_smb_entries = []
-			_request("smb_browse", platform.media_smb_browse(_smb_server, _smb_path))
+			sources.request("smb_browse", platform.media_smb_browse(_smb_server, _smb_path))
 		Section.DLNA:
 			_dlna_stack.resize(level)
 			_dlna_entries = []
-			_request(
+			sources.request(
 				"dlna_browse",
 				platform.media_dlna_browse(
 					_dlna_server, str(_dlna_stack.back().id) if _dlna_stack.size() > 0 else "0"
@@ -1801,7 +1772,7 @@ func _go_to(level: int) -> void:
 
 
 func _refresh_source() -> void:
-	_sources._refresh_source()
+	sources.refresh_source()
 
 
 # --- Network server editor with a ray keyboard --------------------------------------------------
@@ -1858,7 +1829,7 @@ func _editor_fields() -> Array:
 
 
 func _editor_busy() -> bool:
-	return _pending.has(int(_editor.get("request_id", -1)))
+	return sources.pending.has(int(_editor.get("request_id", -1)))
 
 
 func _editor_input(target: int) -> void:
@@ -1892,7 +1863,7 @@ func _editor_input(target: int) -> void:
 			and not str(_editor.id).is_empty()
 		):
 			var id: int = platform.media_dlna_remove(str(_editor.id))
-			_request("dlna_remove", id)
+			sources.request("dlna_remove", id)
 			_editor.request_id = id
 	elif target == SAVE and section == Section.DLNA:
 		if str(_editor.host).strip_edges().is_empty() or str(_editor.port).strip_edges().is_empty():
@@ -1911,13 +1882,13 @@ func _editor_input(target: int) -> void:
 			):
 				request.location = _editor.location
 			var id: int = platform.media_dlna_save(JSON.stringify(request))
-			_request("dlna_save", id)
+			sources.request("dlna_save", id)
 			_editor.request_id = id
 			if network.mode == "add":
 				network.save_request = id
 	elif target == DELETE:
 		if platform and not str(_editor.id).is_empty():
-			_request("smb_servers", platform.media_smb_remove(str(_editor.id)))
+			sources.request("smb_servers", platform.media_smb_remove(str(_editor.id)))
 			if _smb_server == str(_editor.id):
 				_smb_server = ""
 		_editor = {}
@@ -1933,7 +1904,7 @@ func _editor_input(target: int) -> void:
 				"password": _editor.password
 			}
 			var id: int = platform.media_smb_save(JSON.stringify(request))
-			_request("smb_servers", id)
+			sources.request("smb_servers", id)
 			if network.mode == "add":
 				network.save_request = id
 			_smb_server = ""
@@ -2076,17 +2047,17 @@ func _draw() -> void:
 			platform != null,
 			"refresh"
 		)
-	if section == Section.LOCAL and not _local_all_files and platform:
+	if section == Section.LOCAL and not sources.local_all_files and platform:
 		_button(
 			ALL_FILES,
 			"",
 			Vector2(CONTENT_RIGHT - .155, HEADER_Y),
 			Vector2(0.09, 0.07),
-			not _local_grant_pending,
+			not sources.local_grant_pending,
 			"unlock"
 		)
 		_tips[ALL_FILES] = I18n.t("Allow access to all files")
-	if section == Section.LOCAL and not _external_volumes().is_empty():
+	if section == Section.LOCAL and not sources.external_volumes().is_empty():
 		_button(
 			USB_STORAGE,
 			"",
@@ -2102,7 +2073,7 @@ func _draw() -> void:
 				"",
 				Vector2(CONTENT_RIGHT - .375, HEADER_Y),
 				Vector2(0.09, 0.07),
-				_local_eject_pending.is_empty(),
+				sources.local_eject_pending.is_empty(),
 				"eject"
 			)
 			_tips[EJECT_STORAGE] = I18n.t("Stop app access")
@@ -2173,7 +2144,7 @@ func _draw() -> void:
 			I18n.t("Grant"),
 			Vector2(0.19, -0.34),
 			Vector2(0.3, 0.07),
-			not _local_grant_pending,
+			not sources.local_grant_pending,
 			"",
 			true
 		)
@@ -2253,7 +2224,7 @@ func _draw_crumbs(crumbs: Array) -> void:
 func _header_title() -> String:
 	match section:
 		Section.LOCAL:
-			return " / ".join(_local_stack.map(func(c): return str(c.title)))
+			return " / ".join(sources.local_stack.map(func(c): return str(c.title)))
 		Section.SMB:
 			if _smb_server.is_empty():
 				return ""
@@ -2867,7 +2838,7 @@ func set_playback_browser(playing: bool) -> void:
 		scroll = 0.0
 		status = ""
 		if visible:
-			_load_section()
+			sources.load_section()
 	if changed and visible:
 		refresh()
 
@@ -3102,54 +3073,6 @@ var source_editor: Variant:
 	set(value):
 		_editor = value
 
-var source_local_all_files: Variant:
-	get:
-		return _local_all_files
-	set(value):
-		_local_all_files = value
-
-var source_local_eject_pending: Variant:
-	get:
-		return _local_eject_pending
-	set(value):
-		_local_eject_pending = value
-
-var source_local_entries: Array:
-	get:
-		return _local_entries
-	set(value):
-		_local_entries = value
-
-var source_local_grant_pending: Variant:
-	get:
-		return _local_grant_pending
-	set(value):
-		_local_grant_pending = value
-
-var source_local_release_notice: Variant:
-	get:
-		return _local_release_notice
-	set(value):
-		_local_release_notice = value
-
-var source_local_stack: Array:
-	get:
-		return _local_stack
-	set(value):
-		_local_stack = value
-
-var source_local_volumes: Array:
-	get:
-		return _local_volumes
-	set(value):
-		_local_volumes = value
-
-var source_pending: Dictionary:
-	get:
-		return _pending
-	set(value):
-		_pending = value
-
 var source_smb_entries: Array:
 	get:
 		return _smb_entries
@@ -3179,19 +3102,3 @@ var source_smb_servers: Array:
 		return _smb_servers
 	set(value):
 		_smb_servers = value
-
-
-func source_external_volumes() -> Array:
-	return _external_volumes()
-
-
-func source_load_section() -> void:
-	_load_section()
-
-
-func source_local_path() -> String:
-	return _local_path()
-
-
-func source_request(kind: String, id: Variant) -> void:
-	_request(kind, id)
