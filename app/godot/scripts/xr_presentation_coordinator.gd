@@ -741,6 +741,7 @@ func _menu_state() -> Dictionary:
 		"alpha_available": host.video.alpha_available(),
 		"packed_alpha": host.video.alpha_wanted(),
 		"alpha_enabled": host.video.alpha_enabled,
+		"packed_alpha_feedback": host.video.packed_alpha_feedback(),
 		"loop": host.video.loop_enabled,
 		"stereo": host.video.stereo_sbs,
 		"swap_eyes": host.video.swap_eyes,

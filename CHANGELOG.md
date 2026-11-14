@@ -6,6 +6,16 @@
 
 Newest first, with the main changes that affect everyday use. Unreleased items are not yet part of a public release. Versions 0.6.0 and earlier belong to the original project. Photo viewing, cloud drives and AI 3D conversion appear only as historical features and were removed later; see the [README](README.md) for current capabilities.
 
+## 待发布 / Unreleased
+
+**中文**
+
+- 修复未标记的 DLNA 视频无法手动请求封装 alpha 遮罩：强制开关不再依赖自动检测，暂停画面同样生效；等待画面或布局不兼容时显示具体提示。
+
+**English**
+
+- Let untagged DLNA video explicitly request packed-alpha masking independently of automatic detection, including while paused. Show the blocking frame/layout condition instead of disabling the switch silently.
+
 ## 1.0.0 — 2026-11-14
 
 **中文**

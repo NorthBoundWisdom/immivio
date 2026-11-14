@@ -474,7 +474,15 @@
     "Refresh": "刷新",
     "Done": "完成",
     "Add server": "添加服务器",
-    "Internal storage": "内部存储"
+    "Internal storage": "内部存储",
+    "Force packed alpha on": "强制开启封装透明遮罩",
+    "Force packed alpha off": "强制关闭封装透明遮罩",
+    "Packed alpha: waiting for a decoded frame": "透明遮罩：等待解码画面",
+    "Packed alpha: select Fisheye": "透明遮罩：请选择鱼眼投影",
+    "Packed alpha: select full SBS": "透明遮罩：请选择完整左右立体",
+    "Packed alpha: decoded frame is too small": "透明遮罩：解码画面尺寸过小",
+    "Packed alpha: unsupported frame metadata": "透明遮罩：自动检测不支持此画面元数据",
+    "Packed alpha: renderer is not ready": "透明遮罩：渲染器尚未就绪"
   },
   "zh_Hant": {
     "Network media": "網路媒體",
@@ -951,7 +959,15 @@
     "Refresh": "重新整理",
     "Done": "完成",
     "Add server": "新增伺服器",
-    "Internal storage": "內部儲存"
+    "Internal storage": "內部儲存",
+    "Force packed alpha on": "強制開啟封裝透明遮罩",
+    "Force packed alpha off": "強制關閉封裝透明遮罩",
+    "Packed alpha: waiting for a decoded frame": "透明遮罩：等待解碼畫面",
+    "Packed alpha: select Fisheye": "透明遮罩：請選擇魚眼投影",
+    "Packed alpha: select full SBS": "透明遮罩：請選擇完整左右立體",
+    "Packed alpha: decoded frame is too small": "透明遮罩：解碼畫面尺寸過小",
+    "Packed alpha: unsupported frame metadata": "透明遮罩：自動偵測不支援此畫面中繼資料",
+    "Packed alpha: renderer is not ready": "透明遮罩：渲染器尚未就緒"
   },
   "ja": {
     "Network media": "ネットワークメディア",
@@ -1428,6 +1444,14 @@
     "Refresh": "再読み込み",
     "Done": "完了",
     "Add server": "サーバーを追加",
-    "Internal storage": "内部ストレージ"
+    "Internal storage": "内部ストレージ",
+    "Force packed alpha on": "パック済みアルファを強制オン",
+    "Force packed alpha off": "パック済みアルファを強制オフ",
+    "Packed alpha: waiting for a decoded frame": "アルファ：デコード済みフレームを待機中",
+    "Packed alpha: select Fisheye": "アルファ：魚眼投影を選択してください",
+    "Packed alpha: select full SBS": "アルファ：フルSBSを選択してください",
+    "Packed alpha: decoded frame is too small": "アルファ：デコード済みフレームが小さすぎます",
+    "Packed alpha: unsupported frame metadata": "アルファ：自動検出ではこのフレーム情報に対応していません",
+    "Packed alpha: renderer is not ready": "アルファ：レンダラーの準備ができていません"
   }
 }

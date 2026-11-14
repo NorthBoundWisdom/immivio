@@ -172,15 +172,18 @@ Playback popup continuity: `test_playback_popup_continuity.gd` checks transport 
 
 `test_output_paths.py` verifies move-only migration, package/receipt pairing, collision preservation, cleanup boundaries, private-key and symlink rejection, nested CI summaries and automatic removal of temporary native inspection files. Release tests exercise the nested CI download layout and flattened publication bundle. Host-test temporary inputs live under `build/tests/godot/`; saved render evidence lives under `artifacts/captures/ui/`.
 
-Packed-alpha manual controls: `test_manual_packed_alpha.gd` opens an untagged
-DLNA-style URI, enables/disables its compatible fisheye SBS mask while paused,
-rejects incompatible manual layouts and checks that the next untagged file does
-not inherit the switch. `render_packed_alpha_pair.gd` checks mask pixels and
-switches a bound material between opaque and packed shaders while retaining
-texture RIDs, the display ticket and picture settings. These host checks do
-not certify the headset compositor. `test_playback_controls_startup.gd` also
-keeps the mode picker visible and highlights successive projection choices
-during same-video layout revisions, while still deferring a different file.
+Packed-alpha manual controls: `test_manual_packed_alpha.gd` routes ray clicks
+through the production menu and coordinator on an untagged DLNA-style URI,
+including a request made before frame metadata arrives. Force On is independent
+of automatic confidence; it stays pending until a frame and Fisheye/full-SBS
+layout are available, with localized status explaining the blocking condition.
+Force Off remains usable even when the mask cannot be rendered. The test checks
+paused application, inconclusive metadata and reset on the next file. Its media
+backend/frame arrivals are simulated; it does not certify real XBVR/Quest decode.
+`render_packed_alpha_pair.gd` checks mask pixels and switches a bound material
+between opaque and packed shaders while retaining texture RIDs, the display
+ticket and picture settings. `test_playback_controls_startup.gd` keeps the mode
+picker visible during same-video revisions while deferring a different file.
 
 ## Device probes and local media
 

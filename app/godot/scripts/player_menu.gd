@@ -671,7 +671,17 @@ func _draw_bar() -> void:
 		{"target": BROWSE, "icon": "folder", "tip": "Library", "enabled": has_video},
 	]
 	var picture := [
-		{"target": 104, "icon": "passthrough", "tip": "Passthrough", "enabled": _enabled("alpha")},
+		{
+			"target": 104,
+			"icon": "passthrough",
+			"tip":
+			(
+				"Force packed alpha off"
+				if _state.get("packed_alpha", false)
+				else "Force packed alpha on"
+			),
+			"enabled": _enabled("alpha")
+		},
 		{"target": 110, "icon": "subtitle", "tip": "Subtitles", "enabled": _enabled("subtitles")},
 		{"target": MODE, "icon": "view_mode", "tip": "Video mode", "enabled": has_video},
 		{
@@ -1207,6 +1217,9 @@ func _activate(target: int) -> void:
 
 
 func _update_highlights() -> void:
+	_tips[104] = I18n.t(
+		"Force packed alpha off" if _state.get("packed_alpha", false) else "Force packed alpha on"
+	)
 	super._update_highlights()
 	for button in _buttons:
 		if (
@@ -1258,10 +1271,7 @@ func _enabled(operation: String) -> bool:
 		"previous_video", "next_video":
 			return has_video and _state.get("has_" + operation, false)
 		"alpha":
-			return (
-				has_video
-				and (_state.get("alpha_available", false) or _state.get("packed_alpha", false))
-			)
+			return has_video
 		"eyes", "stereo_view":
 			return has_video and _state.get("stereo", false)
 		"audio":
@@ -1354,6 +1364,8 @@ func _status_text() -> String:
 		return I18n.t("Error: open Info")
 	if not _state.get("has_video", false):
 		return I18n.t("No video selected")
+	if not str(_state.get("packed_alpha_feedback", "")).is_empty():
+		return I18n.t(str(_state.packed_alpha_feedback))
 	if _state.get("packed_alpha", false) and _state.get("alpha_enabled", false):
 		return I18n.t("Alpha on")
 	return I18n.t(str(_state.get("playback_state", "Ready")).capitalize())

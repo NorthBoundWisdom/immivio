@@ -185,8 +185,12 @@ func _initialize() -> void:
 	video.subtitles.text = "old cue"
 	video.set_alpha(true)
 	check(
-		video.subtitles.text == "old cue" and video.subtitles.requested_track == 12,
-		"Rejected removed effect cannot disturb the current subtitle"
+		(
+			video.subtitles.text == "old cue"
+			and video.subtitles.requested_track == 12
+			and video.alpha_wanted()
+		),
+		"Pending manual alpha request cannot disturb the current subtitle"
 	)
 	video.media.playback = {"details": {"subtitle_tracks": []}}
 	check(

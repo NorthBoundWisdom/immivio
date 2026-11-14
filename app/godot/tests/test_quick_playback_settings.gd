@@ -90,7 +90,7 @@ func _run() -> void:
 		(
 			not button(menu, 104).is_empty()
 			and button(menu, 104).node.visible
-			and not button(menu, 104).enabled
+			and button(menu, 104).enabled
 			and button(menu, Menu.TEMP_PASSTHROUGH).is_empty()
 		),
 		"Packed-alpha toggle stays visible without adding a temporary scene passthrough action"

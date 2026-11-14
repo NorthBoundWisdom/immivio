@@ -51,6 +51,7 @@ var prefer_clone_voice := false
 ## Naming supplies the initial packed-mask preference; users can override it for untagged media.
 var packed_file := false
 var packed_alpha := false
+var packed_alpha_forced := false
 var reclining_mode := false
 ## What the file name left open; filled from the first frame's shape, then cleared.
 var _layout_pending: Variant = null
@@ -481,6 +482,7 @@ func open_local(
 		stated.erase("alpha")
 	packed_file = bool(stated.get("packed", false))
 	packed_alpha = packed_file
+	packed_alpha_forced = false
 	_layout_pending = null
 	var saved_sync := mode_memory.lookup(uri) if restore_mode else {}
 	subtitle_below_screen = (
@@ -897,14 +899,39 @@ func alpha_available() -> bool:
 	)
 
 
+## Explicit user intent is accepted independently of automatic detection confidence.
+## Layout/frame checks stay at presentation time and are exposed to the UI.
 func set_alpha(enabled: bool) -> bool:
-	# Precomputed alpha is media data; there is no live matting pipeline.
-	if enabled and not packed_file and not alpha_available():
-		return false
 	packed_alpha = enabled
+	packed_alpha_forced = enabled
 	_apply_packed()
 	changed.emit()
 	return true
+
+
+func packed_alpha_blocker() -> String:
+	if not material:
+		return "Packed alpha: renderer is not ready"
+	if media.last_pair.is_empty():
+		return "Packed alpha: waiting for a decoded frame"
+	if geometry != Geometry.Geometry.FISHEYE:
+		return "Packed alpha: select Fisheye"
+	if not stereo_sbs or top_bottom or stereo_half:
+		return "Packed alpha: select full SBS"
+	if int(media.format.get("width", 0)) < 10 or int(media.format.get("height", 0)) < 10:
+		return "Packed alpha: decoded frame is too small"
+	# Force On interprets the displayed texture as packed media even when metadata
+	# or its aspect ratio is inconclusive. Automatic detection keeps its old gate.
+	if (
+		not packed_alpha_forced
+		and not Geometry.legacy_compatible(media.format, stereo_sbs, geometry)
+	):
+		return "Packed alpha: unsupported frame metadata"
+	return ""
+
+
+func packed_alpha_feedback() -> String:
+	return packed_alpha_blocker() if packed_alpha else ""
 
 
 ## The extra track titled "Clone voice" (see SidecarAudio.kt); 0 when this video has none.
@@ -1873,13 +1900,10 @@ func _complete_layout() -> void:
 
 ## Packed masks show only on the layout they were made for (fisheye side by side).
 func _apply_packed() -> void:
-	var shown := (
-		packed_alpha
-		and not media.last_pair.is_empty()
-		and not top_bottom
-		and not stereo_half
-		and Geometry.legacy_compatible(media.format, stereo_sbs, geometry)
-	)
+	if not material:
+		alpha_enabled = false
+		return
+	var shown := packed_alpha and packed_alpha_blocker().is_empty()
 	_binding.set_opaque(not shown)
 	material.set_shader_parameter("packed_alpha", shown)
 	if shown:
@@ -2203,6 +2227,8 @@ func layout_snapshot() -> Dictionary:
 		"stereo_half": stereo_sbs and stereo_half,
 		"fisheye_fov": fisheye_fov,
 		"alpha_enabled": alpha_enabled,
+		"packed_alpha_forced": packed_alpha_forced,
+		"packed_alpha_blocker": packed_alpha_feedback(),
 		"screen_rotation": screen_rotation,
 		"playback_speed": playback_speed,
 		"alpha_ready": alpha_ready(),
