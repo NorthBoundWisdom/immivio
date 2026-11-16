@@ -212,6 +212,27 @@ it does not by itself mean USB debugging was denied. Additional servers can also
 compete for the same USB interface. Do not stop another task's server or emulator.
 Stop redundant servers created by your own diagnostic attempt before retrying.
 
+Competing servers are not harmless. Every ADB server scans USB by default, and a
+native-backend server that loses the claim retries about once per second. With
+adb 37.0.1 on macOS each failed attempt was observed to leave one IOKit user
+client on the device. After roughly 1020 of them the interface is exhausted:
+servers then log `Unable to create an interface plug-in (e00002be)` and any
+other process opening the interface blocks for 15 seconds, which delayed
+unrelated USB software on this host (CoreMIDI startup took 30 seconds on
+2026-11-15). `--one-device` naming an emulator did not prevent this. Find the
+holder before reconnecting the cable:
+
+```sh
+ioreg -r -c IOUSBHostDevice -l -w0 \
+  | rg -o 'IOUserClientCreator" = "[^"]*"' | sort | uniq -c | sort -rn | head
+```
+
+A PID holding hundreds of clients is the leak; stopping that process releases
+them, while a reconnect alone only resets the count. If it belongs to another
+task, report it to the owner instead of stopping it. Start a server that only
+needs emulators with `ADB_USB=0` (present in adb 37.0.1) so it never touches
+USB, and confirm with the command above that it holds no client on the headset.
+
 A dedicated libusb server was verified as a recovery path on 2026-11-13. Choose a
 free port and the serial actually reported by IORegistry, then run in a separate
 terminal (it stays in the foreground):
@@ -227,7 +248,9 @@ The example port is not a project default. A server that has already failed to
 claim the interface may need a USB reconnect after competing ownership is
 released. Confirm the exact serial reaches `device` before installing or sending
 probes. An `unauthorized` result requires accepting USB debugging in the headset.
-After the run, stop only the dedicated server you started.
+After the run, stop only the dedicated server you started, and confirm that its
+process and listening port are gone; a leftover dedicated server keeps competing
+for the interface after the task ends.
 
 All device probes use `tools/device_probe.py` for ADB selection/quoting, installed
 APK SHA-256 checks, unique request keys, process identity, bounded waits and JSON
