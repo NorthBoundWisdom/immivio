@@ -1,0 +1,354 @@
+extends SceneTree
+const Policy := preload("res://scripts/playback_performance.gd")
+const Layout := preload("res://scripts/video_layer_layout.gd")
+const Layers := preload("res://scripts/video_layers.gd")
+const Media := preload("res://scripts/mpv_media_state.gd")
+var failures: Array[String] = []
+
+
+class Rates:
+	extends "res://scripts/xr_display.gd"
+	var selected := 0.0
+
+	func available_refresh_rates() -> Array[float]:
+		return [72.0, 90.0, 120.0]
+
+	func _apply_refresh_rate() -> void:
+		selected = policy_refresh_rate if policy_refresh_rate > 0 else preferred_refresh_rate
+
+
+class SwitchHost:
+	extends RefCounted
+	var calls: Array = []
+
+	func mpv_supported() -> bool:
+		return true
+
+	func open_mpv_video(
+		uri: String, position: int, _stereo: bool, _hw: bool, _tb: bool, exact: bool
+	) -> int:
+		calls.append({"uri": uri, "position": position, "exact": exact})
+		return calls.size() + 100
+
+	func close_mpv_video(_id: int) -> void:
+		pass
+
+	func set_mpv_playing(_id: int, _playing: bool) -> void:
+		pass
+
+
+class SwitchLayers:
+	extends RefCounted
+
+	func runtime_running() -> bool:
+		return true
+
+	func direct_wanted(_video: Node3D, _uri: String) -> bool:
+		return false
+
+	func release(_video: Node3D) -> void:
+		pass
+
+	func shutdown(_video: Node3D) -> void:
+		pass
+
+
+func check(value: bool, message: String) -> void:
+	if not value:
+		failures.append(message)
+
+
+class Backend:
+	extends RefCounted
+	var draws := 0
+	var destroys := 0
+	var invalidations := 0
+	var sent := PackedFloat32Array()
+
+	func create_video_image(_w: int, _h: int) -> bool:
+		return true
+
+	func draw_video_image(_texture: int, _lens: bool, _v: PackedFloat32Array) -> bool:
+		draws += 1
+		return true
+
+	func set_video_layers(_count: int, v: PackedFloat32Array) -> bool:
+		sent = v.duplicate()
+		return true
+
+	func video_layer_address(index: int) -> int:
+		return index + 1
+
+	func destroy_video_image() -> void:
+		destroys += 1
+
+	func invalidate_video_layer() -> void:
+		invalidations += 1
+
+
+class Display:
+	extends RefCounted
+	var shown := false
+
+	func set_video_layer(value: bool) -> void:
+		shown = value
+
+
+class Movie:
+	extends Node3D
+	var panel := MeshInstance3D.new()
+	var material := ShaderMaterial.new()
+	var color_grade := preload("res://scripts/color_grade.gd").new()
+	var texture: ImageTexture
+	var platform: Object
+	var media := Media.new()
+	var packed_file := false
+	var packed_alpha := false
+	var sharpness := 0.0
+	var stereo_focus_mode := 0
+	var stereo_horizontal := 0.0
+	var stereo_vertical := 0.0
+	var geometry := 0
+	var fisheye_fov := 180
+	var stereo_sbs := true
+	var stereo_half := false
+	var top_bottom := false
+	var swap_eyes := false
+	var viewing_eye := 0
+	var screen_curve := 0.0
+	var layer_shown := false
+	var surface_requested := false
+	var force_shader_output := false
+	var output_width_choice := -1
+	var hdr_to_sdr := false
+	var requested_play := true
+	var fallbacks := 0
+
+	func _ready() -> void:
+		panel.mesh = QuadMesh.new()
+		material.shader = preload("res://shaders/video_opaque_pair.gdshader")
+		panel.material_override = material
+		add_child(panel)
+		var image := Image.create(64, 32, false, Image.FORMAT_RGBA8)
+		texture = ImageTexture.create_from_image(image)
+
+	func borrowed_color() -> RID:
+		return texture.get_rid()
+
+	func auto_layout_pending() -> bool:
+		return false
+
+	func surface_context() -> Dictionary:
+		return {"session_id": media.session_id, "source_epoch": 1}
+
+	func request_shader_fallback() -> void:
+		fallbacks += 1
+
+	func composition_geometry() -> Dictionary:
+		return {
+			"pose": global_transform, "size": Vector2(2, 1), "radius": 0.0, "sphere_radius": 50.0
+		}
+
+
+func _initialize() -> void:
+	if preload("res://tests/support/test_result.gd").prepare(self):
+		call_deferred("run")
+
+
+func run() -> void:
+	var rates := Rates.new()
+	rates.preferred_refresh_rate = 120
+	rates.update_playback_policy(true, true, true, false, 24, false, 0)
+	rates.update_playback_policy(true, true, true, false, 24, false, 1500)
+	check(rates.selected == 72, "24 fps settles at 72 Hz")
+	check(rates.set_refresh_preference(90), "Refresh cap can change during playback")
+	rates.update_playback_policy(true, true, true, false, 24, false, 2000)
+	rates.update_playback_policy(true, true, true, false, 24, false, 3500)
+	check(rates.selected == 72, "An unchanged video rate reapplies after changing its cap")
+	for row in [
+		[24.0, 120, 72],
+		[29.97, 120, 90],
+		[59.94, 120, 120],
+		[60.0, 90, 0],
+		[30.0, 72, 0],
+		[NAN, 120, 0]
+	]:
+		check(
+			Policy.video_rate(row[0], [72.0, 90.0, 120.0], row[1]) == row[2],
+			"Refresh matching honors fractional rates and cap"
+		)
+	var policy := Policy.new()
+	check(policy.tick(true, 120, 0).high, "Raises apply immediately")
+	check(not policy.tick(false, 72, 100).has("high"), "A brief seek does not drop clocks")
+	check(not policy.tick(true, 120, 200).has("high"), "Seek recovery cancels the pending drop")
+	policy.tick(false, 72, 300)
+	check(
+		not policy.tick(false, 72, 3299).has("high"), "Lower demand must persist for three seconds"
+	)
+	check(policy.tick(false, 72, 3300).high == false, "Sustained idle drops clocks")
+	var small := Layout.picture_size(
+		Vector2i(8192, 4096), 2, 220, true, false, Vector2i(8192, 8192)
+	)
+	check(
+		small.x <= 8192 and small.y <= 8192 and small.x * small.y <= 35389440,
+		"Wide fisheye memory remains bounded"
+	)
+	check(
+		is_equal_approx(Layout.fisheye_span(220).x, TAU),
+		"Wide lenses retain the pixels behind the poles"
+	)
+	var shape := {
+		"pose": Transform3D.IDENTITY, "size": Vector2(2, 1), "radius": 0.0, "sphere_radius": 50.0
+	}
+	var values := Layout.layers(
+		shape, Transform3D.IDENTITY, 0, 180, true, false, false, 0, Vector2i(4096, 2048), 1, 1
+	)
+	check(
+		(
+			values.size() == 56
+			and values[1] == 1
+			and values[29] == 2
+			and values[9] == 0
+			and values[37] == 2048
+		),
+		"Stereo uses complete left/right crops of a shared image"
+	)
+	values = Layout.layers(
+		shape, Transform3D.IDENTITY, 0, 180, true, true, true, 1, Vector2i(2048, 4096), 1, 1
+	)
+	check(
+		values.size() == 28 and values[1] == 0 and values[10] == 2048,
+		"Logical single-eye and swap preserve top-bottom packing"
+	)
+	check(
+		not Layout.surface_flip("PXR Runtime", false) and Layout.surface_flip("Meta", false),
+		"Surface orientation follows the runtime"
+	)
+	var movie := Movie.new()
+	root.add_child(movie)
+	var backend := Backend.new()
+	var display := Display.new()
+	movie.platform = backend
+	movie.media.begin(11)
+	movie.media.state = "playing"
+	movie.media.last_pair = {
+		"width": 64, "height": 32, "frame_id": 1, "source_epoch": 1, "slot_token": 1
+	}
+	var layers := Layers.new()
+	layers.configure(false, movie, display)
+	layers.provider = Layers.Provider.new()
+	layers.bound = true
+	layers.picture_supported = true
+	layers.surface_supported = true
+	layers.capacity = 2
+	layers.limit = Vector2i(4096, 4096)
+	layers.types = {0: true, 1: true, 2: true}
+	layers.tick(movie)
+	check(
+		movie.layer_shown and backend.draws == 1 and display.shown,
+		"Compatible playback uses the compositor"
+	)
+	for i in 20:
+		layers.tick(movie)
+	check(backend.draws == 1, "XR refreshes do not redraw a retained video frame")
+	movie.position.x = 0.3
+	layers.tick(movie)
+	check(backend.draws == 1, "Moving a screen updates its pose without copying pixels")
+	movie.media.session_id = 12
+	layers.tick(movie)
+	check(backend.draws == 2, "A new session cannot reuse another movie's first frame")
+	movie.color_grade.select("Warm")
+	layers.tick(movie)
+	check(
+		(
+			not movie.layer_shown
+			and layers.provider.addresses.is_empty()
+			and movie.panel.material_override == movie.material
+		),
+		"Incompatible grading returns to the original shader"
+	)
+	movie.color_grade.select("Original")
+	check(
+		layers.direct_wanted(movie, "file:///sample.mp4"),
+		"Known compatible formats may use a decoder Surface"
+	)
+	movie.output_width_choice = 4096
+	check(
+		not layers.direct_wanted(movie, "file:///sample.mp4"),
+		"An explicit resolution limit retains the processing path"
+	)
+	movie.output_width_choice = -1
+	movie.surface_requested = true
+	movie.sharpness = 0.2
+	layers.tick(movie)
+	check(movie.fallbacks == 1, "A Surface reopens safely when picture settings need processing")
+	layers.release(movie)
+	check(
+		backend.destroys == 1 and layers.image_size == Vector2i.ZERO,
+		"Closing releases the picture swapchain"
+	)
+	layers.bound = true
+	layers.stopping()
+	check(
+		backend.invalidations == 0 and backend.destroys == 2,
+		"XR pause frees pictures without abandoning the decoder Surface"
+	)
+	layers.stopping(true)
+	check(backend.invalidations == 1, "Session loss abandons handles even after a pause")
+	layers.shutdown(movie)
+	movie.queue_free()
+
+	var video := preload("res://scripts/mpv_video_display.gd").new(false)
+	root.add_child(video)
+	video.set_process(false)
+	var switch_host := SwitchHost.new()
+	video.platform = switch_host
+	video.layer_controller = SwitchLayers.new()
+	video.requested_play = false
+	check(
+		video.open_local("https://example.invalid/a", "Friendly title", 0, false, "original.mp4"),
+		"Open a source through the production API"
+	)
+	video.surface_requested = true
+	video.set_alpha(true)
+	video.subtitle_delay_ms = 450
+	video.stereo_horizontal = 2.0
+	video.viewing_eye = 1
+	video.control.observe(12345, 20000)
+	video.request_shader_fallback()
+	await process_frame
+	check(
+		(
+			switch_host.calls.size() == 2
+			and switch_host.calls.back().position == 12345
+			and switch_host.calls.back().exact
+		),
+		"Internal switches retain exact playback position"
+	)
+	check(
+		(
+			video.packed_alpha
+			and video.packed_alpha_forced
+			and video.layout_basename() == "original.mp4"
+			and video.stereo_horizontal == 2.0
+			and video.viewing_eye == 1
+			and video.subtitle_delay_ms == 450
+			and not video.requested_play
+		),
+		"Switching retains forced alpha, original identity, subtitle timing and pause intent"
+	)
+	video.force_shader_output = false
+	video.request_shader_fallback()
+	video.open_local("https://example.invalid/b", "Next movie", 0, false)
+	video.request_shader_fallback()
+	await process_frame
+	check(
+		switch_host.calls.size() == 4 and video.local_uri == "https://example.invalid/b",
+		"An old deferred switch cannot reopen or interfere with a newer movie"
+	)
+	video.queue_free()
+	await process_frame
+	for error in failures:
+		push_error(error)
+	print("Playback performance failures: ", failures)
+	preload("res://tests/support/test_result.gd").finish(self, 0 if failures.is_empty() else 1)

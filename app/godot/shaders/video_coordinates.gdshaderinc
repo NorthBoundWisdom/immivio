@@ -1,3 +1,6 @@
+uniform float focus_scale = 1.0;
+uniform vec3 focus_offset = vec3(0.0);
+uniform vec3 focus_centre = vec3(0.0);
 uniform mat4 surface_transform = mat4(1.0);
 uniform bool stereo_sbs = false; // two views: side by side, or above each other with top_bottom
 uniform bool top_bottom = false;

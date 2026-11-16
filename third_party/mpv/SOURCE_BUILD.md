@@ -1,0 +1,19 @@
+# Android playback runtime built from source
+
+`manifest.json` records the original mpv-android release APK and its historical input hashes. **All eight packaged mpv/FFmpeg libraries now come from the locked source build**, not that APK. `source-build.json` records matching mpv/FFmpeg revisions, every source archive/hash, dependency/tool version and patch. Output hashes live in the build receipt because a different toolchain/build host can change binary bytes.
+
+`tools/build_patched_mpv.py` builds ARM64 / Android API 29 with NDK 30.0.16248370. It applies these narrow adaptations from Thru3D `959abc2`:
+
+- `0001-aaudio-clock-and-image-fence.patch`: AAudio timestamp extrapolation, bounded reset and GPU-fenced AImage return. The tested arithmetic header matches the patched source byte for byte. Resume timestamps are atomic.
+- `0002-ffmpeg-mediacodec-hints.patch`: real-time priority and source frame-rate hints; one clean decoder reinitialization without hints if configuration/start is rejected. A debug-only environment seam exercises the actual rejection path.
+- `0003-surface-cadence.patch`: bounded MediaCodec Surface release alignment using fresh compositor timing, with normal video timing when unavailable. A submission counter measures decoder releases, not compositor presentation.
+
+No private upstream source-frame or audio-capture API is imported. The direct decoder Surface has a separate timeline/format contract; it never fabricates a public-API RGBA frame ticket. Godot keeps subtitle composition and the OpenXR frame loop. `native/xr-layer` uses Khronos OpenXR headers from `third_party/openxr` and adapts the upstream layer lifecycle/remapping; it does not ship another loader.
+
+The runtime retains libass, libplacebo/OpenGL, Android MediaCodec, AAudio, dav1d, mbedTLS and libxml2. FFmpeg preserves the original codec/protocol configuration (GPL/version3, no Vulkan/devices/programs, only the original selected encoders/muxers). Unused CLI, scripting and desktop integrations are omitted. C++ standard-library code links statically with hidden archive symbols, avoiding a newer `libc++_shared.so` requirement than Godot provides.
+
+Original GPL/LGPL texts reside here. Retained dependency notices under `source-licenses` cover FreeType (FTL), FriBidi (LGPL), HarfBuzz (MIT-style), libass (ISC), libplacebo (LGPL), glad (MIT/Apache), fast_float (MIT/Apache with LLVM exception), mbedTLS (Apache-2.0 OR GPL-2.0-or-later), dav1d (BSD-2-Clause), libxml2 (MIT) and LLVM/libc++. Complete corresponding source consists of the checked archives, build script and patches. Keep these records with binary releases.
+
+`mpv-build-receipt.json` beside the prepared binaries records recipe inputs, NDK/tools and sizes/SHA-256 for all eight outputs. Configure/build rejects stale recipes or altered libraries. Normal app builds never rebuild/download these dependencies.
+
+`tools/test_mpv_android_runtime.py --serial emulator-5554 --port 5037` checks public runtime loading, muted AAudio, seek/pause/speed and HDR options without installing an app. `tools/test_video_layers_android.py` builds an opt-in disposable app and native GLES probe on an explicitly selected emulator, then cleans up. Its synthetic H.264 zero-B-frame clip checks paused first-buffer delivery, seeks, speed, mute, decoder shutdown and injected hint rejection. The emulator's B-frame H.264 Surface startup stalled with both original and rebuilt FFmpeg; this remains a decoder/emulator compatibility boundary. None of these checks establishes headset compositor orientation, color accuracy, FPS, thermal or power gains. Use the device benchmark's `--layer-mode auto|picture|shader` for matched headset comparisons.

@@ -1,0 +1,68 @@
+--- a/libavcodec/mediacodecdec.c
++++ b/libavcodec/mediacodecdec.c
+@@ -60,6 +60,7 @@
+     int use_ndk_codec;
+     // Ref. MediaFormat KEY_OPERATING_RATE
+     int operating_rate;
++    int priority;
+ } MediaCodecContext;
+ 
+ static av_cold int mediacodec_decode_close(AVCodecContext *avctx)
+@@ -307,7 +308,7 @@
+ }
+ #endif
+ 
+-static av_cold int mediacodec_decode_init(AVCodecContext *avctx)
++static av_cold int mediacodec_decode_init_once(AVCodecContext *avctx)
+ {
+     int ret;
+     int sdk_int;
+@@ -442,6 +443,8 @@
+     }
+     if (s->operating_rate > 0)
+         ff_AMediaFormat_setInt32(format, "operating-rate", s->operating_rate);
++    if (s->priority >= 0)
++        ff_AMediaFormat_setInt32(format, "priority", s->priority);
+ 
+     s->ctx = av_mallocz(sizeof(*s->ctx));
+     if (!s->ctx) {
+@@ -453,6 +456,9 @@
+     s->ctx->delay_flush = s->delay_flush;
+     s->ctx->use_ndk_codec = s->use_ndk_codec;
+ 
++    if (getenv("IMMIVIO_MEDIACODEC_REJECT_HINTS") && (s->priority >= 0 || s->operating_rate > 0)) {
++        av_freep(&s->ctx); ret = AVERROR_EXTERNAL; goto done;
++    }
+     if ((ret = ff_mediacodec_dec_init(avctx, s->ctx, codec_mime, format)) < 0) {
+         s->ctx = NULL;
+         goto done;
+@@ -485,6 +491,20 @@
+         mediacodec_decode_close(avctx);
+     }
+ 
++    return ret;
++}
++
++// Hints are optional: reject them once, then cleanly retry without either hint.
++static av_cold int mediacodec_decode_init(AVCodecContext *avctx)
++{
++    MediaCodecContext *s = avctx->priv_data;
++    int ret = mediacodec_decode_init_once(avctx);
++    if (ret < 0 && avctx->codec_type == AVMEDIA_TYPE_VIDEO &&
++        (s->priority >= 0 || s->operating_rate > 0)) {
++        av_log(avctx, AV_LOG_WARNING, "MediaCodec hints rejected; retrying without hints\n");
++        s->priority = -1; s->operating_rate = 0;
++        ret = mediacodec_decode_init_once(avctx);
++    }
+     return ret;
+ }
+ 
+@@ -600,6 +620,8 @@
+                      OFFSET(delay_flush), AV_OPT_TYPE_BOOL, {.i64 = 0}, 0, 1, VD },
+     { "ndk_codec", "Use MediaCodec from NDK",
+                    OFFSET(use_ndk_codec), AV_OPT_TYPE_BOOL, {.i64 = -1}, -1, 1, VD },
++    { "priority", "Codec priority: 0 realtime, 1 best effort, -1 unspecified",
++            OFFSET(priority), AV_OPT_TYPE_INT, {.i64 = -1}, -1, 1, VD },
+     { "operating_rate", "The desired operating rate that the codec will need to operate at, zero for unspecified",
+             OFFSET(operating_rate), AV_OPT_TYPE_INT, {.i64 = 0}, 0, INT_MAX, VD },
+     { NULL }

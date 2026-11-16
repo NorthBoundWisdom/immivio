@@ -44,12 +44,7 @@ func poll(left: Vector2, right: Vector2, zoom: bool = false) -> Array[Dictionary
 		var action: Dictionary = {}
 		if absf(stick.x) > 0.75 and absf(stick.y) < 0.3:
 			var direction := 1 if stick.x > 0 else -1
-			action = {
-				"operation": "seek",
-				"hand": hand,
-				"direction": direction,
-				"delta_ms": direction * (20000 if hand == "left" else 10000)
-			}
+			action = {"operation": "seek", "hand": hand, "direction": direction}
 		if not action.is_empty():
 			actions.append(action)
 			if hand == "left":

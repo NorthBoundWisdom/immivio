@@ -7,3 +7,8 @@
 *.mp4 binary
 *.jar binary
 *.bin binary
+
+# Unified-diff context prefixes and verbatim vendor notices/headers retain upstream bytes.
+native/mpv/patches/*.patch whitespace=-blank-at-eol,-blank-at-eof
+third_party/mpv/source-licenses/* -whitespace
+third_party/openxr/include/openxr/* -whitespace

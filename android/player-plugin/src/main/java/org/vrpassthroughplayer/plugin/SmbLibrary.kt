@@ -34,6 +34,21 @@ internal class SmbLibrary(
     private val context: Context,
     private val streams: () -> LocalStreamServer,
 ) {
+    private object TransportCleanup {
+        // Bound concurrent transport cleanup and queue size. Saturation applies backpressure
+        // to readers instead of leaking contexts or starting unbounded close threads.
+        val executor =
+            java.util.concurrent.ThreadPoolExecutor(
+                0,
+                2,
+                30,
+                TimeUnit.SECONDS,
+                java.util.concurrent.ArrayBlockingQueue(16),
+                { task -> Thread(task, "ImmivioSmbClose").apply { isDaemon = true } },
+                java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy(),
+            )
+    }
+
     data class Server(
         val id: String,
         val name: String,
@@ -43,8 +58,9 @@ internal class SmbLibrary(
         val password: String,
     )
 
+    @Volatile private var closed = false
     private val store = File(context.filesDir, "smb_servers.json")
-    private val contexts = HashMap<String, CIFSContext>()
+    private val contexts = HashMap<String, SmbConnection<CIFSContext>>()
 
     @Synchronized
     fun servers(): List<Server> {
@@ -95,14 +111,14 @@ internal class SmbLibrary(
                     password,
                 )
         write(updated)
-        synchronized(contexts) { contexts.remove(id) }
+        synchronized(contexts) { contexts.remove(id) }?.close()
         return id
     }
 
     @Synchronized
     fun remove(id: String) {
         write(servers().filter { it.id != id })
-        synchronized(contexts) { contexts.remove(id) }
+        synchronized(contexts) { contexts.remove(id) }?.close()
     }
 
     private fun write(list: List<Server>) {
@@ -124,77 +140,116 @@ internal class SmbLibrary(
     private fun server(id: String) =
         servers().firstOrNull { it.id == id } ?: error("Unknown SMB server")
 
-    private fun cifs(server: Server): CIFSContext =
+    private fun cifs(server: Server): CIFSContext = connection(server).get()
+
+    private fun connection(server: Server): SmbConnection<CIFSContext> =
         synchronized(contexts) {
+            check(!closed) { "SMB library closed" }
             contexts.getOrPut(server.id) {
-                val properties = SmbClientPolicy.properties(server.user.isEmpty())
-                val base = BaseContext(PropertyConfiguration(properties))
-                if (server.user.isEmpty()) base.withGuestCredentials()
-                else
-                    base.withCredentials(
-                        NtlmPasswordAuthenticator(
-                            server.domain,
-                            server.user,
-                            server.password,
-                        )
-                    )
+                SmbConnection(
+                    create = {
+                        val base =
+                            BaseContext(
+                                PropertyConfiguration(
+                                    SmbClientPolicy.properties(server.user.isEmpty())
+                                )
+                            )
+                        if (server.user.isEmpty()) base.withGuestCredentials()
+                        else
+                            base.withCredentials(
+                                NtlmPasswordAuthenticator(
+                                    server.domain,
+                                    server.user,
+                                    server.password,
+                                )
+                            )
+                    },
+                    dispose = { current ->
+                        // JCIFS transport close may block. A request deadline must not wait on it.
+                        TransportCleanup.executor.execute { runCatching { current.close() } }
+                    },
+                )
             }
         }
+
+    fun retire(id: String) {
+        synchronized(contexts) { contexts[id] }?.retireCurrent()
+    }
+
+    fun close() {
+        val previous =
+            synchronized(contexts) {
+                closed = true
+                contexts.values.toList().also { contexts.clear() }
+            }
+        previous.forEach { it.close() }
+    }
 
     /** path "" lists shares; otherwise "share/dir/...". Folders first, then video files. */
     fun browse(id: String, path: String): JSONArray {
         val server = server(id)
         val clean = path.trim('/')
         val url = "smb://${server.host}/" + if (clean.isEmpty()) "" else "$clean/"
-        val entries = JSONArray()
-        SmbFile(url, cifs(server)).use { directory ->
-            val children =
-                directory
-                    .listFiles()
-                    .sortedWith(compareBy({ !it.isDirectory }, { it.name.lowercase() }))
-            for (child in children) {
-                val name = child.name.trimEnd('/')
-                if (name.endsWith("$")) continue // administrative shares
-                val childPath = if (clean.isEmpty()) name else "$clean/$name"
-                if (child.isDirectory)
-                    entries.put(
-                        JSONObject()
-                            .put("id", childPath)
-                            .put("title", name)
-                            .put("container", true)
-                            .put("modified", child.lastModified().takeIf { it > 0 } ?: -1)
-                            .put("delete_uri", "smb://$id/$childPath")
-                            .put(
-                                "can_delete",
-                                clean.isNotEmpty() && child.attributes and 0x401 == 0,
+        return connection(server).read { current ->
+            val entries = JSONArray()
+            SmbFile(url, current).use { directory ->
+                val children = directory.listFiles()
+                try {
+                    for (child in
+                        children.sortedWith(
+                            compareBy({ !it.isDirectory }, { it.name.lowercase() })
+                        )) {
+                        if (Thread.currentThread().isInterrupted)
+                            throw java.io.InterruptedIOException("SMB listing cancelled")
+                        val name = child.name.trimEnd('/')
+                        if (name.endsWith("$")) continue // administrative shares
+                        val childPath = if (clean.isEmpty()) name else "$clean/$name"
+                        if (child.isDirectory)
+                            entries.put(
+                                JSONObject()
+                                    .put("id", childPath)
+                                    .put("title", name)
+                                    .put("container", true)
+                                    .put("modified", child.lastModified().takeIf { it > 0 } ?: -1)
+                                    .put("delete_uri", "smb://$id/$childPath")
+                                    .put(
+                                        "can_delete",
+                                        clean.isNotEmpty() && child.attributes and 0x401 == 0,
+                                    )
+                                    .put(
+                                        "delete_reason",
+                                        "File deletion unavailable for this source",
+                                    )
                             )
-                            .put("delete_reason", "File deletion unavailable for this source")
-                    )
-                else if (MediaKinds.supported(name))
-                    entries.put(
-                        JSONObject()
-                            .put("id", childPath)
-                            .put("title", name)
-                            .put("kind", "video")
-                            .put("container", false)
-                            .put("size", child.length())
-                            .put("uri", "smb://$id/$childPath")
-                            .put("modified", child.lastModified().takeIf { it > 0 } ?: -1)
-                            .put(
-                                "can_delete",
-                                child.attributes and
-                                    org.codelibs.jcifs.smb.SmbConstants.ATTR_READONLY == 0 &&
-                                    runCatching {
-                                        MediaDeletePolicy.smbPath(childPath)
-                                    }
-                                        .isSuccess,
+                        else if (MediaKinds.supported(name))
+                            entries.put(
+                                JSONObject()
+                                    .put("id", childPath)
+                                    .put("title", name)
+                                    .put("kind", "video")
+                                    .put("container", false)
+                                    .put("size", child.length())
+                                    .put("uri", "smb://$id/$childPath")
+                                    .put("modified", child.lastModified().takeIf { it > 0 } ?: -1)
+                                    .put(
+                                        "can_delete",
+                                        child.attributes and
+                                            org.codelibs.jcifs.smb.SmbConstants.ATTR_READONLY ==
+                                            0 &&
+                                            runCatching {
+                                                MediaDeletePolicy.smbPath(childPath)
+                                            }
+                                                .isSuccess,
+                                    )
+                                    .put("delete_reason", "File is read-only")
                             )
-                            .put("delete_reason", "File is read-only")
-                    )
-                child.close()
+                    }
+                } finally {
+                    children.forEach { runCatching { it.close() } }
+                }
             }
+            entries
         }
-        return entries
     }
 
     fun renameFile(request: JSONObject, prepare: Boolean): JSONObject {
@@ -387,13 +442,15 @@ internal class SmbLibrary(
         if (folder.isEmpty() && !server.host.contains('/')) return emptyList()
         val video = path.substringAfterLast('/')
         val names =
-            SmbFile(
-                    "smb://${server.host}/" + if (folder.isEmpty()) "" else "$folder/",
-                    cifs(server),
-                )
-                .use { directory ->
-                    directory.list().map { it.trimEnd('/') }
-                }
+            connection(server).read { current ->
+                SmbFile(
+                        "smb://${server.host}/" + if (folder.isEmpty()) "" else "$folder/",
+                        current,
+                    )
+                    .use { directory ->
+                        directory.list().map { it.trimEnd('/') }
+                    }
+            }
         return SidecarAudio.select(video, names).map {
             SidecarAudio.Track(
                 stream(
@@ -418,11 +475,13 @@ internal class SmbLibrary(
         val folder = path.substringBeforeLast('/', "")
         if (folder.isEmpty() && !server.host.contains('/')) return org.json.JSONArray()
         val names =
-            SmbFile(
-                    "smb://${server.host}/" + if (folder.isEmpty()) "" else "$folder/",
-                    cifs(server),
-                )
-                .use { it.list().toList() }
+            connection(server).read { current ->
+                SmbFile(
+                        "smb://${server.host}/" + if (folder.isEmpty()) "" else "$folder/",
+                        current,
+                    )
+                    .use { it.list().toList() }
+            }
         return org.json.JSONArray(
             SidecarSubtitles.candidates(names).map { name ->
                 org.json
@@ -446,11 +505,13 @@ internal class SmbLibrary(
         if (folder.isEmpty() && !server.host.contains('/')) return emptyList()
         val video = path.substringAfterLast('/')
         val names =
-            SmbFile(
-                    "smb://${server.host}/" + if (folder.isEmpty()) "" else "$folder/",
-                    cifs(server),
-                )
-                .use { it.list().toList() }
+            connection(server).read { current ->
+                SmbFile(
+                        "smb://${server.host}/" + if (folder.isEmpty()) "" else "$folder/",
+                        current,
+                    )
+                    .use { it.list().toList() }
+            }
         return SidecarSubtitles.select(video, names).mapNotNull { name ->
             // One inaccessible subtitle must not hide other tracks or fail video playback.
             runCatching {
@@ -477,27 +538,37 @@ internal class SmbLibrary(
         val server = server(rest.substringBefore('/'))
         val path = rest.substringAfter('/')
         val url = "smb://${server.host}/$path"
-        val context = cifs(server)
-        val size = SmbFile(url, context).use { it.length() }
+        val connection = connection(server)
+        val size = connection.read { current -> SmbFile(url, current).use { it.length() } }
         val source =
             object : StreamSource {
                 override val size = size
 
-                override fun open(): StreamSource.Reader {
-                    val file = SmbFile(url, context)
-                    val reader = SmbRandomAccessFile(file, "r")
-                    return object : StreamSource.Reader {
-                        override fun read(offset: Long, buffer: ByteArray, length: Int): Int {
-                            reader.seek(offset)
-                            return reader.read(buffer, 0, length)
-                        }
+                override fun open(): StreamSource.Reader =
+                    SmbRecoveringReader(connection) { current ->
+                        val file = SmbFile(url, current)
+                        val reader =
+                            try {
+                                SmbRandomAccessFile(file, "r")
+                            } catch (error: Exception) {
+                                runCatching { file.close() }
+                                throw error
+                            }
+                        object : StreamSource.Reader {
+                            override fun read(offset: Long, buffer: ByteArray, length: Int): Int {
+                                reader.seek(offset)
+                                return reader.read(buffer, 0, length)
+                            }
 
-                        override fun close() {
-                            reader.close()
-                            file.close()
+                            override fun close() {
+                                try {
+                                    reader.close()
+                                } finally {
+                                    file.close()
+                                }
+                            }
                         }
                     }
-                }
             }
         return streams().publish(source, path.substringAfterLast('/'))
     }
@@ -507,28 +578,25 @@ internal class SmbLibrary(
      * which Windows uses instead of mDNS for its file shares. [{name, host}]
      */
     fun discover(timeoutMs: Long = 2500): JSONArray {
-        val windows = Thread {
-            wsdHosts.clear()
-            wsdHosts.addAll(wsDiscovery(timeoutMs.toInt()))
-        }
-            .apply { start() }
+        val windows = java.util.concurrent.FutureTask { wsDiscovery(timeoutMs.toInt()) }
+        val scan =
+            java.util.concurrent.FutureTask {
+                SmbLanScan.hosts(DlnaClient.lanInterfaces(), timeoutMs.toInt())
+            }
+        Thread(windows, "ImmivioSmbWsd").apply { isDaemon = true }.start()
+        Thread(scan, "ImmivioSmbScan").apply { isDaemon = true }.start()
         val found = mdns(timeoutMs)
-        windows.join(timeoutMs + 1000)
+        val hosts = runCatching { scan.get(1000, TimeUnit.MILLISECONDS) }.getOrDefault(emptyList())
+        scan.cancel(true)
+        val names = SmbLanScan.names(hosts, 600)
         val seen =
             (0 until found.length()).map { found.getJSONObject(it).getString("host") }.toHashSet()
-        for ((host, name) in wsdHosts.toList()) if (seen.add(host))
-            found.put(
-                JSONObject()
-                    .put(
-                        "name",
-                        name,
-                    )
-                    .put("host", host)
-            )
+        val wsd = runCatching { windows.get(500, TimeUnit.MILLISECONDS) }.getOrDefault(emptyList())
+        windows.cancel(true)
+        for ((host, name) in wsd + hosts.map { it to (names[it] ?: it) }) if (seen.add(host))
+            found.put(JSONObject().put("name", name).put("host", host))
         return found
     }
-
-    private val wsdHosts = java.util.concurrent.ConcurrentLinkedQueue<Pair<String, String>>()
 
     /**
      * WS-Discovery Probe (UDP 3702): Windows computers answer with their address; the share list

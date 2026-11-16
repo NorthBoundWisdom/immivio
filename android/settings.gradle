@@ -18,3 +18,6 @@ include ':player-plugin'
 if (providers.gradleProperty('includeUriFixture').orNull == 'true') {
     include ':uri-fixture'
 }
+
+// Disposable emulator fixture; excluded from ordinary application builds.
+if (providers.gradleProperty('includePerformanceFixture').orNull == 'true') { include ':performance-fixture' }

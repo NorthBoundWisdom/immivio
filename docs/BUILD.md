@@ -45,7 +45,15 @@ brew install ffmpeg mpv pkgconf ninja meson
 sudo apt install ffmpeg libmpv-dev pkg-config ninja-build meson
 ```
 
-The desktop libraries installed by these commands cannot be packaged into Android. Prepare the eight Android ARM64 libraries listed in `third_party/mpv/manifest.json` in a separate SDK directory, then set `IMMIVIO_MPV_LIB_DIR` to it. The manifest records the supported upstream mpv-android release, download location and each library's checksum. A maintainer can unpack `lib/arm64-v8a/*.so` from that release APK once, outside the project build. The build verifies all selected library bytes before copying them. It does not download mpv, FFmpeg or their full Git histories.
+The desktop libraries installed by these commands cannot be packaged into Android. Set `IMMIVIO_MPV_LIB_DIR` to a prepared output directory and build all eight Android ARM64 playback libraries from the locked sources. The original release APK in `third_party/mpv/manifest.json` remains historical provenance; its libraries are no longer packaged:
+
+```sh
+python3 tools/build_patched_mpv.py --base "$IMMIVIO_MPV_LIB_DIR" --output "$IMMIVIO_MPV_LIB_DIR" --download --prepare-tools
+```
+
+This explicit preparation step uses the exact NDK in `third_party/mpv/source-build.json` (currently 30.0.16248370), the shared host Python, Ninja and pkg-config. Meson and its Python generator dependencies live in `.cache/native-build-tools`; they do not change the global toolchain. Omit `--download --prepare-tools` to rebuild offline from prepared archives and tools. The source build supports macOS and Linux; the hosted macOS setup performs it after provisioning the NDK.
+
+The source archives, source patch and tool versions are locked. The build carries AAudio clock/reset fixes, GPU-fenced AImage return, compositor Surface cadence and retryable MediaCodec priority/frame-rate hints, uses the public libmpv API, and statically links its C++ runtime without exporting duplicate STL symbols. The normal configure/build stages verify source-input/output receipts for all eight libraries before staging anything. An old receipt, edited patch or modified library is rejected. Normal builds perform no dependency downloads or source compilation. Script/plugin loading is compiled out of this narrow playback runtime; it retains libass, OpenGL, Android MediaCodec and AAudio. See `third_party/mpv/SOURCE_BUILD.md` for provenance and notices.
 
 NDK, CMake and Android Build Tools are selected from complete stable installations under the supplied Android SDK. The latest installed version is the default; `IMMIVIO_NDK_VERSION`, `IMMIVIO_CMAKE_VERSION` and `IMMIVIO_BUILD_TOOLS_VERSION` can select another installed component. Godot's templates must match the installed editor version. These compatibility relationships do not pin the editor or SDK tools to specific releases.
 
@@ -145,9 +153,9 @@ CI uploads the nested `packages/` and `reports/ci/` trees. The tag publisher ver
 
 ## Playback libraries and formats
 
-Immivio uses the unmodified Android ARM64 mpv/FFmpeg release libraries recorded in `third_party/mpv/manifest.json`. The app embeds libmpv through its public OpenGL render API. Native build targets compile the app's JNI bridges against these prepared libraries.
+Immivio builds all eight Android ARM64 mpv/FFmpeg libraries from the sources and patches locked in `third_party/mpv/source-build.json`. The generated build receipt verifies their bytes; `manifest.json` retains the original release provenance. Native targets compile the app's JNI bridges against these prepared outputs. See [runtime source build](../third_party/mpv/SOURCE_BUILD.md).
 
-Ordinary and packed SBS/TB playback use the same pipeline. Frame timestamps observe the playback clock; they do not claim exact decoded-image PTS. Subtitles are exposed as text and rendered in Godot's separate caption layers. Bitmap subtitle tracks are not offered. MV-HEVC dual-view video and Dolby Vision colour correctness are not certified by the current build; container recognition or a filename does not establish playback support.
+Compatible ordinary video can use a decoder Surface in an OpenXR compositor layer. Processed video uses the public libmpv OpenGL/RGBA path; compatible RGBA and fisheye frames can be copied/remapped into image layers once per video frame. Unsupported capabilities or effects retain shader rendering. RGBA frame timestamps observe the playback clock; the direct Surface exposes a separate timeline/format context and creates no RGBA frame ticket. Neither route claims exact decoded-image PTS. Subtitles are exposed as text and rendered in Godot's separate caption layers. Bitmap subtitle tracks are not offered. MV-HEVC dual-view video and Dolby Vision colour correctness are not certified by the current build; container recognition or a filename does not establish playback support.
 
 ## Outputs, signing and CI
 

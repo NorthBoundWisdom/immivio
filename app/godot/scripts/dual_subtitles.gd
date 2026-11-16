@@ -94,7 +94,7 @@ func observe(snapshot: Dictionary) -> void:
 	]:
 		cue[key] = snapshot.get(key, -1)
 	cue.required_command_id = snapshot.get("required_secondary_command_id", 0)
-	state.observe(cue, video.media.session_id, video.media.last_pair)
+	state.observe(cue, video.media.session_id, video.presentation_context())
 
 
 func compose() -> String:

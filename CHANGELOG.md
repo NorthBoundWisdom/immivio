@@ -10,10 +10,24 @@ Newest first, with the main changes that affect everyday use. Unreleased items a
 
 **中文**
 
+- 改善 SMB 断线后的只读恢复、目录超时及切换响应；主动搜索增加 Windows 共享发现兜底。
+- 快进／快退步长可配置，两只手柄共用；播放倍速跨视频、跨重启记忆。
+- 新增文字字幕透明度和沉浸字幕跟随视角，兼容双语字幕。
+- 沉浸式原生立体视频新增手动／自动对焦；新增默认关闭的 HDR 转 SDR 开关。
+- 兼容视频可使用合成层直通，鱼眼按视频帧重映射；增加解码提示与失败重试，以及按视频选择刷新率和功耗等级。
+- 新安装默认关闭锐化，自动对焦采用有界异步回读；XR 抗锯齿档位固定为关闭／2×／4×。
+- 超规格视频更早给出尺寸与已知限制；固定会话中的 XR 抗锯齿配置，接入 AAudio 时钟／重置及解码图像归还修复。
 - 修复未标记的 DLNA 视频无法手动请求封装 alpha 遮罩：强制开关不再依赖自动检测，暂停画面同样生效；等待画面或布局不兼容时显示具体提示。
 
 **English**
 
+- Recover eligible read-only SMB operations after connection loss, isolate directory timeouts, and add Windows discovery fallback to explicit searches.
+- Configure one seek step for both controllers and remember playback speed across videos and restarts.
+- Add text-subtitle transparency and optional view-following immersive captions, including bilingual captions.
+- Add manual/automatic focus for native immersive stereo and an optional HDR-to-SDR switch, off by default.
+- Add capability-gated video compositor layers, per-frame fisheye remapping, retryable MediaCodec hints and video-aware refresh/power requests.
+- Default new-install sharpening to off, bound autofocus GPU readback, and fix XR quality tiers to off/2×/4×.
+- Report oversized streams earlier, fix XR antialiasing for the session, and integrate AAudio clock/reset and decoder-image retirement fixes.
 - Let untagged DLNA video explicitly request packed-alpha masking independently of automatic detection, including while paused. Show the blocking frame/layout condition instead of disabling the switch silently.
 
 ## 1.0.0 — 2026-11-14

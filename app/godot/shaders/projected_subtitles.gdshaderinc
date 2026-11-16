@@ -1,5 +1,6 @@
 uniform sampler2D subtitle_texture : source_color, filter_linear, repeat_disable;
 uniform bool subtitle_enabled = false;
+uniform float subtitle_opacity = 1.0;
 uniform mat3 subtitle_anchor_inverse = mat3(1.0);
 uniform float subtitle_parallax = 0.0;
 uniform float subtitle_patch_half_extent = 0.35;
@@ -23,7 +24,7 @@ vec4 projected_caption(vec3 direction, int physical_eye) {
   if (any(lessThan(p, vec2(0.0))) || any(greaterThan(p, vec2(1.0)))) {
     return vec4(0.0);
   }
-  return texture(subtitle_texture, p);
+  return texture(subtitle_texture, p) * subtitle_opacity;
 }
 
 vec4 caption_composite(vec3 video_rgb, float video_alpha, vec4 caption) {

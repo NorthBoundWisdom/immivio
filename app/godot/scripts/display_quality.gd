@@ -6,11 +6,11 @@ const SCALES := [1.0, 1.1, 1.25]
 const AUTO := -1
 const DEFAULT := AUTO
 const TIER_DEFAULT := 1
-const MSAA := [Viewport.MSAA_2X, Viewport.MSAA_2X, Viewport.MSAA_4X]
-const FLAT_MSAA := [Viewport.MSAA_2X, Viewport.MSAA_4X, Viewport.MSAA_4X]
+const MSAA := [Viewport.MSAA_DISABLED, Viewport.MSAA_2X, Viewport.MSAA_4X]
+const FLAT_MSAA := MSAA
 const SHARPNESS := [0.0, 0.2, 0.4, 0.6]
 const SHARPNESS_NAMES := ["Off", "Low", "Medium", "High"]
-const DEFAULT_SHARPNESS := 0.2
+const DEFAULT_SHARPNESS := 0.0
 ## Video output width: -1 follows the device tier, 0 keeps the source size.
 const AUTO_OUTPUT := -1
 ## XR2 Gen1 class GPUs (Quest 2/Pro, PICO Neo3/4) lack the bandwidth to resample 8K60

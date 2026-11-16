@@ -35,6 +35,7 @@ internal object MpvSourceNative {
         audioFiles: Array<String> = emptyArray(),
         subtitleFiles: Array<String> = emptyArray(),
         exactStart: Boolean = true,
+        surface: android.view.Surface? = null,
     ): Long
 
     /** Empty string when no completed image is available. Never waits for the GPU. */
@@ -46,6 +47,12 @@ internal object MpvSourceNative {
     @JvmStatic external fun setPlaying(handle: Long, playing: Boolean)
 
     /** Positive playback rate; media timestamps and subtitle timing remain in source time. */
+    @JvmStatic external fun debugRejectHints(reject: Boolean)
+
+    @JvmStatic external fun setVsync(display: Long, period: Long, lead: Long): Boolean
+
+    @JvmStatic external fun setHdrToSdr(handle: Long, enabled: Boolean): Boolean
+
     @JvmStatic external fun setSpeed(handle: Long, speed: Double): Boolean
 
     /**

@@ -177,7 +177,7 @@ func _run() -> void:
 	click(menu, 110)
 	check(
 		(
-			menu.choices.sliders.size() == 2
+			menu.choices.sliders.size() == 3
 			and menu.text_snapshot().contains(
 				"Matching subtitles load automatically; choose other files manually."
 			)

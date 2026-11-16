@@ -40,15 +40,20 @@ func _library_settings() -> Dictionary:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return {}
+	var refresh_rates: Array = host.display.available_refresh_rates().filter(
+		func(rate): return not host.low_end_gpu or rate <= 90.5
+	)
 	return {
+		"seek_step": host.seek_step,
+		"hdr_to_sdr": host.video.hdr_to_sdr,
+		"subtitle_transparency": host.video.subtitle_transparency,
+		"subtitle_follow_view": host.video.subtitle_follow_view,
 		"output_width": Quality.load_output_choice(host.settings),
 		"show_fps": host.fps_overlay != null and host.fps_overlay.visible,
 		"display_quality": host.display_quality,
 		"refresh_rate":
-		host.display.closest_refresh_rate(
-			host.display.available_refresh_rates(), host.display.preferred_refresh_rate
-		),
-		"refresh_rates": host.display.available_refresh_rates(),
+		host.display.closest_refresh_rate(refresh_rates, host.display.preferred_refresh_rate),
+		"refresh_rates": refresh_rates,
 		"display_quality_pending":
 		not is_equal_approx(
 			host.display.render_scale, Quality.render_scale(host.display_quality, host.low_end_gpu)
@@ -83,6 +88,29 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 	if not is_instance_valid(host):
 		return
 	match key:
+		"seek_step":
+			host.seek_step = preload("res://scripts/playback_preferences.gd").seek_step(value)
+			host.settings.set_value("controls", "seek_step", host.seek_step)
+			host.settings.save(host.settings_path)
+		"hdr_to_sdr":
+			if not value is bool:
+				return
+			host.video.set_hdr_to_sdr(value)
+			host.settings.set_value("video", "hdr_to_sdr", value)
+			host.settings.save(host.settings_path)
+		"subtitle_follow_view":
+			if not value is bool:
+				return
+			host.video.subtitle_follow_view = value
+			host.video.subtitle_follow.reset()
+			host.settings.set_value("subtitles", "follow_view", value)
+			host.settings.save(host.settings_path)
+		"subtitle_transparency":
+			host.video.subtitle_transparency = (
+				preload("res://scripts/playback_preferences.gd").transparency(value)
+			)
+			host.settings.set_value("subtitles", "transparency", host.video.subtitle_transparency)
+			host.settings.save(host.settings_path)
 		"window_height":
 			if not (value is int or value is float) or not is_finite(float(value)):
 				return
@@ -134,6 +162,8 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 			host.settings.set_value("library", "orders", value)
 			host.settings.save(host.settings_path)
 		"refresh_rate":
+			if host.low_end_gpu and (value is int or value is float) and float(value) > 90.5:
+				return
 			if (
 				not (value is int or value is float)
 				or not host.display.set_refresh_preference(float(value))
@@ -174,6 +204,7 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 			if host.player_menu and host.player_menu.visible:
 				host.player_menu.refresh()
 		"output_width":
+			host.video.output_width_choice = int(value)
 			host.settings.set_value("video", "output_width", int(value))
 			host.settings.save(host.settings_path)
 			if host.platform_plugin:
@@ -260,6 +291,9 @@ func _on_playback_adjustment(key: String, value: Variant) -> void:
 	if key in ["subtitle_delay_ms", "audio_delay_ms"]:
 		host.video.set_sync_delay(key, float(value))
 		return
+	if key == "stereo_focus":
+		host.video.set_stereo_focus(key, value, false)
+		return
 	if key in ["stereo_horizontal", "stereo_vertical"]:
 		host.video.set_stereo_alignment(key, float(value))
 		return
@@ -285,11 +319,17 @@ func _on_playback_adjustment(key: String, value: Variant) -> void:
 		host.video.set_screen_rotation(float(value))
 		return
 	elif key == "playback_speed":
-		host.video.set_playback_speed(float(value))
+		if host.video.set_playback_speed(float(value)):
+			host.settings.set_value("playback", "speed", host.video.playback_speed)
+			host.settings.save(host.settings_path)
 		return
 	elif key == "subtitle_encoding":
 		host.video.set_subtitle_encoding(value)
 		return
+	elif key == "subtitle_transparency":
+		host.video.subtitle_transparency = (
+			preload("res://scripts/playback_preferences.gd").transparency(value)
+		)
 	elif key == "subtitle_palette":
 		host.video.subtitle_palette = host.video.CaptionPalette.index(value)
 	elif key == "subtitle_size":
@@ -322,7 +362,9 @@ func _save_playback_adjustments() -> void:
 		return
 	host.video.commit_sync()
 	host.video.commit_stereo_view()
+	host.video.commit_stereo_focus()
 	host.screen_layout.save()
+	host.settings.set_value("subtitles", "transparency", host.video.subtitle_transparency)
 	host.settings.set_value("subtitles", "palette", host.video.subtitle_palette)
 	host.settings.set_value("subtitles", "size", host.video.subtitle_size)
 	host.settings.set_value("subtitles", "flat_position", host.video.subtitle_flat_position)

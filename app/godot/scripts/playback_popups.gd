@@ -193,7 +193,12 @@ func draw(key: String) -> void:
 			)
 		"ipd":
 			var stereo: bool = menu._enabled("stereo_view")
-			var y := _panel("IPD", 0.49 if stereo else 0.23)
+			var focus: bool = (
+				stereo
+				and int(menu._state.get("geometry", 0)) != 0
+				and int(menu._state.get("viewing_eye", 0)) == 0
+			)
+			var y := _panel("IPD", 0.70 if focus else (0.49 if stereo else 0.23))
 			if stereo:
 				var modes: Array = []
 				for i in menu.StereoView.MODES.size():
@@ -251,6 +256,30 @@ func draw(key: String) -> void:
 						2,
 						true
 					)
+					if focus:
+						_row(
+							"Stereo focus",
+							{
+								"key": "stereo_focus_mode",
+								"value": menu._state.get("stereo_focus_mode", 0),
+								"choices":
+								[
+									{"value": 0, "label": "Off"},
+									{"value": 1, "label": "Auto"},
+									{"value": 2, "label": "Manual"}
+								]
+							},
+							y - 0.31
+						)
+						if int(menu._state.get("stereo_focus_mode", 0)) == 2:
+							_slider(
+								"Focus distance",
+								"stereo_focus",
+								Vector3(0.3, 50, 0.1),
+								1.5,
+								" m",
+								y - 0.395
+							)
 					_button(menu.ALIGNMENT_RESET, "Reset alignment", Vector2(0, 0.335), 0.45)
 				else:
 					menu._label(menu.I18n.t("Same view in both eyes"), Vector3(0, y - 0.18, 0.004), 17).modulate = (
@@ -261,7 +290,17 @@ func draw(key: String) -> void:
 					menu.MUTED
 				)
 		"color":
-			var y := _panel("Color grading", 0.57)
+			var y := _panel("Color grading", 0.67)
+			_row(
+				"HDR to SDR",
+				{
+					"key": "hdr_to_sdr",
+					"value": menu._state.get("hdr_to_sdr", false),
+					"choices": [{"value": false, "label": "Off"}, {"value": true, "label": "On"}]
+				},
+				y
+			)
+			y -= 0.1
 			var options: Array = []
 			for name in menu.Grade.PRESETS:
 				options.append({"value": name, "label": name})
@@ -475,7 +514,32 @@ func subtitle_controls() -> Array:
 	)
 	if not encoding.is_empty():
 		rows.append({"title": "Encoding (reopen video)", "field": encoding})
+	rows.append(
+		{
+			"title": "Subtitle transparency",
+			"field":
+			{
+				"key": "subtitle_transparency",
+				"value": menu._state.get("subtitle_transparency", 0.0),
+				"slider": true,
+				"span": Vector3(0, 80, 5),
+				"unit": "%",
+				"reset_value": 0.0
+			}
+		}
+	)
 	if immersive_subtitles():
+		rows.append(
+			{
+				"title": "Follow view",
+				"field":
+				{
+					"key": "subtitle_follow_view",
+					"value": menu._state.get("subtitle_follow_view", false),
+					"choices": [{"value": false, "label": "Off"}, {"value": true, "label": "On"}]
+				}
+			}
+		)
 		rows.append(
 			{
 				"title": "Subtitle direction",

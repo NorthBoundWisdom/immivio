@@ -97,6 +97,7 @@ float packed_mask(vec2 full_uv, int eye) {
 void vertex() {
   eye_index = int(VIEW_INDEX);
   media_direction = VERTEX;
+  VERTEX = VERTEX * focus_scale + focus_centre + (eye_index == 0 ? -focus_offset : focus_offset);
 }
 
 void fragment() {

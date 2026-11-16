@@ -141,9 +141,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			KEY_P:
 				host.video.cycle_projection()
 			KEY_LEFT:
-				host.video.seek_relative(-10000)
+				host.video.seek_relative(-host.seek_step * 1000)
 			KEY_RIGHT:
-				host.video.seek_relative(10000)
+				host.video.seek_relative(host.seek_step * 1000)
 			KEY_H:
 				host.video.cycle_audio_track()
 			KEY_C:
@@ -985,7 +985,7 @@ func _apply_stick_actions(actions: Array[Dictionary], delta: float = 1.0 / 72.0)
 				if host.video.has_method("set_immersive_adjustment"):
 					immersive.show_feedback("view_zoom", host.video.view_zoom, host.video.local_uri)
 			"seek":
-				host.video.seek_relative(int(action.get("delta_ms", int(action.direction) * 10000)))
+				host.video.seek_relative(int(action.direction) * host.seek_step * 1000)
 			"audio_track":
 				host.video.cycle_audio_track(int(action.direction))
 			"subtitle":

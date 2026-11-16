@@ -45,6 +45,10 @@ func handle_command(id: int, payload: String) -> void:
 	request = id
 	if command.operation == "open":
 		benchmark = bool(command.get("benchmark", false))
+		if video.layer_controller:
+			var mode := str(command.get("layer_mode", "auto"))
+			video.layer_controller.allowed = mode != "shader"
+			video.layer_controller.surface_allowed = mode == "auto"
 		video.loop_enabled = bool(command.get("loop", false))  # long thermal runs replay a short fixture
 		next_report_us = 0
 		if benchmark:

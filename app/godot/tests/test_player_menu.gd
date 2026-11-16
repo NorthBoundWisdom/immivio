@@ -838,7 +838,7 @@ func _run() -> void:
 	check(not shown.call(108), "Recenter is reserved for Home and no longer occupies the toolbar")
 	var layout_calls := host.calls.size()
 	check(
-		click(menu, 110) and menu._subtitle_open and menu.choices.sliders.size() == 3,
+		click(menu, 110) and menu._subtitle_open and menu.choices.sliders.size() == 4,
 		"VR CC popup includes distance, angle and size sliders"
 	)
 	check(
@@ -1224,8 +1224,8 @@ func _check_control_sticks(main: Node3D, video: Node3D, menu: Node3D, host: RefC
 	main.test_process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
 	main.test_process_sticks(Vector2(.99, 0), Vector2(-.99, 0), 0.1)
 	check(
-		video.control.target_ms == 50000 and menu._elapsed.text == "00:50",
-		"Visible transport bar dispatches left +20s and right -10s and immediately displays the target"
+		video.control.target_ms == 40000 and menu._elapsed.text == "00:40",
+		"Visible transport bar dispatches equal configured seek steps and immediately displays the target"
 	)
 	var calls: int = host.calls.size()
 	main.test_process_sticks(Vector2(.99, 0), Vector2(-.99, 0), 0.1)
@@ -1397,7 +1397,7 @@ func _check_control_sticks(main: Node3D, video: Node3D, menu: Node3D, host: RefC
 	menu.dismiss()
 	main.test_process_sticks(Vector2.ZERO, Vector2.ZERO, 0.1)
 	main.test_process_sticks(Vector2(-.99, 0), Vector2.ZERO, 0.1)
-	check(video.control.target_ms == 50000, "Hidden transport retains the same left -20s seek")
+	check(video.control.target_ms == 60000, "Hidden transport retains the configured seek step")
 	# Hover misses are not interaction, paused/awaiting seeks keep their controls visible.
 	menu.toggle()
 	video.control.reject()

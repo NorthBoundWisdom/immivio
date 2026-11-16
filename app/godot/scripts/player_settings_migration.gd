@@ -15,6 +15,33 @@ const RETIRED_KEYS := [
 
 static func apply(settings: ConfigFile, existing_file: bool = false) -> bool:
 	var changed := false
+	var policy := preload("res://scripts/playback_preferences.gd")
+	for entry in [
+		["playback", "speed", policy.speed(settings.get_value("playback", "speed", 1.0))],
+		[
+			"controls",
+			"seek_step",
+			policy.seek_step(settings.get_value("controls", "seek_step", 10))
+		],
+		[
+			"subtitles",
+			"transparency",
+			policy.transparency(settings.get_value("subtitles", "transparency", 0.0))
+		]
+	]:
+		if (
+			settings.has_section_key(entry[0], entry[1])
+			and settings.get_value(entry[0], entry[1]) != entry[2]
+		):
+			settings.set_value(entry[0], entry[1], entry[2])
+			changed = true
+	for entry in [["subtitles", "follow_view"], ["video", "hdr_to_sdr"]]:
+		if (
+			settings.has_section_key(entry[0], entry[1])
+			and not settings.get_value(entry[0], entry[1]) is bool
+		):
+			settings.set_value(entry[0], entry[1], false)
+			changed = true
 	if existing_file and not settings.has_section_key("controls", "pinch_hand"):
 		settings.set_value("controls", "pinch_hand", "both")
 		changed = true

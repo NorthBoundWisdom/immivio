@@ -5,7 +5,7 @@
   "release_asset_digest": "sha256:0b0e0a534dd6b8d2b117f06952e0600064ad97702e48bff02543e3e32107803d",
   "source_mpv_revision": "0b7ed670f7c353dd3dd4f8ae0fc788a181a15aa6",
   "source_android_revision": "fdf74f6830c47dbaa8a22ac79726e8303f1db5af",
-  "license_build": "mpv default GPL; FFmpeg enable-gpl/version3. Development candidate, release decision pending",
+  "license_build": "Immivio GPL-3.0 source build of the recorded mpv and FFmpeg revisions with AAudio clock/reset, AImage GPU fences, compositor cadence and retryable MediaCodec hints; original APK hashes retained as historical provenance",
   "libraries": [
     {
       "name": "libavcodec.so",
@@ -91,5 +91,6 @@
     "libmpv.so",
     "libswresample.so",
     "libswscale.so"
-  ]
+  ],
+  "source_build": "third_party/mpv/source-build.json"
 }

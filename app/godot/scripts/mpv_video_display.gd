@@ -83,6 +83,39 @@ var dual_subtitles := preload("res://scripts/dual_subtitles.gd").new(self)
 ## Text subtitles: on the flat screen near its lower edge; in immersive modes floating at
 ## a video-local projection with stereo disparity controlled by [subtitle_distance].
 var playback_speed := 1.0
+var hdr_to_sdr := false
+var layer_shown := false
+var layer_controller: RefCounted
+var surface_requested := false
+var force_shader_output := false
+var output_width_choice := -1
+var _surface_context := {}
+var _surface_eof_ms := -1
+var _fallback_queued := false
+var _fallback_pending := false
+var _next_layout_override := {}
+const StereoFocus := preload("res://scripts/stereo_focus.gd")
+var autofocus := StereoFocus.new()
+var _focus_probe := StereoFocus.Probe.new()
+var low_end_gpu := false
+var _focus_last_frame: Array = []
+var stereo_focus_mode := 0  # Off, Auto, Manual
+var stereo_focus := 1.5
+var _focus_due_ms := 0
+var _focus_busy := false
+var _focus_thread: Thread
+var _focus_pin := {}
+var _focus_binding: RefCounted
+var _focus_generation := 0
+var _focus_dirty := false
+var _focus_parameters: Array = []
+var subtitle_transparency := 0.0:
+	set(value):
+		subtitle_transparency = preload("res://scripts/playback_preferences.gd").transparency(value)
+var subtitle_follow_view := false
+var subtitle_follow := preload("res://scripts/subtitle_follow.gd").new()
+var _flat_caption_canvas: Node
+var _faded_caption: MeshInstance3D
 var subtitle_size := 1.0:
 	set(value):
 		subtitle_size = clampf(value, 0.5, 2.0) if is_finite(value) else 1.0
@@ -460,7 +493,8 @@ func open_local(
 	start_ms: int = 0,
 	restore_mode: bool = true,
 	basename: String = "",
-	metadata: Dictionary = {}
+	metadata: Dictionary = {},
+	shader_only: bool = false
 ) -> bool:
 	if diagnostics:
 		diagnostics.open_requested(start_ms)
@@ -470,6 +504,7 @@ func open_local(
 		return false
 	cancel_pending_open()
 	close_video()
+	force_shader_output = shader_only
 	playback_error_detail = ""
 	# Alpha-packed and Alpha-wanted files say so in their names (PTMediaServer / DeoVR markers).
 	_layout_basename = (
@@ -485,6 +520,13 @@ func open_local(
 	packed_alpha_forced = false
 	_layout_pending = null
 	var saved_sync := mode_memory.lookup(uri) if restore_mode else {}
+	if not _next_layout_override.is_empty():
+		saved_sync = _next_layout_override.duplicate(true)
+	stereo_focus_mode = int(saved_sync.get("stereo_focus_mode", 0)) if history_enabled else 0
+	stereo_focus = float(saved_sync.get("stereo_focus", 1.5)) if history_enabled else 1.5
+	_focus_generation += 1
+	_focus_dirty = false
+	autofocus.reset()
 	subtitle_below_screen = (
 		bool(saved_sync.get("subtitle_below_screen", false)) if history_enabled else false
 	)
@@ -551,6 +593,14 @@ func open_local(
 			):
 				_layout_pending = stated
 	_thumb_tries = 0
+	if not _next_layout_override.is_empty():
+		geometry = int(_next_layout_override.geometry)
+		stereo_sbs = bool(_next_layout_override.stereo_sbs)
+		top_bottom = bool(_next_layout_override.top_bottom)
+		stereo_half = bool(_next_layout_override.stereo_half)
+		fisheye_fov = int(_next_layout_override.fisheye_fov)
+		swap_eyes = bool(_next_layout_override.swap_eyes)
+		_next_layout_override.clear()
 	_thumbnail_result = {}
 	_thumb_after_ms = -1
 	if (
@@ -581,7 +631,14 @@ func open_local(
 			_bookmark_metadata.size = source.get_length()
 	_bookmark_resolve()
 	_last_seek_mode = SeekPolicy.normalize(seek_mode)
-	var id: int = platform.open_mpv_video(
+	surface_requested = (
+		layer_controller != null
+		and layer_controller.direct_wanted(self, uri)
+		and PlatformMethods.supports(platform, "open_mpv_video_surface")
+	)
+	var method := "open_mpv_video_surface" if surface_requested else "open_mpv_video"
+	var id: int = platform.call(
+		method,
 		uri,
 		maxi(start_ms, 0),
 		stereo_sbs,
@@ -590,8 +647,10 @@ func open_local(
 		SeekPolicy.normalize(seek_mode) == SeekPolicy.EXACT
 	)
 	media.begin(id)
+	set_hdr_to_sdr(hdr_to_sdr)
+	subtitle_follow.reset()
 	server_playback.begin(uri, history_enabled)
-	playback_speed = 1.0
+	playback_speed = preload("res://scripts/playback_preferences.gd").speed(playback_speed)
 	screen_rotation = 0.0
 	if PlatformMethods.supports(platform, "set_mpv_speed"):
 		platform.set_mpv_speed(id, playback_speed)
@@ -637,6 +696,15 @@ func _unbind() -> void:
 
 
 func close_video() -> void:
+	_focus_probe.cancel()
+	_focus_last_frame.clear()
+	if layer_controller:
+		layer_controller.release(self)
+	surface_requested = false
+	_fallback_queued = false
+	_fallback_pending = false
+	_surface_context.clear()
+	_surface_eof_ms = -1
 	_stereo_detection.cancel()
 	server_playback.poll(self, true)
 	server_playback.finish(platform)
@@ -851,13 +919,17 @@ func _try_revision() -> void:
 	)
 	if id <= 0:
 		return
-	if int(request.position_ms) < 0 or not _is_frozen():
+	if not surface_requested and (int(request.position_ms) < 0 or not _is_frozen()):
 		_unbind()
 	_pending_pair = {}
 	_pending_revision = {}
 	var held_format := media.format.duplicate()
+	_surface_context.clear()
+	_surface_eof_ms = -1
 	media.begin(id)
-	if _is_frozen():
+	set_hdr_to_sdr(hdr_to_sdr)
+	subtitle_follow.reset()
+	if _is_frozen() or surface_requested:
 		media.format = held_format
 	_tracks_pending = _track_choices.duplicate(true)
 	if not history_enabled:
@@ -967,6 +1039,357 @@ func toggle_clone_voice() -> bool:
 
 func alpha_ready() -> bool:
 	return alpha_enabled and not media.last_pair.is_empty()
+
+
+func suspend_focus() -> void:
+	_focus_generation += 1
+	_focus_probe.cancel()
+	_focus_last_frame.clear()
+	autofocus.reset()
+
+
+func auto_layout_pending() -> bool:
+	return _auto_stereo and _stereo_detection.pending
+
+
+func layout_basename() -> String:
+	return _layout_basename
+
+
+func borrowed_color() -> RID:
+	return _binding.color_texture()
+
+
+func surface_context() -> Dictionary:
+	return _surface_context.duplicate(true)
+
+
+func presentation_context() -> Dictionary:
+	return _surface_context if surface_requested else media.last_pair
+
+
+func _accept_surface_state(report: Dictionary) -> void:
+	surface_requested = true
+	if not report.get("surface_ready", false):
+		_surface_context.clear()
+		return
+	var context: Variant = report.get("surface_context", {})
+	var format: Variant = report.get("surface_format", {})
+	if (
+		not context is Dictionary
+		or not format is Dictionary
+		or int(context.get("session_id", -1)) != media.session_id
+	):
+		return
+	if (
+		int(context.get("source_epoch", 0)) <= 0
+		or int(format.get("width", 0)) <= 0
+		or int(format.get("height", 0)) <= 0
+	):
+		return
+	_surface_context = context.duplicate(true)
+	media.generation = int(context.generation)
+	media.logical_session_id = int(context.get("logical_session_id", 0))
+	media.format = format.duplicate(true)
+	media.format["unapplied_rotation_degrees"] = int(format.get("source_rotation_degrees", 0))
+	if _waiting_first:
+		_waiting_first = false
+		media.frame_counter = 1
+		if control.in_flight > 0:
+			control.first_frame(control.observed_position_ms)
+		_complete_layout()
+		_apply_geometry()
+		panel.visible = true
+		_remember_mode()
+		platform.set_mpv_playing(media.session_id, requested_play)
+	if media.state == "ended":
+		if _surface_eof_ms < 0:
+			_surface_eof_ms = Time.get_ticks_msec()
+	else:
+		_surface_eof_ms = -1
+
+
+func request_shader_fallback() -> void:
+	if layer_controller and not layer_controller.runtime_running():
+		_fallback_pending = true
+		return
+	if _fallback_queued or force_shader_output or local_uri.is_empty():
+		return
+	_fallback_queued = true
+	call_deferred("_fallback_from_surface", local_uri, media.session_id)
+
+
+func _fallback_from_surface(uri: String, session_id: int) -> void:
+	if uri.is_empty() or local_uri != uri or media.session_id != session_id:
+		return
+	var title := display_name
+	var basename := _layout_basename
+	var metadata := _bookmark_metadata.duplicate(true)
+	var alpha := packed_alpha
+	var alpha_forced := packed_alpha_forced
+	var position := maxi(
+		0, control.target_ms if control.in_flight > 0 else control.observed_position_ms
+	)
+	var playing := requested_play
+	var remember := _remember_file
+	var permission := _file_permission_persisted
+	var pose := flat_pose
+	var size := screen_scale
+	var distance := screen_distance
+	var curve := screen_curve
+	var rotation := screen_rotation
+	var eye := viewing_eye
+	var alignment := Vector2(stereo_horizontal, stereo_vertical)
+	var snapshot := {
+		"geometry": geometry,
+		"stereo_sbs": stereo_sbs,
+		"top_bottom": top_bottom,
+		"stereo_half": stereo_half,
+		"swap_eyes": swap_eyes,
+		"fisheye_fov": fisheye_fov,
+		"subtitle_encodings": subtitle_encodings.duplicate(true),
+		"track_choices": _track_choices.duplicate(true),
+		"subtitle_delay_ms": subtitle_delay_ms,
+		"audio_delay_ms": audio_delay_ms,
+		"external_subtitle_uri": external_subtitle_uri,
+		"stereo_focus_mode": stereo_focus_mode,
+		"stereo_focus": stereo_focus,
+		"subtitle_below_screen": subtitle_below_screen
+	}
+	for key in preload("res://scripts/immersive_adjustments.gd").KEYS:
+		snapshot[key] = get(key)
+	_next_layout_override = snapshot.duplicate(true)
+	var saved_seek_mode := seek_mode
+	seek_mode = SeekPolicy.EXACT
+	var reopened := open_local(uri, title, position, false, basename, metadata, true)
+	seek_mode = saved_seek_mode
+	if reopened:
+		packed_alpha = alpha
+		packed_alpha_forced = alpha_forced
+		_remember_file = remember
+		_file_permission_persisted = permission
+		_track_choices = snapshot.track_choices.duplicate(true)
+		_tracks_pending = _track_choices.duplicate(true)
+		viewing_eye = eye
+		stereo_horizontal = alignment.x
+		stereo_vertical = alignment.y
+		stereo_focus_mode = int(snapshot.stereo_focus_mode)
+		stereo_focus = float(snapshot.stereo_focus)
+		flat_pose = pose
+		screen_scale = size
+		screen_distance = distance
+		screen_curve = curve
+		screen_rotation = rotation
+		for key in preload("res://scripts/immersive_adjustments.gd").KEYS:
+			set(key, snapshot[key])
+		requested_play = playing
+		_apply_stereo_view()
+		_apply_geometry()
+	_fallback_queued = false
+
+
+func set_stereo_focus(key: String, value: Variant, persist: bool = true) -> void:
+	if key == "stereo_focus_mode":
+		if (
+			not (value is int or value is float)
+			or not is_finite(float(value))
+			or float(value) != floorf(float(value))
+			or int(value) not in [0, 1, 2]
+		):
+			return
+		stereo_focus_mode = int(value)
+		if stereo_focus_mode != 1:
+			_focus_probe.cancel()
+		_focus_generation += 1
+		autofocus.reset()
+	else:
+		if not (value is int or value is float) or not is_finite(float(value)):
+			return
+		stereo_focus = clampf(float(value), StereoFocus.LIMITS.x, StereoFocus.LIMITS.y)
+	_focus_dirty = true
+	_apply_stereo_focus()
+	if persist:
+		commit_stereo_focus()
+	changed.emit()
+
+
+func commit_stereo_focus() -> void:
+	if _focus_dirty and history_enabled:
+		_remember_mode()
+	_focus_dirty = false
+
+
+func _apply_stereo_focus() -> void:
+	if not material or not panel:
+		return
+	var distance := (
+		autofocus.distance
+		if stereo_focus_mode == 1
+		else (stereo_focus if stereo_focus_mode == 2 else 0.0)
+	)
+	var active := (
+		distance > 0 and stereo_sbs and viewing_eye == 0 and geometry != Geometry.Geometry.FLAT
+	)
+	var units := XRServer.world_scale / maxf(panel.global_basis.get_scale().x, 0.0001)
+	var scale := distance * units / SPHERE_RADIUS if active else 1.0
+	var axis := Vector3.RIGHT
+	if active and geometry == Geometry.Geometry.EQUIRECT_360 and view_camera:
+		axis = panel.global_basis.orthonormalized().inverse() * view_camera.global_basis.x
+		axis.y = 0
+		axis = axis.normalized() if axis.length() > 0.01 else Vector3.RIGHT
+	var parameters := [
+		material.get_rid(), scale, axis, units, active, view_horizontal, view_vertical, view_zoom
+	]
+	if parameters == _focus_parameters:
+		return
+	_focus_parameters = parameters
+	material.set_shader_parameter("focus_scale", scale)
+	material.set_shader_parameter(
+		"focus_offset",
+		axis * ProjectedSubtitles.runtime_ipd() * 0.5 * units if active else Vector3.ZERO
+	)
+	material.set_shader_parameter(
+		"focus_centre",
+		Vector3(view_horizontal, view_vertical, -view_zoom) * SPHERE_RADIUS * (scale - 1.0)
+	)
+
+
+func _maybe_focus() -> void:
+	if (
+		stereo_focus_mode != 1
+		or not stereo_sbs
+		or viewing_eye != 0
+		or geometry == Geometry.Geometry.FLAT
+	):
+		return
+	if (
+		_focus_busy
+		or _stereo_capture_busy
+		or _thumbnail_busy
+		or _waiting_first
+		or not _pending_revision.is_empty()
+	):
+		return
+	if (
+		not view_camera
+		or not panel
+		or not panel.visible
+		or media.state != "playing"
+		or not requested_play
+		or media.last_pair.is_empty()
+	):
+		return
+	if Time.get_ticks_msec() < _focus_due_ms or not _binding.material:
+		return
+	var forward := panel.global_basis.inverse() * -view_camera.global_basis.z
+	# From the displaced viewing position, sample the actual point on the unit sphere.
+	var seat := -Vector3(view_horizontal, view_vertical, -view_zoom)
+	var along := seat.dot(forward.normalized())
+	var direction := (
+		(
+			seat
+			+ (
+				forward.normalized()
+				* (-along + sqrt(maxf(along * along - seat.length_squared() + 1, 0)))
+			)
+		)
+		. normalized()
+	)
+	var angles := StereoFocus.gaze(direction)
+	if not StereoFocus.measurable(angles, geometry, fisheye_fov):
+		return
+	_focus_due_ms = Time.get_ticks_msec() + (1000 if low_end_gpu else StereoFocus.INTERVAL_MS)
+	var pair := media.last_pair.duplicate(true)
+	var frame_key := [media.session_id, pair.get("source_epoch", 0), pair.get("frame_id", 0)]
+	if frame_key == _focus_last_frame:
+		return
+	_focus_last_frame = frame_key
+	if not platform.pin_mpv_pair(int(pair.session_id), int(pair.slot_token)):
+		return
+	_focus_busy = true
+	_focus_pin = pair
+	var generation := _focus_generation
+	var settings_key := [
+		geometry, top_bottom, swap_eyes, stereo_half, fisheye_fov, stereo_horizontal
+	]
+	var binding := Binding.new()
+	_focus_binding = binding
+	var target := ShaderMaterial.new()
+	if not binding.bind(target, pair):
+		platform.release_mpv_pair_pin(int(pair.session_id), int(pair.slot_token))
+		_focus_pin = {}
+		_focus_binding = null
+		_focus_busy = false
+		return
+	var uv: Array = pair.get("color_uv_scale", [1.0, 1.0])
+	var image: Image = await _focus_probe.capture(
+		self,
+		binding.color_texture(),
+		{
+			"source_size": Vector2(pair.width, pair.height),
+			"gaze": angles,
+			"geometry": geometry,
+			"top_bottom": top_bottom,
+			"swap_eyes": swap_eyes,
+			"stereo_half": stereo_half,
+			"fisheye_fov": float(fisheye_fov),
+			"rotation_degrees": int(pair.rotation_degrees),
+			"color_uv_scale": Vector2(uv[0], uv[1])
+		},
+		platform
+	)
+	binding.unbind()
+	platform.release_mpv_pair_pin(int(pair.session_id), int(pair.slot_token))
+	_focus_pin = {}
+	_focus_binding = null
+	if (
+		image == null
+		or generation != _focus_generation
+		or not requested_play
+		or media.state != "playing"
+		or not panel.visible
+	):
+		_focus_busy = false
+		return
+	var worker := Thread.new()
+	_focus_thread = worker
+	var result := {}
+	if worker.start(StereoFocus.measure.bind(image), Thread.PRIORITY_LOW) == OK:
+		while worker.is_alive():
+			await get_tree().process_frame
+		result = worker.wait_to_finish()
+	_focus_thread = null
+	_focus_busy = false
+	if (
+		generation != _focus_generation
+		or stereo_focus_mode != 1
+		or not requested_play
+		or media.state != "playing"
+		or not panel.visible
+		or not media.accepts(int(pair.session_id))
+	):
+		return
+	if int(pair.source_epoch) != int(media.last_pair.get("source_epoch", -1)):
+		return
+	if (
+		settings_key
+		!= [geometry, top_bottom, swap_eyes, stereo_half, fisheye_fov, stereo_horizontal]
+	):
+		return
+	autofocus.observe(
+		result,
+		ProjectedSubtitles.runtime_ipd(),
+		angles,
+		geometry == Geometry.Geometry.EQUIRECT_360,
+		stereo_horizontal / 100.0,
+		Time.get_ticks_msec()
+	)
+
+
+func set_hdr_to_sdr(enabled: bool) -> void:
+	hdr_to_sdr = enabled
+	if media.accepts(media.session_id) and PlatformMethods.supports(platform, "set_mpv_hdr_to_sdr"):
+		platform.set_mpv_hdr_to_sdr(media.session_id, enabled)
 
 
 func set_playback_speed(value: float) -> bool:
@@ -1362,7 +1785,7 @@ func _poll_subtitles() -> void:
 	var ready := (
 		platform != null
 		and media.accepts(media.session_id)
-		and not media.last_pair.is_empty()
+		and not presentation_context().is_empty()
 		and not _waiting_first
 		and _pending_revision.is_empty()
 		and panel.visible
@@ -1380,7 +1803,7 @@ func _poll_subtitles() -> void:
 		var payload: String = platform.get_mpv_subtitles(media.session_id, subtitles.sequence)
 		var snapshot: Variant = JSON.parse_string(payload) if not payload.is_empty() else null
 		if snapshot is Dictionary:
-			if subtitles.observe(snapshot, media.session_id, media.last_pair):
+			if subtitles.observe(snapshot, media.session_id, presentation_context()):
 				_subtitle_received_ms = now
 			dual_subtitles.observe(snapshot)
 	if now - _subtitle_received_ms > 1000:
@@ -1432,6 +1855,8 @@ func _place_caption_below(pose: Transform3D) -> void:
 func _place_caption() -> void:
 	caption.modulate = CaptionPalette.INK[CaptionPalette.index(subtitle_palette)]
 	caption.outline_modulate = CaptionPalette.outline(subtitle_palette)
+	caption.modulate.a = 1.0 - subtitle_transparency / 100.0
+	caption.outline_modulate.a = caption.modulate.a
 	if geometry == Geometry.Geometry.FLAT:
 		# Ordinary video captions stay on the screen, independent of immersive preferences.
 		var pose := subtitle_transform()
@@ -1466,6 +1891,11 @@ func _place_caption() -> void:
 	# Anchor in the video's coordinates, like burned-in captions. Head pose never changes it.
 	# Direction/recenter/zoom move captions with the video; roll is excluded by the independent surface.
 	var anchor_basis := SubtitleDepth.anchor(subtitle_position, subtitle_direction == 1)
+	if subtitle_follow_view:
+		anchor_basis = (
+			Basis.looking_at(subtitle_follow.direction(subtitle_follow.centre), Vector3.UP)
+			* anchor_basis
+		)
 	caption.layers = 0  # The live text patch is drawn only by the video's shader.
 	projected_subtitles.update_patch(
 		caption,
@@ -1937,10 +2367,15 @@ func _remember_mode() -> void:
 		"subtitle_encodings": subtitle_encodings.duplicate(true)
 	}
 	if history_enabled:
+		mode["stereo_focus_mode"] = stereo_focus_mode
+		mode["stereo_focus"] = stereo_focus
 		mode["subtitle_below_screen"] = subtitle_below_screen
 	else:
 		# Other allowed mode changes must not persist this private session's preference.
 		var previous := mode_memory.lookup(local_uri)
+		for key in ["stereo_focus_mode", "stereo_focus"]:
+			if previous.has(key):
+				mode[key] = previous[key]
 		if previous.has("subtitle_below_screen"):
 			mode["subtitle_below_screen"] = previous.subtitle_below_screen
 	if not _track_choices.is_empty():
@@ -2076,6 +2511,10 @@ func _on_state(id: int, payload: String) -> void:
 			str(details.get("codec", "")) + " / " + str(details.get("hwdec_current", ""))
 		)
 	media.state = str(report.get("state", "opening"))
+	if bool(report.get("surface", false)):
+		_accept_surface_state(report)
+	elif report.has("surface"):
+		surface_requested = false
 	if media.state == "ended":
 		_record_history(true)
 	if diagnostics:
@@ -2085,6 +2524,9 @@ func _on_state(id: int, payload: String) -> void:
 
 func _on_error(id: int, payload: String) -> void:
 	if id != media.session_id:
+		return
+	if surface_requested and not force_shader_output:
+		request_shader_fallback()
 		return
 	_thumbnail_sequence += 1
 	var report: Variant = JSON.parse_string(payload)
@@ -2152,9 +2594,23 @@ func _source_size() -> Vector2:
 
 
 func _sync_subtitle_surface() -> void:
+	if caption:
+		var faded := false
+		if geometry == Geometry.Geometry.FLAT and caption.visible and subtitle_transparency > 0:
+			if not _flat_caption_canvas:
+				_flat_caption_canvas = preload("res://scripts/flat_subtitle_canvas.gd").new()
+				add_child(_flat_caption_canvas)
+			if not _faded_caption:
+				_faded_caption = preload("res://scripts/faded_caption.gd").new()
+				caption.add_child(_faded_caption)
+			faded = _faded_caption.show_caption(caption, _flat_caption_canvas)
+		elif _faded_caption:
+			_faded_caption.visible = false
+		if geometry == Geometry.Geometry.FLAT:
+			caption.layers = 0 if faded else 1
 	if not _subtitle_surface or not material:
 		return
-	var separate := not is_zero_approx(screen_rotation)
+	var separate := layer_shown or not is_zero_approx(screen_rotation)
 	material.set_shader_parameter("separate_subtitles", separate)
 	_subtitle_surface.visible = (
 		separate and panel.visible and material.get_shader_parameter("subtitle_enabled") == true
@@ -2164,6 +2620,7 @@ func _sync_subtitle_surface() -> void:
 	_subtitle_surface.mesh = panel.mesh
 	_subtitle_surface.global_transform = subtitle_transform()
 	for key in [
+		"subtitle_opacity",
 		"subtitle_texture",
 		"subtitle_enabled",
 		"subtitle_anchor_inverse",
@@ -2196,6 +2653,7 @@ func _apply_geometry() -> void:
 	_sync_subtitle_surface()
 	material.set_shader_parameter("stereo_sbs", stereo_sbs or false)
 	material.set_shader_parameter("depth_enabled", false)
+	_apply_stereo_focus()
 
 
 func layout_snapshot() -> Dictionary:
@@ -2210,6 +2668,8 @@ func layout_snapshot() -> Dictionary:
 	playback["bookmark_seek_mode"] = SeekPolicy.bookmark_override(bookmark_seek_mode)
 	playback["source_frame_pts_verified"] = media.last_pair.get("source_pts_verified", false)
 	return {
+		"video_layers": layer_controller.snapshot() if layer_controller else {},
+		"surface_context": surface_context(),
 		"stereo_auto": _auto_stereo,
 		"stereo_detection":
 		{
@@ -2286,6 +2746,15 @@ func completed_presentation() -> bool:
 		or not _pending_revision.is_empty()
 	):
 		return false
+	if surface_requested:
+		var details: Dictionary = media.playback.get("details", {})
+		var fps := str(details.get("container_fps", "0")).to_float() * playback_speed
+		var settle := clampi(ceili(2000.0 / fps), 60, 2000) if fps > 0 else 500
+		return (
+			_surface_eof_ms >= 0
+			and Time.get_ticks_msec() - _surface_eof_ms >= settle
+			and not _surface_context.is_empty()
+		)
 	var end: Dictionary = media.playback
 	var final_pair: Dictionary = media.last_pair
 	var target: Variant = end.get("eof_source_ticket")
@@ -2310,6 +2779,25 @@ func _can_loop() -> bool:
 
 
 func _process(_delta: float) -> void:
+	if (
+		is_instance_valid(_focus_probe.viewport)
+		and (
+			not requested_play
+			or media.state != "playing"
+			or not panel.visible
+			or _waiting_first
+			or not _pending_revision.is_empty()
+		)
+	):
+		suspend_focus()
+	if _fallback_pending and layer_controller and layer_controller.runtime_running():
+		_fallback_pending = false
+		request_shader_fallback()
+	autofocus.settle(_delta, Time.get_ticks_msec())
+	_apply_stereo_focus()
+	_maybe_focus()
+	if subtitle_follow_view and view_camera and panel and geometry != Geometry.Geometry.FLAT:
+		subtitle_follow.tick(panel.global_basis.inverse() * -view_camera.global_basis.z, _delta)
 	server_playback.poll(self)
 	if _sync_pending and PlatformMethods.supports(platform, "set_mpv_sync"):
 		_sync_pending = not platform.set_mpv_sync(
@@ -2347,11 +2835,25 @@ func _process(_delta: float) -> void:
 	_maybe_detect_stereo()
 	_maybe_capture_thumbnail()
 	_poll_subtitles()
+	if layer_controller:
+		layer_controller.tick(self)
+	_sync_subtitle_surface()
 	if _can_loop():
 		seek_absolute(0)
 
 
 func _exit_tree() -> void:
+	if layer_controller:
+		layer_controller.shutdown(self)
+	_focus_probe.cancel()
+	if _focus_thread:
+		_focus_thread.wait_to_finish()
+		_focus_thread = null
+	if _focus_binding:
+		_focus_binding.unbind()
+	if not _focus_pin.is_empty() and platform:
+		platform.release_mpv_pair_pin(int(_focus_pin.session_id), int(_focus_pin.slot_token))
+		_focus_pin = {}
 	if _stereo_thread:
 		_stereo_thread.wait_to_finish()
 		_stereo_thread = null

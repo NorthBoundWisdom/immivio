@@ -1,0 +1,9 @@
+# This is a Gradle generated file for dependency locking.
+# Manual edits can break the build and are not advised.
+# This file is expected to be part of source control.
+# To regenerate this file, run: ./gradlew :performance-fixture:dependencies --write-locks
+org.bouncycastle:bcprov-jdk18on:1.87=debugRuntimeClasspath
+org.jetbrains.kotlin:kotlin-stdlib:2.4.21=debugCompileClasspath,debugRuntimeClasspath
+org.jetbrains:annotations:13.0=debugCompileClasspath,debugRuntimeClasspath
+org.slf4j:slf4j-api:2.0.20=debugRuntimeClasspath
+empty=debugAnnotationProcessorClasspath,debugReverseMetadataValues

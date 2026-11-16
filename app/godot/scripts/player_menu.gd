@@ -171,7 +171,7 @@ func capture_envelope() -> Rect2:
 	# Reserve every popup before its first frame, including either subtitle target.
 	# The unused space below the timeline is kept small to preserve texture detail.
 	var tracks := playback_popups.subtitle_tracks().size()
-	var rows := 7 if playback_popups.immersive_subtitles() else 5
+	var rows := 9 if playback_popups.immersive_subtitles() else 6
 	var top := maxf(
 		1.20,
 		(
@@ -986,6 +986,11 @@ func _bar_key() -> String:
 			_state.get("subtitle_flat_position", 0),
 			_state.get("subtitle_below_screen", false),
 			_state.get("subtitle_loading", false),
+			_state.get("stereo_focus_mode", 0),
+			_state.get("stereo_focus", 1.5),
+			_state.get("subtitle_transparency", 0),
+			_state.get("subtitle_follow_view", false),
+			_state.get("hdr_to_sdr", false),
 			_state.get("subtitle_palette", 0)
 		]
 	)
@@ -1021,6 +1026,11 @@ func _settings_key() -> String:
 			_state.get("queue_revision", 0),
 			_state.get("external_subtitle", false),
 			_state.get("subtitle_loading", false),
+			_state.get("stereo_focus_mode", 0),
+			_state.get("stereo_focus", 1.5),
+			_state.get("subtitle_transparency", 0),
+			_state.get("subtitle_follow_view", false),
+			_state.get("hdr_to_sdr", false),
 			_state.get("subtitle_palette", 0)
 		]
 	)

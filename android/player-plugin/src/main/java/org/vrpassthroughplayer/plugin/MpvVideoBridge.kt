@@ -3,8 +3,6 @@ package org.vrpassthroughplayer.plugin
 import android.content.Context
 import android.net.Uri
 import android.opengl.EGL14
-import android.opengl.EGLContext
-import android.os.Handler
 import android.provider.OpenableColumns
 import java.io.File
 import java.nio.ByteBuffer
@@ -35,6 +33,7 @@ internal class MpvVideoBridge(
 ) {
     private val worker = PlaybackWorkers.video
     private val gate = MediaSessionGate()
+    private val layerSurfaceLease = VideoSurfaceLease<PlaybackHost>()
     private val sessions = ConcurrentHashMap<Int, Session>()
     private val hosts = ConcurrentHashMap.newKeySet<PlaybackHost>()
 
@@ -119,6 +118,7 @@ internal class MpvVideoBridge(
         audio: Boolean = true,
         topBottom: Boolean = false,
         exactSeek: Boolean = false,
+        layer: Boolean = false,
     ): Int {
         if (
             !supported() ||
@@ -139,6 +139,7 @@ internal class MpvVideoBridge(
         val id = gate.begin()
         if (id <= 0) return -1
         val host = PlaybackHost(uri, startMs, hardware, audio, exactSeek, releaseNetwork)
+        host.layerRequested = layer && hardware && VideoLayerNative.loaded
         val session =
             Session(
                 gate.current(id) ?: return -1,
@@ -226,52 +227,83 @@ internal class MpvVideoBridge(
                     host.closeDescriptors()
                     return@post
                 }
+                val releaseDeadline = android.os.SystemClock.elapsedRealtime() + 10_000
                 render(
-                    Runnable {
-                        if (host.closing || stopped) return@Runnable
-                        try {
-                            event(
-                                "mpv_state",
-                                session,
-                                JSONObject()
-                                    .put("state", "opening")
-                                    .put("loading_stage", "Preparing playback"),
-                            )
-                            host.owner = EGL14.eglGetCurrentContext()
-                            host.markStartup("native_create_started_ms")
-                            host.handle =
-                                MpvSourceNative.create(
-                                    app,
-                                    path,
-                                    startMs,
-                                    hardware,
-                                    audio,
-                                    outputWidthCap,
-                                    extra.flatMap { listOf(it.location, it.title) }.toTypedArray(),
-                                    captions
-                                        .flatMap { listOf(it.location, it.title) }
-                                        .toTypedArray(),
-                                    host.exactStart,
-                                )
-                            check(host.handle > 0)
-                            host.markStartup("native_created_ms")
-                            synchronized(host) {
-                                check(MpvSourceNative.setSpeed(host.handle, host.speed))
-                                host.subtitleCommand =
-                                    MpvSourceNative.setSync(
-                                        host.handle,
-                                        host.subtitleMs,
-                                        host.audioMs,
+                    object : Runnable {
+                        override fun run() {
+                            if (host.closing || stopped) return
+                            val closingSlots =
+                                hosts.count { it !== host && it.handle > 0 } >= 2 &&
+                                    hosts.any { it !== host && it.closing }
+                            if (
+                                closingSlots ||
+                                    (host.layerRequested && !layerSurfaceLease.acquire(host))
+                            ) {
+                                if (android.os.SystemClock.elapsedRealtime() < releaseDeadline) {
+                                    worker.postDelayed({ render(this) }, 16L)
+                                } else
+                                    fail(
+                                        session,
+                                        "MPV_SOURCE_RELEASE_TIMEOUT",
+                                        IllegalStateException("Previous video is still closing"),
                                     )
-                                check(host.subtitleCommand > 0)
-                                host.secondarySubtitleCommand = host.subtitleCommand
+                                return
                             }
-                            MpvSourceNative.setFrameCap(host.handle, 0)
-                            // Native creation stays paused until focus policy has
-                            // run off the Godot GL thread.
-                            refreshPlayback()
-                        } catch (failure: Throwable) {
-                            fail(session, "MPV_SOURCE_START_FAILED", failure)
+                            try {
+                                event(
+                                    "mpv_state",
+                                    session,
+                                    JSONObject()
+                                        .put("state", "opening")
+                                        .put("loading_stage", "Preparing playback"),
+                                )
+                                host.owner = EGL14.eglGetCurrentContext()
+                                host.markStartup("native_create_started_ms")
+                                if (host.layerRequested) {
+                                    host.layerSurface =
+                                        runCatching { VideoLayerNative.createSurface(4096, 4096) }
+                                            .getOrNull()
+                                    if (host.layerSurface == null)
+                                        layerSurfaceLease.release(host) {}
+                                }
+                                host.handle =
+                                    MpvSourceNative.create(
+                                        app,
+                                        path,
+                                        startMs,
+                                        hardware,
+                                        audio,
+                                        outputWidthCap,
+                                        extra
+                                            .flatMap { listOf(it.location, it.title) }
+                                            .toTypedArray(),
+                                        captions
+                                            .flatMap { listOf(it.location, it.title) }
+                                            .toTypedArray(),
+                                        host.exactStart,
+                                        host.layerSurface,
+                                    )
+                                check(host.handle > 0)
+                                host.markStartup("native_created_ms")
+                                synchronized(host) {
+                                    check(MpvSourceNative.setSpeed(host.handle, host.speed))
+                                    check(MpvSourceNative.setHdrToSdr(host.handle, host.hdrToSdr))
+                                    host.subtitleCommand =
+                                        MpvSourceNative.setSync(
+                                            host.handle,
+                                            host.subtitleMs,
+                                            host.audioMs,
+                                        )
+                                    check(host.subtitleCommand > 0)
+                                    host.secondarySubtitleCommand = host.subtitleCommand
+                                }
+                                MpvSourceNative.setFrameCap(host.handle, 0)
+                                // Native creation stays paused until focus policy has
+                                // run off the Godot GL thread.
+                                refreshPlayback()
+                            } catch (failure: Throwable) {
+                                fail(session, "MPV_SOURCE_START_FAILED", failure)
+                            }
                         }
                     }
                 )
@@ -334,6 +366,20 @@ internal class MpvVideoBridge(
                 false,
             )
         refreshPlayback(explicit = playing)
+    }
+
+    fun setHdrToSdr(id: Int, enabled: Boolean): Boolean {
+        val session = sessions[id] ?: return false
+        synchronized(session.host) {
+            if (!active(session) || session.host.closing) return false
+            if (
+                session.host.handle > 0 &&
+                    !MpvSourceNative.setHdrToSdr(session.host.handle, enabled)
+            )
+                return false
+            session.host.hdrToSdr = enabled
+            return true
+        }
     }
 
     fun setSpeed(id: Int, speed: Double): Boolean {
@@ -713,6 +759,23 @@ internal class MpvVideoBridge(
                             "bridge",
                             JSONObject(RenderBridgeNative.stats(session.output.renderer)),
                         )
+                    if (status.optBoolean("surface") && !session.host.surfaceProof.ready) {
+                        if (status.optBoolean("surface_ready"))
+                            session.host.layerSurface?.let { session.host.surfaceProof.start(it) }
+                        status.put("surface_ready", false)
+                        if (session.host.surfaceProof.timedOut)
+                            error("Decoder Surface did not deliver a frame")
+                    }
+                    if (status.optBoolean("surface"))
+                        status.put(
+                            "surface_context",
+                            JSONObject()
+                                .put("session_id", session.id)
+                                .put("generation", session.scope.generation)
+                                .put("logical_session_id", session.scope.logicalSessionId)
+                                .put("source_epoch", status.optLong("last_source_epoch"))
+                                .put("mpv_source_handle", session.host.handle),
+                        )
                     val details = status.optJSONObject("details")
                     details?.optJSONArray("subtitle_tracks")?.let { tracks ->
                         session.host.subtitleTracks = JSONArray(tracks.toString())
@@ -794,6 +857,12 @@ internal class MpvVideoBridge(
                         )
                 ) {
                     host.handle = 0
+                    host.surfaceProof.cancel()
+                    layerSurfaceLease.release(host) {
+                        VideoLayerNative.destroySurface()
+                        host.layerSurface?.release()
+                        host.layerSurface = null
+                    }
                     host.closeDescriptors()
                     hosts.remove(host)
                 }
@@ -1239,6 +1308,7 @@ internal class MpvVideoBridge(
             } else {
                 // The lost owner context cannot insert a consumer release fence.
                 session.host.closing = true
+                session.host.surfaceProof.cancel()
                 MpvSourceNative.close(session.host.handle, true)
             }
             session.output.pendingSource = null
@@ -1291,6 +1361,7 @@ internal class MpvVideoBridge(
         synchronized(session.lock) { session.display.close() }
         if (closeHost) {
             session.host.closing = true
+            session.host.surfaceProof.cancel()
             if (session.host.handle > 0) MpvSourceNative.setPlaying(session.host.handle, false)
             refreshPlayback()
         }
@@ -1299,13 +1370,29 @@ internal class MpvVideoBridge(
 
     private fun fail(session: Session, code: String, failure: Throwable) {
         if (session.disposed.get()) return
-        event(
-            "mpv_error",
-            session,
-            JSONObject()
-                .put("code", if (failure is StrmFailure) failure.code else code)
-                .put("message", PlaybackErrors.safe(failure.message)),
-        )
+        val report = JSONObject().put("code", if (failure is StrmFailure) failure.code else code)
+        var message = PlaybackErrors.safe(failure.message)
+        if (session.host.handle > 0)
+            runCatching {
+                val status = JSONObject(MpvSourceNative.status(session.host.handle))
+                DecoderCapacity.stream(status.optJSONObject("details"))?.let { video ->
+                    report.put("video", video.json())
+                    message += " (${video.codec} ${video.width}x${video.height})"
+                    runCatching { DecoderCapacity.describe(video) }
+                        .getOrNull()
+                        ?.let { capacity ->
+                            report.put("decoder", capacity)
+                            if (capacity.optBoolean("exceeded") && capacity.optBoolean("hardware"))
+                                message +=
+                                    if (!capacity.optBoolean("size_supported"))
+                                        "; hardware advertises max width ${capacity.optInt("max_width")} and max height ${capacity.optInt("max_height")} (independent limits)"
+                                    else
+                                        "; hardware does not advertise this size at ${video.fps} fps"
+                        }
+                }
+            }
+        report.put("message", message)
+        event("mpv_error", session, report)
         gate.invalidate(session.id)
         dispose(session, true)
     }

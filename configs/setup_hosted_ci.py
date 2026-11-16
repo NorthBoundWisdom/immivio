@@ -140,6 +140,23 @@ def main():
     ]:
         environment[f"IMMIVIO_{name}_VERSION"] = android[key]
 
+    if manifest.get("source_build"):
+        subprocess.run(
+            [
+                sys.executable,
+                ROOT / "tools/build_patched_mpv.py",
+                "--base",
+                directory,
+                "--output",
+                directory,
+                "--ndk",
+                sdk / "ndk" / android["ndk"],
+                "--download",
+                "--prepare-tools",
+            ],
+            check=True,
+        )
+
     fonts = (
         Path(os.environ["WINDIR"]) / "Fonts"
         if windows

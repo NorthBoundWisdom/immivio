@@ -850,7 +850,7 @@ func _settings_rows() -> Array[Dictionary]:
 			if not rate_choices.is_empty():
 				out.append(
 					_choice_row(
-						"Refresh rate",
+						"Refresh rate limit",
 						"refresh_rate",
 						float(settings.get("refresh_rate", 72.0)),
 						rate_choices,
@@ -915,6 +915,15 @@ func _settings_rows() -> Array[Dictionary]:
 					bool(settings.get("reuse_last_mode", false))
 				)
 			)
+			var seek_choices: Array = []
+			for seconds in preload("res://scripts/playback_preferences.gd").STEPS:
+				seek_choices.append({"value": seconds, "label": "%d s" % seconds})
+			out.append(
+				_choice_row(
+					"Seek step", "seek_step", settings.get("seek_step", 10), seek_choices, true
+				)
+			)
+			out.append(_switch_row("HDR to SDR", "hdr_to_sdr", settings.get("hdr_to_sdr", false)))
 			out.append(_group("VR subtitles"))
 			out.append_array(_subtitle_rows(settings))
 		APPEARANCE_TAB:
@@ -998,7 +1007,23 @@ func _subtitle_rows(settings: Dictionary) -> Array[Dictionary]:
 		float(settings.get("subtitle_position", SubtitleDepth.DEFAULT_POSITION))
 	)
 	position.title = I18n.t("Horizontal position" if vertical else "Subtitle position")
-	return [distance, direction, position]
+	return [
+		distance,
+		direction,
+		position,
+		_switch_row(
+			"Follow view", "subtitle_follow_view", settings.get("subtitle_follow_view", false)
+		),
+		{
+			"title": I18n.t("Subtitle transparency"),
+			"key": "subtitle_transparency",
+			"value": settings.get("subtitle_transparency", 0.0),
+			"slider": true,
+			"span": Vector3(0, 80, 5),
+			"unit": "%",
+			"reset_value": 0.0
+		}
+	]
 
 
 const CREDITS := LibraryAbout.CREDITS

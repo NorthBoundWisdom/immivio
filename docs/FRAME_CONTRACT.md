@@ -1,6 +1,10 @@
 # Playback frame contract
 
-The Kotlin producer and Godot consumer use **contract version 2**. A playback frame contains source color plus a numeric R8 mask; its texture names are borrowed until display detach and native retirement complete. A frozen transition owns independent copies and is released separately.
+The Kotlin RGBA producer and Godot consumer use **contract version 2**. A playback frame contains source color plus a numeric R8 mask; its texture names are borrowed until display detach and native retirement complete. A frozen transition owns independent copies and is released separately.
+
+The direct decoder-Surface route uses separate timeline/format status and never
+publishes one of these frame tickets. OpenXR image layers that copy/remap RGBA
+retain this contract for their borrowed source. See [Playback architecture](ARCHITECTURE.md#playback).
 
 | Group | Fields and rules |
 | --- | --- |

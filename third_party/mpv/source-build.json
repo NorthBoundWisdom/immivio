@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "ndk": "30.0.16248370",
+  "api": 29,
+  "tools": {
+    "meson": "1.12.1",
+    "Jinja2": "3.1.6",
+    "MarkupSafe": "3.0.4"
+  },
+  "sources": [
+    {
+      "name": "mpv",
+      "archive": "mpv-0b7ed67.tar.gz",
+      "sha256": "d84b3c706592558bfba8e6305d00f86406c647c3b8b317236433e25caf4d9d91",
+      "url": "https://codeload.github.com/mpv-player/mpv/tar.gz/0b7ed670f7c353dd3dd4f8ae0fc788a181a15aa6"
+    },
+    {
+      "name": "ffmpeg",
+      "archive": "ffmpeg-094a2f8a.tar.gz",
+      "sha256": "3633c09eb65cba9864fe4ca1eff75ca1423174869e423e5fe9d8fce028fcf66a",
+      "url": "https://codeload.github.com/FFmpeg/FFmpeg/tar.gz/094a2f8a2a5e7fa64736e067de224ce28fdf5979"
+    },
+    {
+      "name": "freetype",
+      "archive": "freetype-2.14.3.tar.xz",
+      "sha256": "36bc4f1cc413335368ee656c42afca65c5a3987e8768cc28cf11ba775e785a5f",
+      "url": "https://download.savannah.gnu.org/releases/freetype/freetype-2.14.3.tar.xz"
+    },
+    {
+      "name": "fribidi",
+      "archive": "fribidi-1.0.16.tar.xz",
+      "sha256": "1b1cde5b235d40479e91be2f0e88a309e3214c8ab470ec8a2744d82a5a9ea05c",
+      "url": "https://github.com/fribidi/fribidi/releases/download/v1.0.16/fribidi-1.0.16.tar.xz"
+    },
+    {
+      "name": "harfbuzz",
+      "archive": "harfbuzz-14.4.0.tar.xz",
+      "sha256": "2357ed966c6ced7bfa720b0640c0231065af01158fbea215093ffa15aed44371",
+      "url": "https://github.com/harfbuzz/harfbuzz/releases/download/14.4.0/harfbuzz-14.4.0.tar.xz"
+    },
+    {
+      "name": "libass",
+      "archive": "libass-b2fe9d87.tar.gz",
+      "sha256": "1f8d0547aa6a40895baee0338adaaae7d8e94406f971a4602957cdbbe6f7d495",
+      "url": "https://codeload.github.com/libass/libass/tar.gz/b2fe9d8770678a7b5271387d38c20657ebf3429a"
+    },
+    {
+      "name": "libplacebo",
+      "archive": "libplacebo-3330a515.tar.gz",
+      "sha256": "57b8b2beaba218523cef9839af12c9d44785b6cf8e5f79ca3aa55367d7420c80",
+      "url": "https://codeload.github.com/haasn/libplacebo/tar.gz/3330a515d62139259c26239014f286e233bd3a5c"
+    },
+    {
+      "name": "fast_float",
+      "archive": "fast_float-97b54ca9.tar.gz",
+      "sha256": "2b132274539286e41f37857cac22aa8441d21bd86d55de825a3342b149f66801",
+      "url": "https://codeload.github.com/fastfloat/fast_float/tar.gz/97b54ca9e75f5303507699d27c6b4f4efe4641a1"
+    },
+    {
+      "name": "glad",
+      "archive": "glad-73db193f.tar.gz",
+      "sha256": "33dbeae44d8315ece57e14eba4b1b4a02ac5406d1c4f49cd20048c91522a6b9a",
+      "url": "https://codeload.github.com/Dav1dde/glad/tar.gz/73db193f853e2ee079bf3ca8a64aa2eaf6459043"
+    },
+    {
+      "name": "mbedtls",
+      "archive": "mbedtls-3.6.7.tar.bz2",
+      "sha256": "a7e8bcbec0e6f761b4af24f25677626b35f762f68eef79c08677a363212d11f6",
+      "url": "https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-3.6.7/mbedtls-3.6.7.tar.bz2"
+    },
+    {
+      "name": "dav1d",
+      "archive": "dav1d-362bc113.tar.gz",
+      "sha256": "0ac7c8f7a5cd1d5dbcb24ebaf8f204a44686a80f837c5dfaa5a9775d1841ed8b",
+      "url": "https://codeload.github.com/videolan/dav1d/tar.gz/362bc1138228390a0a521ecf3af18b23c6afeb9e"
+    },
+    {
+      "name": "libxml2",
+      "archive": "libxml2-2.15.4.tar.xz",
+      "sha256": "98087fd181d9070724f3fbc65c7377db03038eb92bd882374daff44940138821",
+      "url": "https://download.gnome.org/sources/libxml2/2.15/libxml2-2.15.4.tar.xz"
+    }
+  ],
+  "patch": "native/mpv/patches/0001-aaudio-clock-and-image-fence.patch",
+  "clock_header": "native/mpv/include/immivio/mpv/aaudio_clock.h",
+  "ffmpeg_revision": "094a2f8a2a",
+  "ffmpeg_version": "N-126627-g094a2f8a2a",
+  "build_ffmpeg": true,
+  "ffmpeg_patch": "native/mpv/patches/0002-ffmpeg-mediacodec-hints.patch",
+  "extra_patches": [
+    "native/mpv/patches/0003-surface-cadence.patch"
+  ]
+}

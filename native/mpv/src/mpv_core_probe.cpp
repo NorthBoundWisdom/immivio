@@ -67,7 +67,10 @@ std::string probe(JNIEnv *env, jobject context, jstring path) {
     checked(mpv_set_option_string(core.get(), name, value), name);
   };
   option("config", "no");
-  option("load-scripts", "no");
+  {
+    const int scripts = mpv_set_option_string(core.get(), "load-scripts", "no");
+    if (scripts != MPV_ERROR_OPTION_NOT_FOUND) checked(scripts, "Disable MPV scripts");
+  }
   option("terminal", "no");
   option("vo", "null");
   option("audio", "no");

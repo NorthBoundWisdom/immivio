@@ -47,6 +47,7 @@ var gpu_adapter := ""
 var low_end_gpu := false
 var status_label: Label3D
 var report_timer: Timer
+var video_layers := preload("res://scripts/video_layers.gd").new()
 var platform_plugin: Object
 var _xr_wearer_present := true
 var _native_wearer_present := true
@@ -236,6 +237,8 @@ func _ready() -> void:
 	display.msaa_3d = Quality.MSAA[Quality.resolve(display_quality, low_end_gpu)]
 	display.flat_msaa_3d = Quality.FLAT_MSAA[Quality.resolve(display_quality, low_end_gpu)]
 	display.preferred_refresh_rate = float(settings.get_value("display", "refresh_rate", 72.0))
+	video_layers.configure(not desktop, origin, display)
+	display.attach_video_backdrop(camera)
 	display.configure(get_viewport(), world.environment, XRServer.find_interface("OpenXR"), desktop)
 	immersive_overlay = preload("res://scripts/immersive_adjustment_overlay.gd").new()
 	immersive_overlay.source = func():
@@ -253,6 +256,9 @@ func _ready() -> void:
 		openxr.connect("pose_recentered", _on_system_recentered)
 	_head_placed = desktop
 	video = Video.new()
+	video.low_end_gpu = low_end_gpu
+	video.layer_controller = video_layers
+	video.output_width_choice = Quality.load_output_choice(settings)
 	video.diagnostic_ui_provider = presentation_coordinator.diagnostic_ui_snapshot
 	video.reclining_mode = reclining_mode
 	video.name = "VideoDisplay"
@@ -262,6 +268,14 @@ func _ready() -> void:
 	video.prefer_clone_voice = bool(settings.get_value("audio", "prefer_clone_voice", false))
 	video.history_enabled = bool(settings.get_value("library", "history", true))
 	_restore_seek_settings()
+	var playback_preferences := preload("res://scripts/playback_preferences.gd")
+	seek_step = playback_preferences.seek_step(settings.get_value("controls", "seek_step", 10))
+	video.playback_speed = playback_preferences.speed(settings.get_value("playback", "speed", 1.0))
+	video.subtitle_transparency = playback_preferences.transparency(
+		settings.get_value("subtitles", "transparency", 0.0)
+	)
+	video.subtitle_follow_view = settings.get_value("subtitles", "follow_view", false) == true
+	video.hdr_to_sdr = settings.get_value("video", "hdr_to_sdr", false) == true
 	video.reuse_last_mode = bool(settings.get_value("video", "reuse_last_mode", false))
 	video.last_video_mode = preload("res://scripts/video_mode_default.gd").clean(
 		settings.get_value("video", "last_mode", {})
@@ -503,6 +517,7 @@ func _apply_system_recenter() -> void:
 var picture_center_guide: Node3D
 var immersive_overlay: Node3D
 var _external_poll_ms := 0
+var seek_step := 10
 
 
 func _process(delta: float) -> void:
@@ -517,6 +532,35 @@ func _process(delta: float) -> void:
 		var external: Variant = JSON.parse_string(video.platform.external_playback_poll())
 		if external is Dictionary and str(external.get("uri", "")).begins_with("externalvideo://"):
 			playback_coordinator.open_external(external)
+	if video:
+		var details: Dictionary = video.media.playback.get("details", {})
+		var fps := (
+			str(details.get("container_fps", details.get("video_stream", {}).get("fps", "0")))
+			. to_float()
+		)
+		display.update_playback_policy(
+			video.panel.visible,
+			video.media.state == "playing" and video.requested_play,
+			video.layer_shown,
+			(
+				video.media.state == "opening"
+				or video.control.in_flight > 0
+				or (
+					video.media.state == "playing"
+					and video.panel.visible
+					and (
+						video.hdr_to_sdr
+						or video.stereo_focus_mode == 1
+						or (video.layer_shown and not video.surface_requested)
+						or str(details.get("paused_for_cache", "")) in ["yes", "true"]
+					)
+				)
+			),
+			fps * video.playback_speed,
+			low_end_gpu,
+			Time.get_ticks_msec()
+		)
+	video_layers.update_session(video.platform if video else null)
 	screen_layout.tick()
 	if is_instance_valid(playback_feedback):
 		playback_feedback.tick()
@@ -614,6 +658,10 @@ func _cancel_pointer(hand: String) -> void:
 
 
 func _on_input_session_changed() -> void:
+	if display.session_state in ["session_stopping", "session_loss_pending", "instance_exiting"]:
+		video_layers.stopping(display.session_state != "session_stopping")
+		if video:
+			video.suspend_focus()
 	input_coordinator._on_input_session_changed()
 
 
@@ -1074,7 +1122,7 @@ func update_status() -> void:
 	if not status_label.visible:
 		return
 	status_label.text = (
-		"Immivio - MPV\n%s | %s\nLeft Menu / Tab: player menu\nPoint with a controller and press trigger to select\nA,X / O: open file   Grip / Space: play,pause\nLeft click / P: projection   Right click: reset view\nLeft stick: seek 20s   Right stick / arrows: seek 10s\nB / R: recenter   Trigger / T: Alpha,background\nV: fixture"
+		"Immivio - MPV\n%s | %s\nLeft Menu / Tab: player menu\nPoint with a controller and press trigger to select\nA,X / O: open file   Grip / Space: play,pause\nLeft click / P: projection   Right click: reset view\nLeft / right stick or arrows: configured seek step\nB / R: recenter   Trigger / T: Alpha,background\nV: fixture"
 		% [mode, detail]
 	)
 	if video:

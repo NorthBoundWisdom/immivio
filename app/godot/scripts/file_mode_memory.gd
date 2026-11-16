@@ -51,6 +51,25 @@ static func clean_mode(value: Dictionary) -> Dictionary:
 static func valid_mode(value: Variant) -> bool:
 	if not value is Dictionary:
 		return false
+	if value.has("stereo_focus_mode"):
+		var mode: Variant = value.stereo_focus_mode
+		if (
+			not (mode is int or mode is float)
+			or not is_finite(float(mode))
+			or float(mode) != floorf(float(mode))
+			or int(mode) not in [0, 1, 2]
+		):
+			return false
+	if (
+		value.has("stereo_focus")
+		and (
+			not (value.stereo_focus is int or value.stereo_focus is float)
+			or not is_finite(float(value.stereo_focus))
+			or float(value.stereo_focus) < 0.3
+			or float(value.stereo_focus) > 50
+		)
+	):
+		return false
 	if value.has("layout_auto") and not value.layout_auto is bool:
 		return false
 	var geometry: Variant = value.get("geometry")

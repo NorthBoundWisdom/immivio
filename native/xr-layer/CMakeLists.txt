@@ -1,0 +1,6 @@
+add_library(immivio_video_layer SHARED video_layer.cpp)
+target_compile_features(immivio_video_layer PRIVATE cxx_std_17)
+target_compile_options(immivio_video_layer PRIVATE -Wall -Wextra -Werror)
+target_include_directories(immivio_video_layer PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../../third_party/openxr/include")
+target_link_libraries(immivio_video_layer PRIVATE GLESv3 EGL android log)
+target_link_options(immivio_video_layer PRIVATE "-Wl,-z,max-page-size=16384")

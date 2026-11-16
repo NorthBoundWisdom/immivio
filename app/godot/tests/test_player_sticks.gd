@@ -57,8 +57,8 @@ func _initialize() -> void:
 	)
 	main._apply_stick_actions(controls.poll(Vector2(.99, 0), Vector2(-.99, 0)))
 	check(
-		video.calls == [["seek", 20000], ["seek", -10000]],
-		"Both hands dispatch their own seek step"
+		video.calls == [["seek", 10000], ["seek", -10000]],
+		"Both hands dispatch the configured seek step"
 	)
 	main._apply_stick_actions(controls.poll(Vector2(.99, 0), Vector2(-.99, 0)))
 	check(video.calls.size() == 2, "Held sticks cannot repeat seeks")
@@ -87,7 +87,7 @@ func _initialize() -> void:
 	controls.poll(Vector2.ZERO, Vector2.ZERO)
 	main._apply_stick_actions(controls.poll(Vector2(-.99, 0), Vector2(.99, 0), true))
 	check(
-		video.calls.slice(-2) == [["seek", -20000], ["seek", 10000]],
+		video.calls.slice(-2) == [["seek", -10000], ["seek", 10000]],
 		"Returning to centre restores independent seeking"
 	)
 	main.free()

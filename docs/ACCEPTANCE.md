@@ -12,6 +12,14 @@ the owner's manual acceptance does not change that automated result.
 Build/test and publication procedures remain in [BUILD.md](BUILD.md) and
 [TESTING.md](TESTING.md).
 
+The later 0.17.12 playback/performance changes have a separate
+[2026-11-16 host/GPU/emulator record](history/ACCEPTANCE-2026-11-16-PLAYER.md).
+The November 13 owner acceptance does not cover the new compositor Surface,
+fisheye remapping, focus, refresh/power policies or rebuilt runtime. Verify those
+paths on each target headset, including eye order/color, effect fallback,
+seek/close, suspend/context recovery and sustained memory/thermal behavior.
+No headset performance gain has been measured for this implementation.
+
 - [x] **A01 — Playback, projections and packed alpha.** Open normal video, mono,
   SBS/TB (including half packing), VR180/fisheye and VR360. Check eye order,
   projection, lens FOV, color, alpha readiness and passthrough against known
@@ -132,3 +140,5 @@ record; the current checklist should retain only cases still requiring a device.
 [Acceptance evidence snapshot — 2026-11-13](history/ACCEPTANCE-2026-11-13.md)
 preserves the original dated host/emulator/GPU/headset results and their limits.
 Its old pending instructions and retired features are historical context.
+
+[Player validation evidence — 2026-11-16](history/ACCEPTANCE-2026-11-16-PLAYER.md) records the later selective ports and performance work, with host, desktop GPU, emulator and package evidence only.

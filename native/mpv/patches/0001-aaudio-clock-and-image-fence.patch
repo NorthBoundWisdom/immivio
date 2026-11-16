@@ -1,0 +1,213 @@
+--- a/audio/out/ao_aaudio.c
++++ b/audio/out/ao_aaudio.c
+@@ -22,6 +22,9 @@
+ #include <assert.h>
+ #include <dlfcn.h>
+ #include <stdint.h>
++#include <stdatomic.h>
++#include <time.h>
++#include "immivio_aaudio_clock.h"
+ 
+ #include <aaudio/AAudio.h>
+ #include <android/api-level.h>
+@@ -44,6 +47,8 @@
+ 
+     int64_t presented;
+     int64_t discarded;
++    int64_t read_gap;
++    atomic_int_fast64_t started_ns;
+ 
+     int device_api;
+     void *lib_handle;
+@@ -225,6 +230,12 @@
+     ao_request_reload(ao);
+ }
+ 
++static int64_t monotonic_ns(void) {
++    struct timespec now;
++    clock_gettime(CLOCK_MONOTONIC, &now);
++    return now.tv_sec * INT64_C(1000000000) + now.tv_nsec;
++}
++
+ static aaudio_data_callback_result_t data_callback(AAudioStream *stream, void *context,
+                                                    void *data, int32_t nframes)
+ {
+@@ -232,20 +243,17 @@
+     struct priv *p = ao->priv;
+ 
+     aaudio_result_t result;
+-    int64_t presented, present_time;
++    int64_t presented = 0, present_time = 0;
+     int64_t written = p->AAudioStream_getFramesWritten(stream);
+-
+-    if ((result = p->AAudioStream_getTimestamp(stream, CLOCK_MONOTONIC, &presented, &present_time)) < 0) {
+-        MP_TRACE(ao, "AAudioStream_getTimestamp() returned %s\n",
+-                 p->AAudio_convertResultToText(result));
+-        presented = p->presented;
+-    } else {
+-        p->presented = presented;
+-    }
++    int64_t read = p->AAudioStream_getFramesRead(stream);
++    result = p->AAudioStream_getTimestamp(stream, CLOCK_MONOTONIC, &presented, &present_time);
++    int64_t played = immivio_aaudio_played(&p->presented, &p->read_gap,
++        result >= 0, presented, present_time, monotonic_ns(), atomic_load(&p->started_ns),
++        read, written, p->discarded, ao->samplerate);
+ 
+     int64_t end_time = mp_time_ns();
+     end_time += MP_TIME_S_TO_NS(nframes) / ao->samplerate;
+-    end_time += MP_TIME_S_TO_NS(written - (presented + p->discarded)) / ao->samplerate;
++    end_time += MP_TIME_S_TO_NS(written - (played + p->discarded)) / ao->samplerate;
+ 
+     ao_read_data(ao, &data, nframes, end_time, NULL, true, true);
+ 
+@@ -398,6 +406,7 @@
+ 
+     aaudio_result_t result;
+     p->discarded = p->AAudioStream_getFramesWritten(p->stream) - p->presented;
++    atomic_store(&p->started_ns, monotonic_ns());
+ 
+     if ((result = p->AAudioStream_requestStart(p->stream)) < 0) {
+         MP_ERR(ao, "AAudioStream_requestStart() returned %s\n",
+@@ -410,6 +419,7 @@
+ {
+     struct priv *p = ao->priv;
+ 
++    if (!paused) atomic_store(&p->started_ns, monotonic_ns());
+     aaudio_result_t result = paused
+                     ? p->AAudioStream_requestPause(p->stream)
+                     : p->AAudioStream_requestStart(p->stream);
+@@ -438,7 +448,7 @@
+         case AAUDIO_STREAM_STATE_PAUSING:
+         case AAUDIO_STREAM_STATE_FLUSHING:
+             if ((result = p->AAudioStream_waitForStateChange(p->stream,
+-                                state, &state, INT64_MAX)) < 0) {
++                                state, &state, INT64_C(500000000))) < 0) {
+                 MP_ERR(ao, "AAudioStream_waitForStateChange() returned %s\n",
+                        p->AAudio_convertResultToText(result));
+                 return ao_request_reload(ao);
+@@ -453,7 +463,7 @@
+         }
+ 
+         if ((result = p->AAudioStream_waitForStateChange(p->stream,
+-                            AAUDIO_STREAM_STATE_PAUSING, &state, INT64_MAX)) < 0) {
++                            AAUDIO_STREAM_STATE_PAUSING, &state, INT64_C(500000000))) < 0) {
+             MP_ERR(ao, "AAudioStream_waitForStateChange() returned %s\n",
+                    p->AAudio_convertResultToText(result));
+             return ao_request_reload(ao);
+--- /dev/null
++++ b/audio/out/immivio_aaudio_clock.h
+@@ -0,0 +1,24 @@
++#pragma once
++#include <stdint.h>
++// Shared with the rebased libmpv AAudio patch; all positions are hardware frames.
++static inline int64_t immivio_aaudio_played(int64_t *last_presented, int64_t *read_gap,
++    int valid, int64_t presented, int64_t timestamp_ns, int64_t now_ns,
++    int64_t started_ns, int64_t read, int64_t written, int64_t discarded, int rate) {
++    if (!valid) {
++        int64_t consumed = read - discarded - *read_gap;
++        presented = consumed > *last_presented ? consumed : *last_presented;
++        timestamp_ns = now_ns;
++    }
++    *last_presented = presented;
++    int64_t age = now_ns - timestamp_ns;
++    if (timestamp_ns < started_ns || age < -200000000LL || age > 200000000LL) age = 0;
++    int64_t played = presented + age * rate / 1000000000LL;
++    int64_t available = written > discarded ? written - discarded : 0;
++    if (played > available) played = available;
++    if (played < 0) played = 0;
++    if (valid) {
++        int64_t gap = read - (played + discarded);
++        *read_gap = gap < 0 ? 0 : (gap > rate ? rate : gap);
++    }
++    return played;
++}
+--- a/video/out/hwdec/hwdec_aimagereader.c
++++ b/video/out/hwdec/hwdec_aimagereader.c
+@@ -35,6 +35,8 @@
+ typedef void *GLeglImageOES;
+ typedef void *EGLImageKHR;
+ #define EGL_NATIVE_BUFFER_ANDROID 0x3140
++typedef void *EGLSyncKHR;
++#define EGL_SYNC_NATIVE_FENCE_ANDROID 0x3144
+ 
+ struct priv_owner {
+     struct mp_hwdec_ctx hwctx;
+@@ -52,6 +54,7 @@
+     void (*AImageReader_delete)(AImageReader *);
+     media_status_t (*AImage_getHardwareBuffer)(const AImage *, AHardwareBuffer **);
+     void (*AImage_delete)(AImage *);
++    void (*AImage_deleteAsync)(AImage *, int);
+     void (*AHardwareBuffer_describe)(const AHardwareBuffer *, AHardwareBuffer_Desc *);
+     jobject (*ANativeWindow_toSurface)(JNIEnv *, ANativeWindow *);
+ };
+@@ -73,6 +76,9 @@
+     EGLClientBuffer (EGLAPIENTRY *GetNativeClientBufferANDROID)(
+         const struct AHardwareBuffer *);
+     void (EGLAPIENTRY *EGLImageTargetTexture2DOES)(GLenum, GLeglImageOES);
++    EGLSyncKHR (EGLAPIENTRY *CreateSyncKHR)(EGLDisplay, EGLenum, const EGLint *);
++    EGLBoolean (EGLAPIENTRY *DestroySyncKHR)(EGLDisplay, EGLSyncKHR);
++    EGLint (EGLAPIENTRY *DupNativeFenceFDANDROID)(EGLDisplay, EGLSyncKHR);
+ };
+ 
+ static const struct { const char *symbol; int offset; } lib_functions[] = {
+@@ -144,6 +150,7 @@
+ 
+     if (!load_lib_functions(p, hw->log))
+         return -1;
++    p->AImage_deleteAsync = dlsym(p->lib_handle, "AImage_deleteAsync");
+ 
+     static const char *es2_exts[] = {"GL_OES_EGL_image_external", 0};
+     static const char *es3_exts[] = {"GL_OES_EGL_image_external_essl3", 0};
+@@ -256,6 +263,15 @@
+         !p->GetNativeClientBufferANDROID || !p->EGLImageTargetTexture2DOES)
+         return -1;
+ 
++    if (o->AImage_deleteAsync && gl_check_extension(
++            eglQueryString(eglGetCurrentDisplay(), EGL_EXTENSIONS), "EGL_ANDROID_native_fence_sync")) {
++        p->CreateSyncKHR = (void *)eglGetProcAddress("eglCreateSyncKHR");
++        p->DestroySyncKHR = (void *)eglGetProcAddress("eglDestroySyncKHR");
++        p->DupNativeFenceFDANDROID = (void *)eglGetProcAddress("eglDupNativeFenceFDANDROID");
++        if (!p->CreateSyncKHR || !p->DestroySyncKHR || !p->DupNativeFenceFDANDROID)
++            p->CreateSyncKHR = NULL;
++    }
++
+     AImageReader_ImageListener listener = {
+         .context = p,
+         .onImageAvailable = image_callback,
+@@ -324,7 +340,19 @@
+     }
+ 
+     if (p->image) {
+-        o->AImage_delete(p->image);
++        GL *gl = ra_gl_get(mapper->ra);
++        int fence = -1;
++        if (p->CreateSyncKHR) {
++            EGLDisplay display = eglGetCurrentDisplay();
++            EGLSyncKHR sync = p->CreateSyncKHR(display, EGL_SYNC_NATIVE_FENCE_ANDROID, NULL);
++            if (sync) {
++                gl->Flush();
++                fence = p->DupNativeFenceFDANDROID(display, sync);
++                p->DestroySyncKHR(display, sync);
++            }
++        }
++        if (fence >= 0) o->AImage_deleteAsync(p->image, fence);
++        else { gl->Finish(); o->AImage_delete(p->image); }
+         p->image = NULL;
+     }
+ }
+--- a/meson.build
++++ b/meson.build
+@@ -1834,9 +1834,11 @@
+ minor = client_h_define.split('|')[1].strip('() ')
+ client_api_version = major + '.' + minor + '.0'
+ 
+-libmpv = library('mpv', sources, dependencies: dependencies, gnu_symbol_visibility: 'hidden',
++# Keep C++ implementation details private and independent of the host APK's STL.
++immivio_cpp_runtime = [cc.find_library('c++_static'), cc.find_library('c++abi'), cc.find_library('unwind')]
++libmpv = library('mpv', sources, dependencies: dependencies + immivio_cpp_runtime, gnu_symbol_visibility: 'hidden',
+                  include_directories: incdir_public,
+-                 link_args: cc.get_supported_link_arguments(['-Wl,-Bsymbolic']),
++                 link_args: cc.get_supported_link_arguments(['-Wl,-Bsymbolic']) + ['-Wl,--exclude-libs,ALL'],
+                  version: client_api_version, install: get_option('libmpv'),
+                  build_by_default: get_option('libmpv'))
+ 

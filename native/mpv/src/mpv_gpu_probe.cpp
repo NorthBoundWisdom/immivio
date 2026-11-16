@@ -274,7 +274,10 @@ std::string quest_mpv_gpu_probe(const std::string &path, bool hardware, int widt
     checked(mpv_set_option_string(core.get(), key, value), key);
   };
   option("config", "no");
-  option("load-scripts", "no");
+  {
+    const int scripts = mpv_set_option_string(core.get(), "load-scripts", "no");
+    if (scripts != MPV_ERROR_OPTION_NOT_FOUND) checked(scripts, "Disable MPV scripts");
+  }
   option("terminal", "no");
   option("vo", "libmpv");
   option("audio", "no");

@@ -16,8 +16,89 @@ var preferred_refresh_rate := 72.0
 var applied_refresh_rate := 0.0
 var msaa_3d := Viewport.MSAA_2X
 var flat_msaa_3d := Viewport.MSAA_4X
+var video_layer := false
+var backdrop: MeshInstance3D
+var backdrop_material: ShaderMaterial
+var _backdrop_source: Material
 var scenery: Sky
 var scenery_rotation := Vector3.ZERO
+
+
+func attach_video_backdrop(camera: Camera3D) -> void:
+	backdrop = MeshInstance3D.new()
+	var sphere := SphereMesh.new()
+	sphere.radius = 900
+	sphere.height = 1800
+	backdrop.mesh = sphere
+	backdrop.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	camera.add_child(backdrop)
+	backdrop.visible = false
+
+
+func set_video_layer(shown: bool) -> void:
+	if shown == video_layer:
+		return
+	video_layer = shown
+	if environment:
+		_set_background(applied_passthrough)
+
+
+func _sync_video_backdrop() -> void:
+	if not backdrop:
+		return
+	backdrop.visible = video_layer and not applied_passthrough
+	if not backdrop.visible:
+		backdrop.material_override = null
+		backdrop_material = null
+		_backdrop_source = null
+		return
+	var source: Material = scenery.sky_material if scenery else null
+	if source != _backdrop_source or backdrop_material == null:
+		_backdrop_source = source
+		backdrop_material = ShaderMaterial.new()
+		if source is ShaderMaterial:
+			var code: String = (
+				source
+				. shader
+				. code
+				. replace(
+					"shader_type sky;",
+					"shader_type spatial;\nrender_mode unshaded, cull_front, shadows_disabled, fog_disabled;\nuniform mat3 backdrop_orientation;\nvarying vec3 backdrop_direction;\nvoid vertex(){backdrop_direction=mat3(MODEL_MATRIX)*VERTEX;}"
+				)
+			)
+			code = (
+				code
+				. replace("void sky()", "void fragment()")
+				. replace("EYEDIR", "(backdrop_orientation * backdrop_direction)")
+				. replace("COLOR =", "ALBEDO =")
+			)
+			var shader := Shader.new()
+			shader.code = code
+			backdrop_material.shader = shader
+		else:
+			backdrop_material.shader = preload("res://shaders/layer_backdrop.gdshader")
+		backdrop.material_override = backdrop_material
+	if source is ShaderMaterial:
+		for uniform in source.shader.get_shader_uniform_list():
+			backdrop_material.set_shader_parameter(
+				uniform.name, source.get_shader_parameter(uniform.name)
+			)
+		backdrop_material.set_shader_parameter(
+			"backdrop_orientation", Basis.from_euler(scenery_rotation).inverse()
+		)
+	else:
+		backdrop_material.set_shader_parameter(
+			"orientation", Basis.from_euler(scenery_rotation).inverse()
+		)
+		backdrop_material.set_shader_parameter(
+			"has_panorama", source is PanoramaSkyMaterial and source.panorama != null
+		)
+		backdrop_material.set_shader_parameter(
+			"panorama", source.panorama if source is PanoramaSkyMaterial else null
+		)
+		backdrop_material.set_shader_parameter(
+			"energy_multiplier", source.energy_multiplier if source is PanoramaSkyMaterial else 1.0
+		)
 
 
 func set_scenery(value: Sky, yaw_degrees: float = 0.0) -> void:
@@ -86,7 +167,7 @@ func supports_passthrough() -> bool:
 
 
 func set_flat_surface_visible(flat_visible: bool) -> void:
-	if not viewport:
+	if not viewport or not preview:
 		return
 	var desired: int = flat_msaa_3d if flat_visible else msaa_3d
 	if viewport.msaa_3d != desired:
@@ -129,17 +210,21 @@ func _apply_requested_mode() -> bool:
 
 
 func _set_background(transparent: bool) -> void:
-	viewport.transparent_bg = transparent
-	environment.sky = null if transparent else scenery
+	viewport.transparent_bg = transparent or video_layer
+	environment.sky = null if transparent or video_layer else scenery
 	environment.sky_rotation = scenery_rotation
 	# Meta reconstruction passthrough needs a transparent environment color too.
 	# BG_CLEAR_COLOR inherits the project's opaque dark clear color.
 	environment.background_mode = (
-		Environment.BG_SKY if scenery and not transparent else Environment.BG_COLOR
+		Environment.BG_SKY
+		if scenery and not transparent and not video_layer
+		else Environment.BG_COLOR
 	)
 	environment.background_color = (
-		Color(0, 0, 0, 0) if transparent else Color(0.035, 0.045, 0.06, 1.0)
+		Color(0, 0, 0, 0) if transparent or video_layer else Color(0.035, 0.045, 0.06, 1.0)
 	)
+
+	_sync_video_backdrop()
 
 
 func _on_session_event(event: String) -> void:
@@ -156,6 +241,34 @@ func _on_session_event(event: String) -> void:
 # High-resolution video sampling keeps the GPU busy continuously. Without a request
 # the OpenXR runtime chooses lower CPU/GPU/memory levels for this app.
 var performance_levels := "default"
+var performance := preload("res://scripts/playback_performance.gd").new()
+var policy_refresh_rate := 0.0
+
+
+func update_playback_policy(
+	visible: bool,
+	playing: bool,
+	layer: bool,
+	expensive: bool,
+	fps: float,
+	low_end: bool,
+	now_ms: int
+) -> void:
+	var cap := (
+		minf(preferred_refresh_rate, 90.0) if low_end or not layer else preferred_refresh_rate
+	)
+	var rate := performance.video_rate(fps, available_refresh_rates(), cap) if playing else 0.0
+	if rate <= 0:
+		rate = closest_refresh_rate(available_refresh_rates(), minf(72.0, preferred_refresh_rate))
+	var demand := expensive or (visible and not layer) or (playing and rate > 72.5)
+	var changes := performance.tick(demand, rate, now_ms)
+	if changes.has("high"):
+		_apply_performance_levels()
+	if changes.has("rate"):
+		policy_refresh_rate = float(changes.rate)
+		_apply_refresh_rate()
+
+
 # Fixed foveated rendering for the eye buffers (0 off .. 3 high); the 8K video is sampled
 # for every eye pixel at the display rate, so the periphery is a large bandwidth cost.
 var foveation_level := 0
@@ -176,12 +289,22 @@ func _apply_foveation() -> void:
 
 
 func _apply_performance_levels() -> void:
-	if not (xr is OpenXRInterface) or not xr.has_method("set_gpu_level"):
+	if (
+		preview
+		or not (xr is OpenXRInterface)
+		or not xr.is_initialized()
+		or not xr.has_method("set_gpu_level")
+	):
 		performance_levels = "unsupported"
 		return
-	xr.set_cpu_level(OpenXRInterface.PERF_SETTINGS_LEVEL_SUSTAINED_HIGH)
-	xr.set_gpu_level(OpenXRInterface.PERF_SETTINGS_LEVEL_SUSTAINED_HIGH)
-	performance_levels = "sustained_high"
+	var level := (
+		OpenXRInterface.PERF_SETTINGS_LEVEL_SUSTAINED_HIGH
+		if performance.high
+		else OpenXRInterface.PERF_SETTINGS_LEVEL_SUSTAINED_LOW
+	)
+	xr.set_cpu_level(level)
+	xr.set_gpu_level(level)
+	performance_levels = "sustained_high" if performance.high else "sustained_low"
 	_apply_foveation()
 	DiagnosticLog.record(
 		"xr_performance_levels", {"cpu": performance_levels, "gpu": performance_levels}
@@ -231,12 +354,18 @@ func set_refresh_preference(value: float) -> bool:
 	if not is_finite(value) or value not in available_refresh_rates():
 		return false
 	preferred_refresh_rate = value
+	policy_refresh_rate = 0.0
+	performance.wanted_rate = -1.0
+	performance.applied_rate = -1.0
 	_apply_refresh_rate()
 	return true
 
 
 func _apply_refresh_to(target: Object) -> float:
-	var selected := closest_refresh_rate(refresh_rates_from(target), preferred_refresh_rate)
+	var selected := closest_refresh_rate(
+		refresh_rates_from(target),
+		policy_refresh_rate if policy_refresh_rate > 0 else preferred_refresh_rate
+	)
 	if selected > 0:
 		target.set("display_refresh_rate", selected)
 	return selected

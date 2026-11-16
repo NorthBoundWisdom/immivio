@@ -36,7 +36,7 @@ func _run() -> void:
 		"Auto quality: Enhanced, or Standard on low end"
 	)
 	check(Quality.render_scale(2, true) == 1.25, "Explicit quality is respected on low end")
-	check(Quality.load_sharpness(settings) == 0.2, "Default sharpness is gentle")
+	check(Quality.load_sharpness(settings) == 0.0, "New video installs default to no sharpening")
 	for adapter in ["Adreno (TM) 650", "Adreno (TM) 540"]:
 		check(Quality.is_low_end_gpu(adapter), "XR2 Gen1 class is low end: " + adapter)
 	for adapter in ["Adreno (TM) 740", "Adreno (TM) 830", "NVIDIA GeForce RTX 3060", ""]:
@@ -83,8 +83,8 @@ func _run() -> void:
 	)
 	main.display.set_flat_surface_visible(true)
 	check(
-		main.get_viewport().msaa_3d == Viewport.MSAA_4X,
-		"Enhanced flat screens use 4x MSAA for rectangular edges"
+		main.get_viewport().msaa_3d == Viewport.MSAA_2X,
+		"Enhanced flat and immersive playback share the startup 2x budget"
 	)
 	main.display.set_flat_surface_visible(false)
 	check(

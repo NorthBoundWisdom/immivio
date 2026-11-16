@@ -39,3 +39,5 @@ When distributing a covered binary, GPL v3 requires corresponding source through
 Vendor SDK terms, the actual combined binary, distribution-channel terms and any GPL exceptions must also be checked before claiming complete binary-distribution compliance. GPL permissions do not grant rights to third-party SDKs or private media. This source publication does not declare the existing store/testing APK fully compliant.
 
 Cloud drive integrations and their embedded OpenList/p115rsacipher dependencies have been removed from current builds. Historical releases retain their original source and distribution obligations.
+
+The selected 0.17 runtime rebuilds all eight mpv/FFmpeg libraries from locked source archives, including retryable MediaCodec hints and compositor cadence. Original APK checksums are historical provenance. Its static dependencies and LLVM runtime notices are recorded in [source-build provenance](../third_party/mpv/SOURCE_BUILD.md). Include that lock, build script, patch and the recorded corresponding sources when distributing a binary.

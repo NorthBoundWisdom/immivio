@@ -5,9 +5,9 @@ var mode_lock := {}  # Default for unmarked, unremembered media; manual mode cha
 const Geometry := preload("res://scripts/video_geometry.gd")
 var panel: MeshInstance3D
 var material: ShaderMaterial
-var sharpness := 0.2:
+var sharpness := 0.0:
 	set(value):
-		sharpness = clampf(value, 0.0, 0.6) if is_finite(value) else 0.2
+		sharpness = clampf(value, 0.0, 0.6) if is_finite(value) else 0.0
 		if material:
 			material.set_shader_parameter("sharpness", sharpness)
 var view_camera: Camera3D
@@ -416,3 +416,13 @@ func reset_view() -> void:
 
 func test_apply_geometry() -> void:
 	_apply_geometry()
+
+
+func composition_geometry() -> Dictionary:
+	return {
+		"pose": panel.global_transform,
+		"size": _flat.size,
+		"radius":
+		_curve_radius() if screen_curve > 0 and geometry == Geometry.Geometry.FLAT else 0.0,
+		"sphere_radius": SPHERE_RADIUS
+	}

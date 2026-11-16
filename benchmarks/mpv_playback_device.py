@@ -30,6 +30,9 @@ def main():
     parser.add_argument("--output", type=Path)
     parser.add_argument("--seconds", type=int, default=30)
     parser.add_argument(
+        "--layer-mode", choices=("auto", "picture", "shader"), default="auto"
+    )
+    parser.add_argument(
         "--start-ms",
         type=int,
         default=0,
@@ -118,6 +121,9 @@ def main():
         parser.error("Use --expect-eof separately from --controls")
     if args.replay_after_eof and not args.expect_eof:
         parser.error("--replay-after-eof requires --expect-eof")
+    # Pixel capture/pin/final-pair assertions exercise the public RGBA contract.
+    if args.layer_mode == "auto" and (args.controls or args.expect_eof):
+        args.layer_mode = "shader"
     args.output = output_directory(args.output, "playback")
     with device_lock(args.serial):
         measure(args)
@@ -138,7 +144,7 @@ def measure(args):
         "serial": args.serial,
         "samples": [],
         "entry": args.entry,
-        "scope": "Distinct libmpv render transactions drawn by the Godot "
+        "scope": "Route-specific counters: Surface buffer submissions or distinct libmpv render transactions drawn by the Godot "
         + args.entry
         + " owner; "
         "not independently verified unique decoded images, compositor scanout or exact video PTS. "
@@ -279,13 +285,21 @@ def measure(args):
             enabled=False,
             stereo=args.stereo,
             projection=args.projection,
+            layer_mode=args.layer_mode,
             position_ms=args.start_ms,
         )
         first = device.wait(
             "open",
             receipt,
-            lambda r: r["native_status"].get("unique_post_draw_frames", 0)
-            >= (1 if args.expect_eof else 3),
+            lambda r: (
+                r["native_status"].get(
+                    "surface_submitted_frames"
+                    if r["native_status"].get("surface")
+                    else "unique_post_draw_frames",
+                    0,
+                )
+                >= (1 if args.expect_eof else 3)
+            ),
             timeout=120,
         )
         if bool(first["diagnostic_2d"]) != (args.entry == "2d"):
@@ -388,6 +402,16 @@ def measure(args):
 
         result["summary"] = {
             "elapsed_seconds": elapsed,
+            "layer_mode_requested": args.layer_mode,
+            "video_layers": b["layout"].get("video_layers", {}),
+            "surface_submitted_fps": (
+                n1.get("surface_submitted_frames", 0)
+                - n0.get("surface_submitted_frames", 0)
+            )
+            / elapsed
+            if n1.get("surface")
+            else None,
+            "surface_fps_scope": "MediaCodec buffer submissions, not compositor presentation",
             "distinct_render_owner_fps": (
                 n1["unique_post_draw_frames"] - n0["unique_post_draw_frames"]
             )
@@ -462,17 +486,21 @@ def measure(args):
                 replayed = device.wait(
                     "replay-eof",
                     rec,
-                    lambda r: r["media"]["state"] == "playing"
-                    and r["media"]["generation"] > generation
-                    and r["media"]["presentation_identity"]["source_epoch"] > epoch
-                    and r["native_status"].get("unique_post_draw_frames", 0) >= 3
-                    and not r["native_status"].get("eof_source_resolved")
-                    and 0
-                    <= float(
-                        r["native_status"].get("details", {}).get("position_seconds")
-                        or -1
-                    )
-                    < 10,
+                    lambda r: (
+                        r["media"]["state"] == "playing"
+                        and r["media"]["generation"] > generation
+                        and r["media"]["presentation_identity"]["source_epoch"] > epoch
+                        and r["native_status"].get("unique_post_draw_frames", 0) >= 3
+                        and not r["native_status"].get("eof_source_resolved")
+                        and 0
+                        <= float(
+                            r["native_status"]
+                            .get("details", {})
+                            .get("position_seconds")
+                            or -1
+                        )
+                        < 10
+                    ),
                 )
                 result["eof_replay"] = {
                     "state": "passed",
@@ -497,8 +525,10 @@ def measure(args):
             pixels = device.wait(
                 "pixels",
                 rec,
-                lambda r: r["pixel_probe"].get("request_id") == pixel_request
-                and r["pixel_probe"].get("state") in ("captured", "failed"),
+                lambda r: (
+                    r["pixel_probe"].get("request_id") == pixel_request
+                    and r["pixel_probe"].get("state") in ("captured", "failed")
+                ),
                 timeout=90,
             )
             probe = pixels["pixel_probe"]
@@ -528,17 +558,20 @@ def measure(args):
                 device.wait(
                     "pause-after-pin",
                     rec,
-                    lambda r: r["native_status"].get("details", {}).get("paused")
-                    == "yes",
+                    lambda r: (
+                        r["native_status"].get("details", {}).get("paused") == "yes"
+                    ),
                 )
             rec = device.request("seek-zero", "seek", position_ms=0, seek_mode="exact")
             sought = device.wait(
                 "seek-zero",
                 rec,
-                lambda r: r["media"]["generation"] > generation
-                and r["layout"]["playback_control"]["state"] == "idle"
-                and not r["layout"]["frame_hold"]["frozen"]
-                and r["native_status"].get("session_id") == r["media"]["session_id"],
+                lambda r: (
+                    r["media"]["generation"] > generation
+                    and r["layout"]["playback_control"]["state"] == "idle"
+                    and not r["layout"]["frame_hold"]["frozen"]
+                    and r["native_status"].get("session_id") == r["media"]["session_id"]
+                ),
                 timeout=90,
             )
             before = sought["native_status"].get("unique_post_draw_frames", 0)
@@ -546,8 +579,15 @@ def measure(args):
             resumed = device.wait(
                 "resume",
                 rec,
-                lambda r: r["native_status"].get("unique_post_draw_frames", 0)
-                > before + 3,
+                lambda r: (
+                    r["native_status"].get(
+                        "surface_submitted_frames"
+                        if r["native_status"].get("surface")
+                        else "unique_post_draw_frames",
+                        0,
+                    )
+                    > before + 3
+                ),
             )
             result["controls"] = {
                 "state": "passed",

@@ -20,10 +20,14 @@ internal class PlaybackHost(
         startup.putIfAbsent(stage, (System.nanoTime() - openNs) / 1_000_000.0)
     }
 
+    val surfaceProof = SurfaceFrameProof()
+    var layerRequested = false
+    @Volatile var layerSurface: android.view.Surface? = null
     @Volatile var handle = 0L
     @Volatile var owner: EGLContext? = null
     @Volatile var closing = false
     @Volatile var playing = true
+    var hdrToSdr = false // synchronized(host)
     var speed = 1.0 // synchronized(host), retained across processing revisions
     var subtitleMs = 0
     var audioMs = 0

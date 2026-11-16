@@ -64,6 +64,10 @@
 - SRT, ASS, SSA and VTT text subtitles, with automatic encoding detection and bilingual primary/secondary tracks. Captions can sit below a flat screen. Bitmap subtitles are not supported.
 - Color grading presets: Original, Warm, Cool and Custom. Every slider has its own reset button.
 - Track choices, stereo alignment, immersive adjustments and progress are remembered for each video.
+- Playback speed is remembered across videos and restarts. Settings → Playback offers a shared seek step for either thumbstick and the desktop arrow keys.
+- Text subtitles have adjustable transparency. Immersive captions can optionally follow the view with a dead zone for small head movements; both language tracks move together.
+- Native immersive stereo offers Off/Auto/Manual focus in the IPD popup. Auto uses bounded image matching and falls back when evidence expires; this does not generate 3D from a mono video.
+- HDR to SDR is an optional global switch in Playback settings and the color popup. It starts off to preserve the established color path; the existing Profile 5 path stays independent. Headset color accuracy remains to be verified.
 
 **Privacy and updates**
 - No account is needed. Playback history and per-video memory can be turned off.

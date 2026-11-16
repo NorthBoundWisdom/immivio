@@ -496,6 +496,87 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         }
 
     @UsedByGodot
+    fun open_mpv_video_surface(
+        uri: String,
+        startMs: Int,
+        stereo: Boolean,
+        vulkan: Boolean,
+        topBottom: Boolean,
+        exactSeek: Boolean,
+    ): Int =
+        if (closed.get()) -1
+        else {
+            thumbnails.cancel()
+            mpv.open(
+                uri,
+                startMs,
+                stereo,
+                vulkan,
+                topBottom = topBottom,
+                exactSeek = exactSeek,
+                layer = true,
+            )
+        }
+
+    @UsedByGodot
+    fun set_video_vsync(display: Long, period: Long, lead: Long): Boolean =
+        !closed.get() && MpvSourceNative.setVsync(display, period, lead)
+
+    @UsedByGodot
+    fun request_focus_readback(texture: Int, width: Int, height: Int): Long =
+        if (VideoLayerNative.loaded) VideoLayerNative.requestReadback(texture, width, height)
+        else 0L
+
+    @UsedByGodot
+    fun poll_focus_readback(token: Long): ByteArray =
+        if (VideoLayerNative.loaded) VideoLayerNative.pollReadback(token) else byteArrayOf()
+
+    @UsedByGodot
+    fun cancel_focus_readback(token: Long) {
+        if (VideoLayerNative.loaded) VideoLayerNative.cancelReadback(token)
+    }
+
+    @UsedByGodot
+    fun bind_video_layer(instance: Long, session: Long, proc: Long, space: Long): Boolean =
+        VideoLayerNative.loaded &&
+            runCatching { VideoLayerNative.bind(instance, session, proc, space) }
+                .getOrDefault(false)
+
+    @UsedByGodot
+    fun video_layer_limits(): String =
+        if (VideoLayerNative.loaded) VideoLayerNative.limits() else ""
+
+    @UsedByGodot
+    fun set_video_layers(count: Int, values: FloatArray): Boolean =
+        VideoLayerNative.loaded &&
+            runCatching { VideoLayerNative.setLayers(count, values) }.getOrDefault(false)
+
+    @UsedByGodot
+    fun video_layer_address(index: Int): Long =
+        if (VideoLayerNative.loaded) VideoLayerNative.layerAddress(index) else 0L
+
+    @UsedByGodot
+    fun create_video_image(width: Int, height: Int): Boolean =
+        VideoLayerNative.loaded &&
+            runCatching { VideoLayerNative.createImage(width, height) }.getOrDefault(false)
+
+    @UsedByGodot
+    fun draw_video_image(texture: Int, fisheye: Boolean, parameters: FloatArray): Boolean =
+        VideoLayerNative.loaded &&
+            runCatching { VideoLayerNative.drawImage(texture, fisheye, parameters) }
+                .getOrDefault(false)
+
+    @UsedByGodot
+    fun destroy_video_image() {
+        if (VideoLayerNative.loaded) VideoLayerNative.destroyImage()
+    }
+
+    @UsedByGodot
+    fun invalidate_video_layer() {
+        if (VideoLayerNative.loaded) VideoLayerNative.invalidate()
+    }
+
+    @UsedByGodot
     fun revise_mpv_video(
         id: Int,
         stereo: Boolean,
@@ -521,6 +602,10 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     @UsedByGodot
     fun set_mpv_audio(id: Int, trackId: Int, volume: Double, muted: Boolean): Boolean =
         !closed.get() && mpv.setAudio(id, trackId, volume, muted)
+
+    @UsedByGodot
+    fun set_mpv_hdr_to_sdr(id: Int, enabled: Boolean): Boolean =
+        !closed.get() && mpv.setHdrToSdr(id, enabled)
 
     @UsedByGodot
     fun set_mpv_speed(id: Int, speed: Double): Boolean = !closed.get() && mpv.setSpeed(id, speed)

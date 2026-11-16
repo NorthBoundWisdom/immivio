@@ -579,7 +579,7 @@ func _run() -> void:
 	check(
 		(
 			subtitle_group > 0
-			and subtitles.size() == 3
+			and subtitles.size() == 5
 			and subtitles[0].key == "subtitle_distance"
 			and subtitles[0].slider
 			and subtitles[0].value == 5.0

@@ -59,7 +59,7 @@ func _run() -> void:
 	menu.toggle()
 	menu.test_activate(110)
 	check(
-		menu.choices.sliders.size() == 3 and menu.choices.opened.is_empty(),
+		menu.choices.sliders.size() == 4 and menu.choices.opened.is_empty(),
 		"CC uses angle, distance and text-size sliders"
 	)
 	for target in menu.choices.sliders.keys():
@@ -99,7 +99,7 @@ func _run() -> void:
 			"Tracking loss commits last preview once"
 		)
 	# Closing an active drag also saves once.
-	var target: int = menu.choices.sliders.keys()[0]
+	var target: int = menu.choices.sliders.keys().filter(func(id): return menu.choices.targets[id].key == "subtitle_position")[0]
 	var slider: Dictionary = menu.choices.sliders[target]
 	var centre: Vector3 = menu.to_local(slider.node.global_position)
 	var point := Vector3(centre.x + slider.left + slider.width / 2, centre.y, 1)

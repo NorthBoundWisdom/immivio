@@ -1,7 +1,7 @@
 find_package(Python3 3.11 REQUIRED COMPONENTS Interpreter)
 
 foreach(name IN ITEMS mpv_json_oracle seek_trace_test subtitle_snapshot_test
-                      subtitle_selection_test)
+                      subtitle_selection_test upstream_playback_test)
   add_executable(${name} ${name}.cpp)
   target_link_libraries(${name} PRIVATE Immivio::MpvHeaders)
   if(MSVC)
@@ -33,3 +33,5 @@ add_test(
     "$<TARGET_FILE:subtitle_snapshot_test>")
 
 add_test(NAME subtitle_selection COMMAND subtitle_selection_test)
+
+add_test(NAME upstream_playback COMMAND upstream_playback_test)

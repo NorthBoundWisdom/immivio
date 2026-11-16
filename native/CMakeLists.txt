@@ -6,6 +6,7 @@ add_subdirectory(mpv)
 
 if(ANDROID)
   add_subdirectory(media)
+  add_subdirectory(xr-layer)
   add_subdirectory(render-bridge)
 else()
   include(CTest)

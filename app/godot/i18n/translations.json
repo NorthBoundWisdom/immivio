@@ -414,7 +414,6 @@
     "Matching subtitles load automatically; choose other files manually.": "匹配字幕会自动加载，其他文件可手动选择。",
     "Clear": "清除",
     "External video unavailable": "无法打开外部视频",
-    "Refresh rate": "显示刷新率",
     "Depth / zoom": "深度／缩放",
     "Stereo horizontal alignment": "立体水平对齐",
     "Reuse last video mode": "沿用上次视频模式",
@@ -482,7 +481,16 @@
     "Packed alpha: select full SBS": "透明遮罩：请选择完整左右立体",
     "Packed alpha: decoded frame is too small": "透明遮罩：解码画面尺寸过小",
     "Packed alpha: unsupported frame metadata": "透明遮罩：自动检测不支持此画面元数据",
-    "Packed alpha: renderer is not ready": "透明遮罩：渲染器尚未就绪"
+    "Packed alpha: renderer is not ready": "透明遮罩：渲染器尚未就绪",
+    "Seek step": "快进／快退步长",
+    "HDR to SDR": "HDR 转 SDR",
+    "Follow view": "跟随视角",
+    "Subtitle transparency": "字幕透明度",
+    "Stereo focus": "立体对焦",
+    "Focus distance": "对焦距离",
+    "SMB listing timed out; try again": "共享目录读取超时，请重试",
+    "SMB discovery timed out; try again": "共享发现超时，请重试",
+    "Refresh rate limit": "刷新率上限"
   },
   "zh_Hant": {
     "Network media": "網路媒體",
@@ -899,7 +907,6 @@
     "Matching subtitles load automatically; choose other files manually.": "符合檔名的字幕會自動載入，其他檔案可手動選擇。",
     "Clear": "清除",
     "External video unavailable": "無法開啟外部影片",
-    "Refresh rate": "顯示更新率",
     "Depth / zoom": "深度／縮放",
     "Stereo horizontal alignment": "立體水平對齊",
     "Reuse last video mode": "沿用上次影片模式",
@@ -967,7 +974,16 @@
     "Packed alpha: select full SBS": "透明遮罩：請選擇完整左右立體",
     "Packed alpha: decoded frame is too small": "透明遮罩：解碼畫面尺寸過小",
     "Packed alpha: unsupported frame metadata": "透明遮罩：自動偵測不支援此畫面中繼資料",
-    "Packed alpha: renderer is not ready": "透明遮罩：渲染器尚未就緒"
+    "Packed alpha: renderer is not ready": "透明遮罩：渲染器尚未就緒",
+    "Seek step": "快進／快退步長",
+    "HDR to SDR": "HDR 轉 SDR",
+    "Follow view": "跟隨視角",
+    "Subtitle transparency": "字幕透明度",
+    "Stereo focus": "立體對焦",
+    "Focus distance": "對焦距離",
+    "SMB listing timed out; try again": "共用目錄讀取逾時，請重試",
+    "SMB discovery timed out; try again": "共用探索逾時，請重試",
+    "Refresh rate limit": "更新率上限"
   },
   "ja": {
     "Network media": "ネットワークメディア",
@@ -1384,7 +1400,6 @@
     "Matching subtitles load automatically; choose other files manually.": "一致する字幕は自動で読み込み、他のファイルは手動で選択できます。",
     "Clear": "クリア",
     "External video unavailable": "外部動画を開けません",
-    "Refresh rate": "リフレッシュレート",
     "Depth / zoom": "奥行き／ズーム",
     "Stereo horizontal alignment": "ステレオ水平調整",
     "Reuse last video mode": "前回の動画モードを使用",
@@ -1452,6 +1467,15 @@
     "Packed alpha: select full SBS": "アルファ：フルSBSを選択してください",
     "Packed alpha: decoded frame is too small": "アルファ：デコード済みフレームが小さすぎます",
     "Packed alpha: unsupported frame metadata": "アルファ：自動検出ではこのフレーム情報に対応していません",
-    "Packed alpha: renderer is not ready": "アルファ：レンダラーの準備ができていません"
+    "Packed alpha: renderer is not ready": "アルファ：レンダラーの準備ができていません",
+    "Seek step": "シーク間隔",
+    "HDR to SDR": "HDR を SDR に変換",
+    "Follow view": "視線に追従",
+    "Subtitle transparency": "字幕の透明度",
+    "Stereo focus": "立体フォーカス",
+    "Focus distance": "フォーカス距離",
+    "SMB listing timed out; try again": "共有フォルダーの読み込みがタイムアウトしました。再試行してください",
+    "SMB discovery timed out; try again": "共有の検出がタイムアウトしました。再試行してください",
+    "Refresh rate limit": "リフレッシュレート上限"
   }
 }

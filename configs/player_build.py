@@ -337,6 +337,17 @@ def mpv_libraries():
         if library["name"] not in record["packaged_libraries"]:
             continue
         path = directory / library["name"]
+        if record.get("source_build") and (
+            library["name"] == "libmpv.so"
+            or json.loads((ROOT / record["source_build"]).read_text()).get(
+                "build_ffmpeg"
+            )
+        ):
+            from tools.build_patched_mpv import verify_output
+
+            verify_output(path, ROOT)
+            libraries[library["name"]] = path
+            continue
         if (
             not path.is_file()
             or path.stat().st_size != library["bytes"]

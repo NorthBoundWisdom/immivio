@@ -26,6 +26,7 @@ vec2 raw_eye_uv(vec2 p) {
 void vertex() {
   eye_index = int(VIEW_INDEX);
   media_direction = VERTEX;
+  VERTEX = VERTEX * focus_scale + focus_centre + (eye_index == 0 ? -focus_offset : focus_offset);
 }
 
 void fragment() {

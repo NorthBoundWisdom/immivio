@@ -40,11 +40,27 @@ The Godot singleton opens playback with `open_mpv_video(uri, startMs, stereo, vu
 
 For unmarked packed stereo, `stereo_detection.gd` compares corresponding eye-image details in a bounded number of transient 192×108 GPU samples. Capture uses the existing pinned-frame/thumbnail ownership path; CPU matching runs on a worker and never persists or uploads the sampled images. Two consistent informative samples may select SBS/TB, while black or ambiguous frames leave the layout unchanged. Per-file `layout_auto` distinguishes new automatic choices from manual preferences; legacy saved modes remain manual until the user selects Auto detect. Request tokens reject results after a file switch or manual format change. Image evidence identifies packing, not VR projection or lens field of view.
 
-The player provides playback-clock estimates rather than verified source-image PTS. It uses the public libmpv render API. Existing SBS/TB, projection, eye alignment, subtitles, playback speed and precomputed mask data remain media/rendering features.
+The player provides playback-clock estimates rather than verified source-image PTS. The RGBA path uses the public libmpv render API. Existing SBS/TB, projection, eye alignment, subtitles, playback speed and precomputed mask data remain media/rendering features.
 
 Per-video track intent is stored in the existing checksummed mode store. Track metadata guards against ID reuse; stale-session reports cannot restore another source's choices. Global sound preferences are coalesced and flushed on suspend/close. Timing corrections and playback queues remain independent of track selection.
 
-Frame descriptors use [contract version 2](FRAME_CONTRACT.md), with source identity, presentation revision and same-fence color/mask completion. Model/inference/warp fields are retired. Saved-mode compatibility is handled by settings migration, separately from transport validation.
+RGBA frame descriptors use [contract version 2](FRAME_CONTRACT.md), with source identity, presentation revision and same-fence color/mask completion. Model/inference/warp fields are retired. Saved-mode compatibility is handled by settings migration, separately from transport validation.
+
+`video_layers.gd` owns the video-only compositor provider and keeps layer geometry
+in step with the media surface. Capability-gated `open_mpv_video_surface` opens a
+decoder Surface; `VideoSurfaceLease` retains it until native close acknowledges
+release. It reports separate timeline/format state and does not fabricate an
+RGBA ticket. Compatible RGBA frames and fisheye use a bounded image swapchain,
+with pixel work only on a new video frame. Effects or unsupported capabilities
+return to shader rendering. XR pause frees picture allocations while retaining
+the decoder Surface; session loss invalidates handles. Provider teardown stops
+the app XR interface before unregistering/freeing it.
+
+`playback_performance.gd` owns refresh matching and power hysteresis. The existing
+refresh preference is an upper limit; MSAA is fixed at startup and new-install
+sharpening defaults to off. Opt-in autofocus reuses a small viewport and worker
+with one bounded, asynchronous Android PBO readback. See [selected upstream ports](SELECTED_UPSTREAM_PORTS.md#playback-performance-alignment-01712)
+for eligibility, budgets and source attribution.
 
 ## Libraries
 
@@ -60,9 +76,9 @@ The MNN/ncnn runtime, RVM matting, monocular depth, photo conversion/portrait jo
 
 ## Native source and test layout
 
-Each module under `native/` owns its CMake target and keeps implementation files in `src/`. Render bridge headers describe internal GL resources and remain beside its implementation; they are not a public test API. Reusable MPV helpers live under `native/mpv/include/immivio/mpv/` and are consumed as `<immivio/mpv/...>` through the `Immivio::MpvHeaders` target. Upstream libmpv headers remain under `native/mpv/include/mpv/` with their original notices.
+Each module under `native/` owns its CMake target; implementation headers remain beside their module. Render bridge headers describe internal GL resources and remain beside its implementation; they are not a public test API. Reusable MPV helpers live under `native/mpv/include/immivio/mpv/` and are consumed as `<immivio/mpv/...>` through the `Immivio::MpvHeaders` target. Upstream libmpv headers remain under `native/mpv/include/mpv/` with their original notices.
 
-`tests/native/` owns native regression executables and their verification scripts. The host CMake graph builds JSON and seek trace tests without JNI, Android SDK libraries or a prepared libmpv binary. Android builds use the same helper target and build the three production shared libraries. Cross-directory dependencies use target include directories and linked targets; source files never include another `.cpp` file.
+`tests/native/` owns native regression executables and their verification scripts. The host CMake graph builds JSON and seek trace tests without JNI, Android SDK libraries or a prepared libmpv binary. Android builds use the same helper target and build four production shared libraries: media, mpv, render bridge and video layers. Production cross-directory dependencies use target include directories and linked targets. The Android GLES fixture compiles the video-layer implementation directly with bounded fake OpenXR/JNI entry points; it does not establish headset compositor acceptance.
 
 ## Refactoring status
 

@@ -34,7 +34,10 @@ func request(kind: String, id: Variant) -> void:
 	if not is_instance_valid(host):
 		return
 	if id is int and id > 0:
-		if kind.begins_with("dlna") and kind not in ["dlna_save", "dlna_remove"]:
+		if (
+			(kind.begins_with("dlna") and kind not in ["dlna_save", "dlna_remove"])
+			or kind in ["smb_browse", "smb_found"]
+		):
 			for previous in pending.keys():
 				if pending[previous] == kind:
 					pending.erase(previous)

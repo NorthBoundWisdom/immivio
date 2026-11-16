@@ -58,11 +58,11 @@ func update_patch(
 		_text != caption.text
 		or _vertical != vertical
 		or not is_equal_approx(_size, text_size)
-		or _ink != caption.modulate
-		or _edge != caption.outline_modulate
+		or _ink != Color(caption.modulate, 1.0)
+		or _edge != Color(caption.outline_modulate, 1.0)
 	):
-		_ink = caption.modulate
-		_edge = caption.outline_modulate
+		_ink = Color(caption.modulate, 1.0)
+		_edge = Color(caption.outline_modulate, 1.0)
 		label.add_theme_color_override("font_color", _ink)
 		label.add_theme_color_override("font_outline_color", _edge)
 		vertical_text.ink = _ink
@@ -102,6 +102,7 @@ func update_patch(
 			label.position = (Vector2(PATCH_SIZE, PATCH_SIZE) - label.size * fit) / 2
 
 		viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+	target.set_shader_parameter("subtitle_opacity", caption.modulate.a)
 	target.set_shader_parameter("subtitle_texture", viewport.get_texture())
 	target.set_shader_parameter("subtitle_enabled", true)
 	target.set_shader_parameter("subtitle_anchor_inverse", anchor.transposed())

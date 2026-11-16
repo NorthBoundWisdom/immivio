@@ -18,6 +18,21 @@ internal class MediaSources(
 ) {
     private val ids = AtomicInteger()
     private val network = Executors.newSingleThreadExecutor { Thread(it, "QuestMediaNetwork") }
+    private val smbListings =
+        SmbBrowseRequests(
+            stalled = { smb.retire(it) },
+            emit = { id, json ->
+                if (!stopped) emit(id, json)
+            },
+        )
+    private val smbDiscoveries =
+        SmbBrowseRequests(
+            deadlineMs = 6_000,
+            stalled = {},
+            emit = { id, json ->
+                if (!stopped) emit(id, json)
+            },
+        )
     private val local = LocalVideoLibrary(host, emit)
     @Volatile private var fileManagementEnabled = false
 
@@ -42,7 +57,10 @@ internal class MediaSources(
         )
     }
     @Volatile private var server: LocalStreamServer? = null
-    private val smb by lazy { SmbLibrary(context() ?: error("Activity unavailable")) { streams() } }
+    private val smbOwner = lazy {
+        SmbLibrary(context() ?: error("Activity unavailable")) { streams() }
+    }
+    private val smb by smbOwner
     private val mediaServers = MediaServerLibrary(::context, ::streams, ::nextId, emit = emit)
 
     fun reportPlayback(json: String): Boolean = mediaServers.reportPlayback(json)
@@ -120,21 +138,38 @@ internal class MediaSources(
 
     fun smbServers(): Int = run("smb") { JSONObject().put("servers", smb.serversJson()) }
 
-    fun smbDiscover(): Int =
-        run("smb") {
-            // WS-Discovery answers arrive as multicast-addressed traffic too; Wi-Fi drops it
-            // without the lock.
-            val lock =
-                (context()?.getSystemService(Context.WIFI_SERVICE) as? WifiManager)
-                    ?.createMulticastLock("QuestSmb")
-            lock?.setReferenceCounted(false)
-            lock?.acquire()
-            try {
-                JSONObject().put("discovered", smb.discover())
-            } finally {
-                lock?.release()
-            }
-        }
+    fun smbDiscover(): Int {
+        val id = nextId()
+        fun result() = JSONObject().put("source", "smb")
+        smbDiscoveries.submit(
+            id,
+            "",
+            work = {
+                val lock =
+                    (context()?.getSystemService(Context.WIFI_SERVICE) as? WifiManager)
+                        ?.createMulticastLock("ImmivioSmb")
+                lock?.setReferenceCounted(false)
+                try {
+                    lock?.acquire()
+                    result().put("state", "ready").put("discovered", smb.discover()).toString()
+                } catch (error: Exception) {
+                    result()
+                        .put("state", "error")
+                        .put("error", error.message ?: "SMB unavailable")
+                        .toString()
+                } finally {
+                    if (lock?.isHeld == true) lock.release()
+                }
+            },
+            timeout = {
+                result()
+                    .put("state", "error")
+                    .put("error", "SMB discovery timed out; try again")
+                    .toString()
+            },
+        )
+        return id
+    }
 
     fun smbSave(request: String): Int =
         run("smb") {
@@ -149,13 +184,33 @@ internal class MediaSources(
             JSONObject().put("servers", smb.serversJson())
         }
 
-    fun smbBrowse(serverId: String, path: String): Int =
-        run("smb") {
-            JSONObject()
-                .put("server_id", serverId)
-                .put("path", path)
-                .put("entries", smb.browse(serverId, path))
-        }
+    fun smbBrowse(serverId: String, path: String): Int {
+        val id = nextId()
+        fun result() =
+            JSONObject().put("source", "smb").put("server_id", serverId).put("path", path)
+        smbListings.submit(
+            id,
+            serverId,
+            work = {
+                val response =
+                    try {
+                        result().put("state", "ready").put("entries", smb.browse(serverId, path))
+                    } catch (error: Exception) {
+                        result()
+                            .put("state", "error")
+                            .put("error", error.message ?: "SMB unavailable")
+                    }
+                response.toString()
+            },
+            timeout = {
+                result()
+                    .put("state", "error")
+                    .put("error", "SMB listing timed out; try again")
+                    .toString()
+            },
+        )
+        return id
+    }
 
     fun renameFile(json: String, prepare: Boolean): Int {
         val id = nextId()
@@ -436,9 +491,13 @@ internal class MediaSources(
             emptyList()
         }
 
-    private fun run(source: String, block: () -> JSONObject): Int {
+    private fun run(
+        source: String,
+        executor: java.util.concurrent.Executor = network,
+        block: () -> JSONObject,
+    ): Int {
         val id = ids.incrementAndGet()
-        network.execute {
+        executor.execute {
             val result =
                 try {
                     block().put("state", "ready")
@@ -447,7 +506,7 @@ internal class MediaSources(
                         .put("state", "error")
                         .put("error", error.message ?: error.javaClass.simpleName)
                 }
-            emit(id, result.put("source", source).toString())
+            if (!stopped) emit(id, result.put("source", source).toString())
         }
         return id
     }
@@ -456,6 +515,9 @@ internal class MediaSources(
         stopped = true
         ExternalPlaybackPending.leases.close()
         mediaServers.close()
+        smbListings.close()
+        smbDiscoveries.close()
+        if (smbOwner.isInitialized()) smb.close()
         network.shutdownNow()
         local.close()
         server?.close()

@@ -356,15 +356,17 @@ func _on_player_setting(key: String, value: Variant) -> void:
 		host.settings.save(host.settings_path)
 		return
 	match key:
+		"stereo_focus_mode", "stereo_focus":
+			host.video.set_stereo_focus(key, value)
 		"subtitle_below_screen":
 			host.video.set_subtitle_below_screen(bool(value))
 		"dual_subtitles":
 			host.video.dual_subtitles.set_enabled(bool(value))
-		"subtitle_distance", "subtitle_position", "subtitle_direction":
+		"subtitle_distance", "subtitle_position", "subtitle_direction", "subtitle_follow_view", "hdr_to_sdr":
 			host.settings_controller._on_setting_changed(key, value)
 		"viewing_eye":
 			host.video.set_viewing_eye(int(value))
-		"subtitle_size", "subtitle_flat_position", "subtitle_palette":
+		"subtitle_size", "subtitle_flat_position", "subtitle_palette", "subtitle_transparency":
 			host.settings_controller._on_playback_adjustment(key, value)
 			host.settings_controller._save_playback_adjustments()
 		"show_fps":
