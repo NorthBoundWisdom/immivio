@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import zipfile
+import time
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -142,6 +143,77 @@ def check_host_fonts(godot, fonts, folder):
         raise RuntimeError("Godot font probe did not complete")
 
 
+def file_sha256(path):
+    with path.open("rb") as source:
+        return hashlib.file_digest(source, "sha256").hexdigest()
+
+
+def tool_tree(base):
+    files = {}
+    for path in sorted(base.rglob("*")):
+        if path.is_symlink():
+            raise ValueError("Unexpected host tool cache symlink")
+        if path.is_file() and path != base / "tools-receipt.json":
+            files[path.relative_to(base).as_posix()] = {
+                "sha256": file_sha256(path),
+                "executable": bool(path.stat().st_mode & 0o111)
+                if os.name != "nt"
+                else False,
+            }
+    return files
+
+
+def reuse_host_tools(base, inputs, build):
+    try:
+        if base.is_symlink():
+            raise ValueError("Unexpected tool directory symlink")
+        receipt = json.loads((base / "tools-receipt.json").read_text())
+        if not isinstance(receipt, dict):
+            raise ValueError("Invalid tool cache receipt")
+        if (
+            receipt.get("inputs") != inputs
+            or not receipt.get("files")
+            or receipt["files"] != tool_tree(base)
+        ):
+            raise ValueError("Tool inputs, bytes or permissions changed")
+    except (OSError, ValueError, KeyError, TypeError):
+        if base.is_symlink() or base.is_file():
+            base.unlink()
+        elif base.exists():
+            shutil.rmtree(base)
+        base.mkdir(parents=True)
+        build()
+        (base / "tools-receipt.json").write_text(
+            json.dumps({"inputs": inputs, "files": tool_tree(base)}, sort_keys=True)
+            + "\n"
+        )
+        print("Installed and recorded checked CI tools", flush=True)
+        return True
+    print(
+        "Reusing verified Godot, Gradle, Android templates and CJK font files",
+        flush=True,
+    )
+    return False
+
+
+def install_font(source, target):
+    if target.is_file() and file_sha256(source) == file_sha256(target):
+        return
+    # Keep fontd from seeing partial bytes even when restoring an extracted tool cache.
+    with tempfile.NamedTemporaryFile(
+        dir=target.parent, prefix="." + target.name, delete=False
+    ) as pending:
+        temporary = Path(pending.name)
+    try:
+        shutil.copyfile(source, temporary)
+        if file_sha256(temporary) != file_sha256(source):
+            raise RuntimeError("Font copy differs from the checked tool cache")
+        temporary.chmod(0o644)
+        temporary.replace(target)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 def main():
     if os.environ.get("GITHUB_ACTIONS") != "true":
         raise RuntimeError("This installer is only for GitHub Actions")
@@ -149,30 +221,50 @@ def main():
     if sys.platform not in ("win32", "darwin"):
         raise RuntimeError("Only Windows and macOS CI hosts are supported")
     config = json.loads((ROOT / "configs/ci_toolchain.json").read_text())
-    base = Path(os.environ["RUNNER_TEMP"]) / "immivio-tools"
-    base.mkdir(parents=True, exist_ok=True)
+    started = time.monotonic()
+    base = ROOT / ".cache/ci-tools"
     environment = {}
-    for name in (
-        "Gradle",
-        "GodotWindows" if windows else "GodotMacOS",
-        "GodotTemplates",
-    ):
-        record = config["assets"][name]
-        archive = base / record["fileName"]
-        download(record["url"], archive, record["sha256"])
-        members = None
-        if name == "GodotTemplates":
-            members = [
-                "templates/" + item
-                for item in (
-                    "android_source.zip",
-                    "android_debug.apk",
-                    "android_release.apk",
-                    "version.txt",
-                )
-            ]
-        unpack(archive, base, members)
-        archive.unlink()
+    selected = ["Gradle", "GodotWindows" if windows else "GodotMacOS", "GodotTemplates"]
+    inputs = {
+        "schema": 1,
+        "installer": file_sha256(Path(__file__)),
+        "assets": {name: config["assets"][name] for name in selected},
+        "fonts": config["fonts"],
+    }
+
+    def install_tools():
+        for name in (
+            "Gradle",
+            "GodotWindows" if windows else "GodotMacOS",
+            "GodotTemplates",
+        ):
+            record = config["assets"][name]
+            archive = base / record["fileName"]
+            download(record["url"], archive, record["sha256"])
+            members = None
+            if name == "GodotTemplates":
+                members = [
+                    "templates/" + item
+                    for item in (
+                        "android_source.zip",
+                        "android_debug.apk",
+                        "android_release.apk",
+                        "version.txt",
+                    )
+                ]
+            unpack(archive, base, members)
+            archive.unlink()
+        folder = base / "fonts"
+        folder.mkdir()
+        for font in config["fonts"]:
+            download(
+                font["url"],
+                folder / font["fileName"],
+                font["git_blob_sha1"],
+                git_blob=True,
+            )
+
+    tools_built = reuse_host_tools(base, inputs, install_tools)
     environment["GRADLE_EXE"] = str(
         next(base.glob("gradle-*/bin/gradle.bat" if windows else "gradle-*/bin/gradle"))
     )
@@ -183,19 +275,7 @@ def main():
     )
     environment["GODOT_TEMPLATES_DIR"] = str(base / "templates")
 
-    manifest = json.loads((ROOT / "third_party/mpv/manifest.json").read_text())
-    apk = base / "mpv.apk"
-    download(manifest["source_url"], apk, manifest["apk_sha256"])
-    with zipfile.ZipFile(apk) as source:
-        directory = base / "mpv"
-        directory.mkdir(exist_ok=True)
-        for library in manifest["libraries"]:
-            content = source.read(library["path"])
-            if hashlib.sha256(content).hexdigest() != library["sha256"]:
-                raise RuntimeError(f"Invalid mpv library: {library['name']}")
-            (directory / library["name"]).write_bytes(content)
-    apk.unlink()
-    environment["IMMIVIO_MPV_LIB_DIR"] = str(directory)
+    environment["IMMIVIO_MPV_LIB_DIR"] = str(ROOT / ".cache/ci-playback/arm64-v8a")
 
     # A short SDK path prevents native compiler commands breaking on spaces.
     sdk = Path(os.environ["ANDROID_HOME"])
@@ -238,7 +318,7 @@ def main():
     fonts.mkdir(parents=True, exist_ok=True)
     for font in config["fonts"]:
         target = fonts / font["fileName"]
-        download(font["url"], target, font["git_blob_sha1"], git_blob=True)
+        install_font(base / "fonts" / font["fileName"], target)
         if windows:
             env = dict(
                 os.environ,
@@ -263,26 +343,20 @@ def main():
 
     check_host_fonts(environment["GODOT_EXE"], config["fonts"], fonts)
 
-    if manifest.get("source_build"):
-        subprocess.run(
-            [
-                sys.executable,
-                ROOT / "tools/build_patched_mpv.py",
-                "--base",
-                directory,
-                "--output",
-                directory,
-                "--ndk",
-                sdk / "ndk" / android["ndk"],
-                "--download",
-                "--prepare-tools",
-            ],
-            check=True,
-        )
-
     with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as output:
         for name, value in environment.items():
             output.write(f"{name}={value}\n")
+    elapsed = time.monotonic() - started
+    print(
+        f"Toolchain preparation: {'installed' if tools_built else 'reused'} in {elapsed:.1f}s",
+        flush=True,
+    )
+    with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+        output.write(f"tools-built={str(tools_built).lower()}\n")
+    with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as output:
+        output.write(
+            f"Host tools: **{'installed' if tools_built else 'reused'}**, {elapsed:.1f}s including SDK checks and font validation.\n\n"
+        )
 
 
 if __name__ == "__main__":

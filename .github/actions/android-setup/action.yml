@@ -26,9 +26,62 @@ runs:
         cmdline-tools-version: ${{ steps.versions.outputs.command_line_tools }}
         packages: platform-tools
         log-accepted-android-sdk-licenses: false
-    - name: Install CI tools, Android components and playback libraries
+    - name: Compute playback cache fingerprint
+      id: keys
+      shell: bash
+      run: |
+        python - <<'PYCODE'
+        import os
+        from configs.ci_playback_cache import cache_key
+        with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
+            output.write('playback=' + cache_key() + '\n')
+        PYCODE
+    # Only prefix-match the same input fingerprint. A new generation can replace
+    # an invalid immutable cache after verification rebuilds it.
+    - name: Restore checked host tools
+      id: tools-cache
+      uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5
+      continue-on-error: true
+      env:
+        SEGMENT_DOWNLOAD_TIMEOUT_MINS: 2
+      with:
+        path: .cache/ci-tools
+        key: immivio-tools-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('configs/ci_toolchain.json', 'configs/setup_hosted_ci.py') }}-${{ github.run_id }}-${{ github.run_attempt }}
+        restore-keys: immivio-tools-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('configs/ci_toolchain.json', 'configs/setup_hosted_ci.py') }}-
+    - name: Prepare verified host tools, SDK and fonts
+      id: tools
       shell: bash
       run: python configs/setup_hosted_ci.py
+    - name: Save checked host tools
+      if: steps.tools.outputs.tools-built == 'true'
+      uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5
+      continue-on-error: true
+      with:
+        path: .cache/ci-tools
+        key: ${{ steps.tools-cache.outputs.cache-primary-key }}
+    - name: Restore playback runtime
+      id: playback-cache
+      uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5
+      continue-on-error: true
+      env:
+        SEGMENT_DOWNLOAD_TIMEOUT_MINS: 2
+      with:
+        path: .cache/ci-playback/arm64-v8a
+        key: immivio-playback-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.keys.outputs.playback }}-${{ github.run_id }}-${{ github.run_attempt }}
+        restore-keys: immivio-playback-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.keys.outputs.playback }}-
+    - name: Build or reuse verified playback runtime
+      id: playback
+      shell: bash
+      run: python -m configs.ci_playback_cache
+    # Save verified dependencies now, even if later app tests fail. Cache service
+    # failures remain optional; preparation/verification failures still fail CI.
+    - name: Save playback runtime
+      if: steps.playback.outputs.runtime-built == 'true'
+      uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5
+      continue-on-error: true
+      with:
+        path: .cache/ci-playback/arm64-v8a
+        key: ${{ steps.playback-cache.outputs.cache-primary-key }}
     - name: Check installed tools and Android libraries
       shell: bash
       run: python configs/check_environment.py
