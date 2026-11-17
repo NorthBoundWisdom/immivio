@@ -52,6 +52,82 @@ def unpack(archive, destination, members=None):
                 target.chmod(mode & 0o777)
 
 
+def register_macos_font(path):
+    """Register checked CI fonts for this login session, not just copy their files."""
+    import ctypes
+    from ctypes.util import find_library
+
+    cf = ctypes.CDLL(find_library("CoreFoundation"))
+    ct = ctypes.CDLL(find_library("CoreText"))
+    cf.CFURLCreateFromFileSystemRepresentation.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_char_p,
+        ctypes.c_long,
+        ctypes.c_bool,
+    ]
+    cf.CFURLCreateFromFileSystemRepresentation.restype = ctypes.c_void_p
+    cf.CFErrorGetCode.argtypes = [ctypes.c_void_p]
+    cf.CFErrorGetCode.restype = ctypes.c_long
+    cf.CFRelease.argtypes = [ctypes.c_void_p]
+    cf.CFRelease.restype = None
+    ct.CTFontManagerRegisterFontsForURL.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_uint32,
+        ctypes.POINTER(ctypes.c_void_p),
+    ]
+    ct.CTFontManagerRegisterFontsForURL.restype = ctypes.c_bool
+    encoded = os.fsencode(path.resolve())
+    url = cf.CFURLCreateFromFileSystemRepresentation(None, encoded, len(encoded), False)
+    if not url:
+        raise RuntimeError(f"Cannot create font URL: {path.name}")
+    error = ctypes.c_void_p()
+    try:
+        # kCTFontManagerScopeSession: visible to subsequent Godot processes.
+        registered = ct.CTFontManagerRegisterFontsForURL(url, 3, ctypes.byref(error))
+        code = cf.CFErrorGetCode(error) if error.value else 0
+        # Font discovery may already have registered it after the copy.
+        if not registered and code != 105:  # kCTFontManagerErrorAlreadyRegistered
+            raise RuntimeError(f"Cannot register {path.name}: CoreText error {code}")
+    finally:
+        if error.value:
+            cf.CFRelease(error)
+        cf.CFRelease(url)
+
+
+def check_host_fonts(godot, fonts, folder):
+    """Fail before a long native build if Godot cannot load the prepared fonts."""
+    result = subprocess.run(
+        [
+            godot,
+            "--headless",
+            "--xr-mode",
+            "off",
+            "--script",
+            ROOT / "tools/check_host_fonts.gd",
+            "--",
+            json.dumps(
+                [
+                    {"family": f["family"], "path": str(folder / f["fileName"])}
+                    for f in fonts
+                ]
+            ),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    print(result.stdout, end="", flush=True)
+    print(result.stderr, end="", file=sys.stderr, flush=True)
+    import re
+
+    if result.returncode or re.search(
+        r"(?m)^(SCRIPT ERROR:|ERROR:)", result.stdout + result.stderr
+    ):
+        raise RuntimeError("Godot could not load the prepared CI fonts")
+    if "IMMIVIO_HOST_FONTS_OK" not in result.stdout:
+        raise RuntimeError("Godot font probe did not complete")
+
+
 def main():
     if os.environ.get("GITHUB_ACTIONS") != "true":
         raise RuntimeError("This installer is only for GitHub Actions")
@@ -140,23 +216,6 @@ def main():
     ]:
         environment[f"IMMIVIO_{name}_VERSION"] = android[key]
 
-    if manifest.get("source_build"):
-        subprocess.run(
-            [
-                sys.executable,
-                ROOT / "tools/build_patched_mpv.py",
-                "--base",
-                directory,
-                "--output",
-                directory,
-                "--ndk",
-                sdk / "ndk" / android["ndk"],
-                "--download",
-                "--prepare-tools",
-            ],
-            check=True,
-        )
-
     fonts = (
         Path(os.environ["WINDIR"]) / "Fonts"
         if windows
@@ -184,6 +243,28 @@ def main():
                 env=env,
                 check=True,
             )
+
+        else:
+            register_macos_font(target)
+
+    check_host_fonts(environment["GODOT_EXE"], config["fonts"], fonts)
+
+    if manifest.get("source_build"):
+        subprocess.run(
+            [
+                sys.executable,
+                ROOT / "tools/build_patched_mpv.py",
+                "--base",
+                directory,
+                "--output",
+                directory,
+                "--ndk",
+                sdk / "ndk" / android["ndk"],
+                "--download",
+                "--prepare-tools",
+            ],
+            check=True,
+        )
 
     with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as output:
         for name, value in environment.items():

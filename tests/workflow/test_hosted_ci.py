@@ -1,16 +1,18 @@
 """Exercise actual downloads and archive boundaries with local-only fixtures."""
 
-from contextlib import contextmanager
+from contextlib import contextmanager, redirect_stderr, redirect_stdout
 import hashlib
+import io
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import subprocess
 import tempfile
 import threading
 import unittest
+from unittest.mock import patch
 import zipfile
 
-from configs.setup_hosted_ci import download, unpack
+from configs.setup_hosted_ci import check_host_fonts, download, unpack
 
 
 @contextmanager
@@ -100,3 +102,41 @@ class HostedToolDownloads(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "Unsafe archive"):
                 unpack(archive, root / "out")
             self.assertFalse((root / "escaped").exists())
+
+
+class HostFontProbe(unittest.TestCase):
+    def test_errors_and_missing_completion_cannot_pass_with_zero_exit(self):
+        for output, error in [
+            ("IMMIVIO_HOST_FONTS_OK\n", "ERROR: FreeType: Error loading font\n"),
+            ("Checking font bytes\n", ""),
+            ("IMMIVIO_HOST_FONTS_OK\n", "SCRIPT ERROR: Invalid call\n"),
+        ]:
+            with (
+                self.subTest(output=output, error=error),
+                patch(
+                    "configs.setup_hosted_ci.subprocess.run",
+                    return_value=subprocess.CompletedProcess([], 0, output, error),
+                ),
+                redirect_stdout(io.StringIO()),
+                redirect_stderr(io.StringIO()),
+            ):
+                with self.assertRaises(RuntimeError):
+                    check_host_fonts("godot", [], Path("fonts"))
+
+    def test_valid_probe_must_confirm_coverage(self):
+        with (
+            patch(
+                "configs.setup_hosted_ci.subprocess.run",
+                return_value=subprocess.CompletedProcess(
+                    [], 0, "IMMIVIO_HOST_FONTS_OK\n", ""
+                ),
+            ) as run,
+            redirect_stdout(io.StringIO()),
+        ):
+            check_host_fonts(
+                "godot", [{"family": "CJK", "fileName": "cjk.otf"}], Path("fonts")
+            )
+        command = run.call_args.args[0]
+        self.assertIn("--headless", command)
+        self.assertIn('"family": "CJK"', command[-1])
+        self.assertIn("fonts/cjk.otf", command[-1])
