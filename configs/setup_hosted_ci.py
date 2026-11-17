@@ -4,39 +4,55 @@
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
 import sys
+import tempfile
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def download(url, destination, expected, *, git_blob=False):
-    subprocess.run(
-        [
-            "curl",
-            "--fail",
-            "--location",
-            "--retry",
-            "3",
-            "--output",
-            str(destination),
-            url,
-        ],
-        check=True,
-    )
-    with destination.open("rb") as source:
-        if git_blob:
-            digest = hashlib.sha1(f"blob {destination.stat().st_size}\0".encode())
-            while chunk := source.read(1024 * 1024):
-                digest.update(chunk)
-            actual = digest.hexdigest()
-        else:
-            actual = hashlib.file_digest(source, "sha256").hexdigest()
-    if actual != expected:
-        raise RuntimeError(f"Checksum mismatch for {destination.name}")
+    # fontd can inspect ~/Library/Fonts while curl is still writing. Publish only
+    # complete checked bytes, using a hidden file and a same-filesystem rename.
+    with tempfile.NamedTemporaryFile(
+        dir=destination.parent,
+        prefix="." + destination.name + ".",
+        suffix=".download",
+        delete=False,
+    ) as pending:
+        temporary = Path(pending.name)
+    try:
+        subprocess.run(
+            [
+                "curl",
+                "--fail",
+                "--location",
+                "--retry",
+                "3",
+                "--output",
+                str(temporary),
+                url,
+            ],
+            check=True,
+        )
+        with temporary.open("rb") as source:
+            if git_blob:
+                digest = hashlib.sha1(f"blob {temporary.stat().st_size}\0".encode())
+                while chunk := source.read(1024 * 1024):
+                    digest.update(chunk)
+                actual = digest.hexdigest()
+            else:
+                actual = hashlib.file_digest(source, "sha256").hexdigest()
+        if actual != expected:
+            raise RuntimeError(f"Checksum mismatch for {destination.name}")
+        temporary.chmod(0o644)
+        temporary.replace(destination)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def unpack(archive, destination, members=None):
@@ -118,8 +134,6 @@ def check_host_fonts(godot, fonts, folder):
     )
     print(result.stdout, end="", flush=True)
     print(result.stderr, end="", file=sys.stderr, flush=True)
-    import re
-
     if result.returncode or re.search(
         r"(?m)^(SCRIPT ERROR:|ERROR:)", result.stdout + result.stderr
     ):

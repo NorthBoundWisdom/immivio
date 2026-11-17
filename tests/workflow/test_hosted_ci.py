@@ -3,6 +3,7 @@
 from contextlib import contextmanager, redirect_stderr, redirect_stdout
 import hashlib
 import io
+import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import subprocess
@@ -54,6 +55,20 @@ class HostedToolDownloads(unittest.TestCase):
             self.assertEqual(path.read_bytes(), payload)
             with self.assertRaisesRegex(RuntimeError, "Checksum mismatch"):
                 download(origin + "/tool", path, "0" * 64)
+
+    def test_bad_bytes_never_replace_a_verified_asset_or_leave_pending_files(self):
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            served(b"partial font") as origin,
+        ):
+            path = Path(directory) / "font.otf"
+            path.write_bytes(b"verified font")
+            with self.assertRaisesRegex(RuntimeError, "Checksum mismatch"):
+                download(
+                    origin + "/tool", path, hashlib.sha256(b"expected font").hexdigest()
+                )
+            self.assertEqual(path.read_bytes(), b"verified font")
+            self.assertEqual(list(Path(directory).iterdir()), [path])
 
     def test_failed_download_cannot_validate_an_existing_file(self):
         with tempfile.TemporaryDirectory() as directory, served(b"tool") as origin:
@@ -139,4 +154,6 @@ class HostFontProbe(unittest.TestCase):
         command = run.call_args.args[0]
         self.assertIn("--headless", command)
         self.assertIn('"family": "CJK"', command[-1])
-        self.assertIn("fonts/cjk.otf", command[-1])
+        self.assertEqual(
+            json.loads(command[-1])[0]["path"], str(Path("fonts") / "cjk.otf")
+        )
