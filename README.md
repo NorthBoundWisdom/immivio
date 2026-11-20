@@ -10,15 +10,15 @@
 <p align="center">
   <a href="https://northboundwisdom.github.io/immivio/">Website</a> ·
   <a href="https://northboundwisdom.github.io/immivio/zh/">中文官网</a> ·
-  <a href="https://github.com/NorthBoundWisdom/immivio/releases">Download</a> ·
+  <a href="https://store-global.picoxr.com/global/detail/1/7704693551271116819">PICO Store (Global)</a> ·
+  <a href="https://store.picoxr.com/cn/detail/1/7704693551271116819">PICO 商店（中国大陆）</a> ·
+  <a href="https://github.com/NorthBoundWisdom/immivio/releases">APK downloads</a> ·
   <a href="https://northboundwisdom.github.io/immivio/guide/">User guide</a> ·
   <a href="https://northboundwisdom.github.io/immivio/zh/guide/">使用指南</a> ·
   <a href="CHANGELOG.md">Changelog</a>
 </p>
 
-**中文：** Immivio 是一款面向 PICO 和 Meta Quest 的免费开源 VR 视频播放器，支持普通视频、3D 立体视频以及 180°／360° 全景视频。影片可以来自本地文件、家庭共享文件夹或兼容的媒体服务器，在虚拟大屏或环绕画面中观看。屏幕大小、位置和弯曲程度可按坐姿或躺姿调整；双语字幕、播放队列以及按视频记住的进度和设置，让你下次可以直接接着看。免费使用，无需购买或订阅。
-
-**English:** Immivio is a free, open-source VR video player for PICO and Meta Quest. Watch regular, 3D stereo, 180° and 360° videos from local files, home shared folders or compatible media servers, on a virtual screen or in an immersive view. Adjust screen size, position and curvature for seated or reclined viewing. Bilingual text subtitles, playback queues and per-video progress and settings let you pick up where you left off. No purchase or subscription is required.
+Immivio is a free, open-source VR video player for PICO and Meta Quest. Watch regular, 3D stereo, 180° and 360° videos from local files, home shared folders or compatible media servers, on a virtual screen or in an immersive view. Adjust screen size, position and curvature for seated or reclined viewing. Bilingual text subtitles, playback queues and per-video progress and settings let you pick up where you left off. No purchase or subscription is required.
 
 ## Screenshots
 
@@ -77,6 +77,10 @@
 **Languages:** English, Simplified Chinese, Traditional Chinese and Japanese.
 
 ## Download and install
+
+Install Immivio for free from the PICO Store. Choose [Global](https://store-global.picoxr.com/global/detail/1/7704693551271116819) or [China mainland](https://store.picoxr.com/cn/detail/1/7704693551271116819) for your store region.
+
+### Sideload an APK
 
 Download published APKs from [Releases](https://github.com/NorthBoundWisdom/immivio/releases). Development builds are attached to successful [Android workflow runs](https://github.com/NorthBoundWisdom/immivio/actions/workflows/android-release.yml) under **Artifacts**. Downloading them requires a GitHub sign-in.
 
