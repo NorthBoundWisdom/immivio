@@ -5,6 +5,7 @@ const MAX_BYTES := 262144
 const VERSION := 1
 const MAX_TIME := 2147483647
 const Memory := preload("res://scripts/file_mode_memory.gd")
+const Log := preload("res://scripts/diagnostic_log.gd")
 var directory: String
 var records: Dictionary = {}
 var blocked: Dictionary = {}
@@ -201,32 +202,56 @@ func resolve(uri: String, basename: String = "", size: Variant = -1) -> String:
 
 
 func relocate(old_uri: String, new_uri: String, basename: String, size: int = -1) -> bool:
+	if old_uri == new_uri:
+		return true
 	var old_alias := Memory.key_for(old_uri)
 	var new_alias := Memory.key_for(new_uri)
-	for id in records.keys():
-		var record: Dictionary = records[id].duplicate(true)
-		if old_alias not in record.aliases:
-			continue
-		var feature := fingerprint(basename, size)
-		if feature.is_empty():
-			return false
+	if old_alias.is_empty() or new_alias.is_empty():
+		return false
+	var old_name := old_uri.get_file()
+	if old_uri.begins_with("file://"):
+		old_name = old_name.uri_decode()
+	var id := resolve(old_uri, old_name, size)
+	var record: Dictionary = records.get(id, {}).duplicate(true)
+	var has_undo := str(undo.get("media_id", "")) == id
+	if record.is_empty() or old_alias not in record.aliases:
+		return true
+	if record.markers.is_empty() and not has_undo:
+		return true
+
+	var feature := fingerprint(basename, size)
+	var new_id := JSON.stringify([new_alias, feature]).sha256_text()
+	var conflicting := records.values().any(
+		func(other):
+			return (
+				new_alias in other.aliases
+				and (not other.markers.is_empty() or undo.get("media_id") == other.id)
+			)
+	)
+	if not conflicting:
 		var copied := record.duplicate(true)
-		copied.id = JSON.stringify([new_alias, feature]).sha256_text()
-		if copied.id == id and new_alias == old_alias and feature == record.fingerprint:
-			return true
+		copied.id = new_id
 		copied.aliases = [new_alias]
 		copied.fingerprint = feature
 		if not _save(copied):
 			return false
-		if record.aliases.size() > 1:
-			record.aliases.erase(old_alias)
-		else:
-			record.markers = []  # Persist an empty old record; its old hash must not recover the moved markers.
-		if not _save(record):
-			return false
-		if not undo.is_empty() and str(undo.get("media_id", "")) == id:
-			undo.media_id = copied.id
-		return true
+
+	var old_count: int = record.markers.size()
+	var shared: bool = record.aliases.size() > 1
+	if shared:
+		record.aliases.erase(old_alias)
+	else:
+		# Keep an empty record so the old URI cannot recover the relocated markers by fingerprint.
+		record.markers = []
+	if not _save(record):
+		return false
+	if has_undo:
+		if not conflicting:
+			undo.media_id = new_id
+		elif not shared:
+			undo.clear()
+	if conflicting:
+		Log.record("bookmark_rename_conflict", {"source_marker_count": old_count})
 	return true
 
 

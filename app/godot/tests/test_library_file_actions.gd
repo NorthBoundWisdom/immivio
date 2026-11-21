@@ -266,7 +266,9 @@ func _run() -> void:
 		"Companion rename preview is visible before applying"
 	)
 	var renamed: Array = []
-	menu.file_renamed.connect(func(old, new, title): renamed.append([old, new, title]))
+	menu.file_renamed.connect(
+		func(old, new, title, size, moves): renamed.append([old, new, title, size, moves])
+	)
 	menu.test_activate(Actions.Rename.APPLY)
 	menu.test_activate(Actions.Rename.APPLY)
 	check(
@@ -280,11 +282,21 @@ func _run() -> void:
 	platform.respond(
 		7,
 		"ready",
-		{"renamed": true, "new_uri": "file:///storage/test/new.mp4", "new_title": "new.mp4"}
+		{
+			"renamed": true,
+			"new_uri": "file:///storage/test/new.mp4",
+			"new_title": "new.mp4",
+			"moves": [{"from": "old.mp4", "to": "new.mp4"}, {"from": "old.srt", "to": "new.srt"}]
+		}
 	)
 	check(
-		renamed.size() == 1 and menu.rows[0].uri.ends_with("new.mp4"),
-		"Rename success updates browsing identity and emits migration"
+		(
+			renamed.size() == 1
+			and menu.rows[0].uri.ends_with("new.mp4")
+			and renamed[0][3] == 10
+			and renamed[0][4][1].to == "new.srt"
+		),
+		"Rename success passes media size and confirmed sidecar moves to migration"
 	)
 	menu.file_actions.reset()
 	menu.section = Menu.Section.SETTINGS

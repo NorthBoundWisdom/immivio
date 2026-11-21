@@ -276,6 +276,31 @@ func relocate(old_uri: String, new_uri: String, title: String = "") -> bool:
 	return true
 
 
+## The completed native rename lists the video first and its same-directory companions after it.
+func relocate_subtitles(video_uri: String, moves: Array) -> void:
+	var local := video_uri.begins_with("file://")
+	var folder := video_uri.get_base_dir()
+	if local:
+		folder = folder.uri_decode()
+	var names := {}
+	for move in moves.slice(1):
+		if move is Dictionary and move.get("from") is String and move.get("to") is String:
+			names[move.from] = move.to
+	if names.is_empty():
+		return
+	for entry in entries.values():
+		var mode: Dictionary = entry.mode
+		var uri := str(mode.get("external_subtitle_uri", ""))
+		var path := uri.uri_decode() if local else uri
+		if path.get_base_dir() != folder or not names.has(path.get_file()):
+			continue
+		var renamed: String = names[path.get_file()]
+		mode.external_subtitle_uri = uri.get_base_dir().path_join(
+			renamed.uri_encode() if local else renamed
+		)
+		dirty = true
+
+
 func save() -> bool:
 	if not dirty:
 		return true

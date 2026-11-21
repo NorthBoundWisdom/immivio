@@ -8,6 +8,9 @@ class Reader:
 	var local_uri := ""
 	var queue: Array[Dictionary] = []
 	var closes := 0
+	var bookmark_store: RefCounted
+	var mode_memory: RefCounted
+	var recent_files: RefCounted
 
 	func close_video() -> void:
 		closes += 1
@@ -93,12 +96,14 @@ func _initialize() -> void:
 		store.list_markers(store.resolve(new, "new.mp4", 5000)).size() == 1,
 		"Renamed movie retains timestamp"
 	)
+	var before_same_uri := store.revision
 	check(
 		(
-			store.relocate(new, new, "new.mp4", 5000)
+			store.relocate(new, new, "ignored.mp4", 5000)
+			and store.revision == before_same_uri
 			and store.list_markers(store.resolve(new, "new.mp4", 5000)).size() == 1
 		),
-		"Reapplied relocation keeps markers for the same fingerprint and URI"
+		"An unchanged URI performs no bookmark write even with a different label"
 	)
 	check(
 		store.list_markers(store.resolve(old, "old.mp4", 5000)).is_empty(),
@@ -144,6 +149,67 @@ func _initialize() -> void:
 	)
 	var app := preload("res://scripts/main.gd").new()
 	app.video = Reader.new()
+	app.settings_path = directory.path_join("app.cfg")
+	var connected_store := preload("res://scripts/bookmark_store.gd").new(
+		directory.path_join("connected-bookmarks")
+	)
+	app.video.bookmark_store = connected_store
+	app.video.mode_memory = modes
+	app.video.recent_files = reloaded
+	connected_store.add(old, "old.mp4", 5000, 10000)
+	var other_video := "file:///storage/test/other.mp4"
+	var moved_subtitle := "file:///storage/test/old.zh%20CN.srt"
+	var unrelated_subtitle := "file:///storage/elsewhere/old.zh%20CN.srt"
+	var mode := modes.lookup(new)
+	mode.external_subtitle_uri = moved_subtitle
+	modes.remember(old, mode)
+	modes.remember(other_video, mode)
+	mode.external_subtitle_uri = unrelated_subtitle
+	modes.remember("file:///storage/test/third.mp4", mode)
+	var moves := [
+		{"from": "old.mp4", "to": "new.mp4"}, {"from": "old.zh CN.srt", "to": "new.zh CN.srt"}
+	]
+	app._on_file_renamed(old, new, "new.mp4", 5000, moves)
+	check(
+		connected_store.list_markers(connected_store.resolve(new, "new.mp4", 5000)).size() == 1,
+		"The production rename handler moves bookmarks"
+	)
+	check(
+		(
+			modes.lookup(new).external_subtitle_uri == "file:///storage/test/new.zh%20CN.srt"
+			and (
+				modes.lookup(other_video).external_subtitle_uri
+				== modes.lookup(new).external_subtitle_uri
+			)
+			and (
+				modes.lookup("file:///storage/test/third.mp4").external_subtitle_uri
+				== unrelated_subtitle
+			)
+		),
+		"Confirmed sidecar moves update saved references in the matching folder only"
+	)
+	var discarded := connected_store.add(old, "old.mp4", 5000, 20000)
+	connected_store.remove(connected_store.resolve(old, "old.mp4", 5000), discarded.id)
+	connected_store.add(old, "old.mp4", 5000, 25000)
+	check(connected_store.can_undo(), "Conflict fixture retains an undo at the old URI")
+	app._on_file_renamed(old, new, "new.mp4", 5000, moves)
+	var destination := connected_store.list_markers(connected_store.resolve(new, "new.mp4", 5000))
+	check(
+		(
+			destination.size() == 1
+			and destination[0].position_ms == 10000
+			and (
+				connected_store
+				. list_markers(connected_store.resolve(old, "old.mp4", 5000))
+				. is_empty()
+			)
+			and not connected_store.can_undo()
+			and FileAccess.get_file_as_string("user://diagnostics/events.jsonl").contains(
+				"bookmark_rename_conflict"
+			)
+		),
+		"A destination conflict preserves the destination, retires the source and logs the event"
+	)
 	app.video.local_uri = "file:///storage/test/folder/movie.mp4"
 	app._prepare_file_delete("file:///storage/test/folder")
 	check(

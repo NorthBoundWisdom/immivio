@@ -129,7 +129,9 @@ func receive(id: int, payload: String) -> bool:
 		var new_uri := str(result.get("new_uri", ""))
 		var title := str(result.get("new_title", ""))
 		migration_failed = false
-		menu.file_renamed.emit(old_uri, new_uri, title)
+		menu.file_renamed.emit(
+			old_uri, new_uri, title, int(actions.target.get("size", -1)), result.get("moves", [])
+		)
 		for entries in [menu.sources.local_entries, menu.sources.smb_entries]:
 			for entry in entries:
 				if str(entry.get("uri", "")) == old_uri:

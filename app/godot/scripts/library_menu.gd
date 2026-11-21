@@ -101,7 +101,7 @@ signal storage_eject_requested(volume: Dictionary)
 signal storage_removed(volume: Dictionary)
 signal file_delete_preparing(uri: String)
 signal file_deleted(uri: String)
-signal file_renamed(old_uri: String, new_uri: String, title: String)
+signal file_renamed(old_uri: String, new_uri: String, title: String, size: int, moves: Array)
 var current_file_provider: Callable
 const FileActions := preload("res://scripts/library_file_actions.gd")
 var file_actions := FileActions.new(self)

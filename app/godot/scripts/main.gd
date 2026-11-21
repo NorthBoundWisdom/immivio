@@ -800,12 +800,17 @@ func _on_library_chosen(uri: String, title: String) -> void:
 	playback_coordinator._on_library_chosen(uri, title)
 
 
-func _on_file_renamed(old_uri: String, new_uri: String, title: String) -> void:
+func _on_file_renamed(
+	old_uri: String, new_uri: String, title: String, size: int, moves: Array
+) -> void:
 	video.recent_files.relocate(old_uri, new_uri, title)
 	if not video.recent_files.save():
 		library_menu.file_actions.rename.migration_failed = true
 	video.mode_memory.relocate(old_uri, new_uri)
+	video.mode_memory.relocate_subtitles(old_uri, moves)
 	if not video.mode_memory.save():
+		library_menu.file_actions.rename.migration_failed = true
+	if not video.bookmark_store.relocate(old_uri, new_uri, title, size):
 		library_menu.file_actions.rename.migration_failed = true
 	LibraryMenu.Thumbnails.relocate(old_uri, new_uri)
 	playback_queue.relocate(old_uri, new_uri, title)
