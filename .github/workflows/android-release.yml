@@ -154,7 +154,7 @@ jobs:
     needs: [build, create-release]
     permissions:
       contents: write
-      actions: read
+      actions: write
     uses: ./.github/workflows/publish-android-release.yml
     with:
       tag: ${{ github.ref_name }}

@@ -6,10 +6,11 @@
   // Theme: an explicit choice is kept in localStorage ("immivio-theme");
   // otherwise the page follows the system preference.
   const toggle = document.querySelector("[data-theme-toggle]");
-  const systemLight = () => window.matchMedia("(prefers-color-scheme: light)").matches;
-  const isLight = () => (root.dataset.theme ? root.dataset.theme === "light" : systemLight());
+  const systemTheme = window.matchMedia("(prefers-color-scheme: light)");
+  const isLight = () => (root.dataset.theme ? root.dataset.theme === "light" : systemTheme.matches);
   const reflect = () => toggle?.setAttribute("aria-pressed", String(isLight()));
   reflect();
+  systemTheme.addEventListener?.("change", reflect);
   toggle?.addEventListener("click", () => {
     root.dataset.theme = isLight() ? "dark" : "light";
     try {
@@ -38,7 +39,8 @@
       { rootMargin: "0px 0px -8% 0px" },
     );
     revealed.forEach((node) => observer.observe(node));
-  } else revealed.forEach((node) => node.classList.add("in"));
+    root.classList.add("js");
+  }
 
   // Highlight the current section in a page's table of contents.
   const tocLinks = [...document.querySelectorAll(".toc a[href^='#']")];

@@ -70,3 +70,16 @@ jobs:
             gh release create "$RELEASE_TAG" "${assets[@]}" --repo "$GH_REPO" --verify-tag \
               --title "Immivio $RELEASE_TAG" --notes-file "$directory/release-notes.md"
           fi
+
+  refresh-website:
+    needs: publish
+    if: github.repository == 'NorthBoundWisdom/immivio'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Refresh website downloads after publishing all APKs
+        run: gh workflow run website-pages.yml --repo "$GH_REPO" --ref main
