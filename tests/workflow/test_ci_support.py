@@ -24,7 +24,10 @@ class CiBoundaries(unittest.TestCase):
         self.assertIn(
             "cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}", workflow
         )
-        self.assertIn("    environment: release\n", workflow)
+        release_job = workflow.split("\n  release-build:\n", 1)[1].split(
+            "\n  publish-release:\n", 1
+        )[0]
+        self.assertNotRegex(release_job, r"(?m)^    environment\s*:")
 
     def test_channels_default_to_appstore_and_tags_force_web(self):
         for ref in ("", "refs/heads/main", "refs/pull/1/merge"):

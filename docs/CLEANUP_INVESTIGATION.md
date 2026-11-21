@@ -260,7 +260,7 @@ This pass started at `32f17b2`. Work is committed locally by topic.
   The current signing paths are also outside the Android Actions caches and
   uploads. The GitHub API returned 8 OpenXR, 27 PICO and 17 Quest downloads
   at 16:33 CST. [Signing audit](ACCEPTANCE.md#published-v100-apk-signing-audit)
-- The tag's protected `Release / macOS` job requires all three signing
+- The tag's `Release / macOS` job requires all three repository signing
   secrets before it prepares dependencies. Formal Web and Store Release
   packages use the pinned PICO Store certificate on all three platforms.
   `apksigner` checks the exported APK. Publication rejects missing or
@@ -278,11 +278,10 @@ This pass started at `32f17b2`. Work is committed locally by topic.
 
 ### Owner setup before publishing
 
-1. In GitHub, create a `release` environment under **Settings → Environments**.
-   Allow only release tags and require reviewer approval. In that environment,
-   set `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEY_ALIAS` and
-   `ANDROID_KEY_PASSWORD` for the key matching the pinned PICO Store
-   certificate. The repository owner supplies those values.
+1. In the repository's **Settings → Secrets and variables → Actions**, add
+   `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEY_ALIAS` and
+   `ANDROID_KEY_PASSWORD` as repository secrets for the key matching the
+   pinned PICO Store certificate. The repository owner supplies those values.
    [Build and signing setup](BUILD.md#pico-store-apks)
 2. Append the following bilingual notice to the
    [v1.0.0 GitHub Release](https://github.com/NorthBoundWisdom/immivio/releases/tag/v1.0.0).
@@ -399,8 +398,8 @@ downloads from the signing audit.
 | Website | 4 | 4 |
 
 Ruff, actionlint, website/source checks and `git diff --check` passed.
-Publication tests use local fixtures and mock uploads. The protected
-environment and a real formally signed release still need an approved
-GitHub run after the owner configures signing. This pass used no private
+Publication tests use local fixtures and mock uploads. A real formally
+signed release still needs a GitHub tag run after the owner configures the
+repository signing secrets. This pass used no private
 key or password. No candidate was deleted, and no push, tag, version
 change or publication was performed.

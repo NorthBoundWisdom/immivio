@@ -128,22 +128,14 @@ Branch and PR CI builds are development builds. Manual CI defaults to
 `web/Release` and may use a temporary signing key for non-tag builds.
 Package official store Releases locally with the formal signing identity.
 
-Before the first formal tag build, the repository owner must configure GitHub
-under **Settings → Environments**.
-
-1. Create the `release` environment.
-2. Under deployment branches and tags, choose **Selected branches and tags**,
-   add tag rules for release tags such as `v*`, and leave branch rules empty.
-3. Add the required reviewer or reviewers. The tag's `Release / macOS` job
-   waits for environment approval.
-4. Add `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEY_ALIAS` and
-   `ANDROID_KEY_PASSWORD` as environment secrets for the key matching the
-   pinned certificate.
+Before the first formal tag build, add `ANDROID_KEYSTORE_BASE64`,
+`ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD` as repository secrets in
+**Settings → Secrets and variables → Actions**. Use the key matching the
+pinned certificate.
 
 Tag builds produce Web Release APKs and require all three secrets. Packaging
 checks the actual APK certificate with `apksigner`. GitHub publication also
 requires the formal signer and the pinned fingerprint in every receipt.
-[GitHub deployment environments](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)
 
 If an actual `pvr.app.id` is embedded, set `IMMIVIO_PICO_APP_ID` to the real platform-assigned ID so validation can compare it. An APK without this optional field does not receive a fabricated ID. For an **already uploaded version in the same PICO track/region**, set `IMMIVIO_PICO_STORE_BASELINE` to its store-report JSON: validation then requires the same package/certificate, a nondecreasing versionCode and a different APK MD5. Do not treat an unsubmitted local build as an uploaded baseline. Portal state cannot be inferred from local packages.
 
@@ -203,11 +195,11 @@ For PICO, the project exporter supplies a concrete `ImmivioLauncherActivity`; th
 
 The application ID is `com.northboundwisdom.immivio`. It installs separately from legacy `com.wapok.thru3d`; existing legacy data is not automatically migrated. PICO may reject the legacy identity through its store entitlement service. Set `IMMIVIO_DEVELOPMENT_PACKAGE=1` for a separate Debug-only `com.northboundwisdom.immivio.dev` build; configuration and receipts include the selected identity. Keys and credentials now live outside disposable outputs: `~/.config/immivio/signing/` on macOS/Linux (`XDG_CONFIG_HOME` is respected), or `%APPDATA%/Immivio/signing/` on Windows. `IMMIVIO_SIGNING_DIR` can select another durable private directory. Back up that directory securely. Existing project-local `artifacts/signing/` identities, when still present, are copied into the persistent directory without replacing a different key; subsequent builds use the persistent copy. Never keep the only signing-key copy in `artifacts/`. Complete `GODOT_ANDROID_KEYSTORE_<DEBUG|RELEASE>_*` overrides take priority. Keep keys outside Git.
 
-Android CI runs only on GitHub-hosted `macos-15-intel` machines. The explicit Intel label avoids the macOS ARM runner capacity failures observed during the initial v1.0.0 release; Android outputs remain ARM64. The setup action installs Python, Java, Android SDK components, Gradle, matching Godot editor/export templates, and Noto CJK system fonts before checking the environment. `configs/ci_toolchain.json` selects CI host tools and verified download hashes. Prepared playback libraries are verified against their locked source recipe and output receipt; the original APK manifest remains historical provenance. No private runner registration or shared environment file is needed. Tool installation is isolated in `configs/setup_hosted_ci.py`; local Configure/Build/Test/Package commands still never install tools. Pull requests, including forks, can use the hosted machines. Only the protected tag-build job receives the release signing secrets.
+Android CI runs only on GitHub-hosted `macos-15-intel` machines. The explicit Intel label avoids the macOS ARM runner capacity failures observed during the initial v1.0.0 release; Android outputs remain ARM64. The setup action installs Python, Java, Android SDK components, Gradle, matching Godot editor/export templates, and Noto CJK system fonts before checking the environment. `configs/ci_toolchain.json` selects CI host tools and verified download hashes. Prepared playback libraries are verified against their locked source recipe and output receipt; the original APK manifest remains historical provenance. No private runner registration or shared environment file is needed. Tool installation is isolated in `configs/setup_hosted_ci.py`; local Configure/Build/Test/Package commands still never install tools. Pull requests, including forks, can use the hosted machines. Only tag builds receive the repository signing secrets.
 
 Existing queued runs retain the workflow from their original commit and will not switch runners when this file changes. Push the updated workflow to trigger new builds; old tag runs must be replaced by a new tag or an explicit workflow dispatch on the updated branch.
 
-A tag push starts a Web Release build after approval for the `release` environment. The build requires all three signing secrets and verifies the pinned certificate on each APK. The workflow then creates the GitHub Release and attaches the three APKs from the matching macOS build. The Release can briefly contain source archives while its APKs are uploading. APK checks cover ARM64, ELF symbol/dependency closure and 16KB alignment, signatures, ZIP alignment and application identity. They do not establish headset playback performance.
+A tag push starts a Web Release build. The build requires all three repository signing secrets and verifies the pinned certificate on each APK. The workflow then creates the GitHub Release and attaches the three APKs from the matching macOS build. The Release can briefly contain source archives while its APKs are uploading. APK checks cover ARM64, ELF symbol/dependency closure and 16KB alignment, signatures, ZIP alignment and application identity. They do not establish headset playback performance.
 
 USB improvements use Android's verified system-mounted volumes. Android 11+ may fall back to a verified public/app-storage mount path when its preferred directory is unavailable and permission permits reading; this is reevaluated rather than persisted. Some PICO system/provider paths may still fail even when a drive appears mounted. Check system storage permissions/mount state and reconnect before retrying. “Stop app access” closes Immivio readers only; system removal/ejection belongs to Android. A raw USB mass-storage, partition or filesystem driver is not included.
 

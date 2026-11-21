@@ -93,7 +93,7 @@ jobs:
           CI_ANDROID_KEY_PASSWORD: ${{ startsWith(github.ref, 'refs/tags/') && secrets.ANDROID_KEY_PASSWORD || '' }}
         run: |
           if [[ -z "$CI_ANDROID_KEYSTORE_BASE64" || -z "$CI_ANDROID_KEY_ALIAS" || -z "$CI_ANDROID_KEY_PASSWORD" ]]; then
-            echo "::error::Configure all three Android signing secrets in the release environment."
+            echo "::error::Configure the three Android signing repository secrets."
             exit 1
           fi
       - uses: ./.github/actions/android-setup
@@ -155,7 +155,6 @@ jobs:
   release-build:
     name: Release / macOS
     if: startsWith(github.ref, 'refs/tags/')
-    environment: release
     runs-on: macos-15-intel
     timeout-minutes: 90
     defaults: *build-defaults
