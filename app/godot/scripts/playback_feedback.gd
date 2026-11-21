@@ -29,7 +29,10 @@ func tick() -> void:
 	var details: Dictionary = video.media.playback.get("details", {})
 	var stage := ""
 	if video.media.accepts(video.media.session_id):
-		if video._waiting_first or video.media.state in ["opening", "buffering"]:
+		if (
+			(video._waiting_first or video.media.state in ["opening", "buffering"])
+			and not video.stick_scrubbing
+		):
 			stage = str(video.media.playback.get("loading_stage", "Waiting for video"))
 		elif str(details.get("paused_for_cache", "no")) == "yes":
 			stage = "Buffering"

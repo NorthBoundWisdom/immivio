@@ -104,6 +104,31 @@ def main():
             folder / "sample.mp4",
         ]
     )
+    run(
+        [
+            shutil.which("ffmpeg") or "ffmpeg",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-f",
+            "lavfi",
+            "-i",
+            "testsrc2=size=320x180:rate=30",
+            "-t",
+            "2",
+            "-an",
+            "-c:v",
+            "libx264",
+            "-profile:v",
+            "high10",
+            "-pix_fmt",
+            "yuv420p10le",
+            "-bf",
+            "0",
+            "-y",
+            folder / "silent-high10.mp4",
+        ]
+    )
     runtime = ROOT / "build/tests/performance-fixture-libs/arm64-v8a"
     runtime.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(
@@ -158,7 +183,12 @@ def main():
             ]
         )
         installed = True
-        for reject in (False, True):
+        cases = [
+            ("surface", []),
+            ("surface-retry", ["--ez", "reject_hints", "true"]),
+            ("silent-high10", ["--ez", "silent_high10", "true"]),
+        ]
+        for name, extras in cases:
             run([*adb, "shell", "am", "force-stop", PACKAGE])
             run([*adb, "shell", "run-as", PACKAGE, "rm", "-f", "files/result.json"])
             run(
@@ -169,9 +199,7 @@ def main():
                     "start",
                     "-n",
                     ACTIVITY,
-                    "--ez",
-                    "reject_hints",
-                    str(reject).lower(),
+                    *extras,
                 ]
             )
             deadline = time.monotonic() + 35
@@ -185,7 +213,7 @@ def main():
                     report = json.loads(data)
                     break
                 time.sleep(0.2)
-            (output / ("surface-retry.json" if reject else "surface.json")).write_text(
+            (output / f"{name}.json").write_text(
                 json.dumps(report, indent=2) + "\n"
             )
             if not report or not report.get("passed") or not report.get("closed"):
@@ -203,11 +231,9 @@ def main():
                     "ImmivioMpvSource:I",
                 ]
             )
-            (output / ("surface-retry.log" if reject else "surface.log")).write_text(
-                logs + "\n"
-            )
+            (output / f"{name}.log").write_text(logs + "\n")
             retries = logs.count("MediaCodec hints rejected; retrying without hints")
-            if retries != int(reject):
+            if name != "silent-high10" and retries != int(name == "surface-retry"):
                 raise RuntimeError(
                     "Expected exactly one no-hint retry only in the rejection case: "
                     + str(retries)

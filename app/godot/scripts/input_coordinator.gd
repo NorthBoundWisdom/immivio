@@ -331,20 +331,20 @@ func _process_sticks(left: Vector2, right: Vector2, delta: float) -> void:
 		_update_library_grab_stick(left, right, delta)
 		host.presentation_coordinator._update_menu_pointer("left_hand")
 		host.presentation_coordinator._update_menu_pointer("right_hand")
-		host.stick_controls.suspend()
+		_suspend_playback_sticks(host)
 		return
 	if _grab.get("action", "") == "grip_click":
-		host.stick_controls.suspend()
+		_suspend_playback_sticks(host)
 		return
 	var menu = host.input_source.active_menu()
 	if menu:
 		host.presentation_coordinator._update_menu_pointer("left_hand")
 		host.presentation_coordinator._update_menu_pointer("right_hand")
 	if not host.input_source.input_focused():
-		host.stick_controls.suspend()
+		_suspend_playback_sticks(host)
 		return
 	if menu and (menu != host.player_menu or not host.player_menu.allows_playback_sticks()):
-		host.stick_controls.suspend()
+		_suspend_playback_sticks(host)
 		# Either stick scrolls a list, never selects or controls playback at the same time.
 		if (
 			menu.has_method("stick_scroll")
@@ -353,9 +353,23 @@ func _process_sticks(left: Vector2, right: Vector2, delta: float) -> void:
 			menu.stick_scroll(left.y if absf(left.y) > absf(right.y) else right.y, delta)
 		_update_controls_visibility(menu)
 		return
+	var scrub := false
+	var busy := false
+	if host.video:
+		if not host.stick_controls.seek_hand.is_empty() and not host.video.stick_scrubbing:
+			host.stick_controls.suspend()
+		scrub = _grab.is_empty() and host.video.stick_scrub_available()
+		busy = host.video.control.pending or host.video.control.in_flight > 0
 	var actions = host.stick_controls.poll(
-		left, right, host.video != null and (host.viewer().geometry != Geometry.Geometry.FLAT)
+		left,
+		right,
+		host.video != null and (host.viewer().geometry != Geometry.Geometry.FLAT),
+		delta,
+		scrub,
+		busy
 	)
+	if host.video:
+		host.video.set_stick_scrubbing(not host.stick_controls.seek_hand.is_empty())
 	if not _grab.is_empty():
 		# Holding the picture: only zoom; other stick shortcuts wait for the stick to recenter.
 		actions = actions.filter(func(action): return action.operation == "zoom")
@@ -432,8 +446,14 @@ func _process_immersive(left: Vector2, right: Vector2, delta: float) -> bool:
 	if left.length() < 0.3 and right.length() < 0.3:
 		host.video.commit_immersive_adjustments()
 	if held:
-		host.stick_controls.suspend()
+		_suspend_playback_sticks(host)
 	return held
+
+
+func _suspend_playback_sticks(host: Node3D) -> void:
+	host.stick_controls.suspend()
+	if host.video:
+		host.video.set_stick_scrubbing(false)
 
 
 func _update_controls_visibility(menu: Node3D) -> void:
@@ -667,7 +687,7 @@ func _begin_library_grab(hand: String) -> void:
 	if offset.length() < .1:
 		return
 	host.trigger_taps.clear()
-	host.stick_controls.suspend()
+	_suspend_playback_sticks(host)
 	host.library_menu._fling = 0.0
 	var ray_length: float = ray[0].distance_to(host.library_menu.to_global(point))
 	var direction: Vector3 = (ray[0] + ray[1] * ray_length - host.eye()).normalized()
@@ -986,6 +1006,8 @@ func _apply_stick_actions(actions: Array[Dictionary], delta: float = 1.0 / 72.0)
 					immersive.show_feedback("view_zoom", host.video.view_zoom, host.video.local_uri)
 			"seek":
 				host.video.seek_relative(int(action.direction) * host.seek_step * 1000)
+			"seek_repeat":
+				host.video.repeat_stick_seek(int(action.direction) * host.seek_step * 1000)
 			"audio_track":
 				host.video.cycle_audio_track(int(action.direction))
 			"subtitle":

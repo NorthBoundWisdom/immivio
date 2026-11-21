@@ -129,6 +129,8 @@ var _subtitle_material: ShaderMaterial
 var caption: Label3D
 const ColorGrade := preload("res://scripts/color_grade.gd")
 var color_grade := ColorGrade.new()
+var default_color_grade: Dictionary = {}
+var _color_grade_changed := false
 const SubtitleDepth := preload("res://scripts/subtitle_depth.gd")
 var subtitle_distance := 5.0:
 	set(value):
@@ -179,6 +181,8 @@ var _thumbnail_result: Dictionary = {}
 var _library_cover := ""
 var _freeze_sequence := 0
 var _freeze_request := 0
+var _seek_freeze_failed := false
+var stick_scrubbing := false
 
 
 func _init(enable_diagnostics: bool = true) -> void:
@@ -522,6 +526,15 @@ func open_local(
 	var saved_sync := mode_memory.lookup(uri) if restore_mode else {}
 	if not _next_layout_override.is_empty():
 		saved_sync = _next_layout_override.duplicate(true)
+	var playback_grade: Variant = (
+		saved_sync.get("color_grade", default_color_grade)
+		if history_enabled
+		else default_color_grade
+	)
+	playback_grade = _next_layout_override.get("live_color_grade", playback_grade)
+	color_grade.restore(playback_grade)
+	color_grade.apply(material)
+	_color_grade_changed = bool(_next_layout_override.get("live_color_grade_changed", false))
 	stereo_focus_mode = int(saved_sync.get("stereo_focus_mode", 0)) if history_enabled else 0
 	stereo_focus = float(saved_sync.get("stereo_focus", 1.5)) if history_enabled else 1.5
 	_focus_generation += 1
@@ -742,12 +755,17 @@ func close_video() -> void:
 	_pending_pair = {}
 	_pending_revision = {}
 	_freeze_request = 0
+	_seek_freeze_failed = false
 	if diagnostics:
 		diagnostics.seek_delay_until_ms = 0
 	_waiting_first = false
+	stick_scrubbing = false
 	_audio_pending = false
 	control.close()
 	_remember_file = false
+	_color_grade_changed = false
+	color_grade.restore(default_color_grade)
+	color_grade.apply(material)
 	dual_subtitles.reset()
 	_track_choices.clear()
 	_tracks_pending.clear()
@@ -830,16 +848,16 @@ func _request_revision(position_ms: int = -1, mode: String = "") -> void:
 
 func _start_seek_freeze() -> bool:
 	# Capture exactly once before seek/flush; rapid requests share this frame.
-	if _freeze_request == 0 and not _binding.ticket.is_empty() and not _is_frozen():
+	if not _seek_freeze_failed and not _binding.ticket.is_empty() and not _is_frozen():
 		var capable := Engine.has_singleton("QuestPlayer") or platform.has_method("freeze_mpv_pair")
 		if capable:
 			_freeze_sequence += 1
 			_freeze_request = _freeze_sequence
-			if not platform.freeze_mpv_pair(
+			if platform.freeze_mpv_pair(
 				media.session_id, int(_binding.ticket.slot_token), _freeze_request
 			):
-				_abort_frozen_seek("Frame capture request rejected")
-			return true
+				return true
+			_skip_seek_freeze("Frame capture request rejected")
 	return false
 
 
@@ -847,16 +865,15 @@ func _is_frozen() -> bool:
 	return int(_binding.ticket.get("frozen_frame_id", 0)) > 0
 
 
-func _abort_frozen_seek(reason: String) -> void:
+func _skip_seek_freeze(reason: String) -> void:
 	_freeze_request = 0
-	_pending_revision = {}
-	_waiting_first = false
-	control.reject()
-	picker_error = reason
-	platform.set_mpv_playing(media.session_id, requested_play)
+	_seek_freeze_failed = true
+	Log.record(
+		"mpv_seek_freeze_failed",
+		{"session_id": media.session_id, "target_ms": control.target_ms, "reason": reason}
+	)
 	if diagnostics:
 		diagnostics.record_seek("capture_failed")
-	changed.emit()
 
 
 func _on_frozen_pair(id: int, payload: String) -> void:
@@ -876,14 +893,16 @@ func _on_frozen_pair(id: int, payload: String) -> void:
 			_freeze_request = 0
 		return
 	if report.get("state") != "ready":
-		_abort_frozen_seek(str(report.get("error", "Frame capture failed")))
+		_skip_seek_freeze(str(report.get("error", "Frame capture failed")))
+		_try_revision()
 		return
 	# Preserve visibility, shader parameters and effect state during replacement.
 	var previous := _binding.unbind()
 	if not _binding.bind(material, pair):
 		_binding.bind(material, previous)
 		platform.release_mpv_frozen_frame(int(pair.frozen_frame_id))
-		_abort_frozen_seek("Frozen video frame could not be bound")
+		_skip_seek_freeze("Frozen video frame could not be bound")
+		_try_revision()
 		return
 	platform.detach_mpv_pair(int(previous.session_id), int(previous.slot_token))
 	_freeze_request = 0
@@ -923,6 +942,7 @@ func _try_revision() -> void:
 		_unbind()
 	_pending_pair = {}
 	_pending_revision = {}
+	_seek_freeze_failed = false
 	var held_format := media.format.duplicate()
 	_surface_context.clear()
 	_surface_eof_ms = -1
@@ -1096,12 +1116,15 @@ func _accept_surface_state(report: Dictionary) -> void:
 		_waiting_first = false
 		media.frame_counter = 1
 		if control.in_flight > 0:
-			control.first_frame(control.observed_position_ms)
+			var seconds := str(report.get("details", {}).get("position_seconds", ""))
+			control.first_frame(
+				int(seconds.to_float() * 1000.0) if seconds.is_valid_float() else -1
+			)
 		_complete_layout()
 		_apply_geometry()
 		panel.visible = true
 		_remember_mode()
-		platform.set_mpv_playing(media.session_id, requested_play)
+		platform.set_mpv_playing(media.session_id, requested_play and not stick_scrubbing)
 	if media.state == "ended":
 		if _surface_eof_ms < 0:
 			_surface_eof_ms = Time.get_ticks_msec()
@@ -1127,9 +1150,7 @@ func _fallback_from_surface(uri: String, session_id: int) -> void:
 	var metadata := _bookmark_metadata.duplicate(true)
 	var alpha := packed_alpha
 	var alpha_forced := packed_alpha_forced
-	var position := maxi(
-		0, control.target_ms if control.in_flight > 0 else control.observed_position_ms
-	)
+	var position := control.display_position_ms()
 	var playing := requested_play
 	var remember := _remember_file
 	var permission := _file_permission_persisted
@@ -1154,7 +1175,9 @@ func _fallback_from_surface(uri: String, session_id: int) -> void:
 		"external_subtitle_uri": external_subtitle_uri,
 		"stereo_focus_mode": stereo_focus_mode,
 		"stereo_focus": stereo_focus,
-		"subtitle_below_screen": subtitle_below_screen
+		"subtitle_below_screen": subtitle_below_screen,
+		"live_color_grade": color_grade.snapshot(),
+		"live_color_grade_changed": _color_grade_changed
 	}
 	for key in preload("res://scripts/immersive_adjustments.gd").KEYS:
 		snapshot[key] = get(key)
@@ -1414,7 +1437,9 @@ func toggle_play() -> void:
 	if not requested_play:
 		_record_history(true)
 	if platform and media.accepts(media.session_id):
-		platform.set_mpv_playing(media.session_id, requested_play and not _waiting_first)
+		platform.set_mpv_playing(
+			media.session_id, requested_play and not _waiting_first and not stick_scrubbing
+		)
 	changed.emit()
 
 
@@ -1916,6 +1941,49 @@ func seek_relative(delta_ms: int) -> bool:
 	return true
 
 
+func stick_scrub_available() -> bool:
+	return (
+		surface_requested
+		and not _fallback_queued
+		and not _fallback_pending
+		and (
+			stick_scrubbing
+			or (
+				layer_shown
+				and not _waiting_first
+				and bookmark_seekable()
+				and (
+					local_uri.begins_with("file://")
+					or local_uri.begins_with("content://")
+					or local_uri.begins_with("smb://")
+				)
+			)
+		)
+	)
+
+
+func set_stick_scrubbing(held: bool) -> void:
+	if stick_scrubbing == held:
+		return
+	stick_scrubbing = held
+	if (
+		not held
+		and platform
+		and media.accepts(media.session_id)
+		and not _waiting_first
+		and not control.pending
+		and control.in_flight == 0
+		and media.state != "ended"
+	):
+		platform.set_mpv_playing(media.session_id, requested_play)
+
+
+func repeat_stick_seek(delta_ms: int) -> void:
+	var target := clampi(control.target_ms + delta_ms, 0, maxi(0, control.duration_ms - 1))
+	if stick_scrubbing and target != control.target_ms:
+		seek_absolute(target)
+
+
 ## The current projection and layout as a lock.
 func current_lock() -> Dictionary:
 	return {
@@ -2366,13 +2434,15 @@ func _remember_mode() -> void:
 		"external_subtitle_uri": external_subtitle_uri,
 		"subtitle_encodings": subtitle_encodings.duplicate(true)
 	}
+	var previous := mode_memory.lookup(local_uri)
+	if previous.has("color_grade"):
+		mode["color_grade"] = previous.color_grade
 	if history_enabled:
 		mode["stereo_focus_mode"] = stereo_focus_mode
 		mode["stereo_focus"] = stereo_focus
 		mode["subtitle_below_screen"] = subtitle_below_screen
 	else:
 		# Other allowed mode changes must not persist this private session's preference.
-		var previous := mode_memory.lookup(local_uri)
 		for key in ["stereo_focus_mode", "stereo_focus"]:
 			if previous.has(key):
 				mode[key] = previous[key]
@@ -2380,6 +2450,46 @@ func _remember_mode() -> void:
 			mode["subtitle_below_screen"] = previous.subtitle_below_screen
 	if not _track_choices.is_empty():
 		mode["track_choices"] = _track_choices.duplicate(true)
+	if mode_memory.remember(local_uri, mode) and not mode_memory.save():
+		Log.record("file_mode_save_failed", {"error": mode_memory.last_error})
+
+
+func can_remember_color_grade() -> bool:
+	return (
+		history_enabled
+		and _remember_file
+		and media.accepts(media.session_id)
+		and not ModeMemory.key_for(local_uri).is_empty()
+	)
+
+
+func has_file_color_grade() -> bool:
+	return can_remember_color_grade() and mode_memory.lookup(local_uri).has("color_grade")
+
+
+func preview_color_grade() -> void:
+	_color_grade_changed = true
+	color_grade.apply(material)
+
+
+func commit_color_grade(clear: bool = false) -> void:
+	if clear and not has_file_color_grade():
+		return
+	if not clear and not _color_grade_changed:
+		return
+	_color_grade_changed = false
+	if not can_remember_color_grade():
+		return
+	var mode := mode_memory.lookup(local_uri)
+	if mode.is_empty():
+		_remember_mode()
+		mode = mode_memory.lookup(local_uri)
+	if clear:
+		mode.erase("color_grade")
+		color_grade.restore(default_color_grade)
+		color_grade.apply(material)
+	else:
+		mode["color_grade"] = color_grade.snapshot()
 	if mode_memory.remember(local_uri, mode) and not mode_memory.save():
 		Log.record("file_mode_save_failed", {"error": mode_memory.last_error})
 
@@ -2446,7 +2556,7 @@ func _present_pending() -> void:
 			control.first_frame(actual_position_ms)
 		else:
 			control.observe(actual_position_ms, control.duration_ms)
-		platform.set_mpv_playing(media.session_id, requested_play)
+		platform.set_mpv_playing(media.session_id, requested_play and not stick_scrubbing)
 	else:
 		control.observe(int(int(claimed.pts_us) / 1000), control.duration_ms)
 	if media.frame_counter == 1:
@@ -2539,6 +2649,7 @@ func _on_error(id: int, payload: String) -> void:
 	media.state = "failed"
 	_freeze_request = 0
 	_pending_revision = {}
+	_seek_freeze_failed = false
 	_waiting_first = false
 	control.reject()
 	_clear_subtitle_text()
@@ -2574,6 +2685,8 @@ func _reopen_after_context_loss(
 	var eye := viewing_eye
 	var alignment := Vector2(stereo_horizontal, stereo_vertical)
 	var adjustment := Vector3(view_horizontal, view_vertical, view_zoom)
+	var live_grade := color_grade.snapshot()
+	var grade_changed := _color_grade_changed
 	if open_local(uri, title, position_ms, false):
 		_remember_file = remember_file
 		_file_permission_persisted = persisted
@@ -2584,6 +2697,9 @@ func _reopen_after_context_loss(
 		view_vertical = adjustment.y
 		view_zoom = adjustment.z
 		_immersive_dirty = true
+		color_grade.restore(live_grade)
+		color_grade.apply(material)
+		_color_grade_changed = grade_changed
 		_apply_stereo_view()
 		if geometry != Geometry.Geometry.FLAT:
 			_center_on_view()
@@ -2591,6 +2707,12 @@ func _reopen_after_context_loss(
 
 func _source_size() -> Vector2:
 	return Vector2(float(media.format.width), float(media.format.height))
+
+
+func output_size() -> Vector2i:
+	if layer_shown and not surface_requested and layer_controller:
+		return layer_controller.image_size
+	return Vector2i(int(media.format.width), int(media.format.height))
 
 
 func _sync_subtitle_surface() -> void:

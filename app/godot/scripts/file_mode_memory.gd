@@ -45,6 +45,13 @@ static func clean_mode(value: Dictionary) -> Dictionary:
 	var mode := value.duplicate(true)
 	for key in RETIRED_FIELDS:
 		mode.erase(key)
+	if mode.has("color_grade"):
+		if mode.color_grade is Dictionary:
+			var grade := preload("res://scripts/color_grade.gd").new()
+			grade.restore(mode.color_grade)
+			mode.color_grade = grade.snapshot()
+		else:
+			mode.erase("color_grade")
 	return mode
 
 

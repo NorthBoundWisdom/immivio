@@ -21,13 +21,14 @@ class BridgeProbe:
 	var detached: Array = []
 	var released: Array = []
 	var busy := false
+	var accept_capture := true
 
 	func set_mpv_playing(_id: int, _play: bool) -> void:
 		pass
 
 	func freeze_mpv_pair(id: int, token: int, request: int) -> bool:
 		captures.append([id, token, request])
-		return true
+		return accept_capture
 
 	func revise_mpv_video(
 		id: int, _stereo: bool, target: int, _tb: bool, _exact: bool = false
@@ -142,6 +143,7 @@ func _initialize() -> void:
 	video.panel.visible = true
 	video._binding.bind(video.material, {"session_id": 4, "slot_token": 20})
 	video.requested_play = false
+	bridge.busy = true
 	video.seek_absolute(10000)
 	video._on_frozen_pair(
 		4,
@@ -149,14 +151,25 @@ func _initialize() -> void:
 			{"request_id": video._freeze_request, "state": "failed", "error": "allocation failed"}
 		)
 	)
+	var attempts := bridge.captures.size()
+	bridge.busy = false
+	video.seek_absolute(11000)
+	check(bridge.captures.size() == attempts, "A busy decoder leaves the failed capture bypassed")
 	check(
 		(
-			video.panel.visible
-			and not video.waiting_for_first_frame()
-			and video._pending_revision.is_empty()
+			bridge.revisions.back() == [4, 11000]
+			and video.media.session_id == 5
+			and video.waiting_for_first_frame()
 			and not video.requested_play
 		),
-		"Capture failure cancels the seek and preserves the user's paused original frame"
+		"Capture failure lets the latest seek proceed and preserves pause intent"
+	)
+	video._binding.bind(video.material, {"session_id": 5, "slot_token": 21})
+	bridge.accept_capture = false
+	video.seek_absolute(12000)
+	check(
+		bridge.captures.size() == attempts + 1 and bridge.revisions.back() == [5, 12000],
+		"The next generation may attempt capture again and a synchronous rejection still seeks"
 	)
 	video._unbind()
 	video.platform = null

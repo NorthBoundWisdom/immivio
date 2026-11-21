@@ -207,3 +207,10 @@ Refresh selection uses container FPS × playback speed, fractional-rate toleranc
 Autofocus stays opt-in, reuses one 192×40 viewport and one worker, samples only new playing frames at most every 500 ms (1 second on low-end hardware), and uses a single bounded PBO/fence with nonblocking polls on Android. Pause, mode changes, session changes and close cancel pending work. Off/HDR-off defaults are unchanged. Hidden layer backdrops release copied panorama references.
 
 Matching mpv/FFmpeg source builds carry priority/operating-rate hints, one clean no-hint retry, bounded Surface-release cadence and the existing AAudio/image-fence fixes. [The dated validation record](history/ACCEPTANCE-2026-11-16-PLAYER.md) records checks and limitations; device A/B throughput, compositor color/orientation and thermal/power benefits require physical headset execution.
+
+## Playback follow-up (0.18.1–0.18.5)
+
+- The optional seek snapshot, reference-counted frame pins and held-stick preview adapt upstream `a2f51d9`. Immivio continues a seek after a failed texture copy and keeps its configured seek precision. Continuous steps require a seekable local or SMB video on the direct Surface route. The controller waits for one request to finish before submitting another. Releasing the stick restores playback intent.
+- The playback timing monitor adapts upstream `fcca23f`. After a slow 10-second XR window it enables viewport timing and records playback route, processed dimensions and menu visibility through the existing diagnostics log. Healthy windows, playback stops and changes in window context turn timing off.
+- Per-file color grading and separate source and output dimensions follow upstream `00cb258`. Immivio uses the existing file mode record and history setting. The color popup supports saving global defaults and clearing the current file's override.
+- The no-audio H.264 High 10 regression from upstream `00cb258` is exercised in the Android fixture. The native Surface failure is handled by Immivio's existing error-driven shader reopen, with a separate Godot test for duplicate and stale errors.

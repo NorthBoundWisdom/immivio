@@ -5,6 +5,8 @@ const SubtitleDepth := preload("res://scripts/subtitle_depth.gd")
 const GRADE_PREVIOUS := 218
 const GRADE_NEXT := 219
 const GRADE_PAGE_RESET := 220
+const GRADE_SAVE_DEFAULT := 441
+const GRADE_CLEAR_FILE := 442
 const GRADE_PAGES := [
 	["temperature", "tint", "exposure"],
 	["contrast", "gamma", "saturation"],
@@ -290,7 +292,7 @@ func draw(key: String) -> void:
 					menu.MUTED
 				)
 		"color":
-			var y := _panel("Color grading", 0.67)
+			var y := _panel("Color grading", 0.75)
 			_row(
 				"HDR to SDR",
 				{
@@ -353,6 +355,14 @@ func draw(key: String) -> void:
 				_grade_page_needs_reset()
 			)
 			_button(440, "Reset custom", Vector2(0.26, 0.335), 0.46)
+			_button(GRADE_SAVE_DEFAULT, "Save as default", Vector2(-0.26, 0.415), 0.46)
+			_button(
+				GRADE_CLEAR_FILE,
+				"Clear this video's grade",
+				Vector2(0.26, 0.415),
+				0.46,
+				menu._state.get("has_file_color_grade", false)
+			)
 		"info":
 			var y := _panel("Info", 0.47)
 			menu._info = menu._label(info_text(), Vector3(-0.49, y + 0.025, 0.004), 16)
@@ -445,6 +455,12 @@ func action(target: int) -> bool:
 		)
 	elif key == "color" and target == 440:
 		adjustment = "grade_reset"
+		value = true
+	elif key == "color" and target == GRADE_SAVE_DEFAULT:
+		adjustment = "grade_default"
+		value = true
+	elif key == "color" and target == GRADE_CLEAR_FILE:
+		adjustment = "grade_clear_file"
 		value = true
 	elif key == "color" and target == GRADE_PAGE_RESET:
 		if not _grade_page_needs_reset():

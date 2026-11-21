@@ -39,8 +39,10 @@ public final class PerformanceFixtureActivity extends Activity {
     Surface surface = null;
     SurfaceTexture texture = null;
     try {
-      File movie = new File(getFilesDir(), "sample.mp4");
-      try (InputStream in = getAssets().open("sample.mp4");
+      boolean silent = getIntent().getBooleanExtra("silent_high10", false);
+      String nameOfMovie = silent ? "silent-high10.mp4" : "sample.mp4";
+      File movie = new File(getFilesDir(), nameOfMovie);
+      try (InputStream in = getAssets().open(nameOfMovie);
            FileOutputStream out = new FileOutputStream(movie)) {
         in.transferTo(out);
       }
@@ -85,6 +87,16 @@ public final class PerformanceFixtureActivity extends Activity {
                                       new String[0], new String[0], true, surface);
       check(handle > 0, "Source creation");
       check(MpvSourceNative.setAudio(handle, -1, 0, true), "Mute before playback");
+      if (silent) {
+        report.put("direct_surface", surfaceStartup(handle, texture, frames));
+        check(closeSource(handle), "Silent video Surface source closed before reopening");
+        handle = 0;
+        handle = MpvSourceNative.create(this, movie.getAbsolutePath(), 0, true, true, 0,
+                                        new String[0], new String[0], true, null);
+        check(handle > 0, "Silent video opens without a decoder Surface");
+        report.put("shader_frame", waitForFrame(handle)).put("passed", true);
+        return;
+      }
       SurfaceFrameProof proof = new SurfaceFrameProof();
       boolean early = getIntent().getBooleanExtra("early_play", false);
       boolean skipProof = getIntent().getBooleanExtra("skip_proof", false);
@@ -146,18 +158,7 @@ public final class PerformanceFixtureActivity extends Activity {
       }
     } finally {
       if (handle > 0) {
-        MpvSourceNative.requestClose(handle);
-        long deadline = android.os.SystemClock.elapsedRealtime() + 5000;
-        boolean closed = false;
-        do {
-          closed = MpvSourceNative.close(handle, false);
-          if (closed)
-            break;
-          try {
-            Thread.sleep(10);
-          } catch (Exception ignored) {
-          }
-        } while (android.os.SystemClock.elapsedRealtime() < deadline);
+        boolean closed = closeSource(handle);
         try {
           report.put("closed", closed);
           if (!closed)
@@ -189,5 +190,58 @@ public final class PerformanceFixtureActivity extends Activity {
       String result = report.toString();
       runOnUiThread(() -> text.setText(result));
     }
+  }
+
+  private JSONObject surfaceStartup(long handle, SurfaceTexture texture, AtomicInteger frames)
+      throws Exception {
+    long deadline = android.os.SystemClock.elapsedRealtime() + 8000;
+    do {
+      JSONObject status = new JSONObject(MpvSourceNative.status(handle));
+      if (status.optString("state").equals("failed"))
+        return new JSONObject().put("state", "failed").put("error", status.optString("error"));
+      if (frames.get() > 0) {
+        texture.updateTexImage();
+        if (status.optBoolean("surface_ready"))
+          return new JSONObject().put("state", "ready");
+      }
+      Thread.sleep(10);
+    } while (android.os.SystemClock.elapsedRealtime() < deadline);
+    throw new IllegalStateException("Silent High 10 Surface neither presented a frame nor failed");
+  }
+
+  private JSONObject waitForFrame(long handle) throws Exception {
+    long deadline = android.os.SystemClock.elapsedRealtime() + 8000;
+    do {
+      JSONObject status = new JSONObject(MpvSourceNative.status(handle));
+      check(!status.optString("state").equals("failed"), status.toString());
+      String acquired = MpvSourceNative.acquire(handle);
+      if (!acquired.isEmpty()) {
+        JSONObject frame = new JSONObject(acquired);
+        check(MpvSourceNative.release(handle, frame.getLong("producer_token")), "Release frame");
+        check(frame.getInt("width") == 320 && frame.getInt("height") == 180, "Silent video size");
+        return new JSONObject()
+            .put("width", frame.getInt("width"))
+            .put("height", frame.getInt("height"))
+            .put("decoder", status.getJSONObject("details").optString("hwdec_current"));
+      }
+      Thread.sleep(10);
+    } while (android.os.SystemClock.elapsedRealtime() < deadline);
+    throw new IllegalStateException("Silent High 10 shader path did not produce a frame");
+  }
+
+  private boolean closeSource(long handle) {
+    MpvSourceNative.requestClose(handle);
+    long deadline = android.os.SystemClock.elapsedRealtime() + 5000;
+    do {
+      if (MpvSourceNative.close(handle, false))
+        return true;
+      try {
+        Thread.sleep(10);
+      } catch (InterruptedException interrupted) {
+        Thread.currentThread().interrupt();
+        return false;
+      }
+    } while (android.os.SystemClock.elapsedRealtime() < deadline);
+    return false;
   }
 }

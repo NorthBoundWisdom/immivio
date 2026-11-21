@@ -108,20 +108,25 @@ class PairDisplayGateTest {
     }
 
     @Test
-    fun pinnedObserverSurvivesDetachAndClosingUntilExplicitRelease() {
+    fun bothPinnedObserversSurviveDetachAndClosingUntilTheirOwnRelease() {
         val gate = PairDisplayGate(scope)
         gate.offer(pair(1))
         gate.claim(1)
         assertFalse(gate.pin(1))
         assertTrue(gate.acknowledge(1))
         assertTrue(gate.pin(1))
-        assertFalse(gate.pin(1))
+        assertTrue(gate.pin(1))
         assertTrue(gate.detach(1))
         assertTrue(gate.owns(1))
+        assertEquals(1L, gate.offer(pair(1, 2)))
+        assertNull(gate.readyToken())
         assertEquals(1, gate.heldClaims())
         gate.close()
         assertFalse(gate.pin(1))
         assertTrue(gate.owns(1))
+        assertTrue(gate.unpin(1))
+        assertTrue(gate.owns(1))
+        assertEquals(1, gate.heldClaims())
         assertTrue(gate.unpin(1))
         assertFalse(gate.owns(1))
         assertEquals(0, gate.heldClaims())

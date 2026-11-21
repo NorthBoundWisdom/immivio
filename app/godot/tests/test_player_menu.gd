@@ -358,6 +358,14 @@ func _run() -> void:
 		),
 		"Menu uses actual format and codec; excludes bitmap subtitles"
 	)
+	video.media.playback.details["video_stream"] = {"width": "7680", "height": "3840"}
+	check(
+		(
+			main._menu_state().source_size == "7680 x 3840"
+			and main._menu_state().output_size == "3840 x 1920"
+		),
+		"Information distinguishes encoded source size from the presented video size"
+	)
 	check(
 		(
 			click(menu, 102, "left_hand")
@@ -942,9 +950,10 @@ func _run() -> void:
 			click(menu, 12)
 			and menu.popup_snapshot().quick_open == "info"
 			and menu.section == 0
-			and menu.text_snapshot().contains("3840 x 1920 | hevc")
+			and menu.text_snapshot().contains("7680 x 3840 | hevc")
+			and menu.text_snapshot().contains("3840 x 1920")
 		),
-		"Info tab shows source properties from actual player"
+		"Info tab shows both source and output properties from the actual player"
 	)
 	check(not click(menu, Menu.INFO_REFRESH), "Unavailable Android plugin disables device refresh")
 	video.picker_error = "PERMISSION_LOST"

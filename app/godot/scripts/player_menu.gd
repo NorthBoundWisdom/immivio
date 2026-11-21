@@ -962,6 +962,7 @@ func _bar_key() -> String:
 				else ""
 			),
 			_state.get("queue_revision", 0) if _quick_open == "queue" else -1,
+			_quick_open == "color" and _state.get("has_file_color_grade", false),
 			_state.get("queue_loop", false) if _quick_open == "queue" else false,
 			_state.get("queue_shuffle", false),
 			_state.get("clone_voice", false),
@@ -1397,6 +1398,9 @@ func _info_text() -> String:
 			]
 		)
 	)
+	var output := str(_state.get("output_size", ""))
+	if not output.is_empty():
+		lines.append(I18n.t("Output: %s") % output)
 	lines.append(
 		(
 			I18n.t("Time: %.1f / %.1f seconds")

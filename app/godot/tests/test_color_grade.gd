@@ -8,6 +8,26 @@ var distance := 5.0
 var commits := 0
 
 
+class GradeBackend:
+	extends RefCounted
+	var id := 0
+
+	func mpv_supported() -> bool:
+		return true
+
+	func open_mpv_video(
+		_uri: String, _position: int, _stereo: bool, _hw: bool, _tb: bool, _exact: bool
+	) -> int:
+		id += 1
+		return id
+
+	func set_mpv_playing(_id: int, _playing: bool) -> void:
+		pass
+
+	func close_mpv_video(_id: int) -> void:
+		pass
+
+
 func check(ok: bool, message: String) -> void:
 	if not ok:
 		failures.append(message)
@@ -40,6 +60,43 @@ func subtitle_slider_point(menu: Node3D, fraction: float) -> Vector3:
 				Vector3(centre.x + slider.left + slider.width * fraction, centre.y, 1)
 			)
 	return Vector3.ZERO
+
+
+func _check_file_grading() -> void:
+	var video := Video.new(false)
+	root.add_child(video)
+	video.set_process(false)
+	video.platform = GradeBackend.new()
+	video.default_color_grade = {"preset": "Cool"}
+	var uri := "file:///grade-first.mp4"
+	var second := "file:///grade-second.mp4"
+	video.open_local(uri, "First")
+	check(video.color_grade.preset == "Cool", "New videos use the previous global default")
+	video.color_grade.select("Warm")
+	video.preview_color_grade()
+	video.commit_color_grade()
+	check(video.has_file_color_grade(), "The edited grade is saved for this video")
+	video.open_local(second, "Second")
+	check(video.color_grade.preset == "Cool", "A different video keeps the global default")
+	video.mode_memory.load_saved()
+	video.open_local(uri, "First")
+	check(video.color_grade.preset == "Warm", "Reopen restores persisted per-file grade")
+	video.history_enabled = false
+	video.open_local(uri, "First")
+	check(video.color_grade.preset == "Cool", "Private playback applies the global grade")
+	video.color_grade.select("Original")
+	video.preview_color_grade()
+	video.commit_color_grade()
+	video._remember_mode()
+	video.history_enabled = true
+	video.open_local(uri, "First")
+	check(video.color_grade.preset == "Warm", "Private edits leave the saved grade intact")
+	video.commit_color_grade(true)
+	check(
+		video.color_grade.preset == "Cool" and not video.has_file_color_grade(),
+		"Clearing the per-file grade immediately restores the global default"
+	)
+	video.free()
 
 
 func _run() -> void:
@@ -102,6 +159,7 @@ func _run() -> void:
 	video.subtitle_distance = 100
 	check(video.subtitle_distance == 10, "Subtitle maximum")
 	video.free()
+	_check_file_grading()
 	var menu := Menu.new()
 	menu.state_provider = func():
 		return {

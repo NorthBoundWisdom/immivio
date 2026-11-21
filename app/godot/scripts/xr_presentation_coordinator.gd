@@ -3,6 +3,7 @@ extends RefCounted
 
 var _host_ref: WeakRef
 const Log := preload("res://scripts/diagnostic_log.gd")
+const I18n := preload("res://scripts/i18n.gd")
 const Geometry := preload("res://scripts/video_geometry.gd")
 const LibraryMenu := preload("res://scripts/library_menu.gd")
 const PlayerMenu := preload("res://scripts/player_menu.gd")
@@ -715,6 +716,14 @@ func _menu_state() -> Dictionary:
 	if not host.video:
 		return {}
 	var details: Dictionary = host.video.media.playback.get("details", {})
+	var stream: Dictionary = details.get("video_stream", {})
+	var source_size := Vector2i(int(stream.get("width", 0)), int(stream.get("height", 0)))
+	var output: Vector2i = host.video.output_size()
+	if source_size.x <= 0 or source_size.y <= 0:
+		source_size = Vector2i(
+			int(host.video.media.format.get("width", 0)),
+			int(host.video.media.format.get("height", 0))
+		)
 	var audio_options: Array = [{"value": -1, "label": "Auto"}]
 	for track in details.get("audio_tracks", []):
 		if track is Dictionary and int(track.get("id", 0)) > 0:
@@ -788,6 +797,7 @@ func _menu_state() -> Dictionary:
 		"subtitle_flat_position": host.video.subtitle_flat_position * 100,
 		"subtitle_distance": host.video.subtitle_distance,
 		"color_grade": host.video.color_grade.snapshot(),
+		"has_file_color_grade": host.video.has_file_color_grade(),
 		"subtitle_position": host.video.subtitle_position,
 		"subtitle_direction": host.video.subtitle_direction,
 		"grade_values": host.video.color_grade.values(),
@@ -805,13 +815,8 @@ func _menu_state() -> Dictionary:
 		"source_uri": host.video.local_uri,
 		"title": host.video.display_name,
 		"source_size":
-		(
-			"%s x %s"
-			% [
-				host.video.media.format.get("width", "?"),
-				host.video.media.format.get("height", "?")
-			]
-		),
+		"%d x %d" % [source_size.x, source_size.y] if source_size.x > 0 else I18n.t("Unknown"),
+		"output_size": "%d x %d" % [output.x, output.y] if output.x > 0 and output.y > 0 else "",
 		"codec": details.get("codec", "Unknown codec"),
 		"position_ms": host.video.control.display_position_ms(),
 		"duration_ms": host.video.control.duration_ms,
@@ -842,7 +847,7 @@ func _on_background_changed() -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
-	_update_background()
+	_update_background(true)
 	if (
 		host.library_menu
 		and host.library_menu.visible
@@ -852,7 +857,7 @@ func _on_background_changed() -> void:
 		host.library_menu.refresh()
 
 
-func _update_background() -> void:
+func _update_background(force_scenery: bool = false) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
@@ -870,7 +875,9 @@ func _update_background() -> void:
 		alpha or host.temporary_passthrough or host.background.choice == "passthrough"
 	)
 	host.display.set_scenery(
-		null if immersive or wants_passthrough else host.background.ready_sky(), host.background.yaw
+		null if immersive or wants_passthrough else host.background.ready_sky(),
+		host.background.yaw,
+		force_scenery
 	)
 	var passthrough: bool = wants_passthrough and host.display.supports_passthrough()
 	if (

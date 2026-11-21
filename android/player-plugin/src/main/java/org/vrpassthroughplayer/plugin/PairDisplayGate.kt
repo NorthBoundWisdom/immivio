@@ -15,7 +15,7 @@ internal class PairDisplayGate(
     private val ready = ArrayDeque<FramePairGate.Identity>()
     private val claims = LinkedHashMap<Long, FramePairGate.Identity>()
     private val acknowledged = HashSet<Long>()
-    private val pins = HashSet<Long>()
+    private val pins = HashMap<Long, Int>()
     private var frame = -1L
     private var pts = -1L
     var claimCount = 0L
@@ -52,7 +52,8 @@ internal class PairDisplayGate(
     fun offer(id: FramePairGate.Identity): Long? {
         if (
             !accepts(id) ||
-                claims.containsKey(id.slotToken) ||
+                id.slotToken in claims ||
+                id.slotToken in pins ||
                 ready.any { it.slotToken == id.slotToken }
         ) {
             rejectedCount++
@@ -95,10 +96,18 @@ internal class PairDisplayGate(
         return true
     }
 
-    /** A readback observer keeps the same immutable pair across display detach. */
-    fun pin(token: Long): Boolean = alive && token in acknowledged && pins.add(token)
+    /** Each readback observer independently keeps the immutable pair across display detach. */
+    fun pin(token: Long): Boolean {
+        if (!alive || token !in acknowledged) return false
+        pins[token] = (pins[token] ?: 0) + 1
+        return true
+    }
 
-    fun unpin(token: Long): Boolean = pins.remove(token)
+    fun unpin(token: Long): Boolean {
+        val count = pins[token] ?: return false
+        if (count == 1) pins.remove(token) else pins[token] = count - 1
+        return true
+    }
 
     fun owns(token: Long) =
         ready.any { it.slotToken == token } || claims.containsKey(token) || token in pins
@@ -108,7 +117,7 @@ internal class PairDisplayGate(
     /** The pair to offer Godot next (oldest ready). */
     fun readyToken() = ready.firstOrNull()?.slotToken
 
-    fun heldClaims() = (claims.keys + pins).toSet().size
+    fun heldClaims() = (claims.keys + pins.keys).size
 
     /** Returns the newest ready token; every ready pair stops being owned. */
     fun close(): Long? {

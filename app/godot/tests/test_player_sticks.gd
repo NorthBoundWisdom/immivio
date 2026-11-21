@@ -90,6 +90,41 @@ func _initialize() -> void:
 		video.calls.slice(-2) == [["seek", -10000], ["seek", 10000]],
 		"Returning to centre restores independent seeking"
 	)
+	controls = Controls.new()
+	var held := Vector2(.99, 0)
+	check(
+		(
+			controls.poll(held, Vector2.ZERO, false, 0.1, true).size() == 1
+			and controls.seek_hand == "left"
+		),
+		"A compositor seek starts on the first push and owns the gesture"
+	)
+	for frame in 10:
+		check(
+			controls.poll(held, -held, false, 0.1, true, true).is_empty(),
+			"Held seeks wait while a frame is outstanding, including input from the other hand"
+		)
+	check(
+		(
+			controls.poll(held, -held, false, 0.1, true)
+			== [{"operation": "seek_repeat", "direction": 1}]
+		),
+		"A held seek submits one new step once the decoder is free"
+	)
+	check(
+		(
+			controls.poll(Vector2.ZERO, -held, false, 0.1, true).is_empty()
+			and controls.seek_hand.is_empty()
+		),
+		"Releasing the owner does not begin a second seek with a held stick"
+	)
+	controls.poll(Vector2.ZERO, Vector2.ZERO)
+	controls.poll(held, Vector2.ZERO, false, 0.1, true)
+	controls.suspend()
+	check(
+		controls.poll(held, Vector2.ZERO, false, 0.1, true).is_empty(),
+		"Menu capture cancels held seek and requires recentering"
+	)
 	main.free()
 	video.free()
 	for failure in failures:

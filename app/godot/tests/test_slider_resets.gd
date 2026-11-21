@@ -128,11 +128,12 @@ func _run() -> void:
 			video.color_grade.values() == expected and commits == saves + 1,
 			"Reset page affects only the three visible fields and commits once: %d" % page
 		)
-		var stored := ConfigFile.new()
-		stored.load(main.settings_path)
 		check(
-			stored.get_value("video", "color_grade").custom == expected,
-			"Page reset persists the displayed result"
+			(
+				video.mode_memory.lookup(video.local_uri).get("color_grade", {}).get("custom")
+				== expected
+			),
+			"Page reset persists the displayed result for this video"
 		)
 		check(
 			not button(menu, menu.PlaybackPopups.GRADE_PAGE_RESET).enabled,
@@ -173,6 +174,18 @@ func _run() -> void:
 	menu.cancel_pointer("right")
 	menu.release_pointer("right", origin, -menu.global_basis.z, true)
 	check(video.color_grade.values().exposure == 1.0, "Cancelled reset leaves the value intact")
+	tap(menu, menu.PlaybackPopups.GRADE_SAVE_DEFAULT)
+	var stored := ConfigFile.new()
+	stored.load(main.settings_path)
+	check(
+		stored.get_value("video", "color_grade", {}).get("custom", {}).get("exposure") == 1.0,
+		"Save as default writes the visible grade as a global preference"
+	)
+	tap(menu, menu.PlaybackPopups.GRADE_CLEAR_FILE)
+	check(
+		not video.has_file_color_grade() and video.color_grade.values().exposure == 1.0,
+		"Clear this video's grade uses the saved default and removes the override"
+	)
 
 	video.set_stereo_alignment("stereo_horizontal", 1.25)
 	video.set_stereo_alignment("stereo_vertical", -0.5)

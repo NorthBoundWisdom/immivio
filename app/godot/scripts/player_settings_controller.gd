@@ -344,6 +344,14 @@ func _on_playback_adjustment(key: String, value: Variant) -> void:
 		host.video.subtitle_distance = float(value)
 	elif key == "subtitle_position":
 		host.video.subtitle_position = float(value)
+	elif key == "grade_default":
+		host.video.default_color_grade = host.video.color_grade.snapshot()
+		host.settings.set_value("video", "color_grade", host.video.default_color_grade)
+		host.settings.save(host.settings_path)
+		return
+	elif key == "grade_clear_file":
+		host.video.commit_color_grade(true)
+		return
 	elif key == "grade_preset":
 		host.video.color_grade.select(str(value))
 	elif key == "grade_reset":
@@ -352,8 +360,11 @@ func _on_playback_adjustment(key: String, value: Variant) -> void:
 		if not value is Array or not host.video.color_grade.reset_fields(value):
 			return
 	else:
+		if not host.video.ColorGrade.DEFAULTS.has(key):
+			return
 		host.video.color_grade.adjust(key, value)
-	host.video.color_grade.apply(host.video.material)
+	if key.begins_with("grade_") or host.video.ColorGrade.DEFAULTS.has(key):
+		host.video.preview_color_grade()
 
 
 func _save_playback_adjustments() -> void:
@@ -363,6 +374,7 @@ func _save_playback_adjustments() -> void:
 	host.video.commit_sync()
 	host.video.commit_stereo_view()
 	host.video.commit_stereo_focus()
+	host.video.commit_color_grade()
 	host.screen_layout.save()
 	host.settings.set_value("subtitles", "transparency", host.video.subtitle_transparency)
 	host.settings.set_value("subtitles", "palette", host.video.subtitle_palette)
@@ -371,5 +383,4 @@ func _save_playback_adjustments() -> void:
 	host.settings.set_value("subtitles", "distance", host.video.subtitle_distance)
 	host.settings.set_value("subtitles", "elevation_degrees", host.video.subtitle_position)
 	host.settings.set_value("subtitles", "direction", host.video.subtitle_direction)
-	host.settings.set_value("video", "color_grade", host.video.color_grade.snapshot())
 	host.settings.save(host.settings_path)

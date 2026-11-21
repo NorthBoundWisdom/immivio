@@ -101,11 +101,14 @@ func _sync_video_backdrop() -> void:
 		)
 
 
-func set_scenery(value: Sky, yaw_degrees: float = 0.0) -> void:
-	scenery = value
+func set_scenery(value: Sky, yaw_degrees: float = 0.0, force: bool = true) -> void:
 	# PanoramaSkyMaterial puts the texture seam along the viewer's default -Z axis.
 	# Treat 0 degrees as the image centre facing forward; keep user rotation relative to it.
-	scenery_rotation = Vector3(0, deg_to_rad(yaw_degrees) + PI, 0)
+	var rotation := Vector3(0, deg_to_rad(yaw_degrees) + PI, 0)
+	if not force and value == scenery and rotation == scenery_rotation:
+		return
+	scenery = value
+	scenery_rotation = rotation
 	if environment:
 		_set_background(applied_passthrough)
 

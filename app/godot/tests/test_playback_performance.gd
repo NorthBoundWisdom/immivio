@@ -3,6 +3,7 @@ const Policy := preload("res://scripts/playback_performance.gd")
 const Layout := preload("res://scripts/video_layer_layout.gd")
 const Layers := preload("res://scripts/video_layers.gd")
 const Media := preload("res://scripts/mpv_media_state.gd")
+const FrameDiagnostics := preload("res://scripts/playback_frame_diagnostics.gd")
 var failures: Array[String] = []
 
 
@@ -156,6 +157,30 @@ func _initialize() -> void:
 
 
 func run() -> void:
+	var sampling := FrameDiagnostics.new()
+	var dimensions := Vector2i(4096, 2048)
+	var slow := {}
+	for n in range(501):
+		slow = sampling.tick(root, 90, "surface", dimensions, true, 1, n * 20_000)
+	check(
+		(
+			slow.get("fps") == 50.0
+			and slow.get("menu_visible") == true
+			and not slow.has("render_gpu_ms")
+		),
+		"The first slow window reports route and menu context and arms detailed timing"
+	)
+	for n in range(501, 1001):
+		slow = sampling.tick(root, 90, "surface", dimensions, true, 1, n * 20_000)
+	check(slow.has("render_gpu_ms"), "The next slow window includes rendering timing")
+	check(
+		(
+			sampling.tick(root, 90, "surface", dimensions, false, 1, 20_020_000).is_empty()
+			and not sampling._measured.is_valid()
+		),
+		"Changing the visible menu starts a fresh window and disables detailed timing"
+	)
+	sampling.stop()
 	var rates := Rates.new()
 	rates.preferred_refresh_rate = 120
 	rates.update_playback_policy(true, true, true, false, 24, false, 0)
@@ -315,7 +340,10 @@ func run() -> void:
 	video.stereo_horizontal = 2.0
 	video.viewing_eye = 1
 	video.control.observe(12345, 20000)
-	video.request_shader_fallback()
+	var layer_id: int = video.media.session_id
+	var error := '{"code":"MPV_FRAME_PIPELINE_FAILED","message":"MPV playback: nothing to play"}'
+	video._on_error(layer_id, error)
+	video._on_error(layer_id, error)
 	await process_frame
 	check(
 		(
@@ -323,8 +351,11 @@ func run() -> void:
 			and switch_host.calls.back().position == 12345
 			and switch_host.calls.back().exact
 		),
-		"Internal switches retain exact playback position"
+		"Repeated terminal Surface errors reopen once at the exact playback position"
 	)
+	video._on_error(layer_id, error)
+	await process_frame
+	check(switch_host.calls.size() == 2, "A retired Surface cannot reopen the shader session")
 	check(
 		(
 			video.packed_alpha
@@ -348,7 +379,7 @@ func run() -> void:
 	)
 	video.queue_free()
 	await process_frame
-	for error in failures:
-		push_error(error)
+	for failure in failures:
+		push_error(failure)
 	print("Playback performance failures: ", failures)
 	preload("res://tests/support/test_result.gd").finish(self, 0 if failures.is_empty() else 1)

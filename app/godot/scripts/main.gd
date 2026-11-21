@@ -48,6 +48,7 @@ var low_end_gpu := false
 var status_label: Label3D
 var report_timer: Timer
 var video_layers := preload("res://scripts/video_layers.gd").new()
+var playback_frame_diagnostics := preload("res://scripts/playback_frame_diagnostics.gd").new()
 var platform_plugin: Object
 var _xr_wearer_present := true
 var _native_wearer_present := true
@@ -292,6 +293,7 @@ func _ready() -> void:
 	)
 	video.subtitle_direction = int(settings.get_value("subtitles", "direction", 0))
 	video.color_grade.restore(settings.get_value("video", "color_grade", {}))
+	video.default_color_grade = video.color_grade.snapshot()
 	# The flat screen keeps the distance, size and curve the viewer last chose.
 	video.screen_distance = clampf(
 		float(settings.get_value("screen", "distance", video.SCREEN_DISTANCE)),
@@ -590,6 +592,33 @@ func _process(delta: float) -> void:
 	_update_corner_hover()
 	_update_flat_grab_stick(left, right, delta)
 	_process_sticks(left, right, delta)
+	_sample_playback_frame_time()
+
+
+func _sample_playback_frame_time() -> void:
+	if (
+		not is_instance_valid(video)
+		or not video.panel.visible
+		or video.media.state != "playing"
+		or not (display.xr is OpenXRInterface and display.xr.is_initialized())
+		or not wearer_present
+	):
+		playback_frame_diagnostics.stop()
+		return
+	var refresh: float = display.xr.display_refresh_rate
+	if not is_finite(refresh) or refresh <= 1.0:
+		playback_frame_diagnostics.stop()
+		return
+	var event := playback_frame_diagnostics.tick(
+		get_viewport(),
+		refresh,
+		video_layers.route,
+		video.output_size(),
+		(player_menu and player_menu.visible) or (library_menu and library_menu.visible),
+		video.media.session_id
+	)
+	if not event.is_empty():
+		Log.record("playback_slow_frames", event)
 
 
 func _picture_center_sample() -> Dictionary:
@@ -1234,6 +1263,7 @@ func _finish_app(restart: bool) -> void:
 	if _finishing_app:
 		return
 	_finishing_app = true
+	playback_frame_diagnostics.stop()
 	_save_playback_adjustments()
 	video.close_video()
 	settings.save(settings_path)
