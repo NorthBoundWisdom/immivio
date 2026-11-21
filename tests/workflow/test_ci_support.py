@@ -13,6 +13,19 @@ from configs import ci_support as ci
 
 
 class CiBoundaries(unittest.TestCase):
+    def test_android_workflow_routes_main_tags_and_prs_without_cancelling_tags(self):
+        workflow = (
+            Path(__file__).resolve().parents[2]
+            / ".github/workflows/android-release.yml"
+        ).read_text()
+        self.assertIn('  push:\n    branches: [main]\n    tags: ["**"]\n', workflow)
+        self.assertIn("  pull_request:\n    branches: [main]\n", workflow)
+        self.assertIn("group: ${{ github.workflow }}-${{ github.ref }}", workflow)
+        self.assertIn(
+            "cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}", workflow
+        )
+        self.assertIn("    environment: release\n", workflow)
+
     def test_channels_default_to_appstore_and_tags_force_web(self):
         for ref in ("", "refs/heads/main", "refs/pull/1/merge"):
             self.assertEqual(

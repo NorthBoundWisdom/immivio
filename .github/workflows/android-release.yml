@@ -2,7 +2,7 @@ name: Immivio Android
 
 on:
   push:
-    branches: ["**"]
+    branches: [main]
     tags: ["**"]
   pull_request:
     branches: [main]
