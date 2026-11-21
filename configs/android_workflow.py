@@ -470,18 +470,27 @@ def main(argv=None):
             test(args, env, sdk, opts.level)
         elif opts.command == "package":
             build_sha256 = require_build(args)
-            if (
-                os.environ.get("GITHUB_ACTIONS") == "true"
-                and args.build_type == "Release"
-            ):
+            hosted = env.get("GITHUB_ACTIONS") == "true"
+            tagged = env.get("GITHUB_REF", "").startswith("refs/tags/")
+            signing_mode = "ephemeral-ci-key" if hosted else None
+            if tagged or (hosted and args.build_type == "Release"):
                 from configs.ci_support import signing_env
 
-                env, _ = signing_env(env)
-            player.package(args, env, sdk, build_sha256=build_sha256)
-            if os.environ.get("GITHUB_ACTIONS") == "true":
+                env, signing_mode = signing_env(
+                    env, require_formal=args.channel == "appstore"
+                )
+            player.package(
+                args, env, sdk, build_sha256=build_sha256, signing_mode=signing_mode
+            )
+            if hosted:
                 from configs.ci_support import ci_package_metadata
 
-                ci_package_metadata(args.vendor, args.build_type, args.channel)
+                ci_package_metadata(
+                    args.vendor,
+                    args.build_type,
+                    args.channel,
+                    signing_mode=signing_mode,
+                )
         else:
             apk = require_packaged_build(args, require_build(args))
             adb = sdk / "platform-tools" / ("adb.exe" if os.name == "nt" else "adb")

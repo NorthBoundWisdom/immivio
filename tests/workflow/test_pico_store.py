@@ -20,7 +20,9 @@ from configs.android_manifest import ANDROID as A
 class PicoStore(unittest.TestCase):
     certificate = "a" * 64
 
-    def package_signer(self, prefix, *, mismatch=False):
+    def package_signer(
+        self, prefix, *, vendor="Pico", channel="appstore", mismatch=False
+    ):
         root = Path(self.directory.name) / "package-test"
         project = root / "project"
         logs = root / "logs"
@@ -28,8 +30,8 @@ class PicoStore(unittest.TestCase):
         logs.mkdir(exist_ok=True)
         (project / "project.godot").write_text('config/version="0.9.6"\n')
         (project / "export_presets.cfg").write_text("version/code=20\n" * 3)
-        key_bytes = b"synthetic configured certificate"
-        expected = hashlib.sha256(key_bytes).hexdigest()
+        expected = self.certificate
+        self.write_apk(features=f"pico,immivio_{channel}".encode())
         actual = "b" * 64 if mismatch else expected
         outputs = []
 
@@ -47,8 +49,6 @@ class PicoStore(unittest.TestCase):
             return builder.digest(output)
 
         def command_output(command, **kwargs):
-            if "-exportcert" in command:
-                return key_bytes
             return "f" * 40 if command[1] == "rev-parse" else ""
 
         env = {
@@ -58,9 +58,9 @@ class PicoStore(unittest.TestCase):
             "GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD": "fixture",
         }
         args = SimpleNamespace(
-            vendor="Pico",
+            vendor=vendor,
             build_type="Release",
-            channel="appstore",
+            channel=channel,
             godot="godot",
             ndk="fixture",
             cmake="fixture",
@@ -112,6 +112,14 @@ class PicoStore(unittest.TestCase):
         for prefix in ("Signer #1", "V2 Signer:"):
             with self.subTest(prefix=prefix):
                 self.package_signer(prefix, mismatch=True)
+
+    def test_every_vendor_and_channel_rejects_a_different_release_certificate(self):
+        for channel in ("web", "appstore"):
+            for vendor in ("Pico", "Quest", "OpenXR"):
+                with self.subTest(channel=channel, vendor=vendor):
+                    self.package_signer(
+                        "Signer #1", channel=channel, vendor=vendor, mismatch=True
+                    )
 
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()

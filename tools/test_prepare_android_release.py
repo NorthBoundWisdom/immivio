@@ -50,8 +50,8 @@ class ReleaseAssets(unittest.TestCase):
                 "source_commit": COMMIT,
                 "ci_ref": "refs/tags/" + TAG,
                 "ci_host": "macOS",
-                "signing_certificate_sha256": "b" * 64,
-                "ci_signing": "ephemeral-ci-key",
+                "signing_certificate_sha256": release.CERTIFICATE_SHA256,
+                "ci_signing": "repository-signing-key",
             }
             (directory / Path(name).with_suffix(".build.json")).write_text(
                 json.dumps(record)
@@ -91,7 +91,6 @@ class ReleaseAssets(unittest.TestCase):
             for line in (output / "SHA256SUMS.txt").read_text().splitlines():
                 digest, name = line.split("  ")
                 self.assertEqual(release.sha256(output / name), digest)
-            self.assertIn("different key", (output / "release-notes.md").read_text())
             self.assertIn(
                 "The macOS CI build passed", (output / "release-notes.md").read_text()
             )
@@ -122,7 +121,7 @@ class ReleaseAssets(unittest.TestCase):
                     release.prepare(packages, root / "release", TAG, COMMIT)
                 self.assertFalse((root / "release").exists())
 
-    def test_receipts_without_optional_certificate_metadata_remain_publishable(self):
+    def test_missing_certificate_rejects_original_receipts(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             packages = self.fixture(root)
@@ -130,9 +129,27 @@ class ReleaseAssets(unittest.TestCase):
                 record = json.loads(receipt.read_text())
                 del record["signing_certificate_sha256"]
                 receipt.write_text(json.dumps(record))
-            manifest = release.prepare(packages, root / "release", TAG, COMMIT)
-            self.assertEqual(len(manifest["packages"]), 3)
-            self.assertNotIn("signing_certificate_sha256", manifest["packages"][0])
+            with self.assertRaisesRegex(ValueError, "differs from the pinned"):
+                release.prepare(packages, root / "release", TAG, COMMIT)
+            self.assertFalse((root / "release").exists())
+
+    def test_temporary_signer_and_wrong_fingerprint_each_block_publication(self):
+        for key, value in [
+            ("ci_signing", "ephemeral-ci-key"),
+            ("signing_certificate_sha256", "b" * 64),
+        ]:
+            with self.subTest(key=key), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                packages = self.fixture(root)
+                receipt = sorted(packages.glob("*.build.json"))[-1]
+                record = json.loads(receipt.read_text())
+                record[key] = value
+                receipt.write_text(json.dumps(record))
+                with self.assertRaisesRegex(
+                    ValueError, "formal CI release signing|differs from the pinned"
+                ):
+                    release.prepare(packages, root / "release", TAG, COMMIT)
+                self.assertFalse((root / "release").exists())
 
     def test_incomplete_dependency_provenance_is_rejected(self):
         for key, value in [

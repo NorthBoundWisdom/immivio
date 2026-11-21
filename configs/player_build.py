@@ -8,7 +8,6 @@ The OpenXR addon comes from the project's verified archive cache.
 from contextlib import contextmanager, nullcontext
 from datetime import datetime
 import json
-import hashlib
 import os
 from pathlib import Path
 import re
@@ -469,7 +468,7 @@ def signing_environment(env, *, build_type="Release", require_existing=False):
     if not credentials.exists():
         if require_existing:
             raise RuntimeError(
-                "Store Release builds require an existing project release key or complete GODOT_ANDROID_KEYSTORE_RELEASE_* overrides; no temporary key will be generated"
+                "Formal Release builds require an existing project release key or complete GODOT_ANDROID_KEYSTORE_RELEASE_* overrides"
             )
         if keystore.exists():
             raise RuntimeError(
@@ -928,41 +927,24 @@ def build_plugin(args, env, sdk):
     )
 
 
-def package(args, env, sdk, *, build_sha256):
+def package(args, env, sdk, *, build_sha256, signing_mode=None):
     channel = distribution_channel(args)
     identity = android_identity(args.build_type)
     development_suffix = "-dev" if identity["application_id"].endswith(".dev") else ""
     variant = args.build_type.lower()
     templates, engine = template_directory(args, env)
     store_release = channel == "appstore" and args.build_type == "Release"
-    env = signing_environment(
-        env, build_type=args.build_type, require_existing=store_release
+    tagged = env.get("GITHUB_REF", "").startswith("refs/tags/")
+    if tagged and (
+        args.build_type != "Release" or signing_mode != "repository-signing-key"
+    ):
+        raise RuntimeError("Tagged APKs require the formal CI release signing key")
+    formal_release = args.build_type == "Release" and (
+        tagged or store_release or signing_mode != "ephemeral-ci-key"
     )
-    store_certificate = None
-    if store_release and args.vendor == "Pico":
-        prefix = "GODOT_ANDROID_KEYSTORE_RELEASE_"
-        certificate_bytes = subprocess.check_output(
-            [
-                Path(env["JAVA_HOME"])
-                / "bin"
-                / ("keytool.exe" if os.name == "nt" else "keytool"),
-                "-exportcert",
-                "-keystore",
-                env[prefix + "PATH"],
-                "-alias",
-                env[prefix + "USER"],
-                "-storepass:env",
-                prefix + "PASSWORD",
-            ],
-            env=env,
-        )
-        store_certificate = hashlib.sha256(certificate_bytes).hexdigest()
-        from configs.pico_store import CERTIFICATE_SHA256
-
-        if store_certificate != CERTIFICATE_SHA256:
-            raise RuntimeError(
-                "PICO store signing key differs from the fixed project store certificate; restore the existing key instead of generating a replacement"
-            )
+    env = signing_environment(
+        env, build_type=args.build_type, require_existing=formal_release
+    )
     version = re.search(
         r'(?m)^config/version="([^"]+)"', (PROJECT / "project.godot").read_text()
     )[1]
@@ -1036,12 +1018,20 @@ def package(args, env, sdk, *, build_sha256):
             ["git", "status", "--porcelain"], cwd=ROOT, text=True
         ).strip()
     )
-    certificate = re.search(
-        r"(?m)^(?:Signer #1|V\d+(?:\.\d+)? Signer:) certificate SHA-256 digest: ([0-9a-f]{64})$",
-        (LOGS / "base-apk-signature.log").read_text(),
+    certificates = set(
+        re.findall(
+            r"(?m)^(?:Signer #\d+|V\d+(?:\.\d+)? Signer:) certificate SHA-256 digest: ([0-9a-f]{64})$",
+            (LOGS / "base-apk-signature.log").read_text(),
+        )
     )
-    if not certificate:
+    if not certificates:
         raise RuntimeError("APK signing certificate is missing")
+    from configs.pico_store import CERTIFICATE_SHA256
+
+    if formal_release and certificates != {CERTIFICATE_SHA256}:
+        output.unlink(missing_ok=True)
+        raise RuntimeError("APK signer differs from the pinned PICO store certificate")
+    certificate = next(iter(certificates))
     from configs.android_workflow import dependency_receipt
 
     store_report = None
@@ -1060,8 +1050,8 @@ def package(args, env, sdk, *, build_sha256):
             report = validate(
                 output,
                 verify_xmltree((LOGS / "base-apk-xmltree.log").read_text()),
-                certificate=certificate[1],
-                expected_certificate=store_certificate,
+                certificate=certificate,
+                expected_certificate=CERTIFICATE_SHA256,
                 version=version,
                 version_code=int(codes[0]),
                 expected_app_id=env.get("IMMIVIO_PICO_APP_ID"),
@@ -1077,7 +1067,7 @@ def package(args, env, sdk, *, build_sha256):
         **dependency_receipt(),
         **identity,
         "build_sha256": build_sha256,
-        "signing_certificate_sha256": certificate[1],
+        "signing_certificate_sha256": certificate,
         "apk": output.name,
         "artifact_path": output.relative_to(ROOT / "artifacts").as_posix(),
         "sha256": sha,

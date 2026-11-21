@@ -120,7 +120,30 @@ Package validates the **compiled APK** using [PICO's first-version upload rules]
 
 The store certificate's **public** SHA-256 fingerprint is pinned in `configs/pico_store.py`. The maintainer prepared the first store identity before any PICO store version was on shelf; earlier draft/side-loaded packages used a retired certificate. Store packaging requires the fixed store key through its persistent local signing record or complete `GODOT_ANDROID_KEYSTORE_RELEASE_*` overrides, verifies the APK signer against the configured key and refuses key drift. It never generates a temporary store key. Keep the private keystore and password backed up outside Git. Changing the first store signing identity later needs an explicit migration agreed with PICO.
 
-Manual CI defaults to Release/appstore and uploads the store report alongside its APK. Provision the same fixed key using the existing `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD` repository secrets before requesting a CI store package. A missing or different key fails closed; this workflow does not transmit local private keys automatically. Branch/PR CI deliberately specifies Debug for development validation; tag CI remains web/Release. Debug APKs are not store submissions.
+All formal Quest, PICO and OpenXR Release APKs use the pinned PICO Store
+certificate across the `web` and `appstore` channels. Local Release packaging
+requires the existing signing identity or complete
+`GODOT_ANDROID_KEYSTORE_RELEASE_*` overrides and verifies the exported APK.
+Branch and PR CI builds are development builds. Manual CI defaults to
+`web/Release` and may use a temporary signing key for non-tag builds.
+Package official store Releases locally with the formal signing identity.
+
+Before the first formal tag build, the repository owner must configure GitHub
+under **Settings → Environments**.
+
+1. Create the `release` environment.
+2. Under deployment branches and tags, choose **Selected branches and tags**,
+   add tag rules for release tags such as `v*`, and leave branch rules empty.
+3. Add the required reviewer or reviewers. The tag's `Release / macOS` job
+   waits for environment approval.
+4. Add `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEY_ALIAS` and
+   `ANDROID_KEY_PASSWORD` as environment secrets for the key matching the
+   pinned certificate.
+
+Tag builds produce Web Release APKs and require all three secrets. Packaging
+checks the actual APK certificate with `apksigner`. GitHub publication also
+requires the formal signer and the pinned fingerprint in every receipt.
+[GitHub deployment environments](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)
 
 If an actual `pvr.app.id` is embedded, set `IMMIVIO_PICO_APP_ID` to the real platform-assigned ID so validation can compare it. An APK without this optional field does not receive a fabricated ID. For an **already uploaded version in the same PICO track/region**, set `IMMIVIO_PICO_STORE_BASELINE` to its store-report JSON: validation then requires the same package/certificate, a nondecreasing versionCode and a different APK MD5. Do not treat an unsubmitted local build as an uploaded baseline. Portal state cannot be inferred from local packages.
 

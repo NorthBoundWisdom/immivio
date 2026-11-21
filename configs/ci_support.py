@@ -117,7 +117,7 @@ def host_tests(godot):
         raise RuntimeError(f"Godot source tests failed: {failures}")
 
 
-def signing_env(environ):
+def signing_env(environ, *, require_formal=False):
     env = environ.copy()
     transport = "CI_ANDROID_"
     names = tuple(
@@ -128,6 +128,10 @@ def signing_env(environ):
         key: value for key, value in env.items() if not key.startswith("CI_ANDROID_")
     }
     if not any(values):
+        if require_formal or environ.get("GITHUB_REF", "").startswith("refs/tags/"):
+            raise RuntimeError(
+                "Release requires all three CI_ANDROID_* signing secrets"
+            )
         return env, "ephemeral-ci-key"
     if not all(values):
         raise RuntimeError("Configure all three Android signing secrets, or none")
@@ -261,7 +265,7 @@ def latest_receipt(vendor, build_type, channel="appstore"):
     return json.loads(latest_receipt_file(vendor, build_type, channel).read_text())
 
 
-def ci_package_metadata(vendor, build_type, channel="appstore"):
+def ci_package_metadata(vendor, build_type, channel="appstore", *, signing_mode):
     from configs.output_paths import ci_reports, apk_for_receipt
 
     path = latest_receipt_file(vendor, build_type, channel)
@@ -269,11 +273,7 @@ def ci_package_metadata(vendor, build_type, channel="appstore"):
     receipt.update(
         ci_ref=os.environ.get("GITHUB_REF", ""),
         ci_host=os.environ.get("RUNNER_OS", sys.platform),
-        ci_signing=(
-            "repository-signing-key"
-            if os.environ.get("CI_ANDROID_KEYSTORE_BASE64")
-            else "ephemeral-ci-key"
-        ),
+        ci_signing=signing_mode,
     )
     path.write_text(json.dumps(receipt, indent=2) + "\n")
     receipts, sums = [], []
@@ -287,7 +287,7 @@ def ci_package_metadata(vendor, build_type, channel="appstore"):
                 .relative_to(player.ROOT / "artifacts")
                 .as_posix()
             )
-            sums.append(f'{record["sha256"]}  {relative}\n')
+            sums.append(f"{record['sha256']}  {relative}\n")
         except RuntimeError:
             pass
     directory = ci_reports(player.ROOT, channel, build_type)

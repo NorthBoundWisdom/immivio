@@ -85,9 +85,15 @@ class CiBoundaries(unittest.TestCase):
             self.assertNotIn("GODOT_ANDROID_KEYSTORE_RELEASE_PATH", source)
 
     def test_missing_signing_secrets_uses_ephemeral_ci_mode(self):
-        env, mode = ci.signing_env({})
+        env, mode = ci.signing_env({"GITHUB_REF": "refs/heads/main"})
         self.assertEqual(mode, "ephemeral-ci-key")
-        self.assertEqual(env, {})
+        self.assertEqual(env, {"GITHUB_REF": "refs/heads/main"})
+
+    def test_tag_and_formal_store_builds_require_signing_secrets(self):
+        with self.assertRaisesRegex(RuntimeError, "requires all three"):
+            ci.signing_env({"GITHUB_REF": "refs/tags/v1.0.0"})
+        with self.assertRaisesRegex(RuntimeError, "requires all three"):
+            ci.signing_env({"GITHUB_REF": "refs/heads/main"}, require_formal=True)
 
 
 class HostTestReports(unittest.TestCase):

@@ -7,7 +7,11 @@ import json
 from pathlib import Path
 import re
 import shutil
+import sys
 import tempfile
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from configs.pico_store import CERTIFICATE_SHA256
 
 PLATFORMS = {"Pico": "PICO", "Quest": "QUEST", "OpenXR": "OpenXR"}
 
@@ -102,11 +106,14 @@ def prepare(packages, output, tag, commit):
             raise ValueError(
                 "Release APK is missing or differs from its verified receipt"
             )
-        certificate = record.get("signing_certificate_sha256")
-        # Earlier tag builders verified signatures but did not record the
-        # certificate fingerprint. Preserve those original receipts.
-        if certificate is not None and not re.fullmatch(r"[0-9a-f]{64}", certificate):
-            raise ValueError("Release receipt has an invalid signing certificate")
+        if record.get("ci_signing") != "repository-signing-key":
+            raise ValueError(
+                "Release receipt must use the formal CI release signing key"
+            )
+        if record.get("signing_certificate_sha256") != CERTIFICATE_SHA256:
+            raise ValueError(
+                "Release receipt signer differs from the pinned PICO store certificate"
+            )
         records.append(record)
         assets.extend([apk, receipt])
     if set(directory.rglob("*.apk")) != {
@@ -155,11 +162,6 @@ def prepare(packages, output, tag, commit):
             "[English release notes](https://northboundwisdom.github.io/immivio/updates/) · [中文更新说明](https://northboundwisdom.github.io/immivio/zh/updates/)",
             "",
         ]
-        if any(r.get("ci_signing") == "ephemeral-ci-key" for r in records):
-            notes += [
-                "These packages use CI-generated signing keys. An existing installation signed with a different key cannot be updated with these APKs.",
-                "",
-            ]
         notes += [
             "CI build/package verification does not establish physical headset playback validation.",
             "",

@@ -152,7 +152,9 @@ class OutputLayout(unittest.TestCase):
             patch.dict("os.environ", {"GITHUB_REF": "refs/heads/main"}),
         ):
             self.assertEqual(ci.latest_receipt_file("Pico", "Release"), receipt)
-            ci.ci_package_metadata("Pico", "Release")
+            ci.ci_package_metadata(
+                "Pico", "Release", signing_mode="repository-signing-key"
+            )
             report = outputs.ci_reports(self.root, "appstore", "Release")
             self.assertIn(
                 "packages/PICO/appstore/release/" + apk.name,
