@@ -43,11 +43,12 @@ internal object StrmFile {
         if (it.size <= 0) reject("STRM_EMPTY")
         val bytes = ByteArray(it.size.toInt())
         it.open().use { reader ->
+            val buffer = ByteArray(bytes.size)
             var offset = 0
             while (offset < bytes.size) {
-                val buffer = ByteArray(bytes.size - offset)
-                val count = reader.read(offset.toLong(), buffer, buffer.size)
-                if (count <= 0 || count > buffer.size) reject("STRM_READ_FAILED")
+                val length = bytes.size - offset
+                val count = reader.read(offset.toLong(), buffer, length)
+                if (count <= 0 || count > length) reject("STRM_READ_FAILED")
                 buffer.copyInto(bytes, offset, 0, count)
                 offset += count
             }
@@ -118,17 +119,14 @@ internal object StrmFile {
                     else reject("STRM_RELATIVE_PATH_UNAVAILABLE")
                 "smb" -> {
                     // A leading slash is the mount/share root. '..' cannot escape that root.
-                    val minimum = 1
-                    val root =
-                        if (minimum == 1) "/" + base.path.trimStart('/').substringBefore('/')
-                        else ""
+                    val root = "/" + base.path.trimStart('/').substringBefore('/')
                     val relative = value.replace('\\', '/')
                     val path =
                         normalized(
                             if (relative.startsWith('/')) root
                             else base.path.substringBeforeLast('/'),
                             relative.trimStart('/'),
-                            minimum,
+                            1,
                         )
                     checked(URI(base.scheme, base.authority, path, null).toASCIIString())
                 }

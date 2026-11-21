@@ -76,45 +76,51 @@ internal class HttpRangeStreamSource(
     }
 
     private inner class RemoteReader : StreamSource.Reader {
-        @Volatile private var done = false
+        private var done = false
         private var connection: HttpURLConnection? = null
         private var input: InputStream? = null
         private var next = -1L
         private var end = -1L
 
         override fun read(offset: Long, buffer: ByteArray, length: Int): Int {
-            mediaRequire(!closed && !done && offset in 0 until size && length in 1..buffer.size)
-            if (next != offset || offset > end || input == null) {
-                disconnect()
-                var selected = current()
-                var c: HttpURLConnection? = null
-                try {
-                    c = http.open(selected.url, "bytes=$offset-")
-                } catch (e: MediaServerFailure) {
-                    if (e.code != "Server authentication required") throw e
-                    selected = current(selected)
-                    c = http.open(selected.url, "bytes=$offset-")
+            mediaRequire(offset in 0 until size && length in 1..buffer.size)
+            val cached =
+                synchronized(this) {
+                    mediaRequire(!closed && !done, "Request cancelled")
+                    if (next != offset || offset > end) disconnect()
+                    input
                 }
-                val opened = c!!
-                try {
-                    val range = validate(opened, offset)
-                    mediaRequire(range.third == size, "Video changed; reopen it")
-                    synchronized(this) {
-                        mediaRequire(!closed && !done, "Request cancelled")
-                        connection = opened
-                        input = opened.inputStream
-                        next = offset
-                        end = range.second
-                    }
-                } catch (e: Exception) {
-                    http.release(opened)
-                    throw e
-                }
-            }
-            val n = input!!.read(buffer, 0, minOf(length.toLong(), end - offset + 1).toInt())
+            val stream = cached ?: connect(offset)
+            val n = stream.read(buffer, 0, minOf(length.toLong(), end - offset + 1).toInt())
             mediaRequire(n > 0, "Stream interrupted")
             next = offset + n
             return n
+        }
+
+        private fun connect(offset: Long): InputStream {
+            val selected = current()
+            val opened =
+                try {
+                    http.open(selected.url, "bytes=$offset-")
+                } catch (e: MediaServerFailure) {
+                    if (e.code != "Server authentication required") throw e
+                    http.open(current(selected).url, "bytes=$offset-")
+                }
+            try {
+                val range = validate(opened, offset)
+                mediaRequire(range.third == size, "Video changed; reopen it")
+                val stream = opened.inputStream
+                synchronized(this) {
+                    mediaRequire(!closed && !done, "Request cancelled")
+                    connection = opened
+                    input = stream
+                    end = range.second
+                }
+                return stream
+            } catch (e: Exception) {
+                http.release(opened)
+                throw e
+            }
         }
 
         private fun disconnect() {
