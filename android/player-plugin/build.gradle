@@ -46,10 +46,21 @@ configurations {
     smbUpstream { canBeConsumed = false; transitive = false }
     subtitleCharsetUpstream { canBeConsumed = false; transitive = false }
 }
+def archiveFile = { configuration ->
+    configuration.elements.map { locations ->
+        if (locations.size() != 1) {
+            throw new GradleException("Expected one archive in ${configuration.name}")
+        }
+        locations.first().asFile
+    }
+}
+def smbArchive = archiveFile(configurations.smbUpstream)
+def subtitleArchive = archiveFile(configurations.subtitleCharsetUpstream)
+def subtitleDistribution = file('../../third_party/icu-charset/distribution.json')
 def smbClientJar = tasks.register('smbClientJar', Jar) {
     archiveFileName = 'jcifs-smb-client.jar'
     destinationDirectory = layout.buildDirectory.dir('smb-client')
-    from({ zipTree(configurations.smbUpstream.singleFile) })
+    from(smbArchive.map { zipTree(it) })
     exclude 'org/codelibs/jcifs/smb/http/**', 'org/codelibs/jcifs/smb/https/**'
     exclude 'org/codelibs/jcifs/smb1/http/**', 'org/codelibs/jcifs/smb1/https/**'
     exclude 'META-INF/MANIFEST.MF'
@@ -60,13 +71,15 @@ def smbClientJar = tasks.register('smbClientJar', Jar) {
 def subtitleCharsetJar = tasks.register('subtitleCharsetJar', Jar) {
     archiveFileName = 'subtitle-charset.jar'
     destinationDirectory = layout.buildDirectory.dir('subtitle-charset')
-    from({
-        def source = configurations.subtitleCharsetUpstream.singleFile
-        def record = new groovy.json.JsonSlurper().parse(file('../../third_party/icu-charset/distribution.json'))
+    from(subtitleArchive.map { zipTree(it) })
+    inputs.file(subtitleArchive)
+    inputs.file(subtitleDistribution)
+    doFirst {
+        def source = subtitleArchive.get()
+        def record = new groovy.json.JsonSlurper().parse(subtitleDistribution)
         def actual = java.security.MessageDigest.getInstance('SHA-256').digest(source.bytes).encodeHex().toString()
         if (actual != record.upstream_jar_sha256) throw new GradleException('ICU charset checksum mismatch')
-        zipTree(source)
-    })
+    }
     include 'com/ibm/icu/text/Charset*.class'
     preserveFileTimestamps = false
     reproducibleFileOrder = true
