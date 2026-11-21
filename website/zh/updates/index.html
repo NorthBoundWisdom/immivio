@@ -151,7 +151,7 @@
       <div class="wrap doc">
         <nav class="toc" aria-label="本页目录">
           <p>本页目录</p>
-          <a href="#next-release">下一版本（待发布）</a>
+          <a href="#v1-0-1">v1.0.1</a>
           <a href="#v1-0-0">v1.0.0</a><a href="#v0-9-11">v0.9.11</a><a href="#v0-9-10">v0.9.10</a
           ><a href="#v0-9-9">v0.9.9</a><a href="#v0-9-8">v0.9.8</a><a href="#v0-9-7">v0.9.7</a
           ><a href="#v0-9-6">v0.9.6</a><a href="#v0-9-5">v0.9.5</a><a href="#v0-9-4">v0.9.4</a
@@ -159,16 +159,27 @@
           ><a href="#v0-9-0">v0.9.0</a><a href="#channels">安装包与渠道</a>
         </nav>
         <article class="prose">
-          <section id="next-release" class="release">
+          <section id="v1-0-1" class="release">
             <div class="release-head">
-              <h2>下一版本（待发布）</h2>
+              <h2>v1.0.1</h2>
+              <time datetime="2026-11-21">2026 年 11 月 21 日</time>
             </div>
-            <p>GitHub 上的 v1.0.0 APK 使用了临时签名。从下一版开始，Quest、PICO 和 OpenXR APK 将改用正式签名。如果你从 GitHub 安装了 v1.0.0，请先卸载，再安装新版本。卸载会清除本机的播放历史和账号设置。</p>
+            <p>
+              GitHub 上的 v1.0.0 APK 使用了临时签名。自 v1.0.1 起，Quest、PICO 和 OpenXR
+              安装包使用正式签名。如果你从 GitHub 安装了 v1.0.0，请先卸载，再安装
+              v1.0.1。卸载会清除本机的播放历史和账号设置。
+            </p>
+            <ul>
+              <li>修复续播和调整布局时可能停在首帧的问题。直通 Surface 播放也会保存进度。</li>
+              <li>视频改名时保留书签，并更新实际改名的外挂字幕引用。</li>
+              <li>新增可配置的快进快退步长、倍速记忆、字幕透明度和沉浸字幕跟随视角。</li>
+              <li>改善 SMB 断线恢复。支持的头显上，兼容的视频可通过合成层播放。</li>
+            </ul>
           </section>
           <section id="v1-0-0" class="release">
             <div class="release-head">
               <h2>v1.0.0</h2>
-              <time datetime="2026-11-14">2026 年 11 月 14 日</time> <span class="badge">最新</span>
+              <time datetime="2026-11-14">2026 年 11 月 14 日</time>
             </div>
             <ul>
               <li>切换投影时保持视频模式菜单打开并高亮当前选择，方便比较鱼眼与 180°。</li>

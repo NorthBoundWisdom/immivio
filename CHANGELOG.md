@@ -6,9 +6,13 @@
 
 Newest first, with the main changes that affect everyday use. Unreleased items are not yet part of a public release. Versions 0.6.0 and earlier belong to the original project. Photo viewing, cloud drives and AI 3D conversion appear only as historical features and were removed later; see the [README](README.md) for current capabilities.
 
-## 待发布 / Unreleased
+## 1.0.1 — 2026-11-21
 
 **中文**
+
+- GitHub 的 Quest、PICO 和 OpenXR 安装包改用正式签名。通过 GitHub 安装过 v1.0.0 的用户需要先卸载，再安装 1.0.1。卸载会清除本地播放历史和账号设置。
+- 修复续播和调整布局时可能停在首帧的问题。为直通 Surface 播放保存进度，并恢复旧格式的最近播放记录。
+- 文件改名时同步迁移书签和实际改名的外挂字幕引用。目标处已有的书签保留。
 
 - 改善 SMB 断线后的只读恢复、目录超时及切换响应；主动搜索增加 Windows 共享发现兜底。
 - 快进／快退步长可配置，两只手柄共用；播放倍速跨视频、跨重启记忆。
@@ -21,6 +25,9 @@ Newest first, with the main changes that affect everyday use. Unreleased items a
 
 **English**
 
+- GitHub APKs for Quest, PICO and OpenXR now use the official signing key. If you installed v1.0.0 from GitHub, uninstall it before installing 1.0.1. Uninstalling clears local playback history and account settings.
+- Fix a first-frame stall that could occur during resume or layout changes. Save playback progress with the decoder Surface and restore older recent-playback records.
+- Keep bookmarks and references to renamed external subtitles when renaming a video. Existing bookmarks at the destination take priority.
 - Recover eligible read-only SMB operations after connection loss, isolate directory timeouts, and add Windows discovery fallback to explicit searches.
 - Configure one seek step for both controllers and remember playback speed across videos and restarts.
 - Add text-subtitle transparency and optional view-following immersive captions, including bilingual captions.
