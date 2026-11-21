@@ -1,6 +1,7 @@
 extends RefCounted
 ## Bounded, hashed directory identities; disabling history never promotes session entries later.
 const LIMIT := 512
+const SAVE_DELAY_MS := 700
 var path := "user://directory_browse.cfg"
 var session := {}
 var disk := {}
@@ -60,7 +61,7 @@ func remember(scope: String, value: Dictionary) -> void:
 		disk[key] = entry.duplicate()
 		trim(disk)
 		dirty = true
-		due = Time.get_ticks_msec() + 700
+		due = Time.get_ticks_msec() + SAVE_DELAY_MS
 
 
 func trim(entries: Dictionary) -> void:
@@ -87,3 +88,5 @@ func flush() -> void:
 	config.set_value("browse", "entries", disk)
 	if config.save(path + ".tmp") == OK and DirAccess.rename_absolute(path + ".tmp", path) == OK:
 		dirty = false
+	else:
+		due = Time.get_ticks_msec() + SAVE_DELAY_MS

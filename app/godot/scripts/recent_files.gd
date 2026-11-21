@@ -3,11 +3,16 @@ extends "res://scripts/file_mode_memory.gd"
 # Private recent-file catalog. Unlike per-file mode keys, reopening requires
 # retaining the original URI. Permissions are checked again before each open.
 const RECENT_LIMIT := 32
+const RECENT_VERSION := 3
 const MediaFiles := preload("res://scripts/media_files.gd")
 
 
 func _bank_path(bank: int) -> String:
 	return directory.path_join("recent_files_%d.json" % bank)
+
+
+func _schema_version() -> int:
+	return RECENT_VERSION
 
 
 static func valid_entry(entry: Variant, serial: int) -> bool:
@@ -54,10 +59,11 @@ func _read_bank(path: String) -> Dictionary:
 	if (
 		(version is int or version is float)
 		and is_finite(float(version))
-		and float(version) > VERSION
+		and float(version) > RECENT_VERSION
 	):
 		return {"unsupported_schema": true}
-	if version != VERSION:
+	# The catalog payload stayed compatible when the inherited version changed.
+	if version != 1 and version != 2 and version != RECENT_VERSION:
 		return {}
 	var serial: Variant = envelope.get("sequence")
 	if (
@@ -88,7 +94,7 @@ func _read_bank(path: String) -> Dictionary:
 		for name in ["position_ms", "duration_ms", "opened"]:
 			value[name] = int(value[name])
 		result[key] = value
-	return {"sequence": int(serial), "entries": result}
+	return {"sequence": int(serial), "entries": result, "migrated": version != RECENT_VERSION}
 
 
 func lookup(uri: String) -> Dictionary:

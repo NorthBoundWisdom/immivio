@@ -709,6 +709,7 @@ func _unbind() -> void:
 
 
 func close_video() -> void:
+	_record_history(true)
 	_focus_probe.cancel()
 	_focus_last_frame.clear()
 	if layer_controller:
@@ -742,7 +743,6 @@ func close_video() -> void:
 	_bookmark_cache_revision = -1
 	_thumbnail_sequence += 1
 	_library_cover = ""
-	_record_history(true)
 	cancel_pending_open()
 	if mode_memory.dirty:
 		mode_memory.save()
@@ -797,31 +797,46 @@ func _record_history(force: bool = false) -> void:
 		not history_enabled
 		or not _remember_file
 		or not media.accepts(media.session_id)
-		or media.last_pair.is_empty()
-		or not preload("res://scripts/pair_texture_binding.gd").timing_valid(media.last_pair)
+		or not is_instance_valid(panel)
 		or not panel.visible
 	):
 		return
-	var pair: Dictionary = media.last_pair
-	if (
-		int(pair.get("session_id", 0)) != media.session_id
-		or int(pair.get("generation", 0)) != media.generation
-	):
+	var now := Time.get_ticks_msec()
+	if not force and _history_started and now < _history_save_ms:
+		return
+	var position_ms := _history_position_ms()
+	if position_ms < 0:
 		return
 	if not _history_started:
 		if not recent_files.opened(local_uri, display_name, _file_permission_persisted):
 			return
 		_history_started = true
 		recent_files.set_cover(local_uri, _library_cover)
-		force = true
-	var now := Time.get_ticks_msec()
-	if not force and now < _history_save_ms:
-		return
-	var position_ms := clampi(int(float(pair.pts_us) / 1000.0), 0, 2147483647)
 	recent_files.progress(local_uri, position_ms, control.duration_ms, media.state == "ended")
 	_history_save_ms = now + 5000
 	if not recent_files.save():
 		Log.record("recent_file_save_failed", {"error": recent_files.last_error})
+
+
+func _history_position_ms() -> int:
+	if surface_requested:
+		if (
+			not layer_shown
+			or _waiting_first
+			or int(_surface_context.get("session_id", 0)) != media.session_id
+			or int(_surface_context.get("generation", 0)) != media.generation
+			or media.playback.get("surface_context") != _surface_context
+		):
+			return -1
+		return _surface_position_ms(media.playback)
+	var pair: Dictionary = media.last_pair
+	if (
+		int(pair.get("session_id", 0)) != media.session_id
+		or int(pair.get("generation", 0)) != media.generation
+		or not Binding.timing_valid(pair)
+	):
+		return -1
+	return clampi(int(float(pair.pts_us) / 1000.0), 0, 2147483647)
 
 
 func _request_revision(position_ms: int = -1, mode: String = "") -> void:
@@ -1088,6 +1103,16 @@ func presentation_context() -> Dictionary:
 	return _surface_context if surface_requested else media.last_pair
 
 
+static func _surface_position_ms(report: Dictionary) -> int:
+	var seconds := str(report.get("details", {}).get("position_seconds", ""))
+	if not seconds.is_valid_float():
+		return -1
+	var position := seconds.to_float()
+	return (
+		int(minf(position * 1000.0, 2147483647.0)) if is_finite(position) and position >= 0 else -1
+	)
+
+
 func _accept_surface_state(report: Dictionary) -> void:
 	surface_requested = true
 	if not report.get("surface_ready", false):
@@ -1103,6 +1128,7 @@ func _accept_surface_state(report: Dictionary) -> void:
 		return
 	if (
 		int(context.get("source_epoch", 0)) <= 0
+		or int(context.get("generation", 0)) <= 0
 		or int(format.get("width", 0)) <= 0
 		or int(format.get("height", 0)) <= 0
 	):
@@ -1116,10 +1142,7 @@ func _accept_surface_state(report: Dictionary) -> void:
 		_waiting_first = false
 		media.frame_counter = 1
 		if control.in_flight > 0:
-			var seconds := str(report.get("details", {}).get("position_seconds", ""))
-			control.first_frame(
-				int(seconds.to_float() * 1000.0) if seconds.is_valid_float() else -1
-			)
+			control.first_frame(_surface_position_ms(report))
 		_complete_layout()
 		_apply_geometry()
 		panel.visible = true
@@ -2625,8 +2648,8 @@ func _on_state(id: int, payload: String) -> void:
 		_accept_surface_state(report)
 	elif report.has("surface"):
 		surface_requested = false
-	if media.state == "ended":
-		_record_history(true)
+	if surface_requested or media.state == "ended":
+		_record_history(media.state == "ended")
 	if diagnostics:
 		diagnostics.record_state(report)
 	changed.emit()

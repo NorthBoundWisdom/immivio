@@ -212,6 +212,8 @@ func relocate(old_uri: String, new_uri: String, basename: String, size: int = -1
 			return false
 		var copied := record.duplicate(true)
 		copied.id = JSON.stringify([new_alias, feature]).sha256_text()
+		if copied.id == id and new_alias == old_alias and feature == record.fingerprint:
+			return true
 		copied.aliases = [new_alias]
 		copied.fingerprint = feature
 		if not _save(copied):

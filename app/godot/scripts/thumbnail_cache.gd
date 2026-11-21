@@ -28,6 +28,8 @@ static func path_for(key: String) -> String:
 
 
 static func relocate(old_uri: String, new_uri: String) -> void:
+	if old_uri == new_uri:
+		return
 	if is_preview(old_uri):
 		forget(old_uri)
 		forget(new_uri)

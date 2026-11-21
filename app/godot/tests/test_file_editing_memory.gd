@@ -67,6 +67,23 @@ func _initialize() -> void:
 		modes.relocate(old, new) and modes.lookup(new).stereo_sbs and modes.lookup(old).is_empty(),
 		"Rename keeps viewing mode"
 	)
+	check(
+		(
+			reloaded.relocate(new, new, "Retitled.mp4")
+			and reloaded.lookup(new).title == "Retitled.mp4"
+			and reloaded.resume_position(new) == 5000
+			and modes.relocate(new, new)
+			and modes.lookup(new).stereo_sbs
+		),
+		"Rename that keeps the document URI retains history and viewing mode"
+	)
+	var thumbnails := preload("res://scripts/thumbnail_cache.gd")
+	var picture := Image.create_empty(320, 180, false, Image.FORMAT_RGB8)
+	picture.fill(Color.GREEN)
+	check(thumbnails.store(new, picture), "Thumbnail fixture is saved")
+	thumbnails.relocate(new, new)
+	check(thumbnails.has(new), "Rename that keeps the document URI retains its thumbnail")
+	thumbnails.forget(new)
 	var store := preload("res://scripts/bookmark_store.gd").new(directory.path_join("bookmarks"))
 	store.add(old, "old.mp4", 5000, 10000)
 	check(
@@ -75,6 +92,13 @@ func _initialize() -> void:
 	check(
 		store.list_markers(store.resolve(new, "new.mp4", 5000)).size() == 1,
 		"Renamed movie retains timestamp"
+	)
+	check(
+		(
+			store.relocate(new, new, "new.mp4", 5000)
+			and store.list_markers(store.resolve(new, "new.mp4", 5000)).size() == 1
+		),
+		"Reapplied relocation keeps markers for the same fingerprint and URI"
 	)
 	check(
 		store.list_markers(store.resolve(old, "old.mp4", 5000)).is_empty(),

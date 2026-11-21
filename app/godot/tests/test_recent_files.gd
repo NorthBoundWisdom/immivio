@@ -147,6 +147,16 @@ func _run() -> void:
 	catalog.save()
 	var winning_path: String = catalog._bank_path(catalog.active_bank)
 	var intact := FileAccess.get_file_as_string(winning_path)
+	for version in [1, 2]:
+		var legacy: Dictionary = JSON.parse_string(intact)
+		legacy.schema_version = version
+		write(winning_path, JSON.stringify(legacy))
+		var upgraded := reload_catalog()
+		check(
+			upgraded.resume_position(b) == 45000 and upgraded.dirty and not upgraded.read_only,
+			"Schema %d restores the newer bank with its original resume position" % version
+		)
+	write(winning_path, intact)
 	write(winning_path, '{"truncated":')
 	check(
 		reload_catalog().lookup(b).position_ms == 42000,
@@ -400,6 +410,40 @@ func _run() -> void:
 			and video.picker_error == "LOCAL_DOCUMENT_TIMEOUT"
 		),
 		"Timed-out picker clears ticket and retains source"
+	)
+	video.open_local(b, "Surface", 0, true)
+	var surface := {
+		"surface": true,
+		"surface_ready": true,
+		"surface_context": {"session_id": 7, "generation": 3, "source_epoch": 1},
+		"surface_format": {"width": 1920, "height": 1080, "pixel_aspect": 1.0},
+		"details": {"position_seconds": "11.25", "duration_seconds": "60"},
+		"state": "playing"
+	}
+	video._on_state(7, JSON.stringify(surface))
+	check(video.recent_files.lookup(b).is_empty(), "Unshown decoder Surface does not enter history")
+	video.layer_shown = true
+	video._on_state(7, JSON.stringify(surface))
+	check(
+		video.recent_files.resume_position(b) == 11250 and video.media.last_pair.is_empty(),
+		"Shown Surface saves the current playback clock without a frame pair"
+	)
+	surface.surface_context.session_id = 8
+	surface.details.position_seconds = "50"
+	video._on_state(7, JSON.stringify(surface))
+	video.checkpoint_playback()
+	check(video.recent_files.resume_position(b) == 11250, "Mismatched Surface context is ignored")
+	surface.surface_context.session_id = 7
+	surface.details.position_seconds = "23.5"
+	video._on_state(7, JSON.stringify(surface))
+	video.history_enabled = false
+	video.checkpoint_playback()
+	check(video.recent_files.resume_position(b) == 11250, "History-off ignores Surface progress")
+	video.history_enabled = true
+	video.close_video()
+	check(
+		video.recent_files.resume_position(b) == 23500,
+		"Closing a Surface checkpoints before releasing the layer"
 	)
 	video.queue_free()
 	menu.queue_free()

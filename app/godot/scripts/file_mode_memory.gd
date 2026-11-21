@@ -139,6 +139,10 @@ func _bank_path(bank: int) -> String:
 	return directory.path_join("file_modes_%d.json" % bank)
 
 
+func _schema_version() -> int:
+	return VERSION
+
+
 static func _decode(text: String) -> Variant:
 	var parser := JSON.new()
 	return parser.data if parser.parse(text) == OK else null
@@ -263,8 +267,11 @@ func relocate(old_uri: String, new_uri: String, title: String = "") -> bool:
 		value.uri = new_uri
 	if value.has("title") and not title.is_empty():
 		value.title = title.left(256)
+	if old_key == new_key and value == entries[old_key]:
+		return true
 	entries[new_key] = value
-	entries.erase(old_key)
+	if old_key != new_key:
+		entries.erase(old_key)
 	dirty = true
 	return true
 
@@ -287,7 +294,7 @@ func save() -> bool:
 	var encoded := JSON.stringify({"sequence": sequence + 1, "entries": entries})
 	var serialized := JSON.stringify(
 		{
-			"schema_version": VERSION,
+			"schema_version": _schema_version(),
 			"sequence": sequence + 1,
 			"payload_json": encoded,
 			"payload_sha256": encoded.sha256_text()
