@@ -124,6 +124,28 @@ No headset performance gain has been measured for this implementation.
   binary HTTP and app-private file paths excluded. Distinguish provider denial
   from decoder failure; this driver does not automate picker UI or device reboot.
 
+## Published v1.0.0 APK signing audit
+
+On 2026-11-21, `gh release download` retrieved the three public Web Release APKs,
+their build receipts and `SHA256SUMS.txt`. Android Build Tools 36.1.0 verified
+each APK with `apksigner verify --print-certs`. Each APK's file SHA-256 matched
+both published records, and its certificate SHA-256 matched its build receipt.
+[GitHub release v1.0.0](https://github.com/NorthBoundWisdom/immivio/releases/tag/v1.0.0)
+
+| APK | APK SHA-256 |
+| --- | --- |
+| `Immivio-OpenXR-1.0.0-web-release-20261113.apk` | `d2cd1ffebeabc9e10ea6553aa59f6a52450b5e79e2367113c310e022b6883194` |
+| `Immivio-PICO-1.0.0-web-release-20261113.apk` | `903778deeab729bc7408bf778f2a985421168f088e14da47aaa20bce123ddebf` |
+| `Immivio-QUEST-1.0.0-web-release-20261113.apk` | `d97be6e9c48ff106c1987096991ede87b573370f437a730d8ee3453f30e196ba` |
+
+All three APKs use certificate SHA-256
+`9675b408fca1e27538325d92ede234af54a84601114f2dcb5671d7c715c59f9c`.
+All three receipts identify the signer as `ephemeral-ci-key`. The repository's
+pinned PICO Store signing certificate has SHA-256
+`89b2a063d2783d04971415ccc1d98eb47eefd7fd343e242a61931a22f786d89b`.
+The mismatch triggered the owner's stop condition for the cleanup.
+[Pinned PICO Store certificate](../configs/pico_store.py)
+
 ## Recording a result
 
 For each checked item, record date, case ID, headset/runtime/OS, package channel

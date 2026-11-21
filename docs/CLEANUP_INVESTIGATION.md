@@ -227,3 +227,25 @@ translation/resource consistency, Ruff and diff checks passed. Quest, PICO and
 OpenXR Debug builds and packaging passed the normal APK verification. Each APK
 contains exactly one ARM64 OpenXR loader, byte-identical to the library in the
 official 1.1.65 AAR. No device installation, push, tag or release was performed.
+
+## Cleanup checkpoint — 2026-11-21
+
+The preceding 37-file worktree was preserved in six local commits.
+
+| Commit | Scope |
+| --- | --- |
+| `7070db2` | Playback history, media records, directory-memory retry and regression tests |
+| `6539789` | Android stream reads, removal of the reader-set snapshot lock and unused keep rules |
+| `d5ee38b` | Build fingerprints, Gradle checks and workflow tests |
+| `95039b8` | Website downloads and the Pages refresh after release upload |
+| `35bd22b` | Unused Godot gesture, subtitle, library and loop helpers |
+| `77403ca` | Architecture, build and contribution documentation |
+
+All three published v1.0.0 APKs verified with the same temporary CI certificate,
+which differs from the pinned PICO Store certificate. The audit stopped at
+that mismatch as requested. [APK hashes and certificate fingerprints](ACCEPTANCE.md#published-v100-apk-signing-audit)
+
+Tag-signing enforcement, release retry handling, bookmark and subtitle
+migration, the navigation decision, CI and stream diagnostics, and the disk
+inventory are pending. The full test rerun is also pending. Existing headset
+validation items remain recorded in [device acceptance](ACCEPTANCE.md#current-device-acceptance).
