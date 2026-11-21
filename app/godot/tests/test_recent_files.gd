@@ -15,6 +15,8 @@ class Host:
 	var calls: Array = []
 	var request_id := 100
 	var next_session := 7
+	var revised_session := -1
+	var play_requests: Array = []
 
 	func mpv_supported() -> bool:
 		return true
@@ -33,8 +35,13 @@ class Host:
 	func close_mpv_video(id: int) -> void:
 		calls.append(["close", id])
 
-	func set_mpv_playing(_id: int, _playing: bool) -> void:
-		pass
+	func set_mpv_playing(id: int, playing: bool) -> void:
+		play_requests.append([id, playing])
+
+	func revise_mpv_video(
+		_id: int, _stereo: bool, _position: int, _top_bottom: bool, _exact: bool
+	) -> int:
+		return revised_session
 
 	func request_local_video_access(uri: String) -> int:
 		request_id += 1
@@ -444,6 +451,57 @@ func _run() -> void:
 	check(
 		video.recent_files.resume_position(b) == 23500,
 		"Closing a Surface checkpoints before releasing the layer"
+	)
+	check(
+		video.open_library(b, "Surface") and host.calls.back() == ["open", b, 23500],
+		"Opening a recent video restores its saved position"
+	)
+	video._on_state(7, JSON.stringify(surface))
+	check(host.play_requests.back() == [7, true], "The first ready Surface starts recent playback")
+	video.seek_absolute(35000)
+	var play_count := host.play_requests.size()
+	video._on_state(7, JSON.stringify(surface))
+	check(
+		video.waiting_for_first_frame() and host.play_requests.size() == play_count,
+		"A ready status from the old Surface cannot consume a queued seek's first-frame wait"
+	)
+	host.revised_session = 8
+	video._try_revision()
+	check(
+		video.waiting_for_first_frame() and host.play_requests.back() == [8, false],
+		"The accepted seek keeps the new Surface paused until its own first frame"
+	)
+	surface.surface_context.session_id = 8
+	surface.surface_context.generation = 4
+	surface.surface_context.source_epoch = 2
+	surface.details.position_seconds = "35"
+	video._on_state(8, JSON.stringify(surface))
+	check(
+		not video.waiting_for_first_frame() and host.play_requests.back() == [8, true],
+		"The new Surface's ready status resumes playback after the seek"
+	)
+	var wide := "file:///local/wide.mp4"
+	video.recent_files.opened(wide, "Wide", false)
+	host.next_session = 9
+	host.revised_session = 10
+	video.open_library(wide, "Wide")
+	surface.surface_context.session_id = 9
+	surface.surface_format.width = 3840
+	video._on_state(9, JSON.stringify(surface))
+	check(
+		(
+			video.media.session_id == 10
+			and video.waiting_for_first_frame()
+			and host.play_requests.back() == [10, false]
+		),
+		"Automatic layout revision during recent playback cannot start on the old ready status"
+	)
+	surface.surface_context.session_id = 10
+	surface.surface_context.generation = 5
+	video._on_state(10, JSON.stringify(surface))
+	check(
+		not video.waiting_for_first_frame() and host.play_requests.back() == [10, true],
+		"Recent playback starts after the revised layout has a ready frame"
 	)
 	video.queue_free()
 	menu.queue_free()

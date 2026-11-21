@@ -962,6 +962,7 @@ func _try_revision() -> void:
 	_surface_context.clear()
 	_surface_eof_ms = -1
 	media.begin(id)
+	_waiting_first = true
 	set_hdr_to_sdr(hdr_to_sdr)
 	subtitle_follow.reset()
 	if _is_frozen() or surface_requested:
@@ -1115,6 +1116,9 @@ static func _surface_position_ms(report: Dictionary) -> int:
 
 func _accept_surface_state(report: Dictionary) -> void:
 	surface_requested = true
+	# The old Surface can still report readiness while the next revision waits for a slot.
+	if not _pending_revision.is_empty():
+		return
 	if not report.get("surface_ready", false):
 		_surface_context.clear()
 		return
@@ -1140,10 +1144,12 @@ func _accept_surface_state(report: Dictionary) -> void:
 	media.format["unapplied_rotation_degrees"] = int(format.get("source_rotation_degrees", 0))
 	if _waiting_first:
 		_waiting_first = false
-		media.frame_counter = 1
 		if control.in_flight > 0:
 			control.first_frame(_surface_position_ms(report))
 		_complete_layout()
+		if _waiting_first:
+			return  # Layout detection requested another revision.
+		media.frame_counter = 1
 		_apply_geometry()
 		panel.visible = true
 		_remember_mode()
