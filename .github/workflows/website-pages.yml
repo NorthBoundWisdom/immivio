@@ -24,6 +24,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: read
       pages: write
       id-token: write
@@ -45,8 +46,26 @@ jobs:
           node --check website/assets/site.js
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
+        id: upload
         with:
           path: website
+      - name: Wait for uploaded Pages artifact metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact_id }}
+        run: |
+          [[ "$ARTIFACT_ID" =~ ^[0-9]+$ ]]
+          # The upload can finish before the artifact is visible to a list request.
+          for attempt in {1..12}; do
+            if gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts?name=github-pages" \
+              --jq '.artifacts[] | select(.expired == false) | .id' | grep -Fx "$ARTIFACT_ID"; then
+              exit 0
+            fi
+            echo "Waiting for Pages artifact metadata (attempt $attempt of 12)"
+            sleep 5
+          done
+          echo "::error::The uploaded Pages artifact did not become visible."
+          exit 1
       - name: Deploy GitHub Pages
         id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
