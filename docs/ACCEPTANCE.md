@@ -132,11 +132,14 @@ each APK with `apksigner verify --print-certs`. Each APK's file SHA-256 matched
 both published records, and its certificate SHA-256 matched its build receipt.
 [GitHub release v1.0.0](https://github.com/NorthBoundWisdom/immivio/releases/tag/v1.0.0)
 
-| APK | APK SHA-256 |
-| --- | --- |
-| `Immivio-OpenXR-1.0.0-web-release-20261113.apk` | `d2cd1ffebeabc9e10ea6553aa59f6a52450b5e79e2367113c310e022b6883194` |
-| `Immivio-PICO-1.0.0-web-release-20261113.apk` | `903778deeab729bc7408bf778f2a985421168f088e14da47aaa20bce123ddebf` |
-| `Immivio-QUEST-1.0.0-web-release-20261113.apk` | `d97be6e9c48ff106c1987096991ede87b573370f437a730d8ee3453f30e196ba` |
+| APK | APK SHA-256 | Downloads |
+| --- | --- | ---: |
+| `Immivio-OpenXR-1.0.0-web-release-20261113.apk` | `d2cd1ffebeabc9e10ea6553aa59f6a52450b5e79e2367113c310e022b6883194` | 8 |
+| `Immivio-PICO-1.0.0-web-release-20261113.apk` | `903778deeab729bc7408bf778f2a985421168f088e14da47aaa20bce123ddebf` | 27 |
+| `Immivio-QUEST-1.0.0-web-release-20261113.apk` | `d97be6e9c48ff106c1987096991ede87b573370f437a730d8ee3453f30e196ba` | 17 |
+
+Download counts came from the GitHub release API on 2026-11-21 at 16:33 CST
+(`UTC+08:00`). They count downloads and can change.
 
 All three APKs use certificate SHA-256
 `9675b408fca1e27538325d92ede234af54a84601114f2dcb5671d7c715c59f9c`.
@@ -145,6 +148,17 @@ pinned PICO Store signing certificate has SHA-256
 `89b2a063d2783d04971415ccc1d98eb47eefd7fd343e242a61931a22f786d89b`.
 The mismatch triggered the owner's stop condition for the cleanup.
 [Pinned PICO Store certificate](../configs/pico_store.py)
+
+The v1.0.0 tag's macOS job used the default signing location
+`${XDG_CONFIG_HOME:-~/.config}/immivio/signing`. Its workflow and setup action
+do not override that location or configure an Actions cache for the Android
+job. The job uploaded `artifacts/packages`, `artifacts/reports/ci`,
+`artifacts/logs`, `artifacts/tests` and the plugin's Gradle test results.
+The current Android setup caches only `.cache/ci-tools` and
+`.cache/ci-playback/arm64-v8a`. Transported release signing material uses a
+temporary directory under `RUNNER_TEMP`. None of those cache or upload
+paths contains either signing directory. This was a source and workflow
+path check using the tag and the current checkout.
 
 ## Recording a result
 
