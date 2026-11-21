@@ -72,7 +72,7 @@ The Android plugin owns local grants, SMB, DLNA, media-server adapters. Credenti
 
 The MNN/ncnn runtime, RVM matting, monocular depth, photo conversion/portrait jobs, model catalogs, training/conversion scripts, model diagnostics and AI CI matrix have been removed. Ordinary rendering/native stereo remain supported. The build has one product identity and three headset targets.
 
-`native/CMakeLists.txt` builds the media-delete library, render bridge and MPV bridge. It has no inference dependencies. Packaging excludes obsolete cached model directories/libraries and rejects an APK if they are accidentally reintroduced.
+`native/CMakeLists.txt` builds the media-delete library, render bridge, MPV bridge and OpenXR video layers. It has no inference dependencies. Packaging excludes obsolete cached model directories/libraries and rejects an APK if they are accidentally reintroduced.
 
 ## Native source and test layout
 
