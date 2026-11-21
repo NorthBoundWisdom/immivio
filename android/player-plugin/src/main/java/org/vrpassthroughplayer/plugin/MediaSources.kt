@@ -3,6 +3,7 @@ package org.vrpassthroughplayer.plugin
 import android.app.Activity
 import android.content.Context
 import android.net.wifi.WifiManager
+import java.io.File
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 import org.json.JSONObject
@@ -78,7 +79,32 @@ internal class MediaSources(
     private fun context(): Context? = host()?.applicationContext
 
     @Synchronized
-    fun streams(): LocalStreamServer = server ?: LocalStreamServer().also { server = it }
+    fun streams(): LocalStreamServer =
+        server ?: LocalStreamServer { recordStreamConnections(it, "new_peak") }.also { server = it }
+
+    fun recordStreamConnections() {
+        server?.connectionCounts()?.let { recordStreamConnections(it, "export") }
+    }
+
+    private fun recordStreamConnections(
+        counts: LocalStreamServer.ConnectionCounts,
+        reason: String,
+    ) {
+        val app = context() ?: return
+        val event = "loopback_connections"
+        val details =
+            JSONObject().put("active", counts.active).put("peak", counts.peak).put("reason", reason)
+        val entry =
+            JSONObject()
+                .put("schema_version", 1)
+                .put("event", event)
+                .put("monotonic_us", System.nanoTime() / 1000)
+                .put("unix_seconds", System.currentTimeMillis() / 1000.0)
+                .put("details", details)
+        runCatching {
+            DiagnosticLogs.record(File(app.filesDir, "diagnostics"), event, entry.toString())
+        }
+    }
 
     fun nextId(): Int = ids.incrementAndGet()
 

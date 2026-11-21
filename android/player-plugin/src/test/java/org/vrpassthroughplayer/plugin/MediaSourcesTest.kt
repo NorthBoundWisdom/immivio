@@ -1,11 +1,51 @@
 package org.vrpassthroughplayer.plugin
 
 import java.net.HttpURLConnection
+import java.net.Socket
+import java.net.URI
 import java.net.URL
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.TimeUnit
 import org.junit.Assert.*
 import org.junit.Test
 
 class MediaSourcesTest {
+    @Test
+    fun loopbackCountsConcurrentConnectionsAndRetainsThePeak() {
+        val peaks = LinkedBlockingQueue<LocalStreamServer.ConnectionCounts>()
+        LocalStreamServer { peaks.add(it) }
+            .use { server ->
+                val source =
+                    object : StreamSource {
+                        override val size = 1L
+
+                        override fun open(): StreamSource.Reader = error("Connection-only fixture")
+                    }
+                val port = URI(server.publish(source, "fixture.mp4")).port
+                Socket("127.0.0.1", port).use {
+                    assertEquals(
+                        LocalStreamServer.ConnectionCounts(1, 1),
+                        peaks.poll(5, TimeUnit.SECONDS),
+                    )
+                    Socket("127.0.0.1", port).use {
+                        assertEquals(
+                            LocalStreamServer.ConnectionCounts(2, 2),
+                            peaks.poll(5, TimeUnit.SECONDS),
+                        )
+                        assertEquals(
+                            LocalStreamServer.ConnectionCounts(2, 2),
+                            server.connectionCounts(),
+                        )
+                    }
+                }
+                val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5)
+                while (server.connectionCounts().active > 0 && System.nanoTime() < deadline) {
+                    Thread.sleep(10)
+                }
+                assertEquals(LocalStreamServer.ConnectionCounts(0, 2), server.connectionCounts())
+            }
+    }
+
     @Test
     fun rangeParsing() {
         assertEquals(0L to 99L, LocalStreamServer.parseRange(null, 100))

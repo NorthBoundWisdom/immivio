@@ -28,10 +28,13 @@ internal interface StreamSource : Closeable {
  * Loopback-only HTTP/1.1 server that lets MPV/FFmpeg read network files with seeks (Range
  * requests). Paths are unguessable tokens; nothing listens beyond 127.0.0.1.
  */
-internal class LocalStreamServer : Closeable {
+internal class LocalStreamServer(private val onPeak: (ConnectionCounts) -> Unit = {}) : Closeable {
+    data class ConnectionCounts(val active: Int, val peak: Int)
+
     private val socket = ServerSocket(0, 16, InetAddress.getByName("127.0.0.1"))
     private val sources = ConcurrentHashMap<String, StreamSource>()
-    private val clients = ConcurrentHashMap.newKeySet<Socket>()
+    private val clients = HashSet<Socket>()
+    private var peakConnections = 0
     private val pool = Executors.newCachedThreadPool {
         Thread(it, "QuestStreamServer").apply { isDaemon = true }
     }
@@ -47,8 +50,20 @@ internal class LocalStreamServer : Closeable {
                     } catch (_: Throwable) {
                         break
                     }
-                clients.add(client)
-                pool.execute { serve(client) }
+                val newPeak =
+                    synchronized(clients) {
+                        if (closed) {
+                            runCatching { client.close() }
+                            return@execute
+                        }
+                        clients.add(client)
+                        pool.execute { serve(client) }
+                        if (clients.size > peakConnections) {
+                            peakConnections = clients.size
+                            ConnectionCounts(clients.size, peakConnections)
+                        } else null
+                    }
+                newPeak?.let(onPeak)
             }
         }
     }
@@ -67,6 +82,9 @@ internal class LocalStreamServer : Closeable {
     fun revoke(url: String) {
         sources.remove(url.substringAfter(":${socket.localPort}/").substringBefore('/'))?.close()
     }
+
+    fun connectionCounts(): ConnectionCounts =
+        synchronized(clients) { ConnectionCounts(clients.size, peakConnections) }
 
     private fun serve(client: Socket) = client.use {
         try {
@@ -170,7 +188,7 @@ internal class LocalStreamServer : Closeable {
         } catch (_: Throwable) {
             // Client seeks close connections mid-body; that is normal for MPV.
         } finally {
-            clients.remove(client)
+            synchronized(clients) { clients.remove(client) }
         }
     }
 
@@ -193,13 +211,17 @@ internal class LocalStreamServer : Closeable {
     }
 
     override fun close() {
-        closed = true
+        val connected =
+            synchronized(clients) {
+                if (closed) return
+                closed = true
+                clients.toList().also { clients.clear() }
+            }
         try {
             socket.close()
         } catch (_: Throwable) {}
         pool.shutdownNow()
-        clients.toList().forEach { runCatching { it.close() } }
-        clients.clear()
+        connected.forEach { runCatching { it.close() } }
         sources.values.forEach { runCatching { it.close() } }
         sources.clear()
     }

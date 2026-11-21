@@ -249,6 +249,8 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     @UsedByGodot
     fun save_diagnostic_log(): Int {
         val app = activity?.applicationContext ?: return -1
+        if (closed.get()) return -1
+        sources.recordStreamConnections()
         val id = requestId.incrementAndGet()
         return if (
             !closed.get() &&

@@ -124,6 +124,11 @@ No headset performance gain has been measured for this implementation.
   binary HTTP and app-private file paths excluded. Distinguish provider denial
   from decoder failure; this driver does not automate picker UI or device reboot.
 
+- [ ] **Loopback connection peak.** Play SMB and media-server streams on a
+  headset. Drag the timeline repeatedly while playing, then save the
+  diagnostic log. Record the `loopback_connections` active count and peak,
+  stream type and seek scenario as evidence for a future connection limit.
+
 ## Published v1.0.0 APK signing audit
 
 On 2026-11-21, `gh release download` retrieved the three public Web Release APKs,
