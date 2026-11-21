@@ -138,7 +138,7 @@ func _run() -> void:
 		"Opacity updates the active control bar"
 	)
 	main.library_menu.section = main.library_menu.Section.SETTINGS
-	main.test_show_library_menu(true)
+	main.test_show_library_menu()
 	var browser: Node3D = main.library_menu
 	var bar: Node3D = main.video_menu
 	check(main.video_menu.visible and browser.visible, "Browsing retains playback controls")
@@ -202,7 +202,7 @@ func _run() -> void:
 		"The control bar accepts ray input while the browser is open"
 	)
 	bar._toggle_popup("")
-	main.test_show_library_menu(true)
+	main.test_show_library_menu()
 	main._on_menu_action("stop")
 	check(
 		(

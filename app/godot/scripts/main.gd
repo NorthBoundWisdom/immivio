@@ -921,8 +921,8 @@ func _show_player_menu() -> void:
 	presentation_coordinator._show_player_menu()
 
 
-func _show_library_menu(preserve_navigation: bool = false) -> void:
-	presentation_coordinator._show_library_menu(preserve_navigation)
+func _show_library_menu() -> void:
+	presentation_coordinator._show_library_menu()
 
 
 func canvas_controls_snapshot() -> Dictionary:
@@ -1285,8 +1285,8 @@ func test_show_player_menu() -> void:
 	_show_player_menu()
 
 
-func test_show_library_menu(preserve_navigation: bool = false) -> void:
-	_show_library_menu(preserve_navigation)
+func test_show_library_menu() -> void:
+	_show_library_menu()
 
 
 func test_setting_changed(key: String, value: Variant) -> void:

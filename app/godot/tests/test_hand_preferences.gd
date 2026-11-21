@@ -56,7 +56,7 @@ func _run() -> void:
 	host.test_pointer_button("trigger_click", "left_hand")
 	host.test_pointer_release("trigger_click", "left_hand")
 	assert(host.video_menu._mode_open)
-	host.test_show_library_menu(true)
+	host.test_show_library_menu()
 	host.library_menu.section = host.library_menu.Section.SETTINGS
 	host.library_menu.tab = host.library_menu.GENERAL_TAB
 	host.library_menu.refresh()

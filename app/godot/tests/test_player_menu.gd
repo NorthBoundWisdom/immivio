@@ -321,7 +321,7 @@ func _run() -> void:
 	video.open_local("file:///menu.mp4", "测试电影 😀", 0, false)
 	video.test_set_waiting_for_frame(false)
 	recent.dismiss()
-	main.test_show_library_menu(true)
+	main.test_show_library_menu()
 	check(
 		click(recent, Library.PLAYER) and menu.visible and not recent.visible,
 		"Production library back-to-video button returns to controls"

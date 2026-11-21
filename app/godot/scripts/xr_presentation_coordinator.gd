@@ -617,7 +617,7 @@ func _show_player_menu(reanchor: bool = true) -> void:
 			_place_menu(host.player_menu)
 
 
-func _show_library_menu(preserve_navigation: bool = false) -> void:
+func _show_library_menu() -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return

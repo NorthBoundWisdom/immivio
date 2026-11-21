@@ -145,7 +145,7 @@ func slide(menu: Node3D, key: String, fraction: float) -> bool:
 
 func open_folder(host: Node) -> void:
 	var menu: Node3D = host.library_menu
-	host.presentation_coordinator._show_library_menu(true)
+	host.presentation_coordinator._show_library_menu()
 	menu.section = menu.Section.LOCAL
 	menu.sources.local_stack = [
 		{"id": "/storage/emulated/0", "title": "Internal storage"},
@@ -272,7 +272,7 @@ func run(host: Node, step: String, request: String) -> Dictionary:
 		check(await tap(bar, bar.BROWSE), "Playback controls remain ray-selectable beside library")
 		check(await tap(menu, menu.PLAYER), "Ray returns from library to video")
 	elif step == "menus":
-		host.presentation_coordinator._show_library_menu(true)
+		host.presentation_coordinator._show_library_menu()
 		menu.section = menu.Section.SETTINGS
 		menu.tab = menu.GENERAL_TAB
 		menu.scroll = 0

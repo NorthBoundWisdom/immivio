@@ -266,7 +266,7 @@ func _on_menu_action(operation: String) -> void:
 		_queue_action(operation)
 		return
 	if operation == "load_subtitle":
-		host.presentation_coordinator._show_library_menu(true)
+		host.presentation_coordinator._show_library_menu()
 		host.library_menu.subtitle_picker.open(
 			host.video.local_uri,
 			host.video.display_name,
@@ -299,7 +299,7 @@ func _on_menu_action(operation: String) -> void:
 			host.trigger_taps.clear()
 			host.stick_controls.suspend()
 			host.video.close_video()
-			host.presentation_coordinator._show_library_menu(true)
+			host.presentation_coordinator._show_library_menu()
 		"stereo":
 			host.video.toggle_stereo()
 		"eyes":
