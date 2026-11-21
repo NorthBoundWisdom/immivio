@@ -249,3 +249,158 @@ Tag-signing enforcement, release retry handling, bookmark and subtitle
 migration, the navigation decision, CI and stream diagnostics, and the disk
 inventory are pending. The full test rerun is also pending. Existing headset
 validation items remain recorded in [device acceptance](ACCEPTANCE.md#current-device-acceptance).
+
+## Cleanup continuation — 2026-11-21
+
+This pass started at `32f17b2`. Work is committed locally by topic.
+
+### Signing and publication
+
+- The v1.0.0 tag's signing directory is outside its artifact upload paths.
+  The current signing paths are also outside the Android Actions caches and
+  uploads. The GitHub API returned 8 OpenXR, 27 PICO and 17 Quest downloads
+  at 16:33 CST. [Signing audit](ACCEPTANCE.md#published-v100-apk-signing-audit)
+- The tag's protected `Release / macOS` job requires all three signing
+  secrets before it prepares dependencies. Formal Web and Store Release
+  packages use the pinned PICO Store certificate on all three platforms.
+  `apksigner` checks the exported APK. Publication rejects missing or
+  different fingerprints and requires a formal CI signer in every receipt.
+  Non-tag CI development builds can still use temporary signing.
+- Retrying publication skips existing assets with matching names and
+  SHA-256 digests. A same-day hash change or a cross-day filename change
+  stops the job with a new-patch-version message. The workflow checks every
+  platform before uploading missing files, uses the GitHub API asset digest
+  or hashes the remote binary when the digest is absent, and verifies the
+  final asset set. An identical retry leaves release notes alone.
+- The next-release section of the English and Chinese website update pages
+  explains the one-time signing transition and local-data loss on uninstall.
+  Its heading leaves the next version and date open.
+
+### Owner setup before publishing
+
+1. In GitHub, create a `release` environment under **Settings → Environments**.
+   Allow only release tags and require reviewer approval. In that environment,
+   set `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEY_ALIAS` and
+   `ANDROID_KEY_PASSWORD` for the key matching the pinned PICO Store
+   certificate. The repository owner supplies those values.
+   [Build and signing setup](BUILD.md#pico-store-apks)
+2. Append the following bilingual notice to the
+   [v1.0.0 GitHub Release](https://github.com/NorthBoundWisdom/immivio/releases/tag/v1.0.0).
+
+**中文文案**
+
+> **升级提醒**　本页提供的 v1.0.0 APK 使用了临时签名。从下一版开始，Quest、PICO 和 OpenXR 的 APK 都将使用正式签名。如果你安装了本页的 v1.0.0 APK，请先卸载，再安装新版本。卸载会清除本机的播放历史和账号设置。
+
+**English copy**
+
+> **Upgrade notice**　The v1.0.0 APKs attached to this release used a temporary signing key. Starting with the next release, Quest, PICO and OpenXR APKs will use the official signing key. If you installed one of the v1.0.0 APKs from this page, uninstall it before installing the next release. Uninstalling clears local playback history and account settings.
+
+### Playback, CI and device verification
+
+- The normal rename handler now moves bookmarks. A record already associated
+  with the destination wins. The old bookmark association is retired and
+  `bookmark_rename_conflict` records the number of source markers. An
+  unchanged URI performs no bookmark write. Both local storage and SMB use
+  `RenameBundle`, which renames eligible same-stem subtitle and audio
+  companions and returns the completed moves. Saved external subtitle URIs
+  are rewritten for exact matches in the same folder, including references
+  saved under other videos. Partial or failed renames do not run migration.
+- The subtitle action opens the existing library and immediately opens the
+  subtitle picker. The stop action reopens the existing library after
+  closing playback. Opening the library already leaves its folder and
+  scroll state in the library controller, with the existing compact-mode
+  restriction on Settings. The device probe explicitly sets its test
+  folder or Settings state after opening. None of those callers needs a
+  separate `preserve_navigation` argument, so the argument and its
+  call-site values were removed.
+- Android push CI now runs on `main` and tags. PRs targeting `main` use the PR
+  trigger. The concurrency group keys on the ref and cancels older runs for
+  that ref except tags. The jcifs and ICU inputs now use Gradle file
+  providers. Both early-resolution warnings disappeared. Forced rebuilds
+  produced byte-identical filtered JARs, and ICU verification tracks the
+  whole input archive and its checksum record.
+- The loopback HTTP server records active connections and each new peak in
+  existing diagnostics. Saving diagnostics also records current and peak
+  counts. The cached thread pool remains unbounded. On a headset, test
+  local/SMB rename with companions, return from playback and subtitle
+  picking, and record peak counts during steady network playback and
+  repeated timeline dragging. No headset was connected during this pass.
+  [Device acceptance](ACCEPTANCE.md#current-device-acceptance)
+
+### Disk inventory for approval
+
+The local snapshot on 2026-11-21 measured **16.29 GiB** in `artifacts/`
+and **6.06 GiB** in `build/intermediates/`. Within artifacts, the archive
+accounted for 11.45 GiB, packages 3.99 GiB, reports 0.56 GiB and captures
+0.27 GiB. Sizes below come from `du -sk`. Shared files or filesystem clones
+can make recovered space differ from the sum.
+
+Retention covers complete APKs and receipts associated with published
+versions reported by GitHub, from `v0.6.0-fork.1` through `v1.0.0`, and
+at least the newest complete APK/receipt pair for each vendor and build
+type across both channels. The date in the package name determines
+newness, with APK modification time breaking same-day ties. The three
+verified v1.0.0 APKs and their receipts in the signing-audit directory
+are retained. Ambiguous archives, credential-like paths and unrelated
+evidence remain outside the candidate list.
+
+| Vendor / build | Newest complete APK retained with its adjacent receipt |
+| --- | --- |
+| OpenXR Debug | `artifacts/packages/OpenXR/web/debug/Immivio-OpenXR-1.0.0-web-debug-20261121.apk` |
+| OpenXR Release | `artifacts/reports/cleanup-v1.0.0-signing.fqBWAP/Immivio-OpenXR-1.0.0-web-release-20261113.apk` |
+| PICO Debug | `artifacts/packages/PICO/web/debug/Immivio-PICO-1.0.0-web-debug-20261121.apk` |
+| PICO Release | `artifacts/packages/PICO/appstore/release/Immivio-PICO-1.0.0-appstore-release-20261115.apk` |
+| Quest Debug | `artifacts/packages/QUEST/web/debug/Immivio-QUEST-1.0.0-web-debug-20261121.apk` |
+| Quest Release | `artifacts/packages/QUEST/web/release/Immivio-QUEST-1.0.0-web-release-20261114.apk` |
+
+The following candidates total approximately **10.20 GiB**. Dates are local
+modification dates. The three files in the `direct` subdirectory are partial
+downloads from the signing audit.
+
+| Candidate path | MiB | Date or version |
+| --- | ---: | --- |
+| `build/intermediates/legacy-apk-inspection/` | 6,201.17 | 2026-11-06, expanded APK inspection files |
+| `build/intermediates/gradle-install-thread.txt` | 0.19 | 2026-11-10 |
+| `artifacts/archive/legacy-build/F4-retry-unsigned.apk` | 162.30 | 2026-11-04, unsigned retry |
+| `artifacts/archive/legacy-build/depth/` | 282.75 | 2026-10-12 |
+| `artifacts/archive/legacy-build/godot-api/` | 107.51 | 2026-10-10 |
+| `artifacts/archive/legacy-build/rvm/` | 85.72 | 2026-10-12 |
+| `artifacts/archive/legacy-build/rvm-ratio-one/` | 14.28 | 2026-10-12 |
+| `artifacts/archive/legacy-build/ports-mpv-sdk/` | 29.03 | 2026-11-04 |
+| `artifacts/archive/legacy-build/native-clean-release/` | 10.04 | 2026-10-14 |
+| `artifacts/archive/legacy-build/native-layout-android/` | 7.62 | 2026-10-14 |
+| `artifacts/archive/legacy-build/native-host/` | 4.32 | 2026-11-04 |
+| `artifacts/archive/legacy-build/ci-export-path/` | 0.11 | 2026-11-05 |
+| `artifacts/reports/cleanup-v1.0.0-signing.fqBWAP/direct/Immivio-OpenXR-1.0.0-web-release-20261113.apk` | 6.02 | v1.0.0, partial download |
+| `artifacts/reports/cleanup-v1.0.0-signing.fqBWAP/direct/Immivio-PICO-1.0.0-web-release-20261113.apk` | 5.66 | v1.0.0, partial download |
+| `artifacts/reports/cleanup-v1.0.0-signing.fqBWAP/direct/Immivio-QUEST-1.0.0-web-release-20261113.apk` | 6.25 | v1.0.0, partial download |
+| `artifacts/archive/legacy-build/dependency_seed_repos/MpvSources/` | 64.97 | 2026-10-13 |
+| `artifacts/archive/legacy-build/dependency_seed_repos/FFmpeg/` | 660.28 | 2026-10-13 |
+| `artifacts/archive/legacy-build/dependency_seed_repos/Libxml2/` | 69.73 | 2026-10-13 |
+| `artifacts/archive/legacy-build/dependency_seed_repos/GodotMacOS/` | 162.72 | 2026-10-13 |
+| `artifacts/archive/legacy-build/dependency_seed_repos/MbedTLS/` | 161.39 | 2026-10-13 |
+| `artifacts/archive/legacy-build/dependency_seed_repos/Gradle/` | 144.60 | 2026-10-13 |
+| `artifacts/archive/legacy-build/dependency_seed_repos/Mpv/` | 151.53 | 2026-10-13 |
+| `artifacts/archive/legacy-build/dependency_seed_repos/MpvLinuxNdk/` | 704.42 | 2026-10-13 |
+| `artifacts/archive/legacy-build/dependency_seed_repos/PythonPackages/` | 81.09 | 2026-10-13 |
+| `artifacts/archive/legacy-build/dependency_seed_repos/GodotOpenXRHands/` | 900.83 | 2026-10-13 |
+| `artifacts/archive/legacy-build/dependency_source_roots/FFmpeg/` | 115.61 | 2026-10-13 |
+| `artifacts/archive/legacy-build/dependency_source_roots/GodotOpenXRHands/` | 309.54 | 2026-10-13 |
+
+### Validation
+
+| Suite | Baseline passed | This pass |
+| --- | ---: | ---: |
+| Godot | 105 | 105 |
+| Android JVM | 225 | 226, 11 skipped |
+| Workflow | 140 | 143 |
+| Release | 18 | 22 |
+| Native | 5 | 5 |
+| Website | 4 | 4 |
+
+Ruff, actionlint, website/source checks and `git diff --check` passed.
+Publication tests use local fixtures and mock uploads. The protected
+environment and a real formally signed release still need an approved
+GitHub run after the owner configures signing. This pass used no private
+key or password. No candidate was deleted, and no push, tag, version
+change or publication was performed.
