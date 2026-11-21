@@ -37,7 +37,13 @@ class BuildSourceChanges(unittest.TestCase):
             for name in ("player-plugin-debug.aar",):
                 (binaries / name).write_bytes(b"fixture-compiled-output")
             stack.enter_context(patch.object(android.player, "BIN", binaries))
-            args = SimpleNamespace(vendor="Quest", build_type="Debug")
+            args = SimpleNamespace(
+                vendor="Quest",
+                build_type="Debug",
+                ndk="ndk",
+                cmake="cmake",
+                build_tools="build",
+            )
             marker = root / "build/android/state/Quest-Debug.built.json"
             marker.parent.mkdir(parents=True)
             yield root, args, marker
@@ -62,6 +68,12 @@ class BuildSourceChanges(unittest.TestCase):
             "native/mpv/include/immivio/mpv/json_quote.h",
             "app/godot/scripts/player.gd",
             "app/godot/shaders/video.gdshader",
+            "app/godot/shaders/video.gdshaderinc",
+            "app/godot/scenes/main.tscn",
+            "app/godot/i18n/translations.json",
+            "app/godot/models/hands/model.bin",
+            "android/player-plugin/src/debug/java/example/Probe.kt",
+            "app/godot/media/fixture.mp4",
             "configs/android_workflow.py",
             "configs/workspace_lock.py",
         ):
@@ -97,6 +109,34 @@ class BuildSourceChanges(unittest.TestCase):
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text("generated output")
             android.require_build(args)
+
+    def test_selected_sdk_component_change_requires_rebuild(self):
+        with self.workspace() as (_, args, marker):
+            self.mark_built(args, marker)
+            args.ndk = "other"
+            with self.assertRaisesRegex(RuntimeError, "Build inputs changed"):
+                android.require_build(args)
+
+    def test_run_checks_that_the_package_came_from_the_current_build(self):
+        with self.workspace() as (root, args, marker):
+            self.mark_built(args, marker)
+            current_build = android.require_build(args)
+            apk = root / "Immivio-QUEST-1.0.0-appstore-debug-20261121.apk"
+            apk.write_bytes(b"fixture APK")
+            receipt = apk.with_suffix(".build.json")
+            record = {"apk": apk.name, "sha256": android.digest(apk)}
+            with patch("configs.ci_support.latest_receipt_file", return_value=receipt):
+                receipt.write_text(json.dumps(record))
+                with self.assertRaisesRegex(RuntimeError, "run package again"):
+                    android.require_packaged_build(args, current_build)
+                record["build_sha256"] = current_build
+                receipt.write_text(json.dumps(record))
+                self.assertEqual(
+                    android.require_packaged_build(args, current_build), apk
+                )
+                apk.write_bytes(b"changed bytes")
+                with self.assertRaisesRegex(RuntimeError, "differs from its receipt"):
+                    android.require_packaged_build(args, current_build)
 
     def test_addon_manifest_changes_require_a_new_build(self):
         with self.workspace() as (root, args, marker):

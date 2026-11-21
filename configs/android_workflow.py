@@ -4,6 +4,7 @@
 """Explicit, offline Android build workflow shared by local use and CI."""
 
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -29,7 +30,11 @@ BUILD_INPUTS = (
     "third_party/openxr-vendors/manifest.json",
     "configs/toolchain.json",
     "android/build.gradle",
+    "android/gradle.properties",
+    "android/gradlew",
+    "android/gradlew.bat",
     "android/player-plugin/build.gradle",
+    "android/player-plugin/consumer-rules.pro",
     "android/settings.gradle",
     "android/gradle/libs.versions.toml",
     "android/gradle/dependency-cache.gradle",
@@ -42,6 +47,10 @@ BUILD_INPUTS = (
     "android/gradle/verification-metadata.xml",
     "app/godot/export_presets.cfg",
     "app/godot/project.godot",
+    "app/godot/openxr_action_map.tres",
+    "app/godot/icon.svg",
+    "app/godot/icon.svg.import",
+    "app/godot/addons/quest_player/plugin.cfg",
     "tools/prepare_branding.gd",
 )
 
@@ -71,11 +80,13 @@ def configuration_path(vendor, build_type, channel="appstore"):
 
 def input_signature(args):
     inputs = {name: digest(ROOT / name) for name in BUILD_INPUTS}
-    for directory, pattern in [
+    source_paths = [
         ("configs", "*.py"),
-        ("app/godot/branding", "*.png"),
+        ("app/godot/branding", "*"),
         ("branding/source", "*.png"),
-        ("app/godot/branding", "*.svg"),
+        ("app/godot/backgrounds", "*"),
+        ("app/godot/i18n", "*.json"),
+        ("app/godot/models", "**/*"),
         ("android/player-plugin/src/main", "**/*.kt"),
         ("android/player-plugin/src/main", "**/*.java"),
         ("android/player-plugin/src/main", "**/*.xml"),
@@ -84,20 +95,38 @@ def input_signature(args):
         ("native", "**/*.hpp"),
         ("native", "**/CMakeLists.txt"),
         ("app/godot/scripts", "**/*.gd"),
+        ("app/godot/scripts", "**/*.uid"),
         ("app/godot/shaders", "**/*.gdshader"),
-        ("app/godot", "*.tscn"),
+        ("app/godot/shaders", "**/*.gdshaderinc"),
+        ("app/godot/shaders", "**/*.uid"),
+        ("app/godot/scenes", "**/*.tscn"),
         ("app/godot/addons/quest_player", "*.gd"),
+        ("app/godot/addons/quest_player", "*.uid"),
         ("android", "**/*gradle.lockfile"),
-    ]:
+        ("third_party", "**/*"),
+    ]
+    if args.build_type == "Debug":
+        source_paths.extend(
+            [
+                ("android/player-plugin/src/debug", "**/*"),
+                ("app/godot/media", "*.mp4"),
+            ]
+        )
+    for directory, pattern in source_paths:
         inputs.update(
             {
                 str(p.relative_to(ROOT)): digest(p)
                 for p in (ROOT / directory).glob(pattern)
-                if p.is_file()
+                if not p.name.startswith(".") and p.is_file()
             }
         )
     inputs["android_identity"] = player.android_identity(args.build_type)
     inputs["distribution_channel"] = player.distribution_channel(args)
+    inputs["sdk_components"] = {
+        "ndk": args.ndk,
+        "cmake": args.cmake,
+        "build_tools": args.build_tools,
+    }
     inputs["mpv_libraries"] = {
         name: digest(path) for name, path in player.mpv_libraries().items()
     }
@@ -254,12 +283,30 @@ def require_build(args):
     ).with_suffix(".built.json")
     if not path.exists():
         raise RuntimeError("Run build before package or run")
-    data = json.loads(path.read_text())
+    serialized = path.read_bytes()
+    data = json.loads(serialized)
     if data != {
         "inputs": input_signature(args),
         "aar": digest(player.BIN / f"player-plugin-{args.build_type.lower()}.aar"),
     }:
         raise RuntimeError("Build inputs changed; run build again")
+    return hashlib.sha256(serialized).hexdigest()
+
+
+def require_packaged_build(args, build_sha256):
+    from configs.ci_support import latest_receipt_file
+    from configs.output_paths import apk_for_receipt
+
+    path = latest_receipt_file(
+        args.vendor, args.build_type, player.distribution_channel(args)
+    )
+    receipt = json.loads(path.read_text())
+    if receipt.get("build_sha256") != build_sha256:
+        raise RuntimeError("APK does not match the current build; run package again")
+    apk = apk_for_receipt(path, receipt)
+    if digest(apk) != receipt.get("sha256"):
+        raise RuntimeError("APK differs from its receipt")
+    return apk
 
 
 def test(args, env, sdk, level):
@@ -422,7 +469,7 @@ def main(argv=None):
         elif opts.command == "test":
             test(args, env, sdk, opts.level)
         elif opts.command == "package":
-            require_build(args)
+            build_sha256 = require_build(args)
             if (
                 os.environ.get("GITHUB_ACTIONS") == "true"
                 and args.build_type == "Release"
@@ -430,23 +477,13 @@ def main(argv=None):
                 from configs.ci_support import signing_env
 
                 env, _ = signing_env(env)
-            player.package(args, env, sdk)
+            player.package(args, env, sdk, build_sha256=build_sha256)
             if os.environ.get("GITHUB_ACTIONS") == "true":
                 from configs.ci_support import ci_package_metadata
 
                 ci_package_metadata(args.vendor, args.build_type, args.channel)
         else:
-            require_build(args)
-            from configs.ci_support import latest_receipt_file
-            from configs.output_paths import apk_for_receipt
-
-            receipt_file = latest_receipt_file(
-                args.vendor, args.build_type, args.channel
-            )
-            receipt = json.loads(receipt_file.read_text())
-            apk = apk_for_receipt(receipt_file, receipt)
-            if digest(apk) != receipt["sha256"]:
-                raise RuntimeError("APK differs from its receipt")
+            apk = require_packaged_build(args, require_build(args))
             adb = sdk / "platform-tools" / ("adb.exe" if os.name == "nt" else "adb")
             player.run([adb, "install", "-r", apk], env=env)
             player.run(

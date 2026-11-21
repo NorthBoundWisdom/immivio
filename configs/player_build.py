@@ -863,6 +863,8 @@ def configure_project(args, env, sdk):
         stream.write(
             "\nandroid.builtInKotlin=false\nandroid.newDsl=false\nandroid.jetifier.ignorelist=bcprov-jdk18on\n"
         )
+        # Configure and export replace input files outside Gradle's own tasks.
+        stream.write("org.gradle.vfs.watch=false\n")
         stream.write(
             "plugins_remote_binaries=" + "|".join(export_dependencies()) + "\n"
         )
@@ -926,7 +928,7 @@ def build_plugin(args, env, sdk):
     )
 
 
-def package(args, env, sdk):
+def package(args, env, sdk, *, build_sha256):
     channel = distribution_channel(args)
     identity = android_identity(args.build_type)
     development_suffix = "-dev" if identity["application_id"].endswith(".dev") else ""
@@ -1073,7 +1075,8 @@ def package(args, env, sdk):
         store_report.write_text(json.dumps(report, indent=2) + "\n")
     receipt = {
         **dependency_receipt(),
-        **android_identity(),
+        **identity,
+        "build_sha256": build_sha256,
         "signing_certificate_sha256": certificate[1],
         "apk": output.name,
         "artifact_path": output.relative_to(ROOT / "artifacts").as_posix(),

@@ -180,6 +180,8 @@ def check_export_path(templates, gradle, env):
             directory,
             "--console=plain",
             "--offline",
+            # The probe removes its output before each run to verify an actual copy.
+            "--rerun-tasks",
             "-Pexport_path=" + uri,
             "checkExportPath",
         ],
@@ -187,7 +189,8 @@ def check_export_path(templates, gradle, env):
         log="ci-export-path-check.log",
         timeout=120,
     )
-    if (destination / "marker.txt").read_bytes() != b"export-path-check":
+    marker = destination / "marker.txt"
+    if not marker.is_file() or marker.read_bytes() != b"export-path-check":
         raise RuntimeError("Gradle copied the export to an unexpected destination")
     print("Verified Godot/Gradle export path with spaces and a literal +", flush=True)
 

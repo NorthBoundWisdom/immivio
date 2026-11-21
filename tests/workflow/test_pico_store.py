@@ -94,13 +94,14 @@ class PicoStore(unittest.TestCase):
         ):
             if mismatch:
                 with self.assertRaisesRegex(RuntimeError, "APK signer differs"):
-                    builder.package(args, env, root / "sdk")
+                    builder.package(args, env, root / "sdk", build_sha256="b" * 64)
                 self.assertFalse(outputs[0].exists())
                 self.assertFalse(outputs[0].with_suffix(".build.json").exists())
             else:
-                builder.package(args, env, root / "sdk")
+                builder.package(args, env, root / "sdk", build_sha256="b" * 64)
                 receipt = json.loads(outputs[0].with_suffix(".build.json").read_text())
                 self.assertEqual(receipt["signing_certificate_sha256"], expected)
+                self.assertEqual(receipt["build_sha256"], "b" * 64)
 
     def test_package_reads_legacy_and_v2_signer_output(self):
         for prefix in ("Signer #1", "V2 Signer:"):
