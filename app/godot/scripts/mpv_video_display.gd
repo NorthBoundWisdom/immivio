@@ -2050,11 +2050,6 @@ func load_mode_lock(value: Variant) -> void:
 	}
 
 
-func toggle_loop() -> void:
-	loop_enabled = not loop_enabled
-	changed.emit()
-
-
 ## 2D -> side by side -> top-bottom -> 2D.
 func toggle_stereo() -> void:
 	set_stereo_layout(0 if stereo_sbs and top_bottom else (2 if stereo_sbs else 1))

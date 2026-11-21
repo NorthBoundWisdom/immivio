@@ -1085,11 +1085,6 @@ func video_queue() -> Array[Dictionary]:
 	return result
 
 
-static func _leaf(path: String) -> String:
-	var parts := path.trim_suffix("/").split("/")
-	return parts[parts.size() - 1] if parts.size() > 0 else path
-
-
 static func _bytes(bytes: int) -> String:
 	if bytes >= 1048576:
 		return "%.1f MB" % (bytes / 1048576.0)

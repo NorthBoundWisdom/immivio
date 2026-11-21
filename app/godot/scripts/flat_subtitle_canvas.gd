@@ -150,18 +150,3 @@ func physical_size(caption: Label3D) -> Vector2:
 		* caption.pixel_size
 		* Vector2(caption.global_basis.x.length(), caption.global_basis.y.length())
 	)
-
-
-func fits_surface(caption: Label3D, surface: Transform3D, size: Vector2) -> bool:
-	# The existing video hole exposes this layer. Oversized text outside it must retain
-	# the original depth-independent label, rather than disappear behind the cinema scene.
-	var bounds := label.get_aabb()
-	var to_surface := surface.affine_inverse() * caption.global_transform
-	var screen := Rect2(-size * 0.5, size)
-	for x in [bounds.position.x, bounds.end.x]:
-		for y in [bounds.position.y, bounds.end.y]:
-			# Scale label coordinates before applying its translation.
-			var point := to_surface * (Vector3(x, y, 0) * caption.pixel_size)
-			if not screen.has_point(Vector2(point.x, point.y)):
-				return false
-	return true
