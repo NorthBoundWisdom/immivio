@@ -64,8 +64,7 @@ jobs:
           directory="artifacts/packages/releases/$RELEASE_TAG"
           assets=("$directory"/*.apk "$directory"/*.build.json "$directory/SHA256SUMS.txt" "$directory/release-manifest.json")
           if gh release view "$RELEASE_TAG" --repo "$GH_REPO" >/dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG" "${assets[@]}" --repo "$GH_REPO" --clobber
-            gh release edit "$RELEASE_TAG" --repo "$GH_REPO" --notes-file "$directory/release-notes.md"
+            python3 tools/publish_android_release.py --bundle "$directory" --repository "$GH_REPO" --tag "$RELEASE_TAG"
           else
             gh release create "$RELEASE_TAG" "${assets[@]}" --repo "$GH_REPO" --verify-tag \
               --title "Immivio $RELEASE_TAG" --notes-file "$directory/release-notes.md"

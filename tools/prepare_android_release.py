@@ -21,6 +21,15 @@ def sha256(path):
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
+def require_release_signer(record):
+    if record.get("ci_signing") != "repository-signing-key":
+        raise ValueError("Release receipt must use the formal CI release signing key")
+    if record.get("signing_certificate_sha256") != CERTIFICATE_SHA256:
+        raise ValueError(
+            "Release receipt signer differs from the pinned PICO store certificate"
+        )
+
+
 def prepare(packages, output, tag, commit):
     if not tag or tag.startswith("-") or any(c in tag for c in "\r\n"):
         raise ValueError("Invalid release tag")
@@ -106,14 +115,7 @@ def prepare(packages, output, tag, commit):
             raise ValueError(
                 "Release APK is missing or differs from its verified receipt"
             )
-        if record.get("ci_signing") != "repository-signing-key":
-            raise ValueError(
-                "Release receipt must use the formal CI release signing key"
-            )
-        if record.get("signing_certificate_sha256") != CERTIFICATE_SHA256:
-            raise ValueError(
-                "Release receipt signer differs from the pinned PICO store certificate"
-            )
+        require_release_signer(record)
         records.append(record)
         assets.extend([apk, receipt])
     if set(directory.rglob("*.apk")) != {

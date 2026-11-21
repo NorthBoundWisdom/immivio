@@ -3,8 +3,10 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import prepare_android_release as release
+import publish_android_release as publisher
 import select_android_release as selection
 
 TAG = "v0.6.0-fork.1"
@@ -167,6 +169,85 @@ class ReleaseAssets(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     release.prepare(packages, root / "release", TAG, COMMIT)
                 self.assertFalse((root / "release").exists())
+
+    def published_fixture(self, root):
+        bundle = root / "release"
+        release.prepare(self.fixture(root), bundle, TAG, COMMIT)
+        existing = [
+            {
+                "name": p.name,
+                "state": "uploaded",
+                "digest": "sha256:" + release.sha256(p),
+            }
+            for p in sorted(bundle.iterdir())
+            if p.name != "release-notes.md"
+        ]
+        return bundle, existing
+
+    def test_same_day_identical_rerun_uploads_nothing(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            bundle, existing = self.published_fixture(Path(temporary))
+            with (
+                patch.object(publisher, "release_assets", return_value=existing),
+                patch.object(publisher.subprocess, "run") as upload,
+            ):
+                publisher.publish_existing(bundle, "owner/repo", TAG)
+                upload.assert_not_called()
+
+    def test_same_day_changed_hash_rejects_and_cross_day_name_rejects(self):
+        for change in ("hash", "date", "duplicate"):
+            with (
+                self.subTest(change=change),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
+                bundle, existing = self.published_fixture(Path(temporary))
+                apk = next(
+                    asset for asset in existing if asset["name"].endswith(".apk")
+                )
+                if change == "hash":
+                    apk["digest"] = "sha256:" + "0" * 64
+                else:
+                    renamed = {
+                        **apk,
+                        "name": apk["name"].replace("20261013", "20261014"),
+                    }
+                    if change == "duplicate":
+                        existing.append(renamed)
+                    else:
+                        apk.update(renamed)
+                with (
+                    patch.object(publisher, "release_assets", return_value=existing),
+                    patch.object(publisher.subprocess, "run") as upload,
+                    self.assertRaisesRegex(ValueError, "请发新的补丁版本"),
+                ):
+                    publisher.publish_existing(bundle, "owner/repo", TAG)
+                upload.assert_not_called()
+
+    def test_interrupted_retry_only_selects_missing_assets(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            bundle, existing = self.published_fixture(Path(temporary))
+            missing = existing.pop()
+            with (
+                patch.object(
+                    publisher,
+                    "release_assets",
+                    side_effect=[existing, existing + [missing]],
+                ),
+                patch.object(publisher.subprocess, "run") as upload,
+            ):
+                publisher.publish_existing(bundle, "owner/repo", TAG)
+                self.assertEqual(
+                    upload.call_args_list[0].args[0],
+                    [
+                        "gh",
+                        "release",
+                        "upload",
+                        TAG,
+                        bundle / missing["name"],
+                        "--repo",
+                        "owner/repo",
+                    ],
+                )
 
     def test_receipts_require_all_dependency_manifests(self):
         for missing in (
