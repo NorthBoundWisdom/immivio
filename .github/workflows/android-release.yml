@@ -2,8 +2,7 @@ name: Immivio Android
 
 on:
   push:
-    branches: [main]
-    tags: ["**"]
+    tags: ["v*"]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -31,57 +30,16 @@ concurrency:
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
-  create-release:
-    name: Create tagged Release
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: release-build
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: write
-    env:
-      GH_TOKEN: ${{ github.token }}
-      GH_REPO: ${{ github.repository }}
-      RELEASE_TAG: ${{ github.ref_name }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Prepare tagged changelog
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          import os
-          from pathlib import Path
-          import re
-          tag = os.environ['RELEASE_TAG']
-          version = tag.removeprefix('v')
-          changelog = Path('CHANGELOG.md').read_text(encoding='utf-8')
-          section = re.search(r'^## ' + re.escape(version) + r'[^\n]*\n(.*?)(?=^## |\Z)', changelog, re.M | re.S)
-          notes = section.group(1).strip() if section else f'Source release for `{tag}`.'
-          notes += '\n\n[English release notes](https://northboundwisdom.github.io/immivio/updates/) · [中文更新说明](https://northboundwisdom.github.io/immivio/zh/updates/)\n'
-          notes += '\nAndroid APKs are attached automatically after the macOS build passes. Until APK assets appear, this release contains source archives only.\n'
-          Path('tag-release-notes.md').write_text(notes, encoding='utf-8')
-          PY
-      - name: Create Release without waiting for Android runners
-        shell: bash
-        run: |
-          if ! gh release view "$RELEASE_TAG" --repo "$GH_REPO" >/dev/null 2>&1; then
-            gh release create "$RELEASE_TAG" --repo "$GH_REPO" --verify-tag \
-              --title "Immivio $RELEASE_TAG" --notes-file tag-release-notes.md
-          fi
-
   build:
-    name: ${{ inputs.build_type || 'Debug' }} / macOS
-    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+    name: ${{ startsWith(github.ref, 'refs/tags/') && 'Release' || inputs.build_type || 'Debug' }} / macOS
     runs-on: macos-15-intel
     timeout-minutes: 90
-    defaults: &build-defaults
+    defaults:
       run:
         shell: bash
-    env: &build-env
+    env:
       PYTHONUTF8: "1"
-    steps: &build-steps
+    steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -152,23 +110,53 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-  release-build:
-    name: Release / macOS
+  publish:
+    name: Publish tagged APKs
     if: startsWith(github.ref, 'refs/tags/')
-    runs-on: macos-15-intel
-    timeout-minutes: 90
-    defaults: *build-defaults
-    env: *build-env
-    steps: *build-steps
-
-  publish-release:
-    name: Publish tagged Android APKs
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: [release-build, create-release]
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: write
       actions: write
-    uses: ./.github/workflows/publish-android-release.yml
-    with:
-      tag: ${{ github.ref_name }}
-      run_id: ${{ format('{0}', github.run_id) }}
+    concurrency:
+      group: android-release-assets-${{ github.ref_name }}
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check tag source and macOS build result
+        id: source
+        run: >-
+          python3 tools/select_android_release.py
+          --repository "$GH_REPO" --tag "$RELEASE_TAG" --run-id "$GITHUB_RUN_ID"
+      - name: Download Release packages
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: Immivio-Android-Release-macOS
+          path: build/staging/release-input
+      - name: Verify Release receipts and APK hashes
+        env:
+          SOURCE_COMMIT: ${{ steps.source.outputs.commit }}
+        run: >-
+          python3 tools/prepare_android_release.py
+          --packages build/staging/release-input
+          --output "artifacts/packages/releases/$RELEASE_TAG" --tag "$RELEASE_TAG" --commit "$SOURCE_COMMIT"
+      - name: Publish APKs on the tag's GitHub Release
+        run: |
+          directory="artifacts/packages/releases/$RELEASE_TAG"
+          assets=("$directory"/*.apk "$directory"/*.build.json "$directory/SHA256SUMS.txt" "$directory/release-manifest.json")
+          if gh release view "$RELEASE_TAG" --repo "$GH_REPO" >/dev/null 2>&1; then
+            python3 tools/publish_android_release.py --bundle "$directory" --repository "$GH_REPO" --tag "$RELEASE_TAG"
+          else
+            gh release create "$RELEASE_TAG" "${assets[@]}" --repo "$GH_REPO" --verify-tag \
+              --title "Immivio $RELEASE_TAG" --notes-file "$directory/release-notes.md"
+          fi
+      - name: Refresh website downloads
+        # Releases created with GITHUB_TOKEN do not trigger other workflows; dispatch does.
+        run: gh workflow run website-pages.yml --repo "$GH_REPO" --ref main

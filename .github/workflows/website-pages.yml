@@ -9,8 +9,6 @@ on:
       - "tools/refresh_website_release.py"
       - "tests/website/**"
       - ".github/workflows/website-pages.yml"
-  release:
-    types: [published]
   workflow_dispatch:
 
 permissions:

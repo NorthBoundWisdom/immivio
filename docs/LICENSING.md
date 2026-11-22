@@ -32,12 +32,22 @@ Names and branding identify this project. The software license does not promise 
 
 ## Source publication versus APK distribution
 
-This repository contains the current Immivio application source, build scripts and dependency provenance. The removed inference/model system is no longer part of current builds. Historical releases retain their original source and distribution obligations. Compiled third-party libraries and personal media are excluded from Git.
+This repository contains the current Immivio application source, build scripts and dependency provenance. Historical releases retain their original source and distribution obligations. Compiled third-party libraries and personal media are excluded from Git.
 
 When distributing a covered binary, GPL v3 requires corresponding source through an applicable delivery method. A root license file and links to upstream projects are not, by themselves, a complete binary source offer. Supply the relevant preferred forms for modification, required modifications, interfaces, build/install scripts, exact dependency sources and applicable installation information. Keep each binary release associated with its source tag and dependency versions.
 
-Vendor SDK terms, the actual combined binary, distribution-channel terms and any GPL exceptions must also be checked before claiming complete binary-distribution compliance. GPL permissions do not grant rights to third-party SDKs or private media. This source publication does not declare the existing store/testing APK fully compliant.
+Vendor SDK terms, the actual combined binary, distribution-channel terms and any GPL exceptions must also be checked before claiming complete binary-distribution compliance. GPL permissions do not grant rights to third-party SDKs or private media.
 
-Cloud drive integrations and their embedded OpenList/p115rsacipher dependencies have been removed from current builds. Historical releases retain their original source and distribution obligations.
+All eight mpv/FFmpeg libraries are rebuilt from locked source archives. Their static dependencies and LLVM runtime notices are recorded in [source-build provenance](../third_party/mpv/SOURCE_BUILD.md). Include that lock, build script, patches and the recorded corresponding sources when distributing a binary.
 
-The selected 0.17 runtime rebuilds all eight mpv/FFmpeg libraries from locked source archives, including retryable MediaCodec hints and compositor cadence. Original APK checksums are historical provenance. Its static dependencies and LLVM runtime notices are recorded in [source-build provenance](../third_party/mpv/SOURCE_BUILD.md). Include that lock, build script, patch and the recorded corresponding sources when distributing a binary.
+## Code adapted from GPL-3.0 forks
+
+Immivio continues from [zerochocobo/Thru3D-Media-Player](https://github.com/zerochocobo/Thru3D-Media-Player) (shared history up to 0.6.0). Later behavior was adapted selectively; integration code follows Immivio's own playback, menu and persistence architecture. Files listed below derive in whole or part from the named GPL-3.0 source.
+
+| Upstream | Derived files or behavior |
+| --- | --- |
+| Thru3D-Media-Player 0.13.3 (`9a6a905`) | `StrmFile.kt`, `StrmHttp.kt` and their test scenarios; `screen_presets.gd` |
+| Thru3D-Media-Player 0.13.3–0.16.5 (`9a6a905..da5f86c`) | `SubtitleEncoding.kt`, `SubtitleCharsetDetector.kt`, `third_party/icu-charset/` (ICU material remains Unicode-3.0), `file_subtitle_encoding.gd`; `MediaServerPlayback.kt`, `media_server_playback.gd`; Emby/Jellyfin version selection and folder exclusion; `subtitle_picker_filter.gd`; external VIEW/SEND URI validation; `immersive_adjustments.gd`, `picture_center_guide.gd` and its shader; `video_mode_default.gd` layout sanitization; `pointer_ray.gd`, `pointer_ray.gdshader`, `pointer_ray.gdshaderinc`; the `CrashTrail.kt` ring; USB recovery policy; `provider_icons.gd` and Plex library modes; pinch/menu hand policy; `dual_subtitles.gd` and the secondary subtitle channel in `native/mpv/mpv_source.cpp` (`42bbca9`); `file_subtitle_layout_memory.gd` and below-screen captions (`ef83472`) |
+| Thru3D-Media-Player 0.17.4–0.17.12 (`da5f86c..959abc2`) | `SmbRecovery.kt`, `SmbBrowseRequests.kt`, `SmbLanScan.kt` and their tests; `subtitle_follow.gd`, `flat_subtitle_canvas.gd`, `subtitle_canvas_fade.gd`; stereo focus placement and smoothing; `DecoderCapacity.kt`; `video_layers.gd`, `video_layer_layout.gd` and `native/xr-layer`; the mpv/FFmpeg patches in `third_party/mpv`; OpenXR headers in `third_party/openxr` |
+| Thru3D-Media-Player 0.18.x (`a2f51d9`, `fcca23f`) | Seek snapshot, frame pins and held-stick preview; playback timing monitor |
+| [DiggerPriest/VERTOconnect-Immersive-Experiences-VR-Player](https://github.com/DiggerPriest/VERTOconnect-Immersive-Experiences-VR-Player) (`1567215`) | Queue repeat; `HeadsetPresenceMonitor.kt`, `HeadsetPresenceState.kt` and their tests |

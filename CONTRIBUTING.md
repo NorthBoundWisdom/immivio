@@ -6,9 +6,9 @@ Run the source boundary and applicable host tests described in [TESTING.md](docs
 
 Format project-owned, Git-tracked code using the root configuration files. Use Black for Python, gdformat for GDScript, ktfmt with `--kotlinlang-style --do-not-remove-unused-imports` for Kotlin, google-java-format with `--aosp --skip-sorting-imports --skip-removing-unused-imports` for Java, clang-format for C++ and Godot shaders, cmake-format for CMake, Prettier for HTML/CSS/JavaScript/JSON/YAML (plus `@prettier/plugin-xml` for Android manifests), Groovy-Eclipse with `.groovy-format.properties` for Gradle scripts. Keep a trailing comma after multiline lambda arguments in GDScript so Godot accepts the indentation. Preserve vendored code (including `native/mpv/include/mpv/`), generated assets, lockfiles and dependency/build directories. Formatting must preserve behavior and pass `git diff --check` and the applicable host tests.
 
-For maintainer Android/XR fixes, install the build on the target headset and obtain the owner's device acceptance before pushing the changes or a release tag. Keep local verification focused on the affected device; other build hosts are covered by CI.
+Android/XR changes that affect the headset need verification on that headset before a release tag.
 
-Immivio is an independent personal open-source project, unrelated to the maintainer's company. Do not use employer or other company signing keys, credentials, organization fields or branding for Immivio. Keep its project-local signing identity separate; the retained legacy certificate is `CN=Thru3D` without a company organization field, and newly provisioned keys use `CN=Immivio`. Referencing another repository's Android configuration does not authorize copying its signing material.
+Never reuse signing keys, credentials or branding from other projects or organizations. Referencing another repository's Android configuration does not authorize copying its signing material.
 
 Do not commit model weights, generated APKs/libraries, signing material, credentials, personal media or device logs containing user data. Provide synthetic reproduction fixtures or generation instructions. Do not send account tokens in public issues.
 

@@ -1,39 +1,29 @@
 # Device acceptance
 
-## Current device acceptance
+Run this checklist on a physical headset before a release that changes the
+covered area. Host, GPU and emulator tests do not certify headset display,
+audio, comfort or performance. Build and probe commands are in
+[BUILD.md](BUILD.md) and [TESTING.md](TESTING.md).
 
-On 2026-11-13 the owner confirmed that manual acceptance was complete after
-the PICO 4 session described in the [device record](history/ACCEPTANCE-2026-11-13-PICO-PROBES.md).
-A01–A12 below are retained as the accepted manual checklist for that session.
-This is owner-reported acceptance; it does not add automated measurements or
-certify untested Quest/OpenXR targets. D1 has the recorded automated results.
-D2's automated cross-UID driver remains blocked by PICO process interception;
-the owner's manual acceptance does not change that automated result.
-Build/test and publication procedures remain in [BUILD.md](BUILD.md) and
-[TESTING.md](TESTING.md).
+## Checklist
 
-The later 0.17.12 playback/performance changes have a separate
-[2026-11-16 host/GPU/emulator record](history/ACCEPTANCE-2026-11-16-PLAYER.md).
-The November 13 owner acceptance does not cover the new compositor Surface,
-fisheye remapping, focus, refresh/power policies or rebuilt runtime. Verify those
-paths on each target headset, including eye order/color, effect fallback,
-seek/close, suspend/context recovery and sustained memory/thermal behavior.
-No headset performance gain has been measured for this implementation.
+Also verify the video compositor route on each target headset: eye order and
+colour, effect fallback, seek/close, suspend/context recovery, and sustained
+memory and thermal behaviour.
 
-- [x] **A01 — Playback, projections and packed alpha.** Open normal video, mono,
+- [ ] **A01 — Playback, projections and packed alpha.** Open normal video, mono,
   SBS/TB (including half packing), VR180/fisheye and VR360. Check eye order,
   projection, lens FOV, color, alpha readiness and passthrough against known
   fixtures. Exercise pause/redraw, speed/exact seek, repeat/EOF and close/reopen.
   With the fixed 320×320 opaque mask, source/color dimensions must still follow
-  the existing output-width setting. Check decoder/status and error recovery
-  after the legacy playback/state/capture paths were removed.
-- [x] **A02 — Locales and menu presentation.** Browse Library, Settings, About,
+  the existing output-width setting. Check decoder/status and error recovery.
+- [ ] **A02 — Locales and menu presentation.** Browse Library, Settings, About,
   credits/licenses, playback and every popup in Simplified Chinese, Traditional
   Chinese and Japanese, with English as the reference. Check untranslated text,
   clipping, scroll positions, first-open layout and transitions. Include Refresh,
   Done, Add server and Internal storage. Toolbar/title/timeline placement and
   pointer feedback must remain stable while pages redraw or await acknowledgement.
-- [x] **A03 — Controllers, hands and spatial controls.** Verify rays, triggers,
+- [ ] **A03 — Controllers, hands and spatial controls.** Verify rays, triggers,
   grips, focus loss, menu following, reclining placement and explicit/system
   recentering. Test the left official palm gesture under Left/Right/Both pinch
   preferences: one open/close per deliberate gesture, no held repeat. Either
@@ -45,18 +35,17 @@ No headset performance gain has been measured for this implementation.
   list/slider capture excludes seeking or picture adjustment until the sticks
   return to center.
   Recenter clears immersive offsets while retaining stereo calibration.
-- [x] **A04 — Local files, removable storage and the real picker.** Verify access
+- [ ] **A04 — Local files, removable storage and the real picker.** Verify access
   requests, denied/revoked permissions, refresh, readable/missing files and USB
   removal/ejection. Readers must close without stale handles. Exercise the actual
   document picker, including cancel, unusual names and returned URI grants;
   the picker UI is not covered by the grant driver. Browsing, thumbnails and
   late replies must preserve the existing behavior.
-- [x] **A05 — SMB and DLNA.** Verify authentication, share/server enumeration,
+- [ ] **A05 — SMB and DLNA.** Verify authentication, share/server enumeration,
   folders, playback, random reads/seeks, reconnects, SMB signing/encryption and
-  late-response cancellation. Use prepared servers and test accounts. Include
-  the bcprov 1.87 / SLF4J 2.0.20 runtime and the controller-owned source state.
+  late-response cancellation. Use prepared servers and test accounts.
   Source/account removal must release its readers and network resources.
-- [x] **A06 — Media servers and version resume.** Check Plex, Emby, Jellyfin,
+- [ ] **A06 — Media servers and version resume.** Check Plex, Emby, Jellyfin,
   Stash and XBVR with available owned fixtures, including nested/plugin folders.
   Emby/Jellyfin direct-play versions must retain separate local mode, track and
   resume intent and report the selected MediaSourceId. Record grouped-item
@@ -65,7 +54,7 @@ No headset performance gain has been measured for this implementation.
   explicit version rows use local per-version resume, and default actions may
   receive older grouped-item progress. History-off must send no new progress
   or backfill; server failures must not interrupt local playback.
-- [x] **A07 — Subtitles and timing.** Play known GBK/GB18030 and Big5 sidecars
+- [ ] **A07 — Subtitles and timing.** Play known GBK/GB18030 and Big5 sidecars
   from local/SMB sources; verify Auto/manual encoding after reopen, invalid
   override feedback and unchanged source hashes. Test embedded plus external
   primary/secondary text tracks, shared delay, independent choices, stale-cue
@@ -73,38 +62,37 @@ No headset performance gain has been measured for this implementation.
   captions across size/distance/rotation/SBS/TB and reclining, including outline
   bounds. Include screen sizes 5%/3000%, distances 0.1/50 m and ±85° pitch; the disabled percentage retains its value. Immersive projections keep
   their projected captions and flat-only hint. Repeat with history disabled.
-- [x] **A08 — Saved-mode and preference migration.** Upgrade installations with
+- [ ] **A08 — Saved-mode and preference migration.** Upgrade installations with
   schema-1/2 per-file records, including missing/obsolete `profile`. Confirm
   schema 3 omits it while retaining projection, stereo/half packing, eye order,
   alignment, immersive adjustment, FOV, caption placement/encoding, track choices
   and audio/subtitle delay after reopen and restart. Verify current defaults,
   privacy gates, folder/sort memory, bookmarks, queues and native stereo locks;
   retired photo/inference settings must not reappear.
-- [x] **A09 — Lifecycle, wearer presence and context recovery.** Test removal,
+- [ ] **A09 — Lifecycle, wearer presence and context recovery.** Test removal,
   wearing again, suspend/resume, focus changes, reopen and recreated GL context.
   Resume in place without overriding manual pause or reviving closed media.
   Verify frozen seek transitions, retained frames and final-frame cleanup;
   host geometry/state checks do not certify headset pixels or audible output.
-- [x] **A10 — Explicit website-build update flow.** In a web-channel build,
+- [ ] **A10 — Explicit website-build update flow.** In a web-channel build,
   request Check for updates, exercise checking/current/new-version/error states,
   and open the offered GitHub release page. Verify browser return, localized
   no-handler failure and manual retry. Startup/background/redraw must not check
   automatically. Store builds have no update entry. This case does not install
   or publish an APK.
-- [x] **A11 — Sustained rendering, cadence and comfort.** Measure memory/handles,
+- [ ] **A11 — Sustained rendering, cadence and comfort.** Measure memory/handles,
   thermal state, decoded/presented/XR cadence and perceived comfort separately.
   Look around in the cached sky and during supported video playback. On PICO,
   compare advertised refresh rates with a known 60-fps fixture, including 72 Hz,
   pause/resume and supported-rate fallback. A 72/60 cadence is not integer;
   record actual smoothness/power results rather than assuming zero judder.
-  Recheck startup/session/input with OpenXR loader 1.1.65 and Vendors 5.1.0.
-- [x] **A12 — GPU ownership and transport.** Check borrowed color, cached opaque
+- [ ] **A12 — GPU ownership and transport.** Check borrowed color, cached opaque
   mask reuse, backpressure and complete version-2 frame descriptors. Exercise
   last draw → detach → consumer fence → producer release, pinned readback,
   seek-generation changes and context loss. Incomplete/stale pairs must not be
   presented, and close/reopen must not reuse resources from a former context.
   See [FRAME_CONTRACT.md](FRAME_CONTRACT.md) for report interpretation.
-- [x] **D1 — Unified device probes.** Run the selected-feature/player probes and
+- [ ] **D1 — Unified device probes.** Run the selected-feature/player probes and
   `tools/run_device_diagnostics.py core`, `gpu` and `audio` with the matching
   installed Debug APK and explicit fixture requirements from
   [TESTING.md](TESTING.md#device-probes-and-local-media). Verify device selection,
@@ -112,9 +100,8 @@ No headset performance gain has been measured for this implementation.
   waits and timeout evidence. Preserve the run directories under
   `artifacts/captures/device/`. Host fake-ADB tests do not establish Android
   delivery, decode, audible output, XR display or performance.
-- [ ] **D2 — External URI grant/revocation driver (automated follow-up).**
-  The PICO system blocked the fixture process from starting by broadcast; the
-  recorded automated run is not a pass. For a future supported run, use
+- [ ] **D2 — External URI grant/revocation driver.**
+  PICO currently blocks the fixture process from starting by broadcast. Use
   `tools/run_external_uri_probe.py` with its separate-UID fixture APK. Verify
   temporary grant → native FD decode → revocation → denied access, both before
   and after client-process restart, without a residual grant. Also use a real
@@ -124,62 +111,14 @@ No headset performance gain has been measured for this implementation.
   binary HTTP and app-private file paths excluded. Distinguish provider denial
   from decoder failure; this driver does not automate picker UI or device reboot.
 
-- [ ] **Loopback connection peak.** Play SMB and media-server streams on a
+- [ ] **D3 — Loopback connection peak.** Play SMB and media-server streams on a
   headset. Drag the timeline repeatedly while playing, then save the
   diagnostic log. Record the `loopback_connections` active count and peak,
   stream type and seek scenario as evidence for a future connection limit.
 
-## Published v1.0.0 APK signing audit
-
-On 2026-11-21, `gh release download` retrieved the three public Web Release APKs,
-their build receipts and `SHA256SUMS.txt`. Android Build Tools 36.1.0 verified
-each APK with `apksigner verify --print-certs`. Each APK's file SHA-256 matched
-both published records, and its certificate SHA-256 matched its build receipt.
-[GitHub release v1.0.0](https://github.com/NorthBoundWisdom/immivio/releases/tag/v1.0.0)
-
-| APK | APK SHA-256 | Downloads |
-| --- | --- | ---: |
-| `Immivio-OpenXR-1.0.0-web-release-20261113.apk` | `d2cd1ffebeabc9e10ea6553aa59f6a52450b5e79e2367113c310e022b6883194` | 8 |
-| `Immivio-PICO-1.0.0-web-release-20261113.apk` | `903778deeab729bc7408bf778f2a985421168f088e14da47aaa20bce123ddebf` | 27 |
-| `Immivio-QUEST-1.0.0-web-release-20261113.apk` | `d97be6e9c48ff106c1987096991ede87b573370f437a730d8ee3453f30e196ba` | 17 |
-
-Download counts came from the GitHub release API on 2026-11-21 at 16:33 CST
-(`UTC+08:00`). They count downloads and can change.
-
-All three APKs use certificate SHA-256
-`9675b408fca1e27538325d92ede234af54a84601114f2dcb5671d7c715c59f9c`.
-All three receipts identify the signer as `ephemeral-ci-key`. The repository's
-pinned PICO Store signing certificate has SHA-256
-`89b2a063d2783d04971415ccc1d98eb47eefd7fd343e242a61931a22f786d89b`.
-The mismatch triggered the owner's stop condition for the cleanup.
-[Pinned PICO Store certificate](../configs/pico_store.py)
-
-The v1.0.0 tag's macOS job used the default signing location
-`${XDG_CONFIG_HOME:-~/.config}/immivio/signing`. Its workflow and setup action
-do not override that location or configure an Actions cache for the Android
-job. The job uploaded `artifacts/packages`, `artifacts/reports/ci`,
-`artifacts/logs`, `artifacts/tests` and the plugin's Gradle test results.
-The current Android setup caches only `.cache/ci-tools` and
-`.cache/ci-playback/arm64-v8a`. Transported release signing material uses a
-temporary directory under `RUNNER_TEMP`. None of those cache or upload
-paths contains either signing directory. This was a source and workflow
-path check using the tag and the current checkout.
-
 ## Recording a result
 
-For each checked item, record date, case ID, headset/runtime/OS, package channel
-and build type, APK SHA-256, fixture hashes, starting settings, steps, observations
-and the evidence directory. Use pass/fail/not-applicable with a concrete reason;
-mark an item complete only for its recorded scope. Keep credentials and personal
-media outside Git. Checked results can be appended as a new dated evidence
-record; the current checklist should retain only cases still requiring a device.
-
-## Historical evidence
-
-[Partial PICO probe results — 2026-11-13](history/ACCEPTANCE-2026-11-13-PICO-PROBES.md) records current Debug probe/menu/playback checks and the D2 system interception blocker. The owner subsequently confirmed manual acceptance; the D2 automated blocker remains recorded.
-
-[Acceptance evidence snapshot — 2026-11-13](history/ACCEPTANCE-2026-11-13.md)
-preserves the original dated host/emulator/GPU/headset results and their limits.
-Its old pending instructions and retired features are historical context.
-
-[Player validation evidence — 2026-11-16](history/ACCEPTANCE-2026-11-16-PLAYER.md) records the later selective ports and performance work, with host, desktop GPU, emulator and package evidence only.
+For each item, record date, case ID, headset/runtime/OS, package channel and
+build type, APK SHA-256, fixture hashes, starting settings, steps, observations
+and the evidence directory. Use pass/fail/not-applicable with a concrete reason.
+Keep credentials, personal media and device logs outside Git.

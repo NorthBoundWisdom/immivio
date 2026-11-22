@@ -150,14 +150,14 @@ Open an issue in [Issues](https://github.com/NorthBoundWisdom/immivio/issues) wi
 ## Development
 
 - [Build from source](docs/BUILD.md): environment, build commands, PICO store packaging and signing
-- [Architecture](docs/ARCHITECTURE.md) · [Testing](docs/TESTING.md) · [Device acceptance](docs/ACCEPTANCE.md#current-device-acceptance) · [Upstream ports](docs/SELECTED_UPSTREAM_PORTS.md)
+- [Architecture](docs/ARCHITECTURE.md) · [Testing](docs/TESTING.md) · [Device acceptance](docs/ACCEPTANCE.md)
 - [Contributing](CONTRIBUTING.md)
 
 ## Origin and license
 
 Immivio continues from [zerochocobo/Thru3D-Media-Player](https://github.com/zerochocobo/Thru3D-Media-Player). The last version the two projects share is 0.6.0. Since then NorthBoundWisdom has developed and released Immivio independently. The original history, attribution and license are preserved.
 
-The project source is licensed under [GPL-3.0-only](LICENSE). Third-party components keep their own licenses; see [licensing details](docs/LICENSING.md). Third-party media services follow their own terms and may charge fees.
+The project source is licensed under [GPL-3.0-only](LICENSE). Third-party components keep their own licenses; see [licensing details](docs/LICENSING.md), which also lists code adapted from upstream forks. Third-party media services follow their own terms and may charge fees.
 
 ## More from NorthBoundWisdom
 

@@ -13,21 +13,22 @@ from configs import ci_support as ci
 
 
 class CiBoundaries(unittest.TestCase):
-    def test_android_workflow_routes_main_tags_and_prs_without_cancelling_tags(self):
+    def test_android_workflow_builds_tags_and_prs_and_publishes_in_one_run(self):
         workflow = (
             Path(__file__).resolve().parents[2]
             / ".github/workflows/android-release.yml"
         ).read_text()
-        self.assertIn('  push:\n    branches: [main]\n    tags: ["**"]\n', workflow)
-        self.assertIn("  pull_request:\n    branches: [main]\n", workflow)
+        self.assertIn('  push:\n    tags: ["v*"]\n  pull_request:\n', workflow)
+        self.assertNotIn("branches: [main]\n    tags", workflow)
         self.assertIn("group: ${{ github.workflow }}-${{ github.ref }}", workflow)
         self.assertIn(
             "cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}", workflow
         )
-        release_job = workflow.split("\n  release-build:\n", 1)[1].split(
-            "\n  publish-release:\n", 1
-        )[0]
-        self.assertNotRegex(release_job, r"(?m)^    environment\s*:")
+        publish = workflow.split("\n  publish:\n", 1)[1]
+        self.assertIn("    needs: build\n", publish)
+        self.assertIn("gh workflow run website-pages.yml", publish)
+        self.assertNotRegex(workflow, r"(?m)^    environment\s*:")
+        self.assertNotRegex(workflow, r"(?m)^    uses: ")
 
     def test_channels_default_to_appstore_and_tags_force_web(self):
         for ref in ("", "refs/heads/main", "refs/pull/1/merge"):

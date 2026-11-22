@@ -11,8 +11,7 @@ They are shared by Quest, PICO and generic OpenXR targets; these names do not
 limit platform support. Keeping them avoids changing JNI symbols, reflection
 strings, plugin metadata and component checks solely for cosmetic consistency.
 The application ID remains `com.northboundwisdom.immivio` so updates preserve
-installation identity and user data. Other internal labels can be renamed in
-later isolated changes after release acceptance.
+installation identity and user data.
 
 ## Application and input
 
@@ -44,7 +43,7 @@ The player provides playback-clock estimates rather than verified source-image P
 
 Per-video track intent is stored in the existing checksummed mode store. Track metadata guards against ID reuse; stale-session reports cannot restore another source's choices. Global sound preferences are coalesced and flushed on suspend/close. Timing corrections and playback queues remain independent of track selection.
 
-RGBA frame descriptors use [contract version 2](FRAME_CONTRACT.md), with source identity, presentation revision and same-fence color/mask completion. Model/inference/warp fields are retired. Saved-mode compatibility is handled by settings migration, separately from transport validation.
+RGBA frame descriptors use [contract version 2](FRAME_CONTRACT.md), with source identity, presentation revision and same-fence color/mask completion. Saved-mode compatibility is handled by settings migration, separately from transport validation.
 
 `video_layers.gd` owns the video-only compositor provider and keeps layer geometry
 in step with the media surface. Capability-gated `open_mpv_video_surface` opens a
@@ -59,8 +58,7 @@ the app XR interface before unregistering/freeing it.
 `playback_performance.gd` owns refresh matching and power hysteresis. The existing
 refresh preference is an upper limit; MSAA is fixed at startup and new-install
 sharpening defaults to off. Opt-in autofocus reuses a small viewport and worker
-with one bounded, asynchronous Android PBO readback. See [selected upstream ports](SELECTED_UPSTREAM_PORTS.md#playback-performance-alignment-01712)
-for eligibility, budgets and source attribution.
+with one bounded, asynchronous Android PBO readback.
 
 ## Libraries
 
@@ -68,18 +66,10 @@ for eligibility, budgets and source attribution.
 
 The Android plugin owns local grants, SMB, DLNA, media-server adapters. Credentials remain in application-private storage. DLNA subtitle refresh matches server-scoped object IDs and uses a complete directory listing to confirm removal when item metadata is incomplete.
 
-## Removed subsystems
-
-The MNN/ncnn runtime, RVM matting, monocular depth, photo conversion/portrait jobs, model catalogs, training/conversion scripts, model diagnostics and AI CI matrix have been removed. Ordinary rendering/native stereo remain supported. The build has one product identity and three headset targets.
-
-`native/CMakeLists.txt` builds the media-delete library, render bridge, MPV bridge and OpenXR video layers. It has no inference dependencies. Packaging excludes obsolete cached model directories/libraries and rejects an APK if they are accidentally reintroduced.
+USB storage uses Android's system-mounted volumes. Android 11+ may fall back to a verified public mount path when permission allows reading. Immivio has no raw USB mass-storage or filesystem driver; "Stop app access" closes Immivio's readers only.
 
 ## Native source and test layout
 
-Each module under `native/` owns its CMake target; implementation headers remain beside their module. Render bridge headers describe internal GL resources and remain beside its implementation; they are not a public test API. Reusable MPV helpers live under `native/mpv/include/immivio/mpv/` and are consumed as `<immivio/mpv/...>` through the `Immivio::MpvHeaders` target. Upstream libmpv headers remain under `native/mpv/include/mpv/` with their original notices.
+`native/CMakeLists.txt` builds the media-delete library, render bridge, MPV bridge and OpenXR video layers. Each module under `native/` owns its CMake target; implementation headers remain beside their module. Render bridge headers describe internal GL resources and remain beside its implementation; they are not a public test API. Reusable MPV helpers live under `native/mpv/include/immivio/mpv/` and are consumed as `<immivio/mpv/...>` through the `Immivio::MpvHeaders` target. Upstream libmpv headers remain under `native/mpv/include/mpv/` with their original notices.
 
 `tests/native/` owns native regression executables and their verification scripts. The host CMake graph builds JSON and seek trace tests without JNI, Android SDK libraries or a prepared libmpv binary. Android builds use the same helper target and build four production shared libraries: media, mpv, render bridge and video layers. Production cross-directory dependencies use target include directories and linked targets. The Android GLES fixture compiles the video-layer implementation directly with bounded fake OpenXR/JNI entry points; it does not establish headset compositor acceptance.
-
-## Refactoring status
-
-The native renderer has separate GL state, slot, frozen-frame and JNI modules; it only captures RGBA source color and opaque R8 masks. It preserves borrowed producer ownership and seven slots pending device measurement. Package integrity follows the checks in [BUILD.md](BUILD.md#outputs-signing-and-ci); physical runtime/cross-headset verification is maintained in [ACCEPTANCE.md](ACCEPTANCE.md#current-device-acceptance).
