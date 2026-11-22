@@ -213,7 +213,9 @@ func draw_card(card: Dictionary, locale: String, index: int) -> void:
 		return
 	var crop: Rect2i = card.crop
 	var selected := screenshot.get_region(crop)
-	selected.resize(int(FRAME_WIDTH), roundi(FRAME_WIDTH * crop.size.y / crop.size.x), Image.INTERPOLATE_LANCZOS)
+	selected.resize(
+		int(FRAME_WIDTH), roundi(FRAME_WIDTH * crop.size.y / crop.size.x), Image.INTERPOLATE_LANCZOS
+	)
 	var frame := Rect2(
 		Vector2(FRAME_LEFT, roundf((SIZE.y - selected.get_height()) * .5) + 20),
 		Vector2(selected.get_size())
