@@ -214,12 +214,20 @@ def main():
     assert re.fullmatch(r"[0-9a-f]{40}", capture["application_commit"])
     assert re.fullmatch(r"[0-9a-f]{64}", capture["apk_sha256"])
     assert capture["source_included"] is False
-    assert (ROOT / capture["source_provenance"]).is_file()
+    raw_captures_included = capture.get("raw_captures_included", True)
+    if raw_captures_included:
+        assert (ROOT / capture["source_provenance"]).is_file()
     assert {shot["file"] for shot in capture["screenshots"]} == screenshot_names
     assert len(capture["screenshots"]) == len(screenshot_names)
     for shot in capture["screenshots"]:
         assert shot["language"] == ("zh-CN" if shot["file"].startswith("zh-") else "en")
-        assert (ROOT / shot["source"]).is_file(), f"{shot['file']}: missing raw capture"
+        if raw_captures_included:
+            assert (ROOT / shot["source"]).is_file(), f"{shot['file']}: missing raw capture"
+        else:
+            assert re.fullmatch(r"[0-9a-f]{64}", shot["raw_sha256"])
+            raw_width, raw_height = shot["raw_dimensions"]
+            x, y, width, height = shot["crop_xywh"]
+            assert 0 <= x < x + width <= raw_width and 0 <= y < y + height <= raw_height
         assert (
             hashlib.sha256(
                 (SITE / "assets/screenshots" / shot["file"]).read_bytes()

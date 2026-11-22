@@ -1,77 +1,191 @@
 {
-  "captured_at": "2026-11-06",
-  "application": "Immivio 0.9.6 development capture; current production UI",
-  "application_commit": "1a32bbb0f107ba0a29de1b47978b5ed0d66bde4b",
-  "apk_sha256": "4a19ed8e40030dee1cd7d068b7492c7ef869d4e4e9e82281f9a0dd4fce73974a",
+  "captured_at": "2026-11-22",
+  "application": "Immivio 1.0.2 development build",
+  "application_commit": "10f5bb87d628e84e53af0cf5054b522bdb15a137",
+  "application_sources_modified": true,
+  "application_source_diff_sha256": "166ce42b8c9c58e0e2ac4ed406108cc821012176b3893f13816d14a579742fa7",
+  "apk_sha256": "a2e99396e0d7cd1db076681a4c08f4e8207da4e66887e879e28de9247e3af8b3",
+  "application_id": "com.northboundwisdom.immivio.dev",
   "environment": "Android 16 ARM64 emulator, 2560x1440 display, explicit 2D diagnostic entry, isolated development application ID",
-  "source_provenance": "branding/pico/details/capture.json",
+  "input": "ADB screencap of the running application. Shell-only Debug controls open and pause the sample. Android touch events navigate the visible menus.",
+  "media": {
+    "playback": "A VR180 side-by-side sample in immersive 180-degree playback, excerpted from 00:01:28 to 00:01:44 and encoded at 4096x2048 with the original projection.",
+    "sample_sha256": "ba2daff2c10706424a41aab8d3d30a4f82d9a846942ac85a051744f10c2b6fc5",
+    "settings_background": "Built-in Starry night background for the media source and settings captures"
+  },
+  "decoder_override": "Debug-only hwdec=no in the emulator",
   "source_included": false,
-  "transformation": "Raw PNG captures cropped (removing the Android navigation bar or surrounding sky), playback uniformly scaled to 1920x1080, then encoded as WebP. No controls are redrawn or retouched.",
-  "scope": "2D emulator capture illustrates application interface only; it does not certify headset stereo, passthrough, frame rate or store approval.",
+  "raw_captures_included": false,
+  "transformation": "Crop raw PNG captures to remove Android system bars and frame the interface. Resize the playback crop uniformly to 1920x1080. Encode the cropped images as WebP.",
+  "scope": "2D emulator presentation of the application interface",
   "screenshots": [
     {
       "file": "playback.webp",
       "language": "en",
-      "source": "branding/pico/details/source/en/01-playback.png",
-      "crop_xywh": [43, 0, 2474, 1392],
-      "dimensions": [1920, 1080],
-      "sha256": "3d56f91a10c0b9711239f18a24d16d2c84b40d0dfba4fe5de9d2e1b2223e2962"
+      "raw_capture": "en-playback.png",
+      "raw_dimensions": [
+        2560,
+        1440
+      ],
+      "raw_sha256": "bc989813fde86a6237d8e956d2cf6287c6bf7190761a656990168a8ba72f92d8",
+      "crop_xywh": [
+        128,
+        80,
+        2304,
+        1296
+      ],
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "sha256": "9e20f8c25ed7d6e902c0cf443f80a6656028098f01b7aa077d42ad1ff7a814df"
     },
     {
       "file": "sources.webp",
       "language": "en",
-      "source": "branding/pico/details/source/en/02-media-sources.png",
-      "crop_xywh": [464, 220, 1632, 1020],
-      "dimensions": [1632, 1020],
-      "sha256": "5163dc967b107bf1928e01c4f902a883560dfaf5ba99011cde4b4df28fc23693"
+      "raw_capture": "en-sources.png",
+      "raw_dimensions": [
+        2560,
+        1440
+      ],
+      "raw_sha256": "698885ad6fcfe6a21aced236e5565d1aa67877580dd5646a82921403d9d56c86",
+      "crop_xywh": [
+        464,
+        220,
+        1632,
+        1020
+      ],
+      "dimensions": [
+        1632,
+        1020
+      ],
+      "sha256": "bf22189a12581d016161b9871488e24402938311a3f3c4b56ec0f8d6e19d51f8"
     },
     {
       "file": "subtitles.webp",
       "language": "en",
-      "source": "branding/pico/details/source/en/03-subtitles.png",
-      "crop_xywh": [464, 220, 1632, 1020],
-      "dimensions": [1632, 1020],
-      "sha256": "90dd77135dfca6dc04c10e2ab1383e36f2dc62e8dce2c20f88981cb2d58e684a"
+      "raw_capture": "en-subtitles.png",
+      "raw_dimensions": [
+        2560,
+        1440
+      ],
+      "raw_sha256": "7ae01d2485e6e12e8fbf6f37b31fe7c5c63f2d93a44f9e3659881bc03dfe8f5f",
+      "crop_xywh": [
+        464,
+        220,
+        1632,
+        1020
+      ],
+      "dimensions": [
+        1632,
+        1020
+      ],
+      "sha256": "d32f1b8cf10d24a4d8444d3eb57a71d97b00c053f0e7ad7cea7f88a2708ef39a"
     },
     {
       "file": "display.webp",
       "language": "en",
-      "source": "branding/pico/details/source/en/04-display.png",
-      "crop_xywh": [464, 220, 1632, 1020],
-      "dimensions": [1632, 1020],
-      "sha256": "bf77776d82ca1b2ffe1af927aafc1d9803388b55156285ef68451bc4f27556c5"
+      "raw_capture": "en-display.png",
+      "raw_dimensions": [
+        2560,
+        1440
+      ],
+      "raw_sha256": "70a65a9c5a0192dda878e6c6b7dfc7016ba1fd5a6986354d412e71a01f760f52",
+      "crop_xywh": [
+        464,
+        220,
+        1632,
+        1020
+      ],
+      "dimensions": [
+        1632,
+        1020
+      ],
+      "sha256": "15683a4595fa82d637945ccf1a4e5265a79d143f320ff4dd4da4348d455222b5"
     },
     {
       "file": "zh-playback.webp",
       "language": "zh-CN",
-      "source": "branding/pico/details/source/zh-CN/01-playback.png",
-      "crop_xywh": [43, 0, 2474, 1392],
-      "dimensions": [1920, 1080],
-      "sha256": "5be06725cc7c6d56a50d0ed587330469cc9583adc11d0596f3e64f68050cdc2b"
+      "raw_capture": "zh-playback.png",
+      "raw_dimensions": [
+        2560,
+        1440
+      ],
+      "raw_sha256": "89339f0194f0d0a0db1d8cad9050b4843d69330f77408691a46dd657ef3646c7",
+      "crop_xywh": [
+        128,
+        80,
+        2304,
+        1296
+      ],
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "sha256": "079e7393167972c760e4a3f377357bb52b1f11f5d476ce324070dae6eaa32fa6"
     },
     {
       "file": "zh-sources.webp",
       "language": "zh-CN",
-      "source": "branding/pico/details/source/zh-CN/02-media-sources.png",
-      "crop_xywh": [464, 220, 1632, 1020],
-      "dimensions": [1632, 1020],
-      "sha256": "873f316ab0671191a088996e433996db137625fa0993a866126f1430988dcd0f"
+      "raw_capture": "zh-sources.png",
+      "raw_dimensions": [
+        2560,
+        1440
+      ],
+      "raw_sha256": "99aa76374ca5d3a64ece8884058dd55d2ae1d70f4c55f6ce3a6688c7f2afe5ca",
+      "crop_xywh": [
+        464,
+        220,
+        1632,
+        1020
+      ],
+      "dimensions": [
+        1632,
+        1020
+      ],
+      "sha256": "22ea2f0e52b8e59391ddfdeebcb0b94b23d8fef20a1f7bc009814341ea5e651f"
     },
     {
       "file": "zh-subtitles.webp",
       "language": "zh-CN",
-      "source": "branding/pico/details/source/zh-CN/03-subtitles.png",
-      "crop_xywh": [464, 220, 1632, 1020],
-      "dimensions": [1632, 1020],
-      "sha256": "633d8171c9cf2ac5581ed7302f8747dbe25adbbb27ac4be02135bf6df42eb989"
+      "raw_capture": "zh-subtitles.png",
+      "raw_dimensions": [
+        2560,
+        1440
+      ],
+      "raw_sha256": "483c4132fbfe0d0e8170aaec8de3d75a017409b0598ba34e0a74da293a54ef2c",
+      "crop_xywh": [
+        464,
+        220,
+        1632,
+        1020
+      ],
+      "dimensions": [
+        1632,
+        1020
+      ],
+      "sha256": "a0e9d1f87ae1d971e1974cbc771076083e38dccf93f3e9fdba52138b292dd761"
     },
     {
       "file": "zh-display.webp",
       "language": "zh-CN",
-      "source": "branding/pico/details/source/zh-CN/04-display.png",
-      "crop_xywh": [464, 220, 1632, 1020],
-      "dimensions": [1632, 1020],
-      "sha256": "79050ec28af6637993155dd36826b6f8e387a6641a5cdc9724177198e1074ae4"
+      "raw_capture": "zh-display.png",
+      "raw_dimensions": [
+        2560,
+        1440
+      ],
+      "raw_sha256": "4b152144f138232a809b43e0fa8cddf2ffeb1cd4b2ba823ce48b20b704cea4cb",
+      "crop_xywh": [
+        464,
+        220,
+        1632,
+        1020
+      ],
+      "dimensions": [
+        1632,
+        1020
+      ],
+      "sha256": "3696a04998a51afe790864b8204a8c030a426fa5849cb39bf83b84682aa683de"
     }
   ]
 }

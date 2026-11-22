@@ -22,20 +22,20 @@ Immivio is a free, open-source VR video player for PICO and Meta Quest. Watch re
 
 ## Screenshots
 
-![VR180 side-by-side video playing with the compact control bar](branding/pico/details/source/en/01-playback.png)
+![Immersive VR180 side-by-side video with the compact control bar](website/assets/screenshots/playback.webp)
 
 | Network media: add a source | Settings: display |
 | --- | --- |
-| ![Add source page listing SMB, DLNA, Emby, Jellyfin, Plex, Stash and XBVR](branding/pico/details/source/en/02-media-sources.png) | ![Display settings with window height, quality, sharpness and control bar opacity](branding/pico/details/source/en/04-display.png) |
+| ![Add source page listing SMB, DLNA, Emby, Jellyfin, Plex, Stash and XBVR](website/assets/screenshots/sources.webp) | ![Display settings for quality, sharpness, window height and reclining mode](website/assets/screenshots/display.webp) |
 
 <details>
 <summary>More: VR subtitle settings</summary>
 
-![VR subtitle distance, direction and position settings](branding/pico/details/source/en/03-subtitles.png)
+![VR subtitle distance, direction, position, view-follow and transparency settings](website/assets/screenshots/subtitles.webp)
 
 </details>
 
-*Uncropped captures of Immivio 0.9.6, taken on an Android 16 ARM64 emulator through the 2D diagnostic entry. They show the real interface but say nothing about headset stereo, passthrough or frame rate. The sample video is not included in this repository. For capture details, see [capture.json](branding/pico/details/capture.json).*
+*Captures of Immivio 1.0.2 on an Android 16 ARM64 emulator through the 2D diagnostic entry. The playback image shows an immersive VR180 side-by-side sample. The media source and settings images use the Starry night background. For capture and crop details, see [capture.json](website/assets/screenshots/capture.json).*
 
 ## Features
 

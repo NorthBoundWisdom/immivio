@@ -4,9 +4,18 @@ extends SceneTree
 ##   --path app/godot --script ../../tools/prepare_store_details.gd
 const SIZE := Vector2i(2560, 1440)
 const BASE := "res://../../branding/pico/details/"
-const ACCENT := Color("77e4db")
-const INK := Color("f4f7fc")
-const MUTED := Color("a8b9cf")
+# Card palette follows the in-app "Aurora" skin: deep navy, one sky-blue accent
+# taken from the app icon, and a faint warm glow echoing the icon's play mark.
+const BACKDROP := Color("070f1d")
+const GLOW := Color("1d4f7c")
+const WARM := Color("ffc48a")
+const ACCENT := Color("74ccf7")
+const INK := Color("f2f6fc")
+const MUTED := Color("a3b3c9")
+const DIM := Color("6f829d")
+const CHIP := Color("1b3d5d")
+const FRAME_LEFT := 872.0
+const FRAME_WIDTH := 1560.0
 var viewport: SubViewport
 var page: Control
 var font: Font
@@ -17,17 +26,17 @@ const CARDS := [
 		"file": "01-playback",
 		"zh_title": "你的影院\n随处开场",
 		"en_title": "Your cinema.\nYour space.",
-		"zh_body": "从平面大屏到 180°、360°全景，\n按影片选择喜欢的观看方式。",
+		"zh_body": "从平面大屏到 180°、360° 全景，\n按影片选择喜欢的观看方式。",
 		"en_body":
 		"From a virtual screen to 180° and 360° video, choose the view that fits your film.",
-		"zh_items": ["普通视频与 3D 立体视频", "倍速、进度与队列随手可调", "免费使用，无需订阅"],
+		"zh_items": ["平面视频与 3D 立体视频", "倍速、进度与队列随手可调", "免费使用，无需订阅"],
 		"en_items":
 		[
 			"Flat and 3D stereo video",
 			"Speed, timeline and queue controls",
 			"Free to use. No subscription."
 		],
-		"crop": Rect2i(120, 0, 2320, 1392),
+		"crop": Rect2i(128, 80, 2304, 1296),
 		"zh_label": "真实应用画面 · 播放控制",
 		"en_label": "ACTUAL APP CAPTURE · PLAYBACK"
 	},
@@ -45,7 +54,7 @@ const CARDS := [
 			"SMB shares and DLNA libraries",
 			"Emby, Jellyfin, Plex and more"
 		],
-		"crop": Rect2i(500, 235, 1585, 1000),
+		"crop": Rect2i(560, 290, 1480, 925),
 		"zh_label": "真实应用画面 · 网络媒体",
 		"en_label": "ACTUAL APP CAPTURE · NETWORK MEDIA"
 	},
@@ -55,14 +64,14 @@ const CARDS := [
 		"en_title": "Captions.\nYour way.",
 		"zh_body": "让文字跟随你的观看习惯，\n为沉浸式视频选择合适的位置。",
 		"en_body": "Place text where it works for you, with flexible controls for immersive video.",
-		"zh_items": ["支持双语文字字幕", "调节字幕方向、位置与距离", "支持选择外挂文字字幕"],
+		"zh_items": ["支持双语文字字幕", "方向、位置与距离可调", "跟随视角与透明度设置"],
 		"en_items":
 		[
 			"Bilingual text subtitles",
 			"Direction, position and distance",
-			"External text subtitle selection"
+			"Follow view and transparency"
 		],
-		"crop": Rect2i(500, 235, 1585, 1000),
+		"crop": Rect2i(560, 290, 1480, 925),
 		"zh_label": "真实应用画面 · VR 字幕",
 		"en_label": "ACTUAL APP CAPTURE · VR SUBTITLES"
 	},
@@ -70,17 +79,17 @@ const CARDS := [
 		"file": "04-display",
 		"zh_title": "舒服的位置\n清楚的画面",
 		"en_title": "Settle in.\nMake it yours.",
-		"zh_body": "调整窗口高度、显示质量和清晰度，\n把观影界面放在顺手的位置。",
+		"zh_body": "调整窗口高度、显示质量和锐度，\n躺着看也能把画面放在顺手的位置。",
 		"en_body":
-		"Adjust window height, display quality and sharpness for a view that feels right.",
-		"zh_items": ["窗口高度自由调节", "显示质量与锐度选择", "播放条透明度可调"],
+		"Adjust window height, display quality and sharpness, and keep the view right when you lie back.",
+		"zh_items": ["窗口高度自由调节", "显示质量与锐度选择", "躺姿模式，躺着也能看"],
 		"en_items":
 		[
 			"Adjustable window height",
 			"Quality and sharpness choices",
-			"Control-bar opacity settings"
+			"Reclining mode for lying back"
 		],
-		"crop": Rect2i(500, 235, 1585, 1000),
+		"crop": Rect2i(560, 290, 1480, 925),
 		"zh_label": "真实应用画面 · 显示设置",
 		"en_label": "ACTUAL APP CAPTURE · DISPLAY SETTINGS"
 	}
@@ -91,17 +100,31 @@ func _initialize() -> void:
 	_run.call_deferred()
 
 
-func box(rect: Rect2, color: Color, radius: int = 0, border: Color = Color.TRANSPARENT) -> Panel:
+func style(
+	color: Color, radius: int = 0, border: Color = Color.TRANSPARENT, width: int = 2
+) -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = color
+	box.set_corner_radius_all(radius)
+	box.border_color = border
+	box.set_border_width_all(width if border.a > 0 else 0)
+	box.anti_aliasing = true
+	box.corner_detail = 16
+	return box
+
+
+func box(
+	rect: Rect2,
+	color: Color,
+	radius: int = 0,
+	border: Color = Color.TRANSPARENT,
+	parent: Control = null
+) -> Panel:
 	var node := Panel.new()
 	node.position = rect.position
 	node.size = rect.size
-	var style := StyleBoxFlat.new()
-	style.bg_color = color
-	style.set_corner_radius_all(radius)
-	style.border_color = border
-	style.set_border_width_all(2 if border.a > 0 else 0)
-	node.add_theme_stylebox_override("panel", style)
-	page.add_child(node)
+	node.add_theme_stylebox_override("panel", style(color, radius, border))
+	(parent if parent else page).add_child(node)
 	return node
 
 
@@ -113,55 +136,73 @@ func text(value: String, rect: Rect2, size: int, color: Color = INK, heavy: bool
 	label.add_theme_font_override("font", bold if heavy else font)
 	label.add_theme_font_size_override("font_size", size)
 	label.add_theme_color_override("font_color", color)
-	label.add_theme_constant_override("line_spacing", 10)
+	label.add_theme_constant_override("line_spacing", 12)
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	page.add_child(label)
 	return label
 
 
-func image(picture: Image, rect: Rect2) -> void:
+func image(picture: Image, rect: Rect2, parent: Control = null) -> TextureRect:
 	var node := TextureRect.new()
 	node.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	node.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	node.stretch_mode = TextureRect.STRETCH_SCALE
 	node.texture = ImageTexture.create_from_image(picture)
 	node.position = rect.position
 	node.size = rect.size
+	(parent if parent else page).add_child(node)
+	return node
+
+
+func glow(centre: Vector2, radius: float, color: Color) -> void:
+	var gradient := Gradient.new()
+	gradient.colors = PackedColorArray([color, Color(color, 0.0)])
+	var texture := GradientTexture2D.new()
+	texture.gradient = gradient
+	texture.fill = GradientTexture2D.FILL_RADIAL
+	texture.fill_from = Vector2(.5, .5)
+	texture.fill_to = Vector2(1, .5)
+	texture.width = 512
+	texture.height = 512
+	var node := TextureRect.new()
+	node.texture = texture
+	node.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	node.position = centre - Vector2.ONE * radius
+	node.size = Vector2.ONE * radius * 2
 	page.add_child(node)
+
+
+## Width of [value] at [size] in the regular face, for chips sized to their text.
+func measure(value: String, size: int, heavy: bool = false) -> float:
+	return (bold if heavy else font).get_string_size(value, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
 
 
 func draw_card(card: Dictionary, locale: String, index: int) -> void:
 	var zh := locale == "zh-CN"
 	var key := "zh_" if zh else "en_"
-	box(Rect2(Vector2.ZERO, Vector2(SIZE)), Color("071528"))
-	# A soft radial wash echoes the turquoise/blue identity without obscuring UI.
-	var gradient := Gradient.new()
-	gradient.colors = PackedColorArray([Color("163b51"), Color("071528")])
-	var texture := GradientTexture2D.new()
-	texture.gradient = gradient
-	texture.fill = GradientTexture2D.FILL_RADIAL
-	texture.fill_from = Vector2(.72, .42)
-	texture.fill_to = Vector2(1.4, 1.1)
-	texture.width = 1280
-	texture.height = 720
-	var wash := TextureRect.new()
-	wash.texture = texture
-	wash.size = Vector2(SIZE)
-	wash.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	page.add_child(wash)
+	box(Rect2(Vector2.ZERO, Vector2(SIZE)), BACKDROP)
+	glow(Vector2(1660, 720), 1250, Color(GLOW, 0.62))
+	glow(Vector2(140, 1420), 760, Color(WARM, 0.07))
+	glow(Vector2(2500, 40), 620, Color(ACCENT, 0.06))
+	# Brand row and eyebrow.
 	image(
 		Image.load_from_file(ProjectSettings.globalize_path("res://../../website/assets/icon.png")),
-		Rect2(112, 82, 84, 84)
+		Rect2(128, 104, 84, 84)
 	)
-	text("Immivio", Rect2(218, 78, 500, 90), 58, INK, true)
-	text("VR VIDEO PLAYER", Rect2(112, 196, 650, 50), 26, ACCENT)
-	text("%02d / 04" % index, Rect2(2250, 94, 200, 60), 28, MUTED)
-	box(Rect2(112, 283, 72, 5), ACCENT, 2)
-	text(card[key + "title"], Rect2(110, 328, 690, 256), 88 if zh else 82, INK, true)
-	text(card[key + "body"], Rect2(116, 630, 630, 180), 33, MUTED)
+	text("Immivio", Rect2(236, 106, 500, 80), 54, INK, true)
+	var eyebrow := "VR 视频播放器" if zh else "VR VIDEO PLAYER"
+	var eyebrow_width := measure(eyebrow, 24) + 48
+	box(Rect2(128, 236, eyebrow_width, 48), Color(CHIP, 0.55), 24, Color(ACCENT, 0.35))
+	text(eyebrow, Rect2(152, 241, eyebrow_width, 40), 24, ACCENT)
+	text("%02d / 04" % index, Rect2(2232, 118, 200, 60), 28, DIM)
+	# Headline, body and three features.
+	text(card[key + "title"], Rect2(124, 340, 720, 300), 98 if zh else 88, INK, true)
+	text(card[key + "body"], Rect2(130, 650, 640, 190), 33, MUTED)
 	for i in card[key + "items"].size():
-		var y: int = 891 + i * 93
-		box(Rect2(116, y + 18, 9, 9), ACCENT, 4)
-		text(card[key + "items"][i], Rect2(145, y, 610, 80), 29, INK)
+		var y: float = 880 + i * 104
+		box(Rect2(130, y, 52, 52), Color(CHIP, 0.9), 16, Color(ACCENT, 0.28))
+		box(Rect2(149, y + 19, 14, 14), ACCENT, 7)
+		text(card[key + "items"][i], Rect2(206, y + 1, 600, 60), 31, INK)
+	# Capture: rounded, framed and shadowed, never letterboxed.
 	var source := ProjectSettings.globalize_path(
 		BASE + "source/" + locale + "/" + card.file + ".png"
 	)
@@ -172,16 +213,34 @@ func draw_card(card: Dictionary, locale: String, index: int) -> void:
 		return
 	var crop: Rect2i = card.crop
 	var selected := screenshot.get_region(crop)
-	box(Rect2(842, 296, 1606, 972), Color("000710"), 26, Color("31516b"))
-	image(selected, Rect2(858, 312, 1574, 940))
-	text(card[key + "label"], Rect2(864, 242, 1510, 44), 24, ACCENT)
-	text("PICO / META QUEST     ·     FREE & OPEN SOURCE", Rect2(116, 1288, 1790, 46), 25, MUTED)
+	selected.resize(int(FRAME_WIDTH), roundi(FRAME_WIDTH * crop.size.y / crop.size.x), Image.INTERPOLATE_LANCZOS)
+	var frame := Rect2(
+		Vector2(FRAME_LEFT, roundf((SIZE.y - selected.get_height()) * .5) + 20),
+		Vector2(selected.get_size())
+	)
+	var shadow := box(frame, Color.TRANSPARENT, 36)
+	var shadow_style: StyleBoxFlat = shadow.get_theme_stylebox("panel")
+	shadow_style.shadow_color = Color(0, 0, 0, .55)
+	shadow_style.shadow_size = 70
+	shadow_style.shadow_offset = Vector2(0, 28)
+	var clip := box(frame, Color.BLACK, 36)
+	clip.clip_children = CanvasItem.CLIP_CHILDREN_ONLY
+	image(selected, Rect2(Vector2.ZERO, frame.size), clip)
+	box(frame, Color.TRANSPARENT, 36, Color(1, 1, 1, .14))
+	text(card[key + "label"], Rect2(FRAME_LEFT + 4, frame.position.y - 66, 1400, 44), 24, ACCENT)
+	# Footer: platforms, licence and an honest capture note.
+	text(
+		"PICO  ·  META QUEST  ·  " + ("免费开源" if zh else "FREE & OPEN SOURCE"),
+		Rect2(130, 1290, 1200, 46),
+		25,
+		MUTED
+	)
 	var note := (
 		"Android 虚拟机实拍 · 画面已裁切缩放用于排版 · 以头显实际体验为准"
 		if zh
 		else "Actual Android emulator capture · Cropped/scaled for layout · Headset experience may vary"
 	)
-	text(note, Rect2(116, 1352, 2330, 44), 21, Color("778da9"))
+	text(note, Rect2(130, 1346, 2300, 44), 21, DIM)
 
 
 func _run() -> void:
