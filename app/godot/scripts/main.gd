@@ -688,7 +688,9 @@ func _cancel_pointer(hand: String) -> void:
 
 
 func _on_input_session_changed() -> void:
-	if display.session_state in ["session_stopping", "session_loss_pending", "instance_exiting"]:
+	if display.session_state == "session_begun":
+		video_layers.session_begun()
+	elif display.session_state in ["session_stopping", "session_loss_pending", "instance_exiting"]:
 		video_layers.stopping(display.session_state != "session_stopping")
 		if video:
 			video.suspend_focus()

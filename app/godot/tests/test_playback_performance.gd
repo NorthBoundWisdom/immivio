@@ -37,12 +37,16 @@ class SwitchHost:
 	func set_mpv_playing(_id: int, _playing: bool) -> void:
 		pass
 
+	func set_mpv_audio(_id: int, _track: int, _volume: float, _muted: bool) -> bool:
+		return true
+
 
 class SwitchLayers:
 	extends RefCounted
+	var running := true
 
-	func runtime_running() -> bool:
-		return true
+	func session_running() -> bool:
+		return running
 
 	func direct_wanted(_video: Node3D, _uri: String) -> bool:
 		return false
@@ -52,6 +56,17 @@ class SwitchLayers:
 
 	func shutdown(_video: Node3D) -> void:
 		pass
+
+	func tick(_video: Node3D) -> void:
+		pass
+
+
+class TestLayers:
+	extends "res://scripts/video_layers.gd"
+	var running := true
+
+	func runtime_running() -> bool:
+		return running
 
 
 func check(value: bool, message: String) -> void:
@@ -268,7 +283,7 @@ func run() -> void:
 	movie.media.last_pair = {
 		"width": 64, "height": 32, "frame_id": 1, "source_epoch": 1, "slot_token": 1
 	}
-	var layers := Layers.new()
+	var layers := TestLayers.new()
 	layers.configure(false, movie, display)
 	layers.provider = Layers.Provider.new()
 	layers.bound = true
@@ -340,13 +355,39 @@ func run() -> void:
 		"Closing releases the picture swapchain"
 	)
 	layers.bound = true
+	movie.sharpness = 0.0
+	movie.fallbacks = 0
+	layers.tick(movie)
+	check(movie.layer_shown and layers.route == "surface", "Surface is active before XR stops")
 	layers.stopping()
 	check(
 		backend.invalidations == 0 and backend.destroys == 2,
 		"XR pause frees pictures without abandoning the decoder Surface"
 	)
+	layers.tick(movie)
+	check(movie.fallbacks == 0 and not movie.layer_shown, "STOPPING hides even before xrEndSession")
+	layers.running = false
+	layers.tick(movie)
+	check(movie.fallbacks == 0, "An inactive runtime does not request Surface fallback")
+	layers.running = true
+	layers.session_begun()
+	layers.tick(movie)
+	check(movie.fallbacks == 0, "An unbound resume can retry binding without reopening video")
+	layers.bound = true
+	layers.tick(movie)
+	check(movie.fallbacks == 0 and layers.route == "surface", "Rebinding restores the same Surface")
+	layers.stopping()
 	layers.stopping(true)
 	check(backend.invalidations == 1, "Session loss abandons handles even after a pause")
+	layers.running = false
+	layers.tick(movie)
+	check(movie.fallbacks == 0, "Session loss waits until the runtime can present again")
+	layers.running = true
+	layers.session_begun()
+	layers.bound = true
+	layers.capacity = 1
+	layers.tick(movie)
+	check(movie.fallbacks == 1, "Session loss with insufficient resumed capacity requests fallback")
 	layers.shutdown(movie)
 	movie.queue_free()
 
@@ -355,13 +396,28 @@ func run() -> void:
 	video.set_process(false)
 	var switch_host := SwitchHost.new()
 	video.platform = switch_host
-	video.layer_controller = SwitchLayers.new()
+	var switch_layers := SwitchLayers.new()
+	video.layer_controller = switch_layers
 	video.requested_play = false
 	check(
 		video.open_local("https://example.invalid/a", "Friendly title", 0, false, "original.mp4"),
 		"Open a source through the production API"
 	)
 	video.surface_requested = true
+	video.stick_scrubbing = true
+	switch_layers.running = false
+	video.request_shader_fallback()
+	check(not video.stick_scrub_available(), "A pending Surface fallback suspends stick scrubbing")
+	switch_layers.running = true
+	video.set_process(true)
+	await process_frame
+	await process_frame
+	video.set_process(false)
+	check(
+		switch_host.calls.size() == 1 and video.stick_scrub_available(),
+		"A stale fallback on resume leaves the current Surface session open"
+	)
+	video.stick_scrubbing = false
 	video.set_alpha(true)
 	video.subtitle_delay_ms = 450
 	video.stereo_horizontal = 2.0

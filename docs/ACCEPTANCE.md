@@ -115,6 +115,11 @@ memory and thermal behaviour.
   headset. Drag the timeline repeatedly while playing, then save the
   diagnostic log. Record the `loopback_connections` active count and peak,
   stream type and seek scenario as evidence for a future connection limit.
+- [ ] **D4 — Surface route after XR resume.** On PICO and Quest, start video on
+  the `surface` route. Remove and put on the headset, then open and dismiss the
+  system menu in a separate pass. Record the XR session transitions and the
+  playback session ID before and after each pass. Verify the same playback
+  session resumes on `surface` without reopening the video.
 
 ## Recording a result
 

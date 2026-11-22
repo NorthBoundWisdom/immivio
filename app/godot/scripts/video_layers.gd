@@ -49,10 +49,20 @@ var surface_allowed := true
 var _cadence_ms := -250
 var _cadence_supported := false
 var _cadence_active := false
+var _session_stopped := false
+var _surface_session_lost := false
 
 
 func runtime_running() -> bool:
 	return api != null and api.is_running()
+
+
+func session_running() -> bool:
+	return runtime_running() and not _session_stopped
+
+
+func session_begun() -> void:
+	_session_stopped = false
 
 
 func _sync_cadence(active: bool) -> void:
@@ -97,15 +107,20 @@ func update_session(value: Object) -> void:
 	platform = value
 	if api == null or not Platform.supports(platform, "bind_video_layer"):
 		return
-	if not api.is_running():
+	if not runtime_running():
 		if bound:
 			stopping()
+		# A later running transition can also be observed without a signal.
+		_session_stopped = false
+		return
+	if _session_stopped:
 		return
 	var current := api.get_session()
 	var play_space := api.get_play_space()
 	if current == session and play_space == space and bound:
 		return
 	if current != session:
+		_surface_session_lost = _surface_session_lost or (session != 0 and current != 0)
 		generation += 1
 		copied_key.clear()
 		image_size = Vector2i.ZERO
@@ -154,6 +169,8 @@ func update_session(value: Object) -> void:
 
 
 func stopping(session_lost: bool = false) -> void:
+	_session_stopped = true
+	_surface_session_lost = _surface_session_lost or session_lost
 	if provider:
 		provider.addresses = PackedInt64Array()
 	# xrEndSession does not destroy its swapchains. Free the picture allocation, but
@@ -168,8 +185,6 @@ func stopping(session_lost: bool = false) -> void:
 	_cadence_ms = -250
 	_sync_cadence(false)
 	bound = false
-	session = 0
-	space = 0
 	copied_key.clear()
 	image_size = Vector2i.ZERO
 
@@ -218,6 +233,7 @@ func shutdown(video: Node3D) -> void:
 
 func release(video: Node3D) -> void:
 	hide(video)
+	_surface_session_lost = false
 	if bound and image_size != Vector2i.ZERO and Platform.supports(platform, "destroy_video_image"):
 		platform.destroy_video_image()
 	image_size = Vector2i.ZERO
@@ -241,13 +257,23 @@ func hide(video: Node3D) -> void:
 
 func tick(video: Node3D) -> void:
 	update_session(video.platform)
+	if not session_running():
+		hide(video)
+		return
+	var insufficient_capacity := (
+		bound and capacity < (2 if video.stereo_sbs and video.viewing_eye == 0 else 1)
+	)
 	if (
 		not allowed
 		or not bound
-		or capacity < (2 if video.stereo_sbs and video.viewing_eye == 0 else 1)
+		or insufficient_capacity
+		or (video.surface_requested and _surface_session_lost)
 	):
 		hide(video)
-		if video.surface_requested:
+		if (
+			video.surface_requested
+			and (not allowed or insufficient_capacity or _surface_session_lost)
+		):
 			video.request_shader_fallback()
 		return
 	if not video.panel.visible or not video.media.accepts(video.media.session_id):

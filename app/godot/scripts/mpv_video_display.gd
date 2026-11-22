@@ -93,6 +93,7 @@ var _surface_context := {}
 var _surface_eof_ms := -1
 var _fallback_queued := false
 var _fallback_pending := false
+var _fallback_terminal := false
 var _next_layout_override := {}
 const StereoFocus := preload("res://scripts/stereo_focus.gd")
 var autofocus := StereoFocus.new()
@@ -717,6 +718,7 @@ func close_video() -> void:
 	surface_requested = false
 	_fallback_queued = false
 	_fallback_pending = false
+	_fallback_terminal = false
 	_surface_context.clear()
 	_surface_eof_ms = -1
 	_stereo_detection.cancel()
@@ -1168,18 +1170,34 @@ func _accept_surface_state(report: Dictionary) -> void:
 		_surface_eof_ms = -1
 
 
-func request_shader_fallback() -> void:
-	if layer_controller and not layer_controller.runtime_running():
+func request_shader_fallback(terminal: bool = false) -> void:
+	if force_shader_output or local_uri.is_empty():
+		return
+	_fallback_terminal = _fallback_terminal or terminal
+	if layer_controller and not layer_controller.session_running():
 		_fallback_pending = true
 		return
-	if _fallback_queued or force_shader_output or local_uri.is_empty():
+	if _fallback_queued:
 		return
 	_fallback_queued = true
 	call_deferred("_fallback_from_surface", local_uri, media.session_id)
 
 
+func _retry_surface_fallback() -> void:
+	if not _fallback_pending or not layer_controller or not layer_controller.session_running():
+		return
+	_fallback_pending = false
+	if _fallback_terminal:
+		request_shader_fallback(true)
+	# A route failure is retried by tick() using the current binding and settings.
+
+
 func _fallback_from_surface(uri: String, session_id: int) -> void:
 	if uri.is_empty() or local_uri != uri or media.session_id != session_id:
+		return
+	if layer_controller and not layer_controller.session_running():
+		_fallback_queued = false
+		_fallback_pending = true
 		return
 	var title := display_name
 	var basename := _layout_basename
@@ -2667,7 +2685,7 @@ func _on_error(id: int, payload: String) -> void:
 	if id != media.session_id:
 		return
 	if surface_requested and not force_shader_output:
-		request_shader_fallback()
+		request_shader_fallback(true)
 		return
 	_thumbnail_sequence += 1
 	var report: Variant = JSON.parse_string(payload)
@@ -2943,9 +2961,7 @@ func _process(_delta: float) -> void:
 		)
 	):
 		suspend_focus()
-	if _fallback_pending and layer_controller and layer_controller.runtime_running():
-		_fallback_pending = false
-		request_shader_fallback()
+	_retry_surface_fallback()
 	autofocus.settle(_delta, Time.get_ticks_msec())
 	_apply_stereo_focus()
 	_maybe_focus()
