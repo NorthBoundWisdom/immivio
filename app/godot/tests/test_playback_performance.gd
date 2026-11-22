@@ -121,9 +121,6 @@ class Movie:
 	var packed_file := false
 	var packed_alpha := false
 	var sharpness := 0.0
-	var stereo_focus_mode := 0
-	var stereo_horizontal := 0.0
-	var stereo_vertical := 0.0
 	var geometry := 0
 	var fisheye_fov := 180
 	var stereo_sbs := true
@@ -153,6 +150,12 @@ class Movie:
 		return texture.get_rid()
 
 	func auto_layout_pending() -> bool:
+		return false
+
+	func stereo_focus_active() -> bool:
+		return false
+
+	func stereo_alignment_active() -> bool:
 		return false
 
 	func surface_context() -> Dictionary:
@@ -439,6 +442,35 @@ func run() -> void:
 	check(video.hdr_to_sdr_active(), "HDR tone mapping requests performance headroom")
 	video.set_hdr_to_sdr(false)
 	check(not video.hdr_to_sdr_active(), "Disabling tone mapping clears its performance demand")
+	video.stereo_sbs = true
+	for mode in [1, 2]:
+		video.stereo_focus_mode = mode
+		video.geometry = 0
+		video.viewing_eye = 0
+		check(
+			not video.stereo_focus_active() and Layout.compatible(video).is_empty(),
+			"Flat playback ignores saved automatic and manual stereo focus"
+		)
+		video.geometry = 1
+		video.viewing_eye = 1
+		check(
+			not video.stereo_focus_active() and Layout.compatible(video).is_empty(),
+			"Single-eye playback ignores saved automatic and manual stereo focus"
+		)
+		video.viewing_eye = 0
+		check(
+			video.stereo_focus_active() and Layout.compatible(video) == "stereo focus needs shader",
+			"Immersive stereo in both eyes still uses the stereo focus shader"
+		)
+	video.stereo_focus_mode = 0
+	video.stereo_horizontal = 2.0
+	video.viewing_eye = 2
+	check(Layout.compatible(video).is_empty(), "Single-eye playback ignores stereo alignment")
+	video.viewing_eye = 0
+	check(Layout.compatible(video) == "stereo alignment needs shader", "Both eyes use alignment")
+	video.stereo_sbs = false
+	check(Layout.compatible(video).is_empty(), "Mono playback ignores stereo alignment")
+	video.stereo_horizontal = 0.0
 	var switch_host := SwitchHost.new()
 	video.platform = switch_host
 	var switch_layers := SwitchLayers.new()

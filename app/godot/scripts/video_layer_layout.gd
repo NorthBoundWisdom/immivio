@@ -30,9 +30,9 @@ static func compatible(video: Object) -> String:
 		return "packed alpha needs shader"
 	if video.color_grade.preset != "Original" or video.sharpness > 0:
 		return "picture settings need shader"
-	if video.stereo_focus_mode != 0:
+	if video.stereo_focus_active():
 		return "stereo focus needs shader"
-	if not is_zero_approx(video.stereo_horizontal) or not is_zero_approx(video.stereo_vertical):
+	if video.stereo_alignment_active():
 		return "stereo alignment needs shader"
 	if (
 		int(video.media.last_pair.get("rotation_degrees", 0)) != 0

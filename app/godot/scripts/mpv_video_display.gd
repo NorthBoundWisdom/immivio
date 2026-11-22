@@ -1296,6 +1296,19 @@ func commit_stereo_focus() -> void:
 	_focus_dirty = false
 
 
+func stereo_focus_active() -> bool:
+	return (
+		stereo_focus_mode in [1, 2]
+		and stereo_sbs
+		and viewing_eye == 0
+		and geometry != Geometry.Geometry.FLAT
+	)
+
+
+func stereo_alignment_active() -> bool:
+	return stereo_sbs and viewing_eye == 0 and (stereo_horizontal != 0.0 or stereo_vertical != 0.0)
+
+
 func _apply_stereo_focus() -> void:
 	if not material or not panel:
 		return
@@ -1304,9 +1317,7 @@ func _apply_stereo_focus() -> void:
 		if stereo_focus_mode == 1
 		else (stereo_focus if stereo_focus_mode == 2 else 0.0)
 	)
-	var active := (
-		distance > 0 and stereo_sbs and viewing_eye == 0 and geometry != Geometry.Geometry.FLAT
-	)
+	var active := distance > 0 and stereo_focus_active()
 	var units := XRServer.world_scale / maxf(panel.global_basis.get_scale().x, 0.0001)
 	var scale := distance * units / SPHERE_RADIUS if active else 1.0
 	var axis := Vector3.RIGHT
@@ -1332,12 +1343,7 @@ func _apply_stereo_focus() -> void:
 
 
 func _maybe_focus() -> void:
-	if (
-		stereo_focus_mode != 1
-		or not stereo_sbs
-		or viewing_eye != 0
-		or geometry == Geometry.Geometry.FLAT
-	):
+	if stereo_focus_mode != 1 or not stereo_focus_active():
 		return
 	if (
 		_focus_busy
