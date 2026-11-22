@@ -1,4 +1,5 @@
 extends SceneTree
+const Menu := preload("res://scripts/player_menu.gd")
 
 
 func _initialize() -> void:
@@ -7,7 +8,7 @@ func _initialize() -> void:
 
 
 func _run() -> void:
-	var menu := preload("res://scripts/player_menu.gd").new()
+	var menu := Menu.new()
 	root.add_child(menu)
 	var host := preload("res://scripts/main.gd").new()
 	host.video = preload("res://scripts/mpv_video_display.gd").new()
@@ -17,14 +18,27 @@ func _run() -> void:
 	)
 	host.video.local_uri = "file:///a.mp4"
 	menu.setting_requested.connect(host._on_player_setting)
-	menu._state = {"has_video": true, "queue_shuffle": false}
-	menu.test_activate(menu.PLAYBACK_ORDER)
+	menu.state_provider = func():
+		return {"has_video": true, "queue_shuffle": host.playback_queue.shuffle}
+	menu.toggle()
+	assert(
+		not menu.controls_snapshot().any(func(button): return button.target == Menu.SUBTITLE_LOAD)
+	)
+	menu.test_activate(Menu.QUEUE_SETTINGS)
+	assert(menu.popup_snapshot().quick_open == "queue")
+	choose_order(menu, true)
 	assert(host.playback_queue.shuffle)
 	assert(host.settings.get_value("playback", "queue_shuffle"))
-	menu._state.queue_shuffle = true
-	menu.test_activate(menu.PLAYBACK_ORDER)
+	choose_order(menu, false)
 	assert(not host.playback_queue.shuffle)
+	assert(not host.settings.get_value("playback", "queue_shuffle"))
 	assert(host.playback_queue.adjacent("file:///b.mp4", 1).is_empty())
+	var actions: Array[String] = []
+	menu.action_requested.connect(func(operation: String): actions.append(operation))
+	menu.test_activate(Menu.SYNC_SETTINGS)
+	assert(menu.controls_snapshot().any(func(button): return button.target == Menu.SUBTITLE_LOAD))
+	menu.test_activate(Menu.SUBTITLE_LOAD)
+	assert(actions == ["load_subtitle"] and not host.playback_queue.shuffle)
 	var migration := preload("res://scripts/player_settings_migration.gd")
 	host.settings.set_value("playback", "queue_shuffle", "obsolete")
 	assert(migration.apply(host.settings))
@@ -34,3 +48,12 @@ func _run() -> void:
 	host.free()
 	menu.free()
 	preload("res://tests/support/test_result.gd").finish(self, 0)
+
+
+func choose_order(menu: Node3D, shuffle: bool) -> void:
+	for target in menu.choices.targets:
+		var choice: Dictionary = menu.choices.targets[target]
+		if choice.get("key") == "queue_shuffle" and choice.get("value") == shuffle:
+			menu.test_activate(target)
+			return
+	assert(false, "Playback order is available inside the queue menu")

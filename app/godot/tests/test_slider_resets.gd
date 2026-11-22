@@ -113,6 +113,16 @@ func _run() -> void:
 	menu.set_process(false)
 	menu.adjustment_committed.connect(func(): commits += 1)
 	menu.test_activate(Menu.QUICK_COLOR)
+	var save_default := button(menu, menu.PlaybackPopups.GRADE_SAVE_DEFAULT)
+	var reset_custom := button(menu, 440)
+	check(
+		(
+			is_equal_approx(save_default.rect.get_center().y, reset_custom.rect.get_center().y)
+			and is_equal_approx(save_default.rect.size.y, reset_custom.rect.size.y)
+			and not save_default.rect.intersects(reset_custom.rect)
+		),
+		"Save as default and Reset custom align on one row with equal height"
+	)
 	for page in menu.PlaybackPopups.GRADE_PAGES.size():
 		for key in Grade.DEFAULTS:
 			var span := Grade.limits(key)

@@ -24,18 +24,20 @@ func draw() -> void:
 	actions.clear()
 	var entries: Array = menu._state.get("queue_items", [])
 	offset = clampi(offset, 0, maxi(0, ((entries.size() - 1) / ROWS) * ROWS))
-	var shuffle: Label3D = menu._label(menu.I18n.t("Shuffle"), Vector3(-0.49, 0.605, 0.004), 16)
-	shuffle.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	var order_label: Label3D = menu._label(
+		menu.I18n.t("Playback order"), Vector3(-0.49, 0.605, 0.004), 16
+	)
+	order_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	menu.choices.field(
 		null,
 		{
 			"key": "queue_shuffle",
 			"value": menu._state.get("queue_shuffle", false),
 			"compact": true,
-			"choices": [{"value": false, "label": "Off"}, {"value": true, "label": "On"}]
+			"choices": [{"value": false, "label": "In order"}, {"value": true, "label": "Shuffle"}]
 		},
-		Vector2(-0.22, 0.605),
-		0.24,
+		Vector2(-0.19, 0.605),
+		0.30,
 		0.055
 	)
 	var repeat_label: Label3D = menu._label(

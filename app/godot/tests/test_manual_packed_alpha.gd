@@ -38,21 +38,14 @@ func check(ok: bool, message: String) -> void:
 		failures.append(message)
 
 
-func toggle(menu: Node3D) -> void:
-	menu.visible = true
-	menu.refresh()
-	var buttons: Array = menu.controls_snapshot().filter(func(item): return item.target == 104)
-	check(buttons.size() == 1 and buttons[0].enabled, "Force switch remains clickable")
-	if buttons.size() != 1 or not buttons[0].enabled:
-		return
-	var point: Vector2 = buttons[0].rect.get_center()
-	var origin: Vector3 = menu.to_global(Vector3(point.x, point.y, 1))
-	check(
-		menu.press_pointer("right_hand", origin, -menu.global_basis.z, true),
-		"Ray presses force switch"
-	)
-	menu.release_pointer("right_hand", origin, -menu.global_basis.z, true)
-	menu.refresh()
+func toggle(main: Node3D) -> void:
+	main.video_menu.dismiss()
+	var event := InputEventKey.new()
+	event.keycode = KEY_T
+	event.pressed = true
+	main._unhandled_key_input(event)
+	main.video_menu.visible = true
+	main.video_menu.refresh()
 
 
 func check_shader_at_bind() -> void:
@@ -120,12 +113,11 @@ func _run() -> void:
 		"Open generated DLNA-style title without alpha tags"
 	)
 	check(not video.packed_file and not video.alpha_wanted(), "Untagged scene starts opaque")
-	# Exercise the real menu/coordinator before frame metadata exists, rather than
-	# supplying known-good compatibility fields before the user can press anything.
-	toggle(menu)
+	# Exercise the desktop override before frame metadata exists.
+	toggle(main)
 	check(
 		video.alpha_wanted() and video.packed_alpha_forced,
-		"Menu accepts Force On with inconclusive detection"
+		"The desktop shortcut accepts Force On with inconclusive detection"
 	)
 	check(
 		menu._status_text() == menu.I18n.t("Packed alpha: waiting for a decoded frame"),
@@ -153,7 +145,7 @@ func _run() -> void:
 		"Pending Force On engages on current paused frame after correcting layout"
 	)
 	check(not video.alpha_available(), "Automatic detector is still inconclusive without metadata")
-	toggle(menu)
+	toggle(main)
 	check(not video.alpha_wanted() and not video.alpha_ready(), "Force Off clears current mask")
 	# Force is intentionally independent of conservative automatic metadata gates.
 	for metadata in [
@@ -164,15 +156,15 @@ func _run() -> void:
 	]:
 		video.media.format = {"width": 8192, "height": 4096}
 		video.media.format.merge(metadata, true)
-		toggle(menu)
+		toggle(main)
 		check(
 			video.alpha_ready(),
 			"Force On bypasses inconclusive automatic metadata: " + str(metadata)
 		)
-		toggle(menu)
+		toggle(main)
 		check(not video.alpha_wanted(), "Force Off always remains available")
 	video.media.format = {"width": 0, "height": 0}
-	toggle(menu)
+	toggle(main)
 	check(
 		video.alpha_wanted() and not video.alpha_ready(),
 		"Invalid frame retains intent without applying mask"
@@ -182,7 +174,7 @@ func _run() -> void:
 		menu._status_text() == menu.I18n.t("Packed alpha: decoded frame is too small"),
 		"Frame-size blocker is visible"
 	)
-	toggle(menu)
+	toggle(main)
 	check(not video.alpha_wanted(), "Force Off works even when renderer cannot apply the mask")
 	check(
 		video.open_local(

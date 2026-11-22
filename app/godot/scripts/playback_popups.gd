@@ -354,12 +354,12 @@ func draw(key: String) -> void:
 				0.46,
 				_grade_page_needs_reset()
 			)
-			_button(440, "Reset custom", Vector2(0.26, 0.335), 0.46)
 			_button(GRADE_SAVE_DEFAULT, "Save as default", Vector2(-0.26, 0.415), 0.46)
+			_button(440, "Reset custom", Vector2(0.26, 0.415), 0.46)
 			_button(
 				GRADE_CLEAR_FILE,
 				"Clear this video's grade",
-				Vector2(0.26, 0.415),
+				Vector2(0.26, 0.335),
 				0.46,
 				menu._state.get("has_file_color_grade", false)
 			)

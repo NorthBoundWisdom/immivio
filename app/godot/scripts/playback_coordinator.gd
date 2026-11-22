@@ -279,8 +279,6 @@ func _on_menu_action(operation: String) -> void:
 			host.presentation_coordinator._show_library_menu()
 		"play":
 			host.video.toggle_play()
-		"alpha":
-			host.video.set_alpha(not host.video.alpha_wanted())
 		"clone_voice":
 			if host.video.toggle_clone_voice():
 				host.settings.set_value(

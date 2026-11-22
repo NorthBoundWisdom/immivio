@@ -308,11 +308,11 @@ func _run() -> void:
 	check(
 		(
 			not click(menu, 102)
-			and not menu._enabled("alpha")
+			and not click(menu, 104)
 			and not click(menu, 112)
 			and host.calls.is_empty()
 		),
-		"No-video play and both effects disabled, no native side effect"
+		"No-video play and removed effects have no native side effect"
 	)
 	check(
 		click(menu, 100) and recent.visible and not menu.visible,
@@ -381,33 +381,31 @@ func _run() -> void:
 	var shown := func(target: int) -> bool:
 		return menu.controls_snapshot().any(func(b): return b.target == target and b.node.visible)
 	check(
-		not shown.call(112) and shown.call(104) and menu._enabled("alpha") and not click(menu, 112),
-		"No live conversion or matting controls are shown"
+		not shown.call(112) and not shown.call(104) and not click(menu, 112),
+		"The playback bar omits manual masking and live conversion controls"
 	)
 	video.set_projection(1)
 	menu.refresh()
 	var before_disabled_depth := host.calls.size()
 	check(
 		(
-			shown.call(104)
+			not shown.call(104)
 			and not shown.call(112)
-			and menu._enabled("alpha")
 			and not click(menu, 112)
 			and host.calls.size() == before_disabled_depth
 		),
-		"VR180 permits requesting alpha even before the user corrects the layout"
+		"VR180 preserves the toolbar layout without a manual mask toggle"
 	)
 	video.set_projection(3)
 	menu.refresh()
 	check(
 		(
-			shown.call(104)
+			not shown.call(104)
 			and not shown.call(112)
-			and menu._enabled("alpha")
 			and not click(menu, 112)
 			and not video.alpha_wanted()
 		),
-		"360 keeps the explicit alpha request available and omits removed conversion controls"
+		"360 also omits the manual mask toggle and conversion controls"
 	)
 	check(
 		(

@@ -49,7 +49,6 @@ const SUBTITLE_POSITION := 292
 const PLAYBACK_SETTINGS := 470
 const SYNC_SETTINGS := 490
 const QUEUE_SETTINGS := 491
-const PLAYBACK_ORDER := 492
 const SUBTITLE_LOAD := 492
 const SUBTITLE_FORGET := 493
 const SUBTITLE_DELAY_RESET := 494
@@ -103,7 +102,7 @@ const OPERATIONS := [
 		"previous_video",
 		"play",
 		"next_video",
-		"alpha",
+		"",  # Preserve the action IDs after the old mask switch.
 		"projection",
 		"stereo",
 		"stop",
@@ -389,7 +388,7 @@ func _refresh_live_values() -> void:
 		if _modes.has(button.target):
 			_modes[button.target].text = _caption(operation)
 		label.modulate = button.foreground if button.enabled else MUTED * Color(0.7, 0.7, 0.7)
-		if section == 0 and button.target in [104, 110, 112]:
+		if section == 0 and button.target in [110, 112]:
 			button.node.get_child(1).material_override.albedo_color = (
 				button.foreground if button.enabled else MUTED
 			)
@@ -441,7 +440,6 @@ func _layout_cache_key() -> String:
 	for key in CACHE_SHAPE_DEFAULTS:
 		shape.append(_state.get(key, CACHE_SHAPE_DEFAULTS[key]))
 	shape.append(int(_state.get("geometry", 0)) == 0 if _adjustment.is_empty() else false)
-	shape.append(_enabled("alpha") if _adjustment.is_empty() else false)
 	return str(shape)
 
 
@@ -638,9 +636,8 @@ func _draw_bar() -> void:
 	_title = _label("", Vector3(0, HEADER_Y, 0.006), 18)
 	_title.font = ui_font_bold()
 	var has_video: bool = _state.get("has_video", false)
-	# Grouped by purpose around the transport: what to watch on the left (library, queue,
-	# bookmarks, info), how it looks and sounds on the right. The most used sit nearest Play.
-	var watch := [
+	# Queue, library and playback timing on the left; picture and captions on the right.
+	var playback := [
 		{"target": 12, "icon": "info", "tip": "Info", "enabled": true},
 		{
 			"target": BookmarkMenu.UNDO,
@@ -655,31 +652,16 @@ func _draw_bar() -> void:
 			"enabled": has_video and not _state.get("bookmarks", []).is_empty()
 		},
 		{
-			"target": PLAYBACK_ORDER,
-			"icon": "shuffle" if _state.get("queue_shuffle", false) else "sequence",
-			"tip":
-			(
-				"Playback order: Shuffle"
-				if _state.get("queue_shuffle", false)
-				else "Playback order: Sequence"
-			),
+			"target": SYNC_SETTINGS,
+			"icon": "refresh",
+			"tip": "Synchronization",
 			"enabled": has_video
 		},
 		{"target": QUEUE_SETTINGS, "icon": "list", "tip": "Queue", "enabled": has_video},
 		{"target": BROWSE, "icon": "folder", "tip": "Library", "enabled": has_video},
+		{"target": QUICK_SPEED, "icon": "time", "tip": "Playback speed", "enabled": has_video},
 	]
 	var picture := [
-		{
-			"target": 104,
-			"icon": "passthrough",
-			"tip":
-			(
-				"Force packed alpha off"
-				if _state.get("packed_alpha", false)
-				else "Force packed alpha on"
-			),
-			"enabled": _enabled("alpha")
-		},
 		{"target": 110, "icon": "subtitle", "tip": "Subtitles", "enabled": _enabled("subtitles")},
 		{"target": MODE, "icon": "view_mode", "tip": "Video mode", "enabled": has_video},
 		{
@@ -688,19 +670,12 @@ func _draw_bar() -> void:
 			"tip": "Screen layout",
 			"enabled": has_video and int(_state.get("geometry", 0)) == 0
 		},
-		{"target": QUICK_SPEED, "icon": "time", "tip": "Playback speed", "enabled": has_video},
 		{"target": QUICK_COLOR, "icon": "adjust", "tip": "Color grading", "enabled": has_video},
 		{"target": IPD_SETTINGS, "icon": "eyes", "tip": "IPD", "enabled": _enabled("stereo_view")},
-		{
-			"target": SYNC_SETTINGS,
-			"icon": "refresh",
-			"tip": "Synchronization",
-			"enabled": has_video
-		},
 	]
 	for side in [-1, 1]:
-		var group: Array = (watch if side < 0 else picture).filter(
-			func(item): return item.enabled or (has_video and item.target == 104)
+		var group: Array = (playback if side < 0 else picture).filter(
+			func(item): return item.enabled
 		)
 		if group.is_empty():
 			continue
@@ -710,8 +685,6 @@ func _draw_bar() -> void:
 		var x := -0.132 - span + width / 2 if side < 0 else 0.132 + width / 2
 		for item in group:
 			_glyph(item.target, item.icon, Vector2(x, 0.025), width, item.enabled, I18n.t(item.tip))
-			if item.target == 104:
-				_buttons.back()["keep_visible"] = true
 			_buttons.back()["tip_below"] = true
 			x += width + gap
 	if has_video:
@@ -913,7 +886,6 @@ func _transport_key() -> String:
 			_enabled("previous_video"),
 			_enabled("next_video"),
 			controls_opacity,
-			_state.get("queue_shuffle", false),
 			bookmarks.key(),
 			_state.get("bookmarks", [])
 		]
@@ -963,7 +935,7 @@ func _bar_key() -> String:
 			_state.get("queue_revision", 0) if _quick_open == "queue" else -1,
 			_quick_open == "color" and _state.get("has_file_color_grade", false),
 			_state.get("queue_loop", false) if _quick_open == "queue" else false,
-			_state.get("queue_shuffle", false),
+			_state.get("queue_shuffle", false) if _quick_open == "queue" else false,
 			_state.get("clone_voice", false),
 			_state.get("geometry", 0),
 			_state.get("has_video", false),
@@ -1141,9 +1113,6 @@ func _activate(target: int) -> void:
 	if target == QUICK_CLOSE:
 		_toggle_popup("")
 		return
-	if target == PLAYBACK_ORDER:
-		setting_requested.emit("queue_shuffle", not bool(_state.get("queue_shuffle", false)))
-		return
 	if POPUP_TARGETS.has(target):
 		if target == 110 and not _enabled("subtitles"):
 			return
@@ -1227,9 +1196,6 @@ func _activate(target: int) -> void:
 
 
 func _update_highlights() -> void:
-	_tips[104] = I18n.t(
-		"Force packed alpha off" if _state.get("packed_alpha", false) else "Force packed alpha on"
-	)
 	super._update_highlights()
 	for button in _buttons:
 		if (
@@ -1249,14 +1215,6 @@ func _update_highlights() -> void:
 			)
 			if active and not _hover.values().has(button.target):
 				button.node.material_override.set_shader_parameter("surface_color", SELECTED)
-		if (
-			section == 0
-			and button.enabled
-			and not _hover.values().has(button.target)
-			and button.target == 104
-			and _state.get("packed_alpha", false)
-		):
-			button.node.material_override.set_shader_parameter("surface_color", SELECTED)
 		if section == 0 and button.target == 111:
 			button.node.get_child(1).material_override.albedo_color = (
 				ACCENT
@@ -1280,8 +1238,6 @@ func _enabled(operation: String) -> bool:
 			return has_video
 		"previous_video", "next_video":
 			return has_video and _state.get("has_" + operation, false)
-		"alpha":
-			return has_video
 		"eyes", "stereo_view":
 			return has_video and _state.get("stereo", false)
 		"audio":
@@ -1316,8 +1272,6 @@ func _caption_text(operation: String) -> String:
 			return "Library"
 		"play":
 			return "Pause" if _pausable() else "Play"
-		"alpha":
-			return "Passthrough"
 		"previous_video":
 			return "Previous video"
 		"next_video":

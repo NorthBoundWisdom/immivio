@@ -87,31 +87,35 @@ func _run() -> void:
 	menu.set_process(false)
 	menu.toggle()
 	check(
-		(
-			not button(menu, 104).is_empty()
-			and button(menu, 104).node.visible
-			and button(menu, 104).enabled
-			and button(menu, Menu.TEMP_PASSTHROUGH).is_empty()
-		),
-		"Packed-alpha toggle stays visible without adding a temporary scene passthrough action"
+		button(menu, 104).is_empty() and button(menu, Menu.TEMP_PASSTHROUGH).is_empty(),
+		"The toolbar omits the packed-alpha override and temporary scene passthrough"
 	)
-	var right := [Menu.MODE, Menu.QUICK_SPEED, Menu.QUICK_COLOR, Menu.QUEUE_SETTINGS, 12]
-	for target in right:
-		var item := button(menu, target)
-		check(
-			(
-				not item.is_empty()
-				and item.node.visible
-				and is_equal_approx(item.rect.get_center().y, .025)
-				and item.rect.end.x < .58
-			),
-			"Quick controls share the toolbar row: %d" % target
-		)
-	for index in right.size() - 1:
-		check(
-			not button(menu, right[index]).rect.intersects(button(menu, right[index + 1]).rect),
-			"Right-side controls do not overlap"
-		)
+	var sides := {
+		-1: [12, Menu.SYNC_SETTINGS, Menu.QUEUE_SETTINGS, Menu.BROWSE, Menu.QUICK_SPEED],
+		1: [110, Menu.MODE, Menu.QUICK_COLOR]
+	}
+	for side in sides:
+		var targets: Array = sides[side]
+		for target in targets:
+			var item := button(menu, target)
+			check(
+				(
+					not item.is_empty()
+					and item.node.visible
+					and is_equal_approx(item.rect.get_center().y, .025)
+					and signf(item.rect.get_center().x) == side
+					and item.rect.position.x > -.58
+					and item.rect.end.x < .58
+				),
+				"Quick controls stay on their assigned side: %d" % target
+			)
+		for index in targets.size() - 1:
+			check(
+				not button(menu, targets[index]).rect.intersects(
+					button(menu, targets[index + 1]).rect
+				),
+				"Adjacent toolbar controls do not overlap"
+			)
 	check(
 		(
 			click(menu, Menu.QUICK_SPEED)
