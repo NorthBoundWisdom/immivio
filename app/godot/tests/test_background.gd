@@ -334,6 +334,13 @@ func _run() -> void:
 	main.video.geometry = 1
 	main.video.packed_file = true
 	main.video.packed_alpha = true
+	main.video.stereo_sbs = true
+	main._update_background()
+	check(
+		main.video.alpha_wanted() and not supported.applied_passthrough,
+		"An Alpha request in VR180 SBS stays pending without starting passthrough"
+	)
+	main.video.geometry = 2
 	for choice in main.background.CHOICES:
 		main.background.select(choice)
 		main._update_background()

@@ -560,7 +560,8 @@ func _process(delta: float) -> void:
 			),
 			fps * video.playback_speed,
 			low_end_gpu,
-			Time.get_ticks_msec()
+			Time.get_ticks_msec(),
+			(player_menu and player_menu.visible) or (library_menu and library_menu.visible)
 		)
 	video_layers.update_session(video.platform if video else null)
 	screen_layout.tick()

@@ -47,6 +47,12 @@ static func packed_dimensions(width: int, height: int) -> Vector2i:
 	return Vector2i(maxi(4, int(round(width * 0.4)) & ~3), maxi(2, int(round(height * 0.4)) & ~1))
 
 
+static func packed_alpha_layout_supported(
+	geometry: int, stereo: bool, top_bottom: bool, stereo_half: bool
+) -> bool:
+	return geometry == Geometry.FISHEYE and stereo and not top_bottom and not stereo_half
+
+
 static func legacy_compatible(format: Dictionary, stereo: bool, geometry: int) -> bool:
 	var width := int(format.get("width", 0))
 	var height := int(format.get("height", 0))

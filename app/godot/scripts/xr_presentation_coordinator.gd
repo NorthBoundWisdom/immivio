@@ -863,16 +863,17 @@ func _update_background(force_scenery: bool = false) -> void:
 		return
 	if not host.background or not host.display.environment:
 		return
-	var immersive = false
-	var alpha = false
-	if host.video:
-		var active: bool = host.video.has_active_presentation()
-		alpha = active and (host.video.alpha_wanted() or host.video.alpha_enabled)
-		immersive = active and host.video.geometry != Geometry.Geometry.FLAT
+	var immersive: bool = (
+		host.video
+		and host.video.has_active_presentation()
+		and host.video.geometry != Geometry.Geometry.FLAT
+	)
 	# Alpha temporarily overrides the saved scenery. An explicit passthrough choice
 	# also applies behind immersive media, including the unused half of VR180.
 	var wants_passthrough: bool = (
-		alpha or host.temporary_passthrough or host.background.choice == "passthrough"
+		_person_passthrough()
+		or host.temporary_passthrough
+		or host.background.choice == "passthrough"
 	)
 	host.display.set_scenery(
 		null if immersive or wants_passthrough else host.background.ready_sky(),
@@ -940,7 +941,7 @@ func _person_passthrough() -> bool:
 	return (
 		host.video != null
 		and host.video.has_active_presentation()
-		and (host.video.alpha_wanted() or host.video.alpha_enabled)
+		and (host.video.alpha_presentation_requested() or host.video.alpha_enabled)
 	)
 
 

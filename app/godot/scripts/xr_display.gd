@@ -255,7 +255,8 @@ func update_playback_policy(
 	expensive: bool,
 	fps: float,
 	low_end: bool,
-	now_ms: int
+	now_ms: int,
+	menu_visible: bool = false
 ) -> void:
 	var cap := (
 		minf(preferred_refresh_rate, 90.0) if low_end or not layer else preferred_refresh_rate
@@ -263,7 +264,10 @@ func update_playback_policy(
 	var rate := performance.video_rate(fps, available_refresh_rates(), cap) if playing else 0.0
 	if rate <= 0:
 		rate = closest_refresh_rate(available_refresh_rates(), minf(72.0, preferred_refresh_rate))
-	var demand := expensive or (visible and not layer) or (playing and rate > 72.5)
+	# Composition still needs enough headroom to draw and copy the controls while video plays.
+	var demand := (
+		expensive or (visible and not layer) or (playing and (menu_visible or rate > 72.5))
+	)
 	var changes := performance.tick(demand, rate, now_ms)
 	if changes.has("high"):
 		_apply_performance_levels()

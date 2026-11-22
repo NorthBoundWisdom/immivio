@@ -986,6 +986,13 @@ func alpha_wanted() -> bool:
 	return packed_alpha
 
 
+func alpha_presentation_requested() -> bool:
+	return (
+		packed_alpha
+		and Geometry.packed_alpha_layout_supported(geometry, stereo_sbs, top_bottom, stereo_half)
+	)
+
+
 ## The URI/effect preferences survive close for history; they are not playback state.
 func has_active_presentation() -> bool:
 	if local_uri.is_empty() or not media.accepts(media.session_id):
@@ -1024,7 +1031,7 @@ func packed_alpha_blocker() -> String:
 		return "Packed alpha: waiting for a decoded frame"
 	if geometry != Geometry.Geometry.FISHEYE:
 		return "Packed alpha: select Fisheye"
-	if not stereo_sbs or top_bottom or stereo_half:
+	if not Geometry.packed_alpha_layout_supported(geometry, stereo_sbs, top_bottom, stereo_half):
 		return "Packed alpha: select full SBS"
 	if int(media.format.get("width", 0)) < 10 or int(media.format.get("height", 0)) < 10:
 		return "Packed alpha: decoded frame is too small"

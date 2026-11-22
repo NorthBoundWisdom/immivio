@@ -190,6 +190,15 @@ func run() -> void:
 	rates.update_playback_policy(true, true, true, false, 24, false, 2000)
 	rates.update_playback_policy(true, true, true, false, 24, false, 3500)
 	check(rates.selected == 72, "An unchanged video rate reapplies after changing its cap")
+	var overlay_rates := Rates.new()
+	overlay_rates.update_playback_policy(true, true, true, false, 59.94, true, 0, true)
+	overlay_rates.update_playback_policy(true, true, true, false, 59.94, true, 4000, true)
+	check(
+		overlay_rates.performance.high, "Playback controls keep performance high over Surface video"
+	)
+	overlay_rates.update_playback_policy(true, true, true, false, 59.94, true, 4100)
+	overlay_rates.update_playback_policy(true, true, true, false, 59.94, true, 7100)
+	check(not overlay_rates.performance.high, "Hidden controls let Surface playback settle to low")
 	for row in [
 		[24.0, 120, 72],
 		[29.97, 120, 90],
@@ -304,6 +313,24 @@ func run() -> void:
 	)
 	movie.output_width_choice = -1
 	movie.surface_requested = true
+	movie.geometry = 1
+	movie.packed_alpha = true
+	check(
+		layers.direct_wanted(movie, "file:///sample.mp4"),
+		"VR180 SBS can open on its Surface with Alpha pending"
+	)
+	layers.tick(movie)
+	check(
+		movie.fallbacks == 0 and layers.route == "surface" and movie.layer_shown,
+		"Alpha pending in VR180 SBS keeps the existing decoder Surface"
+	)
+	movie.geometry = 2
+	check(
+		Layout.compatible(movie) == "packed alpha needs shader",
+		"Full SBS fisheye still requires the packed alpha shader"
+	)
+	movie.packed_alpha = false
+	movie.geometry = 0
 	movie.sharpness = 0.2
 	layers.tick(movie)
 	check(movie.fallbacks == 1, "A Surface reopens safely when picture settings need processing")

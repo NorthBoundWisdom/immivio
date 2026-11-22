@@ -1,5 +1,6 @@
 extends RefCounted
 ## Pure geometry/eligibility; no frame or decoder ownership lives here.
+const Geometry := preload("res://scripts/video_geometry.gd")
 const STRIDE := 28
 
 
@@ -18,7 +19,14 @@ static func surface_flip(runtime: String, pico: bool, system: String = "") -> bo
 
 
 static func compatible(video: Object) -> String:
-	if video.packed_file or video.packed_alpha:
+	# Packed alpha can only be sampled in the full-SBS fisheye layout. A force
+	# request can remain pending in VR180 without replacing the decoder Surface.
+	if (
+		(video.packed_file or video.packed_alpha)
+		and Geometry.packed_alpha_layout_supported(
+			video.geometry, video.stereo_sbs, video.top_bottom, video.stereo_half
+		)
+	):
 		return "packed alpha needs shader"
 	if video.color_grade.preset != "Original" or video.sharpness > 0:
 		return "picture settings need shader"

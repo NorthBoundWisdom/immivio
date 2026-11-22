@@ -128,6 +128,7 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                         operation in
                                             setOf(
                                                 "open",
+                                                "alpha",
                                                 "playing",
                                                 "seek",
                                                 "hold_pixels",
