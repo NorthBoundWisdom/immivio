@@ -1783,13 +1783,18 @@ func _draw() -> void:
 			)
 			page_title.font = ui_font_bold()
 		var tab_width := (
-			(CONTENT_RIGHT - CONTENT_LEFT - maxf(0, tabs.size() - 1) * .015) / maxf(1, tabs.size())
+			(CONTENT_RIGHT - CONTENT_LEFT - 2 * TAB_INSET - maxf(0, tabs.size() - 1) * TAB_GAP)
+			/ maxf(1, tabs.size())
 		)
+		if not tabs.is_empty():
+			_tab_track(Vector2(CONTENT_RIGHT - CONTENT_LEFT, CONTROL_HEIGHT + 2 * TAB_INSET))
 		for i in tabs.size():
 			_tab_button(
 				TAB_BASE + i,
 				I18n.t(tabs[i]),
-				Vector2(CONTENT_LEFT + tab_width * .5 + i * (tab_width + .015), HEADER_Y),
+				Vector2(
+					CONTENT_LEFT + TAB_INSET + tab_width * .5 + i * (tab_width + TAB_GAP), HEADER_Y
+				),
 				tab_width,
 				i == tab
 			)
@@ -2175,7 +2180,6 @@ const SETTING_FIELD_X := 0.225
 const SETTING_FIELD_WIDTH := 0.72
 const SETTING_ACTION_WIDTH := 0.26
 const SETTING_CARD_GAP := 0.012
-const CARD := Color(0.063, 0.09, 0.14, 1.0)
 
 
 func _setting_field(target: int, row: Dictionary, centre: Vector2) -> void:
@@ -2207,13 +2211,13 @@ func _setting_heading(
 	node.add_child(card)
 	var title: Label3D = node.get_child(0)
 	title.position = Vector3(SETTING_TITLE_X, 0.014 if not hint.is_empty() else 0, 0.004)
-	title.font_size = 18
-	title.text = _fit_title(str(row.title), "", SETTING_TITLE_WIDTH, 18)
+	title.font_size = 19
+	title.text = _fit_title(str(row.title), "", SETTING_TITLE_WIDTH, 19)
 	if not hint.is_empty():
 		var label := _label(
-			_fit_title(I18n.t(hint), "", SETTING_TITLE_WIDTH, 13),
+			_fit_title(I18n.t(hint), "", SETTING_TITLE_WIDTH, 14),
 			Vector3(SETTING_TITLE_X, -0.022, 0.004),
-			13,
+			14,
 			node
 		)
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -2263,10 +2267,10 @@ func _setting_group(target: int, row: Dictionary, centre: Vector2, _first: bool)
 		node.get_child(1).visible = false
 	var title: Label3D = node.get_child(0)
 	title.position = Vector3(SETTING_TITLE_X - 0.03, -0.012, 0.004)
-	title.font_size = 16
+	title.font_size = 17
 	title.font = ui_font_bold()
 	title.modulate = ACCENT
-	title.text = _fit_title(str(row.title), "", BODY_WIDTH - 0.1, 16)
+	title.text = _fit_title(str(row.title), "", BODY_WIDTH - 0.1, 17)
 
 
 func _choice_row(
@@ -2317,12 +2321,7 @@ func _tile(target: int, row: Dictionary, centre: Vector2) -> void:
 	name.position = Vector3(0, -0.06, 0.004)
 	var picture := icon in ["video", "image"]
 	var area_size := Vector2(TILE_SIZE.x - .02, TILE_SIZE.y - .10)
-	var area := _quad(
-		area_size,
-		Vector3(0, 0.04, 0.003),
-		Color(0.055, 0.078, 0.122) if picture else Color(TILE, 0.0),
-		12
-	)
+	var area := _quad(area_size, Vector3(0, 0.04, 0.003), WELL if picture else Color(TILE, 0.0), 12)
 	area.material_override.set_shader_parameter("corner_radius", 0.012)
 	node.add_child(area)
 	var shown: Texture2D = _picture(row) if picture else null
@@ -2396,12 +2395,29 @@ func _heading(text: String, location: Vector3, size: int = 26) -> Label3D:
 	return title
 
 
-## Settings tab: idle tabs sit on the panel as plain text; the current one is a lit chip.
+const TAB_INSET := 0.008
+const TAB_GAP := 0.006
+
+
+## Recessed track holding the settings tabs, drawn just behind them (same pass, lower z).
+func _tab_track(size: Vector2) -> void:
+	var track := _quad(size, Vector3(PANEL_CENTRE.x, HEADER_Y, 0.001), WELL, 11)
+	track.material_override.set_shader_parameter("corner_radius", size.y * 0.5)
+	track.material_override.set_shader_parameter("sheen", 0.0)
+	add_child(track)
+	_decorations.append(track)
+
+
+## Settings tab: a segment of the track. Idle tabs are plain text on the track; the
+## current one is a lit pill with a heavier label.
 func _tab_button(target: int, text: String, centre: Vector2, width: float, current: bool) -> void:
 	_control_button(target, text, centre, width)
 	var button: Dictionary = _buttons.back()
+	button["no_ring"] = true
+	button.node.material_override.set_shader_parameter("corner_radius", CONTROL_HEIGHT * 0.5)
+	above_card(button.node)  # Same-priority transparent quads sort by origin, not by z.
 	var label: Label3D = button.node.get_child(0)
-	label.font_size = 18
+	label.font_size = 19
 	if current:
 		_lit(true)
 		label.font = ui_font_bold()
@@ -2576,8 +2592,9 @@ func _row_button(
 		info.modulate = MUTED
 
 
-const NAV_IDLE := Color(0.76, 0.81, 0.88)
+const NAV_IDLE := Color(0.70, 0.76, 0.85)
 const NAV_WIDTH := 0.36
+const NAV_HEIGHT := 0.078
 static var _brand_texture: Texture2D
 
 
@@ -2608,21 +2625,30 @@ static func _brand() -> Texture2D:
 	return _brand_texture
 
 
-## Navigation entry on the angled column: rows rest on the panel itself; the current
-## one gets a tinted fill, an accent bar at its leading edge and a heavier label.
+## Navigation entry on the angled column: idle rows rest on the panel itself; the
+## current one is a tinted pill with an accent icon, a bright heavier label and a
+## short accent bar at its leading edge. Hover alone draws a ring.
 func _nav_button(target: int, text: String, icon: String, centre: Vector2, selected: bool) -> void:
 	_control_button(target, text, centre, NAV_WIDTH, true, "", false, _side)
 	var button: Dictionary = _buttons.back()
 	button.base_color = SELECTED if selected else Color(TILE, 0.0)
+	button["no_ring"] = true
 	var node: MeshInstance3D = button.node
+	node.mesh.size.y = NAV_HEIGHT
+	node.material_override.set_shader_parameter("surface_size", node.mesh.size)
+	node.material_override.set_shader_parameter("corner_radius", NAV_HEIGHT * 0.5)
+	var pill := Vector2(NAV_WIDTH, NAV_HEIGHT)
+	button.rect = Rect2(centre - pill * 0.5, pill)
 	var label: Label3D = node.get_child(0)
-	label.position.x = -0.08
+	label.position.x = -0.07
+	label.font_size = 20
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	label.modulate = ACCENT if selected else NAV_IDLE
-	_icon(icon, Vector3(-0.13, 0, 0.004), CONTROL_ICON_SIZE, ACCENT if selected else NAV_IDLE, node)
+	label.modulate = TEXT if selected else NAV_IDLE
+	_icon(icon, Vector3(-0.118, 0, 0.004), 0.036, ACCENT if selected else NAV_IDLE, node)
 	var marker := _quad(
-		Vector2(0.006, CONTROL_HEIGHT * 0.5), Vector3(-NAV_WIDTH * .5 + 0.012, 0, 0.004), ACCENT, 12
+		Vector2(0.007, NAV_HEIGHT * 0.42), Vector3(-NAV_WIDTH * .5 + 0.02, 0, 0.004), ACCENT, 12
 	)
+	marker.material_override.set_shader_parameter("corner_radius", 0.0035)
 	marker.visible = selected
 	node.add_child(marker)
 
@@ -2661,7 +2687,7 @@ func _update_navigation_selection() -> void:
 		)
 		button.base_color = SELECTED if selected else Color(TILE, 0.0)
 		var label: Label3D = button.node.get_child(0)
-		label.modulate = ACCENT if selected else NAV_IDLE
+		label.modulate = TEXT if selected else NAV_IDLE
 		label.font = ui_font_bold() if selected else ui_font()
 		var icon: MeshInstance3D = button.node.get_child(1)
 		icon.material_override.albedo_color = ACCENT if selected else NAV_IDLE

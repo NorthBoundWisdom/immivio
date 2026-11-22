@@ -31,27 +31,33 @@ const SURFACE := preload("res://shaders/menu_surface.gdshader")
 const Icons := preload("res://scripts/menu_icons.gd")
 const I18n := preload("res://scripts/i18n.gd")
 const DeviceStatus := preload("res://scripts/device_status.gd")
-# Design tokens. Surfaces take the brand's deep navy; one aqua accent marks selection,
-# focus and progress. Resting controls carry no outline: hover/selection draw the ring.
-const PANEL := Color(0.043, 0.063, 0.106, 0.97)
-const TILE := Color(0.098, 0.133, 0.196, 1.0)
-const HOVER := Color(0.165, 0.216, 0.302, 1.0)
-const SELECTED := Color(0.075, 0.235, 0.255, 1.0)
-const SELECTED_HOVER := Color(0.102, 0.305, 0.325, 1.0)
-const POPUP := Color(0.071, 0.098, 0.153, 1.0)
-const DISABLED := Color(0.071, 0.094, 0.137, 1.0)
-const OUTLINE := Color(1.0, 1.0, 1.0, 0.05)
-const PANEL_EDGE := Color(1.0, 1.0, 1.0, 0.09)
-const ACCENT := Color(0.49, 0.87, 0.80)
-const ACCENT_HOVER := Color(0.68, 0.95, 0.89)
-const ACCENT_DIM := Color(0.24, 0.42, 0.40)
-const ON_ACCENT := Color(0.02, 0.09, 0.10)
+# Design tokens ("Aurora"). Surfaces climb a clear navy elevation ladder
+# (panel < card < tile < hover) so controls stay distinct over bright skies and
+# passthrough. One sky-blue accent, taken from the app icon, marks selection,
+# focus and progress: selected controls take an accent-tinted fill and accent
+# text; hover adds the full accent ring.
+const PANEL := Color(0.055, 0.075, 0.122, 0.96)
+const CARD := Color(0.094, 0.125, 0.188, 1.0)
+const TILE := Color(0.129, 0.165, 0.239, 1.0)
+const HOVER := Color(0.184, 0.231, 0.329, 1.0)
+const SELECTED := Color(0.118, 0.271, 0.400, 1.0)
+const SELECTED_HOVER := Color(0.157, 0.337, 0.490, 1.0)
+const POPUP := Color(0.094, 0.125, 0.192, 1.0)
+const WELL := Color(0.067, 0.09, 0.141, 1.0)
+const DISABLED := Color(0.098, 0.122, 0.176, 1.0)
+const OUTLINE := Color(1.0, 1.0, 1.0, 0.06)
+const PANEL_EDGE := Color(1.0, 1.0, 1.0, 0.11)
+const ACCENT := Color(0.45, 0.80, 0.97)
+const ACCENT_HOVER := Color(0.66, 0.89, 1.0)
+const ACCENT_DIM := Color(0.24, 0.40, 0.52)
+const SELECTED_RING := Color(0.45, 0.80, 0.97, 0.38)
+const ON_ACCENT := Color(0.02, 0.08, 0.14)
 const TEXT := Color(0.94, 0.96, 0.99)
-const MUTED := Color(0.55, 0.62, 0.72)
-const DIVIDER := Color(1.0, 1.0, 1.0, 0.07)
+const MUTED := Color(0.60, 0.66, 0.76)
+const DIVIDER := Color(1.0, 1.0, 1.0, 0.08)
 const TRACK := Color(1.0, 1.0, 1.0, 0.16)
-const PANEL_RADIUS := 0.04
-const CONTROL_RADIUS := 0.016
+const PANEL_RADIUS := 0.045
+const CONTROL_RADIUS := 0.02
 # File names and the menu are often Chinese/Japanese: fall back to the system CJK font.
 static var FONT: Font = _make_font()
 static var _font_language := I18n.language
@@ -708,14 +714,14 @@ func _quad(size: Vector2, location: Vector3, color: Color, priority: int) -> Mes
 	# Panels get a hairline edge and a faint top light so they separate from bright
 	# skyboxes and passthrough; controls only lift slightly towards their top.
 	surface.set_shader_parameter(
-		"border_width", 0.0016 if panel else (0.0012 if priority == 11 else 0.0)
+		"border_width", 0.0018 if panel else (0.0015 if priority == 11 else 0.0)
 	)
 	surface.set_shader_parameter("border_color", PANEL_EDGE if panel else OUTLINE)
 	surface.set_shader_parameter(
 		"corner_radius", PANEL_RADIUS if priority == 10 else CONTROL_RADIUS
 	)
-	surface.set_shader_parameter("sheen", 0.025 if panel else (0.018 if priority == 11 else 0.0))
-	surface.set_shader_parameter("rim_light", 0.06 if panel else 0.0)
+	surface.set_shader_parameter("sheen", 0.03 if panel else (0.022 if priority == 11 else 0.0))
+	surface.set_shader_parameter("rim_light", 0.08 if panel else 0.0)
 	node.material_override = surface
 	return node
 
@@ -795,11 +801,13 @@ func _update_highlights() -> void:
 				if button.base_color == ACCENT
 				else (SELECTED_HOVER if button.base_color == SELECTED else HOVER)
 			)
-		var outline: Color = (
-			(ACCENT if button.base_color != ACCENT else ACCENT_HOVER)
-			if hovered or button.get("open_choice", false) or button.base_color == SELECTED
-			else OUTLINE
-		)
+		# Hover and an open dropdown draw the full ring; a resting selection only a
+		# soft one, so a page of current values stays calm.
+		var outline: Color = OUTLINE
+		if hovered or button.get("open_choice", false):
+			outline = ACCENT if button.base_color != ACCENT else ACCENT_HOVER
+		elif button.base_color == SELECTED:
+			outline = Color(SELECTED_RING, 0.0) if button.get("no_ring", false) else SELECTED_RING
 		if button.node.material_override.get_shader_parameter("border_color") != outline:
 			button.node.material_override.set_shader_parameter("border_color", outline)
 		if button.node.material_override.get_shader_parameter("surface_color") != color:

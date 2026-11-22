@@ -79,6 +79,10 @@ func _button(
 	button.node.material_override.set_shader_parameter("surface_color", button.base_color)
 	button.node.material_override.render_priority = 13
 	(button.node.get_child(0) as Label3D).font_size = 18
+	if selected and not label.is_empty():
+		button.foreground = menu.ACCENT_HOVER
+		(button.node.get_child(0) as Label3D).modulate = menu.ACCENT_HOVER
+		(button.node.get_child(0) as Label3D).font = menu.ui_font_bold()
 	(button.node.get_child(0) as Label3D).render_priority = 14
 	return target
 
