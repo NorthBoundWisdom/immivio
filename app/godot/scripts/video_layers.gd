@@ -47,6 +47,8 @@ var failed_session := 0
 var failed_since := -1
 var allowed := true
 var surface_allowed := true
+var bypass_picture_copy := false
+var force_picture := false
 var _cadence_ms := -250
 var _cadence_supported := false
 var _cadence_active := false
@@ -302,6 +304,13 @@ func tick(video: Node3D) -> void:
 			return
 		route = "surface"
 	else:
+		if bypass_picture_copy and video.geometry != 2 and not force_picture:
+			# The same RGBA frame can be sampled by the eye shaders. On this
+			# GPU tier, avoid copying the full image into a second XR layer
+			# while the UI compositor also has work to submit.
+			reason = "picture copy bypassed while controls are visible"
+			hide(video)
+			return
 		if (
 			not reason.is_empty()
 			or not picture_supported

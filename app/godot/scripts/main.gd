@@ -536,6 +536,16 @@ func _process(delta: float) -> void:
 			playback_coordinator.open_external(external)
 	if video:
 		var details: Dictionary = video.media.playback.get("details", {})
+		var menu_visible: bool = (
+			(player_menu and player_menu.visible) or (library_menu and library_menu.visible)
+		)
+		video_layers.bypass_picture_copy = OS.has_feature("pico") and low_end_gpu and menu_visible
+		if menu_compositor:
+			menu_compositor.capture_interval_ms = (
+				menu_compositor.PROCESSED_PLAYBACK_INTERVAL_MS
+				if low_end_gpu and not video.surface_requested and video.media.state == "playing"
+				else 0
+			)
 		var fps := (
 			str(details.get("container_fps", details.get("video_stream", {}).get("fps", "0")))
 			. to_float()
@@ -561,7 +571,7 @@ func _process(delta: float) -> void:
 			fps * video.playback_speed,
 			low_end_gpu,
 			Time.get_ticks_msec(),
-			(player_menu and player_menu.visible) or (library_menu and library_menu.visible)
+			menu_visible
 		)
 	video_layers.update_session(video.platform if video else null)
 	screen_layout.tick()
@@ -1237,6 +1247,8 @@ func _on_display_debug_command(_id: int, payload: String) -> void:
 		library_menu.section = library_menu.Section.SETTINGS
 		library_menu.tab = library_menu.DISPLAY_TAB
 		library_menu.refresh()
+	elif operation == "library_menu":
+		_show_library_menu()
 	elif operation == "player_menu":
 		_show_player_menu()
 

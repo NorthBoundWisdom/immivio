@@ -686,6 +686,7 @@ func canvas_controls_snapshot() -> Dictionary:
 		"timeline_centre": [timeline.x, timeline.y, timeline.z],
 		"menu_section": host.player_menu.section,
 		"menu_page": host.player_menu._adjustment,
+		"library_visible": host.library_menu != null and host.library_menu.visible,
 		"menu_normal":
 		[
 			host.player_menu.global_basis.z.x,

@@ -65,6 +65,8 @@ func check_shader_at_bind() -> void:
 	video._binding = binding
 	video.stereo_sbs = true
 	video.set_alpha(true)
+	var notifications := [0]
+	video.changed.connect(func(): notifications[0] += 1)
 	bridge.pair = {
 		"session_id": 7,
 		"logical_session_id": 7,
@@ -81,8 +83,10 @@ func check_shader_at_bind() -> void:
 		video.geometry = case[0]
 		video.media.begin(7)
 		video.media.state = "paused"
+		var before: int = notifications[0]
 		video._pending_pair = bridge.pair
 		video.test_step(0.0)
+		check(notifications[0] == before + 1, "The first frame notifies playback controls")
 		check(
 			(
 				binding.shader == case[1]
@@ -91,6 +95,9 @@ func check_shader_at_bind() -> void:
 			),
 			"The first claimed frame selects the shader for its effective packed alpha state"
 		)
+		video._pending_pair = bridge.pair
+		video.test_step(0.0)
+		check(notifications[0] == before + 1, "A steady frame does not refresh playback controls")
 	video.queue_free()
 
 

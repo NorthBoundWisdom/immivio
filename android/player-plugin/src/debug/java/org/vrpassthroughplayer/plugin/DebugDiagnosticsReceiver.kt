@@ -140,6 +140,7 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                                 "display_quality",
                                                 "sharpness",
                                                 "display_menu",
+                                                "library_menu",
                                                 "player_menu",
                                                 "restart_app",
                                                 "quit_app",
@@ -252,6 +253,10 @@ class DebugDiagnosticsReceiver : BroadcastReceiver() {
                                         command.put("step", step).put("marker_id", marker)
                                     }
                                     if (operation == "open") {
+                                        val layerMode =
+                                            intent.getStringExtra("layer_mode") ?: "auto"
+                                        require(layerMode in setOf("auto", "picture", "shader"))
+                                        command.put("layer_mode", layerMode)
                                         val projection = intent.getIntExtra("projection", 0)
                                         require(projection in 0..3)
                                         command.put("projection", projection)

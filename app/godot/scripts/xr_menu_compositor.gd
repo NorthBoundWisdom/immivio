@@ -3,6 +3,7 @@ extends Node3D
 ## No video geometry enters this viewport; no CPU image readback is performed.
 const UI_LAYER := 1 << 19
 const CAPTURE_SIZE := Vector2i(3072, 2048)
+const PROCESSED_PLAYBACK_INTERVAL_MS := 40
 
 
 ## Metadata follows the GPU copy acknowledgement, never a newly requested layout.
@@ -40,22 +41,28 @@ class PaintSchedule:
 	var previous: Variant = null
 	var settle := 3
 	var deadline := 0
+	var last_capture_ms := -1
 
 	func invalidate() -> void:
 		settle = 3
+		last_capture_ms = -1
 
-	func poll(key: int, interacting: bool, now: int) -> bool:
+	func poll(key: int, interacting: bool, now: int, interval_ms: int = 0) -> bool:
 		if previous != key:
 			previous = key
 			settle = 3
+		if last_capture_ms >= 0 and now - last_capture_ms < interval_ms:
+			return false
 		if interacting or settle > 0 or now >= deadline:
 			settle = maxi(0, settle - 1)
 			deadline = now + 250
+			last_capture_ms = now
 			return true
 		return false
 
 
 var paint := PaintSchedule.new()
+var capture_interval_ms := 0
 var warmup: Node
 var presentations := PresentationQueue.new()
 var presented := {}
@@ -286,6 +293,7 @@ func _process(_delta: float) -> void:
 			content_bounds = Rect2()
 		_bounds_due = 0
 	if shown != active_menu:
+		paint.invalidate()
 		active_menu = shown
 		content_bounds = Rect2()
 		_bounds_due = 0
@@ -307,6 +315,7 @@ func _process(_delta: float) -> void:
 		var current_surface: Object = target.get_android_surface()
 		var generation: int = _bridge.contextGeneration()
 		if current_surface != _surface or generation != _generation:
+			paint.invalidate()
 			_surface = current_surface
 			_generation = generation
 			_texture_id = 0
@@ -368,7 +377,9 @@ func _process(_delta: float) -> void:
 				and menu.has_pointer_capture()
 			)
 	)
-	var repaint := paint.poll(_paint_state(capture), interacting, Time.get_ticks_msec())
+	var repaint := paint.poll(
+		_paint_state(capture), interacting, Time.get_ticks_msec(), capture_interval_ms
+	)
 	viewport.render_target_update_mode = (
 		SubViewport.UPDATE_ONCE if repaint else SubViewport.UPDATE_DISABLED
 	)

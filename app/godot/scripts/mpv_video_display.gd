@@ -2591,6 +2591,13 @@ func _present_pending() -> void:
 		"stereo_mode": str(claimed.get("stereo_mode", "")),
 		"unapplied_rotation_degrees": 0
 	}
+	var presentation_changed := (
+		_waiting_first
+		or not panel.visible
+		or media.format != frame_format
+		or media.format_revision != int(claimed.format_revision)
+		or media.presentation_revision != int(claimed.presentation_revision)
+	)
 	_unbind()
 	_binding.opaque = not _shows_packed_alpha(frame_format, true)
 	if not _binding.bind(material, claimed):
@@ -2634,7 +2641,10 @@ func _present_pending() -> void:
 	_record_history()
 	if diagnostics:
 		diagnostics.record_pair(claimed)
-	changed.emit()
+	# Regular native status updates already refresh progress and menus. Keep
+	# first-frame, seek, format and end transitions immediate.
+	if presentation_changed or media.state == "ended":
+		changed.emit()
 
 
 func _on_state(id: int, payload: String) -> void:

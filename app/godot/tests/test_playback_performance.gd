@@ -304,6 +304,26 @@ func run() -> void:
 	for i in 20:
 		layers.tick(movie)
 	check(backend.draws == 1, "XR refreshes do not redraw a retained video frame")
+	layers.bypass_picture_copy = true
+	layers.tick(movie)
+	check(
+		(
+			layers.route == "shader"
+			and backend.draws == 1
+			and movie.panel.material_override == movie.material
+		),
+		"Visible controls bypass the picture copy and reuse the video shader"
+	)
+	layers.force_picture = true
+	layers.tick(movie)
+	check(layers.route == "picture", "A forced picture-route benchmark still uses the compositor")
+	layers.force_picture = false
+	layers.bypass_picture_copy = false
+	layers.tick(movie)
+	check(
+		layers.route == "picture" and backend.draws == 1,
+		"Hiding controls reuses the retained picture"
+	)
 	movie.position.x = 0.3
 	layers.tick(movie)
 	check(backend.draws == 1, "Moving a screen updates its pose without copying pixels")
@@ -371,6 +391,7 @@ func run() -> void:
 	movie.media.playback = {}
 	movie.geometry = 1
 	movie.packed_alpha = true
+	layers.bypass_picture_copy = true
 	check(
 		layers.direct_wanted(movie, "file:///sample.mp4"),
 		"VR180 SBS can open on its Surface with Alpha pending"
@@ -380,6 +401,7 @@ func run() -> void:
 		movie.fallbacks == 0 and layers.route == "surface" and movie.layer_shown,
 		"Alpha pending in VR180 SBS keeps the existing decoder Surface"
 	)
+	layers.bypass_picture_copy = false
 	movie.geometry = 2
 	check(
 		Layout.compatible(movie) == "packed alpha needs shader",
