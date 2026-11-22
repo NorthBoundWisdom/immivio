@@ -234,8 +234,16 @@ internal class MpvVideoBridge(
                             val closingSlots =
                                 hosts.count { it !== host && it.handle > 0 } >= 2 &&
                                     hosts.any { it !== host && it.closing }
+                            // Some headsets can decode only one high-resolution stream. Wait
+                            // for native destruction, including when reopening from Surface to
+                            // RGBA.
+                            val decoderBusy =
+                                host.hardware &&
+                                    hosts.any { it !== host && it.hardware && it.handle > 0 }
+                            if (decoderBusy) host.markStartup("waiting_for_decoder_release_ms")
                             if (
                                 closingSlots ||
+                                    decoderBusy ||
                                     (host.layerRequested && !layerSurfaceLease.acquire(host))
                             ) {
                                 if (android.os.SystemClock.elapsedRealtime() < releaseDeadline) {
