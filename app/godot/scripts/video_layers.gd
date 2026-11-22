@@ -206,7 +206,7 @@ func direct_wanted(video: Node3D, uri: String) -> bool:
 		return false
 	if uri.begins_with("externalvideo://") or video.output_width_choice > 0:
 		return false
-	if video.geometry == 2 or video.hdr_to_sdr or not Layout.compatible(video).is_empty():
+	if video.geometry == 2 or not Layout.compatible(video).is_empty():
 		return false
 	# Keep image-based stereo analysis available for unmarked content.
 	return (
@@ -286,14 +286,9 @@ func tick(video: Node3D) -> void:
 	if not types.get(kind, false):
 		reason = "projection unavailable"
 	if video.surface_requested:
-		var details: Dictionary = video.media.playback.get("details", {})
 		if video.geometry == 2:
 			reason = "fisheye needs frame remapping"
-		if (
-			video.hdr_to_sdr
-			or bool(details.get("dolby_profile5", false))
-			or str(details.get("color_transfer", "")) in ["pq", "hlg"]
-		):
+		if video.media.is_hdr():
 			reason = "HDR needs processed color"
 		if not reason.is_empty():
 			hide(video)

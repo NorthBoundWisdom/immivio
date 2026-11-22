@@ -328,6 +328,22 @@ func run() -> void:
 	)
 	movie.output_width_choice = -1
 	movie.surface_requested = true
+	movie.hdr_to_sdr = true
+	check(layers.direct_wanted(movie, "file:///sample.mp4"), "Open can probe color on Surface")
+	movie.media.playback = {"details": {"color_transfer": "bt.1886"}}
+	layers.tick(movie)
+	check(
+		movie.fallbacks == 0 and layers.route == "surface", "SDR keeps Surface with HDR to SDR on"
+	)
+	for detail in [{"color_transfer": "pq"}, {"color_transfer": "hlg"}, {"dolby_profile5": true}]:
+		movie.media.playback = {"details": detail}
+		for enabled in [true, false]:
+			movie.hdr_to_sdr = enabled
+			movie.fallbacks = 0
+			layers.tick(movie)
+			check(movie.fallbacks == 1, "HDR requires processed color with either switch state")
+	movie.fallbacks = 0
+	movie.media.playback = {}
 	movie.geometry = 1
 	movie.packed_alpha = true
 	check(
@@ -394,6 +410,13 @@ func run() -> void:
 	var video := preload("res://scripts/mpv_video_display.gd").new(false)
 	root.add_child(video)
 	video.set_process(false)
+	video.set_hdr_to_sdr(true)
+	video.media.playback = {"details": {"color_transfer": "bt.1886"}}
+	check(not video.hdr_to_sdr_active(), "SDR tone mapping does not request performance headroom")
+	video.media.playback = {"details": {"color_transfer": "pq"}}
+	check(video.hdr_to_sdr_active(), "HDR tone mapping requests performance headroom")
+	video.set_hdr_to_sdr(false)
+	check(not video.hdr_to_sdr_active(), "Disabling tone mapping clears its performance demand")
 	var switch_host := SwitchHost.new()
 	video.platform = switch_host
 	var switch_layers := SwitchLayers.new()

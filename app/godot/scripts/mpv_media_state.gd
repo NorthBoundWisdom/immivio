@@ -33,6 +33,14 @@ func accepts(id: int) -> bool:
 	return id > 0 and id == session_id and state not in ["closed", "failed"]
 
 
+func is_hdr() -> bool:
+	var details: Dictionary = playback.get("details", {})
+	return (
+		bool(details.get("dolby_profile5", false))
+		or str(details.get("color_transfer", "")) in ["pq", "hlg"]
+	)
+
+
 func frame_identity() -> Dictionary:
 	if last_pair.is_empty():
 		return {"source_pts_verified": false, "immutable_color_frame": false}

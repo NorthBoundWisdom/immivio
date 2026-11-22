@@ -120,6 +120,9 @@ memory and thermal behaviour.
   system menu in a separate pass. Record the XR session transitions and the
   playback session ID before and after each pass. Verify the same playback
   session resumes on `surface` without reopening the video.
+- [ ] **D5 — SDR with HDR-to-SDR enabled.** Enable HDR-to-SDR and open a known
+  SDR fixture that otherwise qualifies for Surface playback. Verify the route
+  settles on `surface` and stays there as playback advances.
 
 ## Recording a result
 

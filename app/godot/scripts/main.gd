@@ -551,7 +551,7 @@ func _process(delta: float) -> void:
 					video.media.state == "playing"
 					and video.panel.visible
 					and (
-						video.hdr_to_sdr
+						video.hdr_to_sdr_active()
 						or video.stereo_focus_mode == 1
 						or (video.layer_shown and not video.surface_requested)
 						or str(details.get("paused_for_cache", "")) in ["yes", "true"]

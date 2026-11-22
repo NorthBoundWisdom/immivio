@@ -1463,6 +1463,10 @@ func _maybe_focus() -> void:
 	)
 
 
+func hdr_to_sdr_active() -> bool:
+	return hdr_to_sdr and media.is_hdr()
+
+
 func set_hdr_to_sdr(enabled: bool) -> void:
 	hdr_to_sdr = enabled
 	if media.accepts(media.session_id) and PlatformMethods.supports(platform, "set_mpv_hdr_to_sdr"):
