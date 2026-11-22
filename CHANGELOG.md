@@ -6,6 +6,28 @@
 
 Newest first, with the main changes that affect everyday use. Unreleased items are not yet part of a public release. Versions 0.6.0 and earlier belong to the original project. Photo viewing, cloud drives and AI 3D conversion appear only as historical features and were removed later; see the [README](README.md) for current capabilities.
 
+## 1.0.2 — 2026-11-22
+
+**中文**
+
+- 「最近播放」支持跨页多选删除记录，保留原视频文件。
+- 将顺序播放和随机播放合并到「播放队列」。把播放速度和同步移到播放条左侧，并对齐调色页的保存与重置按钮。
+- 移除播放条上的强制透明遮罩按钮，保留兼容片源的自动识别和透明播放。
+- 等待画面时使用更清晰的文字，并将独立提示放进高清 XR 合成层。
+- 移除由佩戴检测触发的自动暂停，避免残留的未佩戴状态把视频卡在首帧。
+- XR 会话短暂暂停后可沿用原解码 Surface。HDR 转换、输出宽度上限和立体调整只在实际适用时影响播放路径。
+- 减少旧款 PICO 在显示播放条或资料库时的整帧拷贝。切换播放路径时等待旧硬件解码器释放，避免 8K 视频因资源争用退回软件解码。
+
+**English**
+
+- Multi-select across pages in Recent and delete selected playback records while keeping the original videos.
+- Choose sequential or shuffled playback in the Queue menu. Move speed and synchronization to the left of the playback bar and align the save and reset buttons in Color grading.
+- Remove the forced packed-alpha switch from the playback bar. Compatible videos retain automatic detection and transparent playback.
+- Improve loading text and present the standalone notice through the high-resolution XR overlay.
+- Remove wearer-triggered auto-pause so stale presence readings can no longer leave a video stuck on its first frame.
+- Retain the decoder Surface through temporary XR session stops. Apply HDR conversion, output width limits and stereo controls to the playback path when they take effect.
+- Avoid extra full-frame copies while the playback bar or Library is open on older PICO GPUs. Wait for the previous hardware decoder to release when changing playback paths, preventing 8K video from falling back to software decoding due to resource contention.
+
 ## 1.0.1 — 2026-11-21
 
 **中文**

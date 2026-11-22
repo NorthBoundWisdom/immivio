@@ -151,6 +151,7 @@
       <div class="wrap doc">
         <nav class="toc" aria-label="本页目录">
           <p>本页目录</p>
+          <a href="#v1-0-2">v1.0.2</a>
           <a href="#v1-0-1">v1.0.1</a>
           <a href="#v1-0-0">v1.0.0</a><a href="#v0-9-11">v0.9.11</a><a href="#v0-9-10">v0.9.10</a
           ><a href="#v0-9-9">v0.9.9</a><a href="#v0-9-8">v0.9.8</a><a href="#v0-9-7">v0.9.7</a
@@ -159,6 +160,20 @@
           ><a href="#v0-9-0">v0.9.0</a><a href="#channels">安装包与渠道</a>
         </nav>
         <article class="prose">
+          <section id="v1-0-2" class="release">
+            <div class="release-head">
+              <h2>v1.0.2</h2>
+              <time datetime="2026-11-22">2026 年 11 月 22 日</time>
+            </div>
+            <ul>
+              <li>「最近播放」支持跨页多选删除记录，保留原视频文件。</li>
+              <li>在「播放队列」选择播放顺序。播放速度和同步移到播放条左侧，调色页的保存和重置按钮对齐到同一行。</li>
+              <li>提升等待提示的清晰度，并移除佩戴检测自动暂停，避免过期的佩戴状态造成卡顿。</li>
+              <li>恢复 XR 会话或选择未实际生效的画面设置时，兼容视频可继续通过解码 Surface 播放。</li>
+              <li>减少旧款 PICO 显示播放控件时的画面拷贝。切换播放路径时等待旧硬件解码器释放。</li>
+              <li>移除播放条上的手动透明遮罩按钮，保留兼容视频的自动透明播放。</li>
+            </ul>
+          </section>
           <section id="v1-0-1" class="release">
             <div class="release-head">
               <h2>v1.0.1</h2>

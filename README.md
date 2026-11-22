@@ -60,7 +60,7 @@ Immivio is a free, open-source VR video player for PICO and Meta Quest. Watch re
 - Automatically recognizes SBS/top-bottom video from naming, container metadata and matching eye images. Uncertain content stays in its current mode; saved manual choices take priority. Use **Video mode → Auto detect** to recheck a previously saved format. Image matching identifies stereo packing, while VR projection and lens angle still follow file markers or your settings.
 - One compact control bar with popups for subtitles, speed, color, audio/subtitle timing, stereo alignment and the queue.
 - Compatible video can use native compositor layers when the headset runtime supports them.
-- Sequential or shuffled queues, with an optional **Repeat queue** switch, including single-video repeat. With repeat off, playback returns to the library after the last video.
+- Choose sequential or shuffled playback in the **Queue** menu. **Repeat queue** supports single-video repeat. With repeat off, playback returns to the library after the last video.
 - SRT, ASS, SSA and VTT text subtitles, with automatic encoding detection and bilingual primary/secondary tracks. Captions can sit below a flat screen. Bitmap subtitles are not supported.
 - Color grading presets: Original, Warm, Cool and Custom. Every slider has its own reset button.
 - Track choices, stereo alignment, immersive adjustments and progress are remembered for each video.
@@ -70,7 +70,7 @@ Immivio is a free, open-source VR video player for PICO and Meta Quest. Watch re
 - HDR to SDR is an optional global switch in Playback settings and the color popup. It starts off to preserve the established color path; the existing Profile 5 path stays independent. Headset color accuracy remains to be verified.
 
 **Privacy and updates**
-- No account is needed. Playback history and per-video memory can be turned off.
+- No account is needed. Playback history and per-video memory can be turned off. Use multi-select in **Recent** to remove selected playback records while keeping the original videos.
 - Crash logs stay on the device until you choose to save one to Downloads.
 - Store builds have no update checker. Website builds check GitHub only when you click **Settings → About → Check for updates**, then open the release page in the browser. The app never downloads or installs an APK by itself.
 
