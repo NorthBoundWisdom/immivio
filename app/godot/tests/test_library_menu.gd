@@ -372,6 +372,43 @@ func _run() -> void:
 		),
 		"Final partial page disables next"
 	)
+	var deletions: Array[Array] = []
+	menu.remove_recent_history = func(uris: Array[String]) -> bool:
+		deletions.append(uris)
+		return true
+	menu._turn_recent_page(-99)
+	menu.test_activate(Menu.RECENT_SELECT)
+	check(
+		(
+			menu.controls_snapshot().any(
+				func(b): return b.target == Menu.RECENT_DELETE and not b.enabled
+			)
+			and not menu.controls_snapshot().any(func(b): return b.target == Menu.CLEAR_HISTORY)
+		),
+		"Multi-select exposes only selective deletion and starts disabled"
+	)
+	var first_uri: String = menu.rows[0].uri
+	menu.test_activate(Menu.ROW_BASE)
+	menu.test_activate(Menu.RECENT_NEXT)
+	var next_uri: String = menu.rows[0].uri
+	menu.test_activate(Menu.ROW_BASE)
+	check(chosen.is_empty() and menu.visible, "Selecting recent records does not play them")
+	menu.test_activate(Menu.RECENT_DELETE)
+	check(deletions.is_empty(), "Deleting selected records requires confirmation")
+	menu.test_activate(Menu.RECENT_DELETE)
+	check(
+		deletions == [[first_uri, next_uri]], "Selection spans pages and deletes exactly those URIs"
+	)
+	check(
+		menu.controls_snapshot().any(func(b): return b.target == Menu.CLEAR_HISTORY),
+		"Ordinary clear-history returns after selective deletion"
+	)
+	menu.test_activate(Menu.RECENT_SELECT)
+	menu.test_activate(Menu.ROW_BASE)
+	menu.test_activate(Menu.RECENT_SELECT)
+	menu.test_activate(Menu.RECENT_SELECT)
+	menu.test_activate(Menu.RECENT_DELETE)
+	check(deletions.size() == 1, "Cancel discards the selection")
 	paged.count = 0
 	menu.refresh()
 	check(

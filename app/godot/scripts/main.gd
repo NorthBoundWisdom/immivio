@@ -314,6 +314,7 @@ func _ready() -> void:
 	display.set_foveation(int(settings.get_value("video", "foveation", 0)))
 	library_menu = LibraryMenu.new()
 	library_menu.catalog = video.recent_files
+	library_menu.remove_recent_history = video.remove_recent_history
 	library_menu.list_view = bool(settings.get_value("library", "list_view", false))
 	library_menu.browse_memory.configure(
 		bool(settings.get_value("library", "browse_memory", true)), video.history_enabled

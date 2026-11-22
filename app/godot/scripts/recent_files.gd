@@ -199,6 +199,18 @@ func forget(uri: String) -> bool:
 	return true
 
 
+func forget_selected(uris: Array[String]) -> bool:
+	var previous := entries.duplicate()
+	var was_dirty := dirty
+	for uri in uris:
+		forget(uri)
+	if entries.size() == previous.size() or save():
+		return true
+	entries = previous
+	dirty = was_dirty
+	return false
+
+
 func resume_position(uri: String) -> int:
 	var value := lookup(uri)
 	if value.is_empty():

@@ -790,6 +790,17 @@ func clear_history() -> void:
 	_history_started = false
 
 
+func remove_recent_history(uris: Array[String]) -> bool:
+	if not recent_files.forget_selected(uris):
+		Log.record("recent_file_save_failed", {"error": recent_files.last_error})
+		return false
+	if uris.has(local_uri):
+		# Progress updates can only update an existing record. Do not create
+		# another record for this open video until the user opens it again.
+		_history_started = true
+	return true
+
+
 func _resume(uri: String) -> int:
 	return recent_files.resume_position(uri) if history_enabled else 0
 

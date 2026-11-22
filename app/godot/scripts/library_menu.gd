@@ -213,6 +213,8 @@ const CLEAR_HISTORY := 49
 const ALL_FILES := 34
 const RECENT_PREVIOUS := 84
 const RECENT_NEXT := 85
+const RECENT_SELECT := 91
+const RECENT_DELETE := 92
 const USB_STORAGE := 86
 const EJECT_STORAGE := 87
 const SCROLLBAR := 48
@@ -235,6 +237,7 @@ const FIELD_BASE := 200
 const KEY_BASE := 300
 
 var catalog: RefCounted  # recent files
+var remove_recent_history: Callable
 var platform: Object  # QuestPlayer singleton or a test double
 var local_thumbnails := preload("res://scripts/local_thumbnail_controller.gd").new()
 var settings_provider: Callable  # -> current application/display settings
@@ -253,6 +256,8 @@ var status := ""  # English; shown through I18n
 var _recent_page := 0
 var _recent_count := 0
 var _recent_all_rows: Array[Dictionary] = []
+var _selecting_recents := false
+var _selected_recents := {}
 var editor: Dictionary = {}  # SMB or DLNA server; empty when not editing
 var _field := 1
 var _shift := false
@@ -264,6 +269,7 @@ var _covers := {}  # DLNA cover URL -> HTTPRequest while it downloads
 
 func dismiss() -> void:
 	local_thumbnails.cancel(self)
+	_reset_recent_selection()
 	diagnostic_confirmation = false
 	subtitle_picker.close()
 	remember_browse()
@@ -342,6 +348,7 @@ func presentation_page() -> Variant:
 		_about_page,
 		choices.opened,
 		network.mode,
+		_selecting_recents,
 		I18n.language
 	]
 
@@ -364,6 +371,7 @@ func _on_android_lifecycle(state: String) -> void:
 
 func _reset_navigation() -> void:
 	choices.reset()
+	_reset_recent_selection()
 	_recent_page = 0
 	_drag = {}
 	_fling = 0.0
@@ -722,6 +730,17 @@ func refresh() -> void:
 		):
 			file_actions.orders[file_actions.scope()] = _browse_restore.get("order", "name_asc")
 	source_rows.rebuild()
+	if (
+		section != Section.RECENT
+		or queue_add_mode
+		or subtitle_picker.active
+		or _recent_all_rows.is_empty()
+	):
+		_reset_recent_selection()
+	for uri in _selected_recents.keys():
+		if not _recent_all_rows.any(func(row): return row.get("uri", "") == uri):
+			_selected_recents.erase(uri)
+			_confirm = ""
 	_restore_browse()
 	_draw()
 	_update_highlights()
@@ -1186,7 +1205,7 @@ func _activate(target: int) -> void:
 		return
 	if section == Section.MEDIA_SERVER and server_browser.action(target):
 		return
-	if not _row_target(target) and target != CLEAR_HISTORY:
+	if not _row_target(target) and target not in [CLEAR_HISTORY, RECENT_DELETE]:
 		_confirm = ""
 	if target == CLOSE:
 		dismiss()
@@ -1245,7 +1264,17 @@ func _activate(target: int) -> void:
 		_quick_usb_storage()
 	elif target == EJECT_STORAGE:
 		_request_storage_eject()
+	elif target == RECENT_SELECT and section == Section.RECENT and remove_recent_history.is_valid():
+		if _selecting_recents:
+			_reset_recent_selection()
+		elif not queue_add_mode and not rows.is_empty():
+			_selecting_recents = true
+		refresh()
+	elif target == RECENT_DELETE and section == Section.RECENT and _selecting_recents:
+		_delete_selected_recents()
 	elif target == CLEAR_HISTORY:
+		if _selecting_recents:
+			return
 		if _confirm != "clear_history":
 			_confirm = "clear_history"
 		else:
@@ -1278,6 +1307,15 @@ func _choose(row: Dictionary) -> void:
 		return
 	if subtitle_picker.active:
 		subtitle_picker.choose(row)
+		return
+	if section == Section.RECENT and _selecting_recents:
+		var uri := str(row.get("uri", ""))
+		if not uri.is_empty():
+			if not _selected_recents.erase(uri):
+				_selected_recents[uri] = true
+			_confirm = ""
+			status = ""
+			refresh()
 		return
 	remember_browse()
 	if file_actions.select(row):
@@ -1800,17 +1838,31 @@ func _draw() -> void:
 			)
 			_tips[EJECT_STORAGE] = I18n.t("Stop app access")
 	if section == Section.RECENT and not rows.is_empty():
+		if not queue_add_mode and remove_recent_history.is_valid():
+			_button(
+				RECENT_SELECT,
+				"",
+				Vector2(CONTENT_RIGHT - .155, HEADER_Y),
+				Vector2(0.09, 0.07),
+				true,
+				"checklist",
+				_selecting_recents
+			)
+			_tips[RECENT_SELECT] = I18n.t("Cancel" if _selecting_recents else "Select multiple")
 		# Two presses: the first lights the button, the second clears.
+		var delete_target := RECENT_DELETE if _selecting_recents else CLEAR_HISTORY
+		var armed := _confirm in ["clear_history", "delete_selected_recents"]
 		_button(
-			CLEAR_HISTORY,
+			delete_target,
 			"",
 			Vector2(CONTENT_RIGHT - .045, HEADER_Y),
 			Vector2(0.09, 0.07),
-			true,
-			"check" if _confirm == "clear_history" else "trash",
-			_confirm == "clear_history"
+			not _selecting_recents or not _selected_recents.is_empty(),
+			"check" if armed else "trash",
+			armed
 		)
-		_tips[CLEAR_HISTORY] = I18n.t("Clear history")
+		_buttons.back()["keep_visible"] = true
+		_tips[delete_target] = I18n.t("Delete selected" if _selecting_recents else "Clear history")
 	if section == Section.DLNA:
 		if sources.dlna_server.is_empty():
 			_button(
@@ -1896,6 +1948,15 @@ func _draw() -> void:
 		if file_actions.editing and not file_actions.uncertain and file_actions.pending <= 0
 		else I18n.t(status)
 	)
+	if _selecting_recents and status.is_empty():
+		footer_status = (
+			(
+				I18n.t("Confirm removal of %d records")
+				if _confirm == "delete_selected_recents"
+				else I18n.t("%d selected")
+			)
+			% _selected_recents.size()
+		)
 	var line := _label(
 		_fit_title(footer_status, "", status_width, 17), Vector3(status_left, FOOTER_Y, .004), 17
 	)
@@ -2022,13 +2083,19 @@ func _draw_rows() -> void:
 			if row.has("action"):
 				_setting_action(ROW_BASE + k, row, centre)
 				continue
+			var selecting := section == Section.RECENT and _selecting_recents
+			var selected := (
+				_selected_recents.has(str(row.get("uri", "")))
+				if selecting
+				else bool(row.get("selected", false))
+			)
 			_row_button(
 				ROW_BASE + k,
 				str(row.title),
 				"" if row.get("about_info", false) else str(row.get("detail", "")),
-				str(row.get("icon", "video")),
+				("check" if selected else "circle") if selecting else str(row.get("icon", "video")),
 				Vector2(ROW_CENTRE_X, row_top - k * _pitch()),
-				bool(row.get("selected", false)),
+				selected,
 				bool(row.get("stack_detail", false))
 			)
 			if section == Section.LOCAL and str(row.get("icon", "")) == "video":
@@ -2230,11 +2297,14 @@ func _tile(target: int, row: Dictionary, centre: Vector2) -> void:
 	var button: Dictionary = _buttons.back()
 	if str(button.node.get_child(0).text) != str(row.title):
 		_tips[target] = str(row.title)
-	button.base_color = (
-		SELECTED
-		if file_actions.editing and file_actions.row_uri(row) == file_actions.selected
-		else TILE
+	var selecting := section == Section.RECENT and _selecting_recents
+	var file_uri := file_actions.row_uri(row)
+	var marked := (
+		_selected_recents.has(str(row.get("uri", "")))
+		if selecting
+		else file_actions.editing and file_uri == file_actions.selected
 	)
+	button.base_color = SELECTED if marked else TILE
 	button.enabled = not file_actions.editing or not file_actions.row_uri(row).is_empty()
 	button.node.material_override.set_shader_parameter("surface_color", button.base_color)
 	var node: MeshInstance3D = button.node
@@ -2267,14 +2337,11 @@ func _tile(target: int, row: Dictionary, centre: Vector2) -> void:
 			node
 		)
 		glyph.material_override.render_priority = 13
-	if file_actions.editing and not file_actions.row_uri(row).is_empty():
-		_icon(
-			"check" if file_actions.row_uri(row) == file_actions.selected else "circle",
-			Vector3(-0.115, 0.095, 0.009),
-			0.035,
-			ACCENT,
-			node
+	if selecting or (file_actions.editing and not file_uri.is_empty()):
+		var marker := _icon(
+			"check" if marked else "circle", Vector3(-0.115, 0.095, 0.009), 0.035, ACCENT, node
 		)
+		marker.material_override.render_priority = 15
 	var bottom := 0.04 - area_size.y * 0.5
 	var progress := float(row.get("progress", -1.0)) if picture else -1.0
 	if progress >= 0.0:
@@ -2419,6 +2486,32 @@ func _cancel_covers() -> void:
 
 func _recent_page_count() -> int:
 	return maxi(1, ceili(float(_recent_count) / RECENT_PAGE_SIZE))
+
+
+func _reset_recent_selection() -> void:
+	if _selecting_recents:
+		status = ""
+	_selecting_recents = false
+	_selected_recents.clear()
+	if _confirm == "delete_selected_recents":
+		_confirm = ""
+
+
+func _delete_selected_recents() -> void:
+	if _selected_recents.is_empty() or not remove_recent_history.is_valid():
+		return
+	if _confirm != "delete_selected_recents":
+		_confirm = "delete_selected_recents"
+		status = ""
+	else:
+		_confirm = ""
+		var uris: Array[String] = []
+		uris.assign(_selected_recents.keys())
+		if bool(remove_recent_history.call(uris)):
+			_reset_recent_selection()
+		else:
+			status = "Could not remove playback history"
+	refresh()
 
 
 func _turn_recent_page(step: int) -> void:

@@ -87,6 +87,36 @@ func reload_catalog() -> RefCounted:
 	return catalog
 
 
+func check_selected_delete() -> void:
+	var path := directory.path_join("selected-delete")
+	var catalog := Catalog.new(path)
+	var a := "file:///recent/first.mp4"
+	var b := "file:///recent/keep.mp4"
+	var c := "file:///recent/last.mp4"
+	for uri in [a, b, c]:
+		catalog.opened(uri, uri.get_file(), false)
+		catalog.progress(uri, 12345, 60000)
+	check(catalog.save(), "Batch deletion fixture saves")
+	var interrupted := Interrupted.new(path)
+	interrupted.load_saved()
+	check(
+		not interrupted.forget_selected([a, c]) and interrupted.list_recent().size() == 3,
+		"A failed batch commit restores the in-memory catalog"
+	)
+	check(catalog.forget_selected([a, c]), "Selected recent records commit as one batch")
+	var reread := Catalog.new(path)
+	reread.load_saved()
+	check(
+		(
+			reread.list_recent().size() == 1
+			and reread.lookup(a).is_empty()
+			and reread.lookup(c).is_empty()
+			and reread.resume_position(b) == 12345
+		),
+		"Reopening the catalog retains only unselected history and its resume point"
+	)
+
+
 func _initialize() -> void:
 	if not preload("res://tests/support/test_result.gd").prepare(self):
 		return
@@ -99,6 +129,7 @@ func _run() -> void:
 		"res://../../build/tests/godot/recent-files-host/" + str(Time.get_ticks_usec())
 	)
 	DirAccess.make_dir_recursive_absolute(directory)
+	check_selected_delete()
 	var a := "content://local/document/字幕%20A"
 	var b := "file:///local/b.mp4"
 	var catalog := Catalog.new(directory)
@@ -502,6 +533,16 @@ func _run() -> void:
 	check(
 		not video.waiting_for_first_frame() and host.play_requests.back() == [10, true],
 		"Recent playback starts after the revised layout has a ready frame"
+	)
+	check(video.remove_recent_history([wide]), "Deleting the active video's history succeeds")
+	video.checkpoint_playback()
+	check(
+		(
+			video.local_uri == wide
+			and video.media.session_id == 10
+			and video.recent_files.lookup(wide).is_empty()
+		),
+		"Deleting history leaves playback active without restoring the deleted record on checkpoint"
 	)
 	video.queue_free()
 	menu.queue_free()

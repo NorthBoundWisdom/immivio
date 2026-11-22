@@ -37,6 +37,8 @@ const PATHS := {
 	"search": '<circle cx="10" cy="10" r="6"/><path d="M15 15L21 21"/>',
 	"time": '<circle cx="12" cy="12" r="9"/><path d="M12 6V12L16 15"/>',
 	"list": '<path d="M9 5H21M9 12H21M9 19H21M3 5H4M3 12H4M3 19H4"/>',
+	"checklist":
+	'<rect x="3" y="4" width="6" height="6" rx="1"/><path d="M3 17l2 2 4-4M13 7h8m-8 10h8"/>',
 	"plus": '<path d="M5 12H19M12 5V19"/>',
 	"play": '<path d="M9 5L20 12 9 19Z" fill="white" stroke="none"/>',
 	"pause": '<path d="M8 5V19M16 5V19" stroke-width="4"/>',
