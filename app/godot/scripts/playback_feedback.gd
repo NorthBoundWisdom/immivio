@@ -1,7 +1,5 @@
-extends Node3D
+extends "res://scripts/ray_menu.gd"
 ## A small status plane during loading; no forced control-bar reopen for ordinary buffering.
-const I18n := preload("res://scripts/i18n.gd")
-const Menu := preload("res://scripts/ray_menu.gd")
 var host: Node3D
 var label: Label3D
 var since := 0
@@ -11,14 +9,41 @@ var message := ""
 
 
 func _ready() -> void:
+	# Share the menus' high-resolution capture, without drawing a menu or adding hit targets.
+	curve_radius = 0.0
 	label = Label3D.new()
-	label.font = Menu.ui_font()
-	label.font_size = 24
-	label.pixel_size = 0.001
-	label.outline_size = 8
+	label.font = ui_font_bold()
+	label.language = I18n.language
+	label.font_size = 48
+	label.pixel_size = 0.0007
+	label.outline_size = 4
+	label.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	label.no_depth_test = true
 	add_child(label)
 	visible = false
+
+
+func capture_envelope() -> Rect2:
+	# Layout stays fixed as the elapsed time and transfer rate change.
+	return Rect2(-0.55, -0.06, 1.1, 0.12)
+
+
+func paint_state_key() -> int:
+	return hash([message, label.language])
+
+
+func snapshot() -> Dictionary:
+	return {
+		"message": message,
+		"visible": visible,
+		"native_overlay":
+		(
+			visible
+			and is_instance_valid(xr_surface)
+			and xr_surface.native_supported
+			and xr_surface.is_layout_presented(self)
+		)
+	}
 
 
 func tick() -> void:
@@ -67,6 +92,9 @@ func tick() -> void:
 			if speed >= 1048576
 			else " · %.0f KB/s" % (speed / 1024.0)
 		)
+	if label.language != I18n.language:
+		label.language = I18n.language
+		label.font = ui_font_bold()
 	label.text = message
 	if previous != message and host.player_menu.visible:
 		host.player_menu.refresh_values()

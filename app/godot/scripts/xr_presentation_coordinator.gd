@@ -1051,11 +1051,7 @@ func diagnostic_ui_snapshot() -> Dictionary:
 		"player_menu_progress":
 		host.player_menu.progress_snapshot() if is_instance_valid(host.player_menu) else {},
 		"loading_feedback":
-		(
-			{"message": host.playback_feedback.message, "visible": host.playback_feedback.visible}
-			if is_instance_valid(host.playback_feedback)
-			else {}
-		),
+		host.playback_feedback.snapshot() if is_instance_valid(host.playback_feedback) else {},
 		"canvas_controls": canvas_controls_snapshot(),
 		"selected_features_ui": host.selected_features_probe_result.duplicate(true),
 		"seek_policy_ui": host.seek_policy_probe_result.duplicate(true)

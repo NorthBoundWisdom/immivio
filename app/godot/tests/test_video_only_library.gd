@@ -124,8 +124,14 @@ func _run() -> void:
 		main.settings.get_value("video", "sharpness") == .4, "Upgrade preserves video preferences"
 	)
 	check(
-		main.get_node_or_null("PhotoDisplay") == null and main.menu_compositor.menus.size() == 2,
-		"The application creates only the library and video controls"
+		(
+			main.get_node_or_null("PhotoDisplay") == null
+			and (
+				main.menu_compositor.menus
+				== [main.library_menu, main.video_menu, main.playback_feedback]
+			)
+		),
+		"The compositor captures the library, video controls and video loading notice"
 	)
 	main._on_library_chosen("file://" + ProjectSettings.globalize_path(original), "Original.jpg")
 	check(

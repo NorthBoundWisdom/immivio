@@ -398,8 +398,7 @@ func _refresh_live_values() -> void:
 				"pause" if _pausable() else "play"
 			)
 			_tips[102] = I18n.t("Pause" if _pausable() else "Play")
-	if is_instance_valid(_status):
-		_status.text = _status_text()
+	_refresh_status_label()
 	if is_instance_valid(_info):
 		_info.text = playback_popups.info_text() if _quick_open == "info" else _info_text()
 	if is_instance_valid(_title):
@@ -553,8 +552,7 @@ func _draw() -> void:
 		_backdrop.material_override.set_shader_parameter("corner_radius", entry.backdrop_corner)
 		_settings_drawn = _settings_key()
 		_drawn_settings_key = cached_key
-		if is_instance_valid(_status):
-			_status.text = _status_text()
+		_refresh_status_label()
 		if is_instance_valid(_info):
 			_info.text = playback_popups.info_text() if _quick_open == "info" else _info_text()
 		if section == 1 and _adjustment.is_empty():
@@ -744,7 +742,8 @@ func _draw_bar() -> void:
 	)
 	if _quick_open == "ipd" and not _enabled("stereo_view"):
 		_quick_open = ""
-	_status = _label(_status_text(), Vector3(0, -0.155, 0.005), 15)
+	_status = _label("", Vector3(0, -0.155, 0.005), 15)
+	_refresh_status_label()
 	_bar_drawn = _bar_key()
 	_seek_bar(BAR_SEEK_Y)
 	_place_device_status(Vector2(0, HEADER_Y))
@@ -1364,6 +1363,16 @@ func _caption_text(operation: String) -> String:
 		"screen_curve":
 			return CURVE_NAMES[clampi(roundi(float(_state.get("screen_curve", 0.0)) / 0.35), 0, 3)]
 	return operation
+
+
+func _refresh_status_label() -> void:
+	if not is_instance_valid(_status):
+		return
+	var waiting := not str(_state.get("loading_message", "")).is_empty()
+	_status.font = ui_font_bold() if waiting else ui_font()
+	_status.font_size = 36 if waiting else 15
+	_status.pixel_size = 0.0007 if waiting else 0.0012
+	_status.text = _status_text()
 
 
 func _status_text() -> String:

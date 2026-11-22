@@ -67,6 +67,26 @@ func _run() -> void:
 			host.playback_feedback.visible and not host.playback_feedback.message.is_empty(),
 			"Loading keeps status feedback without a provisional control bar"
 		)
+		check(
+			(
+				host.menu_compositor.captures_menu(host.playback_feedback)
+				and host.playback_feedback.curve_radius == 0.0
+				and not host.playback_feedback.snapshot().native_overlay
+			),
+			"Loading feedback is a flat compositor panel and still draws in desktop preview"
+		)
+		var feedback_label: Label3D = host.playback_feedback.label
+		check(
+			(
+				feedback_label.font_size == 48
+				and feedback_label.outline_size == 4
+				and (
+					feedback_label.texture_filter
+					== BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+				)
+			),
+			"Standalone loading feedback uses high-resolution glyphs with a thin outline"
+		)
 		host.menu_touched_ms = Time.get_ticks_msec() - host.CONTROLS_HIDE_MS - 100
 		ready(host, projection)
 		host._update_controls_visibility(host.player_menu)
@@ -91,6 +111,21 @@ func _run() -> void:
 		host.video.test_set_waiting_for_frame(true)
 		host.test_show_player_menu()
 		check(host.player_menu.visible, "Seeking an existing presentation cannot hide controls")
+		host.playback_feedback.tick()
+		var waiting_status: Label3D = host.player_menu._status
+		check(
+			(
+				waiting_status.font_size == 36
+				and waiting_status.text == host.playback_feedback.message
+			),
+			"Toolbar waiting text uses larger glyphs"
+		)
+		host.video.test_set_waiting_for_frame(false)
+		host.playback_feedback.tick()
+		host.player_menu.refresh_values()
+		check(
+			host.player_menu._status.font_size == 15, "Ordinary status restores its previous style"
+		)
 	# Decoder layout revisions can temporarily have no presented frame for the same file.
 	host.player_menu.test_activate(Menu.MODE)
 	host.video.media.frame_counter = 0

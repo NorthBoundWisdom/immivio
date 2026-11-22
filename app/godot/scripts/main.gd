@@ -406,7 +406,7 @@ func _ready() -> void:
 	menu_compositor = preload("res://scripts/xr_menu_compositor.gd").new()
 	add_child(menu_compositor)
 	menu_compositor.configure(
-		[library_menu, video_menu],
+		[library_menu, video_menu, playback_feedback],
 		camera,
 		not display.preview and display.xr != null and display.xr.is_initialized(),
 		func(): return display.session_state
