@@ -136,6 +136,7 @@ class Movie:
 	var surface_requested := false
 	var force_shader_output := false
 	var output_width_choice := -1
+	var low_end_gpu := false
 	var hdr_to_sdr := false
 	var requested_play := true
 	var fallbacks := 0
@@ -321,13 +322,34 @@ func run() -> void:
 		layers.direct_wanted(movie, "file:///sample.mp4"),
 		"Known compatible formats may use a decoder Surface"
 	)
-	movie.output_width_choice = 4096
-	check(
-		not layers.direct_wanted(movie, "file:///sample.mp4"),
-		"An explicit resolution limit retains the processing path"
-	)
-	movie.output_width_choice = -1
 	movie.surface_requested = true
+	for case in [
+		[4096, false, 0, 0],
+		[4096, false, 3840, 0],
+		[4096, false, 4096, 0],
+		[4096, false, 5760, 1],
+		[-1, true, 3840, 0],
+		[-1, true, 5760, 1],
+		[-1, false, 5760, 0],
+		[0, true, 5760, 0],
+	]:
+		movie.output_width_choice = case[0]
+		movie.low_end_gpu = case[1]
+		movie.media.format.width = case[2]
+		movie.fallbacks = 0
+		check(
+			layers.direct_wanted(movie, "file:///sample.mp4"),
+			"Width choice permits initial Surface"
+		)
+		layers.tick(movie)
+		check(
+			movie.fallbacks == case[3] and (layers.route == "surface") == (case[3] == 0),
+			"Width scaling only falls back when the effective cap is exceeded: %s" % [case]
+		)
+	movie.output_width_choice = -1
+	movie.low_end_gpu = false
+	movie.media.format.width = 0
+	movie.fallbacks = 0
 	movie.hdr_to_sdr = true
 	check(layers.direct_wanted(movie, "file:///sample.mp4"), "Open can probe color on Surface")
 	movie.media.playback = {"details": {"color_transfer": "bt.1886"}}

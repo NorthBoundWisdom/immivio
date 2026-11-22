@@ -2,6 +2,7 @@ extends RefCounted
 ## Video-only compositor provider, adapted from Thru3D 959abc2.
 const Platform := preload("res://scripts/platform_methods.gd")
 const Layout := preload("res://scripts/video_layer_layout.gd")
+const Quality := preload("res://scripts/display_quality.gd")
 const HOLE := preload("res://shaders/video_layer_hole.gdshader")
 
 
@@ -204,7 +205,7 @@ func direct_wanted(video: Node3D, uri: String) -> bool:
 	)
 	if not types.get(kind, false):
 		return false
-	if uri.begins_with("externalvideo://") or video.output_width_choice > 0:
+	if uri.begins_with("externalvideo://"):
 		return false
 	if video.geometry == 2 or not Layout.compatible(video).is_empty():
 		return false
@@ -290,6 +291,9 @@ func tick(video: Node3D) -> void:
 			reason = "fisheye needs frame remapping"
 		if video.media.is_hdr():
 			reason = "HDR needs processed color"
+		var width_limit := Quality.output_width(video.output_width_choice, video.low_end_gpu)
+		if reason.is_empty() and width_limit > 0 and int(video.media.format.width) > width_limit:
+			reason = "output width limit needs scaling"
 		if not reason.is_empty():
 			hide(video)
 			video.request_shader_fallback()
