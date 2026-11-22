@@ -1,7 +1,30 @@
 extends SceneTree
 const Main := preload("res://scripts/main.gd")
 const Host := preload("res://tests/test_file_mode_memory.gd").Host
+const PairHost := preload("res://tests/test_seek_policy.gd").Host
+const Video := preload("res://scripts/mpv_video_display.gd")
+const Binding := preload("res://scripts/pair_texture_binding.gd")
 var failures: Array[String] = []
+
+
+class BindHost:
+	extends PairHost
+
+	func get_mpv_subtitles(_id: int, _sequence: int) -> String:
+		return ""
+
+
+class ShaderAtBind:
+	extends "res://scripts/pair_texture_binding.gd"
+	var shader: Shader
+
+	func bind(target: ShaderMaterial, pair: Dictionary) -> bool:
+		# A headless test supplies the lease without native GL texture handles.
+		material = target
+		ticket = pair.duplicate(true)
+		set_opaque(opaque)
+		shader = target.shader
+		return true
 
 
 func _initialize() -> void:
@@ -32,7 +55,47 @@ func toggle(menu: Node3D) -> void:
 	menu.refresh()
 
 
+func check_shader_at_bind() -> void:
+	var video := Video.new(false)
+	root.add_child(video)
+	video.set_process(false)
+	var bridge := BindHost.new()
+	video.platform = bridge
+	var binding := ShaderAtBind.new()
+	video._binding = binding
+	video.stereo_sbs = true
+	video.set_alpha(true)
+	bridge.pair = {
+		"session_id": 7,
+		"logical_session_id": 7,
+		"generation": 1,
+		"format_revision": 1,
+		"presentation_revision": 1,
+		"slot_token": 1,
+		"pts_us": 0,
+		"width": 1024,
+		"height": 512,
+		"mask_kind": "opaque"
+	}
+	for case in [[1, Binding.OPAQUE_SHADER, false], [2, Binding.PAIR_SHADER, true]]:
+		video.geometry = case[0]
+		video.media.begin(7)
+		video.media.state = "paused"
+		video._pending_pair = bridge.pair
+		video.test_step(0.0)
+		check(
+			(
+				binding.shader == case[1]
+				and video.material.shader == case[1]
+				and video.alpha_ready() == case[2]
+			),
+			"The first claimed frame selects the shader for its effective packed alpha state"
+		)
+	video.queue_free()
+
+
 func _run() -> void:
+	check_shader_at_bind()
 	var main := Main.new()
 	root.add_child(main)
 	main.set_process(false)

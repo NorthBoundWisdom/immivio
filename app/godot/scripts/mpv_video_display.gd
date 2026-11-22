@@ -1026,29 +1026,35 @@ func set_alpha(enabled: bool) -> bool:
 	return true
 
 
-func packed_alpha_blocker() -> String:
+func _packed_alpha_blocker(frame_format: Dictionary, frame_ready: bool) -> String:
 	if not material:
 		return "Packed alpha: renderer is not ready"
-	if media.last_pair.is_empty():
+	if not frame_ready:
 		return "Packed alpha: waiting for a decoded frame"
 	if geometry != Geometry.Geometry.FISHEYE:
 		return "Packed alpha: select Fisheye"
 	if not Geometry.packed_alpha_layout_supported(geometry, stereo_sbs, top_bottom, stereo_half):
 		return "Packed alpha: select full SBS"
-	if int(media.format.get("width", 0)) < 10 or int(media.format.get("height", 0)) < 10:
+	if int(frame_format.get("width", 0)) < 10 or int(frame_format.get("height", 0)) < 10:
 		return "Packed alpha: decoded frame is too small"
 	# Force On interprets the displayed texture as packed media even when metadata
 	# or its aspect ratio is inconclusive. Automatic detection keeps its old gate.
 	if (
 		not packed_alpha_forced
-		and not Geometry.legacy_compatible(media.format, stereo_sbs, geometry)
+		and not Geometry.legacy_compatible(frame_format, stereo_sbs, geometry)
 	):
 		return "Packed alpha: unsupported frame metadata"
 	return ""
 
 
 func packed_alpha_feedback() -> String:
-	return packed_alpha_blocker() if packed_alpha else ""
+	return (
+		_packed_alpha_blocker(media.format, not media.last_pair.is_empty()) if packed_alpha else ""
+	)
+
+
+func _shows_packed_alpha(frame_format: Dictionary, frame_ready: bool) -> bool:
+	return packed_alpha and _packed_alpha_blocker(frame_format, frame_ready).is_empty()
 
 
 ## The extra track titled "Clone voice" (see SidecarAudio.kt); 0 when this video has none.
@@ -2460,7 +2466,7 @@ func _apply_packed() -> void:
 	if not material:
 		alpha_enabled = false
 		return
-	var shown := packed_alpha and packed_alpha_blocker().is_empty()
+	var shown := _shows_packed_alpha(media.format, not media.last_pair.is_empty())
 	_binding.set_opaque(not shown)
 	material.set_shader_parameter("packed_alpha", shown)
 	if shown:
@@ -2577,8 +2583,16 @@ func _present_pending() -> void:
 	)
 	if not claimed is Dictionary:
 		return
+	var par := float(claimed.get("pixel_aspect", 1.0))
+	var frame_format := {
+		"width": int(claimed.get("width", 0)),
+		"height": int(claimed.get("height", 0)),
+		"pixel_aspect": par if is_finite(par) and par > 0.0 and par <= 16.0 else 1.0,
+		"stereo_mode": str(claimed.get("stereo_mode", "")),
+		"unapplied_rotation_degrees": 0
+	}
 	_unbind()
-	_binding.opaque = not alpha_wanted() and claimed.get("mask_kind") == "opaque"
+	_binding.opaque = not _shows_packed_alpha(frame_format, true)
 	if not _binding.bind(material, claimed):
 		platform.detach_mpv_pair(media.session_id, int(claimed.slot_token))
 		picker_error = "Complete video frame could not be bound"
@@ -2590,14 +2604,7 @@ func _present_pending() -> void:
 	media.format_revision = int(claimed.format_revision)
 	media.presentation_revision = int(claimed.presentation_revision)
 	media.frame_counter += 1
-	var par := float(claimed.get("pixel_aspect", 1.0))
-	media.format = {
-		"width": int(claimed.width),
-		"height": int(claimed.height),
-		"pixel_aspect": par if is_finite(par) and par > 0.0 and par <= 16.0 else 1.0,
-		"stereo_mode": str(claimed.get("stereo_mode", "")),
-		"unapplied_rotation_degrees": 0
-	}
+	media.format = frame_format
 	_apply_packed()
 	material.set_shader_parameter("alpha_enabled", false)
 	_apply_geometry()
