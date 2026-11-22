@@ -1075,27 +1075,8 @@ func _on_native_presence_changed(present: bool, source: String) -> void:
 
 
 func _apply_wearer_presence() -> void:
-	var present := _xr_wearer_present and _native_wearer_present
-	if present == wearer_present:
-		_update_local_thumbnail_activity()
-		return
-	wearer_present = present
+	wearer_present = _xr_wearer_present and _native_wearer_present
 	_update_local_thumbnail_activity()
-	_queue_end_key = ""
-	if video and video.media.accepts(video.media.session_id):
-		# Wearer absence is a suspension, not a new play/pause choice or a seek.
-		# Native gates also cover opening/first-frame work while the wearer is absent.
-		if not present:
-			video.checkpoint_playback()
-		# Current Android bridges retain their own play/audio-focus intent behind
-		# the wearer gate. Do not turn a focus-loss pause into an explicit play.
-		if not PlatformMethods.supports(platform_plugin, "set_openxr_presence"):
-			video.platform.set_mpv_playing(
-				video.media.session_id,
-				present and video.requested_play and not video._waiting_first
-			)
-		if present:
-			_on_video_changed()
 
 
 func _update_local_thumbnail_activity() -> void:

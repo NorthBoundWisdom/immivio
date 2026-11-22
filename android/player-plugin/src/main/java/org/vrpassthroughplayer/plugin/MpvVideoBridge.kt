@@ -38,7 +38,6 @@ internal class MpvVideoBridge(
     private val hosts = ConcurrentHashMap.newKeySet<PlaybackHost>()
 
     @Volatile private var foreground = true
-    @Volatile private var wearerPresent = true
 
     @Volatile private var stopped = false
     private val freezePending = AtomicBoolean(false)
@@ -620,7 +619,6 @@ internal class MpvVideoBridge(
             val needsAudio =
                 !stopped &&
                     foreground &&
-                    wearerPresent &&
                     hosts.any {
                         !it.closing &&
                             it.handle > 0 &&
@@ -680,7 +678,6 @@ internal class MpvVideoBridge(
                         MpvSourceNative.setPlaying(
                             host.handle,
                             foreground &&
-                                wearerPresent &&
                                 host.playing &&
                                 (!(host.audioEnabled && host.audioAvailable) || granted),
                         )
@@ -1405,17 +1402,6 @@ internal class MpvVideoBridge(
     }
 
     fun hasActiveVideo(): Boolean = sessions.isNotEmpty()
-
-    fun setWearerPresent(present: Boolean) {
-        wearerPresent = present
-        if (!present)
-            hosts.forEach { host ->
-                synchronized(host) {
-                    if (host.handle > 0) MpvSourceNative.setPlaying(host.handle, false)
-                }
-            }
-        refreshPlayback()
-    }
 
     fun pause() {
         lifecyclePauses.incrementAndGet()

@@ -69,9 +69,10 @@ memory and thermal behaviour.
   and audio/subtitle delay after reopen and restart. Verify current defaults,
   privacy gates, folder/sort memory, bookmarks, queues and native stereo locks;
   retired photo/inference settings must not reappear.
-- [ ] **A09 — Lifecycle, wearer presence and context recovery.** Test removal,
-  wearing again, suspend/resume, focus changes, reopen and recreated GL context.
-  Resume in place without overriding manual pause or reviving closed media.
+- [ ] **A09 — Lifecycle, wearer presence and context recovery.** While the app
+  stays in the foreground, verify playback continues through a wearer-presence
+  change. Test activity suspend/resume, audio focus, reopen and recreated GL
+  context. Resume in place without overriding manual pause or reviving closed media.
   Verify frozen seek transitions, retained frames and final-frame cleanup;
   host geometry/state checks do not certify headset pixels or audible output.
 - [ ] **A10 — Explicit website-build update flow.** In a web-channel build,

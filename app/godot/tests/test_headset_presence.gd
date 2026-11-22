@@ -4,13 +4,6 @@ const Host := preload("res://tests/test_player_menu.gd").Host
 var failures: Array[String] = []
 
 
-class NativeHost:
-	extends Host
-
-	func set_openxr_presence(_present: bool) -> void:
-		pass
-
-
 func check(ok: bool, message: String) -> void:
 	if not ok:
 		failures.append(message)
@@ -30,14 +23,12 @@ func _run() -> void:
 	main.video.open_local("file:///presence.mp4", "Presence")
 	main.video.test_set_waiting_for_frame(false)
 	main.video.requested_play = true
-	var opens: int = host.calls.filter(func(call): return call[0] == "open").size()
+	var count := host.calls.size()
 	main.display._on_presence_changed(false)
 	check(
-		not main.wearer_present and main.video.requested_play,
-		"Removal suspends without changing the user's play intent"
+		not main.wearer_present and main.video.requested_play and host.calls.size() == count,
+		"OpenXR absence leaves the active playback request alone"
 	)
-	check(host.calls.back() == ["play", 7, false], "OpenXR removal stops the active native video")
-	var count := host.calls.size()
 	main.display._on_presence_changed(false)
 	check(host.calls.size() == count, "Duplicate absence is idempotent")
 	main._on_native_presence_changed(false, "proximity")
@@ -61,21 +52,23 @@ func _run() -> void:
 	)
 	main._on_native_presence_changed(true, "proximity")
 	check(
-		main.wearer_present and host.calls.back() == ["play", 7, true],
-		"Wearing again resumes an originally playing video"
+		main.wearer_present and main.video.requested_play and host.calls.size() == count,
+		"A native presence round-trip issues no playback commands"
 	)
+	main._on_native_presence_changed(false, "proximity")
+	main.video.toggle_play()
+	main.video.toggle_play()
 	check(
-		(
-			host.calls.filter(func(call): return call[0] == "open").size() == opens
-			and not host.calls.any(func(call): return call[0] == "seek")
-		),
-		"Presence never reopens or seeks the video"
+		not main.wearer_present and host.calls.back() == ["play", 7, true],
+		"An explicit Play request still reaches the player during reported absence"
 	)
 	main.video.toggle_play()
+	count = host.calls.size()
 	main.display._on_presence_changed(false)
 	main.display._on_presence_changed(true)
+	main._on_native_presence_changed(true, "proximity")
 	check(
-		not main.video.requested_play and host.calls.back() == ["play", 7, false],
+		not main.video.requested_play and host.calls.size() == count,
 		"A manually paused video remains paused on return"
 	)
 	main.video.close_video()
@@ -85,19 +78,6 @@ func _run() -> void:
 	check(
 		host.calls.size() == count and main.video.local_uri.is_empty(),
 		"Presence cannot revive a closed video"
-	)
-	var native := NativeHost.new()
-	main.platform_plugin = native
-	main.video.platform = native
-	main.video.open_local("file:///native-presence.mp4", "Native presence")
-	main.video.test_set_waiting_for_frame(false)
-	main.video.requested_play = true
-	count = native.calls.filter(func(call): return call[0] == "play").size()
-	main._on_native_presence_changed(false, "proximity")
-	main._on_native_presence_changed(true, "proximity")
-	check(
-		native.calls.filter(func(call): return call[0] == "play").size() == count,
-		"Native wearer gates retain audio-focus pause intent without a forced explicit play"
 	)
 	main.queue_free()
 	await process_frame

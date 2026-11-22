@@ -57,7 +57,6 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
         val present = nativeWearerPresent && openxrWearerPresent
         if (present == wearerPresent) return
         wearerPresent = present
-        mpv.setWearerPresent(present)
         if (!present) thumbnails.cancel()
         if (signalsReady) emitSignal("headset_presence_changed", present, source)
     }

@@ -344,12 +344,6 @@ func _run() -> void:
 	)
 	main.video.loop_enabled = false
 	main._on_native_presence_changed(false, "proximity")
-	main._advance_queue(7, "file:///timing-a.mp4")
-	check(
-		main.video.local_uri == "file:///timing-a.mp4",
-		"Confirmed EOF cannot advance the queue while the headset is off"
-	)
-	main._on_native_presence_changed(true, "proximity")
 	main._advance_queue(6, "file:///timing-a.mp4")
 	check(
 		main.video.local_uri == "file:///timing-a.mp4",
@@ -358,11 +352,13 @@ func _run() -> void:
 	main._advance_queue(7, "file:///timing-a.mp4")
 	check(
 		(
-			main.video.local_uri == "file:///next.mp4"
+			not main.wearer_present
+			and main.video.local_uri == "file:///next.mp4"
 			and host.calls.filter(func(call): return call[0] == "open").back()[2] == 0
 		),
-		"Confirmed EOF automatically opens next video from zero despite a legacy auto-play-off preference"
+		"Confirmed EOF opens the next video from zero despite reported absence and legacy autoplay settings"
 	)
+	main._on_native_presence_changed(true, "proximity")
 	main._on_player_setting("queue_shuffle", true)
 	main._on_player_setting("queue_loop", true)
 	check(main.playback_queue.loop, "Queue loop setting reaches the active queue")

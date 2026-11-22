@@ -182,8 +182,7 @@ func _advance_queue(session_id: int, uri: String) -> void:
 	if not is_instance_valid(host):
 		return
 	if (
-		not host.wearer_present
-		or host.video.media.session_id != session_id
+		host.video.media.session_id != session_id
 		or host.video.local_uri != uri
 		or (not host.video.completed_presentation())
 	):
@@ -213,9 +212,7 @@ func _on_video_changed() -> void:
 		return
 	if host.video.media.state != "ended":
 		_queue_end_key = ""
-	elif (
-		host.wearer_present and not host.video.loop_enabled and host.video.completed_presentation()
-	):
+	elif not host.video.loop_enabled and host.video.completed_presentation():
 		var key = (
 			"%s/%s/%s"
 			% [

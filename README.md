@@ -61,7 +61,6 @@ Immivio is a free, open-source VR video player for PICO and Meta Quest. Watch re
 - One compact control bar with popups for subtitles, speed, color, audio/subtitle timing, stereo alignment and the queue.
 - Compatible video can use native compositor layers when the headset runtime supports them.
 - Sequential or shuffled queues, with an optional **Repeat queue** switch, including single-video repeat. With repeat off, playback returns to the library after the last video.
-- Headset removal pauses playback when the runtime or Android reports absence. Wearing it again continues at the same position; a manually paused video stays paused. Detection availability and delay depend on the headset.
 - SRT, ASS, SSA and VTT text subtitles, with automatic encoding detection and bilingual primary/secondary tracks. Captions can sit below a flat screen. Bitmap subtitles are not supported.
 - Color grading presets: Original, Warm, Cool and Custom. Every slider has its own reset button.
 - Track choices, stereo alignment, immersive adjustments and progress are remembered for each video.
