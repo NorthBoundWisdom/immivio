@@ -10,8 +10,6 @@
 <p align="center">
   <a href="https://northboundwisdom.github.io/immivio/">Website</a> ·
   <a href="https://northboundwisdom.github.io/immivio/zh/">中文官网</a> ·
-  <a href="https://store-global.picoxr.com/global/detail/1/7704693551271116819">PICO Store (Global)</a> ·
-  <a href="https://store.picoxr.com/cn/detail/1/7704693551271116819">PICO 商店（中国大陆）</a> ·
   <a href="https://github.com/NorthBoundWisdom/immivio/releases">APK downloads</a> ·
   <a href="https://northboundwisdom.github.io/immivio/guide/">User guide</a> ·
   <a href="https://northboundwisdom.github.io/immivio/zh/guide/">使用指南</a> ·
@@ -77,10 +75,6 @@ Immivio is a free, open-source VR video player for PICO and Meta Quest. Watch re
 **Languages:** English, Simplified Chinese, Traditional Chinese and Japanese.
 
 ## Download and install
-
-Install Immivio for free from the PICO Store. Choose [Global](https://store-global.picoxr.com/global/detail/1/7704693551271116819) or [China mainland](https://store.picoxr.com/cn/detail/1/7704693551271116819) for your store region.
-
-### Sideload an APK
 
 Download published APKs from [Releases](https://github.com/NorthBoundWisdom/immivio/releases). Development builds are attached to successful [Android workflow runs](https://github.com/NorthBoundWisdom/immivio/actions/workflows/android-release.yml) under **Artifacts**. Downloading them requires a GitHub sign-in.
 
