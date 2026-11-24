@@ -30,44 +30,16 @@ class CiBoundaries(unittest.TestCase):
         self.assertNotRegex(workflow, r"(?m)^    environment\s*:")
         self.assertNotRegex(workflow, r"(?m)^    uses: ")
 
-    def test_channels_default_to_appstore_and_tags_force_web(self):
-        for ref in ("", "refs/heads/main", "refs/pull/1/merge"):
-            self.assertEqual(
-                ci.build_channel_for_ref(environment={"GITHUB_REF": ref}), "appstore"
-            )
-        self.assertEqual(ci.build_channel_for_ref("web", {}), "web")
-        self.assertEqual(
-            ci.build_channel_for_ref(environment={"CI_BUILD_CHANNEL": "web"}), "web"
-        )
-        self.assertEqual(
-            ci.build_channel_for_ref(
-                "appstore",
-                {"GITHUB_REF": "refs/tags/v1", "CI_BUILD_CHANNEL": "appstore"},
-            ),
-            "web",
-        )
-        with self.assertRaisesRegex(ValueError, "appstore or web"):
-            ci.build_channel_for_ref("other", {})
-
     def test_tag_ref_forces_release_even_when_debug_is_requested(self):
         self.assertEqual(
             ci.build_type_for_ref("Debug", {"GITHUB_REF": "refs/tags/v1"}), "Release"
         )
 
-    def test_store_defaults_to_release_and_explicit_ci_debug_is_preserved(self):
-        for ref in ("refs/heads/main", "refs/pull/1/merge"):
+    def test_default_build_type_is_debug(self):
+        for ref in ("", "refs/heads/main", "refs/pull/1/merge"):
             self.assertEqual(
-                ci.build_type_for_ref(environment={"GITHUB_REF": ref}), "Release"
+                ci.build_type_for_ref(environment={"GITHUB_REF": ref}), "Debug"
             )
-
-    def test_web_default_and_debug_override_are_independent_of_store(self):
-        self.assertEqual(ci.build_type_for_ref(environment={}, channel="web"), "Debug")
-        self.assertEqual(
-            ci.build_type_for_ref("Debug", {}, channel="appstore"), "Debug"
-        )
-        self.assertEqual(
-            ci.build_type_for_ref(environment={"CI_BUILD_TYPE": "Debug"}), "Debug"
-        )
 
     def test_manual_release_and_invalid_build_type(self):
         self.assertEqual(ci.build_type_for_ref("Release", {}), "Release")
@@ -106,11 +78,9 @@ class CiBoundaries(unittest.TestCase):
         self.assertEqual(mode, "ephemeral-ci-key")
         self.assertEqual(env, {"GITHUB_REF": "refs/heads/main"})
 
-    def test_tag_and_formal_store_builds_require_signing_secrets(self):
+    def test_tag_builds_require_signing_secrets(self):
         with self.assertRaisesRegex(RuntimeError, "requires all three"):
             ci.signing_env({"GITHUB_REF": "refs/tags/v1.0.0"})
-        with self.assertRaisesRegex(RuntimeError, "requires all three"):
-            ci.signing_env({"GITHUB_REF": "refs/heads/main"}, require_formal=True)
 
 
 class HostTestReports(unittest.TestCase):

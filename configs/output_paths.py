@@ -15,6 +15,7 @@ MARKER = ".output-layout-v1"
 
 
 def profile(root, vendor, channel, build_type):
+    # The organizer also resolves output paths for receipts from old store builds.
     if (
         vendor not in PLATFORMS
         or channel not in {"appstore", "web"}
@@ -29,7 +30,7 @@ def packages(root, vendor, channel, build_type):
     return root / "artifacts/packages" / platform / channel / variant
 
 
-def build_logs(root, vendor=None, channel="appstore", build_type="Release"):
+def build_logs(root, vendor=None, channel="web", build_type="Release"):
     if vendor is None:
         return Path(root) / "artifacts/logs/build/common"
     root, platform, channel, variant = profile(root, vendor, channel, build_type)
@@ -55,7 +56,7 @@ def guides(root):
     texts = {
         "artifacts": """Immivio 输出目录（仅生成文件，不存放签名密钥）
 
-packages/<平台>/<渠道>/<debug或release>/  最终 APK、构建记录、商店检查报告，找安装包看这里
+packages/<平台>/web/<debug或release>/     最终 APK 与构建记录
 packages/releases/<tag>/                CI 准备好的三平台发布组合
 reports/                               CI 汇总、发布核对、目录迁移记录
 tests/                                 自动测试报告与日志

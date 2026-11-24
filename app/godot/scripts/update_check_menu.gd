@@ -12,8 +12,6 @@ var current_version := ""
 var opening_tag := ""
 var opening_id := 0
 var browser_error := false
-## Export feature, never a saved user preference. Untagged/editor builds default to appstore.
-var enabled := OS.has_feature("immivio_web") and not OS.has_feature("immivio_appstore")
 
 
 func _init(owner: Node3D) -> void:
@@ -49,7 +47,7 @@ func attach(value: Object) -> void:
 
 
 func request() -> void:
-	if not enabled or state == "checking":
+	if state == "checking":
 		return
 	opening_tag = ""
 	opening_id = 0
@@ -68,7 +66,7 @@ func request() -> void:
 
 
 func receive(id: int, raw: String) -> void:
-	if not enabled or pending <= 0 or id != pending or state != "checking":
+	if pending <= 0 or id != pending or state != "checking":
 		return
 	pending = 0
 	var data: Variant = JSON.parse_string(raw)
@@ -92,7 +90,7 @@ func receive(id: int, raw: String) -> void:
 
 
 func open_release() -> void:
-	if not enabled or state != "available" or tag.is_empty() or not opening_tag.is_empty():
+	if state != "available" or tag.is_empty() or not opening_tag.is_empty():
 		return
 	opening_tag = tag
 	browser_error = false
@@ -110,8 +108,7 @@ func open_release() -> void:
 
 func release_opened(id: int, value: String, opened: bool) -> void:
 	if (
-		not enabled
-		or state != "available"
+		state != "available"
 		or opening_id <= 0
 		or id != opening_id
 		or opening_tag.is_empty()
@@ -126,8 +123,6 @@ func release_opened(id: int, value: String, opened: bool) -> void:
 
 
 func rows() -> Array:
-	if not enabled:
-		return []
 	var label := {
 		"idle": "Check for updates",
 		"checking": "Checking for updates…",

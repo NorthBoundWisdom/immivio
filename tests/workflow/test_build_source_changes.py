@@ -12,17 +12,6 @@ from configs import android_workflow as android
 
 
 class BuildSourceChanges(unittest.TestCase):
-    def test_channel_change_rejects_a_copied_build_receipt(self):
-        with self.workspace() as (root, args, marker):
-            self.mark_built(args, marker)
-            args.channel = "web"
-            web_marker = android.configuration_path(
-                "Quest", "Debug", "web"
-            ).with_suffix(".built.json")
-            web_marker.write_bytes(marker.read_bytes())
-            with self.assertRaisesRegex(RuntimeError, "Build inputs changed"):
-                android.require_build(args)
-
     @contextmanager
     def workspace(self):
         with tempfile.TemporaryDirectory() as folder, ExitStack() as stack:
@@ -44,7 +33,9 @@ class BuildSourceChanges(unittest.TestCase):
                 cmake="cmake",
                 build_tools="build",
             )
-            marker = root / "build/android/state/Quest-Debug.built.json"
+            marker = android.configuration_path("Quest", "Debug").with_suffix(
+                ".built.json"
+            )
             marker.parent.mkdir(parents=True)
             yield root, args, marker
 
@@ -121,7 +112,7 @@ class BuildSourceChanges(unittest.TestCase):
         with self.workspace() as (root, args, marker):
             self.mark_built(args, marker)
             current_build = android.require_build(args)
-            apk = root / "Immivio-QUEST-1.0.0-appstore-debug-20261121.apk"
+            apk = root / "Immivio-QUEST-1.0.0-web-debug-20261121.apk"
             apk.write_bytes(b"fixture APK")
             receipt = apk.with_suffix(".build.json")
             record = {"apk": apk.name, "sha256": android.digest(apk)}

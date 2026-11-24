@@ -117,7 +117,7 @@ def host_tests(godot):
         raise RuntimeError(f"Godot source tests failed: {failures}")
 
 
-def signing_env(environ, *, require_formal=False):
+def signing_env(environ):
     env = environ.copy()
     transport = "CI_ANDROID_"
     names = tuple(
@@ -128,7 +128,7 @@ def signing_env(environ, *, require_formal=False):
         key: value for key, value in env.items() if not key.startswith("CI_ANDROID_")
     }
     if not any(values):
-        if require_formal or environ.get("GITHUB_REF", "").startswith("refs/tags/"):
+        if environ.get("GITHUB_REF", "").startswith("refs/tags/"):
             raise RuntimeError(
                 "Release requires all three CI_ANDROID_* signing secrets"
             )
@@ -136,7 +136,7 @@ def signing_env(environ, *, require_formal=False):
     if not all(values):
         raise RuntimeError("Configure all three Android signing secrets, or none")
     # Transported CI credentials belong in a private runner/OS temporary directory,
-    # never in project outputs or in the permanent local store identity.
+    # never in project outputs or in the permanent local signing identity.
     temporary = tempfile.mkdtemp(
         prefix="immivio-ci-signing-", dir=env.get("RUNNER_TEMP")
     )
@@ -199,35 +199,21 @@ def check_export_path(templates, gradle, env):
     print("Verified Godot/Gradle export path with spaces and a literal +", flush=True)
 
 
-def build_type_for_ref(requested=None, environment=None, channel=None):
+def build_type_for_ref(requested=None, environment=None):
     environment = os.environ if environment is None else environment
     # A tag is a release boundary even if a caller accidentally requests Debug.
     if environment.get("GITHUB_REF", "").startswith("refs/tags/"):
         return "Release"
-    channel = channel or build_channel_for_ref(environment=environment)
-    selected = (
-        requested
-        or environment.get("CI_BUILD_TYPE")
-        or ("Release" if channel == "appstore" else "Debug")
-    )
+    selected = requested or environment.get("CI_BUILD_TYPE") or "Debug"
     if selected not in ("Debug", "Release"):
         raise ValueError("Build type must be Debug or Release")
     return selected
 
 
-def build_channel_for_ref(requested=None, environment=None):
-    environment = os.environ if environment is None else environment
-    if environment.get("GITHUB_REF", "").startswith("refs/tags/"):
-        return "web"
-    selected = requested or environment.get("CI_BUILD_CHANNEL", "appstore")
-    if selected not in player.CHANNELS:
-        raise ValueError("Distribution channel must be appstore or web")
-    return selected
-
-
-def latest_receipt_file(vendor, build_type, channel="appstore"):
+def latest_receipt_file(vendor, build_type):
     from configs.output_paths import packages, apk_for_receipt
 
+    channel = player.DISTRIBUTION_CHANNEL
     directory = packages(player.ROOT, vendor, channel, build_type)
     platform = {"Pico": "PICO", "Quest": "QUEST", "OpenXR": "OpenXR"}[vendor]
     # Prefer the canonical profile; read flat legacy output only until migration.
@@ -246,7 +232,7 @@ def latest_receipt_file(vendor, build_type, channel="appstore"):
                 record = json.loads(path.read_text())
                 apk = apk_for_receipt(path, record)
                 if (
-                    record.get("channel", "appstore") == channel
+                    record.get("channel") == channel
                     and record.get("vendor") == vendor
                     and record.get("build_type") == build_type
                     and apk.is_file()
@@ -261,14 +247,14 @@ def latest_receipt_file(vendor, build_type, channel="appstore"):
     raise RuntimeError("No packaged APK for this target")
 
 
-def latest_receipt(vendor, build_type, channel="appstore"):
-    return json.loads(latest_receipt_file(vendor, build_type, channel).read_text())
+def latest_receipt(vendor, build_type):
+    return json.loads(latest_receipt_file(vendor, build_type).read_text())
 
 
-def ci_package_metadata(vendor, build_type, channel="appstore", *, signing_mode):
+def ci_package_metadata(vendor, build_type, *, signing_mode):
     from configs.output_paths import ci_reports, apk_for_receipt
 
-    path = latest_receipt_file(vendor, build_type, channel)
+    path = latest_receipt_file(vendor, build_type)
     receipt = json.loads(path.read_text())
     receipt.update(
         ci_ref=os.environ.get("GITHUB_REF", ""),
@@ -279,7 +265,7 @@ def ci_package_metadata(vendor, build_type, channel="appstore", *, signing_mode)
     receipts, sums = [], []
     for v in ("Pico", "Quest", "OpenXR"):
         try:
-            current = latest_receipt_file(v, build_type, channel)
+            current = latest_receipt_file(v, build_type)
             record = json.loads(current.read_text())
             receipts.append(record)
             relative = (
@@ -290,7 +276,7 @@ def ci_package_metadata(vendor, build_type, channel="appstore", *, signing_mode)
             sums.append(f"{record['sha256']}  {relative}\n")
         except RuntimeError:
             pass
-    directory = ci_reports(player.ROOT, channel, build_type)
+    directory = ci_reports(player.ROOT, player.DISTRIBUTION_CHANNEL, build_type)
     directory.mkdir(parents=True, exist_ok=True)
     (directory / "SHA256SUMS.txt").write_text("".join(sums))
     (directory / "ci-summary.json").write_text(json.dumps(receipts, indent=2) + "\n")

@@ -197,7 +197,7 @@ class VariantIdentityBoundaries(unittest.TestCase):
         ):
             path = Path(directory) / "export_presets.cfg"
             original = b"\r\n".join(
-                f'[preset.{index}]\r\nplatform="Android"\r\ncustom_features="pico,immivio_appstore"\r\n[preset.{index}.options]\r\npackage/unique_name="com.northboundwisdom.immivio"\r\npackage/name="Original"'.encode()
+                f'[preset.{index}]\r\nplatform="Android"\r\ncustom_features="pico,immivio_web"\r\n[preset.{index}.options]\r\npackage/unique_name="com.northboundwisdom.immivio"\r\npackage/name="Original"'.encode()
                 for index in range(3)
             )
             path.write_bytes(original)
@@ -209,37 +209,10 @@ class VariantIdentityBoundaries(unittest.TestCase):
                     self.assertEqual(
                         path.read_text().count('package/name="Immivio"'), 3
                     )
-                    raise RuntimeError("simulated export failure")
-            self.assertEqual(path.read_bytes(), original)
-
-    def test_distribution_feature_is_exclusive_and_preserves_vendor_features(self):
-        with (
-            tempfile.TemporaryDirectory() as directory,
-            patch.object(builder, "PROJECT", Path(directory)),
-        ):
-            path = Path(directory) / "export_presets.cfg"
-            original = "\n".join(
-                f'[preset.{index}]\nplatform="Android"\ncustom_features="pico,immivio_appstore"\n[preset.{index}.options]\npackage/unique_name="original"\npackage/name="Original"'
-                for index in range(3)
-            ).encode()
-            path.write_bytes(original)
-            for channel, excluded in [("appstore", "web"), ("web", "appstore")]:
-                with builder.variant_export_presets(channel):
-                    exported = path.read_text()
                     self.assertEqual(
-                        exported.count(f'custom_features="pico,immivio_{channel}"'), 3
+                        path.read_text().count('custom_features="pico,immivio_web"'), 3
                     )
-                    self.assertNotIn("immivio_" + excluded, exported)
-                self.assertEqual(path.read_bytes(), original)
-            with self.assertRaisesRegex(ValueError, "appstore or web"):
-                with builder.variant_export_presets("invalid"):
-                    self.fail("Invalid distribution channel was accepted")
-            self.assertEqual(path.read_bytes(), original)
-            with builder.variant_export_presets() as identity:
-                self.assertEqual(
-                    identity["application_id"], "com.northboundwisdom.immivio"
-                )
-                self.assertEqual(identity, builder.android_identity())
+                    raise RuntimeError("simulated export failure")
             self.assertEqual(path.read_bytes(), original)
 
     def test_existing_signing_override_is_used_without_generating_another_key(self):

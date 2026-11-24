@@ -70,7 +70,7 @@ Immivio is a free, open-source VR video player for PICO and Meta Quest. Watch re
 **Privacy and updates**
 - No account is needed. Playback history and per-video memory can be turned off. Use multi-select in **Recent** to remove selected playback records while keeping the original videos.
 - Crash logs stay on the device until you choose to save one to Downloads.
-- Store builds have no update checker. Website builds check GitHub only when you click **Settings → About → Check for updates**, then open the release page in the browser. The app never downloads or installs an APK by itself.
+- Immivio checks GitHub only when you click **Settings → About → Check for updates**. When a new version is available, you can open its release page in the browser. The app never downloads or installs an APK by itself.
 
 **Languages:** English, Simplified Chinese, Traditional Chinese and Japanese.
 
@@ -82,11 +82,11 @@ Pick the APK for your headset:
 
 | Headset | APK |
 | --- | --- |
-| Meta Quest | `Immivio-QUEST-<version>-<channel>-<build>-<date>.apk` |
-| PICO | `Immivio-PICO-<version>-<channel>-<build>-<date>.apk` |
-| Other Android OpenXR runtimes (experimental) | `Immivio-OpenXR-<version>-<channel>-<build>-<date>.apk` |
+| Meta Quest | `Immivio-QUEST-<version>-web-<build>-<date>.apk` |
+| PICO | `Immivio-PICO-<version>-web-<build>-<date>.apk` |
+| Other Android OpenXR runtimes (experimental) | `Immivio-OpenXR-<version>-web-<build>-<date>.apk` |
 
-`<channel>` is `web` for GitHub releases, which include the manual update check, or `appstore` for store builds. `<build>` is `release` or `debug`.
+`<build>` is `release` or `debug`.
 
 1. Turn on developer mode on the headset, connect it over USB and allow USB debugging.
 2. Install the APK with any sideloading tool. Source ZIP/TAR archives are not apps.
@@ -142,7 +142,7 @@ Open an issue in [Issues](https://github.com/NorthBoundWisdom/immivio/issues) wi
 
 ## Development
 
-- [Build from source](docs/BUILD.md): environment, build commands, PICO store packaging and signing
+- [Build from source](docs/BUILD.md): environment, build commands, APK packaging and signing
 - [Architecture](docs/ARCHITECTURE.md) · [Testing](docs/TESTING.md) · [Device acceptance](docs/ACCEPTANCE.md)
 - [Contributing](CONTRIBUTING.md)
 

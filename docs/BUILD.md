@@ -70,37 +70,15 @@ python3 configs/android_workflow.py package --vendor Quest --build-type Debug
 
 Use `Pico` or `OpenXR` for the other targets and `Release` for distributable packages. Windows builds are unverified.
 
-The distribution channel is independent of the headset. Local commands default to `--channel appstore --build-type Release`; explicit `--build-type Debug` remains available for development and cannot be uploaded as a store release. Web commands default to Debug unless a build type or CI override is supplied. Appstore builds produce a store-distributed app with no Check for updates or external update-release action. Use `--channel web` consistently for Configure, Build, Test, Package and Run to include the explicit GitHub update checker:
-
-```sh
-python3 configs/android_workflow.py configure --vendor Pico --build-type Debug --channel web
-python3 configs/android_workflow.py build --vendor Pico --build-type Debug --channel web
-python3 configs/android_workflow.py package --vendor Pico --build-type Debug --channel web
-```
-
-Channels use mutually exclusive Godot export features (`immivio_appstore` / `immivio_web`), separate configuration/build receipts and APK names. Channel changes require matching Configure and Build stages. Direct Godot exports also default to appstore through the checked-in presets. Tag builds always use `Release` and `web`.
+All Android targets include the manual GitHub update checker. Local and CI commands default to Debug unless a build type or CI override is supplied. Tag builds always use Release. Existing commands with `--channel web` still work.
 
 `prepare_assets.py --download` explicitly downloads the OpenXR archive if its cache is missing or invalid. Run it without `--download` to verify the cache offline. `prepare-packages` prepares ordinary Gradle application package caches using their native manifests; it does not install Gradle, Python or any other host tool. Configure/Build/Test/Package consume prepared inputs offline. Gradle respects the host's normal cache locations and environment overrides. Valid caches let subsequent builds skip these preparation commands.
 
 Configure is explicit. Build/Test/Package reject missing or stale configuration. Package requires a successful current Build. `run` installs an APK whose receipt matches the current build. Generated projects and outputs stay under ignored build directories. Preview cleanup with `python3 configs/android_workflow.py clean --dry-run`. The default cleanup removes `build/` and preserves final packages, archives, addon caches and persistent signing material. Configure again afterward.
 
-## PICO store APKs
+## Release signing
 
-The default PICO store workflow uses the existing application identity, project-owned release key, ARM64 and `minSdkVersion=29` for PICO Neo3, PICO 4 and PICO 4 Ultra:
-
-```sh
-python3 configs/android_workflow.py configure --vendor Pico
-python3 configs/android_workflow.py build --vendor Pico
-python3 configs/android_workflow.py package --vendor Pico
-```
-
-Package validates the **compiled APK** using [PICO's first-version upload rules](https://developer-cn.picoxr.com/document/distribute/app-publish-first-version/#3af79c21). It checks the APK format and conservative 4,000,000,000-byte limit, package/version consistency, ARM64, SDK values and actual XR metadata, appstore feature, release-only components and one launcher icon. Existing checks still verify signatures, native dependencies, 16-KB alignment and the video application category. It records MD5 (PICO's duplicate-upload comparison), SHA-256 and the signer in `<APK stem>.store-report.json`; the build receipt names this report. Only the APK is uploaded as the installation package.
-
-All Release APKs (Quest, PICO and OpenXR, `web` and `appstore`) are signed with one release key whose **public** certificate SHA-256 is pinned in `configs/pico_store.py`. Release packaging requires that key through the persistent local signing record or complete `GODOT_ANDROID_KEYSTORE_RELEASE_*` overrides, checks the exported APK's certificate with `apksigner`, and never generates a replacement key. Keep the keystore and password backed up outside Git.
-
-If an actual `pvr.app.id` is embedded, set `IMMIVIO_PICO_APP_ID` to the real platform-assigned ID so validation can compare it. An APK without this optional field does not receive a fabricated ID. For an **already uploaded version in the same PICO track/region**, set `IMMIVIO_PICO_STORE_BASELINE` to its store-report JSON: validation then requires the same package/certificate, a nondecreasing versionCode and a different APK MD5. Do not treat an unsubmitted local build as an uploaded baseline. Portal state cannot be inferred from local packages.
-
-The current Godot/OpenXR APK reports its actual SDK metadata. The linked Unity/Unreal SDK thresholds for Swan devices in the US are outside this package's device scope; do not relabel the SDK or claim Swan support. A passing local report does not mean store approval.
+Local Release builds and tagged CI builds for Quest, PICO and OpenXR use the same project-owned release key. Its public certificate SHA-256 is pinned in `configs/player_build.py`. Local packaging uses the persistent signing record or complete `GODOT_ANDROID_KEYSTORE_RELEASE_*` overrides and verifies the APK certificate with `apksigner`. Tagged CI builds require the repository signing secrets. Untagged CI runs can use an ephemeral key for verification builds. Keep the keystore and password backed up outside Git.
 
 ## Generated files and cleanup
 
@@ -108,12 +86,12 @@ Generated files use one layout, shared by local builds, device/render tools and 
 
 | Directory | Contents | Cleanup |
 | --- | --- | --- |
-| `artifacts/packages/<PICO\|QUEST\|OpenXR>/<appstore\|web>/<release\|debug>/` | Installable APKs and their build/store reports | Kept by every automatic cleanup command |
+| `artifacts/packages/<PICO\|QUEST\|OpenXR>/web/<release\|debug>/` | Installable APKs and their build receipts | Kept by every automatic cleanup command |
 | `artifacts/packages/releases/<tag>/` | Verified three-platform publication bundle | Kept by every automatic cleanup command |
 | `artifacts/reports/` | CI summaries, release checks and move journals | Kept by default |
 | `artifacts/tests/` | Godot, JVM, workflow and native test results | `clean --scope tests` |
 | `artifacts/captures/` | UI, headset and branding verification images/reports | `clean --scope captures` |
-| `artifacts/logs/` | Build logs by platform/channel/type, manual/tool logs | `clean --scope logs` |
+| `artifacts/logs/` | Build logs by platform and build type, manual/tool logs | `clean --scope logs` |
 | `artifacts/archive/` | Preserved historical output and old build experiments/dependencies | `clean --scope archive` only when no longer needed |
 | `build/android/` | Configuration state, generated Gradle properties and Godot API | `clean --scope build` |
 | `build/staging/` | Verified addon expansion and CI download staging | `clean --scope build` |
@@ -134,7 +112,7 @@ python3 configs/android_workflow.py clean --scope logs
 python3 configs/android_workflow.py clean --scope intermediates
 ```
 
-`locate` prints the latest existing verified package path for the requested profile; add `--channel web --build-type Debug` as needed. Its APK, `.build.json` and optional `.store-report.json` stay together. Package filenames do not change. `organize` moves loose outputs into this layout without overwriting data and records each move under `artifacts/reports/organization/`.
+`locate` prints the path to the latest verified APK for the requested platform and build type. Use `--build-type Release` to find a release APK. `organize` keeps APKs and their receipts together, preserves legacy packages and their store reports, and records moves under `artifacts/reports/organization/`.
 
 CI uploads the nested `packages/` and `reports/ci/` trees. The tag publisher verifies all three nested package/receipt pairs, rejects duplicates or unrelated APKs, and flattens the verified set into the public release bundle. CI hash lists use paths relative to `artifacts/`; public release hash lists use APK basenames.
 
@@ -146,7 +124,7 @@ Compatible ordinary video can use a decoder Surface in an OpenXR compositor laye
 
 ## Outputs, signing and CI
 
-APKs use `Immivio-<QUEST|PICO|OpenXR>-<version>-<appstore|web>-<debug|release>-<YYYYMMDD>.apk`. Each schema-version-5 `.build.json` receipt includes the distribution channel, source commit, verified OpenXR addon version/checksum, Gradle locks, manifest digests, toolchain, APK checksum and signing certificate. Packaging verifies the channel feature in the exported project. Changes to build scripts or the addon manifest invalidate previous build configurations.
+APKs use `Immivio-<QUEST|PICO|OpenXR>-<version>-web-<debug|release>-<YYYYMMDD>.apk`. Each schema-version-5 `.build.json` receipt includes the distribution channel, source commit, verified OpenXR addon version/checksum, Gradle locks, manifest digests, toolchain, APK checksum and signing certificate. Packaging verifies the web feature in the exported project. Changes to build scripts or the addon manifest invalidate previous build configurations.
 
 The exported application is categorized as video (`package/app_category=8` in Godot, `appCategory=2` and `isGame=false` in Android); package verification rejects a game-classified APK.
 

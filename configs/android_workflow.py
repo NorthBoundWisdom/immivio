@@ -55,12 +55,11 @@ BUILD_INPUTS = (
 )
 
 
-def arguments_for(vendor, build_type, tools, channel="appstore"):
+def arguments_for(vendor, build_type, tools):
     components = player.sdk_tools()
     return SimpleNamespace(
         vendor=vendor,
         build_type=build_type,
-        channel=channel,
         godot=tools["godot"],
         templates=Path(tools["templates"]),
         gradle=tools["gradle"],
@@ -73,9 +72,8 @@ def arguments_for(vendor, build_type, tools, channel="appstore"):
     )
 
 
-def configuration_path(vendor, build_type, channel="appstore"):
-    suffix = "" if channel == "appstore" else "-" + channel
-    return ROOT / f"build/android/state/{vendor}-{build_type}{suffix}.json"
+def configuration_path(vendor, build_type):
+    return ROOT / f"build/android/state/{vendor}-{build_type}-web.json"
 
 
 def input_signature(args):
@@ -121,7 +119,7 @@ def input_signature(args):
             }
         )
     inputs["android_identity"] = player.android_identity(args.build_type)
-    inputs["distribution_channel"] = player.distribution_channel(args)
+    inputs["distribution_channel"] = player.DISTRIBUTION_CHANNEL
     inputs["sdk_components"] = {
         "ndk": args.ndk,
         "cmake": args.cmake,
@@ -176,9 +174,7 @@ def configure(args, env, sdk):
 
     guides(ROOT)
     player.configure_project(args, env, sdk)
-    marker = configuration_path(
-        args.vendor, args.build_type, player.distribution_channel(args)
-    )
+    marker = configuration_path(args.vendor, args.build_type)
     marker.parent.mkdir(parents=True, exist_ok=True)
     marker.write_text(
         json.dumps(
@@ -209,9 +205,7 @@ def configure(args, env, sdk):
 
 
 def require_configuration(args, env, sdk):
-    marker = configuration_path(
-        args.vendor, args.build_type, player.distribution_channel(args)
-    )
+    marker = configuration_path(args.vendor, args.build_type)
     if not marker.is_file():
         raise RuntimeError("Configure this target and build type first")
     data = json.loads(marker.read_text())
@@ -260,9 +254,7 @@ def prepare_packages(args, env):
 
 def build(args, env, sdk):
     player.build_plugin(args, env, sdk)
-    path = configuration_path(
-        args.vendor, args.build_type, player.distribution_channel(args)
-    ).with_suffix(".built.json")
+    path = configuration_path(args.vendor, args.build_type).with_suffix(".built.json")
     path.write_text(
         json.dumps(
             {
@@ -278,9 +270,7 @@ def build(args, env, sdk):
 
 
 def require_build(args):
-    path = configuration_path(
-        args.vendor, args.build_type, player.distribution_channel(args)
-    ).with_suffix(".built.json")
+    path = configuration_path(args.vendor, args.build_type).with_suffix(".built.json")
     if not path.exists():
         raise RuntimeError("Run build before package or run")
     serialized = path.read_bytes()
@@ -297,9 +287,7 @@ def require_packaged_build(args, build_sha256):
     from configs.ci_support import latest_receipt_file
     from configs.output_paths import apk_for_receipt
 
-    path = latest_receipt_file(
-        args.vendor, args.build_type, player.distribution_channel(args)
-    )
+    path = latest_receipt_file(args.vendor, args.build_type)
     receipt = json.loads(path.read_text())
     if receipt.get("build_sha256") != build_sha256:
         raise RuntimeError("APK does not match the current build; run package again")
@@ -392,13 +380,13 @@ def main(argv=None):
     parser.add_argument("--vendor", choices=VENDORS, default="Quest")
     parser.add_argument(
         "--channel",
-        choices=player.CHANNELS,
-        help="Distribution channel (default: appstore; GitHub tags always use web)",
+        choices=(player.DISTRIBUTION_CHANNEL,),
+        help="Optional compatibility flag for the web distribution channel",
     )
     parser.add_argument(
         "--build-type",
         choices=("Debug", "Release"),
-        help="Default: Release for appstore, Debug for web; explicit Debug is for development only",
+        help="Defaults to Debug. GitHub tags always use Release.",
     )
     parser.add_argument("--level", choices=("l0", "l1", "l2", "all"), default="all")
     parser.add_argument(
@@ -426,15 +414,14 @@ def main(argv=None):
         else:
             print(json.dumps(output_paths.describe(ROOT), ensure_ascii=False, indent=2))
         return 0
-    from configs.ci_support import build_type_for_ref, build_channel_for_ref
+    from configs.ci_support import build_type_for_ref
 
-    opts.channel = build_channel_for_ref(opts.channel)
-    opts.build_type = build_type_for_ref(opts.build_type, channel=opts.channel)
+    opts.build_type = build_type_for_ref(opts.build_type)
     if opts.command == "locate":
         from configs.ci_support import latest_receipt_file
         from configs.output_paths import apk_for_receipt
 
-        path = latest_receipt_file(opts.vendor, opts.build_type, opts.channel)
+        path = latest_receipt_file(opts.vendor, opts.build_type)
         record = json.loads(path.read_text())
         apk = apk_for_receipt(path, record)
         if digest(apk) != record.get("sha256"):
@@ -447,15 +434,12 @@ def main(argv=None):
             player.run([gradle, "--stop"], env=os.environ.copy(), timeout=60)
         return 0
     tools = host_tools()
-    args = arguments_for(
-        opts.vendor,
-        opts.build_type,
-        tools,
-        opts.channel,
-    )
+    args = arguments_for(opts.vendor, opts.build_type, tools)
     from configs.output_paths import build_logs
 
-    player.LOGS = build_logs(ROOT, args.vendor, args.channel, args.build_type)
+    player.LOGS = build_logs(
+        ROOT, args.vendor, player.DISTRIBUTION_CHANNEL, args.build_type
+    )
     env, sdk = player.environment(args)
     with player.build_lock():
         if opts.command == "configure":
@@ -476,9 +460,7 @@ def main(argv=None):
             if tagged or (hosted and args.build_type == "Release"):
                 from configs.ci_support import signing_env
 
-                env, signing_mode = signing_env(
-                    env, require_formal=args.channel == "appstore"
-                )
+                env, signing_mode = signing_env(env)
             player.package(
                 args, env, sdk, build_sha256=build_sha256, signing_mode=signing_mode
             )
@@ -488,7 +470,6 @@ def main(argv=None):
                 ci_package_metadata(
                     args.vendor,
                     args.build_type,
-                    args.channel,
                     signing_mode=signing_mode,
                 )
         else:

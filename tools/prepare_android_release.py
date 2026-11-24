@@ -11,7 +11,7 @@ import sys
 import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from configs.pico_store import CERTIFICATE_SHA256
+from configs.player_build import CERTIFICATE_SHA256
 
 PLATFORMS = {"Pico": "PICO", "Quest": "QUEST", "OpenXR": "OpenXR"}
 
@@ -26,7 +26,7 @@ def require_release_signer(record):
         raise ValueError("Release receipt must use the formal CI release signing key")
     if record.get("signing_certificate_sha256") != CERTIFICATE_SHA256:
         raise ValueError(
-            "Release receipt signer differs from the pinned PICO store certificate"
+            "Release receipt signer differs from the pinned Android release certificate"
         )
 
 

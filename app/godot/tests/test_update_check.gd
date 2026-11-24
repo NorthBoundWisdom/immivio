@@ -34,26 +34,6 @@ func _run() -> void:
 	menu.section = Menu.Section.SETTINGS
 	menu.tab = Menu.ABOUT_TAB
 	menu.refresh()
-	assert(not menu.update_check.enabled, "Source/editor builds default to appstore")
-	assert(
-		not menu.rows.any(
-			func(row):
-				return row.get("check_updates", false) or row.get("open_update_release", false),
-		)
-	)
-	menu.test_choose({"check_updates": true})
-	menu.update_check.state = "available"
-	menu.update_check.tag = "v9.9.9"
-	menu.test_choose({"open_update_release": true})
-	assert(
-		platform.requested.is_empty() and platform.opened.is_empty(),
-		"Appstore ignores stale update actions"
-	)
-	# Exercise web behavior through the same compiled-feature value used by exports.
-	menu.update_check.enabled = true
-	menu.update_check.state = "idle"
-	menu.update_check.tag = ""
-	menu.refresh()
 	assert(platform.requested.is_empty(), "Displaying About never checks automatically")
 	assert(menu.rows[0].title == "Immivio" and menu.rows[1].check_updates)
 	menu.test_choose(menu.rows[1])
@@ -127,14 +107,5 @@ func _run() -> void:
 	menu.refresh()
 	menu._on_android_lifecycle("resume")
 	assert(platform.requested.size() == count, "Resume and redraw never initiate IO")
-	menu.update_check.enabled = false
-	menu.refresh()
-	assert(
-		not menu.rows.any(
-			func(row):
-				return row.get("check_updates", false) or row.get("open_update_release", false),
-		),
-		"Appstore exposes neither the checker nor a retained release link"
-	)
 	menu.free()
 	preload("res://tests/support/test_result.gd").finish(self, 0)

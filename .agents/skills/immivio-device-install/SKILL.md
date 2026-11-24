@@ -23,7 +23,7 @@ adb devices -l
 - macOS 上預設 ADB 只見模擬器時，先依 [裝置探針說明](../../../docs/TESTING.md#device-probes-and-local-media) 檢查 IORegistry、既有服務埠與 USB 介面占用；`system_profiler` 空清單不足以判定未插線。選定非預設埠後，每次 adb 都帶相同 `-P`，Python 探針帶 `--port`，不要停止其他工作的服務。多個服務爭用同一 USB 介面會持續洩漏 IOKit user client，最終出現 `e00002be` 並拖慢主機上其他 USB 軟體；只需模擬器的服務以 `ADB_USB=0` 啟動，自己啟動的臨時服務在收尾時必須停止並確認行程與監聽埠已消失。
 - 只有一台已授權真機且符合使用者要求時直接使用；多台裝置而目標不明時再請使用者選擇。`unauthorized`、`offline` 或無裝置時，說明需要在頭顯允許 USB 偵錯或重新連線，等待恢復後繼續。
 - 依裝置設定 `DEVICE_VENDOR` 為 `Pico`、`Quest` 或 `OpenXR`。不明時以 `adb -s "$DEVICE_SERIAL" shell getprop ro.product.manufacturer` 等裝置資訊確認，避免把 Quest 預設建置裝到 PICO。
-- 一般本機驗證設定 `BUILD_TYPE=Debug`、`DIST_CHANNEL=appstore`；依使用者指定保留 Release、web 或既有開發包選擇。每個階段使用相同參數。`appstore` 是發行通道，不代表本次要上架；Debug 包不是商店提交包。
+- 一般本機驗證設定 `BUILD_TYPE=Debug`，依使用者指定選擇 Release 或既有開發包。每個階段使用相同參數。
 - 一般應用 ID 為 `com.northboundwisdom.immivio`，將它存入 `APP_ID`。若使用者指定獨立開發包，所有階段都設定 `IMMIVIO_DEVELOPMENT_PACKAGE=1`、使用 Debug，並改用 `com.northboundwisdom.immivio.dev`（顯示名稱為 Immivio Dev）。
 
 ## 2. 使用已準備好的環境與快取
@@ -50,9 +50,9 @@ python3 configs/check_environment.py
 依序執行；任何階段失敗都先處理該階段，不繼續安裝之前留下的 APK：
 
 ```sh
-python3 configs/android_workflow.py configure --vendor "$DEVICE_VENDOR" --build-type "$BUILD_TYPE" --channel "$DIST_CHANNEL"
-python3 configs/android_workflow.py build --vendor "$DEVICE_VENDOR" --build-type "$BUILD_TYPE" --channel "$DIST_CHANNEL"
-python3 configs/android_workflow.py package --vendor "$DEVICE_VENDOR" --build-type "$BUILD_TYPE" --channel "$DIST_CHANNEL"
+python3 configs/android_workflow.py configure --vendor "$DEVICE_VENDOR" --build-type "$BUILD_TYPE"
+python3 configs/android_workflow.py build --vendor "$DEVICE_VENDOR" --build-type "$BUILD_TYPE"
+python3 configs/android_workflow.py package --vendor "$DEVICE_VENDOR" --build-type "$BUILD_TYPE"
 ```
 
 Configure 的來源簽章包含 GDScript；只改腳本也可能需要重新 Configure。Package 負責驗證實際 APK 的簽章、ARM64、native 依賴、對齊、應用身分與通道。不要以「Gradle 成功」代替整個 Package 成功。
@@ -60,7 +60,7 @@ Configure 的來源簽章包含 GDScript；只改腳本也可能需要重新 Con
 建置日誌在 `artifacts/logs/build/<平台>/<通道>/<類型>/`；APK 與 `.build.json` 在 `artifacts/packages/<平台>/<通道>/<類型>/`。用 workflow 查找實際輸出，不手寫版本、日期或猜測 APK 名稱：
 
 ```sh
-python3 configs/android_workflow.py locate --vendor "$DEVICE_VENDOR" --build-type "$BUILD_TYPE" --channel "$DIST_CHANNEL"
+python3 configs/android_workflow.py locate --vendor "$DEVICE_VENDOR" --build-type "$BUILD_TYPE"
 ```
 
 只有 `locate` 成功後，才將其輸出存入 `APK`；它會比對 APK 與 receipt 的 SHA-256。確認 receipt 的應用 ID、平台與通道符合本次選擇。本次新增背景等素材時，可用 Python `zipfile` 檢查實際 APK 內包含對應資源。

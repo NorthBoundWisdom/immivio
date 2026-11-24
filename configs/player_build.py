@@ -37,14 +37,9 @@ from configs.dependencies import (
 )
 
 LOCK = {**TOOLCHAIN, **TOOLCHAIN["android"]}
-CHANNELS = ("appstore", "web")
-
-
-def distribution_channel(args=None):
-    channel = getattr(args, "channel", "appstore")
-    if channel not in CHANNELS:
-        raise ValueError("Distribution channel must be appstore or web")
-    return channel
+DISTRIBUTION_CHANNEL = "web"
+# Public certificate fingerprint of the project-owned Android release key.
+CERTIFICATE_SHA256 = "89b2a063d2783d04971415ccc1d98eb47eefd7fd343e242a61931a22f786d89b"
 
 
 def stop_process(process):
@@ -551,9 +546,7 @@ def android_identity(build_type=None):
 
 
 @contextmanager
-def variant_export_presets(channel="appstore"):
-    if channel not in CHANNELS:
-        raise ValueError("Distribution channel must be appstore or web")
+def variant_export_presets():
     path = PROJECT / "export_presets.cfg"
     original = path.read_bytes()
     identity = android_identity()
@@ -570,30 +563,6 @@ def variant_export_presets(channel="appstore"):
         if count != 3:
             raise RuntimeError("Android export presets changed: " + field)
 
-    def set_channel(match):
-        block = match[0]
-        features = re.search(r'(?m)^custom_features="([^"]*)"\r?$', block)
-        retained = (
-            [
-                value
-                for value in features[1].split(",")
-                if value and value not in ("immivio_appstore", "immivio_web")
-            ]
-            if features
-            else []
-        )
-        retained.append("immivio_" + channel)
-        line = "custom_features=" + json.dumps(",".join(retained))
-        if features:
-            return block[: features.start()] + line + block[features.end() :]
-        header, body = block.split("\n", 1)
-        return header + "\n" + line + "\n" + body
-
-    text, count = re.subn(r"(?ms)^\[preset\.\d+\]\r?\n.*?(?=^\[|\Z)", set_channel, text)
-    if count != 3:
-        raise RuntimeError(
-            "Expected three Android export presets for distribution channels"
-        )
     try:
         path.write_text(text, encoding="utf-8")
         yield identity
@@ -928,19 +897,18 @@ def build_plugin(args, env, sdk):
 
 
 def package(args, env, sdk, *, build_sha256, signing_mode=None):
-    channel = distribution_channel(args)
+    channel = DISTRIBUTION_CHANNEL
     identity = android_identity(args.build_type)
     development_suffix = "-dev" if identity["application_id"].endswith(".dev") else ""
     variant = args.build_type.lower()
     templates, engine = template_directory(args, env)
-    store_release = channel == "appstore" and args.build_type == "Release"
     tagged = env.get("GITHUB_REF", "").startswith("refs/tags/")
     if tagged and (
         args.build_type != "Release" or signing_mode != "repository-signing-key"
     ):
         raise RuntimeError("Tagged APKs require the formal CI release signing key")
     formal_release = args.build_type == "Release" and (
-        tagged or store_release or signing_mode != "ephemeral-ci-key"
+        signing_mode != "ephemeral-ci-key"
     )
     env = signing_environment(
         env, build_type=args.build_type, require_existing=formal_release
@@ -963,11 +931,10 @@ def package(args, env, sdk, *, build_sha256, signing_mode=None):
     # An early/failed export must not leave a previous package looking current.
     output.unlink(missing_ok=True)
     output.with_suffix(".build.json").unlink(missing_ok=True)
-    output.with_suffix(".store-report.json").unlink(missing_ok=True)
     print(f"Exporting {output.name}", flush=True)
     env["IMMIVIO_OFFLINE_BUILD"] = "1"
     try:
-        with variant_export_presets(channel):
+        with variant_export_presets():
             run(
                 [
                     export_executable(args.godot),
@@ -1002,14 +969,8 @@ def package(args, env, sdk, *, build_sha256, signing_mode=None):
     sha = inspect_package(output, env, sdk)
     with zipfile.ZipFile(output) as archive:
         config = archive.read("assets/project.binary")
-    if ("immivio_" + channel).encode() not in config or any(
-        ("immivio_" + other).encode() in config
-        for other in CHANNELS
-        if other != channel
-    ):
-        raise RuntimeError(
-            "Packaged Godot feature does not match the requested distribution channel"
-        )
+    if b"immivio_web" not in config:
+        raise RuntimeError("Packaged Godot project is missing the web export feature")
     revision = subprocess.check_output(
         ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
     ).strip()
@@ -1026,43 +987,14 @@ def package(args, env, sdk, *, build_sha256, signing_mode=None):
     )
     if not certificates:
         raise RuntimeError("APK signing certificate is missing")
-    from configs.pico_store import CERTIFICATE_SHA256
-
     if formal_release and certificates != {CERTIFICATE_SHA256}:
         output.unlink(missing_ok=True)
-        raise RuntimeError("APK signer differs from the pinned PICO store certificate")
+        raise RuntimeError(
+            "APK signer differs from the pinned Android release certificate"
+        )
     certificate = next(iter(certificates))
     from configs.android_workflow import dependency_receipt
 
-    store_report = None
-    if store_release and args.vendor == "Pico":
-        from configs.pico_store import validate
-
-        presets = (PROJECT / "export_presets.cfg").read_text()
-        codes = re.findall(r"(?m)^version/code=(\d+)\r?$", presets)
-        if len(codes) != 3 or len(set(codes)) != 1:
-            raise RuntimeError("Android export versions must agree")
-        baseline_path = env.get("IMMIVIO_PICO_STORE_BASELINE")
-        baseline = (
-            json.loads(Path(baseline_path).read_text()) if baseline_path else None
-        )
-        try:
-            report = validate(
-                output,
-                verify_xmltree((LOGS / "base-apk-xmltree.log").read_text()),
-                certificate=certificate,
-                expected_certificate=CERTIFICATE_SHA256,
-                version=version,
-                version_code=int(codes[0]),
-                expected_app_id=env.get("IMMIVIO_PICO_APP_ID"),
-                baseline=baseline,
-            )
-        except ValueError as error:
-            output.unlink(missing_ok=True)
-            raise RuntimeError(str(error)) from error
-        report["sha256"] = sha
-        store_report = output.with_suffix(".store-report.json")
-        store_report.write_text(json.dumps(report, indent=2) + "\n")
     receipt = {
         **dependency_receipt(),
         **identity,
@@ -1082,8 +1014,6 @@ def package(args, env, sdk, *, build_sha256, signing_mode=None):
         "cmake": args.cmake,
         "device_execution": "not_verified",
     }
-    if store_report:
-        receipt["store_report"] = store_report.name
     (output.with_suffix(".build.json")).write_text(json.dumps(receipt, indent=2) + "\n")
     print(f"Built {output}\nSHA256 {sha}", flush=True)
 

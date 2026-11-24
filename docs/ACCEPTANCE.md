@@ -75,12 +75,11 @@ memory and thermal behaviour.
   context. Resume in place without overriding manual pause or reviving closed media.
   Verify frozen seek transitions, retained frames and final-frame cleanup;
   host geometry/state checks do not certify headset pixels or audible output.
-- [ ] **A10 — Explicit website-build update flow.** In a web-channel build,
-  request Check for updates, exercise checking/current/new-version/error states,
+- [ ] **A10 — Manual update flow.** Request Check for updates, exercise
+  checking/current/new-version/error states,
   and open the offered GitHub release page. Verify browser return, localized
   no-handler failure and manual retry. Startup/background/redraw must not check
-  automatically. Store builds have no update entry. This case does not install
-  or publish an APK.
+  automatically.
 - [ ] **A11 — Sustained rendering, cadence and comfort.** Measure memory/handles,
   thermal state, decoded/presented/XR cadence and perceived comfort separately.
   Look around in the cached sky and during supported video playback. On PICO,

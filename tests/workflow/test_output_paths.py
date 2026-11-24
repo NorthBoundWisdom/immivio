@@ -27,13 +27,14 @@ class OutputLayout(unittest.TestCase):
     def package(
         self,
         directory="artifacts",
-        name="Immivio-PICO-0.9.6-appstore-release-20261106.apk",
+        channel="appstore",
     ):
+        name = f"Immivio-PICO-0.9.6-{channel}-release-20261106.apk"
         apk = self.file(directory + "/" + name, b"original APK bytes")
         record = {
             "apk": name,
             "vendor": "Pico",
-            "channel": "appstore",
+            "channel": channel,
             "build_type": "Release",
             "sha256": "a" * 64,
         }
@@ -144,9 +145,10 @@ class OutputLayout(unittest.TestCase):
     def test_latest_receipt_ignores_archived_or_missing_apks_and_summaries_use_nested_paths(
         self,
     ):
-        folder = outputs.packages(self.root, "Pico", "appstore", "Release")
-        apk, receipt, _ = self.package(str(folder.relative_to(self.root)))
-        self.package("artifacts/archive/old")
+        folder = outputs.packages(self.root, "Pico", "web", "Release")
+        apk, receipt, _ = self.package(str(folder.relative_to(self.root)), "web")
+        self.package("artifacts/archive/old", "web")
+        self.package()
         with (
             patch.object(player, "ROOT", self.root),
             patch.dict("os.environ", {"GITHUB_REF": "refs/heads/main"}),
@@ -155,9 +157,9 @@ class OutputLayout(unittest.TestCase):
             ci.ci_package_metadata(
                 "Pico", "Release", signing_mode="repository-signing-key"
             )
-            report = outputs.ci_reports(self.root, "appstore", "Release")
+            report = outputs.ci_reports(self.root, "web", "Release")
             self.assertIn(
-                "packages/PICO/appstore/release/" + apk.name,
+                "packages/PICO/web/release/" + apk.name,
                 (report / "SHA256SUMS.txt").read_text(),
             )
             apk.unlink()
@@ -165,8 +167,8 @@ class OutputLayout(unittest.TestCase):
                 ci.latest_receipt("Pico", "Release")
 
     def test_canonical_profile_wins_over_a_newer_flat_legacy_copy(self):
-        _, canonical, _ = self.package("artifacts/packages/PICO/appstore/release")
-        _, legacy, _ = self.package()
+        _, canonical, _ = self.package("artifacts/packages/PICO/web/release", "web")
+        _, legacy, _ = self.package(channel="web")
         os.utime(legacy, (2_000_000_000, 2_000_000_000))
         with patch.object(player, "ROOT", self.root):
             self.assertEqual(ci.latest_receipt_file("Pico", "Release"), canonical)
