@@ -45,6 +45,7 @@ Immivio is a free, open-source VR video player for PICO and Meta Quest. Watch re
 **Your video library**
 - **Local files**, including USB drives mounted by the system. Supports STRM shortcuts and opening videos from Android's Open/Share menu.
 - **Network media**, a single place for SMB shared folders, DLNA libraries, and Plex, Emby, Jellyfin, Stash and XBVR servers. What you can do depends on the source and your account permissions.
+- Jellyfin movie details let you choose and resume individual discs. Playback continues in part-number order.
 - File lists show only videos and folders, with list/icon views and remembered folder positions. During playback, Browse opens a compact video switcher above the controls. Close the video to return to the full library and Settings.
 - Visible local videos can receive preview thumbnails before their first playback. Previews are generated one at a time while browsing, use the existing cache, and leave the video icon when Android cannot decode them.
 
@@ -52,7 +53,7 @@ Immivio is a free, open-source VR video player for PICO and Meta Quest. Watch re
 - Start with a starry sky, or choose Sunset/Beach panoramas, cloud scenery, a dark background or passthrough. Adjust scenery direction and brightness.
 - Move the picture and windows anywhere. Flat screens range from 0.1–50 m and 5–3000% size, with adjustable curvature and TV/cinema presets.
 - Reclining mode and head-follow are available as separate settings, and the window height can be adjusted.
-- Uses 72 Hz when the device supports it and lists only the refresh rates the device offers.
+- Choose a fixed headset refresh rate (72 Hz by default) or enable video frame-rate matching. The FPS overlay shows the refresh rate reported by the headset.
 
 **Playback and subtitles**
 - Automatically recognizes SBS/top-bottom video from naming, container metadata and matching eye images. Uncertain content stays in its current mode; saved manual choices take priority. Use **Video mode → Auto detect** to recheck a previously saved format. Image matching identifies stereo packing, while VR projection and lens angle still follow file markers or your settings.

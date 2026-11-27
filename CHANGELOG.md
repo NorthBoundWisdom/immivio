@@ -6,17 +6,25 @@
 
 Newest first, with the main changes that affect everyday use. Unreleased items are not yet part of a public release. Versions 0.6.0 and earlier belong to the original project. Photo viewing, cloud drives and AI 3D conversion appear only as historical features and were removed later; see the [README](README.md) for current capabilities.
 
-## 待发布 / Unreleased
+## 1.0.3 — 2026-11-28
 
 **中文**
 
+- 在本地、SMB 和 DLNA 目录中，每个可用排序字段只占一行。再次点击当前字段即可反转顺序。
+- 播放队列每页显示四项。随机和循环可直接切换，编辑模式支持移动和移除。添加视频后可继续选片。
+- 修复 PICO 冷启动时圆柱菜单层过早调整 Android Surface 尺寸导致的 OpenXR 错误。
 - Jellyfin 影片详情支持按分部选播和续播。文件名中的 CD、Part、Pt、Disc 和 Disk 编号决定播放顺序，例如 CD2 会排在 CD10 前面。
 - 显示设置默认使用固定刷新率，也可开启片源帧率匹配。应用每两秒核对头显实际报告的 Hz，必要时重新请求目标值。视频合成图层短暂繁忙时保留上一帧。Quest 2 高光闪烁的改善情况仍待真机确认。
+- PICO、Quest 和通用 OpenXR 安装包统一通过 GitHub Releases 分发，已移除 PICO 商店构建和入口。
 
 **English**
 
+- File sorting shows one row per available field in local, SMB and DLNA directories. Select the active field again to reverse the order.
+- The playback queue shows four entries per page. Toggle shuffle or repeat directly, use Edit to move or remove entries, and keep browsing after adding a video.
+- Fix an OpenXR startup error on PICO when the curved menu layer resized an Android Surface before its swapchain existed.
 - Select individual Jellyfin movie parts and continue to the next part automatically. CD, Part, Pt, Disc and Disk numbers in filenames determine playback order, so CD2 plays before CD10.
 - The display uses a fixed refresh rate by default, with optional video frame-rate matching. The player checks the headset’s reported Hz every two seconds and requests the target again if needed. A busy video composition layer retains the previous frame. The effect on highlight flicker still needs verification on Quest 2.
+- Get the PICO, Quest and generic OpenXR packages from GitHub Releases. PICO Store builds and links have been retired.
 
 ## 1.0.2 — 2026-11-22
 

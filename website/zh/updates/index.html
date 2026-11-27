@@ -151,6 +151,7 @@
       <div class="wrap doc">
         <nav class="toc" aria-label="本页目录">
           <p>本页目录</p>
+          <a href="#v1-0-3">v1.0.3</a>
           <a href="#v1-0-2">v1.0.2</a>
           <a href="#v1-0-1">v1.0.1</a>
           <a href="#v1-0-0">v1.0.0</a><a href="#v0-9-11">v0.9.11</a><a href="#v0-9-10">v0.9.10</a
@@ -160,6 +161,20 @@
           ><a href="#v0-9-0">v0.9.0</a><a href="#channels">安装包与渠道</a>
         </nav>
         <article class="prose">
+          <section id="v1-0-3" class="release">
+            <div class="release-head">
+              <h2>v1.0.3</h2>
+              <time datetime="2026-11-28">2026 年 11 月 28 日</time>
+            </div>
+            <ul>
+              <li>Jellyfin 影片详情可任选分部、恢复该分部的进度并按编号续播。</li>
+              <li>显示刷新率默认固定，也可按片源匹配。帧率浮层显示头显实际 Hz；视频合成层短暂繁忙时保留上一帧。Quest 2 高光闪烁仍待真机确认。</li>
+              <li>在本地、SMB 和 DLNA 目录中，每个可用排序字段只占一行。再次点击当前字段即可反转顺序。</li>
+              <li>播放队列每页显示四项。随机和循环可直接切换，编辑模式支持移动和移除。添加视频后可继续选片。</li>
+              <li>修复 PICO 冷启动时圆柱菜单层过早调整 Android Surface 尺寸导致的 OpenXR 错误。</li>
+              <li>PICO、Quest 和通用 OpenXR 安装包统一通过 GitHub Releases 分发，已移除 PICO 商店构建和入口。</li>
+            </ul>
+          </section>
           <section id="v1-0-2" class="release">
             <div class="release-head">
               <h2>v1.0.2</h2>
