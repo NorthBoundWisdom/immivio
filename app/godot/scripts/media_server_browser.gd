@@ -256,9 +256,22 @@ func receive(id: int, payload: String) -> bool:
 					menu.status = "Original stream unavailable"
 				else:
 					detail.merge(versions[0], true)
+			var additional: Array = detail.get("additional_parts", [])
+			detail.erase("additional_parts")
+			var parts: Array = []
+			if source_id.is_empty() and not additional.is_empty():
+				parts = [detail.duplicate()] + additional
+				for i in parts.size():
+					parts[i].part_index = i
+					parts[i].title = str(detail.title) + " · " + (I18n.t("Part %d") % (i + 1))
+				detail.parts = parts
+			menu.status = str(detail.get("parts_error", menu.status))
 			for local in _local_resume():
 				if local.uri == detail.get("uri"):
 					detail.position_ms = local.position_ms
+				for part in parts:
+					if local.uri == part.uri:
+						part.position_ms = local.position_ms
 		"favorite":
 			if str(detail.get("id", "")) == str(data.get("scene_id", "")):
 				detail.favorite = bool(data.get("favorite", false))
@@ -597,20 +610,16 @@ func rows() -> Array[Dictionary]:
 				)
 		"detail":
 			if not detail.is_empty():
-				result.append(
-					{
-						"title":
-						I18n.t(
-							(
-								"Continue watching"
-								if int(detail.get("position_ms", 0)) > 0
-								else "Play / resume"
-							)
-						),
-						"icon": "play",
-						"play_scene": detail
-					}
-				)
+				for part in detail.get("parts", [detail]):
+					var label := (
+						I18n.t("Continue watching")
+						if int(part.get("position_ms", 0)) > 0
+						else I18n.t("Play / resume")
+					)
+					if part.has("part_index"):
+						var part_label := I18n.t("Part %d") % (int(part.part_index) + 1)
+						label = part_label + " · " + label
+					result.append({"title": label, "icon": "play", "play_scene": part})
 				for version in detail.get("versions", []):
 					result.append(
 						{
@@ -785,17 +794,11 @@ func choose(row: Dictionary) -> void:
 	elif row.has("candidate"):
 		set_filter(kind, row.candidate, exclude)
 	elif row.has("play_scene") or row.has("marker"):
+		var scene: Dictionary = row.get("play_scene", detail.get("parts", [detail])[0])
+		var position := int(scene.get("position_ms", 0)) if not scene.has("source_id") else 0
 		_play(
-			row.get("play_scene", detail),
-			(
-				int(row.marker.position_ms)
-				if row.has("marker")
-				else (
-					-1
-					if row.get("play_scene", {}).has("source_id")
-					else (int(detail.position_ms) if int(detail.get("position_ms", 0)) > 0 else -1)
-				)
-			)
+			scene,
+			int(row.marker.position_ms) if row.has("marker") else (position if position > 0 else -1)
 		)
 	elif row.has("favorite"):
 		_toggle_favorite()
@@ -854,6 +857,9 @@ func choose(row: Dictionary) -> void:
 
 func _play(node: Dictionary, position: int) -> void:
 	selection = node.duplicate(true)
+	if node.has("part_index"):
+		selection.parts = detail.parts
+		selection.queue_uri = node.uri
 	selection.start_ms = position
 	menu.dismiss()
 	menu.chosen.emit(str(node.uri), str(node.get("title", "Video")))
@@ -1157,6 +1163,8 @@ func action(target: int) -> bool:
 				load_servers()
 			elif view == "home":
 				open_home()
+			elif view == "detail" and detail.has("parts_error"):
+				request("detail", {"scene_id": detail.id, "source_id": detail.get("source_id", "")})
 			elif view in ["facets", "candidates"]:
 				get_candidates()
 			elif loaded_page > 0 and entries.size() < total and not end_reached:

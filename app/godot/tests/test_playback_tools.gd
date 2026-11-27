@@ -394,23 +394,7 @@ func _run() -> void:
 				"Queue controls have distinct ray targets"
 			)
 	main.video.open_local("file:///next.mp4", "Next")
-	main.video.test_set_waiting_for_frame(false)
-	main.video.requested_play = true
-	main.video.media.state = "ended"
-	main.video.media.last_pair = {
-		"contract_version": 2,
-		"session_id": 7,
-		"slot_token": 1,
-		"source_epoch": 2,
-		"frame_id": 8,
-		"pts_us": 9000000
-	}
-	main.video.media.playback = {
-		"eof_source_resolved": true,
-		"eof_pair_post_draw": true,
-		"eof_presented_slot": 1,
-		"eof_source_ticket": {"source_epoch": 2, "frame_id": 8, "pts_us": 9000000}
-	}
+	set_confirmed_eof(main)
 	main._on_video_changed()
 	main._on_video_changed()
 	# The same completed single entry reopens at zero when repeat is enabled.
@@ -424,22 +408,7 @@ func _run() -> void:
 		"A completed one-item queue repeats from zero"
 	)
 	main._on_player_setting("queue_loop", false)
-	main.video.test_set_waiting_for_frame(false)
-	main.video.media.state = "ended"
-	main.video.media.last_pair = {
-		"contract_version": 2,
-		"session_id": 7,
-		"slot_token": 1,
-		"source_epoch": 2,
-		"frame_id": 8,
-		"pts_us": 9000000
-	}
-	main.video.media.playback = {
-		"eof_source_resolved": true,
-		"eof_pair_post_draw": true,
-		"eof_presented_slot": 1,
-		"eof_source_ticket": {"source_epoch": 2, "frame_id": 8, "pts_us": 9000000}
-	}
+	set_confirmed_eof(main)
 	main._queue_end_key = ""
 	main._on_video_changed()
 	await process_frame
@@ -457,9 +426,80 @@ func _run() -> void:
 		host.calls.filter(func(call): return call[0] == "close").size() == closed,
 		"Repeated EOF callback cannot close another session"
 	)
+	test_movie_parts(main, host)
 	main.queue_free()
 	await process_frame
 	for failure in failures:
 		push_error(failure)
 	print("Playback tools checks: %d, failures: %d" % [checks, failures.size()])
 	preload("res://tests/support/test_result.gd").finish(self, 0 if failures.is_empty() else 1)
+
+
+func set_confirmed_eof(main: Node3D) -> void:
+	main.video.test_set_waiting_for_frame(false)
+	main.video.requested_play = true
+	main.video.media.state = "ended"
+	main.video.media.last_pair = {
+		"contract_version": 2,
+		"session_id": 7,
+		"slot_token": 1,
+		"source_epoch": 2,
+		"frame_id": 8,
+		"pts_us": 9000000
+	}
+	main.video.media.playback = {
+		"eof_source_resolved": true,
+		"eof_pair_post_draw": true,
+		"eof_presented_slot": 1,
+		"eof_source_ticket": {"source_epoch": 2, "frame_id": 8, "pts_us": 9000000}
+	}
+
+
+func test_movie_parts(main: Node3D, host: Host) -> void:
+	var platform := preload("res://tests/test_media_servers.gd").Platform.new()
+	var menu: Node3D = main.library_menu
+	menu.attach_platform(platform)
+	menu.section = menu.Section.MEDIA_SERVER
+	var browser: RefCounted = menu.server_browser
+	browser.server = {"id": "srv"}
+	var first := {"id": "1", "uri": "medialib://srv/scene/1", "title": "Film", "position_ms": 9000}
+	var second := {"id": "2", "uri": "medialib://srv/scene/2", "title": "CD2", "position_ms": 4000}
+	var third := {"id": "3", "uri": "medialib://srv/scene/3", "title": "CD3"}
+	var following := {"id": "4", "uri": "medialib://srv/scene/4", "title": "Other film"}
+	browser.entries = [first, following]
+	browser.choose({"scene": first})
+	platform.answer(platform.next, {"detail": first.merged({"additional_parts": [second, third]})})
+	var rows: Array = browser.rows().filter(func(row): return row.has("play_scene"))
+	check(rows.size() == 3, "The detail page offers each movie part")
+	for i in rows.size():
+		check(
+			str(rows[i].title).begins_with("Part %d" % (i + 1)),
+			"Parts are numbered in server order"
+		)
+	main.playback_queue.custom = false
+	menu.test_choose(rows[1])
+	check(
+		(
+			main.video.local_uri == second.uri
+			and host.calls.filter(func(call): return call[0] == "open").back()[2] == 4000
+		),
+		"Direct CD2 selection uses CD2's resume position"
+	)
+	set_confirmed_eof(main)
+	main._advance_queue(7, second.uri)
+	check(main.video.local_uri == third.uri, "Selecting CD2 continues directly to CD3")
+	menu.test_choose(rows[0])
+	check(main.video.local_uri == first.uri, "CD1 can be selected again")
+	main._on_player_setting("queue_shuffle", true)
+	for next in [second, third, following]:
+		set_confirmed_eof(main)
+		main._advance_queue(7, main.video.local_uri)
+		check(
+			(
+				main.video.local_uri == next.uri
+				and host.calls.filter(func(call): return call[0] == "open").back()[2] == 0
+			),
+			"Confirmed EOF opens %s from zero" % next.title
+		)
+	menu.attach_platform(null)
+	platform.free()

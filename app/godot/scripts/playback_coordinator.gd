@@ -42,13 +42,13 @@ func _on_library_chosen(uri: String, title: String) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host) or not MediaFiles.is_video(uri, title):
 		return
+	var selection: Dictionary = host.library_menu.server_browser.selection
+	host.library_menu.server_browser.selection = {}
+	if selection.get("uri", "") != uri:
+		selection = {}
 	if _queue_add_mode:
-		var metadata: Dictionary = (
-			host.library_menu.server_browser.selection.duplicate(true)
-			if uri.begins_with("medialib://")
-			else {}
-		)
-		for item in host.library_menu.video_queue():
+		var metadata := selection
+		for item in host.library_menu.video_queue(selection):
 			if item.uri == uri:
 				metadata = item.get("metadata", {})
 				break
@@ -66,20 +66,15 @@ func _on_library_chosen(uri: String, title: String) -> void:
 	host.player_menu = host.video_menu
 	host.playback_queue.anchor = uri
 	if not host.playback_queue.custom:
-		host.video_queue = host.library_menu.video_queue()
+		host.video_queue = host.library_menu.video_queue(selection)
 	if host.playback_queue.find(uri).is_empty():
 		host.playback_queue.append([{"uri": uri, "title": title}])
-	var metadata: Dictionary = (
-		host.library_menu.server_browser.selection.duplicate(true)
-		if uri.begins_with("medialib://")
-		else {}
-	)
+	var metadata := selection
 	if not uri.begins_with("medialib://"):
 		for row in host.library_menu.rows:
 			if str(row.get("uri", "")) == uri:
 				metadata = row.duplicate(true)
 				break
-	host.library_menu.server_browser.selection = {}
 	if metadata.get("uri", "") != uri:
 		metadata = {}
 	if not host.playback_queue.find(uri).is_empty():
@@ -91,13 +86,16 @@ func _on_library_chosen(uri: String, title: String) -> void:
 		host.presentation_coordinator._show_player_menu()
 
 
-func _adjacent_video(direction: int) -> Dictionary:
+func _adjacent_video(direction: int, wrap: bool = false) -> Dictionary:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return {}
 	if not host.video:
 		return {}
-	return host.playback_queue.adjacent(host.video.local_uri, direction)
+	var part: Dictionary = host.video.adjacent_movie_part(direction)
+	if not part.is_empty():
+		return part
+	return host.playback_queue.adjacent(host.video.queue_entry_uri(), direction, wrap)
 
 
 func _navigate_video(direction: int) -> void:
@@ -119,7 +117,7 @@ func _queue_action(operation: String) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
-	host.playback_queue.anchor = host.video.local_uri
+	host.playback_queue.anchor = host.video.queue_entry_uri()
 	if operation == "queue_add":
 		_queue_add_mode = true
 		host.library_menu.queue_add_mode = true
@@ -189,7 +187,7 @@ func _advance_queue(session_id: int, uri: String) -> void:
 		return
 	if host.video.loop_enabled:
 		return
-	var item = host.playback_queue.adjacent(uri, 1, host.playback_queue.loop)
+	var item = _adjacent_video(1, host.playback_queue.loop)
 	if item.is_empty():
 		_on_menu_action("stop")
 		return
@@ -346,7 +344,7 @@ func _on_player_setting(key: String, value: Variant) -> void:
 	if key in ["queue_shuffle", "queue_loop"]:
 		if not value is bool:
 			return
-		host.playback_queue.configure(key, bool(value), host.video.local_uri)
+		host.playback_queue.configure(key, bool(value), host.video.queue_entry_uri())
 		host.settings.set_value("playback", key, bool(value))
 		host.settings.save(host.settings_path)
 		return

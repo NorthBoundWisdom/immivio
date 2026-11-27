@@ -1082,7 +1082,7 @@ func _switch_row(title: String, key: String, value: Variant, hint: String = "") 
 	)
 
 
-func video_queue() -> Array[Dictionary]:
+func video_queue(selection: Dictionary = {}) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	var source: Array = (
 		server_browser.entries
@@ -1094,6 +1094,8 @@ func video_queue() -> Array[Dictionary]:
 		)
 	)
 	for row in source:
+		if selection.has("parts") and row.get("uri", "") == selection.parts[0].uri:
+			row = selection
 		var uri := str(row.get("uri", ""))
 		var title := str(row.get("title", ""))
 		if uri.is_empty() or not MediaFiles.is_video(uri, title, str(row.get("kind", "video"))):

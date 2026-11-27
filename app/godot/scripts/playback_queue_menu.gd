@@ -64,7 +64,7 @@ func draw() -> void:
 			Vector2(-0.18, y),
 			Vector2(0.72, 0.06)
 		)
-		if entries[i].uri == menu._state.get("source_uri", ""):
+		if entries[i].uri == menu._state.get("queue_entry_uri", ""):
 			menu._buttons.back().base_color = menu.SELECTED
 		button("queue_up_" + str(i), "↑", Vector2(0.25, y), Vector2(0.07, 0.06), i > 0)
 		button(

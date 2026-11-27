@@ -416,6 +416,23 @@ func open_library(
 	return opened
 
 
+func queue_entry_uri() -> String:
+	return str(_bookmark_metadata.get("queue_uri", local_uri))
+
+
+func adjacent_movie_part(direction: int) -> Dictionary:
+	var parts: Array = _bookmark_metadata.get("parts", [])
+	var index := int(_bookmark_metadata.get("part_index", -1)) + direction
+	if index < 0 or index >= parts.size():
+		return {}
+	var part: Dictionary = parts[index]
+	return {
+		"uri": part.uri,
+		"title": part.title,
+		"metadata": part.merged({"parts": parts, "queue_uri": queue_entry_uri()})
+	}
+
+
 func open_recent(uri: String, from_start: bool = false, metadata: Dictionary = {}) -> bool:
 	var entry := recent_files.lookup(uri)
 	if entry.is_empty() or not platform:

@@ -772,6 +772,7 @@ func _menu_state() -> Dictionary:
 		"external_subtitle": not host.video.external_subtitle_uri.is_empty(),
 		"subtitle_loading": host.video._subtitle_loading or host.video._subtitle_pick > 0,
 		"queue_items": host.video_queue,
+		"queue_entry_uri": host.video.queue_entry_uri(),
 		"queue_revision": host.playback_queue.revision,
 		"queue_shuffle": host.playback_queue.shuffle,
 		"queue_loop": host.playback_queue.loop,

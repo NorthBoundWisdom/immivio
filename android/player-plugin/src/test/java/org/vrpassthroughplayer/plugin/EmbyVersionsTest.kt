@@ -46,6 +46,51 @@ class EmbyVersionsTest {
     }
 
     @Test
+    fun jellyfinStackUsesOrderedItemIdsForPlayback() {
+        val requests = CopyOnWriteArrayList<String>()
+        MediaServerClientTest.Fixture { request, _, _ ->
+                val path = request.split(' ')[1]
+                requests += path
+                val body =
+                    when (path) {
+                        "/Users/user/Items/film" -> """{"Id":"film","Name":"Film","PartCount":3}"""
+                        "/Videos/film/AdditionalParts?UserId=user" ->
+                            """{"Items":[{"Id":"z","Name":"CD2","UserData":{"PlaybackPositionTicks":25000000}},{"Id":"a","Name":"CD3"}]}"""
+                        "/Items/z/PlaybackInfo?UserId=user" ->
+                            """{"PlaySessionId":"session2","MediaSources":[{"Id":"source2","Protocol":"File"}]}"""
+                        "/Users/user/Items/versions" ->
+                            """{"Id":"versions","MediaSources":[{"Id":"cut1"},{"Id":"cut2"}]}"""
+                        "/Users/user/Items/unavailable" -> """{"Id":"unavailable","PartCount":2}"""
+                        else ->
+                            return@Fixture MediaServerClientTest.Reply(404, body = byteArrayOf())
+                    }
+                MediaServerClientTest.Reply(body = body.toByteArray())
+            }
+            .use { fixture ->
+                val account = MediaServerAccount("srv", "NAS", fixture.url, "", "jellyfin", "user")
+                MediaServerHttp(account).use { http ->
+                    val client = EmbyClient(account, http)
+                    val parts = client.detail("film").getJSONArray("additional_parts").objects()
+                    assertEquals(listOf("z", "a"), parts.map { it.getString("id") })
+                    assertEquals(2500, parts.first().getInt("position_ms"))
+                    val (server, id) = MediaLibraryUri.parse(parts.first().getString("uri"))
+                    assertEquals("srv", server)
+                    val stream = client.stream(id)
+                    assertEquals("/Videos/z/stream", stream.url.path)
+                    assertEquals("z", stream.playback!!.itemId)
+                    assertEquals("source2", stream.playback.mediaSourceId)
+                    val versions = client.detail("versions")
+                    assertFalse(versions.has("additional_parts"))
+                    assertEquals(2, versions.getJSONArray("versions").length())
+                    assertFalse(requests.any { it.startsWith("/Videos/versions/AdditionalParts") })
+                    val partial = client.detail("unavailable")
+                    assertEquals("medialib://srv/scene/unavailable", partial.getString("uri"))
+                    assertTrue(partial.has("parts_error"))
+                }
+            }
+    }
+
+    @Test
     fun opaqueSourceIdentityRoundTripsWithoutAcceptingCredentialsOrExtraQueries() {
         val legacy = MediaLibraryUri.scene("srv", "film")
         val version = MediaLibraryUri.scene("srv", "film", "source /?&b")

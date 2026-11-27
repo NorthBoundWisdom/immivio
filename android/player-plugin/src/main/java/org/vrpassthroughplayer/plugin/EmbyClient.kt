@@ -379,7 +379,22 @@ internal class EmbyClient(
                     .put("title", it.optString("Name").take(150))
                     .put("position_ms", it.optLong("StartPositionTicks").coerceAtLeast(0) / 10000)
             }
-        return playableDetail(data).put("markers", JSONArray(markers))
+        val detail = playableDetail(data).put("markers", JSONArray(markers))
+        if (account.provider == "jellyfin" && data.optInt("PartCount") > 1) {
+            try {
+                val seen = mutableSetOf(id)
+                val parts =
+                    get("Videos/${mediaId(id)}/AdditionalParts", mapOf("UserId" to user()))
+                        .getJSONArray("Items")
+                        .objects()
+                        .filter { seen.add(it.getString("Id")) }
+                        .map(::summary)
+                detail.put("additional_parts", JSONArray(parts))
+            } catch (failure: MediaServerFailure) {
+                detail.put("parts_error", failure.code)
+            }
+        }
+        return detail
     }
 
     private fun direct(source: JSONObject): Boolean =
