@@ -18,6 +18,15 @@ internal fun mediaQuery(values: Map<String, Any>): String =
 
 internal fun JSONArray.objects(): List<JSONObject> = (0 until length()).map { getJSONObject(it) }
 
+private val moviePartMarker =
+    Regex(
+        """(?:^|[ ._-])(?:cd|part|pt|disc|disk)[ ._-]?([0-9]{1,9})(?=[ ._-]|$)""",
+        RegexOption.IGNORE_CASE,
+    )
+
+private fun moviePartNumber(name: String): Int? =
+    moviePartMarker.findAll(name).lastOrNull()?.groupValues?.get(1)?.toInt()
+
 /** User-scoped Emby/Jellyfin APIs mapped to the common VR browsing contract. */
 internal class EmbyClient(
     private val account: MediaServerAccount,
@@ -317,6 +326,13 @@ internal class EmbyClient(
         val id = mediaId(data.getString("Id"))
         val sources = data.optJSONArray("MediaSources") ?: JSONArray()
         val source = if (sources.length() == 1) sources.getJSONObject(0) else JSONObject()
+        val path =
+            if (sources.length() > 1) ""
+            else
+                source
+                    .optString("Path")
+                    .ifBlank { source.optString("FileName") }
+                    .ifBlank { data.optString("Path") }
         val video =
             (source.optJSONArray("MediaStreams")
                     ?: data.optJSONArray("MediaStreams")
@@ -342,10 +358,7 @@ internal class EmbyClient(
                 .put("container", container)
                 .put("title", data.optString("Name", "Video").take(256))
                 .put("duration_ms", data.optLong("RunTimeTicks").coerceAtLeast(0) / 10000)
-                .put(
-                    "basename",
-                    source.optString("Path").substringAfterLast('/').substringAfterLast('\\'),
-                )
+                .put("basename", path.substringAfterLast('/').substringAfterLast('\\'))
                 .put("width", video?.optInt("Width") ?: 0)
                 .put("height", video?.optInt("Height") ?: 0)
                 .put("description", data.optString("Overview").take(2000))
@@ -380,21 +393,51 @@ internal class EmbyClient(
                     .put("position_ms", it.optLong("StartPositionTicks").coerceAtLeast(0) / 10000)
             }
         val detail = playableDetail(data).put("markers", JSONArray(markers))
-        if (account.provider == "jellyfin" && data.optInt("PartCount") > 1) {
+        if (
+            account.provider == "jellyfin" &&
+                (data.optInt("PartCount") > 1 ||
+                    moviePartNumber(detail.optString("basename")) != null)
+        ) {
             try {
-                val seen = mutableSetOf(id)
-                val parts =
-                    get("Videos/${mediaId(id)}/AdditionalParts", mapOf("UserId" to user()))
-                        .getJSONArray("Items")
-                        .objects()
-                        .filter { seen.add(it.getString("Id")) }
-                        .map(::summary)
-                detail.put("additional_parts", JSONArray(parts))
+                val parts = movieParts(data)
+                if (parts.size > 1) detail.put("parts", JSONArray(parts))
             } catch (failure: MediaServerFailure) {
                 detail.put("parts_error", failure.code)
+            } catch (_: org.json.JSONException) {
+                detail.put("parts_error", "Invalid server response")
             }
         }
         return detail
+    }
+
+    private fun movieParts(primary: JSONObject): List<JSONObject> {
+        val id = mediaId(primary.getString("Id"))
+        val additional =
+            get(
+                    "Videos/$id/AdditionalParts",
+                    mapOf("UserId" to user(), "Fields" to "Path,MediaSources"),
+                )
+                .getJSONArray("Items")
+                .objects()
+        val entries =
+            (listOf(primary) + additional)
+                .distinctBy { it.getString("Id") }
+                .map { data ->
+                    val part = summary(data)
+                    val number =
+                        moviePartNumber(part.optString("basename"))
+                            ?: moviePartNumber(part.optString("title"))
+                    part.put("part_number", number)
+                }
+        // The primary file can be unnumbered even when the other discs are numbered.
+        val firstNumber =
+            entries
+                .mapNotNull { if (it.has("part_number")) it.getInt("part_number") else null }
+                .minOrNull()
+        if (!entries.first().has("part_number") && firstNumber != null && firstNumber > 1) {
+            entries.first().put("part_number", 1)
+        }
+        return entries.sortedBy { it.optInt("part_number", Int.MAX_VALUE) }
     }
 
     private fun direct(source: JSONObject): Boolean =

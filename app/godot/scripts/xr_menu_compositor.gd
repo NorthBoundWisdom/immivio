@@ -147,8 +147,9 @@ func configure(
 	# transform notification before get_global_transform() is available.
 	head.get_parent().add_child(layer)
 	cylinder_layer = OpenXRCompositionLayerCylinder.new()
-	cylinder_layer.use_android_surface = true
+	# Set the initial dimensions before enabling the Surface, as for the quad.
 	cylinder_layer.android_surface_size = CAPTURE_SIZE
+	cylinder_layer.use_android_surface = true
 	cylinder_layer.alpha_blend = true
 	cylinder_layer.sort_order = 5
 	cylinder_layer.central_angle = .001

@@ -349,121 +349,151 @@ func draw_modal() -> void:
 	if modal == "rename":
 		rename.draw()
 		return
-	var names_only: bool = modal == "sort" and menu.section == menu.Section.DLNA
-	menu._set_backdrop(Vector2(1.12, 0.46 if names_only else 0.86), Vector2(0.13, 0))
+	if modal == "sort":
+		draw_sort()
+		return
+	menu._set_backdrop(Vector2(1.12, 0.86), Vector2(0.13, 0))
 	menu._label(
+		menu.I18n.t("Delete folder" if target.get("folder", false) else "Delete file"),
+		Vector3(0.13, 0.34, 0.004),
+		25
+	)
+	var title: Label3D = menu._label(
+		menu._fit_title(str(target.get("title", "")), "", 0.96, 22), Vector3(0.13, 0.21, 0.004), 22
+	)
+	title.modulate = menu.ACCENT
+	var path: Label3D = menu._label(
+		menu._fit_title(str(target.get("uri", "")), "", 0.96, 16), Vector3(0.13, 0.11, 0.004), 16
+	)
+	path.modulate = menu.MUTED
+	var effect := (
+		"Permanently deletes the folder and all contents"
+		if target.get("folder", false)
+		else "Permanently deletes the original file"
+	)
+	if menu.current_file_provider.is_valid():
+		var current := str(menu.current_file_provider.call())
+		if current == str(target.get("uri", "")):
+			effect = "Stop playback and permanently delete"
+		elif (
+			target.get("folder", false)
+			and current.begins_with(str(target.get("uri", "")).trim_suffix("/") + "/")
+		):
+			effect = "Stop playback and permanently delete folder contents"
+	menu._label(menu.I18n.t(effect), Vector3(0.13, -0.01, 0.004), 19)
+	if target.get("folder", false) and plan_ready:
+		menu._label(
+			(
+				menu.I18n.t("%d files · %d folders")
+				% [int(target.get("files", 0)), int(target.get("folders", 0))]
+			),
+			Vector3(0.13, -0.10, 0.004),
+			17
+		)
+	menu._label(
+		(
+			menu.I18n.t(
+				(
+					"Reading folder contents…"
+					if preparing
+					else "Checking…" if checking else "Deleting…"
+				)
+			)
+			if pending > 0
+			else menu.I18n.t(menu.status) if failed or uncertain else ""
+		),
+		Vector3(0.13, -0.19, 0.004),
+		16
+	)
+	menu._button(
+		CANCEL,
+		menu.I18n.t("Hide" if pending > 0 else "Cancel"),
+		Vector2(-0.12, -0.32),
+		Vector2(0.40, 0.08)
+	)
+	menu._button(
+		CHECK_STATUS if uncertain else CONFIRM,
 		menu.I18n.t(
 			(
-				"Sort"
-				if modal == "sort"
+				"Check status"
+				if uncertain
 				else "Delete folder" if target.get("folder", false) else "Delete file"
 			)
 		),
-		Vector3(0.13, 0.14 if names_only else 0.34, 0.004),
-		25
+		Vector2(0.38, -0.32),
+		Vector2(0.40, 0.08),
+		(
+			pending == 0
+			and (uncertain or (enabled and (not target.get("folder", false) or plan_ready)))
+		),
+		"refresh" if uncertain else "trash"
 	)
-	if modal == "sort":
-		for i in Order.ORDERS.size():
-			if not supports_order(Order.ORDERS[i]):
-				continue
-			var field: String = Order.ORDERS[i].get_slice("_", 0)
-			var enabled: bool = (
-				field in ["name", "source"]
-				or menu.rows.any(
-					func(row):
-						return (
-							(field == "modified" or row.has("uri")) and int(row.get(field, -1)) >= 0
-						),
-				)
+	# Confirmation is spatially separate from the footer opener, requiring a fresh trigger press.
+
+
+## One row per field; the active row shows its direction and reverses it when chosen again.
+func sort_fields() -> Array:
+	var result: Array = []
+	for field in ["name", "modified", "size"]:
+		if not supports_order(field + ("_asc" if field == "name" else "_desc")):
+			continue
+		if field == "name" or menu.rows.any(func(row): return has_value(row, field)):
+			result.append(field)
+	return result
+
+
+func has_value(row: Dictionary, field: String) -> bool:
+	return (field == "modified" or row.has("uri")) and int(row.get(field, -1)) >= 0
+
+
+func field_choice(field: String) -> String:
+	var current := order()
+	if current.begins_with(field + "_"):
+		return field + ("_desc" if current.ends_with("_asc") else "_asc")
+	return field + ("_asc" if field == "name" else "_desc")
+
+
+func draw_sort() -> void:
+	var fields := sort_fields()
+	var width := 0.56
+	var pitch := 0.08
+	var height := 0.12 + fields.size() * pitch + 0.02
+	var top := height / 2
+	var left := 0.13 - width / 2
+	menu._set_backdrop(Vector2(width + 0.06, height), Vector2(0.13, 0))
+	var title: Label3D = menu._label(
+		menu.I18n.t("Sort"), Vector3(left + 0.01, top - 0.06, 0.004), 22
+	)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	title.modulate = menu.MUTED
+	menu._button(
+		CANCEL, "", Vector2(left + width - 0.03, top - 0.06), Vector2(0.06, 0.06), true, "close"
+	)
+	menu._tips[CANCEL] = menu.I18n.t("Close")
+	var current := order()
+	for i in fields.size():
+		var field: String = fields[i]
+		var active := current.begins_with(field + "_")
+		var choice := field_choice(field)
+		var shown := current if active else choice
+		menu._control_button(
+			ORDER_BASE + Order.ORDERS.find(choice),
+			menu.I18n.t(Order.LABELS[Order.ORDERS.find(shown)]),
+			Vector2(0.13, top - 0.12 - pitch / 2 - i * pitch + 0.005),
+			width,
+			true,
+			"",
+			active
+		)
+		var button: Dictionary = menu._buttons.back()
+		var label: Label3D = button.node.get_child(0)
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		label.position.x = -width / 2 + 0.03
+		if active:
+			menu._icon(
+				"swap",
+				Vector3(width / 2 - 0.035, 0, 0.004),
+				menu.CONTROL_ICON_SIZE,
+				button.foreground,
+				button.node
 			)
-			menu._button(
-				ORDER_BASE + i,
-				menu.I18n.t(Order.LABELS[i]),
-				Vector2(-0.12 + (i % 2) * 0.50, 0.01 if names_only else 0.19 - (i / 2) * 0.135),
-				Vector2(0.46, 0.095),
-				enabled,
-				"",
-				order() == Order.ORDERS[i]
-			)
-		menu._button(
-			CANCEL,
-			menu.I18n.t("Close"),
-			Vector2(0.13, -0.13 if names_only else -0.32),
-			Vector2(0.38, 0.08)
-		)
-	else:
-		var title: Label3D = menu._label(
-			menu._fit_title(str(target.get("title", "")), "", 0.96, 22),
-			Vector3(0.13, 0.21, 0.004),
-			22
-		)
-		title.modulate = menu.ACCENT
-		var path: Label3D = menu._label(
-			menu._fit_title(str(target.get("uri", "")), "", 0.96, 16),
-			Vector3(0.13, 0.11, 0.004),
-			16
-		)
-		path.modulate = menu.MUTED
-		var effect := (
-			"Permanently deletes the folder and all contents"
-			if target.get("folder", false)
-			else "Permanently deletes the original file"
-		)
-		if menu.current_file_provider.is_valid():
-			var current := str(menu.current_file_provider.call())
-			if current == str(target.get("uri", "")):
-				effect = "Stop playback and permanently delete"
-			elif (
-				target.get("folder", false)
-				and current.begins_with(str(target.get("uri", "")).trim_suffix("/") + "/")
-			):
-				effect = "Stop playback and permanently delete folder contents"
-		menu._label(menu.I18n.t(effect), Vector3(0.13, -0.01, 0.004), 19)
-		if target.get("folder", false) and plan_ready:
-			menu._label(
-				(
-					menu.I18n.t("%d files · %d folders")
-					% [int(target.get("files", 0)), int(target.get("folders", 0))]
-				),
-				Vector3(0.13, -0.10, 0.004),
-				17
-			)
-		menu._label(
-			(
-				menu.I18n.t(
-					(
-						"Reading folder contents…"
-						if preparing
-						else "Checking…" if checking else "Deleting…"
-					)
-				)
-				if pending > 0
-				else menu.I18n.t(menu.status) if failed or uncertain else ""
-			),
-			Vector3(0.13, -0.19, 0.004),
-			16
-		)
-		menu._button(
-			CANCEL,
-			menu.I18n.t("Hide" if pending > 0 else "Cancel"),
-			Vector2(-0.12, -0.32),
-			Vector2(0.40, 0.08)
-		)
-		menu._button(
-			CHECK_STATUS if uncertain else CONFIRM,
-			menu.I18n.t(
-				(
-					"Check status"
-					if uncertain
-					else "Delete folder" if target.get("folder", false) else "Delete file"
-				)
-			),
-			Vector2(0.38, -0.32),
-			Vector2(0.40, 0.08),
-			(
-				pending == 0
-				and (uncertain or (enabled and (not target.get("folder", false) or plan_ready)))
-			),
-			"refresh" if uncertain else "trash"
-		)
-		# Confirmation is spatially separate from the footer opener, requiring a fresh trigger press.

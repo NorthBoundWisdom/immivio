@@ -52,14 +52,22 @@ class EmbyVersionsTest {
                 val path = request.split(' ')[1]
                 requests += path
                 val body =
-                    when (path) {
-                        "/Users/user/Items/film" -> """{"Id":"film","Name":"Film","PartCount":3}"""
-                        "/Videos/film/AdditionalParts?UserId=user" ->
-                            """{"Items":[{"Id":"z","Name":"CD2","UserData":{"PlaybackPositionTicks":25000000}},{"Id":"a","Name":"CD3"}]}"""
-                        "/Items/z/PlaybackInfo?UserId=user" ->
+                    when (path.substringBefore('?')) {
+                        "/Users/user/Items/film" ->
+                            """{"Id":"film","Name":"Film","Path":"/movies/Film-disk_03.mkv"}"""
+                        "/Videos/film/AdditionalParts" ->
+                            """{"Items":[{"Id":"extra1"},{"Id":"a","Path":"/movies/Film-CD10.mkv"},{"Id":"z","Name":"CD8","MediaSources":[{"Path":"Film.PART-02.mkv"}],"UserData":{"PlaybackPositionTicks":25000000}},{"Id":"film"},{"Id":"extra2","Name":"Film 180"},{"Id":"tie","Name":"Film pt2"},{"Id":"first","Name":"Film Disc 1"}]}"""
+                        "/Items/z/PlaybackInfo" ->
                             """{"PlaySessionId":"session2","MediaSources":[{"Id":"source2","Protocol":"File"}]}"""
+                        "/Users/user/Items/plain" ->
+                            """{"Id":"plain","Name":"Film","PartCount":2}"""
+                        "/Videos/plain/AdditionalParts" ->
+                            """{"Items":[{"Id":"two","Name":"CD2"}]}"""
+                        "/Users/user/Items/alone" ->
+                            """{"Id":"alone","Path":"/movies/Film-cd1.mkv"}"""
+                        "/Videos/alone/AdditionalParts" -> """{"Items":[]}"""
                         "/Users/user/Items/versions" ->
-                            """{"Id":"versions","MediaSources":[{"Id":"cut1"},{"Id":"cut2"}]}"""
+                            """{"Id":"versions","Path":"/movies/disc2/Vr180_podcast2.mkv","MediaSources":[{"Id":"cut1"},{"Id":"cut2"}]}"""
                         "/Users/user/Items/unavailable" -> """{"Id":"unavailable","PartCount":2}"""
                         else ->
                             return@Fixture MediaServerClientTest.Reply(404, body = byteArrayOf())
@@ -70,17 +78,28 @@ class EmbyVersionsTest {
                 val account = MediaServerAccount("srv", "NAS", fixture.url, "", "jellyfin", "user")
                 MediaServerHttp(account).use { http ->
                     val client = EmbyClient(account, http)
-                    val parts = client.detail("film").getJSONArray("additional_parts").objects()
-                    assertEquals(listOf("z", "a"), parts.map { it.getString("id") })
-                    assertEquals(2500, parts.first().getInt("position_ms"))
-                    val (server, id) = MediaLibraryUri.parse(parts.first().getString("uri"))
+                    val parts = client.detail("film").getJSONArray("parts").objects()
+                    assertEquals(
+                        listOf("first", "z", "tie", "film", "a", "extra1", "extra2"),
+                        parts.map { it.getString("id") },
+                    )
+                    assertEquals(10, parts[4].getInt("part_number"))
+                    assertEquals(2500, parts[1].getInt("position_ms"))
+                    val (server, id) = MediaLibraryUri.parse(parts[1].getString("uri"))
                     assertEquals("srv", server)
                     val stream = client.stream(id)
                     assertEquals("/Videos/z/stream", stream.url.path)
                     assertEquals("z", stream.playback!!.itemId)
                     assertEquals("source2", stream.playback.mediaSourceId)
+                    assertEquals(
+                        listOf("plain", "two"),
+                        client.detail("plain").getJSONArray("parts").objects().map {
+                            it.getString("id")
+                        },
+                    )
+                    assertFalse(client.detail("alone").has("parts"))
                     val versions = client.detail("versions")
-                    assertFalse(versions.has("additional_parts"))
+                    assertFalse(versions.has("parts"))
                     assertEquals(2, versions.getJSONArray("versions").length())
                     assertFalse(requests.any { it.startsWith("/Videos/versions/AdditionalParts") })
                     val partial = client.detail("unavailable")

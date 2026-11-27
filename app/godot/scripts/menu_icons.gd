@@ -85,6 +85,8 @@ const PATHS := {
 	"previous": '<path d="M15 6L9 12 15 18"/>',
 	"circle": '<circle cx="12" cy="12" r="7"/>',
 	"sort": '<path d="M4 6H20M4 12H15M4 18H10"/>',
+	"shuffle": '<path d="M3 7H7L17 17H21M3 17H7L17 7H21M18 4L21 7 18 10M18 14L21 17 18 20"/>',
+	"swap": '<path d="M8 20V4M4 8L8 4 12 8M16 4V20M12 16L16 20 20 16"/>',
 	"select": '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M7 12L10 15 17 8"/>',
 	"edit": '<path d="M4 20H8L19 9 15 5 4 16Z"/>',
 	"backspace": '<path d="M8 5H21V19H8L2 12Z"/><path d="M11 9L17 15M17 9L11 15"/>',

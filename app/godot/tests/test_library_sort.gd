@@ -149,8 +149,8 @@ func _run() -> void:
 			)
 	)
 	check(
-		options.size() == 2 and options.all(func(button): return button.enabled),
-		"DLNA shows only two supported name options"
+		options.size() == 1 and options[0].target == Actions.ORDER_BASE + 1,
+		"DLNA shows one name row that reverses the current direction"
 	)
 	menu.test_activate(Actions.ORDER_BASE + 1)
 	check(

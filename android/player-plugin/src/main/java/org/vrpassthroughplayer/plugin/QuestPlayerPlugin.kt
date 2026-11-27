@@ -565,7 +565,8 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     fun try_draw_video_image(texture: Int, fisheye: Boolean, parameters: FloatArray): Int =
         runCatching {
             if (VideoLayerNative.drawImage(texture, fisheye, parameters)) 1 else 0
-        }.getOrDefault(-1)
+        }
+        .getOrDefault(-1)
 
     @UsedByGodot
     fun destroy_video_image() {

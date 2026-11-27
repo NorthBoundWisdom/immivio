@@ -6,6 +6,18 @@
 
 Newest first, with the main changes that affect everyday use. Unreleased items are not yet part of a public release. Versions 0.6.0 and earlier belong to the original project. Photo viewing, cloud drives and AI 3D conversion appear only as historical features and were removed later; see the [README](README.md) for current capabilities.
 
+## 待发布 / Unreleased
+
+**中文**
+
+- Jellyfin 影片详情支持按分部选播和续播。文件名中的 CD、Part、Pt、Disc 和 Disk 编号决定播放顺序，例如 CD2 会排在 CD10 前面。
+- 显示设置默认使用固定刷新率，也可开启片源帧率匹配。应用每两秒核对头显实际报告的 Hz，必要时重新请求目标值。视频合成图层短暂繁忙时保留上一帧。Quest 2 高光闪烁的改善情况仍待真机确认。
+
+**English**
+
+- Select individual Jellyfin movie parts and continue to the next part automatically. CD, Part, Pt, Disc and Disk numbers in filenames determine playback order, so CD2 plays before CD10.
+- The display uses a fixed refresh rate by default, with optional video frame-rate matching. The player checks the headset’s reported Hz every two seconds and requests the target again if needed. A busy video composition layer retains the previous frame. The effect on highlight flicker still needs verification on Quest 2.
+
 ## 1.0.2 — 2026-11-22
 
 **中文**

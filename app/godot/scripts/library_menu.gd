@@ -284,18 +284,23 @@ func dismiss() -> void:
 	super()
 
 
-## The quick video switcher leaves the clock to the control bar below it; its session
-## toggles sit at the right of the panel's own footer row so nothing overlaps the bar.
+## The quick video switcher leaves the clock to the control bar below it. Follow and
+## temporary passthrough cannot act while it is open, so their footer toggles are withheld.
 func refresh_session_controls(force: bool = false) -> void:
-	var switcher := compact and playback_browser
-	if switcher:
-		var count := 2 if _session_controls().get("passthrough_visible", false) else 1
-		var span := count * FOOTER_DIAMETER + (count - 1) * FOOTER_GAP
-		var width := span + FOOTER_GAP + STATUS_WIDTH
-		_footer_centre = Vector2(CONTENT_RIGHT - 0.02 - span + width * 0.5, FOOTER_Y)
-	super(force)
-	if is_instance_valid(device_status):
-		device_status.visible = not switcher
+	if not is_instance_valid(device_status):
+		return
+	if not (compact and playback_browser):
+		var restore := not device_status.visible
+		device_status.visible = true
+		super(force or restore)
+		return
+	if not device_status.visible:
+		return
+	device_status.visible = false
+	for index in range(_buttons.size() - 1, -1, -1):
+		if _buttons[index].target in [CLOSE_MENU, FOLLOW, TEMP_PASSTHROUGH]:
+			_buttons[index].node.free()
+			_buttons.remove_at(index)
 
 
 func _ready() -> void:
@@ -1096,7 +1101,7 @@ func video_queue(selection: Dictionary = {}) -> Array[Dictionary]:
 		)
 	)
 	for row in source:
-		if selection.has("parts") and row.get("uri", "") == selection.parts[0].uri:
+		if selection.has("movie_uri") and row.get("uri", "") == selection.movie_uri:
 			row = selection
 		var uri := str(row.get("uri", ""))
 		var title := str(row.get("title", ""))
@@ -1295,6 +1300,12 @@ func _activate(target: int) -> void:
 		_editor_input(target)
 
 
+func choose_video(uri: String, title: String) -> void:
+	if not queue_add_mode:
+		dismiss()
+	chosen.emit(uri, title)
+
+
 func _choose(row: Dictionary) -> void:
 	if (
 		row.has("uri")
@@ -1356,8 +1367,7 @@ func _choose(row: Dictionary) -> void:
 		server_browser.choose(row)
 		return
 	if row.has("uri") and not str(row.uri).is_empty():
-		dismiss()
-		chosen.emit(str(row.uri), str(row.title))
+		choose_video(str(row.uri), str(row.title))
 	elif row.has("smb_server"):
 		sources.smb_server = str(row.smb_server)
 		sources.smb_path = ""
@@ -1912,15 +1922,25 @@ func _draw() -> void:
 	_draw_rows()
 	if section == Section.SETTINGS and tab == ABOUT_TAB:
 		about.draw()
-	if queue_add_mode:
-		_button(
+	if queue_add_mode and not file_actions.editing:
+		# Footer-right, beside the status line: secondary bulk add, then the primary exit.
+		_control_button(
 			QUEUE_ADD_LIST,
 			I18n.t("Add current list"),
-			Vector2(-0.22, 0.57),
-			Vector2(0.62, 0.07),
-			not video_queue().is_empty()
+			Vector2(CONTENT_RIGHT - .43, FOOTER_Y),
+			.26,
+			not video_queue().is_empty(),
+			"plus"
 		)
-		_button(QUEUE_DONE, I18n.t("Done adding"), Vector2(0.46, 0.57), Vector2(0.62, 0.07))
+		_control_button(
+			QUEUE_DONE,
+			I18n.t("Done adding"),
+			Vector2(CONTENT_RIGHT - .14, FOOTER_Y),
+			.28,
+			true,
+			"check",
+			true
+		)
 	if status in ["Video access needed", "Media access needed", "All files access needed"]:
 		_button(
 			GRANT,
@@ -1949,7 +1969,7 @@ func _draw() -> void:
 	var status_width := (
 		CONTENT_RIGHT
 		- status_left
-		- (.26 if compact and playback_browser else 0.0)
+		- (.58 if queue_add_mode and not file_actions.editing else 0.0)
 		- (.32 if file_actions.uncertain or file_actions.pending > 0 else 0.0)
 	)
 	var footer_status := (

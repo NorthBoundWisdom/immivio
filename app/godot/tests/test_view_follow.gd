@@ -457,39 +457,23 @@ func _run() -> void:
 		)
 		main.test_show_library_menu()
 		main.library_menu.refresh()
-		var item := button(main.library_menu, Menu.TEMP_PASSTHROUGH)
-		check(
-			not item.enabled and not item.node.visible,
-			"Person mode hides the unavailable temporary passthrough button"
-		)
-		var origin: Vector3 = item.node.global_position + item.node.global_basis.z * .25
-		main.library_menu.update_pointer("right_hand", origin, -item.node.global_basis.z, true)
 		check(
 			(
-				main.library_menu.hover_snapshot().right_hand == Menu.NONE
-				and (not main.library_menu._tooltip or not main.library_menu._tooltip.visible)
+				main.library_menu.playback_browser
+				and button(main.library_menu, Menu.TEMP_PASSTHROUGH).is_empty()
+				and button(main.library_menu, Menu.FOLLOW).is_empty()
 			),
-			"Hidden unavailable button has no ray hover or tooltip"
+			"The playback file browser withholds follow and temporary passthrough"
 		)
-		click(main.library_menu, Menu.TEMP_PASSTHROUGH)
 		main._on_session_control("temporary_passthrough")
 		check(
 			main.temporary_passthrough == original and main.video.alpha_wanted(),
-			"Neither click nor direct action changes temporary request or Alpha"
-		)
-		var follow: bool = main.view_follow.enabled
-		click(main.library_menu, Menu.FOLLOW)
-		check(
-			main.view_follow.enabled != follow, "Follow remains operable during person passthrough"
+			"Direct action changes neither the temporary request nor Alpha"
 		)
 		main.video.set_alpha(false)
 		check(
-			(
-				main.temporary_passthrough == original
-				and main.display.applied_passthrough == original
-				and button(main.library_menu, Menu.TEMP_PASSTHROUGH).enabled
-			),
-			"Leaving person mode restores original temporary choice and operability"
+			main.temporary_passthrough == original and main.display.applied_passthrough == original,
+			"Leaving person mode restores the original temporary choice"
 		)
 	main.temporary_passthrough = false
 	main._update_background()
@@ -511,10 +495,7 @@ func _run() -> void:
 	main.display.reject = false
 	main.test_setting_changed("background", "passthrough")
 	check(
-		(
-			button(main.library_menu, Menu.TEMP_PASSTHROUGH).is_empty()
-			and not button(main.library_menu, Menu.FOLLOW).is_empty()
-		),
+		not main.library_menu._session_controls().get("passthrough_visible", true),
 		"Saved passthrough hides only temporary control"
 	)
 	main.test_setting_changed("background", "dark")
@@ -571,6 +552,16 @@ func _run() -> void:
 		"Standard menus summon upright with horizontal head direction"
 	)
 	main.library_menu.refresh()
+	check(
+		button(main.library_menu, Menu.FOLLOW).is_empty(),
+		"Summoned playback file browser has no follow toggle"
+	)
+	# Without active video, the library and its confirmations must remain open.
+	main.video.close_video()
+	I18n.use("zh")
+	main._on_session_control("temporary_passthrough")
+	main.test_show_library_menu()
+	main.library_menu.refresh()
 	var control_position: Vector3 = button(main.library_menu, Menu.FOLLOW).node.position
 	main.library_menu.device_status.status_provider = func():
 		return {"level": 100, "charging": true, "clock24": false}
@@ -580,11 +571,6 @@ func _run() -> void:
 		button(main.library_menu, Menu.FOLLOW).node.position == control_position,
 		"Changing battery/time cannot shift ray controls"
 	)
-	# Without active video, the library and its confirmations must remain open.
-	main.video.close_video()
-	I18n.use("zh")
-	main._on_session_control("temporary_passthrough")
-	main.test_show_library_menu()
 	close_menu_check(main, main.library_menu, "Library")
 	main.test_show_library_menu()
 	main.library_menu.section = main.library_menu.Section.SETTINGS

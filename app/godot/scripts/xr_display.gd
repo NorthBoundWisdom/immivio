@@ -14,7 +14,9 @@ var error_code := ""
 var render_scale := 1.0
 var preferred_refresh_rate := 72.0
 var match_video_rate := false
+const REFRESH_CHECK_MS := 2000
 var applied_refresh_rate := 0.0
+var _next_refresh_check_ms := 0
 var msaa_3d := Viewport.MSAA_2X
 var flat_msaa_3d := Viewport.MSAA_4X
 var video_layer := false
@@ -278,6 +280,17 @@ func update_playback_policy(
 	if match_video_rate and changes.has("rate"):
 		policy_refresh_rate = float(changes.rate)
 		_apply_refresh_rate()
+	elif (
+		not preview
+		and now_ms >= _next_refresh_check_ms
+		and (
+			session_state
+			in ["session_begun", "session_focussed", "session_visible", "session_synchronized"]
+		)
+		and xr != null
+		and xr.is_initialized()
+	):
+		_sync_refresh_to(xr, now_ms)
 
 
 # Fixed foveated rendering for the eye buffers (0 off .. 3 high); the 8K video is sampled
@@ -381,19 +394,24 @@ func _reset_refresh_policy() -> void:
 	_apply_refresh_rate()
 
 
-func _apply_refresh_to(target: Object) -> float:
-	var selected := closest_refresh_rate(
+func _sync_refresh_to(target: Object, now_ms: int, force: bool = false) -> void:
+	if not force and now_ms < _next_refresh_check_ms:
+		return
+	_next_refresh_check_ms = now_ms + REFRESH_CHECK_MS
+	applied_refresh_rate = closest_refresh_rate(
 		refresh_rates_from(target),
 		policy_refresh_rate if policy_refresh_rate > 0 else preferred_refresh_rate
 	)
-	if selected > 0:
-		target.set("display_refresh_rate", selected)
-	return selected
+	if (
+		applied_refresh_rate > 0
+		and not is_equal_approx(float(target.get("display_refresh_rate")), applied_refresh_rate)
+	):
+		target.set("display_refresh_rate", applied_refresh_rate)
 
 
 func _apply_refresh_rate() -> void:
 	if xr != null and xr.is_initialized() and not preview:
-		applied_refresh_rate = _apply_refresh_to(xr)
+		_sync_refresh_to(xr, Time.get_ticks_msec(), true)
 
 
 func capabilities() -> Dictionary:

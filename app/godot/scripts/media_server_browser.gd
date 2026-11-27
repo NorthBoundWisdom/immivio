@@ -256,14 +256,21 @@ func receive(id: int, payload: String) -> bool:
 					menu.status = "Original stream unavailable"
 				else:
 					detail.merge(versions[0], true)
-			var additional: Array = detail.get("additional_parts", [])
-			detail.erase("additional_parts")
-			var parts: Array = []
-			if source_id.is_empty() and not additional.is_empty():
-				parts = [detail.duplicate()] + additional
+			var parts: Array = detail.get("parts", []) if source_id.is_empty() else []
+			detail.erase("parts")
+			if not parts.is_empty():
+				var numbered := parts.any(func(part): return part.has("part_number"))
 				for i in parts.size():
-					parts[i].part_index = i
-					parts[i].title = str(detail.title) + " · " + (I18n.t("Part %d") % (i + 1))
+					var part: Dictionary = parts[i]
+					if part.uri == detail.uri:
+						part.merge(detail)
+						detail.primary_part_index = i
+					part.part_index = i
+					part.part_label = I18n.t("Part %d") % int(part.get("part_number", i + 1))
+					if numbered and not part.has("part_number"):
+						var filename := str(part.get("basename", ""))
+						part.part_label = str(part.title) if filename.is_empty() else filename
+					part.title = str(detail.title) + " · " + str(part.part_label)
 				detail.parts = parts
 			menu.status = str(detail.get("parts_error", menu.status))
 			for local in _local_resume():
@@ -616,9 +623,8 @@ func rows() -> Array[Dictionary]:
 						if int(part.get("position_ms", 0)) > 0
 						else I18n.t("Play / resume")
 					)
-					if part.has("part_index"):
-						var part_label := I18n.t("Part %d") % (int(part.part_index) + 1)
-						label = part_label + " · " + label
+					if part.has("part_label"):
+						label = str(part.part_label) + " · " + label
 					result.append({"title": label, "icon": "play", "play_scene": part})
 				for version in detail.get("versions", []):
 					result.append(
@@ -794,7 +800,9 @@ func choose(row: Dictionary) -> void:
 	elif row.has("candidate"):
 		set_filter(kind, row.candidate, exclude)
 	elif row.has("play_scene") or row.has("marker"):
-		var scene: Dictionary = row.get("play_scene", detail.get("parts", [detail])[0])
+		var scene: Dictionary = row.get(
+			"play_scene", detail.get("parts", [detail])[int(detail.get("primary_part_index", 0))]
+		)
 		var position := int(scene.get("position_ms", 0)) if not scene.has("source_id") else 0
 		_play(
 			scene,
@@ -859,10 +867,10 @@ func _play(node: Dictionary, position: int) -> void:
 	selection = node.duplicate(true)
 	if node.has("part_index"):
 		selection.parts = detail.parts
+		selection.movie_uri = detail.uri
 		selection.queue_uri = node.uri
 	selection.start_ms = position
-	menu.dismiss()
-	menu.chosen.emit(str(node.uri), str(node.get("title", "Video")))
+	menu.choose_video(str(node.uri), str(node.get("title", "Video")))
 
 
 func _is_favorite(node: Dictionary) -> bool:

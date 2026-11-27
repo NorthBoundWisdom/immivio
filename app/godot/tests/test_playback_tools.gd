@@ -466,18 +466,36 @@ func test_movie_parts(main: Node3D, host: Host) -> void:
 	var second := {"id": "2", "uri": "medialib://srv/scene/2", "title": "CD2", "position_ms": 4000}
 	var third := {"id": "3", "uri": "medialib://srv/scene/3", "title": "CD3"}
 	var following := {"id": "4", "uri": "medialib://srv/scene/4", "title": "Other film"}
-	browser.entries = [first, following]
-	browser.choose({"scene": first})
-	platform.answer(platform.next, {"detail": first.merged({"additional_parts": [second, third]})})
+	first.part_number = 1
+	second.part_number = 2
+	third.part_number = 10
+	browser.entries = [third, following]
+	browser.choose({"scene": third})
+	var detail := third.merged(
+		{"parts": [first, second, third], "markers": [{"title": "Chapter", "position_ms": 1200}]}
+	)
+	platform.answer(platform.next, {"detail": detail})
 	var rows: Array = browser.rows().filter(func(row): return row.has("play_scene"))
 	check(rows.size() == 3, "The detail page offers each movie part")
 	for i in rows.size():
 		check(
-			str(rows[i].title).begins_with("Part %d" % (i + 1)),
-			"Parts are numbered in server order"
+			str(rows[i].title).begins_with("Part %d" % [1, 2, 10][i]),
+			"Labels retain the disc number when numbers are missing"
 		)
 	main.playback_queue.custom = false
+	menu.test_choose(browser.rows().filter(func(row): return row.has("marker"))[0])
+	check(
+		(
+			main.video.local_uri == third.uri
+			and host.calls.filter(func(call): return call[0] == "open").back()[2] == 1200
+		),
+		"Chapters still target the primary item after sorting the parts"
+	)
 	menu.test_choose(rows[1])
+	check(
+		main.video_queue.size() == 2 and main.video_queue[0].uri == second.uri,
+		"Selected part occupies the original poster's queue position"
+	)
 	check(
 		(
 			main.video.local_uri == second.uri
@@ -501,5 +519,19 @@ func test_movie_parts(main: Node3D, host: Host) -> void:
 			),
 			"Confirmed EOF opens %s from zero" % next.title
 		)
+	main._queue_action("queue_add")
+	menu.section = menu.Section.MEDIA_SERVER
+	menu.test_choose(rows[1])
+	check(
+		menu.visible and not main.playback_queue.find(second.uri).is_empty(),
+		"Adding a Jellyfin part keeps the browser open for the next selection"
+	)
+	menu.section = menu.Section.LOCAL
+	menu.test_choose({"uri": "file:///more.mp4", "title": "Another video"})
+	check(
+		menu.visible and not main.playback_queue.find("file:///more.mp4").is_empty(),
+		"Adding a local file also preserves the queue picker"
+	)
+	main._queue_action("queue_done")
 	menu.attach_platform(null)
 	platform.free()

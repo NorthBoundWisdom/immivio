@@ -51,9 +51,10 @@ func _run() -> void:
 
 
 func choose_order(menu: Node3D, shuffle: bool) -> void:
-	for target in menu.choices.targets:
-		var choice: Dictionary = menu.choices.targets[target]
-		if choice.get("key") == "queue_shuffle" and choice.get("value") == shuffle:
-			menu.test_activate(target)
+	var actions: Dictionary = menu.queue_menu.actions
+	for target in actions:
+		if actions[target] == "toggle_shuffle":
+			if bool(menu._state.get("queue_shuffle", false)) != shuffle:
+				menu.test_activate(target)
 			return
 	assert(false, "Playback order is available inside the queue menu")

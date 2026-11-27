@@ -4,7 +4,13 @@ const Display := preload("res://scripts/xr_display.gd")
 
 class Target:
 	extends RefCounted
-	var display_refresh_rate := 0.0
+	var actual := 0.0
+	var requests: Array[float] = []
+	var display_refresh_rate: float:
+		get:
+			return actual
+		set(value):
+			requests.append(value)
 	var rates: Array = [120.0, 90.0, 72.0, NAN, -1.0, 72.0]
 
 	func get_available_display_refresh_rates() -> Array:
@@ -15,19 +21,37 @@ func _initialize() -> void:
 	preload("res://tests/support/test_result.gd").prepare(self)
 	var target := Target.new()
 	var display := Display.new()
-	assert(display._apply_refresh_to(target) == 72.0)
-	assert(target.display_refresh_rate == 72.0)
+	display._sync_refresh_to(target, 0, true)
+	assert(target.requests == [72.0])
+	display._sync_refresh_to(target, 1999)
+	assert(target.requests.size() == 1)
+	display._sync_refresh_to(target, 2000)
+	assert(target.requests == [72.0, 72.0])
+	target.actual = 72.0
+	display._sync_refresh_to(target, 4000)
+	assert(target.requests.size() == 2)
+	target.actual = 60.0
+	display._sync_refresh_to(target, 6000)
+	assert(target.requests.back() == 72.0 and target.requests.size() == 3)
+	display.policy_refresh_rate = 90.0
+	display._sync_refresh_to(target, 6100, true)
+	display._sync_refresh_to(target, 8000)
+	assert(target.requests.size() == 4)
+	display._sync_refresh_to(target, 8100)
+	assert(target.requests.slice(3) == [90.0, 90.0])
+	display.policy_refresh_rate = 0.0
 	target.rates = [80.0, 64.0, 90.0]
-	assert(display._apply_refresh_to(target) == 64.0)
-	assert(target.display_refresh_rate == 64.0)
+	display._sync_refresh_to(target, 8200, true)
+	assert(target.requests.back() == 64.0)
 	target.rates = []
-	assert(display._apply_refresh_to(target) == 0.0)
-	assert(target.display_refresh_rate == 64.0)
+	display._sync_refresh_to(target, 10200)
+	assert(display.applied_refresh_rate == 0.0 and target.requests.size() == 6)
 	assert(not display.set_refresh_preference(999.0))
 	var preview_rates: Variant = display.available_refresh_rates()
 	assert(display.closest_refresh_rate(preview_rates) == 0.0)
 	target.rates = [24.0]
-	assert(display._apply_refresh_to(target) == 24.0)
+	display._sync_refresh_to(target, 12200)
+	assert(target.requests.back() == 24.0)
 	var settings := ConfigFile.new()
 	settings.set_value("display", "refresh_rate", NAN)
 	assert(preload("res://scripts/player_settings_migration.gd").apply(settings))
