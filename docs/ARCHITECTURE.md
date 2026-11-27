@@ -55,8 +55,10 @@ return to shader rendering. XR pause frees picture allocations while retaining
 the decoder Surface; session loss invalidates handles. Provider teardown stops
 the app XR interface before unregistering/freeing it.
 
-`playback_performance.gd` owns refresh matching and power hysteresis. The existing
-refresh preference is an upper limit; MSAA is fixed at startup and new-install
+The display requests the saved refresh rate (72 Hz by default) at session start
+and on resume. Enabling frame-rate matching uses the saved rate as an upper
+limit and lets `playback_performance.gd` choose a cadence for the source.
+Power hysteresis applies in both modes. MSAA is fixed at startup and new-install
 sharpening defaults to off. Opt-in autofocus reuses a small viewport and worker
 with one bounded, asynchronous Android PBO readback.
 

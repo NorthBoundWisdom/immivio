@@ -41,6 +41,16 @@ func _initialize() -> void:
 	menu.settings_provider = func(): return {"refresh_rates": [72.0, 90.0], "refresh_rate": 72.0}
 	menu.source_rows.rebuild()
 	var row: Dictionary = menu.rows.filter(func(r): return r.get("key", "") == "refresh_rate")[0]
+	assert(row.title == preload("res://scripts/i18n.gd").t("Fixed refresh rate"))
 	assert(row.choices.size() == 2 and row.choices[1].value == 90.0)
+	var overlay := preload("res://scripts/fps_overlay.gd").new()
+	overlay.source = func(): return {"frames": 30, "active": true, "refresh_hz": 90.0}
+	root.add_child(overlay)
+	await create_timer(0.6).timeout
+	assert("90 Hz" in overlay.text and " FPS" in overlay.text)
+	overlay.source = func(): return {"active": false}
+	await create_timer(0.6).timeout
+	assert("Hz" not in overlay.text)
+	overlay.free()
 	menu.free()
 	preload("res://tests/support/test_result.gd").finish(self, 0)

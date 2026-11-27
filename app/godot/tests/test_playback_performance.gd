@@ -12,7 +12,7 @@ class Rates:
 	var selected := 0.0
 
 	func available_refresh_rates() -> Array[float]:
-		return [72.0, 90.0, 120.0]
+		return [60.0, 72.0, 90.0, 120.0]
 
 	func _apply_refresh_rate() -> void:
 		selected = policy_refresh_rate if policy_refresh_rate > 0 else preferred_refresh_rate
@@ -77,6 +77,7 @@ func check(value: bool, message: String) -> void:
 class Backend:
 	extends RefCounted
 	var draws := 0
+	var draw_result := 1
 	var destroys := 0
 	var invalidations := 0
 	var sent := PackedFloat32Array()
@@ -84,9 +85,9 @@ class Backend:
 	func create_video_image(_w: int, _h: int) -> bool:
 		return true
 
-	func draw_video_image(_texture: int, _lens: bool, _v: PackedFloat32Array) -> bool:
+	func try_draw_video_image(_texture: int, _lens: bool, _v: PackedFloat32Array) -> int:
 		draws += 1
-		return true
+		return draw_result
 
 	func set_video_layers(_count: int, v: PackedFloat32Array) -> bool:
 		sent = v.duplicate()
@@ -201,7 +202,17 @@ func run() -> void:
 	)
 	sampling.stop()
 	var rates := Rates.new()
-	rates.preferred_refresh_rate = 120
+	for hz in [72, 90, 120]:
+		check(rates.set_refresh_preference(hz), "An advertised fixed rate can be selected")
+		rates.update_playback_policy(true, true, true, false, 59.94, true, 0)
+		rates.update_playback_policy(true, true, true, false, 59.94, true, 2000)
+		rates.update_playback_policy(true, false, false, false, 0, true, 4000)
+		rates.update_playback_policy(true, false, false, false, 0, true, 6000)
+		check(
+			rates.selected == hz,
+			"59.94 fps playback and pause preserve the fixed %d Hz request" % hz
+		)
+	rates.set_refresh_matching(true)
 	rates.update_playback_policy(true, true, true, false, 24, false, 0)
 	rates.update_playback_policy(true, true, true, false, 24, false, 1500)
 	check(rates.selected == 72, "24 fps settles at 72 Hz")
@@ -209,6 +220,11 @@ func run() -> void:
 	rates.update_playback_policy(true, true, true, false, 24, false, 2000)
 	rates.update_playback_policy(true, true, true, false, 24, false, 3500)
 	check(rates.selected == 72, "An unchanged video rate reapplies after changing its cap")
+	rates.update_playback_policy(true, true, true, false, 59.94, true, 5000)
+	rates.update_playback_policy(true, true, true, false, 59.94, true, 7000)
+	check(rates.selected == 60, "Opt-in matching can select 60 Hz for a 59.94 fps movie")
+	rates.set_refresh_matching(false)
+	check(rates.selected == 90, "Turning matching off immediately restores the chosen fixed rate")
 	var overlay_rates := Rates.new()
 	overlay_rates.update_playback_policy(true, true, true, false, 59.94, true, 0, true)
 	overlay_rates.update_playback_policy(true, true, true, false, 59.94, true, 4000, true)
@@ -330,6 +346,38 @@ func run() -> void:
 	movie.media.session_id = 12
 	layers.tick(movie)
 	check(backend.draws == 2, "A new session cannot reuse another movie's first frame")
+	backend.draw_result = 0
+	movie.media.last_pair.frame_id += 1
+	var released_frames: int = layers.copied_frames
+	layers.tick(movie)
+	check(
+		(
+			movie.layer_shown
+			and display.shown
+			and layers.provider.addresses.size() == 2
+			and layers.copied_frames == released_frames
+		),
+		"A busy swapchain retains the same compositor image for both eyes"
+	)
+	backend.draw_result = 1
+	layers.tick(movie)
+	check(
+		movie.layer_shown and layers.copied_frames == released_frames + 1,
+		"The next refresh retries the pending frame without switching routes"
+	)
+	backend.draw_result = 0
+	movie.media.last_pair.source_epoch += 1
+	layers.tick(movie)
+	check(not movie.layer_shown, "An image from before a seek cannot fill a busy swapchain")
+	backend.draw_result = -1
+	layers.tick(movie)
+	check(
+		layers.failed_session == movie.media.session_id and not movie.layer_shown,
+		"A failed draw falls back to the shader for the rest of the session"
+	)
+	movie.media.session_id += 1
+	backend.draw_result = 1
+	layers.tick(movie)
 	movie.color_grade.select("Warm")
 	layers.tick(movie)
 	check(

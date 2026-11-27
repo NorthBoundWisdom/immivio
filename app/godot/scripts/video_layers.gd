@@ -126,6 +126,7 @@ func update_session(value: Object) -> void:
 		_surface_session_lost = _surface_session_lost or (session != 0 and current != 0)
 		generation += 1
 		copied_key.clear()
+		failed_since = -1
 		image_size = Vector2i.ZERO
 	session = current
 	space = play_space
@@ -189,6 +190,7 @@ func stopping(session_lost: bool = false) -> void:
 	_sync_cadence(false)
 	bound = false
 	copied_key.clear()
+	failed_since = -1
 	image_size = Vector2i.ZERO
 
 
@@ -241,6 +243,7 @@ func release(video: Node3D) -> void:
 		platform.destroy_video_image()
 	image_size = Vector2i.ZERO
 	copied_key.clear()
+	failed_since = -1
 
 
 func hide(video: Node3D) -> void:
@@ -331,14 +334,12 @@ func tick(video: Node3D) -> void:
 			hide(video)
 			return
 		var uv: Array = pair.get("color_uv_scale", [1.0, 1.0])
-		var key := [
+		var context := [
 			generation,
 			video.media.session_id,
 			pair.get("mpv_source_handle", 0),
-			pair.get("slot_token", 0),
+			video.media.generation,
 			pair.get("source_epoch", 0),
-			pair.get("frame_id", 0),
-			pair.get("frozen_frame_id", 0),
 			size,
 			target,
 			video.geometry,
@@ -348,6 +349,12 @@ func tick(video: Node3D) -> void:
 			video.top_bottom,
 			uv
 		]
+		var key := [
+			context,
+			pair.get("slot_token", 0),
+			pair.get("frame_id", 0),
+			pair.get("frozen_frame_id", 0)
+		]
 		if key != copied_key:
 			if image_size != target:
 				if not platform.create_video_image(target.x, target.y):
@@ -355,6 +362,7 @@ func tick(video: Node3D) -> void:
 					hide(video)
 					return
 				image_size = target
+				copied_key.clear()
 				previous = PackedFloat32Array()
 			var span := Layout.fisheye_span(video.fisheye_fov)
 			var parameters := PackedFloat32Array(
@@ -371,18 +379,26 @@ func tick(video: Node3D) -> void:
 					0 if image_layout else 1
 				]
 			)
-			if not platform.draw_video_image(
+			var draw: int = platform.try_draw_video_image(
 				RenderingServer.texture_get_native_handle(video.borrowed_color()), lens, parameters
-			):
+			)
+			if draw > 0:
+				failed_since = -1
+				copied_key = key
+				copied_frames += 1
+			else:
+				var now := Time.get_ticks_msec()
 				if failed_since < 0:
-					failed_since = Time.get_ticks_msec()
-				elif Time.get_ticks_msec() - failed_since > 2000:
+					failed_since = now
+				if draw < 0 or now - failed_since > 2000:
 					failed_session = video.media.session_id
-				hide(video)
-				return
-			failed_since = -1
-			copied_key = key
-			copied_frames += 1
+					hide(video)
+					return
+				# A zero-timeout wait may miss one refresh. Keep submitting the last
+				# released image only while its source and projection still match.
+				if previous.is_empty() or copied_key.is_empty() or copied_key[0] != context:
+					hide(video)
+					return
 		route = "fisheye" if lens else "picture"
 	var geometry: Dictionary = video.composition_geometry()
 	var values := Layout.layers(

@@ -238,6 +238,7 @@ func _ready() -> void:
 	display.msaa_3d = Quality.MSAA[Quality.resolve(display_quality, low_end_gpu)]
 	display.flat_msaa_3d = Quality.FLAT_MSAA[Quality.resolve(display_quality, low_end_gpu)]
 	display.preferred_refresh_rate = float(settings.get_value("display", "refresh_rate", 72.0))
+	display.match_video_rate = settings.get_value("display", "match_video_rate", false) == true
 	video_layers.configure(not desktop, origin, display)
 	display.attach_video_backdrop(camera)
 	display.configure(get_viewport(), world.environment, XRServer.find_interface("OpenXR"), desktop)
@@ -1204,11 +1205,13 @@ func _save_playback_adjustments() -> void:
 
 
 func _fps_sample() -> Dictionary:
-	if not video or not video.panel or (not video.panel.visible):
-		return {}
-	return {
-		"frames": video.media.frame_counter, "target": 0, "active": video.media.state == "playing"
-	}
+	var sample := {}
+	if display.xr is OpenXRInterface and display.xr.is_initialized():
+		sample.refresh_hz = display.xr.display_refresh_rate
+	if video and video.panel and video.panel.visible:
+		sample.frames = video.media.frame_counter
+		sample.active = video.media.state == "playing"
+	return sample
 
 
 var seek_policy_probe_result: Dictionary = {}

@@ -867,9 +867,11 @@ func _settings_rows() -> Array[Dictionary]:
 			for rate in settings.get("refresh_rates", []):
 				rate_choices.append({"value": rate, "label": str(rate) + " Hz"})
 			if not rate_choices.is_empty():
+				var matching := bool(settings.get("match_video_rate", false))
+				out.append(_switch_row("Match video frame rate", "match_video_rate", matching))
 				out.append(
 					_choice_row(
-						"Refresh rate limit",
+						"Refresh rate limit" if matching else "Fixed refresh rate",
 						"refresh_rate",
 						float(settings.get("refresh_rate", 72.0)),
 						rate_choices,

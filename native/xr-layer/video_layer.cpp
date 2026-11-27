@@ -155,8 +155,7 @@ bool acquire_picture() {
     uint32_t index = 0;
     XrSwapchainImageAcquireInfo acquire{};
     acquire.type = XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO;
-    if (XR_FAILED(state.acquire(p.handle, &acquire, &index)))
-      return false;
+    require(XR_SUCCEEDED(state.acquire(p.handle, &acquire, &index)), "Picture acquire failed");
     require(index < p.textures.size(), "Picture index out of bounds");
     p.index = static_cast<int>(index);
   }
@@ -164,8 +163,11 @@ bool acquire_picture() {
   wait.type = XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO;
   wait.timeout = 0; // Never wait for the compositor on Godot's render thread.
   const auto result = state.wait(p.handle, &wait);
-  p.ready = result == XR_SUCCESS;
-  return p.ready;
+  if (result == XR_TIMEOUT_EXPIRED)
+    return false;
+  require(result == XR_SUCCESS, "Picture wait failed");
+  p.ready = true;
+  return true;
 }
 void release_picture() {
   auto &p = state.picture;

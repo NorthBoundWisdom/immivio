@@ -40,9 +40,7 @@ func _library_settings() -> Dictionary:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return {}
-	var refresh_rates: Array = host.display.available_refresh_rates().filter(
-		func(rate): return not host.low_end_gpu or rate <= 90.5
-	)
+	var refresh_rates: Array = host.display.available_refresh_rates()
 	return {
 		"seek_step": host.seek_step,
 		"hdr_to_sdr": host.video.hdr_to_sdr,
@@ -54,6 +52,7 @@ func _library_settings() -> Dictionary:
 		"refresh_rate":
 		host.display.closest_refresh_rate(refresh_rates, host.display.preferred_refresh_rate),
 		"refresh_rates": refresh_rates,
+		"match_video_rate": host.display.match_video_rate,
 		"display_quality_pending":
 		not is_equal_approx(
 			host.display.render_scale, Quality.render_scale(host.display_quality, host.low_end_gpu)
@@ -161,9 +160,14 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 		"library_orders":
 			host.settings.set_value("library", "orders", value)
 			host.settings.save(host.settings_path)
-		"refresh_rate":
-			if host.low_end_gpu and (value is int or value is float) and float(value) > 90.5:
+		"match_video_rate":
+			if not value is bool:
 				return
+			host.display.set_refresh_matching(value)
+			host.settings.set_value("display", "match_video_rate", value)
+			host.settings.save(host.settings_path)
+			host.library_menu.refresh()
+		"refresh_rate":
 			if (
 				not (value is int or value is float)
 				or not host.display.set_refresh_preference(float(value))

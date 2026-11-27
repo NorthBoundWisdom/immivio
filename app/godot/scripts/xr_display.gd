@@ -13,6 +13,7 @@ var session_state := "uninitialized"
 var error_code := ""
 var render_scale := 1.0
 var preferred_refresh_rate := 72.0
+var match_video_rate := false
 var applied_refresh_rate := 0.0
 var msaa_3d := Viewport.MSAA_2X
 var flat_msaa_3d := Viewport.MSAA_4X
@@ -258,12 +259,15 @@ func update_playback_policy(
 	now_ms: int,
 	menu_visible: bool = false
 ) -> void:
-	var cap := (
-		minf(preferred_refresh_rate, 90.0) if low_end or not layer else preferred_refresh_rate
-	)
-	var rate := performance.video_rate(fps, available_refresh_rates(), cap) if playing else 0.0
-	if rate <= 0:
-		rate = closest_refresh_rate(available_refresh_rates(), minf(72.0, preferred_refresh_rate))
+	var rate := preferred_refresh_rate
+	if match_video_rate:
+		var available := available_refresh_rates()
+		var cap := (
+			minf(preferred_refresh_rate, 90.0) if low_end or not layer else preferred_refresh_rate
+		)
+		rate = performance.video_rate(fps, available, cap) if playing else 0.0
+		if rate <= 0:
+			rate = closest_refresh_rate(available, minf(72.0, preferred_refresh_rate))
 	# Composition still needs enough headroom to draw and copy the controls while video plays.
 	var demand := (
 		expensive or (visible and not layer) or (playing and (menu_visible or rate > 72.5))
@@ -271,7 +275,7 @@ func update_playback_policy(
 	var changes := performance.tick(demand, rate, now_ms)
 	if changes.has("high"):
 		_apply_performance_levels()
-	if changes.has("rate"):
+	if match_video_rate and changes.has("rate"):
 		policy_refresh_rate = float(changes.rate)
 		_apply_refresh_rate()
 
@@ -361,11 +365,20 @@ func set_refresh_preference(value: float) -> bool:
 	if not is_finite(value) or value not in available_refresh_rates():
 		return false
 	preferred_refresh_rate = value
+	_reset_refresh_policy()
+	return true
+
+
+func set_refresh_matching(enabled: bool) -> void:
+	match_video_rate = enabled
+	_reset_refresh_policy()
+
+
+func _reset_refresh_policy() -> void:
 	policy_refresh_rate = 0.0
 	performance.wanted_rate = -1.0
 	performance.applied_rate = -1.0
 	_apply_refresh_rate()
-	return true
 
 
 func _apply_refresh_to(target: Object) -> float:
@@ -399,6 +412,7 @@ func capabilities() -> Dictionary:
 		"foveation_level": foveation_level,
 		"render_scale": render_scale,
 		"preferred_refresh_rate": preferred_refresh_rate,
+		"match_video_rate": match_video_rate,
 		"requested_refresh_rate": applied_refresh_rate,
 		"viewport_msaa_3d": viewport.msaa_3d if viewport else Viewport.MSAA_DISABLED,
 		# Vendors can shrink the actual render region without changing the allocated eye buffers.

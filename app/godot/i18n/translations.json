@@ -496,6 +496,8 @@
     "Focus distance": "对焦距离",
     "SMB listing timed out; try again": "共享目录读取超时，请重试",
     "SMB discovery timed out; try again": "共享发现超时，请重试",
+    "Match video frame rate": "匹配视频帧率",
+    "Fixed refresh rate": "固定刷新率",
     "Refresh rate limit": "刷新率上限"
   },
   "zh_Hant": {
@@ -995,6 +997,8 @@
     "Focus distance": "對焦距離",
     "SMB listing timed out; try again": "共用目錄讀取逾時，請重試",
     "SMB discovery timed out; try again": "共用探索逾時，請重試",
+    "Match video frame rate": "符合影片影格率",
+    "Fixed refresh rate": "固定更新率",
     "Refresh rate limit": "更新率上限"
   },
   "ja": {
@@ -1494,6 +1498,8 @@
     "Focus distance": "フォーカス距離",
     "SMB listing timed out; try again": "共有フォルダーの読み込みがタイムアウトしました。再試行してください",
     "SMB discovery timed out; try again": "共有の検出がタイムアウトしました。再試行してください",
+    "Match video frame rate": "動画のフレームレートに合わせる",
+    "Fixed refresh rate": "固定リフレッシュレート",
     "Refresh rate limit": "リフレッシュレート上限"
   }
 }

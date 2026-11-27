@@ -86,6 +86,10 @@ memory and thermal behaviour.
   compare advertised refresh rates with a known 60-fps fixture, including 72 Hz,
   pause/resume and supported-rate fallback. A 72/60 cadence is not integer;
   record actual smoothness/power results rather than assuming zero judder.
+  On Quest 2, use a local 4096×2048 HEVC SDR 59.94-fps clip with bright areas.
+  Compare flat and VR180 SBS playback at fixed 72, 90 and 120 Hz where advertised.
+  Record the display Hz and render FPS separately across play, pause and session
+  resume, and note whether the highlights flicker at each actual refresh rate.
 - [ ] **A12 — GPU ownership and transport.** Check borrowed color, cached opaque
   mask reuse, backpressure and complete version-2 frame descriptors. Exercise
   last draw → detach → consumer fence → producer release, pinned readback,
