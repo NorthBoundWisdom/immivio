@@ -8,6 +8,10 @@ const Log := preload("res://scripts/diagnostic_log.gd")
 const HandPointer := preload("res://scripts/hand_pointer.gd")
 const Geometry := preload("res://scripts/video_geometry.gd")
 const LibraryMenu := preload("res://scripts/library_menu.gd")
+const PlatformMethods := preload("res://scripts/platform_methods.gd")
+const GAZE_POINTER := preload("res://scripts/input_source.gd").GAZE_POINTER
+
+var volume_controls := false
 
 var _grab := {}
 var _library_grab := {}
@@ -101,9 +105,72 @@ func _unhandled_input(event: InputEvent) -> void:
 			host.presentation_coordinator._save_screen()
 
 
+func volume_controls_available() -> bool:
+	var host := _host_ref.get_ref() as Node3D
+	return (
+		is_instance_valid(host)
+		and not host.display.preview
+		and PlatformMethods.supports(host.platform_plugin, "set_volume_key_override")
+	)
+
+
+func set_volume_controls(enabled: bool) -> void:
+	var host := _host_ref.get_ref() as Node3D
+	if not is_instance_valid(host) or enabled == volume_controls:
+		return
+	volume_controls = enabled
+	_sync_volume_key_override(host)
+	if enabled:
+		immersive_grips.clear()
+		immersive.suspend()
+		immersive.clear_feedback()
+		_suspend_playback_sticks(host)
+		_cancel_tracked_input(host)
+		if host.input_visuals:
+			host.input_visuals.update_visibility(false)
+	else:
+		_cancel_pointer(GAZE_POINTER)
+
+
+func _sync_volume_key_override(host: Node3D) -> void:
+	if volume_controls_available():
+		host.platform_plugin.set_volume_key_override(
+			volume_controls and host.input_source.input_focused()
+		)
+
+
+func _volume_key_input(host: Node3D, event: InputEventKey) -> bool:
+	if not volume_controls or not host.input_source.input_focused():
+		return false
+	var key := event.physical_keycode if event.physical_keycode != KEY_NONE else event.keycode
+	if key != KEY_VOLUMEUP and key != KEY_VOLUMEDOWN:
+		return false
+	if not event.pressed or not event.echo:
+		var menu: Node3D = host.input_source.active_menu()
+		if key == KEY_VOLUMEDOWN:
+			if event.pressed:
+				_cancel_pointer(GAZE_POINTER)
+				if menu:
+					menu.back()
+		elif event.pressed:
+			if host.input_source.ray(GAZE_POINTER) != null:
+				if menu:
+					host.presentation_coordinator._update_menu_pointer(GAZE_POINTER, true)
+				elif host.viewer().local_uri.is_empty():
+					host.presentation_coordinator._show_library_menu()
+				else:
+					host.presentation_coordinator._show_player_menu()
+		else:
+			_on_pointer_release("trigger_click", GAZE_POINTER)
+	host.get_viewport().set_input_as_handled()
+	return true
+
+
 func _unhandled_key_input(event: InputEvent) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
+		return
+	if event is InputEventKey and _volume_key_input(host, event):
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_TAB:
@@ -319,6 +386,12 @@ func _on_pointer_button(action: String, hand: String) -> void:
 func _process_sticks(left: Vector2, right: Vector2, delta: float) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
+		return
+	if volume_controls:
+		var active: Node3D = host.input_source.active_menu()
+		if active:
+			host.presentation_coordinator._update_menu_pointer(GAZE_POINTER)
+			_update_controls_visibility(active)
 		return
 	if host.input_visuals and host.input_source.input_focused():
 		if left.length() >= 0.3:
@@ -537,6 +610,8 @@ func _update_hand_input(delta: float) -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
+	if volume_controls:
+		return
 	if host.input_visuals:
 		host.input_visuals.update_visibility(
 			host.input_source.input_focused() and host.input_source.head_tracked(),
@@ -609,6 +684,8 @@ func _dispatch_hand_input(inputs: Dictionary, _delta: float = 1.0 / 72.0) -> voi
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
+	if volume_controls:
+		return
 	for hand in inputs:
 		if inputs[hand].get("pressed", false):
 			_on_pointer_button("trigger_click", hand)
@@ -638,8 +715,17 @@ func _on_input_session_changed() -> void:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return
+	if volume_controls:
+		_sync_volume_key_override(host)
+		if not host.input_source.input_focused():
+			_cancel_pointer(GAZE_POINTER)
+		return
 	if host.input_source.input_focused():
 		return
+	_cancel_tracked_input(host)
+
+
+func _cancel_tracked_input(host: Node3D) -> void:
 	host.trigger_taps.clear()
 	for hand in host.hand_pointers:
 		host.hand_pointers[hand].update({}, 0)

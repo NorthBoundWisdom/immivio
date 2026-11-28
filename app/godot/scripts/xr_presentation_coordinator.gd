@@ -177,7 +177,7 @@ func _update_menu_pointer(hand: String, pressed: bool = false) -> bool:
 	if not is_instance_valid(host):
 		return false
 	var menu = host.input_source.active_menu()
-	if not menu or hand not in ["left_hand", "right_hand"]:
+	if not menu or hand not in ["left_hand", "right_hand", LibraryMenu.GAZE_POINTER]:
 		return false
 	var ray: Variant = host.input_source.ray(hand)
 	var tracked = ray != null
@@ -362,9 +362,14 @@ func _update_view_follow() -> void:
 		# Immersive controls belong to the reset/content sphere, even in follow mode.
 		if menu == host.player_menu and host.viewer().geometry != Geometry.Geometry.FLAT:
 			continue
-		var pose: Variant = host.view_follow.pose(_menu_key(menu), menu_head)
+		var key := _menu_key(menu)
+		# Keep gaze targets stationary. Resume Follow from the menu's current position.
+		if host.input_coordinator.volume_controls:
+			host.view_follow.forget(key)
+			continue
+		var pose: Variant = host.view_follow.pose(key, menu_head)
 		if pose == null:
-			host.view_follow.capture(_menu_key(menu), menu_head, menu.global_transform)
+			host.view_follow.capture(key, menu_head, menu.global_transform)
 		else:
 			menu.global_transform = pose
 	var surface = host.viewer() if host.video else null
@@ -953,6 +958,7 @@ func _session_controls_state() -> Dictionary:
 		return {}
 	return {
 		"follow": host.view_follow.enabled,
+		"volume_controls": host.input_coordinator.volume_controls,
 		"passthrough_visible":
 		(
 			host.background != null

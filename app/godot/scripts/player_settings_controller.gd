@@ -60,6 +60,8 @@ func _library_settings() -> Dictionary:
 		"sharpness": Quality.load_sharpness(host.settings, host.low_end_gpu),
 		"history": host.video.history_enabled,
 		"pinch_hand": host.pinch_hand,
+		"volume_controls_available": host.input_coordinator.volume_controls_available(),
+		"volume_controls": host.input_coordinator.volume_controls,
 		"diagnostic_previous":
 		(
 			PlatformMethods.supports(host.video.platform, "diagnostic_previous_available")
@@ -138,6 +140,12 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 				host.hand_pointers[hand].update({}, 0)
 				host.input_coordinator._cancel_pointer(hand)
 			host.settings.set_value("controls", "pinch_hand", value)
+			host.settings.save(host.settings_path)
+		"volume_controls":
+			if not value is bool or not host.input_coordinator.volume_controls_available():
+				return
+			host.input_coordinator.set_volume_controls(value)
+			host.settings.set_value("controls", "volume_controls", value)
 			host.settings.save(host.settings_path)
 		"controls_opacity":
 			_on_playback_adjustment(key, value)

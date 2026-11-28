@@ -2,7 +2,7 @@ extends "res://scripts/ray_menu.gd"
 
 ## Library: recent, local files, network media and settings; right content with sub-tabs,
 ## breadcrumbs and a scrolling list (ray drag anywhere on the list, or either thumbstick). Sources answer
-## asynchronously through the platform's media_list(id, json) signal. Selection is controller ray + trigger only.
+## asynchronously through the platform's media_list(id, json) signal.
 
 signal chosen(uri: String, title: String)
 signal subtitle_chosen(selection: Dictionary)
@@ -282,6 +282,39 @@ func dismiss() -> void:
 	_fling = 0.0
 	server_browser.cancel()
 	super()
+
+
+func back() -> void:
+	if subtitle_picker.active:
+		_activate(CLOSE)
+	elif not file_actions.modal.is_empty():
+		_activate(file_actions.CANCEL)
+	elif not choices.opened.is_empty():
+		choices.reset()
+		refresh()
+	elif account_panel.active():
+		_activate(account_panel.BASE)
+	elif not editor.is_empty():
+		_activate(CANCEL)
+	elif diagnostic_confirmation:
+		diagnostic_confirmation = false
+		refresh()
+	elif section == Section.SETTINGS and tab == ABOUT_TAB and _about_page != 0:
+		_activate(ABOUT_HOME)
+	elif section == Section.MEDIA_SERVER:
+		_activate(server_browser.ACTION + (0 if server_browser.keyboard.is_empty() else 25))
+	elif (
+		section in [Section.SMB, Section.DLNA]
+		or (section == Section.LOCAL and not sources.local_stack.is_empty())
+		or (section == Section.NETWORK and not network.mode.is_empty())
+	):
+		_activate(BACK)
+	elif playback_browser:
+		_activate(PLAYER)
+	elif section != Section.RECENT:
+		_activate(NAV_BASE + Section.RECENT)
+	elif _selecting_recents:
+		_activate(RECENT_SELECT)
 
 
 ## The quick video switcher leaves the clock to the control bar below it. Follow and
@@ -844,6 +877,15 @@ func _settings_rows() -> Array[Dictionary]:
 					true
 				)
 			)
+			if settings.get("volume_controls_available", false):
+				out.append(
+					_switch_row(
+						"Volume button controls",
+						"volume_controls",
+						settings.get("volume_controls", false),
+						"Head aim · + Select · - Back"
+					)
+				)
 			out.append(_group("Library"))
 			out.append(_switch_row("Allow file management", "file_editing", file_actions.enabled))
 			out.append(_switch_row("Save play history", "history", settings.get("history", true)))

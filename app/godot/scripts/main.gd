@@ -435,7 +435,10 @@ func _ready() -> void:
 			platform_plugin.set_openxr_presence(_xr_wearer_present)
 		if PlatformMethods.supports(platform_plugin, "is_headset_present"):
 			_on_native_presence_changed(platform_plugin.is_headset_present(), "initial")
-		pass
+		if input_coordinator.volume_controls_available():
+			input_coordinator.set_volume_controls(
+				settings.get_value("controls", "volume_controls", false) == true
+			)
 		request_capabilities()
 	else:
 		Log.record("android_plugin_unavailable", {"desktop_preview": desktop})

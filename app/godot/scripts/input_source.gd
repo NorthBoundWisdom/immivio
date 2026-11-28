@@ -1,6 +1,7 @@
 extends RefCounted
 ## Replaceable scene/input boundary. Tests override this object, never the main scene.
 const HandPointer := preload("res://scripts/hand_pointer.gd")
+const GAZE_POINTER := "gaze"
 var _host_ref: WeakRef
 
 
@@ -19,7 +20,7 @@ func controller_allowed(hand: String) -> bool:
 	var host := _host_ref.get_ref() as Node3D
 	if not is_instance_valid(host):
 		return false
-	if not input_focused():
+	if host.input_coordinator.volume_controls or not input_focused():
 		return false
 	# Query current data too: XR input signals may arrive before our process callback.
 	return (
@@ -47,6 +48,14 @@ func ray(hand: String) -> Variant:
 	if not is_instance_valid(host):
 		return null
 	if not input_focused():
+		return null
+	if hand == GAZE_POINTER:
+		if host.input_coordinator.volume_controls:
+			var head: Variant = host.presentation_coordinator._head_pose()
+			if head != null:
+				return [head.origin, -head.basis.z]
+		return null
+	if host.input_coordinator.volume_controls:
 		return null
 	if host.hand_pointers.has(hand) and host.hand_pointers[hand].source == "hand":
 		return host.hand_pointers[hand].ray
