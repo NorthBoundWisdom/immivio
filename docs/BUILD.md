@@ -137,7 +137,7 @@ The application ID is `com.northboundwisdom.immivio`. It installs separately fro
 | Workflow | Runs on | Purpose |
 | --- | --- | --- |
 | `lint.yml` | Pushes to `main`, pull requests | Formatting, source boundary, translations, resources, workflow and website tests |
-| `android-release.yml` | `v*` tags, pull requests, manual dispatch | Builds, tests and packages all three targets on `macos-15-intel`; on a tag, publishes the APKs to the GitHub Release |
+| `android-release.yml` | `v*` tags, pull requests, manual dispatch | PRs compile the Quest Debug plugin and run native, workflow, JVM and Godot tests. Manual runs and tags also build, verify and upload APKs for all three targets. Tags publish the Release APKs to GitHub Releases. |
 | `website-pages.yml` | Website changes on `main`, dispatch after a release | Refreshes download links and deploys GitHub Pages |
 
 `.github/actions/android-setup` installs the CI host tools recorded in `configs/ci_toolchain.json` and caches two verified inputs: host tools (`.cache/ci-tools`) and the compiled playback runtime (`.cache/ci-playback/arm64-v8a`). Restored caches are verified before use; local Configure/Build/Test/Package never install tools.

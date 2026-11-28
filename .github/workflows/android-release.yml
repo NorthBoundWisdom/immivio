@@ -33,6 +33,7 @@ jobs:
         shell: bash
     env:
       PYTHONUTF8: "1"
+      CI_ANDROID_TARGETS: ${{ github.event_name == 'pull_request' && 'Quest' || 'Pico Quest OpenXR' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -59,22 +60,23 @@ jobs:
         run: python configs/prepare_assets.py --download
       - name: Configure Android targets
         run: |
-          for target in Pico Quest OpenXR; do
+          for target in $CI_ANDROID_TARGETS; do
             python configs/android_workflow.py configure --vendor "$target" --build-type "$CI_BUILD_TYPE"
           done
       - name: Resolve application packages with Gradle
         run: python configs/android_workflow.py prepare-packages --vendor Quest --build-type "$CI_BUILD_TYPE"
       - name: Build Android plugins
         run: |
-          for target in Pico Quest OpenXR; do
+          for target in $CI_ANDROID_TARGETS; do
             python configs/android_workflow.py build --vendor "$target" --build-type "$CI_BUILD_TYPE"
           done
       - name: Run workflow, JVM and Godot tests
         run: python configs/android_workflow.py test --vendor Quest --build-type "$CI_BUILD_TYPE"
       - name: Package and verify Android targets
+        if: github.event_name != 'pull_request'
         env: *release-signing
         run: |
-          for target in Pico Quest OpenXR; do
+          for target in $CI_ANDROID_TARGETS; do
             python configs/android_workflow.py package --vendor "$target" --build-type "$CI_BUILD_TYPE"
           done
 
@@ -83,6 +85,7 @@ jobs:
         run: python configs/android_workflow.py stop-gradle
 
       - name: Upload installable packages and build receipts
+        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: Immivio-Android-${{ env.CI_BUILD_TYPE }}-${{ runner.os }}
