@@ -38,11 +38,11 @@ func _tap(key: Key) -> void:
 	_key(key, false)
 
 
-func _aim(host: Node3D, menu: Node3D, target: int) -> bool:
+func _aim(host: Node3D, menu: Node3D, target: int, enabled: bool = true) -> bool:
 	for button in menu.controls_snapshot():
-		if button.target == target and button.enabled:
+		if button.target == target and button.node.visible and button.enabled == enabled:
 			var point: Vector3 = button.node.global_position
-			host.xr_camera.look_at_from_position(point + menu.global_basis.z, point)
+			host.xr_camera.look_at(point)
 			return true
 	return false
 
@@ -64,6 +64,8 @@ func _run() -> void:
 	_tap(KEY_VOLUMEUP)
 	assert(menu.section == menu.Section.RECENT and not platform.overriding_volume)
 
+	menu.test_activate(menu.FOLLOW)
+	assert(host.view_follow.enabled)
 	menu.test_activate(settings_target)
 	var rows: Array = menu.rows.filter(func(row): return row.get("key") == "volume_controls")
 	assert(rows.size() == 1 and rows[0].value == false)
@@ -76,9 +78,24 @@ func _run() -> void:
 	_tap(KEY_VOLUMEDOWN)
 	assert(menu.section == menu.Section.RECENT and menu.visible)
 
+	host.set_process(true)
+	await process_frame
+	var fixed_menu: Transform3D = menu.global_transform
+	assert(_aim(host, menu, menu.FOLLOW, false))
+	await process_frame
+	assert(menu.hover_snapshot().get("gaze") == menu.FOLLOW)
+	var tip: String = menu.I18n.t("Turn off volume button controls to change Follow")
+	assert(
+		menu.find_children("*", "Label3D", true, false).any(
+			func(label): return label.is_visible_in_tree() and label.text == tip
+		)
+	)
+	_tap(KEY_VOLUMEUP)
+	assert(host.view_follow.enabled)
 	var local_target: int = menu.NAV_BASE + menu.Section.LOCAL
 	assert(_aim(host, menu, local_target))
-	host.test_process_sticks(Vector2.ZERO, Vector2.ZERO, 0.01)
+	await process_frame
+	assert(menu.global_transform.is_equal_approx(fixed_menu))
 	assert(menu.hover_snapshot().get("gaze") == local_target)
 	var pointer: Dictionary = menu.pointer_snapshot().gaze
 	assert(pointer.dot.visible and not pointer.line.visible)
@@ -95,6 +112,8 @@ func _run() -> void:
 	assert(menu.section == menu.Section.SETTINGS)
 	var off := probe.choice_target(menu, "volume_controls", "choose", false)
 	assert(_aim(host, menu, off))
+	await process_frame
+	assert(menu.global_transform.is_equal_approx(fixed_menu))
 	_key(KEY_VOLUMEUP, true)
 	assert(platform.overriding_volume)
 	host.display.session_state = "session_visible"
@@ -113,6 +132,14 @@ func _run() -> void:
 	assert(saved.get_value("controls", "volume_controls") == false)
 	_tap(KEY_VOLUMEDOWN)
 	assert(menu.section == menu.Section.SETTINGS)
+	await process_frame
+	assert(menu.global_transform.is_equal_approx(fixed_menu))
+	host.xr_camera.rotate_y(0.25)
+	await process_frame
+	assert(not menu.global_transform.is_equal_approx(fixed_menu))
+	assert(_aim(host, menu, menu.FOLLOW))
+	menu.test_activate(menu.FOLLOW)
+	assert(not host.view_follow.enabled)
 
 	host.queue_free()
 	await process_frame

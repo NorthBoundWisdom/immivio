@@ -447,6 +447,8 @@ func _activate_footer(target: int) -> bool:
 		return false
 	var state := _session_controls()
 	if target == FOLLOW:
+		if state.get("volume_controls", false):
+			return true
 		session_control_requested.emit("follow")
 	elif state.get("passthrough_visible", false) and not state.get("alpha", false):
 		session_control_requested.emit("temporary_passthrough")
@@ -627,14 +629,20 @@ func refresh_session_controls(force: bool = false) -> void:
 	device_status.position = Vector3(
 		left + span + FOOTER_GAP + STATUS_WIDTH * 0.5, _footer_centre.y, 0.002
 	)
+	var volume_controls: bool = state.get("volume_controls", false)
 	_footer_button(
 		FOLLOW,
 		"head_follow",
 		Vector2(left + FOOTER_DIAMETER * 0.5, _footer_centre.y),
 		state.get("follow", false),
-		true,
-		I18n.t("Disable follow" if state.get("follow", false) else "Enable follow")
+		not volume_controls,
+		(
+			I18n.t("Turn off volume button controls to change Follow")
+			if volume_controls
+			else I18n.t("Disable follow" if state.get("follow", false) else "Enable follow")
+		)
 	)
+	_buttons.back()["keep_visible"] = true
 	if show_passthrough:
 		var alpha: bool = state.get("alpha", false)
 		_footer_button(

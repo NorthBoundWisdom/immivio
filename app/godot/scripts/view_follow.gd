@@ -19,3 +19,7 @@ func capture(key: StringName, head: Transform3D, world: Transform3D) -> void:
 
 func pose(key: StringName, head: Transform3D) -> Variant:
 	return head * _poses[key] if enabled and _poses.has(key) else null
+
+
+func forget(key: StringName) -> void:
+	_poses.erase(key)
