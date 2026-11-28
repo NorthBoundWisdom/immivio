@@ -6,6 +6,22 @@
 
 Newest first, with the main changes that affect everyday use. Unreleased items are not yet part of a public release. Versions 0.6.0 and earlier belong to the original project. Photo viewing, cloud drives and AI 3D conversion appear only as historical features and were removed later; see the [README](README.md) for current capabilities.
 
+## 1.0.4 — 2026-11-28
+
+**中文**
+
+- 打开「设置 → 常规 → 音量键控制」后，用头部瞄准，按音量 + 选择或唤出播放菜单，按音量 − 返回。此功能默认关闭。
+- 瞄准时菜单固定在原位。将光点移到变暗的「跟随」按钮上即可查看提示。关闭音量键控制后，音量键恢复调节系统音量，也可以再次切换跟随。
+
+感谢 michioxd 贡献头部瞄准与音量键导航功能。
+
+**English**
+
+- Aim with your head and press Volume + to select or show playback controls. Press Volume − to go back. Turn this on in Settings → General → Volume button controls. It is off by default.
+- Menus stay in place while you aim. The Follow button shows how to enable it again. Turn off volume button controls to restore the headset’s volume keys and change Follow.
+
+Thanks to michioxd for contributing head aiming and volume-button navigation.
+
 ## 1.0.3 — 2026-11-28
 
 **中文**
