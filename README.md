@@ -124,6 +124,7 @@ If the picture looks split, distorted or inverted, check the projection first, t
 | Return to the library | **Close video** |
 | Reclined viewing | **Settings → Display → Reclining mode** (Follow is a separate setting) |
 | Pinch hand | **Settings → General → Pinch/menu hand** |
+| Volume button controls | **Settings → General → Volume button controls** (off by default). Aim with your head, press **Volume +** to select or show playback controls, and press **Volume −** to go back. While enabled in VR, these buttons navigate instead of changing the system volume. |
 
 For sources, subtitles, timing and queues, see the [user guide](https://northboundwisdom.github.io/immivio/guide/).
 

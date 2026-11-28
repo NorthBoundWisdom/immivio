@@ -330,6 +330,18 @@ func dismiss() -> void:
 	super.dismiss()
 
 
+func back() -> void:
+	if not choices.opened.is_empty():
+		choices.reset()
+		refresh()
+	elif (
+		_mode_open or _subtitle_open or bookmarks.opened or not _quick_open.is_empty() or section != 0
+	):
+		_toggle_popup("")
+	else:
+		dismiss()
+
+
 func _reset_navigation() -> void:
 	_quick_open = ""
 	choices.reset()

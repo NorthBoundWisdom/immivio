@@ -349,6 +349,14 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     @UsedByGodot fun mpv_supported(): Boolean = !closed.get() && mpv.supported()
 
     @UsedByGodot
+    fun set_volume_key_override(enabled: Boolean) {
+        // Godot still forwards volume events; this prevents Android from also adjusting audio.
+        runOnHostThread {
+            if (!closed.get()) getGodot().renderView?.inputHandler?.setOverrideVolumeButtons(enabled)
+        }
+    }
+
+    @UsedByGodot
     fun set_mpv_output_width(width: Int) {
         if (width in 0..8192) mpv.outputWidthCap = width
     }

@@ -177,7 +177,7 @@ func _update_menu_pointer(hand: String, pressed: bool = false) -> bool:
 	if not is_instance_valid(host):
 		return false
 	var menu = host.input_source.active_menu()
-	if not menu or hand not in ["left_hand", "right_hand"]:
+	if not menu or hand not in ["left_hand", "right_hand", LibraryMenu.GAZE_POINTER]:
 		return false
 	var ray: Variant = host.input_source.ray(hand)
 	var tracked = ray != null

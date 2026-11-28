@@ -9,6 +9,7 @@ const PREVIOUS := -2
 const NEXT := -3
 const CLOSE := -4
 const MAX_RAY_METRES := 5.0
+const GAZE_POINTER := preload("res://scripts/input_source.gd").GAZE_POINTER
 const FOLLOW := -1001
 const TEMP_PASSTHROUGH := -1002
 const CLOSE_MENU := -1003
@@ -380,15 +381,9 @@ func update_pointer(hand: String, origin: Vector3, direction: Vector3, tracked: 
 		and direction.is_finite()
 		and direction.length_squared() > 0.000001
 	)
-	pointer.line.visible = valid
+	pointer.line.visible = valid and hand != GAZE_POINTER
 	pointer.dot.visible = not hit.is_empty()
 	if valid:
-		var endpoint: Vector3 = (
-			hit.get("world_point", to_global(hit.point))
-			if not hit.is_empty()
-			else origin + direction.normalized() * max_ray_metres
-		)
-		PointerRay.draw(pointer.line, origin, to_global(to_local(endpoint) + Vector3(0, 0, 0.006)))
 		var actionable: bool = (
 			not hit.is_empty()
 			and (
@@ -396,12 +391,21 @@ func update_pointer(hand: String, origin: Vector3, direction: Vector3, tracked: 
 				or (bool(hit.get("enabled", false)) and int(hit.get("target", NONE)) != NONE)
 			)
 		)
-		pointer.line.material_override.set_shader_parameter(
-			"ray_color",
-			Color(
-				pointer.color, PointerRay.HOVER_OPACITY if actionable else PointerRay.IDLE_OPACITY
+		if pointer.line.visible:
+			var endpoint: Vector3 = (
+				hit.get("world_point", to_global(hit.point))
+				if not hit.is_empty()
+				else origin + direction.normalized() * max_ray_metres
 			)
-		)
+			PointerRay.draw(
+				pointer.line, origin, to_global(to_local(endpoint) + Vector3(0, 0, 0.006))
+			)
+			pointer.line.material_override.set_shader_parameter(
+				"ray_color",
+				Color(
+					pointer.color, PointerRay.HOVER_OPACITY if actionable else PointerRay.IDLE_OPACITY
+				)
+			)
 		if not hit.is_empty():
 			pointer.dot.position = hit.point + Vector3(0, 0, 0.008)
 			pointer.dot.scale = Vector3.ONE * (1.25 if actionable else 1.0)
