@@ -883,7 +883,7 @@ func _settings_rows() -> Array[Dictionary]:
 						"Volume button controls",
 						"volume_controls",
 						settings.get("volume_controls", false),
-						"Head aim · + Select · − Back"
+						"Head aim · + Select · - Back"
 					)
 				)
 			out.append(_group("Library"))

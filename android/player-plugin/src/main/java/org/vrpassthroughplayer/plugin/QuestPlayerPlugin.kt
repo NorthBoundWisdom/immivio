@@ -352,7 +352,8 @@ class QuestPlayerPlugin(godot: Godot) : GodotPlugin(godot) {
     fun set_volume_key_override(enabled: Boolean) {
         // Godot still forwards volume events; this prevents Android from also adjusting audio.
         runOnHostThread {
-            if (!closed.get()) getGodot().renderView?.inputHandler?.setOverrideVolumeButtons(enabled)
+            if (!closed.get())
+                getGodot().renderView?.inputHandler?.setOverrideVolumeButtons(enabled)
         }
     }
 

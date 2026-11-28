@@ -335,7 +335,11 @@ func back() -> void:
 		choices.reset()
 		refresh()
 	elif (
-		_mode_open or _subtitle_open or bookmarks.opened or not _quick_open.is_empty() or section != 0
+		_mode_open
+		or _subtitle_open
+		or bookmarks.opened
+		or not _quick_open.is_empty()
+		or section != 0
 	):
 		_toggle_popup("")
 	else:

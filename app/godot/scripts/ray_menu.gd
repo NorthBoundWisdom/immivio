@@ -403,7 +403,8 @@ func update_pointer(hand: String, origin: Vector3, direction: Vector3, tracked: 
 			pointer.line.material_override.set_shader_parameter(
 				"ray_color",
 				Color(
-					pointer.color, PointerRay.HOVER_OPACITY if actionable else PointerRay.IDLE_OPACITY
+					pointer.color,
+					PointerRay.HOVER_OPACITY if actionable else PointerRay.IDLE_OPACITY
 				)
 			)
 		if not hit.is_empty():
